@@ -957,19 +957,21 @@ GoogleDriveWebhook.init(
 );
 Connector.hasOne(GoogleDriveWebhook);
 
-export class GoogleDriveBFSDedup extends Model<
-  InferAttributes<GoogleDriveBFSDedup>,
-  InferCreationAttributes<GoogleDriveBFSDedup>
+export class GoogleDriveSyncedFolder extends Model<
+  InferAttributes<GoogleDriveSyncedFolder>,
+  InferCreationAttributes<GoogleDriveSyncedFolder>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare driveFolderId: string;
-  declare runId: string;
+  declare driveParentFolderId: string | null;
+  declare driveFolderName: string;
+  declare runAt: Date;
 }
 
-GoogleDriveBFSDedup.init(
+GoogleDriveSyncedFolder.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -994,16 +996,27 @@ GoogleDriveBFSDedup.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    runId: {
+    driveParentFolderId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    driveFolderName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    runAt: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
   },
   {
     sequelize: sequelize_conn,
-    modelName: "google_drive_bfs_dedup",
+    modelName: "google_drive_synced_folder",
     indexes: [
-      { fields: ["connectorId", "driveFolderId", "runId"], unique: true },
+      {
+        fields: ["connectorId", "driveFolderId", "runId"],
+        unique: true,
+      },
     ],
   }
 );

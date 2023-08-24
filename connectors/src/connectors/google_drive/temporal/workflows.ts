@@ -13,6 +13,7 @@ import type * as activities from "@connectors/connectors/google_drive/temporal/a
 import { ModelId } from "@connectors/lib/models";
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 import { newWebhookSignal } from "./signals";
 
@@ -26,6 +27,7 @@ const {
   garbageCollectorFinished,
   getLastGCTime,
   cleanupDedupList,
+  getGoogleDriveObjects,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -45,7 +47,7 @@ export async function googleDriveFullSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   garbageCollect = true,
-  foldersToBrowse: string[] | undefined = undefined,
+  foldersToBrowse: GoogleDriveObjectType[] | undefined = undefined,
   totalCount = 0
 ) {
   // Running the incremental sync workflow before the full sync to populate the
@@ -53,14 +55,15 @@ export async function googleDriveFullSync(
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  const runId = `${new Date().getTime()}`;
+  const runId = new Date().getTime();
   if (foldersToBrowse === undefined) {
-    foldersToBrowse = await getFoldersToSync(connectorId);
+    const selectedFolders = await getFoldersToSync(connectorId);
+    foldersToBrowse = await getGoogleDriveObjects(connectorId, selectedFolders);
   }
 
   while (foldersToBrowse.length > 0) {
-    const folderId = foldersToBrowse.pop();
-    if (!folderId) {
+    const folder = foldersToBrowse.pop();
+    if (!folder) {
       throw new Error("folderId should be defined");
     }
     do {
@@ -68,7 +71,7 @@ export async function googleDriveFullSync(
         connectorId,
         nangoConnectionId,
         dataSourceConfig,
-        folderId,
+        folder,
         runId,
         nextPageToken
       );

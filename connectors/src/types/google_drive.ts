@@ -1,6 +1,7 @@
-export type GoogleDriveFileType = {
+export type GoogleDriveObjectType = {
   id: string;
   name: string;
+  parent: string | null;
   createdAtMs: number;
   updatedAtMs?: number;
   webViewLink?: string;
