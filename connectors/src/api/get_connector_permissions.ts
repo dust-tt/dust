@@ -4,7 +4,10 @@ import { RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import { ConnectorResource } from "@connectors/types/resources";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+} from "@connectors/types/resources";
 
 type GetConnectorPermissionsRes =
   | { resources: ConnectorResource[] }
@@ -29,6 +32,15 @@ const _getConnectorPermissions = async (
       ? null
       : req.query.parentId;
 
+  let filterPermission: ConnectorPermission | null = null;
+  if (
+    req.query.filterPermission &&
+    typeof req.query.filterPermission === "string" &&
+    ["read"].includes(req.query.filterPermission)
+  ) {
+    filterPermission = "read";
+  }
+
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
@@ -45,7 +57,8 @@ const _getConnectorPermissions = async (
 
   const pRes = await connectorPermissionRetriever(
     connector.id,
-    parentInternalId
+    parentInternalId,
+    filterPermission
   );
 
   if (pRes.isErr()) {

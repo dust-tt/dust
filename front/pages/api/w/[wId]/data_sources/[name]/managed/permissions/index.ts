@@ -5,7 +5,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorResource, ConnectorsAPI } from "@app/lib/connectors_api";
+import {
+  ConnectorPermission,
+  ConnectorResource,
+  ConnectorsAPI,
+} from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -74,6 +78,15 @@ async function handler(
         parentId = req.query.parentId;
       }
 
+      let filterPermission: ConnectorPermission | undefined = undefined;
+      if (
+        req.query.filterPermission &&
+        typeof req.query.filterPermission === "string" &&
+        ["read"].includes(req.query.filterPermission)
+      ) {
+        filterPermission = "read";
+      }
+
       if (!dataSource.connectorId) {
         return apiError(req, res, {
           status_code: 400,
@@ -87,6 +100,7 @@ async function handler(
       const permissionsRes = await ConnectorsAPI.getConnectorPermissions({
         connectorId: dataSource.connectorId,
         parentId,
+        filterPermission,
       });
       if (permissionsRes.isErr()) {
         return apiError(req, res, {

@@ -184,14 +184,20 @@ export const ConnectorsAPI = {
   async getConnectorPermissions({
     connectorId,
     parentId,
+    filterPermission,
   }: {
     connectorId: string;
     parentId?: string;
+    filterPermission?: ConnectorPermission;
   }): Promise<ConnectorsAPIResponse<{ resources: ConnectorResource[] }>> {
-    let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions`;
+    let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions?source=front`;
     if (parentId) {
-      url += `?parentId=${parentId}`;
+      url += `&parentId=${parentId}`;
     }
+    if (filterPermission) {
+      url += `&filterPermission=${filterPermission}`;
+    }
+
     const res = await fetch(url, {
       method: "GET",
       headers: getDefaultHeaders(),

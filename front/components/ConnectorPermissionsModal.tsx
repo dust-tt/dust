@@ -1,34 +1,24 @@
 import {
   Button,
   Checkbox,
-  DocumentTextIcon,
   XCircleStrokeIcon as XCircleIcon,
 } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
-import {
-  ChatBubbleLeftRightIcon,
-  CircleStackIcon,
-  Cog6ToothIcon,
-  FolderIcon,
-} from "@heroicons/react/20/solid";
+import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import {
   ConnectorPermission,
   ConnectorProvider,
-  ConnectorResourceType,
   ConnectorType,
 } from "@app/lib/connectors_api";
-import {
-  useConnectorDefaultNewResourcePermission,
-  useConnectorPermissions,
-} from "@app/lib/swr";
+import { useConnectorDefaultNewResourcePermission } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
-import { Spinner } from "./Spinner";
+import { PermissionTree } from "./ConnectorPermissionsTree";
 
 const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   notion: "Notion",
@@ -68,140 +58,6 @@ const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
 ]);
-
-export type IconComponentType =
-  | typeof DocumentTextIcon
-  | typeof FolderIcon
-  | typeof CircleStackIcon
-  | typeof ChatBubbleLeftRightIcon;
-
-function getIconForType(type: ConnectorResourceType): IconComponentType {
-  switch (type) {
-    case "file":
-      return DocumentTextIcon;
-    case "folder":
-      return FolderIcon;
-    case "database":
-      return CircleStackIcon;
-    case "channel":
-      return ChatBubbleLeftRightIcon;
-    default:
-      ((n: never) => {
-        throw new Error("Unreachable " + n);
-      })(type);
-  }
-}
-
-function PermissionTreeChildren({
-  owner,
-  dataSource,
-  parentId,
-  onPermissionUpdate,
-  canUpdatePermissions,
-}: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
-  parentId: string | null;
-  canUpdatePermissions: boolean;
-  onPermissionUpdate: ({
-    internalId,
-    permission,
-  }: {
-    internalId: string;
-    permission: ConnectorPermission;
-  }) => void;
-}) {
-  const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions(owner, dataSource, parentId);
-
-  const [localStateByInternalId, setLocalStateByInternalId] = useState<
-    Record<string, boolean>
-  >({});
-
-  if (isResourcesError) {
-    return (
-      <div className="text-red-300">
-        Failed to retrieve permissions likely due to a revoked authorization.
-      </div>
-    );
-  }
-
-  return (
-    <div className="ml-2">
-      <>
-        {isResourcesLoading ? (
-          <Spinner />
-        ) : (
-          <div className="space-y-1">
-            {resources.map((r) => {
-              const IconComponent = getIconForType(r.type);
-              const titlePrefix = r.type === "channel" ? "#" : "";
-              return (
-                <div key={r.internalId}>
-                  <div className="ml-1 flex flex-row items-center py-1 text-base">
-                    <IconComponent className="h-6 w-6 text-slate-300" />
-                    <span className="ml-2">{`${titlePrefix}${r.title}`}</span>
-                    {canUpdatePermissions ? (
-                      <div className="flex-grow">
-                        <Checkbox
-                          className="ml-auto"
-                          checked={
-                            localStateByInternalId[r.internalId] ??
-                            ["read", "read_write"].includes(r.permission)
-                          }
-                          onChange={(checked) => {
-                            setLocalStateByInternalId((prev) => ({
-                              ...prev,
-                              [r.internalId]: checked,
-                            }));
-                            onPermissionUpdate({
-                              internalId: r.internalId,
-                              permission: checked ? "read_write" : "write",
-                            });
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </>
-    </div>
-  );
-}
-
-function PermissionTree({
-  owner,
-  dataSource,
-  onPermissionUpdate,
-  canUpdatePermissions,
-}: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
-  canUpdatePermissions: boolean;
-  onPermissionUpdate: ({
-    internalId,
-    permission,
-  }: {
-    internalId: string;
-    permission: ConnectorPermission;
-  }) => void;
-}) {
-  return (
-    <div className="">
-      <PermissionTreeChildren
-        owner={owner}
-        dataSource={dataSource}
-        parentId={null}
-        canUpdatePermissions={canUpdatePermissions}
-        onPermissionUpdate={onPermissionUpdate}
-      />
-    </div>
-  );
-}
 
 export default function ConnectorPermissionsModal({
   owner,

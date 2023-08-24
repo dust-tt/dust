@@ -1,41 +1,24 @@
 import { Button, Checkbox } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
-import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
-import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { buildConnectionId } from "@app/lib/connector_connection_id";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@app/lib/connectors_api";
+import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
 import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
-import { githubAuth } from "@app/lib/github_auth";
-import { useDocuments } from "@app/lib/swr";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const {
-  GA_TRACKING_ID = "",
-  NANGO_SLACK_CONNECTOR_ID = "",
-  NANGO_NOTION_CONNECTOR_ID = "",
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
-  NANGO_PUBLIC_KEY = "",
-  GITHUB_APP_URL = "",
-} = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
@@ -44,14 +27,6 @@ export const getServerSideProps: GetServerSideProps<{
   connector?: ConnectorType | null;
   fetchConnectorError?: boolean;
   gaTrackingId: string;
-  nangoConfig: {
-    publicKey: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-  };
-  githubAppUrl: string;
-  canUpdatePermissions: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -80,21 +55,13 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  let canUpdatePermissions = false;
-  if (context.query.updatePermissions === "enabled") {
-    canUpdatePermissions = true;
-  }
-
   let connector: ConnectorType | null = null;
-  let fetchConnectorError = false;
   if (dataSource.connectorId) {
     const connectorRes = await ConnectorsAPI.getConnector(
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
       connector = connectorRes.value;
-    } else {
-      fetchConnectorError = true;
     }
   }
 
@@ -104,16 +71,7 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       dataSource,
       connector,
-      fetchConnectorError,
       gaTrackingId: GA_TRACKING_ID,
-      nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
-        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-      },
-      githubAppUrl: GITHUB_APP_URL,
-      canUpdatePermissions,
     },
   };
 };
@@ -123,11 +81,7 @@ export default function DataSourceSettings({
   owner,
   dataSource,
   connector,
-  fetchConnectorError,
   gaTrackingId,
-  nangoConfig,
-  githubAppUrl,
-  canUpdatePermissions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const managed = !!dataSource.connectorId && !!connector;
   const [isUpdating, setIsUpdating] = useState(false);
@@ -200,11 +154,6 @@ export default function DataSourceSettings({
           <ManagedDataSourceSettings
             dataSource={dataSource}
             owner={owner}
-            connector={connector}
-            fetchConnectorError={fetchConnectorError || false}
-            nangoConfig={nangoConfig}
-            githubAppUrl={githubAppUrl}
-            canUpdatePermissions={canUpdatePermissions}
             handleUpdate={(settings: { assistantDefaultSelected: boolean }) =>
               handleUpdate(settings)
             }
@@ -443,78 +392,14 @@ function StandardDataSourceSettings({
   );
 }
 
-function ManagedDataSourceStatus({
-  fetchConnectorError,
-  connector,
-}: {
-  fetchConnectorError: boolean;
-  connector: ConnectorType | null;
-}) {
-  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
-    null
-  );
-
-  useEffect(() => {
-    if (connector?.lastSyncSuccessfulTime)
-      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
-  }, []);
-
-  if (fetchConnectorError) {
-    return (
-      <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
-        errored
-      </p>
-    );
-  }
-
-  if (!connector?.lastSyncSuccessfulTime) {
-    return (
-      <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
-        Synchronizing
-        {connector?.firstSyncProgress
-          ? ` (${connector?.firstSyncProgress})`
-          : null}
-      </p>
-    );
-  } else {
-    return (
-      <div className="flex flex-col">
-        <div className="flex flex-row ">
-          <p className="leading-2 inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold text-green-800">
-            Synchronized
-          </p>
-        </div>
-        <p className="flex-1 rounded-full px-2 text-xs italic text-gray-400">
-          {synchronizedTimeAgo && `${synchronizedTimeAgo} ago`}
-        </p>
-      </div>
-    );
-  }
-}
-
 function ManagedDataSourceSettings({
   owner,
   dataSource,
-  connector,
-  fetchConnectorError,
-  nangoConfig,
-  githubAppUrl,
-  canUpdatePermissions,
   handleUpdate,
   isUpdating,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  connector: ConnectorType;
-  fetchConnectorError: boolean;
-  nangoConfig: {
-    publicKey: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-  };
-  githubAppUrl: string;
-  canUpdatePermissions: boolean;
   handleUpdate: (settings: {
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
@@ -529,186 +414,11 @@ function ManagedDataSourceSettings({
   if (!logo) {
     throw new Error(`No logo for data source ${dataSource.name}`);
   }
-  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-
-  const dataSourceName = dataSource.connectorProvider
-    ? dataSource.connectorProvider.charAt(0).toUpperCase() +
-      dataSource.connectorProvider.slice(1)
-    : "";
-
-  const { total } = useDocuments(owner, dataSource, 0, 0);
-
-  const handleUpdatePermissions = async () => {
-    if (!canUpdatePermissions) {
-      window.alert(
-        "Please contact us at team@dust.tt if you wish to update the permissions of this managed data source."
-      );
-      return;
-    }
-
-    if (!connector) {
-      console.error("No connector");
-      return;
-    }
-    const provider = connector.type;
-
-    if (connectorIsUsingNango(provider)) {
-      const nangoConnectorId = {
-        slack: nangoConfig.slackConnectorId,
-        notion: nangoConfig.notionConnectorId,
-        google_drive: nangoConfig.googleDriveConnectorId,
-      }[provider];
-
-      const nango = new Nango({ publicKey: nangoConfig.publicKey });
-
-      const newConnectionId = buildConnectionId(owner.sId, provider);
-      await nango.auth(nangoConnectorId, newConnectionId);
-
-      const updateRes = await updateConnectorConnectionId(
-        newConnectionId,
-        provider
-      );
-      if (updateRes.error) {
-        window.alert(updateRes.error);
-      }
-
-      if (connector && connector.type === "google_drive") {
-        setGoogleDrivePickerOpen(true);
-      }
-    } else if (provider === "github") {
-      const installationId = await githubAuth(githubAppUrl).catch((e) => {
-        console.error(e);
-      });
-
-      if (!installationId) {
-        window.alert(
-          "Failed to update the Github permissions. Please contact-us at team@dust.tt"
-        );
-      } else {
-        const updateRes = await updateConnectorConnectionId(
-          installationId,
-          provider
-        );
-        if (updateRes.error) {
-          window.alert(updateRes.error);
-        }
-      }
-    }
-  };
-
-  const updateConnectorConnectionId = async (
-    newConnectionId: string,
-    provider: string
-  ) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ connectionId: newConnectionId }),
-      }
-    );
-
-    if (res.ok) {
-      return { success: true, error: null };
-    }
-
-    const jsonErr = await res.json();
-    const error = jsonErr.error;
-
-    if (error.type === "connector_oauth_target_mismatch") {
-      if (provider === "slack") {
-        return {
-          success: false,
-          error: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
-        };
-      }
-      if (provider === "notion") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
-        };
-      }
-      if (provider === "github") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
-        };
-      }
-      if (provider === "google_drive") {
-        return {
-          success: false,
-          error:
-            "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
-        };
-      }
-    }
-    return {
-      success: false,
-      error: `Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)`,
-    };
-  };
 
   return (
     <>
-      {connector && connector?.type == "google_drive" && (
-        <GoogleDriveFoldersPickerModal
-          owner={owner}
-          connectorId={connector.id}
-          isOpen={googleDrivePickerOpen}
-          setOpen={setGoogleDrivePickerOpen}
-        />
-      )}
-      {connector && (
-        <ConnectorPermissionsModal
-          owner={owner}
-          connector={connector}
-          dataSource={dataSource}
-          isOpen={showPermissionModal}
-          setOpen={setShowPermissionModal}
-          onEditPermission={() => {
-            void handleUpdatePermissions();
-          }}
-        />
-      )}
-
       <div className="space-y-8">
         <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-          <div className="sm:col-span-3">
-            <div className="flex flex-row items-center">
-              <div className="mr-1 flex h-4 w-4 ">
-                <img src={logo}></img>
-              </div>
-              <label
-                htmlFor="dataSourceName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                {dataSourceName} (managed - {total} documents)
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-row justify-between sm:col-span-6">
-            <ManagedDataSourceStatus
-              connector={connector}
-              fetchConnectorError={fetchConnectorError}
-            />
-
-            <div className="flex flex-row">
-              <Button
-                type="tertiary"
-                onClick={() => {
-                  setShowPermissionModal(true);
-                }}
-                label="Show permissions"
-              ></Button>
-            </div>
-          </div>
           <div className="mt-2 sm:col-span-6">
             <div className="flex justify-between">
               <label
