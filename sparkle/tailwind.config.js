@@ -2,11 +2,10 @@
 const colors = require("tailwindcss/colors");
 
 module.exports = {
-  prefix: "s-",
-  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     fontFamily: {
-      roboto: ["Roboto", "sans-serif"],
+      sans: ["'darkmode-off-cc'", "'darkmode-on-cc'", "sans-serif"],
+      objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
       colors: {
@@ -68,4 +67,6 @@ module.exports = {
     },
   },
   plugins: [require("@tailwindcss/forms")],
+  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
+  prefix: "s-",
 };
