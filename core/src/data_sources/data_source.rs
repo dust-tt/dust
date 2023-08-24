@@ -79,6 +79,7 @@ pub struct Document {
     pub document_id: String,
     pub timestamp: u64,
     pub tags: Vec<String>,
+    pub parents: Vec<String>,
     pub source_url: Option<String>,
     pub hash: String,
     pub text_size: u64,
@@ -95,6 +96,7 @@ impl Document {
         document_id: &str,
         timestamp: u64,
         tags: &Vec<String>,
+        parents: &Vec<String>,
         source_url: &Option<String>,
         hash: &str,
         text_size: u64,
@@ -105,6 +107,7 @@ impl Document {
             document_id: document_id.to_string(),
             timestamp,
             tags: tags.clone(),
+            parents: parents.clone(),
             source_url: source_url.clone(),
             hash: hash.to_string(),
             text_size,
@@ -322,6 +325,16 @@ impl DataSource {
         let _ = qdrant_client
             .create_field_index(
                 self.qdrant_collection(),
+                "parents",
+                qdrant::FieldType::Keyword,
+                None,
+                None,
+            )
+            .await?;
+
+        let _ = qdrant_client
+            .create_field_index(
+                self.qdrant_collection(),
                 "timestamp",
                 qdrant::FieldType::Integer,
                 None,
@@ -389,6 +402,7 @@ impl DataSource {
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
+        parents: &Vec<String>,
         source_url: &Option<String>,
         text: &str,
         preserve_system_tags: bool,
@@ -438,6 +452,8 @@ impl DataSource {
             .map(|tag| tag.to_string())
             .collect();
 
+        let parents: Vec<String> = parents.iter().map(|parent| parent.to_string()).collect();
+
         let timestamp = match timestamp {
             Some(timestamp) => timestamp,
             None => utils::now(),
@@ -451,6 +467,9 @@ impl DataSource {
         tags.iter().for_each(|tag| {
             hasher.update(tag.as_bytes());
         });
+        parents.iter().for_each(|parent| {
+            hasher.update(parent.as_bytes());
+        });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
         let mut hasher = blake3::Hasher::new();
@@ -462,6 +481,7 @@ impl DataSource {
             document_id,
             timestamp,
             &tags,
+            &parents,
             source_url,
             &document_hash,
             text.len() as u64,
@@ -483,6 +503,7 @@ impl DataSource {
         let document_id_path = format!("{}/document_id.txt", bucket_path);
         let content_path = format!("{}/{}/content.txt", bucket_path, document_hash);
         let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
+        let parents_path = format!("{}/{}/parents.json", bucket_path, document_hash);
         let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
         let now = utils::now();
@@ -503,6 +524,12 @@ impl DataSource {
                 &bucket,
                 serde_json::to_string(&tags).unwrap().as_bytes().to_vec(),
                 &tags_path,
+                "application/json",
+            ),
+            Object::create(
+                &bucket,
+                serde_json::to_string(&parents).unwrap().as_bytes().to_vec(),
+                &parents_path,
                 "application/json",
             ),
             Object::create(
@@ -657,6 +684,7 @@ impl DataSource {
                 let uid = Uuid::new_v4();
                 let mut payload = Payload::new();
                 payload.insert("tags", document.tags.clone());
+                payload.insert("parents", document.parents.clone());
                 payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());

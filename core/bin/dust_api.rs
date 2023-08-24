@@ -1340,6 +1340,7 @@ struct DataSourcesDocumentsUpsertPayload {
     text: String,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
+    parents: Vec<String>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1387,6 +1388,7 @@ async fn data_sources_documents_upsert(
                         &payload.document_id,
                         payload.timestamp,
                         &payload.tags,
+                        &payload.parents,
                         &payload.source_url,
                         &payload.text,
                         true, // preserve system tags
