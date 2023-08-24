@@ -228,7 +228,7 @@ export default function DataSourceView({
           )}
         </div>
 
-        <div className="mt-8 overflow-hidden">
+        <div className="mt-8 overflow-hidden pb-8">
           <ul role="list" className="space-y-4">
             {documents.map((d) => (
               <li
