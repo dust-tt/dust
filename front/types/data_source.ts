@@ -13,5 +13,4 @@ export type DataSourceType = {
   dustAPIProjectId: string;
   connectorId?: string;
   connectorProvider?: ConnectorProvider;
-  userUpsertable: boolean;
 };

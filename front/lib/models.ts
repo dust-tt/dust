@@ -605,7 +605,6 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
   declare connectorId?: string;
   declare connectorProvider?: ConnectorProvider;
-  declare userUpsertable: CreationOptional<boolean>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
@@ -654,11 +653,6 @@ DataSource.init(
     },
     connectorProvider: {
       type: DataTypes.STRING,
-    },
-    userUpsertable: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      allowNull: false,
     },
   },
   {

@@ -43,7 +43,6 @@ export async function getDataSource(
     dustAPIProjectId: dataSource.dustAPIProjectId,
     connectorId: dataSource.connectorId,
     connectorProvider: dataSource.connectorProvider,
-    userUpsertable: dataSource.userUpsertable,
     assistantDefaultSelected: dataSource.assistantDefaultSelected,
   };
 }
@@ -82,7 +81,6 @@ export async function getDataSources(
       dustAPIProjectId: dataSource.dustAPIProjectId,
       connectorId: dataSource.connectorId,
       connectorProvider: dataSource.connectorProvider,
-      userUpsertable: dataSource.userUpsertable,
       assistantDefaultSelected: dataSource.assistantDefaultSelected,
     };
   });

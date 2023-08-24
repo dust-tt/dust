@@ -48,7 +48,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder() && !dataSource.userUpsertable) {
+      if (!auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

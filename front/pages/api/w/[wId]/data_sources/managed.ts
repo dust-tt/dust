@@ -248,7 +248,6 @@ async function handler(
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
-          userUpsertable: false,
           assistantDefaultSelected: true,
         },
         connector: connectorsRes.value,
