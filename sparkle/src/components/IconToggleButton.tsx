@@ -1,4 +1,4 @@
-import React, { ComponentType, MouseEventHandler, useState } from "react";
+import React, { ComponentType, MouseEventHandler } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 

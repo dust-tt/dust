@@ -1,4 +1,4 @@
-import React, { ComponentType, CSSProperties } from "react";
+import React, { ComponentType } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 export interface IconProps {
