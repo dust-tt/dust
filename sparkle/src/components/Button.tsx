@@ -3,7 +3,7 @@ import React, { ComponentType, MouseEvent } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip } from "./Tooltip";
+import { Tooltip, TooltipProps } from "./Tooltip";
 
 export type ButtonProps = {
   type?:
@@ -19,6 +19,7 @@ export type ButtonProps = {
   labelVisible?: boolean;
   icon?: ComponentType;
   className?: string;
+  tooltipPosition?: TooltipProps["position"];
 };
 
 const sizeClasses = {
@@ -106,6 +107,7 @@ export function Button({
   label,
   icon,
   className = "",
+  tooltipPosition = "above",
 }: ButtonProps) {
   const buttonClasses = classNames(
     "s-inline-flex s-items-center s-border s-transition-all s-ease-out s-duration-400 s-box-border s-rounded-full s-scale-95 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none s-whitespace-nowrap",
@@ -134,7 +136,7 @@ export function Button({
       <div className={finalContainerClasses}>{label}</div>
     </button>
   ) : (
-    <Tooltip label={label}>
+    <Tooltip label={label} position={tooltipPosition}>
       <button
         type="button"
         className={buttonClasses}

@@ -28,6 +28,7 @@ export const IconOnlyPlusTooltip: Story = {
     labelVisible: false,
     icon: Cog6ToothIcon,
     disabled: false,
+    tooltipPosition: "below",
   },
 };
 
