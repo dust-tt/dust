@@ -78,7 +78,6 @@ async function handler(
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: dataSource.connectorId,
           connectorProvider: dataSource.connectorProvider,
-          userUpsertable: dataSource.userUpsertable,
           assistantDefaultSelected: dataSource.assistantDefaultSelected,
         },
       });
@@ -121,7 +120,6 @@ async function handler(
         if (
           !req.body ||
           !(typeof req.body.description == "string") ||
-          !(typeof req.body.userUpsertable == "boolean") ||
           !["public", "private"].includes(req.body.visibility) ||
           !(typeof req.body.assistantDefaultSelected == "boolean")
         ) {
@@ -130,7 +128,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "The request body is invalid, expects { description, visibility, assistantDefaultSelected, userUpsertable }.",
+                "The request body is invalid, expects { description, visibility, assistantDefaultSelected }.",
             },
           });
         }
@@ -138,7 +136,6 @@ async function handler(
           description: req.body.description || null,
           visibility: req.body.visibility,
           assistantDefaultSelected: req.body.assistantDefaultSelected,
-          userUpsertable: req.body.userUpsertable,
         });
       }
 
@@ -153,7 +150,6 @@ async function handler(
           dustAPIProjectId: ds.dustAPIProjectId,
           connectorId: ds.connectorId,
           connectorProvider: ds.connectorProvider,
-          userUpsertable: ds.userUpsertable,
         },
       });
 

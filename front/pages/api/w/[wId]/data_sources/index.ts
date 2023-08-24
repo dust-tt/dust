@@ -156,7 +156,6 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected: req.body.assistantDefaultSelected,
-        userUpsertable: req.body.userUpsertable,
       });
 
       res.status(201).json({
@@ -167,7 +166,6 @@ async function handler(
           visibility: ds.visibility,
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
-          userUpsertable: ds.userUpsertable,
           assistantDefaultSelected: ds.assistantDefaultSelected,
         },
       });

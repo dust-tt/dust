@@ -199,7 +199,7 @@ export default function DataSourceView({
               </div>
             </div>
           </div>
-          {readOnly && !dataSource.userUpsertable ? null : (
+          {readOnly ? null : (
             <div className="">
               <div className="mt-0 flex-none">
                 <Button
