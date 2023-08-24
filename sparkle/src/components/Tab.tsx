@@ -1,5 +1,6 @@
-import { ReactComponentLike } from "prop-types";
-import React, { MouseEvent } from "react";
+import React, { MouseEvent, ComponentType } from "react";
+
+import { Icon } from "./Icon";
 
 import {
   noHrefLink,
@@ -14,7 +15,7 @@ type TabProps = {
     hideLabel?: boolean;
     current: boolean;
     sizing?: "hug" | "expand";
-    icon?: ReactComponentLike;
+    icon?: ComponentType<{ className?: string }>;
     href?: string;
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
@@ -87,7 +88,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
 
       const finalIconClasses = classNames(
-        "s-h-5 s-w-5 s-transition-colors s-duration-400",
+        "s-transition-colors s-duration-400",
         iconStateClasses.base,
         iconStateClasses.hover,
         iconStateClasses.dark.base,
@@ -114,7 +115,13 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
                 : "s-duration-400 s-flex s-translate-y-0 s-transform s-gap-x-2 s-transition-transform s-ease-out group-hover:-s-translate-y-0.5"
             }
           >
-            {tab.icon && <tab.icon className={finalIconClasses} />}
+            {tab.icon && (
+              <Icon
+                IconComponent={tab.icon}
+                className={finalIconClasses}
+                size="sm"
+              />
+            )}
             {tab.hideLabel ?? tab.label}
           </div>
         </Link>
