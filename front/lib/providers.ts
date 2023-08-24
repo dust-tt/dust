@@ -97,13 +97,6 @@ export const serviceProviders: ServiceProvider[] = [
     built: true,
     enabled: false,
   },
-  {
-    providerId: "youtube",
-    name: "YouTube Search",
-    built: false,
-    enabled: false,
-  },
-  { providerId: "notion", name: "Notion", built: false, enabled: false },
   { providerId: "gmail", name: "Gmail", built: false, enabled: false },
 ];
 
