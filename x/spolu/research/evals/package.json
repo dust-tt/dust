@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@types/node": "^20.5.3",
+    "mathjs": "^11.10.0",
     "minimist": "^1.2.8"
   }
 }

@@ -1,4 +1,4 @@
-export type DatasetType = "MATH" | "Krypto4";
+export type DatasetType = "MATH" | "Game24";
 
 export type ProblemId = string;
 
@@ -17,6 +17,8 @@ export type Test = {
 
 export abstract class Dataset {
   abstract readonly name: DatasetType;
+
+  abstract load(): Promise<void>;
 
   abstract instructions(): string;
 
