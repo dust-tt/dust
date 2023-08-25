@@ -508,17 +508,7 @@ export async function incrementalSync(
 
     const authCredentials = await getAuthObject(nangoConnectionId);
     const driveClient = await getDriveClient(authCredentials);
-    const lastSeenDB = await GoogleDriveSyncedFolder.findOne({
-      where: {
-        connectorId: connectorId,
-      },
-      order: [["lastSeenTs", "DESC"]],
-      limit: 1,
-    });
-    if (!lastSeenDB) {
-      throw new Error("Could not determine last run id");
-    }
-    const lastSeenTs = lastSeenDB.lastSeenTs.getTime();
+
     const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
       await driveClient.changes.list({
         driveId: driveId,
