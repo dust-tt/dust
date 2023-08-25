@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
-interface TooltipProps {
+export interface TooltipProps {
   children: React.ReactNode;
   label: string;
   position?: "above" | "below";

@@ -29,8 +29,7 @@ const sizeClasses = {
 const baseClasses =
   "s-group s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none";
 
-const iconBaseClasses =
-  "s-h-5 s-w-5 s-transition-colors s-ease-out s-duration-400";
+const iconBaseClasses = "s-transition-colors s-ease-out s-duration-400";
 
 const iconClasses = {
   default: {
@@ -161,7 +160,11 @@ export function Item({
     >
       {icon && <Icon IconComponent={icon} className={finalIconClasses} />}
       <span className="s-grow">{label}</span>
-      <Icon IconComponent={ChevronRight} className={finalCevronClasses} />
+      <Icon
+        IconComponent={ChevronRight}
+        className={finalCevronClasses}
+        size="sm"
+      />
     </Link>
   );
 }
