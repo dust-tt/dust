@@ -346,7 +346,7 @@ function StandardDataSourceView({
 }
 
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
-  notion: "Top-level Notion pages and databases Dust has access to:",
+  notion: "Explore the Notion pages and databases Dust has access to:",
   google_drive: "Google Drive folders and files Dust has access to:",
   slack: "Slack channels Dust has access to:",
   github: "GitHub repositories Dust has access to:",
@@ -360,6 +360,13 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
   google_drive:
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
+};
+
+const CONNECTOR_TYPE_TO_SHOW_EXPAND: Record<ConnectorProvider, boolean> = {
+  notion: true,
+  slack: false,
+  github: false,
+  google_drive: false,
 };
 
 function ManagedDataSourceView({
@@ -560,11 +567,12 @@ function ManagedDataSourceView({
           {CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
         </div>
 
-        <div>
+        <div className="pb-8">
           <PermissionTree
             owner={owner}
             dataSource={dataSource}
             permissionFilter="read"
+            showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connectorProvider]}
           />
         </div>
       </div>
