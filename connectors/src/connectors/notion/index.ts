@@ -366,6 +366,8 @@ export async function retrieveNotionConnectorPermissions(
         });
         const expandable = child ? true : false;
 
+        console.log("PAGE", p.notionPageId, p.title);
+
         return {
           provider: c.type,
           internalId: p.notionPageId,
@@ -381,17 +383,21 @@ export async function retrieveNotionConnectorPermissions(
     })
   );
 
-  const dbResources: ConnectorResource[] = dbs.map((db) => ({
-    provider: c.type,
-    internalId: db.notionDatabaseId,
-    parentInternalId:
-      !db.parentId || db.parentId === "workspace" ? null : db.parentId,
-    type: "database" as ConnectorResourceType,
-    title: db.title || "",
-    sourceUrl: db.notionUrl || null,
-    expandable: true,
-    permission: "read" as ConnectorPermission,
-  }));
+  const dbResources: ConnectorResource[] = dbs.map((db) => {
+    console.log("PAGE", db.notionDatabaseId, db.title);
+
+    return {
+      provider: c.type,
+      internalId: db.notionDatabaseId,
+      parentInternalId:
+        !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+      type: "database" as ConnectorResourceType,
+      title: db.title || "",
+      sourceUrl: db.notionUrl || null,
+      expandable: true,
+      permission: "read" as ConnectorPermission,
+    };
+  });
 
   return new Ok(pageResources.concat(dbResources));
 }
