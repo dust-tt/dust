@@ -52,7 +52,6 @@ function PermissionTreeChildren({
   permissionFilter,
   canUpdatePermissions,
   onPermissionUpdate,
-  depth,
   showExpand,
 }: {
   owner: WorkspaceType;
@@ -67,7 +66,6 @@ function PermissionTreeChildren({
     internalId: string;
     permission: ConnectorPermission;
   }) => void;
-  depth: number;
   showExpand?: boolean;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
@@ -170,7 +168,6 @@ function PermissionTreeChildren({
                       permissionFilter={permissionFilter}
                       canUpdatePermissions={canUpdatePermissions}
                       onPermissionUpdate={onPermissionUpdate}
-                      depth={depth + 1}
                       showExpand={showExpand}
                     />
                   </div>
@@ -214,7 +211,6 @@ export function PermissionTree({
         permissionFilter={permissionFilter}
         canUpdatePermissions={canUpdatePermissions}
         onPermissionUpdate={onPermissionUpdate}
-        depth={0}
         showExpand={showExpand}
       />
     </div>
