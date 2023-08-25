@@ -4,7 +4,7 @@ const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript
 module.exports = {
   theme: {
     fontFamily: {
-      sans: ["'darkmode-off-cc'", "'darkmode-on-cc'", "sans-serif"],
+      sans: ["'darkmode-off-cc'", "sans-serif"],
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
