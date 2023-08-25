@@ -13,7 +13,6 @@ import type * as activities from "@connectors/connectors/google_drive/temporal/a
 import { ModelId } from "@connectors/lib/models";
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 import { newWebhookSignal } from "./signals";
 
@@ -26,8 +25,7 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   getLastGCTime,
-  cleanupSyncedFolders: cleanupDedupList,
-  getGoogleDriveObjects,
+  cleanupSyncedFolders,
   incrementalSync,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
@@ -44,18 +42,20 @@ export async function googleDriveFullSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   garbageCollect = true,
-  foldersToBrowse: GoogleDriveObjectType[] | undefined = undefined,
-  totalCount = 0
+  foldersToBrowse: string[] | undefined = undefined,
+  totalCount = 0,
+  lastSeenTs: number | undefined = undefined
 ) {
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  const runId = new Date().getTime();
+  if (lastSeenTs === undefined) {
+    lastSeenTs = new Date().getTime();
+  }
   if (foldersToBrowse === undefined) {
-    const selectedFolders = await getFoldersToSync(connectorId);
-    foldersToBrowse = await getGoogleDriveObjects(connectorId, selectedFolders);
+    foldersToBrowse = await getFoldersToSync(connectorId);
   }
 
   while (foldersToBrowse.length > 0) {
@@ -69,7 +69,7 @@ export async function googleDriveFullSync(
         nangoConnectionId,
         dataSourceConfig,
         folder,
-        runId,
+        lastSeenTs,
         nextPageToken
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
@@ -88,11 +88,12 @@ export async function googleDriveFullSync(
         dataSourceConfig,
         garbageCollect,
         foldersToBrowse,
-        totalCount
+        totalCount,
+        lastSeenTs
       );
     }
   }
-  await cleanupDedupList(connectorId, runId);
+  await cleanupSyncedFolders(connectorId, lastSeenTs);
   await syncSucceeded(connectorId);
 
   if (garbageCollect) {

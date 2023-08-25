@@ -165,21 +165,26 @@ export async function syncFiles(
   connectorId: ModelId,
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
-  driveFolder: GoogleDriveObjectType,
-  runId: number,
+  driveFolderId: string,
+  lastSeenTs: number,
   nextPageToken?: string
 ): Promise<{
   nextPageToken: string | null;
   count: number;
-  subfolders: GoogleDriveObjectType[];
+  subfolders: string[];
 }> {
+  const authCredentials = await getAuthObject(nangoConnectionId);
+  const driveFolder = await getGoogleDriveObject(
+    authCredentials,
+    driveFolderId
+  );
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
     const visitedFolder = await GoogleDriveSyncedFolder.findOne({
       where: {
         connectorId: connectorId,
         driveFolderId: driveFolder.id,
-        runAt: runId,
+        lastSeenTs: lastSeenTs,
       },
     });
     if (visitedFolder) {
@@ -190,11 +195,11 @@ export async function syncFiles(
         driveFolderId: driveFolder.id,
         driveParentFolderId: driveFolder.parent,
         driveFolderName: driveFolder.name,
-        runAt: new Date(runId),
+        lastSeenTs: new Date(),
       });
     }
   }
-  const authCredentials = await getAuthObject(nangoConnectionId);
+
   const drive = await getDriveClient(authCredentials);
   const mimeTypesSearchString = MIME_TYPES_TO_SYNC.concat(
     "application/vnd.google-apps.folder"
@@ -241,9 +246,9 @@ export async function syncFiles(
           : undefined,
       };
     });
-  const subfolders = filesToSync.filter(
-    (file) => file.mimeType === "application/vnd.google-apps.folder"
-  );
+  const subfolders = filesToSync
+    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
+    .map((f) => f.id);
 
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   const results = await Promise.all(
@@ -455,7 +460,7 @@ export const getFileParentsMemoized = memoize(
   }
 );
 
-async function objectIsInFolder(
+async function objectIsInFolders(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
@@ -503,17 +508,17 @@ export async function incrementalSync(
 
     const authCredentials = await getAuthObject(nangoConnectionId);
     const driveClient = await getDriveClient(authCredentials);
-    const runIdDb = await GoogleDriveSyncedFolder.findOne({
+    const lastSeenDB = await GoogleDriveSyncedFolder.findOne({
       where: {
         connectorId: connectorId,
       },
-      order: [["runAt", "DESC"]],
+      order: [["lastSeenTs", "DESC"]],
       limit: 1,
     });
-    if (!runIdDb) {
+    if (!lastSeenDB) {
       throw new Error("Could not determine last run id");
     }
-    const runId = runIdDb.runAt.getTime();
+    const lastSeenTs = lastSeenDB.lastSeenTs.getTime();
     const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
       await driveClient.changes.list({
         driveId: driveId,
@@ -555,39 +560,33 @@ export async function incrementalSync(
       }
 
       if (
-        !(await objectIsInFolder(
+        !(await objectIsInFolders(
           connectorId,
           authCredentials,
           await driveObjectToDustType(change.file, authCredentials),
           selectedFoldersIds
         ))
       ) {
-        continue;
-      }
-
-      const parents = await getFileParents(
-        connectorId,
-        authCredentials,
-        await getGoogleDriveObject(authCredentials, change.file.id)
-      );
-      const foldersIntersection = parents
-        .map((p) => p.id)
-        .filter((id) => selectedFoldersIds.includes(id));
-
-      if (foldersIntersection.length === 0) {
         // The current file is not in the list of selected folders.
         // We should check here if we know this file in our local database, which would mean that one of its parent folders
         // has been moved out of the list of selected folders.
         // We should start a garbage collector workflow in this case.
         continue;
       }
+
+      const parents = await getFileParentsMemoized(
+        connectorId,
+        authCredentials,
+        await getGoogleDriveObject(authCredentials, change.file.id)
+      );
+
       for (const driveFolder of parents) {
         await GoogleDriveSyncedFolder.upsert({
           connectorId: connectorId,
           driveFolderId: driveFolder.id,
           driveParentFolderId: driveFolder.parent,
           driveFolderName: driveFolder.name,
-          runAt: new Date(runId),
+          lastSeenTs: new Date(),
         });
       }
 
@@ -725,7 +724,7 @@ export async function garbageCollector(
     files.map(async (file) => {
       return queue.add(async () => {
         try {
-          const isInFolder = await objectIsInFolder(
+          const isInFolder = await objectIsInFolders(
             connectorId,
             authCredentials,
             await getGoogleDriveObject(authCredentials, file.driveFileId),
@@ -905,12 +904,12 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
 
 export async function cleanupSyncedFolders(
   connectorId: ModelId,
-  runId: number
+  lastSeenTs: number
 ) {
   await GoogleDriveSyncedFolder.destroy({
     where: {
       connectorId: connectorId,
-      runAt: { [Op.not]: runId },
+      lastSeenTs: { [Op.lt]: lastSeenTs },
     },
   });
 }

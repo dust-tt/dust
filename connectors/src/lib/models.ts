@@ -968,7 +968,7 @@ export class GoogleDriveSyncedFolder extends Model<
   declare driveFolderId: string;
   declare driveParentFolderId: string | null;
   declare driveFolderName: string;
-  declare runAt: Date;
+  declare lastSeenTs: Date;
 }
 
 GoogleDriveSyncedFolder.init(
@@ -1004,7 +1004,7 @@ GoogleDriveSyncedFolder.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    runAt: {
+    lastSeenTs: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -1014,7 +1014,7 @@ GoogleDriveSyncedFolder.init(
     modelName: "google_drive_synced_folder",
     indexes: [
       {
-        fields: ["connectorId", "driveFolderId", "runAt"],
+        fields: ["connectorId", "driveFolderId", "lastSeenTs"],
         unique: true,
       },
     ],
