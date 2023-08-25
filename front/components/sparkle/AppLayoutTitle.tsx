@@ -78,6 +78,7 @@ export function AppLayoutTitle({
           <div className="flex flex-initial">
             <Button
               labelVisible={false}
+              tooltipPosition="below"
               type="secondaryWarning"
               label="Delete"
               icon={TrashIcon}
@@ -89,6 +90,7 @@ export function AppLayoutTitle({
           <div className="flex flex-initial">
             <Button
               labelVisible={action.labelVisible}
+              tooltipPosition="below"
               type="secondary"
               label={action.label}
               icon={action.icon}
