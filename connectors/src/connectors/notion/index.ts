@@ -366,8 +366,6 @@ export async function retrieveNotionConnectorPermissions(
         });
         const expandable = child ? true : false;
 
-        console.log("PAGE", p.notionPageId, p.title);
-
         return {
           provider: c.type,
           internalId: p.notionPageId,
@@ -384,8 +382,6 @@ export async function retrieveNotionConnectorPermissions(
   );
 
   const dbResources: ConnectorResource[] = dbs.map((db) => {
-    console.log("PAGE", db.notionDatabaseId, db.title);
-
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
