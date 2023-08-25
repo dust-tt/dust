@@ -26,14 +26,11 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   getLastGCTime,
-  cleanupDedupList,
+  cleanupSyncedFolders: cleanupDedupList,
   getGoogleDriveObjects,
+  incrementalSync,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
-});
-
-const { incrementalSync } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "120 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<

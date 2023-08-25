@@ -1014,7 +1014,7 @@ GoogleDriveSyncedFolder.init(
     modelName: "google_drive_synced_folder",
     indexes: [
       {
-        fields: ["connectorId", "driveFolderId", "runId"],
+        fields: ["connectorId", "driveFolderId", "runAt"],
         unique: true,
       },
     ],
