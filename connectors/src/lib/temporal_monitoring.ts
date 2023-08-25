@@ -4,6 +4,7 @@ import {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import tracer from "dd-trace";
 
 import logger, { Logger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -52,7 +53,24 @@ export class ActivityInboundLogInterceptor
 
     try {
       this.logger.info("Activity started.");
-      return await next(input);
+      return await tracer.trace(
+        `${this.context.info.workflowType}-${this.context.info.activityType}`,
+        { resource: this.context.info.activityType, type: "temporal-activity" },
+        async (span) => {
+          span?.setTag("attempt", this.context.info.attempt);
+          span?.setTag(
+            "workflow_id",
+            this.context.info.workflowExecution.workflowId
+          );
+          span?.setTag(
+            "workflow_run_id",
+            this.context.info.workflowExecution.runId
+          );
+
+          return await next(input);
+        }
+      );
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error = err;
