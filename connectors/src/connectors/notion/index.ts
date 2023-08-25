@@ -340,13 +340,13 @@ export async function retrieveNotionConnectorPermissions(
   const [pages, dbs] = await Promise.all([
     NotionPage.findAll({
       where: {
-        connectorId: connectorId,
+        connectorId,
         parentId: parentInternalId || "workspace",
       },
     }),
     NotionDatabase.findAll({
       where: {
-        connectorId: connectorId,
+        connectorId,
         parentId: parentInternalId || "workspace",
       },
     }),
@@ -355,15 +355,23 @@ export async function retrieveNotionConnectorPermissions(
   const pageResources: ConnectorResource[] = await Promise.all(
     pages.map((p) => {
       return (async () => {
-        // Try to look for one NotionPage child to see if this page is expandable. Technically we
-        // should also look for NotionDatabase, but we don't support that to save one DB call here.
-        const child = await NotionPage.findOne({
-          where: {
-            connectorId: connectorId,
-            parentId: p.notionPageId,
-          },
-        });
-        const expandable = child ? true : false;
+        // Try to look for one NotionPage child and one NotionDatabase child to see if this page is
+        // expandable.
+        const [childPage, childDB] = await Promise.all([
+          NotionPage.findOne({
+            where: {
+              connectorId,
+              parentId: p.notionPageId,
+            },
+          }),
+          NotionDatabase.findOne({
+            where: {
+              connectorId,
+              parentId: p.notionPageId,
+            },
+          }),
+        ]);
+        const expandable = childPage || childDB ? true : false;
 
         return {
           provider: c.type,
