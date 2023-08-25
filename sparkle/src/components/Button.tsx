@@ -132,7 +132,7 @@ export function Button({
       disabled={disabled}
       aria-label={label}
     >
-      {icon && <Icon IconComponent={icon} size={size as IconProps["size"]} />}
+      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       <div className={finalContainerClasses}>{label}</div>
     </button>
   ) : (
@@ -144,7 +144,7 @@ export function Button({
         disabled={disabled}
         aria-label={label}
       >
-        {icon && <Icon IconComponent={icon} size={size as IconProps["size"]} />}
+        {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       </button>
     </Tooltip>
   );

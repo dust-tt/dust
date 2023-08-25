@@ -116,11 +116,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             }
           >
             {tab.icon && (
-              <Icon
-                IconComponent={tab.icon}
-                className={finalIconClasses}
-                size="sm"
-              />
+              <Icon visual={tab.icon} className={finalIconClasses} size="sm" />
             )}
             {tab.hideLabel ?? tab.label}
           </div>

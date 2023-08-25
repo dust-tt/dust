@@ -3,7 +3,7 @@ import React, { ComponentType } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 export interface IconProps {
-  IconComponent?: ComponentType<{ className?: string }>;
+  visual?: ComponentType<{ className?: string }>;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
@@ -16,7 +16,7 @@ const IconSizes = {
 };
 
 export function Icon({
-  IconComponent,
+  visual: IconComponent,
   size = "sm",
   className = "",
 }: IconProps) {

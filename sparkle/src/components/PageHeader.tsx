@@ -9,7 +9,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, icon, description }: PageHeaderProps) {
-  const iconClasses = "s-w-8 s-h-8 s-text-brand";
+  const iconClasses = "s-text-brand";
   const titleClasses =
     "s-text-2xl s-font-bold s-text-element-800 s-self-stretch";
   const descriptionClasses =
@@ -17,7 +17,7 @@ export function PageHeader({ title, icon, description }: PageHeaderProps) {
 
   return (
     <div className="s-inline-flex s-shrink s-grow s-basis-0 s-flex-col s-items-start s-justify-start s-gap-1">
-      <Icon IconComponent={icon} className={iconClasses} />
+      <Icon visual={icon} className={iconClasses} size="lg" />
       <div className={titleClasses}>{title}</div>
       <div className={descriptionClasses}>{description}</div>
     </div>

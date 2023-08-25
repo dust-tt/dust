@@ -158,13 +158,9 @@ export function Item({
       aria-label={label}
       href={href || "#"}
     >
-      {icon && <Icon IconComponent={icon} className={finalIconClasses} />}
+      {icon && <Icon visual={icon} className={finalIconClasses} />}
       <span className="s-grow">{label}</span>
-      <Icon
-        IconComponent={ChevronRight}
-        className={finalCevronClasses}
-        size="sm"
-      />
+      <Icon visual={ChevronRight} className={finalCevronClasses} size="sm" />
     </Link>
   );
 }

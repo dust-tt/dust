@@ -100,7 +100,7 @@ export function IconButton({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
     >
-      {icon && <Icon IconComponent={icon} size={size as IconProps["size"]} />}
+      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
     </button>
   );
 
