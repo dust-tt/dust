@@ -24,7 +24,6 @@ type UpsertToDataSourceParams = {
   documentUrl?: string;
   timestampMs?: number;
   tags?: string[];
-  parents: string[];
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
 };
@@ -72,7 +71,6 @@ async function _upsertToDatasource({
   documentUrl,
   timestampMs,
   tags,
-  parents,
   loggerArgs = {},
   upsertContext,
 }: UpsertToDataSourceParams) {
@@ -101,7 +99,6 @@ async function _upsertToDatasource({
     source_url: documentUrl,
     timestamp: timestampMs,
     tags,
-    parents,
     light_document_output: true,
     upsert_context: upsertContext,
   };

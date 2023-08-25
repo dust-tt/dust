@@ -79,7 +79,6 @@ pub struct Document {
     pub document_id: String,
     pub timestamp: u64,
     pub tags: Vec<String>,
-    pub parents: Vec<String>,
     pub source_url: Option<String>,
     pub hash: String,
     pub text_size: u64,
@@ -96,7 +95,6 @@ impl Document {
         document_id: &str,
         timestamp: u64,
         tags: &Vec<String>,
-        parents: &Vec<String>,
         source_url: &Option<String>,
         hash: &str,
         text_size: u64,
@@ -107,7 +105,6 @@ impl Document {
             document_id: document_id.to_string(),
             timestamp,
             tags: tags.clone(),
-            parents: parents.clone(),
             source_url: source_url.clone(),
             hash: hash.to_string(),
             text_size,
@@ -325,16 +322,6 @@ impl DataSource {
         let _ = qdrant_client
             .create_field_index(
                 self.qdrant_collection(),
-                "parents",
-                qdrant::FieldType::Keyword,
-                None,
-                None,
-            )
-            .await?;
-
-        let _ = qdrant_client
-            .create_field_index(
-                self.qdrant_collection(),
                 "timestamp",
                 qdrant::FieldType::Integer,
                 None,
@@ -402,7 +389,6 @@ impl DataSource {
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
-        parents: &Vec<String>,
         source_url: &Option<String>,
         text: &str,
         preserve_system_tags: bool,
@@ -465,9 +451,6 @@ impl DataSource {
         tags.iter().for_each(|tag| {
             hasher.update(tag.as_bytes());
         });
-        parents.iter().for_each(|parent| {
-            hasher.update(parent.as_bytes());
-        });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
         let mut hasher = blake3::Hasher::new();
@@ -479,7 +462,6 @@ impl DataSource {
             document_id,
             timestamp,
             &tags,
-            &parents,
             source_url,
             &document_hash,
             text.len() as u64,
@@ -675,7 +657,6 @@ impl DataSource {
                 let uid = Uuid::new_v4();
                 let mut payload = Payload::new();
                 payload.insert("tags", document.tags.clone());
-                payload.insert("parents", document.parents.clone());
                 payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());

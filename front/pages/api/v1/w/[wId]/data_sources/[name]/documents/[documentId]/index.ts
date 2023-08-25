@@ -178,21 +178,6 @@ async function handler(
         tags = req.body.tags;
       }
 
-      let parents = [];
-      if (req.body.parents) {
-        if (!Array.isArray(req.body.parents)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `parents` if provided must be an array of strings.",
-            },
-          });
-        }
-        parents = req.body.parents;
-      }
-
       let sourceUrl: string | null = null;
       if (req.body.source_url) {
         if (typeof req.body.source_url !== "string") {
@@ -285,7 +270,6 @@ async function handler(
         documentId: req.query.documentId as string,
         timestamp,
         tags,
-        parents,
         sourceUrl,
         text: req.body.text,
         credentials,
