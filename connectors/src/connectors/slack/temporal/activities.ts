@@ -412,7 +412,6 @@ export async function syncNonThreaded(
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
-    parents: [],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
@@ -559,7 +558,6 @@ export async function syncThread(
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
-    parents: [],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },

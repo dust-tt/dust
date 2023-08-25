@@ -397,7 +397,6 @@ async function syncOneFile(
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
-      parents: [],
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },

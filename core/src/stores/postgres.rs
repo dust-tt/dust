@@ -1059,7 +1059,7 @@ impl Store for PostgresStore {
         let r = match version_hash {
             None => c
                 .query(
-                    "SELECT id, created, timestamp, tags_json, parents, source_url, hash, text_size, chunk_count \
+                    "SELECT id, created, timestamp, tags_json, source_url, hash, text_size, chunk_count \
                        FROM data_sources_documents \
                        WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
                     &[&data_source_row_id, &document_id],
@@ -1067,7 +1067,7 @@ impl Store for PostgresStore {
                 .await?,
             Some(version_hash) => c
                 .query(
-                    "SELECT id, created, timestamp, tags_json, parents, source_url, hash, text_size, chunk_count \
+                    "SELECT id, created, timestamp, tags_json, source_url, hash, text_size, chunk_count \
                        FROM data_sources_documents \
                        WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
                     &[&data_source_row_id, &document_id, &version_hash],
@@ -1075,17 +1075,7 @@ impl Store for PostgresStore {
                 .await?,
         };
 
-        let d: Option<(
-            i64,
-            i64,
-            i64,
-            String,
-            Vec<String>,
-            Option<String>,
-            String,
-            i64,
-            i64,
-        )> = match r.len() {
+        let d: Option<(i64, i64, i64, String, Option<String>, String, i64, i64)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -1096,32 +1086,21 @@ impl Store for PostgresStore {
                 r[0].get(5),
                 r[0].get(6),
                 r[0].get(7),
-                r[0].get(8),
             )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((
-                _,
-                created,
-                timestamp,
-                tags_data,
-                parents,
-                source_url,
-                hash,
-                text_size,
-                chunk_count,
-            )) => {
+            Some((_, created, timestamp, tags_data, source_url, hash, text_size, chunk_count)) => {
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
+
                 Ok(Some(Document {
                     data_source_id: data_source_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
                     document_id,
                     tags,
-                    parents,
                     source_url,
                     hash,
                     text_size: text_size as u64,
@@ -1352,7 +1331,6 @@ impl Store for PostgresStore {
         let document_created = document.created;
         let document_timestamp = document.timestamp;
         let document_tags = document.tags.clone();
-        let document_parents = document.parents.clone();
         let document_source_url = document.source_url.clone();
         let document_hash = document.hash.clone();
         let document_text_size = document.text_size;
@@ -1389,9 +1367,9 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_documents \
-                   (id, data_source, created, document_id, timestamp, tags_json, parents, \
-                    source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+                   (id, data_source, created, document_id, timestamp, tags_json, source_url, \
+                     hash, text_size, chunk_count, status) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
             )
             .await?;
 
@@ -1404,7 +1382,6 @@ impl Store for PostgresStore {
                 &document_id,
                 &(document_timestamp as i64),
                 &document_tags_data,
-                &document_parents,
                 &document_source_url,
                 &document_hash,
                 &(document_text_size as i64),
@@ -1449,7 +1426,7 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT id, created, document_id, timestamp, tags_json, parents, source_url, hash, text_size, \
+                        "SELECT id, created, document_id, timestamp, tags_json, source_url, hash, text_size, \
                            chunk_count FROM data_sources_documents \
                            WHERE data_source = $1 AND status = 'latest' \
                            ORDER BY timestamp DESC",
@@ -1460,7 +1437,7 @@ impl Store for PostgresStore {
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT id, created, document_id, timestamp, tags_json, parents, source_url, hash, text_size, \
+                        "SELECT id, created, document_id, timestamp, tags_json, source_url, hash, text_size, \
                            chunk_count FROM data_sources_documents \
                            WHERE data_source = $1 AND status = 'latest' \
                            ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
@@ -1481,14 +1458,12 @@ impl Store for PostgresStore {
                 let document_id: String = r.get(2);
                 let timestamp: i64 = r.get(3);
                 let tags_data: String = r.get(4);
-                let parents: Vec<String> = r.get(5);
-                let source_url: Option<String> = r.get(6);
-                let hash: String = r.get(7);
-                let text_size: i64 = r.get(8);
-                let chunk_count: i64 = r.get(9);
+                let source_url: Option<String> = r.get(5);
+                let hash: String = r.get(6);
+                let text_size: i64 = r.get(7);
+                let chunk_count: i64 = r.get(8);
 
                 let tags: Vec<String> = serde_json::from_str(&tags_data)?;
-
                 let tags = if remove_system_tags {
                     // remove tags that are prefixed with the system tag prefix
                     tags.into_iter()
@@ -1504,7 +1479,6 @@ impl Store for PostgresStore {
                     timestamp: timestamp as u64,
                     document_id,
                     tags,
-                    parents,
                     source_url,
                     hash,
                     text_size: text_size as u64,

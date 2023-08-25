@@ -266,7 +266,6 @@ export async function notionUpsertPageActivity(
       documentUrl: parsedPage.url,
       timestampMs: parsedPage.updatedTime,
       tags: getTagsForPage(parsedPage),
-      parents: [],
       retries: 3,
       delayBetweenRetriesMs: 500,
       loggerArgs,
