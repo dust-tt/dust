@@ -26,7 +26,6 @@ import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import {
   ConnectorPermission,
   ConnectorResource,
-  ConnectorResourceType,
 } from "@connectors/types/resources";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
