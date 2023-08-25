@@ -26,7 +26,6 @@ import { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import {
   ConnectorPermission,
   ConnectorResource,
-  ConnectorResourceType,
 } from "@connectors/types/resources";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
@@ -371,27 +370,29 @@ export async function retrieveNotionConnectorPermissions(
           internalId: p.notionPageId,
           parentInternalId:
             !p.parentId || p.parentId === "workspace" ? null : p.parentId,
-          type: "file" as ConnectorResourceType,
+          type: "file",
           title: p.title || "",
           sourceUrl: p.notionUrl || null,
           expandable,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
         };
       })();
     })
   );
 
-  const dbResources: ConnectorResource[] = dbs.map((db) => ({
-    provider: c.type,
-    internalId: db.notionDatabaseId,
-    parentInternalId:
-      !db.parentId || db.parentId === "workspace" ? null : db.parentId,
-    type: "database" as ConnectorResourceType,
-    title: db.title || "",
-    sourceUrl: db.notionUrl || null,
-    expandable: true,
-    permission: "read" as ConnectorPermission,
-  }));
+  const dbResources: ConnectorResource[] = dbs.map((db) => {
+    return {
+      provider: c.type,
+      internalId: db.notionDatabaseId,
+      parentInternalId:
+        !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+      type: "database",
+      title: db.title || "",
+      sourceUrl: db.notionUrl || null,
+      expandable: true,
+      permission: "read",
+    };
+  });
 
   return new Ok(pageResources.concat(dbResources));
 }
