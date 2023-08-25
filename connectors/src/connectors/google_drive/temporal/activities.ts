@@ -424,6 +424,7 @@ async function syncOneFile(
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
 async function getFileParents(
+  connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType
 ): Promise<GoogleDriveObjectType[]> {
@@ -443,19 +444,28 @@ async function getFileParents(
 
 export const getFileParentsMemoized = memoize(
   getFileParents,
-  (authCredentials: OAuth2Client, driveFile: GoogleDriveObjectType) => {
-    const cacheKey = `${authCredentials.credentials.access_token}-${driveFile.id}`;
+  (
+    connectorId: ModelId,
+    authCredentials: OAuth2Client,
+    driveFile: GoogleDriveObjectType
+  ) => {
+    const cacheKey = `${connectorId}-${driveFile.id}`;
 
     return cacheKey;
   }
 );
 
 async function objectIsInFolder(
+  connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
   foldersIds: string[]
 ): Promise<boolean> {
-  const parents = await getFileParentsMemoized(authCredentials, driveFile);
+  const parents = await getFileParentsMemoized(
+    connectorId,
+    authCredentials,
+    driveFile
+  );
   for (const parent of parents) {
     if (foldersIds.includes(parent.id)) {
       return true;
@@ -546,6 +556,7 @@ export async function incrementalSync(
 
       if (
         !(await objectIsInFolder(
+          connectorId,
           authCredentials,
           await driveObjectToDustType(change.file, authCredentials),
           selectedFoldersIds
@@ -555,6 +566,7 @@ export async function incrementalSync(
       }
 
       const parents = await getFileParents(
+        connectorId,
         authCredentials,
         await getGoogleDriveObject(authCredentials, change.file.id)
       );
@@ -714,6 +726,7 @@ export async function garbageCollector(
       return queue.add(async () => {
         try {
           const isInFolder = await objectIsInFolder(
+            connectorId,
             authCredentials,
             await getGoogleDriveObject(authCredentials, file.driveFileId),
             selectedFolders
