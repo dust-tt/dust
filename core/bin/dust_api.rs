@@ -1336,11 +1336,11 @@ struct DataSourcesDocumentsUpsertPayload {
     document_id: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parents: Vec<String>,
     source_url: Option<String>,
     text: String,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
-    parents: Vec<String>,
 }
 
 async fn data_sources_documents_upsert(
