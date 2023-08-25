@@ -265,7 +265,7 @@ const WorkspacePage = ({
             </div>
             {isFullyUpgraded && workspaceHasManagedDataSources && (
               <span className="mx-2 w-1/3">
-                <p className="mb-4 text-sm text-warning ">
+                <p className="text-warning mb-4 text-sm ">
                   Delete managed data sources before downgrading.
                 </p>
               </span>

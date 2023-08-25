@@ -84,7 +84,7 @@ function PermissionTreeChildren({
 
   if (isResourcesError) {
     return (
-      <div className="text-sm text-warning">
+      <div className="text-warning text-sm">
         Failed to retrieve permissions likely due to a revoked authorization.
       </div>
     );
