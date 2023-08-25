@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
+import memoize from "lodash.memoize";
 import os from "os";
 import PQueue from "p-queue";
 
@@ -18,7 +19,6 @@ import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
-import memoize from "lodash.memoize";
 import { literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -422,6 +422,7 @@ async function syncOneFile(
   return false;
 }
 
+// Please consider using the memoized version getFileParentsMemoized instead of this one.
 async function getFileParents(
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType
@@ -440,12 +441,21 @@ async function getFileParents(
   return parents.reverse();
 }
 
+export const getFileParentsMemoized = memoize(
+  getFileParents,
+  (authCredentials: OAuth2Client, driveFile: GoogleDriveObjectType) => {
+    const cacheKey = `${authCredentials.credentials.access_token}-${driveFile.id}`;
+
+    return cacheKey;
+  }
+);
+
 async function objectIsInFolder(
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
   foldersIds: string[]
 ): Promise<boolean> {
-  const parents = await getFileParents(authCredentials, driveFile);
+  const parents = await getFileParentsMemoized(authCredentials, driveFile);
   for (const parent of parents) {
     if (foldersIds.includes(parent.id)) {
       return true;
@@ -909,42 +919,8 @@ export async function getGoogleDriveObject(
     );
   }
   const file = res.data;
-  if (!file.name || !file.mimeType || !file.createdTime) {
-    throw new Error("Invalid file. File is: " + JSON.stringify(file));
-  }
-  if (file.driveId == file.id) {
-    const driveRes = await drive.drives.get({
-      driveId: file.id as string,
-    });
-    if (driveRes.status !== 200) {
-      throw new Error(
-        `Error getting drive. status_code: ${driveRes.status}. status_text: ${driveRes.statusText}`
-      );
-    }
-    return {
-      id: driveRes.data.id as string,
-      name: driveRes.data.name as string,
-      parent: null,
-      mimeType: "application/vnd.google-apps.folder",
-      webViewLink: file.webViewLink ? file.webViewLink : undefined,
-      createdAtMs: new Date(file.createdTime).getTime(),
-    };
-  } else {
-    return {
-      id: file.id as string,
-      name: file.name,
-      parent: file.parents && file.parents[0] ? file.parents[0] : null,
-      mimeType: file.mimeType,
-      webViewLink: file.webViewLink ? file.webViewLink : undefined,
-      createdAtMs: new Date(file.createdTime).getTime(),
-      updatedAtMs: file.modifiedTime
-        ? new Date(file.modifiedTime).getTime()
-        : undefined,
-      lastEditor: file.lastModifyingUser
-        ? { displayName: file.lastModifyingUser.displayName as string }
-        : undefined,
-    };
-  }
+
+  return await driveObjectToDustType(file, authCredentials);
 }
 
 async function driveObjectToDustType(
@@ -956,6 +932,7 @@ async function driveObjectToDustType(
   }
   const drive = await getDriveClient(authCredentials);
   if (file.driveId == file.id) {
+    // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
     const driveRes = await drive.drives.get({
       driveId: file.id as string,
     });
