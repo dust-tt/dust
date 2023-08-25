@@ -452,8 +452,6 @@ impl DataSource {
             .map(|tag| tag.to_string())
             .collect();
 
-        let parents: Vec<String> = parents.iter().map(|parent| parent.to_string()).collect();
-
         let timestamp = match timestamp {
             Some(timestamp) => timestamp,
             None => utils::now(),
@@ -503,7 +501,6 @@ impl DataSource {
         let document_id_path = format!("{}/document_id.txt", bucket_path);
         let content_path = format!("{}/{}/content.txt", bucket_path, document_hash);
         let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
-        let parents_path = format!("{}/{}/parents.json", bucket_path, document_hash);
         let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
         let now = utils::now();
@@ -524,12 +521,6 @@ impl DataSource {
                 &bucket,
                 serde_json::to_string(&tags).unwrap().as_bytes().to_vec(),
                 &tags_path,
-                "application/json",
-            ),
-            Object::create(
-                &bucket,
-                serde_json::to_string(&parents).unwrap().as_bytes().to_vec(),
-                &parents_path,
                 "application/json",
             ),
             Object::create(

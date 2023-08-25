@@ -1341,7 +1341,6 @@ struct DataSourcesDocumentsUpsertPayload {
     text: String,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
-    parents: Vec<String>,
 }
 
 async fn data_sources_documents_upsert(
