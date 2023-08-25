@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { Tab } from "../index_with_tw_base";
 import {
-  BeakerIcon,
   ChatBubbleBottomCenterTextIcon,
   Cog6ToothIcon,
+  TestTubeIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -27,7 +27,7 @@ export const TabNavigation: Story = {
       {
         label: "Lab",
         current: false,
-        icon: BeakerIcon,
+        icon: TestTubeIcon,
         sizing: "expand",
       },
       {

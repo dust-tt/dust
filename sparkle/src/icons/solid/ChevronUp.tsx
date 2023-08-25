@@ -1,5 +1,5 @@
-import type { SVGProps } from "react";
 import * as React from "react";
+import type { SVGProps } from "react";
 const SvgChevronUp = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -11,9 +11,7 @@ const SvgChevronUp = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      fillRule="evenodd"
-      d="M11.47 7.72a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 1 1-1.06 1.06L12 9.31l-6.97 6.97a.75.75 0 0 1-1.06-1.06l7.5-7.5Z"
-      clipRule="evenodd"
+      d="M12 11.5 7.5 16l-2-2L12 7.5l6.5 6.5-2 2-4.5-4.5Z"
     />
   </svg>
 );

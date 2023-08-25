@@ -1,5 +1,5 @@
-import type { SVGProps } from "react";
 import * as React from "react";
+import type { SVGProps } from "react";
 const SvgClipboard = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -11,8 +11,12 @@ const SvgClipboard = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
+      d="M17 21v-3H7a1 1 0 0 1-1-1V7H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1Z"
+    />
+    <path
+      fill="currentColor"
       fillRule="evenodd"
-      d="M10.5 3A1.501 1.501 0 0 0 9 4.5h6A1.5 1.5 0 0 0 13.5 3h-3Zm-2.693.178A3 3 0 0 1 10.5 1.5h3a3 3 0 0 1 2.694 1.678c.497.042.992.092 1.486.15 1.497.173 2.57 1.46 2.57 2.929V19.5a3 3 0 0 1-3 3H6.75a3 3 0 0 1-3-3V6.257c0-1.47 1.073-2.756 2.57-2.93.493-.057.989-.107 1.487-.15Z"
+      d="M7 16a1 1 0 0 0 1 1h12.99c.558 0 1.007-.451 1.007-1.008L22 3.008C22 2.45 21.549 2 20.992 2H8.008C7.45 2 7 2.451 7 3.007V16ZM20 4l-.003 11H9V4h11Z"
       clipRule="evenodd"
     />
   </svg>
