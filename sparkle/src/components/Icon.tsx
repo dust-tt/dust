@@ -21,6 +21,6 @@ export function Icon({
   className = "",
 }: IconProps) {
   return IconComponent ? (
-    <IconComponent className={(classNames(className), IconSizes[size])} />
+    <IconComponent className={classNames(className, IconSizes[size])} />
   ) : null;
 }
