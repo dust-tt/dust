@@ -1,4 +1,6 @@
 import {
+  BeakerIcon,
+  BeakerStrokeIcon,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowDownStrokeIcon,
   Cog6ToothIcon,
@@ -8,8 +10,6 @@ import {
   FolderOpenStrokeIcon,
   KeyStrokeIcon,
   PaperAirplaneStrokeIcon,
-  TestTubeIcon,
-  TestTubeStrokeIcon,
 } from "@dust-tt/sparkle";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
@@ -72,7 +72,7 @@ export const topNavigation = ({
     nav.push({
       id: "lab",
       label: "Lab",
-      icon: TestTubeIcon,
+      icon: BeakerIcon,
       href: `/w/${owner.sId}/u/gens`,
       sizing: "expand",
       current: current === "lab",
@@ -213,7 +213,7 @@ export const subNavigationLab = ({
     {
       id: "gens",
       label: "Gens",
-      icon: TestTubeStrokeIcon,
+      icon: BeakerStrokeIcon,
       href: `/w/${owner.sId}/u/gens`,
       current: current === "gens",
     },
@@ -223,7 +223,7 @@ export const subNavigationLab = ({
     nav.push({
       id: "extract",
       label: "Extract",
-      icon: TestTubeStrokeIcon,
+      icon: BeakerStrokeIcon,
       href: `/w/${owner.sId}/u/extract`,
       current: current === "extract",
     });
