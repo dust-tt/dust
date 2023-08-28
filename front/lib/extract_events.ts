@@ -19,6 +19,7 @@ import {
 } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
 
@@ -165,7 +166,9 @@ async function _processExtractEvent(data: {
       return;
     }
 
+    const sId = new_id();
     const event = await ExtractedEvent.create({
+      sId: sId.slice(0, 10),
       documentId: documentId,
       properties: properties,
       eventSchemaId: schema.id,

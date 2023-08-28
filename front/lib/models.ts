@@ -1046,6 +1046,7 @@ export class EventSchema extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare sId: string;
 
   declare marker: string;
   declare description?: string;
@@ -1071,6 +1072,10 @@ EventSchema.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: true, // @todo daph remove this after migration 20230829_extract_sids
     },
     marker: {
       type: DataTypes.STRING,
@@ -1098,7 +1103,10 @@ EventSchema.init(
   {
     modelName: "event_schema",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["workspaceId", "marker"], unique: true }],
+    indexes: [
+      { fields: ["workspaceId", "marker"], unique: true },
+      //{ fields: ["sId"], unique: true }, @todo daph add this after migration 20230829_extract_sids
+    ],
   }
 );
 Workspace.hasMany(EventSchema, {
@@ -1117,6 +1125,7 @@ export class ExtractedEvent extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare sId: string;
 
   declare marker: string;
   declare properties: any;
@@ -1143,6 +1152,10 @@ ExtractedEvent.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: true, // @todo daph remove this after migration 20230829_extract_sids
     },
     marker: {
       type: DataTypes.STRING,
@@ -1172,6 +1185,7 @@ ExtractedEvent.init(
     indexes: [
       { fields: ["eventSchemaId"] },
       { fields: ["dataSourceName", "documentId"] },
+      //{ fields: ["sId"], unique: true }, @todo daph add this after migration 20230829_extract_sids
     ],
   }
 );

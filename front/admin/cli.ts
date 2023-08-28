@@ -567,7 +567,9 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.properties) {
         throw new Error("Missing --properties argument");
       }
+      const sId = new_id();
       const schema = await EventSchema.create({
+        sId: sId.slice(0, 10),
         marker: args.marker,
         workspaceId: args.wId,
         userId: args.uId,
