@@ -4,6 +4,7 @@
 // This migration attempts to backfill the parent of all blocks that have a block parent
 
 import PQueue from "p-queue";
+import { Op } from "sequelize";
 
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
@@ -24,11 +25,17 @@ async function main() {
   const pagesAffected = await NotionPage.findAll({
     where: {
       parentType: "block",
+      connectorId: {
+        [Op.ne]: null,
+      },
     },
   });
   const databasesAffected = await NotionDatabase.findAll({
     where: {
       parentType: "block",
+      connectorId: {
+        [Op.ne]: null,
+      },
     },
   });
 
@@ -37,11 +44,11 @@ async function main() {
 
   console.log(`Found ${totalResourcesAffected} resources with a block parent`);
 
-  const connectorIds = Array.from(
+  const connectorIds: number[] = Array.from(
     new Set([
       ...pagesAffected.map((page) => page.connectorId),
       ...databasesAffected.map((database) => database.connectorId),
-    ])
+    ] as number[])
   );
 
   const connectors = await Connector.findAll({
@@ -75,7 +82,8 @@ async function main() {
   const promises: Promise<void>[] = [];
 
   for (const pageOrDb of [...pagesAffected, ...databasesAffected]) {
-    const queue = queueByConnectorId[pageOrDb.connectorId];
+    const queue = queueByConnectorId[pageOrDb.connectorId as number];
+
     if (!queue) {
       throw new Error(`No queue for connector ${pageOrDb.connectorId}`);
     }
@@ -87,7 +95,7 @@ async function main() {
         );
         const blockId = pageOrDb.parentId;
         const notionAccessToken =
-          notionAccessTokenByConnectorId[pageOrDb.connectorId];
+          notionAccessTokenByConnectorId[pageOrDb.connectorId as number];
         if (!notionAccessToken) {
           throw new Error(
             `No notion access token for connector ${pageOrDb.connectorId}`

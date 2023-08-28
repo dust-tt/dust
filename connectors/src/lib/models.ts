@@ -444,7 +444,7 @@ export class NotionPage extends Model<
   declare title?: string | null;
   declare notionUrl?: string | null;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<Connector["id"]> | null;
 }
 
 NotionPage.init(
@@ -528,7 +528,7 @@ export class NotionDatabase extends Model<
   declare title?: string | null;
   declare notionUrl?: string | null;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<Connector["id"]> | null;
 }
 
 NotionDatabase.init(
