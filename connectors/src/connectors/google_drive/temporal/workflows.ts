@@ -1,11 +1,9 @@
 import {
   continueAsNew,
   executeChild,
-  ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
-  startChild,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -24,7 +22,6 @@ const {
   renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
-  getLastGCTime,
   incrementalSync,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
@@ -97,7 +94,7 @@ export async function googleDriveFullSync(
   if (garbageCollect) {
     await executeChild(googleDriveGarbageCollectorWorkflow.name, {
       workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-      args: [connectorId, nangoConnectionId, dataSourceConfig],
+      args: [connectorId, startSyncTs],
     });
   }
   console.log("googleDriveFullSync done for connectorId", connectorId);

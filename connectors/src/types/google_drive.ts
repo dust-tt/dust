@@ -6,6 +6,7 @@ export type GoogleDriveObjectType = {
   updatedAtMs?: number;
   webViewLink?: string;
   mimeType: string;
+  trashed: boolean;
   lastEditor?: {
     displayName: string;
   };

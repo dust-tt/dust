@@ -235,13 +235,17 @@ export async function syncFiles(
   const results = await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
-        return await syncOneFile(
-          connectorId,
-          authCredentials,
-          dataSourceConfig,
-          file,
-          true // isBatchSync
-        );
+        if (!file.trashed) {
+          return await syncOneFile(
+            connectorId,
+            authCredentials,
+            dataSourceConfig,
+            file,
+            true // isBatchSync
+          );
+        } else {
+          await deleteOneFile(connectorId, file.id);
+        }
       });
     })
   );
@@ -559,7 +563,8 @@ export async function incrementalSync(
           await driveObjectToDustType(change.file, authCredentials),
           selectedFoldersIds,
           startSyncTs
-        ))
+        )) ||
+        change.file.trashed
       ) {
         // The current file is not in the list of selected folders.
         // If we have it locally, we need to garbage collect it.
@@ -697,14 +702,18 @@ export async function garbageCollector(
     files.map(async (file) => {
       return queue.add(async () => {
         try {
+          const driveFile = await getGoogleDriveObject(
+            authCredentials,
+            file.driveFileId
+          );
           const isInFolder = await objectIsInFolders(
             connectorId,
             authCredentials,
-            await getGoogleDriveObject(authCredentials, file.driveFileId),
+            driveFile,
             selectedFolders,
             lastSeenTs
           );
-          if (isInFolder === false) {
+          if (isInFolder === false || driveFile.trashed) {
             await deleteOneFile(connectorId, file.driveFileId);
           } else {
             await file.update({
@@ -921,6 +930,7 @@ async function driveObjectToDustType(
       mimeType: "application/vnd.google-apps.folder",
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
+      trashed: false,
     };
   } else {
     return {
@@ -930,6 +940,7 @@ async function driveObjectToDustType(
       mimeType: file.mimeType,
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
+      trashed: file.trashed ? file.trashed : false,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()
         : undefined,
