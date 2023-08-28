@@ -3,6 +3,8 @@
 // non-block parent.
 // This migration attempts to backfill the parent of all blocks that have a block parent
 
+import PQueue from "p-queue";
+
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -60,39 +62,59 @@ async function main() {
     notionAccessTokenByConnectorId[connector.id] = notionAccessToken;
   }
 
+  const queueByConnectorId: { [key: number]: PQueue } = {};
+  for (const connectorId of connectorIds) {
+    queueByConnectorId[connectorId] = new PQueue({
+      concurrency: 1,
+    });
+  }
+
   let i = 1;
   let successCount = 0;
   let failedCount = 0;
+  const promises: Promise<void>[] = [];
+
   for (const pageOrDb of [...pagesAffected, ...databasesAffected]) {
-    console.log(
-      `Processing ${i++} of ${totalResourcesAffected} (success: ${successCount}, failed: ${failedCount}))`
-    );
-    const blockId = pageOrDb.parentId;
-    const notionAccessToken =
-      notionAccessTokenByConnectorId[pageOrDb.connectorId];
-    if (!notionAccessToken) {
-      throw new Error(
-        `No notion access token for connector ${pageOrDb.connectorId}`
-      );
-    }
-    if (!blockId) {
-      throw new Error(`No parentId for pageOrDb ${pageOrDb.id}`);
+    const queue = queueByConnectorId[pageOrDb.connectorId];
+    if (!queue) {
+      throw new Error(`No queue for connector ${pageOrDb.connectorId}`);
     }
 
-    const parent = await getBlockParentMemoized(
-      notionAccessToken,
-      blockId,
-      logger
+    promises.push(
+      queue.add(async () => {
+        console.log(
+          `Processing ${i++} of ${totalResourcesAffected} (success: ${successCount}, failed: ${failedCount}))`
+        );
+        const blockId = pageOrDb.parentId;
+        const notionAccessToken =
+          notionAccessTokenByConnectorId[pageOrDb.connectorId];
+        if (!notionAccessToken) {
+          throw new Error(
+            `No notion access token for connector ${pageOrDb.connectorId}`
+          );
+        }
+        if (!blockId) {
+          throw new Error(`No parentId for pageOrDb ${pageOrDb.id}`);
+        }
+
+        const parent = await getBlockParentMemoized(
+          notionAccessToken,
+          blockId,
+          logger
+        );
+        if (parent) {
+          successCount += 1;
+          pageOrDb.parentId = parent.parentId;
+          pageOrDb.parentType = parent.parentType;
+          await pageOrDb.save();
+        } else {
+          failedCount += 1;
+        }
+      })
     );
-    if (parent) {
-      successCount += 1;
-      pageOrDb.parentId = parent.parentId;
-      pageOrDb.parentType = parent.parentType;
-      await pageOrDb.save();
-    } else {
-      failedCount += 1;
-    }
   }
+
+  await Promise.all(promises);
 
   console.log(
     `Finished processing ${totalResourcesAffected} (success: ${successCount}, failed: ${failedCount}))`
