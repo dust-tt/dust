@@ -1075,7 +1075,7 @@ EventSchema.init(
     },
     sId: {
       type: DataTypes.STRING,
-      allowNull: true, // @todo daph remove this after migration 20230829_extract_sids
+      allowNull: false,
     },
     marker: {
       type: DataTypes.STRING,
@@ -1155,7 +1155,7 @@ ExtractedEvent.init(
     },
     sId: {
       type: DataTypes.STRING,
-      allowNull: true, // @todo daph remove this after migration 20230829_extract_sids
+      allowNull: false,
     },
     marker: {
       type: DataTypes.STRING,
