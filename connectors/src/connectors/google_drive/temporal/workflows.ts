@@ -43,15 +43,15 @@ export async function googleDriveFullSync(
   garbageCollect = true,
   foldersToBrowse: string[] | undefined = undefined,
   totalCount = 0,
-  lastSeenTs: number | undefined = undefined
+  startSyncTs: number | undefined = undefined
 ) {
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  if (lastSeenTs === undefined) {
-    lastSeenTs = new Date().getTime();
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
   }
   if (foldersToBrowse === undefined) {
     foldersToBrowse = await getFoldersToSync(connectorId);
@@ -68,7 +68,7 @@ export async function googleDriveFullSync(
         nangoConnectionId,
         dataSourceConfig,
         folder,
-        lastSeenTs,
+        startSyncTs,
         nextPageToken
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
@@ -88,7 +88,7 @@ export async function googleDriveFullSync(
         garbageCollect,
         foldersToBrowse,
         totalCount,
-        lastSeenTs
+        startSyncTs
       );
     }
   }
@@ -129,6 +129,7 @@ export async function googleDriveIncrementalSync(
     }
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
     const drivesIds = await getDrivesIds(nangoConnectionId);
+    const startSyncTs = new Date().getTime();
     for (const googleDrive of drivesIds) {
       let nextPageToken: undefined | string = undefined;
       do {
@@ -137,6 +138,7 @@ export async function googleDriveIncrementalSync(
           nangoConnectionId,
           dataSourceConfig,
           googleDrive.id,
+          startSyncTs,
           nextPageToken
         );
       } while (nextPageToken);
@@ -144,14 +146,6 @@ export async function googleDriveIncrementalSync(
   }
 
   await syncSucceeded(connectorId);
-  const lastGCTime = await getLastGCTime(connectorId);
-  if (lastGCTime + 60 * 60 * 24 * 1000 < new Date().getTime()) {
-    await startChild(googleDriveGarbageCollectorWorkflow.name, {
-      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-      args: [connectorId, nangoConnectionId, dataSourceConfig],
-      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
-    });
-  }
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
@@ -171,13 +165,12 @@ export function googleDriveRenewWebhooksWorkflowId() {
 }
 
 export async function googleDriveGarbageCollectorWorkflow(
-  connectorId: ModelId
+  connectorId: ModelId,
+  gcMinTs: number
 ) {
-  const gcTs = new Date().getTime();
-
   let processed = 0;
   do {
-    processed = await garbageCollector(connectorId, gcTs);
+    processed = await garbageCollector(connectorId, gcMinTs);
   } while (processed > 0);
 
   await garbageCollectorFinished(connectorId);

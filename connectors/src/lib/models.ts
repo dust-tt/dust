@@ -739,6 +739,7 @@ GithubDiscussion.init(
 );
 Connector.hasMany(GithubDiscussion);
 
+// GoogleDriveFolders stores the folders selected by the user to sync.
 export class GoogleDriveFolders extends Model<
   InferAttributes<GoogleDriveFolders>,
   InferCreationAttributes<GoogleDriveFolders>
@@ -785,6 +786,7 @@ GoogleDriveFolders.init(
 
 Connector.hasOne(GoogleDriveFolders);
 
+// GoogleDriveFiles stores files and folders synced from Google Drive.
 export class GoogleDriveFiles extends Model<
   InferAttributes<GoogleDriveFiles>,
   InferCreationAttributes<GoogleDriveFiles>
@@ -796,7 +798,8 @@ export class GoogleDriveFiles extends Model<
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
-  declare name: string;
+  declare name: string | null;
+  declare mimeType: string | null;
   declare parentId: string | null;
 }
 
@@ -835,7 +838,13 @@ GoogleDriveFiles.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: "",
+    },
+    mimeType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "",
     },
     parentId: {
       type: DataTypes.STRING,

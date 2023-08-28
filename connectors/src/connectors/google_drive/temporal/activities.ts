@@ -166,7 +166,7 @@ export async function syncFiles(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveFolderId: string,
-  lastSeenTs: number,
+  startSyncTs: number,
   nextPageToken?: string
 ): Promise<{
   nextPageToken: string | null;
@@ -185,7 +185,7 @@ export async function syncFiles(
         connectorId: connectorId,
         driveFileId: driveFolder.id,
         lastSeenTs: {
-          [Op.gte]: new Date(lastSeenTs),
+          [Op.gte]: new Date(startSyncTs),
         },
       },
     });
@@ -358,6 +358,7 @@ async function syncOneFile(
       dustFileId: documentId,
       driveFileId: file.id,
       name: file.name,
+      mimeType: file.mimeType,
       parentId: file.parent,
       lastSeenTs: new Date(),
     });
@@ -388,6 +389,7 @@ async function syncOneFile(
     dustFileId: documentId,
     driveFileId: file.id,
     name: file.name,
+    mimeType: file.mimeType,
     parentId: file.parent,
     lastSeenTs: new Date(),
   });
@@ -425,7 +427,9 @@ async function syncOneFile(
 async function getFileParents(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
-  driveFile: GoogleDriveObjectType
+  driveFile: GoogleDriveObjectType,
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  startSyncTs: number
 ): Promise<GoogleDriveObjectType[]> {
   const parents: GoogleDriveObjectType[] = [];
   let currentObject = driveFile;
@@ -441,14 +445,16 @@ async function getFileParents(
   return parents.reverse();
 }
 
-export const getFileParentsMemoized = memoize(
+export const getFileParentsMemoized = getFileParents;
+memoize(
   getFileParents,
   (
     connectorId: ModelId,
     authCredentials: OAuth2Client,
-    driveFile: GoogleDriveObjectType
+    driveFile: GoogleDriveObjectType,
+    startSyncTs: number
   ) => {
-    const cacheKey = `${connectorId}-${driveFile.id}`;
+    const cacheKey = `${connectorId}-${startSyncTs}-${driveFile.id}`;
 
     return cacheKey;
   }
@@ -458,12 +464,14 @@ async function objectIsInFolders(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
-  foldersIds: string[]
+  foldersIds: string[],
+  startSyncTs: number
 ): Promise<boolean> {
   const parents = await getFileParentsMemoized(
     connectorId,
     authCredentials,
-    driveFile
+    driveFile,
+    startSyncTs
   );
   for (const parent of parents) {
     if (foldersIds.includes(parent.id)) {
@@ -479,6 +487,7 @@ export async function incrementalSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveId: string,
+  startSyncTs: number,
   nextPageToken?: string
 ): Promise<string | undefined> {
   const logger = mainLogger.child({
@@ -548,7 +557,8 @@ export async function incrementalSync(
           connectorId,
           authCredentials,
           await driveObjectToDustType(change.file, authCredentials),
-          selectedFoldersIds
+          selectedFoldersIds,
+          startSyncTs
         ))
       ) {
         // The current file is not in the list of selected folders.
@@ -660,9 +670,12 @@ export async function getFoldersToSync(connectorId: ModelId) {
   return foldersIds;
 }
 
+/**
+ * @param lastSeenTs Garbage collect all files that have not been seen since this timestamp.
+ */
 export async function garbageCollector(
   connectorId: ModelId,
-  startTs: number
+  lastSeenTs: number
 ): Promise<number> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -673,7 +686,7 @@ export async function garbageCollector(
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
-      lastSeenTs: { [Op.or]: [{ [Op.lt]: new Date(startTs) }, null] },
+      lastSeenTs: { [Op.or]: [{ [Op.lt]: new Date(lastSeenTs) }, null] },
     },
     limit: 100,
   });
@@ -688,7 +701,8 @@ export async function garbageCollector(
             connectorId,
             authCredentials,
             await getGoogleDriveObject(authCredentials, file.driveFileId),
-            selectedFolders
+            selectedFolders,
+            lastSeenTs
           );
           if (isInFolder === false) {
             await deleteOneFile(connectorId, file.driveFileId);
