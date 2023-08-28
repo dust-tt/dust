@@ -103,10 +103,11 @@ pub struct Chunk {
 /// parent in the array, their channel (since a channel does not have any
 /// parent).
 ///
-/// Parents are ATTOW only relevant for managed datasources since standard
-/// datasources do not allow specifying a hierarchy. A parent is represented by
-/// a string of characters which correspond to the parent id--not its
-/// name--provided by the managed datasource.
+/// Parents are at the time of writing only relevant for managed datasources
+/// since standard datasources do not allow specifying a hierarchy. A parent is
+/// represented by a string of characters which correspond to the parent's
+/// internal id (specific to the managed datasource)--not its name--provided by
+/// the managed datasource.
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
@@ -840,12 +841,12 @@ impl DataSource {
                 };
 
                 match f.parents {
-                    Some(tags) => {
-                        match tags.is_in.clone() {
+                    Some(parents) => {
+                        match parents.is_in.clone() {
                             Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
                             None => (),
                         };
-                        match tags.is_not.clone() {
+                        match parents.is_not.clone() {
                             Some(v) => {
                                 must_not_filter.push(qdrant_match_field_condition("parents", v))
                             }
