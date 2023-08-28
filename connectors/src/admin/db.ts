@@ -36,7 +36,9 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
-  await GoogleDriveBFSDedup.sync({ alter: true });
+
+  // enable the `unaccent` extension
+  await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
     sequelize_conn,
@@ -78,7 +80,7 @@ async function addSearchVectorTrigger(
       CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$
       begin
         if TG_OP = 'INSERT' OR new.title IS DISTINCT FROM old.title then
-          new.titleSearchVector := to_tsvector('english', coalesce(new.title, ''));
+          new."titleSearchVector" := to_tsvector('english', unaccent(coalesce(new.title, '')));
         end if;
         return new;
       end
