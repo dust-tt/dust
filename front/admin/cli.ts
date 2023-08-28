@@ -13,7 +13,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { new_id } from "@app/lib/utils";
+import { generateModelSId, new_id } from "@app/lib/utils";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
@@ -113,7 +113,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const w = await Workspace.create({
         uId,
-        sId: uId.slice(0, 10),
+        sId: generateModelSId(uId),
         name: args.name,
       });
 
@@ -567,9 +567,8 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.properties) {
         throw new Error("Missing --properties argument");
       }
-      const sId = new_id();
       const schema = await EventSchema.create({
-        sId: sId.slice(0, 10),
+        sId: generateModelSId(),
         marker: args.marker,
         workspaceId: args.wId,
         userId: args.uId,

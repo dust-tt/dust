@@ -12,7 +12,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { new_id } from "@app/lib/utils";
+import { generateModelSId, new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
@@ -153,7 +153,7 @@ async function handler(
         if (!workspaceInvite && !membershipInvite) {
           const w = await Workspace.create({
             uId,
-            sId: uId.slice(0, 10),
+            sId: generateModelSId(uId),
             name: session.user.username,
           });
 

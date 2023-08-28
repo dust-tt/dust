@@ -4,7 +4,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App } from "@app/lib/models";
-import { new_id } from "@app/lib/utils";
+import { generateModelSId, new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 
@@ -79,7 +79,7 @@ async function handler(
 
       const app = await App.create({
         uId,
-        sId: uId.slice(0, 10),
+        sId: generateModelSId(uId),
         name: req.body.name,
         description,
         visibility: req.body.visibility,
