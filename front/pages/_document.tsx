@@ -11,10 +11,7 @@ class MyDocument extends Document {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Roboto:wght@500&display=swap"
-            rel="stylesheet"
-          />
+          <link href="https://use.typekit.net/jnb2umy.css" rel="stylesheet" />
         </Head>
         <body>
           <Main />
