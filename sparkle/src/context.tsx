@@ -1,7 +1,6 @@
 import React, { ComponentType, MouseEvent, ReactNode } from "react";
 
 export type SparkleContextLinkType = ComponentType<{
-  key?: React.Key | null;
   href: string;
   className?: string;
   children: ReactNode;
@@ -25,7 +24,6 @@ export type SparkleContextType = {
 };
 
 export const aLink: SparkleContextLinkType = ({
-  key,
   href,
   className,
   ariaCurrent,
@@ -34,7 +32,6 @@ export const aLink: SparkleContextLinkType = ({
   children,
 }) => (
   <a
-    key={key}
     href={href}
     className={className}
     aria-current={ariaCurrent}
@@ -46,7 +43,6 @@ export const aLink: SparkleContextLinkType = ({
 );
 
 export const noHrefLink: SparkleContextLinkType = ({
-  key,
   className,
   ariaCurrent,
   ariaLabel,
@@ -54,7 +50,6 @@ export const noHrefLink: SparkleContextLinkType = ({
   children,
 }) => (
   <a
-    key={key}
     className={className}
     aria-current={ariaCurrent}
     arria-label={ariaLabel}
