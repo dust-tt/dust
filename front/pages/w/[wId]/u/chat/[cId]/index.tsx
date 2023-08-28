@@ -5,7 +5,7 @@ import {
   IconButton,
   Logo,
   PageHeader,
-  PaperAirplaneSolidIcon,
+  PaperAirplaneIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
@@ -1294,7 +1294,7 @@ export default function AppChat({
                         />
                         <div className={classNames("z-10 -ml-8 flex flex-col")}>
                           {!loading ? (
-                            <PaperAirplaneSolidIcon
+                            <PaperAirplaneIcon
                               className="my-auto h-5 w-5 cursor-pointer text-action-500"
                               onClick={() => {
                                 void handleSubmit();

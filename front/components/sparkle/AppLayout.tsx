@@ -186,7 +186,6 @@ export default function AppLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
-        <style>@import url("https://use.typekit.net/jnb2umy.css");</style>
       </Head>
 
       <div className="light h-full">
