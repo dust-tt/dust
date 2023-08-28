@@ -27,7 +27,6 @@ import {
   Connector,
   GoogleDriveFiles,
   GoogleDriveFolders,
-  GoogleDriveSyncedFolder,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
   ModelId,
@@ -51,6 +50,7 @@ const MIME_TYPES_TO_DOWNLOAD = ["text/plain"];
 const MIME_TYPES_TO_SYNC = [
   ...MIME_TYPES_TO_DOWNLOAD,
   ...Object.keys(MIME_TYPES_TO_EXPORT),
+  "application/vnd.google-apps.folder",
 ];
 
 export const statsDClient = new StatsD();
@@ -180,32 +180,24 @@ export async function syncFiles(
   );
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
-    const visitedFolder = await GoogleDriveSyncedFolder.findOne({
+    const visitedFolder = await GoogleDriveFiles.findOne({
       where: {
         connectorId: connectorId,
-        driveFolderId: driveFolder.id,
-        lastSeenTs: lastSeenTs,
+        driveFileId: driveFolder.id,
+        lastSeenTs: {
+          [Op.gte]: new Date(lastSeenTs),
+        },
       },
     });
     if (visitedFolder) {
       return { nextPageToken: null, count: 0, subfolders: [] };
-    } else {
-      await GoogleDriveSyncedFolder.upsert({
-        connectorId: connectorId,
-        driveFolderId: driveFolder.id,
-        driveParentFolderId: driveFolder.parent,
-        driveFolderName: driveFolder.name,
-        lastSeenTs: new Date(),
-      });
     }
   }
 
   const drive = await getDriveClient(authCredentials);
-  const mimeTypesSearchString = MIME_TYPES_TO_SYNC.concat(
-    "application/vnd.google-apps.folder"
-  )
-    .map((mimeType) => `mimeType='${mimeType}'`)
-    .join(" or ");
+  const mimeTypesSearchString = MIME_TYPES_TO_SYNC.map(
+    (mimeType) => `mimeType='${mimeType}'`
+  ).join(" or ");
 
   const res = await drive.files.list({
     corpora: "allDrives",
@@ -225,27 +217,16 @@ export async function syncFiles(
   if (!res.data.files) {
     throw new Error("Files list is undefined");
   }
-  const filesToSync = res.data.files
-    .filter((file) => file.id && file.createdTime)
-    .map((file): GoogleDriveObjectType => {
-      if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
-        throw new Error("Invalid file. File is: " + JSON.stringify(file));
-      }
-      return {
-        id: file.id as string,
-        name: file.name,
-        parent: file.parents && file.parents[0] ? file.parents[0] : null,
-        mimeType: file.mimeType,
-        webViewLink: file.webViewLink ? file.webViewLink : undefined,
-        createdAtMs: new Date(file.createdTime).getTime(),
-        updatedAtMs: file.modifiedTime
-          ? new Date(file.modifiedTime).getTime()
-          : undefined,
-        lastEditor: file.lastModifyingUser
-          ? { displayName: file.lastModifyingUser.displayName as string }
-          : undefined,
-      };
-    });
+  const filesToSync = await Promise.all(
+    res.data.files
+      .filter((file) => file.id && file.createdTime)
+      .map(async (file) => {
+        if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
+          throw new Error("Invalid file. File is: " + JSON.stringify(file));
+        }
+        return await driveObjectToDustType(file, authCredentials);
+      })
+  );
   const subfolders = filesToSync
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((f) => f.id);
@@ -278,6 +259,7 @@ async function syncOneFile(
   file: GoogleDriveObjectType,
   isBatchSync = false
 ): Promise<boolean> {
+  const documentId = `gdrive-${file.id}`;
   let documentContent: string | undefined = undefined;
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
@@ -370,6 +352,16 @@ async function syncOneFile(
         await fs.unlink(pdf_path);
       }
     }
+  } else if (file.mimeType === "application/vnd.google-apps.folder") {
+    await GoogleDriveFiles.upsert({
+      connectorId: connectorId,
+      dustFileId: documentId,
+      driveFileId: file.id,
+      name: file.name,
+      parentId: file.parent,
+      lastSeenTs: new Date(),
+    });
+    return false;
   } else {
     // We do not support this file type
     return false;
@@ -391,11 +383,13 @@ async function syncOneFile(
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
 
-  const documentId = `gdrive-${file.id}`;
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
     dustFileId: documentId,
     driveFileId: file.id,
+    name: file.name,
+    parentId: file.parent,
+    lastSeenTs: new Date(),
   });
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
@@ -558,26 +552,17 @@ export async function incrementalSync(
         ))
       ) {
         // The current file is not in the list of selected folders.
-        // We should check here if we know this file in our local database, which would mean that one of its parent folders
-        // has been moved out of the list of selected folders.
-        // We should start a garbage collector workflow in this case.
-        continue;
-      }
-
-      const parents = await getFileParentsMemoized(
-        connectorId,
-        authCredentials,
-        await getGoogleDriveObject(authCredentials, change.file.id)
-      );
-
-      for (const driveFolder of parents) {
-        await GoogleDriveSyncedFolder.upsert({
-          connectorId: connectorId,
-          driveFolderId: driveFolder.id,
-          driveParentFolderId: driveFolder.parent,
-          driveFolderName: driveFolder.name,
-          lastSeenTs: new Date(),
+        // If we have it locally, we need to garbage collect it.
+        const localFile = await GoogleDriveFiles.findOne({
+          where: {
+            connectorId: connectorId,
+            driveFileId: change.file.id,
+          },
         });
+        if (localFile) {
+          await deleteOneFile(connectorId, change.file.id);
+        }
+        continue;
       }
 
       if (!change.file.createdTime || !change.file.name || !change.file.id) {
@@ -587,25 +572,10 @@ export async function incrementalSync(
       }
       logger.info({ file_id: change.file.id }, "will sync file");
 
-      const driveFile: GoogleDriveObjectType = {
-        id: change.file.id,
-        name: change.file.name,
-        parent:
-          change.file.parents && change.file.parents[0]
-            ? change.file.parents[0]
-            : null,
-        mimeType: change.file.mimeType,
-        createdAtMs: new Date(change.file.createdTime).getTime(),
-        updatedAtMs: change.file.modifiedTime
-          ? new Date(change.file.modifiedTime).getTime()
-          : undefined,
-        webViewLink: change.file.webViewLink || undefined,
-        lastEditor: change.file.lastModifyingUser
-          ? {
-              displayName: change.file.lastModifyingUser.displayName as string,
-            }
-          : undefined,
-      };
+      const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
+        change.file,
+        authCredentials
+      );
 
       await syncOneFile(
         connectorId,
@@ -703,7 +673,7 @@ export async function garbageCollector(
   const files = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
-      garbageCollectedAt: { [Op.or]: [{ [Op.lt]: new Date(startTs) }, null] },
+      lastSeenTs: { [Op.or]: [{ [Op.lt]: new Date(startTs) }, null] },
     },
     limit: 100,
   });
@@ -720,19 +690,18 @@ export async function garbageCollector(
             await getGoogleDriveObject(authCredentials, file.driveFileId),
             selectedFolders
           );
-
           if (isInFolder === false) {
             await deleteOneFile(connectorId, file.driveFileId);
           } else {
             await file.update({
-              garbageCollectedAt: new Date(),
+              lastSeenTs: new Date(),
             });
           }
         } catch (e) {
           if (e instanceof GaxiosError) {
             if (e.response?.status === 404) {
               // File not found, we can delete it.
-              await deleteOneFile(connectorId, file.driveFileId);
+              await file.destroy();
             }
           }
         }
@@ -890,18 +859,6 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
     await googleDriveFile.destroy();
   }
   return;
-}
-
-export async function cleanupSyncedFolders(
-  connectorId: ModelId,
-  lastSeenTs: number
-) {
-  await GoogleDriveSyncedFolder.destroy({
-    where: {
-      connectorId: connectorId,
-      lastSeenTs: { [Op.lt]: lastSeenTs },
-    },
-  });
 }
 
 export async function getGoogleDriveObject(

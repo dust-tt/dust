@@ -792,10 +792,12 @@ export class GoogleDriveFiles extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare garbageCollectedAt: Date | null;
+  declare lastSeenTs: Date | null;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
+  declare name: string;
+  declare parentId: string | null;
 }
 
 GoogleDriveFiles.init(
@@ -815,7 +817,7 @@ GoogleDriveFiles.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    garbageCollectedAt: {
+    lastSeenTs: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -830,6 +832,14 @@ GoogleDriveFiles.init(
     driveFileId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -956,67 +966,3 @@ GoogleDriveWebhook.init(
   }
 );
 Connector.hasOne(GoogleDriveWebhook);
-
-export class GoogleDriveSyncedFolder extends Model<
-  InferAttributes<GoogleDriveSyncedFolder>,
-  InferCreationAttributes<GoogleDriveSyncedFolder>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
-  declare driveFolderId: string;
-  declare driveParentFolderId: string | null;
-  declare driveFolderName: string;
-  declare lastSeenTs: Date;
-}
-
-GoogleDriveSyncedFolder.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    driveFolderId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    driveParentFolderId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    driveFolderName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    lastSeenTs: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: sequelize_conn,
-    modelName: "google_drive_synced_folder",
-    indexes: [
-      {
-        fields: ["connectorId", "driveFolderId"],
-        unique: true,
-      },
-    ],
-  }
-);

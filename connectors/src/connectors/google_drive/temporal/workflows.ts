@@ -25,7 +25,6 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   getLastGCTime,
-  cleanupSyncedFolders,
   incrementalSync,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
@@ -93,7 +92,6 @@ export async function googleDriveFullSync(
       );
     }
   }
-  await cleanupSyncedFolders(connectorId, lastSeenTs);
   await syncSucceeded(connectorId);
 
   if (garbageCollect) {
