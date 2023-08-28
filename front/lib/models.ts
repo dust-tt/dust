@@ -1105,7 +1105,7 @@ EventSchema.init(
     sequelize: front_sequelize,
     indexes: [
       { fields: ["workspaceId", "marker"], unique: true },
-      //{ fields: ["sId"], unique: true }, @todo daph add this after migration 20230829_extract_sids
+      { fields: ["sId"], unique: true },
     ],
   }
 );
@@ -1185,7 +1185,7 @@ ExtractedEvent.init(
     indexes: [
       { fields: ["eventSchemaId"] },
       { fields: ["dataSourceName", "documentId"] },
-      //{ fields: ["sId"], unique: true }, @todo daph add this after migration 20230829_extract_sids
+      { fields: ["sId"], unique: true },
     ],
   }
 );
