@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { new_id } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 
 export async function getEventSchemas(
@@ -70,7 +71,9 @@ export async function createEventSchema(
     return;
   }
 
+  const sId = new_id();
   const schema = await EventSchema.create({
+    sId: sId.slice(0, 10),
     marker: marker,
     description: description,
     properties: properties,
