@@ -15,6 +15,7 @@ import {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import memoize from "lodash.memoize";
 import { Logger } from "pino";
 
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
@@ -323,6 +324,84 @@ export async function isAccessibleAndUnarchived(
   throw new Error("Unreachable.");
 }
 
+async function getBlockParent(
+  notionAccessToken: string,
+  blockId: string,
+  localLogger: Logger
+): Promise<{
+  parentId: string;
+  parentType: "database" | "page" | "workspace";
+} | null> {
+  const notionClient = new Client({ auth: notionAccessToken });
+
+  // We attempt going up 8 times (including retries)
+  for (let a = 0; a < 8; a++) {
+    localLogger.info({ blockId }, "Looking up block parent");
+    try {
+      const block = await notionClient.blocks.retrieve({
+        block_id: blockId,
+      });
+
+      if (!isFullBlock(block)) {
+        // Not much we can do here to get the parent page.
+        return null;
+      }
+
+      const blockParent = block.parent;
+      switch (blockParent.type) {
+        case "page_id":
+          return {
+            parentId: blockParent.page_id,
+            parentType: "page",
+          };
+        case "database_id":
+          return {
+            parentId: blockParent.database_id,
+            parentType: "database",
+          };
+        case "workspace":
+          return {
+            parentId: "workspace",
+            parentType: "workspace",
+          };
+        case "block_id": {
+          blockId = blockParent.block_id;
+          break;
+        }
+        default:
+          ((blockParent: never) => {
+            localLogger.warn({ blockParent }, "Unknown block parent type.");
+          })(blockParent);
+          return null;
+      }
+    } catch (e) {
+      if (APIResponseError.isAPIResponseError(e)) {
+        if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
+          const waitTime = 500 * 2 ** a;
+          localLogger.info(
+            { waitTime },
+            "Got potentially transient error. Trying again."
+          );
+          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** a));
+          continue;
+        }
+        if (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code)) {
+          return null;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+const getBlockParentMemoized = memoize(
+  getBlockParent,
+  (notionAccessToken: string, blockId: string) => {
+    return blockId;
+  }
+);
+
 export async function getParsedDatabase(
   notionAccessToken: string,
   databaseId: string,
@@ -355,31 +434,42 @@ export async function getParsedDatabase(
     return null;
   }
 
-  const pageLogger = localLogger.child({ databaseUrl: database.url });
+  const dbLogger = localLogger.child({ databaseUrl: database.url });
 
-  pageLogger.info("Parsing database.");
+  dbLogger.info("Parsing database.");
 
-  const pageParent = database.parent;
+  const dbParent = database.parent;
   let parentId: string;
   let parentType: string;
 
-  switch (pageParent.type) {
+  switch (dbParent.type) {
     case "page_id":
-      parentId = pageParent.page_id;
+      parentId = dbParent.page_id;
       parentType = "page";
       break;
-    case "block_id":
-      parentId = pageParent.block_id;
-      parentType = "block";
+    case "block_id": {
+      const parent = await getBlockParentMemoized(
+        notionAccessToken,
+        dbParent.block_id,
+        dbLogger
+      );
+      if (parent) {
+        parentId = parent.parentId;
+        parentType = parent.parentType;
+      } else {
+        parentId = dbParent.block_id;
+        parentType = "block";
+      }
       break;
+    }
     case "workspace":
       parentId = "workspace";
       parentType = "workspace";
       break;
     default:
-      ((pageParent: never) => {
-        logger.warn({ pageParent }, "Unknown page parent type.");
-      })(pageParent);
+      ((dbParent: never) => {
+        logger.warn({ dbParent }, "Unknown page parent type.");
+      })(dbParent);
       parentId = "unknown";
       parentType = "unknown";
       break;
@@ -509,10 +599,21 @@ export async function getParsedPage(
       parentId = pageParent.page_id;
       parentType = "page";
       break;
-    case "block_id":
-      parentId = pageParent.block_id;
-      parentType = "block";
+    case "block_id": {
+      const parent = await getBlockParentMemoized(
+        notionAccessToken,
+        pageParent.block_id,
+        pageLogger
+      );
+      if (parent) {
+        parentId = parent.parentId;
+        parentType = parent.parentType;
+      } else {
+        parentId = pageParent.block_id;
+        parentType = "block";
+      }
       break;
+    }
     case "workspace":
       parentId = "workspace";
       parentType = "workspace";
