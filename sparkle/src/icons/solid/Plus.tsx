@@ -11,9 +11,7 @@ const SvgPlus = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      fillRule="evenodd"
-      d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z"
-      clipRule="evenodd"
+      d="M10.5 10.5V5h3v5.5H19v3h-5.5V19h-3v-5.5H5v-3h5.5Z"
     />
   </svg>
 );
