@@ -608,6 +608,7 @@ export const CoreAPI = {
     documentId,
     timestamp,
     tags,
+    parents,
     sourceUrl,
     text,
     credentials,
@@ -618,6 +619,7 @@ export const CoreAPI = {
     documentId: string;
     timestamp?: number | null;
     tags: string[];
+    parents: string[];
     sourceUrl?: string | null;
     text: string;
     credentials: CredentialsType;
@@ -641,11 +643,12 @@ export const CoreAPI = {
         },
         body: JSON.stringify({
           document_id: documentId,
-          timestamp: timestamp,
-          text: text,
-          tags: tags,
+          timestamp,
+          text,
+          tags,
+          parents,
           source_url: sourceUrl,
-          credentials: credentials,
+          credentials,
           light_document_output: lightDocumentOutput,
         }),
       }
