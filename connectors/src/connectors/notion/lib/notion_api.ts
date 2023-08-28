@@ -395,7 +395,7 @@ async function getBlockParent(
   return null;
 }
 
-const getBlockParentMemoized = memoize(
+export const getBlockParentMemoized = memoize(
   getBlockParent,
   (notionAccessToken: string, blockId: string) => {
     return blockId;
