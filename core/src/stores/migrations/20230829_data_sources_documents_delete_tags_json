@@ -1,0 +1,4 @@
+ALTER TABLE
+    data_sources_documents
+DROP
+    COLUMN tags_json;
