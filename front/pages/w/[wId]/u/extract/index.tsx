@@ -179,7 +179,7 @@ export default function AppExtractEvents({
                               <td className="whitespace-nowrap px-3 py-4 font-medium">
                                 [[{schema.marker}]]
                               </td>
-                              <td className="whitespace-nowrap px-12 py-4">
+                              <td className="px-12 py-4">
                                 {schema.description}
                               </td>
                               <td className="whitespace-nowrap px-3 py-4">
