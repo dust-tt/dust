@@ -1,8 +1,4 @@
-import {
-  Button,
-  CheckCircleIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Button, CheckCircleIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { LinkIcon } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import React, { ComponentType, useState } from "react";
