@@ -1,8 +1,8 @@
 import { GetServerSideProps } from "next";
 
-import { newChatSessionId } from "@app/lib/api/chat";
 import { setUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
+import { generateModelSId } from "@app/lib/utils";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -19,7 +19,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     value: `/w/${context.query.wId}/u/chat`,
   });
 
-  const cId = newChatSessionId();
+  const cId = generateModelSId();
   return {
     redirect: {
       destination: `/w/${context.query.wId}/u/chat/${cId}`,

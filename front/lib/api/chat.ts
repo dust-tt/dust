@@ -1,4 +1,4 @@
-import { new_id } from "@app/lib/utils";
+import { generateModelSId, new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import {
@@ -302,11 +302,6 @@ export async function getChatMessage(
       };
     }),
   };
-}
-
-export function newChatSessionId() {
-  const uId = new_id();
-  return uId.slice(0, 10);
 }
 
 export async function upsertChatMessage(
@@ -742,7 +737,7 @@ export async function* newChat(
     return;
   }
 
-  const sId = newChatSessionId();
+  const sId = generateModelSId();
   const session = await upsertChatSession(auth, sId, null, null);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 

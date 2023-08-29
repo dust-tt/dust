@@ -13,6 +13,17 @@ export function new_id() {
   return Buffer.from(b).toString("hex");
 }
 
+export function generateModelSId(
+  fromExistingUId: string | null = null
+): string {
+  if (fromExistingUId) {
+    return fromExistingUId.slice(0, 10);
+  }
+
+  const sId = new_id();
+  return sId.slice(0, 10);
+}
+
 export function client_side_new_id() {
   // blake3 is not available in the browser
   // remove the dashes from the uuid
