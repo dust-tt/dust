@@ -7,10 +7,12 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { ChatSessionVisibility } from "@app/types/chat";
 
 export type ChatNewPostQuery = {
   user_message: string;
   time_zone: string;
+  visibility: ChatSessionVisibility;
 };
 
 const chat_new_scheme: JSONSchemaType<ChatNewPostQuery> = {
@@ -18,8 +20,9 @@ const chat_new_scheme: JSONSchemaType<ChatNewPostQuery> = {
   properties: {
     user_message: { type: "string" },
     time_zone: { type: "string" },
+    visibility: { type: "string" },
   },
-  required: ["user_message"],
+  required: ["user_message", "visibility"],
 };
 
 async function handler(
@@ -83,6 +86,7 @@ async function handler(
 
       const userMessage = pRes.value.user_message;
       const timeZone = pRes.value.time_zone;
+      const visibility = pRes.value.visibility;
 
       try {
         Intl.DateTimeFormat(undefined, { timeZone });
@@ -106,12 +110,17 @@ async function handler(
         "New chat API call"
       );
 
-      const eventStream = newChat(auth, {
-        userMessage,
-        dataSources: null,
-        filter: null,
-        timeZone,
-      });
+      const eventStream = newChat(
+        auth,
+        {
+          userMessage,
+          dataSources: null,
+          filter: null,
+          timeZone,
+        },
+        true,
+        visibility
+      );
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",

@@ -11,6 +11,7 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { ChatSessionVisibility } from "@connectors/lib/dust_api";
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import {
   Connector,
@@ -46,12 +47,19 @@ type SlackWebhookResBody =
   | null
   | APIErrorWithStatusCode;
 
-async function handleChatBot(req: Request, res: Response) {
-  const slackMessage = req.body.event.text;
+async function handleChatBot(
+  req: Request<
+    Record<string, string>,
+    SlackWebhookResBody,
+    SlackWebhookReqBody
+  >,
+  res: Response
+) {
+  const slackMessage = req.body?.event?.text;
   const slackTeamId = req.body.team_id;
-  const slackChannel = req.body.event.channel;
-  const slackUserId = req.body.event.user;
-  const slackMessageTs = req.body.event.ts;
+  const slackChannel = req.body?.event?.channel;
+  const slackUserId = req.body?.event?.user;
+  const slackMessageTs = req.body?.event?.ts;
   if (
     !slackMessage ||
     !slackTeamId ||
@@ -71,12 +79,19 @@ async function handleChatBot(req: Request, res: Response) {
   // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
   res.status(200).send();
 
+  let visibility: ChatSessionVisibility = "private";
+
+  if (req.body.event?.type === "app_mention") {
+    visibility = "workspace";
+  }
+
   const botRes = await botAnswerMessageWithErrorHandling(
     slackMessage,
     slackTeamId,
     slackChannel,
     slackUserId,
-    slackMessageTs
+    slackMessageTs,
+    visibility
   );
   if (botRes.isErr()) {
     logger.error(

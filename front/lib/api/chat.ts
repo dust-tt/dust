@@ -119,6 +119,11 @@ export async function upsertChatSession(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
+  if (visibility && ["private", "workspace"].includes(visibility) === false) {
+    throw new Error(
+      `Unexpected visibility value: ${visibility}. Visibility must be one of 'private' or 'workspace'.`
+    );
+  }
 
   // User can be null if we are calling from API.
   const user = auth.user();
@@ -497,7 +502,8 @@ export async function* newChat(
       date_today?: string;
     };
   },
-  saveSession = true
+  saveSession = true,
+  visibility: ChatSessionVisibility | null
 ): AsyncGenerator<
   | ChatSessionCreateEvent
   | ChatMessageTriggerEvent
@@ -738,7 +744,7 @@ export async function* newChat(
   }
 
   const sId = generateModelSId();
-  const session = await upsertChatSession(auth, sId, null, null);
+  const session = await upsertChatSession(auth, sId, null, visibility);
   yield { type: "chat_session_create", session } as ChatSessionCreateEvent;
 
   for (const m of messages) {

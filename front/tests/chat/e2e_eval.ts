@@ -81,7 +81,8 @@ async function chatEval(
         timeZone: "Europe/Paris",
         context: { date_today: dateStr },
       },
-      false // the chat session is not saved
+      false, // the chat session is not saved,
+      "private"
     );
     let answer = undefined;
     for await (const event of chatRes) {

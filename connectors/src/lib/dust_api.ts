@@ -4,6 +4,7 @@ import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
 
+export type ChatSessionVisibility = "private" | "workspace";
 type DataSourceVisibility = "public" | "private";
 
 type DataSourceType = {
@@ -241,7 +242,11 @@ export class DustAPI {
     return new Ok(json.data_sources as DataSourceType[]);
   }
 
-  async newChatStreamed(userMessage: string, timezone: string) {
+  async newChatStreamed(
+    userMessage: string,
+    timezone: string,
+    visibility: ChatSessionVisibility
+  ) {
     const url = `${DUST_API}/api/v1/w/${this.workspaceId()}/chats`;
     const headers = {
       "Content-Type": "application/json",
@@ -254,6 +259,7 @@ export class DustAPI {
       body: JSON.stringify({
         user_message: userMessage,
         timezone: timezone,
+        visibility: visibility,
       }),
     });
 

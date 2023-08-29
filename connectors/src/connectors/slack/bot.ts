@@ -1,6 +1,10 @@
 import { literal } from "sequelize";
 
-import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
+import {
+  ChatSessionUpdateEvent,
+  ChatSessionVisibility,
+  DustAPI,
+} from "@connectors/lib/dust_api";
 import {
   Connector,
   ModelId,
@@ -24,7 +28,8 @@ export async function botAnswerMessageWithErrorHandling(
   slackTeamId: string,
   slackChannel: string,
   slackUserId: string,
-  slackMessageTs: string
+  slackMessageTs: string,
+  visibility: ChatSessionVisibility
 ): Promise<Result<ChatSessionUpdateEvent, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
@@ -49,7 +54,8 @@ export async function botAnswerMessageWithErrorHandling(
     slackChannel,
     slackUserId,
     slackMessageTs,
-    connector
+    connector,
+    visibility
   );
   if (res.isErr()) {
     logger.error(
@@ -97,7 +103,8 @@ async function botAnswerMessage(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string,
-  connector: Connector
+  connector: Connector,
+  visibility: ChatSessionVisibility
 ): Promise<Result<ChatSessionUpdateEvent, Error>> {
   const { DUST_API = "https://dust.tt" } = process.env;
 
@@ -169,7 +176,8 @@ async function botAnswerMessage(
   }
   const chatRes = await c.newChatStreamed(
     message,
-    slackUser.tz ? slackUser.tz : "Europe/Paris"
+    slackUser.tz ? slackUser.tz : "Europe/Paris",
+    visibility
   );
   if (chatRes.isErr()) {
     return new Err(new Error(chatRes.error.message));
