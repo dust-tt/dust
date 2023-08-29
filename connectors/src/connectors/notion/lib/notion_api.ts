@@ -389,25 +389,22 @@ async function getBlockParent(
         return null;
       }
     } catch (e) {
-      if (APIResponseError.isAPIResponseError(e)) {
-        if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
-          const waitTime = 500 * 2 ** transient_errors;
-          transient_errors += 1;
-          if (transient_errors === max_transient_errors) {
-            // We don't want to retry more than 5 times.
-            throw e;
-          }
-          localLogger.info(
-            { waitTime },
-            "Got potentially transient error. Trying again."
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          continue;
-        }
-        if (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code)) {
-          return null;
-        }
+      if (!NOTION_RETRIABLE_ERRORS.includes((e as { code: string }).code)) {
+        return null;
       }
+
+      const waitTime = 500 * 2 ** transient_errors;
+      transient_errors += 1;
+      if (transient_errors === max_transient_errors) {
+        // We don't want to retry more than 5 times.
+        throw e;
+      }
+      localLogger.info(
+        { waitTime },
+        "Got potentially transient error. Trying again."
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      continue;
     }
   }
 }
