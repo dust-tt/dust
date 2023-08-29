@@ -3,15 +3,37 @@ use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{self, PointsOperationResponse},
 };
+use std::env;
 
 #[tokio::main]
-async fn main() -> Result<()>{
+async fn main() -> Result<()> {
     let qdrant_client = client().await?;
-    let collections = qdrant_client.list_collections().await?.collections;
+    let collections = get_collections_to_index(&qdrant_client).await?;
+    println!("Collections to index: {:?}", collections.len());
     for collection in collections {
-        add_index_to_collection(&qdrant_client, collection.name).await?;
+        match add_index_to_collection(&qdrant_client, collection.name).await {
+            Ok(response) => println!("Indexing response: {:?}", response),
+            Err(error) => println!("Indexing error: {:?}", error),
+        }
     }
     Ok(())
+}
+
+async fn get_collections_to_index(
+    client: &QdrantClient,
+) -> Result<Vec<qdrant::CollectionDescription>> {
+    if let Some(collection_name) = env::args().nth(1) {
+        if collection_name == "--all" {
+            Ok(client.list_collections().await?.collections)
+        } else {
+            Ok(vec![qdrant::CollectionDescription {
+                name: collection_name,
+                ..Default::default()
+            }])
+        }
+    } else {
+        return Err(anyhow!("No collection name provided"));
+    }
 }
 
 async fn client() -> Result<QdrantClient> {
@@ -34,6 +56,7 @@ async fn add_index_to_collection(
     client: &QdrantClient,
     collection_name: String,
 ) -> Result<PointsOperationResponse> {
+    println!("Adding index to collection: {}", collection_name);
     client
         .create_field_index(
             collection_name,
