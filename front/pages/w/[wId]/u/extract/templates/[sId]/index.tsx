@@ -35,7 +35,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const schema = await getEventSchema(auth, context.params?.marker as string);
+  const schema = await getEventSchema({
+    auth,
+    sId: context.params?.sId as string,
+  });
   if (!schema) {
     return {
       notFound: true,
@@ -60,23 +63,19 @@ export default function AppExtractEventsReadData({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { events, isEventsLoading } = useExtractedEvents(owner, schema.marker);
+  const { events, isEventsLoading } = useExtractedEvents({
+    owner,
+    schemaSId: schema.sId,
+  });
 
-  const handleDelete = async (eventId: ModelId) => {
+  const handleDelete = async (sId: string) => {
     if (window.confirm("Are you sure you want to delete?")) {
       setIsProcessing(true);
-      const res = await fetch(
-        `/api/w/${owner.sId}/use/extract/${encodeURIComponent(
-          schema.marker
-        )}/events/${eventId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res = await fetch(`/api/w/${owner.sId}/use/extract/events/${sId}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
-        await mutate(
-          `/api/w/${owner.sId}/use/extract/${encodeURIComponent(schema.marker)}`
-        );
+        await mutate(`/api/w/${owner.sId}/use/extract/${schema.sId}/events`);
       } else {
         const err = (await res.json()) as { error: APIError };
         window.alert(
@@ -129,7 +128,7 @@ export default function AppExtractEventsReadData({
                       </thead>
                       <tbody>
                         {!isEventsLoading &&
-                          events.map((event) => (
+                          events.map((event: ExtractedEventType) => (
                             <tr key={event.id} className="border">
                               <td className="border px-4 py-4 text-sm text-gray-500">
                                 <EventProperties event={event} />
@@ -156,7 +155,7 @@ export default function AppExtractEventsReadData({
 
                                   <Button
                                     onClick={async () => {
-                                      await handleDelete(event.id);
+                                      await handleDelete(event.sId);
                                     }}
                                     disabled={isProcessing}
                                   >

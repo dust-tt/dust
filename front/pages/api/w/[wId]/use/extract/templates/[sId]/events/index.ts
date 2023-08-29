@@ -28,8 +28,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "extracted_event_not_found",
-        message: "The event was not found.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
       },
     });
   }
@@ -55,7 +55,7 @@ async function handler(
     });
   }
 
-  const schema = await getEventSchema(auth, req.query.marker as string);
+  const schema = await getEventSchema({ auth, sId: req.query.sId as string });
   if (!schema) {
     return apiError(req, res, {
       status_code: 404,
@@ -70,7 +70,7 @@ async function handler(
     case "GET":
       const events = await getExtractedEvents({
         auth,
-        marker: req.query.marker as string,
+        schemaSId: req.query.sId as string,
       });
       return res.status(200).json({ events });
 

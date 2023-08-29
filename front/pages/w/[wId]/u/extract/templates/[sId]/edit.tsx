@@ -30,7 +30,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const schema = await getEventSchema(auth, context.params?.marker as string);
+  const schema = await getEventSchema({
+    auth,
+    sId: context.params?.sId as string,
+  });
   if (!schema) {
     return {
       notFound: true,

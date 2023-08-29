@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteExtractedEvent, getExtractedEvent } from "@app/lib/api/extract";
-import { getEventSchema } from "@app/lib/api/extract";
+import {
+  deleteExtractedEvent,
+  getEventSchemaByModelId,
+  getExtractedEvent,
+} from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -28,8 +31,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "extracted_event_not_found",
-        message: "The event was not found.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to interact with was not found.",
       },
     });
   }
@@ -55,21 +58,10 @@ async function handler(
     });
   }
 
-  const schema = await getEventSchema(auth, req.query.marker as string);
-  if (!schema) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "event_schema_not_found",
-        message: "The event was not found.",
-      },
-    });
-  }
-
+  const eventSId = req.query.sId as string;
   const event = await getExtractedEvent({
     auth,
-    marker: req.query.marker as string,
-    eId: req.query.eId as string,
+    sId: eventSId,
   });
   if (!event) {
     return apiError(req, res, {
@@ -81,11 +73,23 @@ async function handler(
     });
   }
 
+  // Checking this event is attached to a schema that belongs to the workspace
+  const schema = await getEventSchemaByModelId({ auth, id: event.schemaId });
+  if (!schema) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "event_schema_not_found",
+        message: "The event was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "DELETE":
       await deleteExtractedEvent({
         auth,
-        eId: req.query.eId as string,
+        sId: eventSId,
       });
       res.status(200).end();
       return;

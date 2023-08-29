@@ -83,7 +83,7 @@ export function ExtractEventSchemaForm({
 
   const handleCreate = async () => {
     setIsProcessing(true);
-    const res = await fetch(`/api/w/${owner.sId}/use/extract`, {
+    const res = await fetch(`/api/w/${owner.sId}/use/extract/templates`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -107,7 +107,7 @@ export function ExtractEventSchemaForm({
     }
     setIsProcessing(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/use/extract/${schema.marker}`,
+      `/api/w/${owner.sId}/use/extract/templates/${schema.sId}`,
       {
         method: "PATCH",
         headers: {
