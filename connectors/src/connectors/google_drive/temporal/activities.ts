@@ -956,20 +956,3 @@ async function driveObjectToDustType(
     };
   }
 }
-
-export async function getGoogleDriveObjects(
-  connectorId: ModelId,
-  ids: string[]
-): Promise<GoogleDriveObjectType[]> {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-  const authCredentials = await getAuthObject(connector.connectionId);
-  const objects: GoogleDriveObjectType[] = [];
-  for (const id of ids) {
-    const object = await getGoogleDriveObject(authCredentials, id);
-    objects.push(object);
-  }
-  return objects;
-}

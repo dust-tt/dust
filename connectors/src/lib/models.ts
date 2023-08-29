@@ -798,8 +798,8 @@ export class GoogleDriveFiles extends Model<
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
-  declare name: string | null;
-  declare mimeType: string | null;
+  declare name: string;
+  declare mimeType: string;
   declare parentId: string | null;
 }
 
@@ -838,12 +838,12 @@ GoogleDriveFiles.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
       defaultValue: "",
     },
     mimeType: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
       defaultValue: "",
     },
     parentId: {
