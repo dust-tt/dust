@@ -170,19 +170,6 @@ async function handler(
         return res.status(200).json({ session: null });
       }
 
-      if (
-        chatSession.visibility === "private" &&
-        chatSession.userId !== auth.user()?.id
-      ) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "chat_session_auth_error",
-            message: "The chat session can only be retrieved by its author.",
-          },
-        });
-      }
-
       res.status(200).json({
         session: chatSession,
       });
