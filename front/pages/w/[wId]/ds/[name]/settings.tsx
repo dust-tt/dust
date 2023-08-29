@@ -138,7 +138,7 @@ export default function DataSourceSettings({
         />
       }
     >
-      <div className="flex flex-col">
+      <div className="mt-8 flex flex-col">
         {!managed ? (
           <StandardDataSourceSettings
             dataSource={dataSource}
