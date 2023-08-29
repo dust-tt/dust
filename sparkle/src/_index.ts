@@ -4,6 +4,9 @@ export { SparkleContext };
 import { Button } from "./components/Button";
 export { Button };
 
+import { SliderToggle } from "./components/SliderToggle";
+export { SliderToggle };
+
 import { Tab } from "./components/Tab";
 export { Tab };
 
