@@ -1,10 +1,12 @@
-export type GoogleDriveFileType = {
+export type GoogleDriveObjectType = {
   id: string;
   name: string;
+  parent: string | null;
   createdAtMs: number;
   updatedAtMs?: number;
   webViewLink?: string;
   mimeType: string;
+  trashed: boolean;
   lastEditor?: {
     displayName: string;
   };

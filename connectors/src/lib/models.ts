@@ -739,6 +739,7 @@ GithubDiscussion.init(
 );
 Connector.hasMany(GithubDiscussion);
 
+// GoogleDriveFolders stores the folders selected by the user to sync.
 export class GoogleDriveFolders extends Model<
   InferAttributes<GoogleDriveFolders>,
   InferCreationAttributes<GoogleDriveFolders>
@@ -785,6 +786,7 @@ GoogleDriveFolders.init(
 
 Connector.hasOne(GoogleDriveFolders);
 
+// GoogleDriveFiles stores files and folders synced from Google Drive.
 export class GoogleDriveFiles extends Model<
   InferAttributes<GoogleDriveFiles>,
   InferCreationAttributes<GoogleDriveFiles>
@@ -792,10 +794,13 @@ export class GoogleDriveFiles extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare garbageCollectedAt: Date | null;
+  declare lastSeenTs: Date | null;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
+  declare name: string;
+  declare mimeType: string;
+  declare parentId: string | null;
 }
 
 GoogleDriveFiles.init(
@@ -815,7 +820,7 @@ GoogleDriveFiles.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    garbageCollectedAt: {
+    lastSeenTs: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -830,6 +835,20 @@ GoogleDriveFiles.init(
     driveFileId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    mimeType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -956,54 +975,3 @@ GoogleDriveWebhook.init(
   }
 );
 Connector.hasOne(GoogleDriveWebhook);
-
-export class GoogleDriveBFSDedup extends Model<
-  InferAttributes<GoogleDriveBFSDedup>,
-  InferCreationAttributes<GoogleDriveBFSDedup>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
-  declare driveFolderId: string;
-  declare runId: string;
-}
-
-GoogleDriveBFSDedup.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    driveFolderId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    runId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: sequelize_conn,
-    modelName: "google_drive_bfs_dedup",
-    indexes: [
-      { fields: ["connectorId", "driveFolderId", "runId"], unique: true },
-    ],
-  }
-);

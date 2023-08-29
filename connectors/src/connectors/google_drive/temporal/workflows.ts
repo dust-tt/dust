@@ -1,11 +1,9 @@
 import {
   continueAsNew,
   executeChild,
-  ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
-  startChild,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -24,14 +22,9 @@ const {
   renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
-  getLastGCTime,
-  cleanupDedupList,
+  incrementalSync,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
-});
-
-const { incrementalSync } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "120 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
@@ -46,21 +39,24 @@ export async function googleDriveFullSync(
   dataSourceConfig: DataSourceConfig,
   garbageCollect = true,
   foldersToBrowse: string[] | undefined = undefined,
-  totalCount = 0
+  totalCount = 0,
+  startSyncTs: number | undefined = undefined
 ) {
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  const runId = `${new Date().getTime()}`;
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
+  }
   if (foldersToBrowse === undefined) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
 
   while (foldersToBrowse.length > 0) {
-    const folderId = foldersToBrowse.pop();
-    if (!folderId) {
+    const folder = foldersToBrowse.pop();
+    if (!folder) {
       throw new Error("folderId should be defined");
     }
     do {
@@ -68,8 +64,8 @@ export async function googleDriveFullSync(
         connectorId,
         nangoConnectionId,
         dataSourceConfig,
-        folderId,
-        runId,
+        folder,
+        startSyncTs,
         nextPageToken
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
@@ -88,17 +84,17 @@ export async function googleDriveFullSync(
         dataSourceConfig,
         garbageCollect,
         foldersToBrowse,
-        totalCount
+        totalCount,
+        startSyncTs
       );
     }
   }
-  await cleanupDedupList(connectorId, runId);
   await syncSucceeded(connectorId);
 
   if (garbageCollect) {
     await executeChild(googleDriveGarbageCollectorWorkflow.name, {
       workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-      args: [connectorId, nangoConnectionId, dataSourceConfig],
+      args: [connectorId, startSyncTs],
     });
   }
   console.log("googleDriveFullSync done for connectorId", connectorId);
@@ -130,6 +126,7 @@ export async function googleDriveIncrementalSync(
     }
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
     const drivesIds = await getDrivesIds(nangoConnectionId);
+    const startSyncTs = new Date().getTime();
     for (const googleDrive of drivesIds) {
       let nextPageToken: undefined | string = undefined;
       do {
@@ -138,6 +135,7 @@ export async function googleDriveIncrementalSync(
           nangoConnectionId,
           dataSourceConfig,
           googleDrive.id,
+          startSyncTs,
           nextPageToken
         );
       } while (nextPageToken);
@@ -145,14 +143,6 @@ export async function googleDriveIncrementalSync(
   }
 
   await syncSucceeded(connectorId);
-  const lastGCTime = await getLastGCTime(connectorId);
-  if (lastGCTime + 60 * 60 * 24 * 1000 < new Date().getTime()) {
-    await startChild(googleDriveGarbageCollectorWorkflow.name, {
-      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-      args: [connectorId, nangoConnectionId, dataSourceConfig],
-      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
-    });
-  }
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
@@ -172,13 +162,12 @@ export function googleDriveRenewWebhooksWorkflowId() {
 }
 
 export async function googleDriveGarbageCollectorWorkflow(
-  connectorId: ModelId
+  connectorId: ModelId,
+  gcMinTs: number
 ) {
-  const gcTs = new Date().getTime();
-
   let processed = 0;
   do {
-    processed = await garbageCollector(connectorId, gcTs);
+    processed = await garbageCollector(connectorId, gcMinTs);
   } while (processed > 0);
 
   await garbageCollectorFinished(connectorId);

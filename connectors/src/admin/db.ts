@@ -3,7 +3,6 @@ import {
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
-  GoogleDriveBFSDedup,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -34,7 +33,6 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
-  await GoogleDriveBFSDedup.sync({ alter: true });
 }
 
 main()
