@@ -531,14 +531,15 @@ export default function DataSourcesView({
                                 isLoadingByProvider[
                                   ds.connectorProvider as ConnectorProvider
                                 ] ||
-                                !isAdmin
+                                // Can't manage or view if not (admin or not readonly (ie builder)).
+                                !(isAdmin || !readOnly)
                               }
                               onClick={() => {
                                 void router.push(
                                   `/w/${owner.sId}/ds/${ds.dataSourceName}`
                                 );
                               }}
-                              label="Manage"
+                              label={isAdmin ? "Manage" : "View"}
                             />
                           );
                         }

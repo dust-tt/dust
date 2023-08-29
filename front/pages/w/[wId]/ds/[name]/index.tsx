@@ -32,7 +32,7 @@ import {
 } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
 import { useDocuments } from "@app/lib/swr";
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -51,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   readOnly: boolean;
+  isAdmin: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType | null;
   nangoConfig: {
@@ -94,12 +95,14 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const readOnly = !auth.isBuilder();
+  const isAdmin = auth.isAdmin();
 
   return {
     props: {
       user,
       owner,
       readOnly,
+      isAdmin,
       dataSource,
       connector,
       nangoConfig: {
@@ -372,6 +375,7 @@ const CONNECTOR_TYPE_TO_SHOW_EXPAND: Record<ConnectorProvider, boolean> = {
 function ManagedDataSourceView({
   owner,
   readOnly,
+  isAdmin,
   dataSource,
   connector,
   nangoConfig,
@@ -379,6 +383,7 @@ function ManagedDataSourceView({
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
+  isAdmin: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType;
   nangoConfig: {
@@ -549,7 +554,7 @@ function ManagedDataSourceView({
               }}
             />
           </div>
-          <div className="flex">
+          <div className={classNames(isAdmin ? "flex" : "hidden")}>
             <Button
               label="Edit permissions"
               type="secondary"
@@ -584,6 +589,7 @@ export default function DataSourceView({
   user,
   owner,
   readOnly,
+  isAdmin,
   dataSource,
   connector,
   nangoConfig,
@@ -606,6 +612,7 @@ export default function DataSourceView({
           {...{
             owner,
             readOnly,
+            isAdmin,
             dataSource,
             connector,
             nangoConfig,
