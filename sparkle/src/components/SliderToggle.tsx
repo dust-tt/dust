@@ -31,9 +31,9 @@ export function SliderToggle({
 }: SliderToggleProps) {
   const combinedStateClasses = classNames(
     selected ? stateClasses.selected : stateClasses.idle,
-    disabled && stateClasses.disabled,
+    disabled ? stateClasses.disabled : "",
     selected ? stateClasses.dark.selected : stateClasses.dark.idle,
-    disabled && stateClasses.dark.disabled
+    disabled ? stateClasses.dark.disabled : ""
   );
 
   const SliderToggleContent = (
@@ -49,7 +49,7 @@ export function SliderToggle({
         id="cursor"
         className={classNames(
           "s-m-px s-h-5 s-w-5 s-transform s-rounded-full s-bg-white s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
-          selected && "s-translate-x-full"
+          selected ? "s-translate-x-full" : ""
         )}
       />
     </div>
