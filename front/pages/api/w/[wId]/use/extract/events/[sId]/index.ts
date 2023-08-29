@@ -1,22 +1,25 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  deleteExtractedEvent,
   getEventSchemaByModelId,
   getExtractedEvent,
+  updateExtractedEvent,
 } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ExtractedEventType } from "@app/types/extract";
 
+export type GetExtractedEventResponseBody = {
+  event: ExtractedEventType;
+};
 export type GetExtractedEventsResponseBody = {
   events: ExtractedEventType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetExtractedEventsResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<GetExtractedEventResponseBody | ReturnedAPIErrorType>
 ) {
   const session = await getSession(req, res);
   const user = await getUserFromSession(session);
@@ -47,13 +50,12 @@ async function handler(
     });
   }
 
-  if (!auth.isUser()) {
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can retrieve extracted events.",
+        message: "Only builders can edit extracted events.",
       },
     });
   }
@@ -86,12 +88,39 @@ async function handler(
   }
 
   switch (req.method) {
-    case "DELETE":
-      await deleteExtractedEvent({
+    case "PATCH":
+      if (
+        !req.body ||
+        !(typeof req.body.status == "string") ||
+        !["pending", "accepted", "rejected"].includes(req.body.status)
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request body is invalid, expects { status: string }.",
+          },
+        });
+      }
+
+      const updatedEvent = await updateExtractedEvent({
         auth,
         sId: eventSId,
+        status: req.body.status,
       });
-      res.status(200).end();
+
+      if (!updatedEvent) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request could not be processed.",
+          },
+        });
+      }
+      res.status(200).json({
+        event: updatedEvent,
+      });
       return;
 
     default:
@@ -99,7 +128,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message: "The method passed is not supported, PATCH is expected.",
         },
       });
   }

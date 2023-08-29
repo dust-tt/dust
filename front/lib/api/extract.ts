@@ -228,16 +228,18 @@ export async function getExtractedEvents({
   });
 }
 
-export async function deleteExtractedEvent({
+export async function updateExtractedEvent({
   auth,
   sId,
+  status,
 }: {
   auth: Authenticator;
   sId: string;
-}): Promise<boolean> {
+  status: "accepted" | "rejected";
+}): Promise<ExtractedEventType | null> {
   const owner = auth.workspace();
   if (!owner) {
-    return false;
+    return null;
   }
 
   const event = await ExtractedEvent.findOne({
@@ -247,7 +249,7 @@ export async function deleteExtractedEvent({
   });
 
   if (!event) {
-    return false;
+    return null;
   }
 
   // Make sure the event belongs to the workspace before editing
@@ -257,9 +259,12 @@ export async function deleteExtractedEvent({
     },
   });
   if (!schema || schema.workspaceId !== owner.id) {
-    return false;
+    return null;
   }
 
-  await event.destroy();
-  return true;
+  await event.update({
+    status,
+  });
+
+  return _getExtractedEventType(event);
 }

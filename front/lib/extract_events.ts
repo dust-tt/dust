@@ -170,6 +170,7 @@ async function _processExtractEvent(data: {
       sId: generateModelSId(),
       documentId: documentId,
       properties: properties,
+      status: "pending",
       eventSchemaId: schema.id,
       dataSourceName: dataSourceName,
       documentSourceUrl: documentSourceUrl || null,

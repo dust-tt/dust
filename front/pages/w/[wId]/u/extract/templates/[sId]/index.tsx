@@ -9,7 +9,6 @@ import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { ModelId } from "@app/lib/models";
 import { useExtractedEvents } from "@app/lib/swr";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -68,21 +67,37 @@ export default function AppExtractEventsReadData({
     schemaSId: schema.sId,
   });
 
-  const handleDelete = async (sId: string) => {
-    if (window.confirm("Are you sure you want to delete?")) {
-      setIsProcessing(true);
-      const res = await fetch(`/api/w/${owner.sId}/use/extract/events/${sId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        await mutate(`/api/w/${owner.sId}/use/extract/${schema.sId}/events`);
-      } else {
-        const err = (await res.json()) as { error: APIError };
-        window.alert(
-          `Failed to delete: ${err.error.message} (Contact team@dust.tt for assistance).`
-        );
-      }
-      setIsProcessing(false);
+  const _handleUpdate = async (
+    sId: string,
+    status: "accepted" | "rejected"
+  ) => {
+    setIsProcessing(true);
+    const res = await fetch(`/api/w/${owner.sId}/use/extract/events/${sId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      await mutate(`/api/w/${owner.sId}/use/extract/${schema.sId}/events`);
+    } else {
+      const err = (await res.json()) as { error: APIError };
+      window.alert(
+        `Failed to delete: ${err.error.message} (Contact team@dust.tt for assistance).`
+      );
+    }
+    setIsProcessing(false);
+    return true;
+  };
+
+  const handleAccept = async (sId: string) => {
+    await _handleUpdate(sId, "accepted");
+  };
+
+  const handleReject = async (sId: string) => {
+    if (window.confirm("Are you sure you want to reject?")) {
+      await _handleUpdate(sId, "rejected");
       return true;
     } else {
       return false;
@@ -155,11 +170,19 @@ export default function AppExtractEventsReadData({
 
                                   <Button
                                     onClick={async () => {
-                                      await handleDelete(event.sId);
+                                      await handleAccept(event.sId);
                                     }}
                                     disabled={isProcessing}
                                   >
-                                    Delete data
+                                    Accept data
+                                  </Button>
+                                  <Button
+                                    onClick={async () => {
+                                      await handleReject(event.sId);
+                                    }}
+                                    disabled={isProcessing}
+                                  >
+                                    Reject data
                                   </Button>
                                 </div>
                               </td>
