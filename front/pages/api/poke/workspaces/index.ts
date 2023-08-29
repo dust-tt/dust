@@ -141,7 +141,6 @@ async function handler(
       return res.status(200).json({
         workspaces: workspaces.map((ws) => ({
           id: ws.id,
-          uId: ws.uId,
           sId: ws.sId,
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,

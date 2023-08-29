@@ -78,7 +78,6 @@ async function handler(
       return res.status(200).json({
         workspace: {
           id: workspace.id,
-          uId: workspace.uId,
           sId: workspace.sId,
           name: workspace.name,
           allowedDomain: workspace.allowedDomain || null,

@@ -213,7 +213,6 @@ export class Authenticator {
     return this._workspace
       ? {
           id: this._workspace.id,
-          uId: this._workspace.uId,
           sId: this._workspace.sId,
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
@@ -319,7 +318,6 @@ export async function getUserFromSession(
       }
       return {
         id: w.id,
-        uId: w.uId,
         sId: w.sId,
         name: w.name,
         allowedDomain: w.allowedDomain || null,

@@ -13,13 +13,7 @@ export function new_id() {
   return Buffer.from(b).toString("hex");
 }
 
-export function generateModelSId(
-  fromExistingUId: string | null = null
-): string {
-  if (fromExistingUId) {
-    return fromExistingUId.slice(0, 10);
-  }
-
+export function generateModelSId(): string {
   const sId = new_id();
   return sId.slice(0, 10);
 }

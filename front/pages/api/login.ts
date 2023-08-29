@@ -138,8 +138,6 @@ async function handler(
       // The user does not exist. We create it and create a personal workspace if there is no invite
       // associated with the login request.
       if (!user) {
-        const uId = new_id();
-
         user = await User.create({
           provider: session.provider.provider,
           providerId: session.provider.id.toString(),
@@ -152,8 +150,7 @@ async function handler(
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
           const w = await Workspace.create({
-            uId,
-            sId: generateModelSId(uId),
+            sId: generateModelSId(),
             name: session.user.username,
           });
 

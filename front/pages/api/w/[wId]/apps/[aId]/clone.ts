@@ -104,12 +104,10 @@ async function handler(
       }
 
       const description = req.body.description ? req.body.description : null;
-      const uId = new_id();
 
       const [cloned] = await Promise.all([
         App.create({
-          uId,
-          sId: generateModelSId(uId),
+          sId: generateModelSId(),
           name: req.body.name,
           description,
           visibility: req.body.visibility,
@@ -138,7 +136,6 @@ async function handler(
       res.status(201).json({
         app: {
           id: cloned.id,
-          uId: cloned.uId,
           sId: cloned.sId,
           name: cloned.name,
           description: cloned.description,

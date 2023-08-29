@@ -75,11 +75,9 @@ async function handler(
       }
 
       const description = req.body.description ? req.body.description : null;
-      const uId = new_id();
 
       const app = await App.create({
-        uId,
-        sId: generateModelSId(uId),
+        sId: generateModelSId(),
         name: req.body.name,
         description,
         visibility: req.body.visibility,
@@ -90,7 +88,6 @@ async function handler(
       res.status(201).json({
         app: {
           id: app.id,
-          uId: app.uId,
           sId: app.sId,
           name: app.name,
           description: app.description,

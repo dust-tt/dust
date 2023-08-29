@@ -109,11 +109,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      const uId = new_id();
-
       const w = await Workspace.create({
-        uId,
-        sId: generateModelSId(uId),
+        sId: generateModelSId(),
         name: args.name,
       });
 

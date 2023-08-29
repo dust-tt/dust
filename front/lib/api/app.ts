@@ -35,7 +35,6 @@ export async function getApp(
 
   return {
     id: app.id,
-    uId: app.uId,
     sId: app.sId,
     name: app.name,
     description: app.description,
@@ -72,7 +71,6 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
   return apps.map((app) => {
     return {
       id: app.id,
-      uId: app.uId,
       sId: app.sId,
       name: app.name,
       description: app.description,
