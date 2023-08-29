@@ -332,10 +332,18 @@ async function getBlockParent(
   parentId: string;
   parentType: "database" | "page" | "workspace";
 } | null> {
-  const notionClient = new Client({ auth: notionAccessToken });
+  // we attempt to go up the tree of blocks until we find a page or a database (or the workspace)
+  // - after 8 levels of block parents, we give up and return null
+  // - if we encounter a block that is not a full block, or we get a non-retriable error, we give up and return null
+  // - if we get 5 transient errors in a row, we throw an error (we let the tempooral activity manage the retries)
+  const max_depth = 8;
+  const max_transient_errors = 5;
 
-  // We attempt going up 8 times (including retries)
-  for (let a = 0; a < 8; a++) {
+  const notionClient = new Client({ auth: notionAccessToken });
+  let depth = 0;
+  let transient_errors = 0;
+
+  for (;;) {
     localLogger.info({ blockId }, "Looking up block parent");
     try {
       const block = await notionClient.blocks.retrieve({
@@ -374,15 +382,26 @@ async function getBlockParent(
           })(blockParent);
           return null;
       }
+
+      depth += 1;
+      if (depth === max_depth) {
+        // We don't want to go up more than 8 levels.
+        return null;
+      }
     } catch (e) {
       if (APIResponseError.isAPIResponseError(e)) {
         if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
-          const waitTime = 500 * 2 ** a;
+          const waitTime = 500 * 2 ** transient_errors;
+          transient_errors += 1;
+          if (transient_errors === max_transient_errors) {
+            // We don't want to retry more than 5 times.
+            throw e;
+          }
           localLogger.info(
             { waitTime },
             "Got potentially transient error. Trying again."
           );
-          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** a));
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
           continue;
         }
         if (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code)) {
@@ -391,8 +410,6 @@ async function getBlockParent(
       }
     }
   }
-
-  return null;
 }
 
 export const getBlockParentMemoized = memoize(
