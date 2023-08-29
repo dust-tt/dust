@@ -9,7 +9,6 @@ export type BlockRunConfig = {
 
 export type AppType = {
   id: ModelId;
-  uId: string;
   sId: string;
   name: string;
   description?: string;

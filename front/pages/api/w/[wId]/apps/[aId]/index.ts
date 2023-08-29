@@ -101,7 +101,6 @@ async function handler(
       res.status(200).json({
         app: {
           id: app.id,
-          uId: app.uId,
           sId: app.sId,
           name: app.name,
           description: app.description,
