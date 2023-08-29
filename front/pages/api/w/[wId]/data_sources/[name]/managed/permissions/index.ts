@@ -71,6 +71,27 @@ async function handler(
     });
   }
 
+  if (!dataSource.connectorId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message: "The data source you requested is not managed.",
+      },
+    });
+  }
+
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can view the permissions of a data source.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       let parentId: string | undefined = undefined;
@@ -85,16 +106,6 @@ async function handler(
         ["read"].includes(req.query.filterPermission)
       ) {
         filterPermission = "read";
-      }
-
-      if (!dataSource.connectorId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "data_source_not_managed",
-            message: "The data source you requested is not managed.",
-          },
-        });
       }
 
       const permissionsRes = await ConnectorsAPI.getConnectorPermissions({
@@ -120,12 +131,13 @@ async function handler(
       return;
 
     case "POST":
-      if (!dataSource.connectorId) {
+      if (!auth.isAdmin()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 403,
           api_error: {
-            type: "data_source_not_managed",
-            message: "The data source you requested is not managed.",
+            type: "data_source_auth_error",
+            message:
+              "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
           },
         });
       }
