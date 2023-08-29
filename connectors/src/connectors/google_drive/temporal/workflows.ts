@@ -92,7 +92,7 @@ export async function googleDriveFullSync(
   await syncSucceeded(connectorId);
 
   if (garbageCollect) {
-    await executeChild(googleDriveGarbageCollectorWorkflow.name, {
+    await executeChild(googleDriveGarbageCollectorWorkflow, {
       workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
       args: [connectorId, startSyncTs],
     });

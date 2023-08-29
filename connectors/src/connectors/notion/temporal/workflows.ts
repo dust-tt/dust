@@ -158,7 +158,7 @@ export async function notionSyncWorkflow(
           }`;
           promises.push(
             childWorkflowQueue.add(() =>
-              executeChild(notionSyncResultPageWorkflow.name, {
+              executeChild(notionSyncResultPageWorkflow, {
                 workflowId,
                 args: [
                   dataSourceConfig,
@@ -193,7 +193,7 @@ export async function notionSyncWorkflow(
           }`;
           promises.push(
             childWorkflowQueue.add(() =>
-              executeChild(notionSyncResultPageDatabaseWorkflow.name, {
+              executeChild(notionSyncResultPageDatabaseWorkflow, {
                 workflowId,
                 args: [
                   dataSourceConfig,

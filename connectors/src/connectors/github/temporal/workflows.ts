@@ -75,7 +75,7 @@ export async function githubFullSyncWorkflow(
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}`;
       promises.push(
         queue.add(() =>
-          executeChild(githubRepoSyncWorkflow.name, {
+          executeChild(githubRepoSyncWorkflow, {
             workflowId: childWorkflowId,
             args: [
               dataSourceConfig,
@@ -110,7 +110,7 @@ export async function githubReposSyncWorkflow(
     const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
     promises.push(
       queue.add(() =>
-        executeChild(githubRepoSyncWorkflow.name, {
+        executeChild(githubRepoSyncWorkflow, {
           workflowId: childWorkflowId,
           args: [
             dataSourceConfig,

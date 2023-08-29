@@ -55,10 +55,10 @@ export async function workspaceFullSync(
   const channels = await getChannels(slackAccessToken);
   let i = 0;
   for (const channel of channels) {
-    if (!channel.id) {
+    if (!channel.id || !channel.name) {
       throw new Error(`Channel ${channel.name} has no id`);
     }
-    await executeChild(syncOneChannel.name, {
+    await executeChild(syncOneChannel, {
       workflowId: syncOneChanneWorkflowlId(connectorId, channel.id),
       args: [
         connectorId,
