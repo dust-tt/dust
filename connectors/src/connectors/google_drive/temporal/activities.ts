@@ -244,7 +244,7 @@ export async function syncFiles(
             true // isBatchSync
           );
         } else {
-          await deleteOneFile(connectorId, file.id);
+          await deleteOneFile(connectorId, file);
         }
       });
     })
@@ -555,12 +555,12 @@ export async function incrementalSync(
       if (!change.file.id) {
         continue;
       }
-
+      const file = await driveObjectToDustType(change.file, authCredentials);
       if (
         !(await objectIsInFolders(
           connectorId,
           authCredentials,
-          await driveObjectToDustType(change.file, authCredentials),
+          file,
           selectedFoldersIds,
           startSyncTs
         )) ||
@@ -575,7 +575,7 @@ export async function incrementalSync(
           },
         });
         if (localFile) {
-          await deleteOneFile(connectorId, change.file.id);
+          await deleteOneFile(connectorId, file);
         }
         continue;
       }
@@ -714,7 +714,7 @@ export async function garbageCollector(
             lastSeenTs
           );
           if (isInFolder === false || driveFile.trashed) {
-            await deleteOneFile(connectorId, file.driveFileId);
+            await deleteOneFile(connectorId, driveFile);
           } else {
             await file.update({
               lastSeenTs: new Date(),
@@ -857,11 +857,14 @@ export async function getLastGCTime(connectorId: ModelId): Promise<number> {
   return connector.lastGCTime?.getTime() || 0;
 }
 
-async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
+async function deleteOneFile(
+  connectorId: ModelId,
+  file: GoogleDriveObjectType
+) {
   const googleDriveFile = await GoogleDriveFiles.findOne({
     where: {
       connectorId: connectorId,
-      driveFileId: driveFileId,
+      driveFileId: file.id,
     },
   });
   const connector = await Connector.findByPk(connectorId);
@@ -872,13 +875,16 @@ async function deleteOneFile(connectorId: ModelId, driveFileId: string) {
   if (googleDriveFile) {
     logger.info(
       {
-        driveFileId,
+        driveFileId: file.id,
         connectorId,
       },
       `Deleting Google Drive file.`
     );
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+
+    if (file.mimeType !== "application/vnd.google-apps.folder") {
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+      await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    }
     await googleDriveFile.destroy();
   }
   return;
