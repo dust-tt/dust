@@ -1,8 +1,7 @@
 import {
   Button,
   CheckCircleIcon,
-  IconButton,
-  XCircleStrokeIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { LinkIcon } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
@@ -164,7 +163,14 @@ export function AppLayoutSimpleCloseTitle({
         </div>
       </div>
       <div className="flex flex-1"></div>
-      <IconButton type="secondary" onClick={onClose} icon={XCircleStrokeIcon} />
+      <Button
+        label="Close"
+        labelVisible={false}
+        tooltipPosition="below"
+        type="tertiary"
+        onClick={onClose}
+        icon={XMarkIcon}
+      />
     </div>
   );
 }

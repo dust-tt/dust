@@ -147,9 +147,7 @@ function NavigationBar({
             })}
           </div>
         )}
-        <div>
-          <a href=""></a>
-        </div>
+        <div />
       </div>
       <div className="mt-1 flex grow flex-col">{children}</div>
     </div>
@@ -282,7 +280,7 @@ export default function AppLayout({
           <div
             className={classNames(
               "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row lg:left-80",
-              "bg-white/30 backdrop-blur-md",
+              "border-b border-structure-100 bg-white/30 backdrop-blur-md",
               titleChildren ? "fixed" : "lg:hidden"
             )}
           >
