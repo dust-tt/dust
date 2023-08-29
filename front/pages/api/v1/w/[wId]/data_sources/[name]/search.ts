@@ -24,6 +24,8 @@ export type DatasourceSearchQuery = {
   timestamp_lt?: number;
   tags_in?: string[];
   tags_not?: string[];
+  parents_in?: string[];
+  parents_not?: string[];
 };
 
 const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
@@ -37,6 +39,8 @@ const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
     timestamp_lt: { type: "number", nullable: true },
     tags_in: { type: "array", items: { type: "string" }, nullable: true },
     tags_not: { type: "array", items: { type: "string" }, nullable: true },
+    parents_in: { type: "array", items: { type: "string" }, nullable: true },
+    parents_not: { type: "array", items: { type: "string" }, nullable: true },
   },
   required: ["query", "top_k", "full_text"],
 };
@@ -117,6 +121,10 @@ export default async function handler(
             tags: {
               in: query.tags_in,
               not: query.tags_not,
+            },
+            parents: {
+              in: query.parents_in,
+              not: query.parents_not,
             },
             timestamp: {
               gt: query.timestamp_gt,

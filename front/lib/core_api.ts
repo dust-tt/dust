@@ -471,6 +471,10 @@ export const CoreAPI = {
           in?: string[] | null;
           not?: string[] | null;
         };
+        parents?: {
+          in?: string[] | null;
+          not?: string[] | null;
+        };
         timestamp?: {
           gt?: number | null;
           lt?: number | null;

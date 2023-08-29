@@ -23,10 +23,20 @@ use tokio::try_join;
 use tokio_stream::{self as stream};
 use uuid::Uuid;
 
-/// A filter to apply to the search query based on `tags`. All documents returned must have at list
+/// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TagsFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
+/// A filter to apply to the search query based on document parents. All documents returned must have at least
+/// one parent in `is_in` and none of their parents in `is_not`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ParentsFilter {
     #[serde(rename = "in")]
     pub is_in: Option<Vec<String>>,
     #[serde(rename = "not")]
@@ -42,10 +52,11 @@ pub struct TimestampFilter {
 }
 
 /// Filter argument to perform semantic search. It is used to filter the search results based on the
-/// presence of tags or time spans for timestamps.
+/// presence of tags, parents, or time spans for timestamps.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchFilter {
     pub tags: Option<TagsFilter>,
+    pub parents: Option<ParentsFilter>,
     pub timestamp: Option<TimestampFilter>,
 }
 
@@ -68,10 +79,36 @@ pub struct Chunk {
     pub score: Option<f64>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no chunks, they are
-/// directly inserted in the vector search db). It is also used as a result from search (only the
-/// retrieved chunks are provided in the result). `hash` covers both the original document id and
-/// text and the document metadata and is used to no-op in case of match.
+/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// chunks, they are directly inserted in the vector search db). It is also used
+/// as a result from search (only the retrieved chunks are provided in the
+/// result). `hash` covers both the original document id and text and the
+/// document metadata and is used to no-op in case of match.
+///
+/// Field details - `parents`
+/// =========================
+/// The "parents" field is an array of ids of parents to the document,
+/// corresponding to its hierarchy, ordered by closest parent first.
+///
+/// At index 0 is the document's direct parent, then at index 1 is the direct
+/// parent of the element represented at index 0, etc. It is assumed that a
+/// document (or folder, or hierarchical level) only has at most one direct
+/// parent. Therefore, there is an unambiguous mapping between the parents array
+/// and the document's hierarchical position. For example, for a regular file
+/// system (or filesystem-like such as Google Drive), each parent would
+/// correspond to a subfolder in the path to the document.
+///
+/// Note however that the hierarchical system depends on the managed datasource.
+/// For example, in the Slack managed datasource, documents only have a single
+/// parent in the array, their channel (since a channel does not have any
+/// parent).
+///
+/// Parents are at the time of writing only relevant for managed datasources
+/// since standard datasources do not allow specifying a hierarchy. A parent is
+/// represented by a string of characters which correspond to the parent's
+/// internal id (specific to the managed datasource)--not its name--provided by
+/// the managed datasource.
+
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub data_source_id: String,
@@ -790,33 +827,29 @@ impl DataSource {
                 match f.tags {
                     Some(tags) => {
                         match tags.is_in.clone() {
-                            Some(v) => must_filter.push(
-                                qdrant::FieldCondition {
-                                    key: "tags".to_string(),
-                                    r#match: Some(qdrant::Match {
-                                        match_value: Some(qdrant::r#match::MatchValue::Keywords(
-                                            qdrant::RepeatedStrings { strings: v },
-                                        )),
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ),
+                            Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
                             None => (),
                         };
                         match tags.is_not.clone() {
-                            Some(v) => must_not_filter.push(
-                                qdrant::FieldCondition {
-                                    key: "tags".to_string(),
-                                    r#match: Some(qdrant::Match {
-                                        match_value: Some(qdrant::r#match::MatchValue::Keywords(
-                                            qdrant::RepeatedStrings { strings: v },
-                                        )),
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ),
+                            Some(v) => {
+                                must_not_filter.push(qdrant_match_field_condition("tags", v))
+                            }
+                            None => (),
+                        };
+                    }
+                    None => (),
+                };
+
+                match f.parents {
+                    Some(parents) => {
+                        match parents.is_in.clone() {
+                            Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
+                            None => (),
+                        };
+                        match parents.is_not.clone() {
+                            Some(v) => {
+                                must_not_filter.push(qdrant_match_field_condition("parents", v))
+                            }
                             None => (),
                         };
                     }
@@ -865,6 +898,19 @@ impl DataSource {
             }
             None => None,
         };
+
+        fn qdrant_match_field_condition(key: &str, v: Vec<String>) -> qdrant::Condition {
+            qdrant::FieldCondition {
+                key: key.to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keywords(
+                        qdrant::RepeatedStrings { strings: v },
+                    )),
+                }),
+                ..Default::default()
+            }
+            .into()
+        }
 
         let time_search_start = utils::now();
         let results = qdrant_client
