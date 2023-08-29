@@ -25,7 +25,6 @@ async function main() {
             const uId = new_id();
 
             const w = await Workspace.create({
-              uId,
               sId: uId.slice(0, 10),
               name: u.username,
               //@ts-expect-error old migration code kept for reference

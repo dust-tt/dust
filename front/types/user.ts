@@ -19,7 +19,6 @@ export type PlanType = {
 
 export type WorkspaceType = {
   id: ModelId;
-  uId: string;
   sId: string;
   name: string;
   allowedDomain: string | null;

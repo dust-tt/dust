@@ -142,7 +142,6 @@ export class Workspace extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare uId: string;
   declare sId: string;
   declare name: string;
   declare description?: string;
@@ -166,10 +165,6 @@ Workspace.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    uId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     sId: {
       type: DataTypes.STRING,
