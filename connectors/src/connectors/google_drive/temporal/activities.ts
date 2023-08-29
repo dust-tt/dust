@@ -387,6 +387,7 @@ async function syncOneFile(
   if (file.lastEditor) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
+  tags.push(`mimeType:${file.mimeType}`);
 
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
