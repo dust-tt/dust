@@ -1193,17 +1193,6 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        // Serialize the updated tags into a JSON string
-        let updated_tags_json = serde_json::to_string(&updated_tags_vec)?;
-
-        // TODO @fontanierh: delete stmt once migrated to tags_array
-        tx.execute(
-            "UPDATE data_sources_documents SET tags_json = $1 \
-            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
-            &[&updated_tags_json, &data_source_row_id, &document_id],
-        )
-        .await?;
-
         tx.commit().await?;
 
         Ok(updated_tags_vec)
@@ -1388,16 +1377,14 @@ impl Store for PostgresStore {
             .await?;
 
         let stmt = tx
-            // TODO @fontanierh: remove tags_json once we have tags_array everywhere
             .prepare(
                 "INSERT INTO data_sources_documents \
-                   (id, data_source, created, document_id, timestamp, tags_json, tags_array, parents, \
+                   (id, data_source, created, document_id, timestamp, tags_array, parents, \
                     source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
             )
             .await?;
 
-        let document_tags_json_string = serde_json::to_string(&document_tags)?;
         tx.query_one(
             &stmt,
             &[
@@ -1405,7 +1392,6 @@ impl Store for PostgresStore {
                 &(document_created as i64),
                 &document_id,
                 &(document_timestamp as i64),
-                &document_tags_json_string,
                 &document_tags,
                 &document_parents,
                 &document_source_url,
