@@ -288,7 +288,7 @@ pub const POSTGRES_TABLES: [&'static str; 11] = [
        created                  BIGINT NOT NULL,
        document_id              TEXT NOT NULL,
        timestamp                BIGINT NOT NULL,
-       tags_json                TEXT NOT NULL,
+       tags_json                TEXT,
        tags_array               TEXT[] NOT NULL,
        parents                  TEXT[] NOT NULL,
        source_url               TEXT,
