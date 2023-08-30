@@ -13,12 +13,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const SolidIconSet = () => (
-  <ListItem className="s-w-40">
-    <ItemSectionHeader label="Section Header" />
-    <Item size="sm" label="Item 1" />
-    <Item size="sm" label="Item 2" />
-    <Item size="sm" label="Item 3" />
-  </ListItem>
+  <div>
+    <ListItem className="s-w-40">
+      <ItemSectionHeader label="Section Header" />
+      <Item size="sm" label="Item 1" />
+      <Item size="sm" label="Item 2" />
+      <Item size="sm" label="Item 3" />
+    </ListItem>
+    <div className="s-h-8" />
+    <ListItem className="s-w-40">
+      <ItemSectionHeader label="Section Header" />
+      <Item size="md" label="Item 1" icon={Cog6ToothIcon} />
+      <Item size="md" label="Item 2" icon={Cog6ToothIcon} />
+      <Item size="md" label="Item 3" icon={Cog6ToothIcon} />
+    </ListItem>
+  </div>
 );
 
 export const ItemMD: Story = {
