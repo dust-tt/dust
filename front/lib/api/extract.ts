@@ -249,10 +249,12 @@ export async function updateExtractedEvent({
   auth,
   sId,
   status,
+  properties,
 }: {
   auth: Authenticator;
   sId: string;
-  status: "accepted" | "rejected";
+  status: "accepted" | "rejected" | null;
+  properties: object | null;
 }): Promise<ExtractedEventType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -279,9 +281,15 @@ export async function updateExtractedEvent({
     return null;
   }
 
-  await event.update({
-    status,
-  });
+  if (status) {
+    await event.update({
+      status,
+    });
+  } else if (properties) {
+    await event.update({
+      properties,
+    });
+  }
 
   return _getExtractedEventType(event);
 }

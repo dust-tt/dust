@@ -73,25 +73,44 @@ async function handler(
 
   switch (req.method) {
     case "PATCH":
+      let isRequestValid = false;
       if (
-        !req.body ||
-        !(typeof req.body.status == "string") ||
-        !["pending", "accepted", "rejected"].includes(req.body.status)
+        typeof req.body.status == "string" &&
+        ["pending", "accepted", "rejected"].includes(req.body.status)
       ) {
+        isRequestValid = true;
+      }
+      if (typeof req.body.properties == "string") {
+        isRequestValid = true;
+      }
+
+      if (!isRequestValid) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The request body is invalid, expects { status: string }.",
+            message: "The request body is invalid.",
           },
         });
       }
 
-      const updatedEvent = await updateExtractedEvent({
-        auth,
-        sId: eventSId,
-        status: req.body.status,
-      });
+      let updatedEvent = null;
+      if (req.body.status) {
+        updatedEvent = await updateExtractedEvent({
+          auth,
+          sId: eventSId,
+          status: req.body.status,
+          properties: null,
+        });
+      }
+      if (req.body.properties) {
+        updatedEvent = await updateExtractedEvent({
+          auth,
+          sId: eventSId,
+          status: null,
+          properties: JSON.parse(req.body.properties),
+        });
+      }
 
       if (!updatedEvent) {
         return apiError(req, res, {
