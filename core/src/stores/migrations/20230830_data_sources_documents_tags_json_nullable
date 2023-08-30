@@ -1,0 +1,5 @@
+ALTER TABLE
+    data_sources_documents 
+ALTER COLUMN 
+    tags_json 
+DROP NOT NULL;
