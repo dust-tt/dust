@@ -1340,7 +1340,7 @@ impl Store for PostgresStore {
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)> {
         let pool = self.pool.clone();
-        let mut c = pool.get().await?;
+        let c = pool.get().await?;
 
         let project_id = project.project_id().clone();
 
@@ -1354,12 +1354,14 @@ impl Store for PostgresStore {
 
         let mut p_idx: usize = 3;
 
-        let mut tags_is_in: Vec<String> = vec![];
-        let mut tags_is_not: Vec<String> = vec![];
-        let mut parents_is_in: Vec<String> = vec![];
-        let mut parents_is_not: Vec<String> = vec![];
-        let mut timestamp_gt: i64 = 0;
-        let mut timestamp_lt: i64 = 0;
+        // these need to be declared outside of the match block
+        // otherwise we cannot add them to the params vector
+        let tags_is_in: Vec<String>;
+        let tags_is_not: Vec<String>;
+        let parents_is_in: Vec<String>;
+        let parents_is_not: Vec<String>;
+        let ts_gt: i64;
+        let ts_lt: i64;
 
         match filter {
             None => (),
@@ -1418,8 +1420,8 @@ impl Store for PostgresStore {
                             Some(ts) => {
                                 where_clauses.push(format!("timestamp > ${}", p_idx));
                                 p_idx += 1;
-                                timestamp_gt = ts as i64;
-                                params.push(&timestamp_gt);
+                                ts_gt = ts as i64;
+                                params.push(&ts_gt);
                             }
                         }
                         match ts_filter.lt {
@@ -1427,8 +1429,8 @@ impl Store for PostgresStore {
                             Some(ts) => {
                                 where_clauses.push(format!("timestamp < ${}", p_idx));
                                 p_idx += 1;
-                                timestamp_lt = ts as i64;
-                                params.push(&timestamp_lt);
+                                ts_lt = ts as i64;
+                                params.push(&ts_lt);
                             }
                         }
                     }
@@ -1454,16 +1456,13 @@ impl Store for PostgresStore {
         };
 
         if limit_offset.is_some() {
-            query = query
-                + " LIMIT $"
-                + &param_index.to_string()
-                + " OFFSET $"
-                + &(param_index + 1).to_string();
+            query =
+                query + " LIMIT $" + &p_idx.to_string() + " OFFSET $" + &(p_idx + 1).to_string();
             params.push(&limit);
             params.push(&offset);
         }
 
-        let r = c.query(&query, &params).await?;
+        let _ = c.query(&query, &params).await?;
 
         Ok((vec![], 0))
     }

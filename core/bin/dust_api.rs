@@ -13,8 +13,10 @@ use axum::{
 use dust::{
     app,
     blocks::block::BlockType,
-    data_sources::data_source::{self, SearchFilter},
-    dataset, project,
+    data_sources::data_source::{self},
+    dataset,
+    documents_search_filter::SearchFilter,
+    project,
     providers::provider::{provider, ProviderID},
     run,
     stores::postgres,
