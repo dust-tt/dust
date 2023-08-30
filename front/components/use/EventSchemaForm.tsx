@@ -1,4 +1,10 @@
-import { IconButton, XCircleIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpOnSquareIcon,
+  IconButton,
+  PageHeader,
+  SectionHeader,
+  XCircleIcon,
+} from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
@@ -140,95 +146,80 @@ export function ExtractEventSchemaForm({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="container">
-        {readOnly && (
-          <div
-            className="mb-10 rounded-md border-l-4 border-action-500 bg-action-100 p-4 text-action-700"
-            role="alert"
-          >
-            <p className="font-bold">Read-only view</p>
-            <p className="text-sm">
-              Only users with the role Builder or Admin in the workspace can
-              edit templates.
-            </p>
-          </div>
-        )}
+    <>
+      <PageHeader
+        title="Extract"
+        icon={ArrowUpOnSquareIcon}
+        description="Extract is your go-to tool for capturing structured data
+        effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
+      />
+      <div>
+        <SectionHeader
+          title="Define the data to extract"
+          description="Define your marker and the properties you want to extract from your notes. The description fields are sent to the LLM to help it understand what you want to extract. If you want to extract the summary of a discussion, you could define a property named 'summary' with the description 'Extract the summary of the discussion'."
+        />
 
         {/* Form */}
-        <div className="mb-24 divide-y divide-gray-200">
-          <div>
-            <h3 className="text-base font-medium leading-6 text-gray-900">
-              Define what you want to extract
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Extract uses LLMs to extract structured data from your non
-              structured data, such as a written Slack discussions or from raw
-              Notion or Gdrive notes.
-            </p>
+        <div className="mt-6">
+          <div className=" grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
+            <TextField
+              name="marker"
+              label="Marker"
+              description={
+                marker
+                  ? `Current marker is [[${marker}]].`
+                  : "This will be the marker used in your docs to trigger the extraction."
+              }
+              value={marker}
+              onChange={(e) => {
+                setErrorMarker("");
+                setMarker(e.target.value);
+              }}
+              error={errorMarker}
+              disabled={readOnly}
+              className="sm:col-span-2"
+            />
+            <TextField
+              name="description"
+              label="Description"
+              description='Could be "Extract the meeting notes from a Slack discussion" for a [[meeting_notes]] marker.'
+              value={description}
+              onChange={(e) => {
+                setErrorDescription("");
+                setDescription(e.target.value);
+              }}
+              error={errorDescription}
+              disabled={readOnly}
+              className="sm:col-span-4"
+            />
           </div>
 
-          <div className="mt-6">
-            <div className=" grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
-              <TextField
-                name="marker"
-                label="Marker"
-                description={
-                  marker
-                    ? `Current marker is [[${marker}]].`
-                    : "This will be the marker used in your docs to trigger the extraction."
-                }
-                value={marker}
-                onChange={(e) => {
-                  setErrorMarker("");
-                  setMarker(e.target.value);
-                }}
-                error={errorMarker}
-                disabled={readOnly}
-                className="sm:col-span-2"
-              />
-              <TextField
-                name="description"
-                label="Description"
-                description='Could be "Extract the meeting notes from a Slack discussion" for a [[meeting_notes]] marker.'
-                value={description}
-                onChange={(e) => {
-                  setErrorDescription("");
-                  setDescription(e.target.value);
-                }}
-                error={errorDescription}
-                disabled={readOnly}
-                className="sm:col-span-4"
-              />
-            </div>
+          <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
+            <PropertiesFields
+              properties={properties}
+              setProperties={setProperties}
+              error={errorProperties}
+              setError={setErrorProperties}
+              readOnly={readOnly}
+            />
+          </div>
 
-            <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
-              <PropertiesFields
-                properties={properties}
-                setProperties={setProperties}
-                error={errorProperties}
-                setError={setErrorProperties}
-                readOnly={readOnly}
-              />
-            </div>
-
-            {/* Submit */}
-            <div className="col-span-6 sm:col-span-2"></div>
-            <div className="col-span-6 flex justify-end sm:col-span-4">
-              <Button
-                type="submit"
-                disabled={isProcessing || readOnly}
-                onClick={async () => {
-                  await onSubmit();
-                }}
-              >
-                {isProcessing ? "Submitting..." : "Submit"}
-              </Button>
-            </div>
+          {/* Submit */}
+          <div className="col-span-6 sm:col-span-2"></div>
+          <div className="col-span-6 flex justify-end sm:col-span-4">
+            <Button
+              type="submit"
+              disabled={isProcessing || readOnly}
+              onClick={async () => {
+                await onSubmit();
+              }}
+            >
+              {isProcessing ? "Submitting..." : "Submit"}
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

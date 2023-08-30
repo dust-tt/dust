@@ -1,4 +1,11 @@
-import { CheckCircleIcon, IconButton, XCircleIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpOnSquareIcon,
+  CheckCircleIcon,
+  IconButton,
+  PageHeader,
+  SectionHeader,
+  XCircleIcon,
+} from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useState } from "react";
@@ -120,92 +127,79 @@ export default function AppExtractEventsReadData({
       topNavigationCurrent="lab"
       subNavigation={subNavigationLab({ owner, current: "extract" })}
     >
-      <div className="flex h-full flex-col">
-        <div className="container">
-          <div className="mb-10 divide-y divide-gray-200">
-            <div className="pb-6">
-              <h3 className="text-base font-medium leading-6 text-gray-900">
-                Extracted data for [[{schema.marker}]]
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage the list of extracted data for this marker.
-              </p>
-            </div>
-            <div></div>
-          </div>
-          <div>
-            <div className="my-5">
-              <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
-                  <div className="overflow-hidden">
-                    <table className="min-w-full text-left text-sm font-light">
-                      <tbody>
-                        {!isEventsLoading &&
-                          events.map((event: ExtractedEventType) => (
-                            <tr key={event.id} className="border">
-                              <td
-                                className={classNames(
-                                  "w-full px-4 py-4 text-sm",
-                                  event.status === "pending"
-                                    ? "text-gray-400"
-                                    : "text-gray-900"
-                                )}
-                              >
-                                <EventProperties event={event} />
-                              </td>
-                              <td className="w-auto whitespace-nowrap border px-4 py-4">
-                                <div className="flex flex-row items-center space-x-2 py-4">
-                                  <EventDataSourceLogo event={event} />
-                                </div>
-                              </td>
-                              <td className="w-auto whitespace-nowrap border px-4 py-4">
-                                {event.status === "pending" && (
-                                  <p className="py-4">Needs review!</p>
-                                )}
-                                {event.status === "accepted" && (
-                                  <p className="py-4">Approved!</p>
-                                )}
+      <PageHeader
+        title="Extract"
+        icon={ArrowUpOnSquareIcon}
+        description="Extract is your go-to tool for capturing structured data
+        effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
+      />
 
-                                <div className="flex flex-row items-center space-x-2">
-                                  <IconButton
-                                    icon={CheckCircleIcon}
-                                    tooltip="Accept data"
-                                    type={
-                                      event.status === "pending"
-                                        ? "primary"
-                                        : "tertiary"
-                                    }
-                                    onClick={async () => {
-                                      await handleAccept(event.sId);
-                                    }}
-                                    disabled={isProcessing}
-                                    className="ml-1"
-                                  />
-                                  <IconButton
-                                    icon={XCircleIcon}
-                                    tooltip="Reject data"
-                                    type={
-                                      event.status === "pending"
-                                        ? "warning"
-                                        : "tertiary"
-                                    }
-                                    onClick={async () => {
-                                      await handleReject(event.sId);
-                                    }}
-                                    disabled={isProcessing}
-                                    className="ml-1"
-                                  />
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="text-sm font-light">
+        <SectionHeader
+          title={`Extracted data for [[${schema.marker}]]`}
+          description="Review the extracted data for this marker. You can accept or reject the data, and consult the source document."
+        />
+
+        <div className="my-4 min-w-full py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <table>
+            <tbody>
+              {!isEventsLoading &&
+                events.map((event: ExtractedEventType) => (
+                  <tr key={event.id} className="border-y">
+                    <td
+                      className={classNames(
+                        "w-full px-4 py-4",
+                        event.status === "pending"
+                          ? "text-gray-400"
+                          : "text-gray-900"
+                      )}
+                    >
+                      <EventProperties event={event} />
+                    </td>
+                    <td className="w-auto border-y px-4 py-4 text-right align-top">
+                      <div className="flex flex-row space-x-2">
+                        {event.status === "pending" && (
+                          <span>Needs&nbsp;review!</span>
+                        )}
+                        {event.status === "accepted" && <span>Approved!</span>}
+                      </div>
+                    </td>
+                    <td className="w-auto border-y px-4 py-4 align-top">
+                      <div className="flex flex-row space-x-2">
+                        <IconButton
+                          icon={CheckCircleIcon}
+                          tooltip="Accept data"
+                          type={
+                            event.status === "pending" ? "primary" : "tertiary"
+                          }
+                          onClick={async () => {
+                            await handleAccept(event.sId);
+                          }}
+                          disabled={isProcessing || event.status === "accepted"}
+                          className="ml-1"
+                        />
+
+                        <IconButton
+                          icon={XCircleIcon}
+                          tooltip="Reject data"
+                          type={
+                            event.status === "pending" ? "warning" : "tertiary"
+                          }
+                          onClick={async () => {
+                            await handleReject(event.sId);
+                          }}
+                          disabled={isProcessing}
+                          className="ml-1"
+                        />
+                      </div>
+                    </td>
+                    <td className="w-auto border-y py-4 align-top">
+                      <EventDataSourceLogo event={event} />
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </AppLayout>
