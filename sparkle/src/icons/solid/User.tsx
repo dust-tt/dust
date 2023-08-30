@@ -10,8 +10,8 @@ const SvgUser = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
-      d="M4 22a8 8 0 1 1 16 0H4Zm8-9c-3.315 0-6-2.685-6-6s2.685-6 6-6 6 2.685 6 6-2.685 6-6 6Z"
+      fill="#000"
+      d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 14a8 8 0 0 0-8 8h16a8 8 0 0 0-8-8Z"
     />
   </svg>
 );

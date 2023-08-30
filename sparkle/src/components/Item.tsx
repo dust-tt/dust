@@ -22,7 +22,7 @@ type ItemProps = {
 };
 
 const sizeClasses = {
-  sm: "s-py-2 s-text-sm s-font-medium",
+  sm: "s-py-2 s-text-sm s-font-normal",
   md: "s-py-3 s-text-sm s-font-semibold",
 };
 

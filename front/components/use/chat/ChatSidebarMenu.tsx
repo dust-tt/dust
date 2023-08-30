@@ -1,5 +1,5 @@
 import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
-import { UsersIcon } from "@heroicons/react/20/solid";
+import { PlanetIcon } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
 import { ChatSessionType } from "@app/types/chat";
@@ -23,8 +23,8 @@ export function ChatSidebarMenu({
   };
 
   return (
-    <div className="flex grow flex-col">
-      <div className="flex flex-row px-2">
+    <div className="flex grow flex-col pl-4 pr-2">
+      <div className="flex flex-row">
         <div className="flex grow"></div>
         <Button
           disabled={!canStartConversation}
@@ -38,11 +38,10 @@ export function ChatSidebarMenu({
       <div className="mt-4 flex">
         <div className="flex w-full flex-col">
           <Item
-            size="sm"
+            size="md"
             selected={readOnly}
             label="Workspace Conversations"
-            icon={UsersIcon}
-            className="pl-8 pr-4"
+            icon={PlanetIcon}
             href={`/w/${owner.sId}/u/chats`}
           ></Item>
         </div>
@@ -50,10 +49,8 @@ export function ChatSidebarMenu({
       <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
         <div className="flex grow flex-col">
           {sessions.length > 0 && (
-            <div className="flex flex-row items-center">
-              <div className="px-8 py-4 text-xs uppercase text-slate-400">
-                Past Conversations
-              </div>
+            <div className="py-2 text-xs uppercase text-slate-400">
+              Past Conversations
             </div>
           )}
           <div className="flex ">
@@ -67,7 +64,6 @@ export function ChatSidebarMenu({
                         size="sm"
                         selected={router.query.cId === s.sId}
                         label={s.title || ""}
-                        className="pl-8 pr-4"
                         href={`/w/${owner.sId}/u/chat/${s.sId}`}
                       ></Item>
                     );
