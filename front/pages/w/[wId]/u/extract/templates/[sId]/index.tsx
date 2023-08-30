@@ -3,10 +3,12 @@ import {
   CheckCircleIcon,
   IconButton,
   PageHeader,
+  PencilSquareIcon,
   SectionHeader,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React from "react";
 import { useState } from "react";
 import { mutate } from "swr";
@@ -70,6 +72,7 @@ export default function AppExtractEventsReadData({
   schema,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const { events, isEventsLoading } = useExtractedEvents({
     owner,
@@ -180,6 +183,21 @@ export default function AppExtractEventsReadData({
                         />
 
                         <IconButton
+                          icon={PencilSquareIcon}
+                          tooltip="Edit data"
+                          type={
+                            event.status === "pending" ? "primary" : "tertiary"
+                          }
+                          onClick={() =>
+                            router.push(
+                              `/w/${owner.sId}/u/extract/events/${event.sId}/edit`
+                            )
+                          }
+                          disabled={isProcessing}
+                          className="ml-1"
+                        />
+
+                        <IconButton
                           icon={XCircleIcon}
                           tooltip="Reject data"
                           type={
@@ -243,13 +261,13 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 
 const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   let providerLogo = null;
-  if (event.dataSourceName.indexOf("notion")) {
+  if (event.dataSourceName.includes("notion")) {
     providerLogo = DATA_SOURCE_INTEGRATIONS.notion.logoPath;
-  } else if (event.dataSourceName.indexOf("google_drive")) {
+  } else if (event.dataSourceName.includes("google_drive")) {
     providerLogo = DATA_SOURCE_INTEGRATIONS.google_drive.logoPath;
-  } else if (event.dataSourceName.indexOf("github")) {
+  } else if (event.dataSourceName.includes("github")) {
     providerLogo = DATA_SOURCE_INTEGRATIONS.github.logoPath;
-  } else if (event.dataSourceName.indexOf("slack")) {
+  } else if (event.dataSourceName.includes("slack")) {
     providerLogo = DATA_SOURCE_INTEGRATIONS.slack.logoPath;
   }
 
