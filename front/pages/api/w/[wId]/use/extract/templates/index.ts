@@ -1,18 +1,25 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getEventSchema, updateEventSchema } from "@app/lib/api/extract";
+import { createEventSchema, getEventSchemas } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { EventSchemaType } from "@app/types/extract";
 
-export type GetEventSchemaResponseBody = {
+export type GetEventSchemasResponseBody = {
+  schemas: EventSchemaType[];
+};
+export type CreateEventSchemaResponseBody = {
   schema: EventSchemaType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetEventSchemaResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    | GetEventSchemasResponseBody
+    | CreateEventSchemaResponseBody
+    | ReturnedAPIErrorType
+  >
 ) {
   const session = await getSession(req, res);
   const user = await getUserFromSession(session);
@@ -55,21 +62,14 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const schema = await getEventSchema(auth, req.query.marker as string);
-      if (!schema) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "template_not_found",
-            message: "The workspace you're trying to modify was not found.",
-          },
-        });
-      }
+      const schemas = await getEventSchemas(auth);
+
       res.status(200).json({
-        schema,
+        schemas,
       });
       return;
-    case "PATCH":
+
+    case "POST":
       if (!auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
@@ -82,8 +82,6 @@ async function handler(
       }
 
       if (
-        !req.query.marker ||
-        !(typeof req.query.marker == "string") ||
         !req.body ||
         !(typeof req.body.marker == "string") ||
         !(typeof req.body.description == "string") ||
@@ -99,15 +97,14 @@ async function handler(
         });
       }
 
-      const updatedSchema = await updateEventSchema(
+      const newSchema = await createEventSchema({
         auth,
-        req.query.marker,
-        req.body.marker,
-        req.body.description,
-        req.body.properties
-      );
+        marker: req.body.marker,
+        description: req.body.description,
+        properties: req.body.properties,
+      });
 
-      if (!updatedSchema) {
+      if (!newSchema) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -117,7 +114,7 @@ async function handler(
         });
       }
       res.status(200).json({
-        schema: updatedSchema,
+        schema: newSchema,
       });
       return;
 
@@ -127,7 +124,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or PATCH is expected.",
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

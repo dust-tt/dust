@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getExtractedEvents } from "@app/lib/api/extract";
-import { getEventSchema } from "@app/lib/api/extract";
+import {
+  deleteExtractedEvent,
+  getEventSchemaByModelId,
+  getExtractedEvent,
+} from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -28,8 +31,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "extracted_event_not_found",
-        message: "The event was not found.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to interact with was not found.",
       },
     });
   }
@@ -55,31 +58,36 @@ async function handler(
     });
   }
 
-  const schema = await getEventSchema(auth, req.query.marker as string);
-  if (!schema) {
+  const eventSId = req.query.sId as string;
+  const event = await getExtractedEvent({
+    auth,
+    sId: eventSId,
+  });
+  if (!event) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "event_schema_not_found",
-        message: "The schema was not found.",
+        type: "extracted_event_not_found",
+        message: "The event was not found.",
       },
     });
   }
 
   switch (req.method) {
-    case "GET":
-      const events = await getExtractedEvents({
+    case "DELETE":
+      await deleteExtractedEvent({
         auth,
-        marker: req.query.marker as string,
+        sId: eventSId,
       });
-      return res.status(200).json({ events });
+      res.status(200).end();
+      return;
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message: "The method passed is not supported, DELETE is expected.",
         },
       });
   }

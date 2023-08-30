@@ -1,8 +1,31 @@
 import { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchema, ExtractedEvent, ModelId } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
+
+function _getEventSchemaType(schema: EventSchema): EventSchemaType {
+  return {
+    id: schema.id,
+    sId: schema.sId,
+    marker: schema.marker,
+    description: schema.description,
+    status: schema.status,
+    properties: schema.properties,
+  };
+}
+
+function _getExtractedEventType(event: ExtractedEvent): ExtractedEventType {
+  return {
+    id: event.id,
+    sId: event.sId,
+    marker: event.marker,
+    properties: event.properties,
+    dataSourceName: event.dataSourceName,
+    documentId: event.documentId,
+    documentSourceUrl: event.documentSourceUrl,
+  };
+}
 
 export async function getEventSchemas(
   auth: Authenticator
@@ -20,20 +43,17 @@ export async function getEventSchemas(
   });
 
   return schemas.map((schema): EventSchemaType => {
-    return {
-      id: schema.id,
-      marker: schema.marker,
-      description: schema.description,
-      status: schema.status,
-      properties: schema.properties,
-    };
+    return _getEventSchemaType(schema);
   });
 }
 
-export async function getEventSchema(
-  auth: Authenticator,
-  marker: string
-): Promise<EventSchemaType | null> {
+export async function getEventSchema({
+  auth,
+  sId,
+}: {
+  auth: Authenticator;
+  sId: string;
+}): Promise<EventSchemaType | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
@@ -41,7 +61,7 @@ export async function getEventSchema(
 
   const schema = await EventSchema.findOne({
     where: {
-      marker: marker,
+      sId: sId,
       workspaceId: owner.id,
     },
   });
@@ -50,21 +70,46 @@ export async function getEventSchema(
     return null;
   }
 
-  return {
-    id: schema.id,
-    marker: schema.marker,
-    description: schema.description,
-    status: schema.status,
-    properties: schema.properties,
-  };
+  return _getEventSchemaType(schema);
 }
 
-export async function createEventSchema(
-  auth: Authenticator,
-  marker: string,
-  description: string,
-  properties: []
-): Promise<EventSchemaType | void> {
+export async function getEventSchemaByModelId({
+  auth,
+  id,
+}: {
+  auth: Authenticator;
+  id: ModelId;
+}): Promise<EventSchemaType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+
+  const schema = await EventSchema.findOne({
+    where: {
+      id: id,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!schema) {
+    return null;
+  }
+
+  return _getEventSchemaType(schema);
+}
+
+export async function createEventSchema({
+  auth,
+  marker,
+  description,
+  properties,
+}: {
+  auth: Authenticator;
+  marker: string;
+  description: string;
+  properties: [];
+}): Promise<EventSchemaType | void> {
   const owner = auth.workspace();
   const user = auth.user();
   if (!owner || !user) {
@@ -82,22 +127,22 @@ export async function createEventSchema(
     userId: user.id,
   });
 
-  return {
-    id: schema.id,
-    marker: schema.marker,
-    description: schema.description,
-    status: schema.status,
-    properties: schema.properties,
-  };
+  return _getEventSchemaType(schema);
 }
 
-export async function updateEventSchema(
-  auth: Authenticator,
-  marker: string,
-  newMarker: string,
-  newDescription: string,
-  newProperties: []
-): Promise<EventSchemaType | void> {
+export async function updateEventSchema({
+  auth,
+  eventSId,
+  newMarker,
+  newDescription,
+  newProperties,
+}: {
+  auth: Authenticator;
+  eventSId: string;
+  newMarker: string;
+  newDescription: string;
+  newProperties: [];
+}): Promise<EventSchemaType | void> {
   const owner = auth.workspace();
   if (!owner) {
     return;
@@ -105,7 +150,7 @@ export async function updateEventSchema(
 
   const schema = await EventSchema.findOne({
     where: {
-      marker: marker,
+      sId: eventSId,
       workspaceId: owner.id,
     },
   });
@@ -120,43 +165,24 @@ export async function updateEventSchema(
     properties: newProperties,
   });
 
-  return {
-    id: schema.id,
-    marker: schema.marker,
-    description: schema.description,
-    status: schema.status,
-    properties: schema.properties,
-  };
+  return _getEventSchemaType(schema);
 }
 
 export async function getExtractedEvent({
   auth,
-  marker,
-  eId,
+  sId,
 }: {
   auth: Authenticator;
-  marker: string;
-  eId: string;
+  sId: string;
 }): Promise<ExtractedEventType | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
-  const schema = await EventSchema.findOne({
-    where: {
-      marker: marker,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (!schema) {
-    return null;
-  }
 
   const event = await ExtractedEvent.findOne({
     where: {
-      id: eId,
-      eventSchemaId: schema.id,
+      sId,
     },
   });
 
@@ -164,22 +190,15 @@ export async function getExtractedEvent({
     return null;
   }
 
-  return {
-    id: event.id,
-    marker: event.marker,
-    properties: event.properties,
-    dataSourceName: event.dataSourceName,
-    documentId: event.documentId,
-    documentSourceUrl: event.documentSourceUrl,
-  };
+  return _getExtractedEventType(event);
 }
 
 export async function getExtractedEvents({
   auth,
-  marker,
+  schemaSId,
 }: {
   auth: Authenticator;
-  marker: string;
+  schemaSId: string;
 }): Promise<ExtractedEventType[]> {
   const owner = auth.workspace();
   if (!owner) {
@@ -188,7 +207,7 @@ export async function getExtractedEvents({
 
   const schema = await EventSchema.findOne({
     where: {
-      marker: marker,
+      sId: schemaSId,
       workspaceId: owner.id,
     },
   });
@@ -205,23 +224,16 @@ export async function getExtractedEvents({
   });
 
   return events.map((event): ExtractedEventType => {
-    return {
-      id: event.id,
-      marker: event.marker,
-      properties: event.properties,
-      dataSourceName: event.dataSourceName,
-      documentId: event.documentId,
-      documentSourceUrl: event.documentSourceUrl,
-    };
+    return _getExtractedEventType(event);
   });
 }
 
 export async function deleteExtractedEvent({
   auth,
-  eId,
+  sId,
 }: {
   auth: Authenticator;
-  eId: string;
+  sId: string;
 }): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
@@ -230,10 +242,21 @@ export async function deleteExtractedEvent({
 
   const event = await ExtractedEvent.findOne({
     where: {
-      id: eId,
+      sId: sId,
     },
   });
+
   if (!event) {
+    return false;
+  }
+
+  // Make sure the event belongs to the workspace before editing
+  const schema = await EventSchema.findOne({
+    where: {
+      id: event.eventSchemaId,
+    },
+  });
+  if (!schema || schema.workspaceId !== owner.id) {
     return false;
   }
 

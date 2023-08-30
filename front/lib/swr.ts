@@ -18,8 +18,8 @@ import {
   GetChatSessionResponseBody,
   GetChatSessionsResponseBody,
 } from "@app/pages/api/w/[wId]/use/chats";
-import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract";
-import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/[marker]/events/[eId]";
+import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
+import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
@@ -281,7 +281,7 @@ export function useEventSchemas(owner: WorkspaceType) {
   const eventSchemaFetcher: Fetcher<GetEventSchemasResponseBody> = fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${owner.sId}/use/extract`,
+    `/api/w/${owner.sId}/use/extract/templates`,
     eventSchemaFetcher
   );
 
@@ -338,12 +338,18 @@ export function useConnectorDefaultNewResourcePermission(
   };
 }
 
-export function useExtractedEvents(owner: WorkspaceType, marker: string) {
+export function useExtractedEvents({
+  owner,
+  schemaSId,
+}: {
+  owner: WorkspaceType;
+  schemaSId: string;
+}) {
   const extractedEventFetcher: Fetcher<GetExtractedEventsResponseBody> =
     fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${owner.sId}/use/extract/${marker}/events`,
+    `/api/w/${owner.sId}/use/extract/templates/${schemaSId}/events`,
     extractedEventFetcher
   );
 

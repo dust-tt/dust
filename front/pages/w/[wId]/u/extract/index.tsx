@@ -187,7 +187,7 @@ export default function AppExtractEvents({
                                   type="submit"
                                   onClick={() =>
                                     router.push(
-                                      `/w/${owner.sId}/u/extract/${schema.marker}/edit`
+                                      `/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`
                                     )
                                   }
                                 >
@@ -203,7 +203,7 @@ export default function AppExtractEvents({
                                   type="submit"
                                   onClick={() =>
                                     router.push(
-                                      `/w/${owner.sId}/u/extract/${schema.marker}`
+                                      `/w/${owner.sId}/u/extract/templates/${schema.sId}`
                                     )
                                   }
                                 >
@@ -216,7 +216,7 @@ export default function AppExtractEvents({
                     </table>
 
                     <div className="my-10">
-                      <Link href={`/w/${owner.sId}/u/extract/new`}>
+                      <Link href={`/w/${owner.sId}/u/extract/templates/new`}>
                         <Button disabled={readOnly}>
                           <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
                           Create New

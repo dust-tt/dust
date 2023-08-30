@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteExtractedEvent, getExtractedEvent } from "@app/lib/api/extract";
+import { getExtractedEvents } from "@app/lib/api/extract";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -28,8 +28,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "extracted_event_not_found",
-        message: "The event was not found.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
       },
     });
   }
@@ -55,47 +55,31 @@ async function handler(
     });
   }
 
-  const schema = await getEventSchema(auth, req.query.marker as string);
+  const schema = await getEventSchema({ auth, sId: req.query.sId as string });
   if (!schema) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "event_schema_not_found",
-        message: "The event was not found.",
-      },
-    });
-  }
-
-  const event = await getExtractedEvent({
-    auth,
-    marker: req.query.marker as string,
-    eId: req.query.eId as string,
-  });
-  if (!event) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "extracted_event_not_found",
-        message: "The event was not found.",
+        message: "The schema was not found.",
       },
     });
   }
 
   switch (req.method) {
-    case "DELETE":
-      await deleteExtractedEvent({
+    case "GET":
+      const events = await getExtractedEvents({
         auth,
-        eId: req.query.eId as string,
+        schemaSId: req.query.sId as string,
       });
-      res.status(200).end();
-      return;
+      return res.status(200).json({ events });
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
   }
