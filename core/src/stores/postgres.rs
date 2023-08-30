@@ -13,7 +13,7 @@ use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use bb8::Pool;
+use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -1134,6 +1134,30 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn update_data_source_document_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()> {
+        let document_id = document_id.to_string();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+        let data_source_row_id =
+            get_data_source_row_id(project.project_id(), data_source_id.to_string(), &mut c)
+                .await?;
+
+        c.execute(
+            "UPDATE data_sources_documents SET parents = $1 \
+            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
+            &[&parents, &data_source_row_id, &document_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     async fn update_data_source_document_tags(
         &self,
         project: &Project,
@@ -1142,25 +1166,12 @@ impl Store for PostgresStore {
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
         let document_id = document_id.to_string();
-
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
+        let data_source_row_id =
+            get_data_source_row_id(project.project_id(), data_source_id.to_string(), &mut c)
+                .await?;
 
         let tx = c.transaction().await?;
 
@@ -1972,5 +1983,24 @@ impl Store for PostgresStore {
 
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {
         Box::new(self.clone())
+    }
+}
+
+async fn get_data_source_row_id(
+    project_id: i64,
+    data_source_id: String,
+    connection: &mut PooledConnection<'_, PostgresConnectionManager<NoTls>>,
+) -> Result<i64> {
+    let r = connection
+        .query(
+            "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            &[&project_id, &data_source_id],
+        )
+        .await?;
+
+    match r.len() {
+        0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+        1 => Ok(r[0].get(0)),
+        _ => unreachable!(),
     }
 }

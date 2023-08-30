@@ -395,6 +395,32 @@ impl DataSource {
         Ok(())
     }
 
+    pub async fn update_parents(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
+        document_id: String,
+        parents: Vec<String>,
+    ) -> Result<()> {
+        let new_parents = store
+            .update_data_source_document_parents(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &parents,
+            )
+            .await?;
+
+        self.upsert_field_to_document_payload(
+            qdrant_client,
+            document_id,
+            "parents",
+            new_parents.clone(),
+        )
+        .await?;
+        Ok(())
+    }
+
     pub async fn update_tags(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -412,8 +438,21 @@ impl DataSource {
                 &remove_tags,
             )
             .await?;
+        self.upsert_field_to_document_payload(qdrant_client, document_id, "tags", new_tags.clone())
+            .await?;
+        Ok(new_tags)
+    }
+
+    async fn upsert_field_to_document_payload(
+        &self,
+        qdrant_client: Arc<QdrantClient>,
+        document_id: String,
+        field_name: &str,
+        field_value: impl Into<Value>,
+    ) -> Result<()> {
         let mut payload = Payload::new();
-        payload.insert("tags", new_tags.clone());
+        payload.insert(field_name, field_value.into());
+
         let field_condition = qdrant::FieldCondition {
             key: "document_id".to_string(),
             r#match: Some(qdrant::Match {
@@ -421,12 +460,14 @@ impl DataSource {
             }),
             ..Default::default()
         };
+
         let points_selector = PointsSelector {
             points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter {
                 must: vec![field_condition.into()],
                 ..Default::default()
             })),
         };
+
         qdrant_client
             .set_payload(
                 self.qdrant_collection().to_string(),
@@ -435,8 +476,7 @@ impl DataSource {
                 None,
             )
             .await?;
-
-        Ok(new_tags)
+        Ok(())
     }
 
     pub async fn upsert(

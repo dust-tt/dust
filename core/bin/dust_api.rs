@@ -13,8 +13,9 @@ use axum::{
 use dust::{
     app,
     blocks::block::BlockType,
-    data_sources::data_source::{self, SearchFilter},
-    dataset, project,
+    data_sources::data_source::{self, DataSource, SearchFilter},
+    dataset,
+    project::{self, Project},
     providers::provider::{provider, ProviderID},
     run,
     stores::postgres,
@@ -1199,6 +1200,7 @@ async fn data_sources_documents_update_tags(
     };
     let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
     let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
+
     if add_tags_set.intersection(&remove_tags_set).count() > 0 {
         return (
             StatusCode::BAD_REQUEST,
@@ -1213,12 +1215,96 @@ async fn data_sources_documents_update_tags(
             }),
         );
     }
+
+    match load_data_source(&state, &project, &data_source_id).await {
+        Ok(ds) => match ds
+            .update_tags(
+                state.store.clone(),
+                state.qdrant_client.clone(),
+                document_id,
+                add_tags_set.into_iter().collect(),
+                remove_tags_set.into_iter().collect(),
+            )
+            .await
+        {
+            Err(e) => server_error_response("Failed to update document tags", e),
+            Ok(_) => datasource_ok_response(ds),
+        },
+        Err(api_error) => api_error,
+    }
+}
+
+/// Update parents of a document in a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsUpdateParentsPayload {
+    parents: Vec<String>,
+}
+
+async fn data_sources_documents_update_parents(
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DataSourcesDocumentsUpdateParentsPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match load_data_source(&state, &project, &data_source_id).await {
+        Ok(ds) => match ds
+            .update_parents(
+                state.store.clone(),
+                state.qdrant_client.clone(),
+                document_id,
+                payload.parents,
+            )
+            .await
+        {
+            Err(e) => server_error_response("Failed to update document parents", e),
+            Ok(_) => datasource_ok_response(ds),
+        },
+        Err(api_error) => api_error,
+    }
+}
+
+fn server_error_response(message: &str, e: anyhow::Error) -> (StatusCode, Json<APIResponse>) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(APIResponse {
+            error: Some(APIError {
+                code: String::from("internal_server_error"),
+                message: format!("{}: {}", message, e),
+            }),
+            response: None,
+        }),
+    )
+}
+
+fn datasource_ok_response(ds: DataSource) -> (StatusCode, Json<APIResponse>) {
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "data_source": {
+                    "created": ds.created(),
+                    "data_source_id": ds.data_source_id(),
+                    "config": ds.config(),
+                },
+            })),
+        }),
+    )
+}
+
+async fn load_data_source(
+    state: &Arc<APIState>,
+    project: &Project,
+    data_source_id: &str,
+) -> Result<DataSource, (StatusCode, Json<APIResponse>)> {
     match state
         .store
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(APIResponse {
                 error: Some(APIError {
@@ -1227,9 +1313,9 @@ async fn data_sources_documents_update_tags(
                 }),
                 response: None,
             }),
-        ),
+        )),
         Ok(ds) => match ds {
-            None => (
+            None => Err((
                 StatusCode::NOT_FOUND,
                 Json(APIResponse {
                     error: Some(APIError {
@@ -1238,45 +1324,11 @@ async fn data_sources_documents_update_tags(
                     }),
                     response: None,
                 }),
-            ),
-            Some(ds) => match ds
-                .update_tags(
-                    state.store.clone(),
-                    state.qdrant_client.clone(),
-                    document_id,
-                    add_tags_set.into_iter().collect(),
-                    remove_tags_set.into_iter().collect(),
-                )
-                .await
-            {
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to update document tags: {}", e),
-                        }),
-                        response: None,
-                    }),
-                ),
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "data_source": {
-                                "created": ds.created(),
-                                "data_source_id": ds.data_source_id(),
-                                "config": ds.config(),
-                            },
-                        })),
-                    }),
-                ),
-            },
+            )),
+            Some(ds) => Ok(ds),
         },
     }
 }
-
 // List versions of a document in a data source.
 
 #[derive(serde::Deserialize)]
@@ -1839,6 +1891,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
             patch(data_sources_documents_update_tags),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/parents",
+            patch(data_sources_documents_update_parents),
         )
         // Provided by the data_source block.
         .route(
