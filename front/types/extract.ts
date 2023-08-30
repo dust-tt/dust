@@ -1,6 +1,7 @@
 import { ModelId } from "@app/lib/models";
 
 export type EventSchemaStatus = "active" | "disabled";
+export type ExtractedEventStatus = "pending" | "accepted" | "rejected";
 
 export type EventSchemaType = {
   id: ModelId;
@@ -41,6 +42,7 @@ export type ExtractedEventType = {
   properties: {
     [key: string]: string | string[];
   };
+  status: ExtractedEventStatus;
   dataSourceName: string;
   documentId: string;
   documentSourceUrl: string | null;

@@ -69,6 +69,7 @@ export async function getExtractEventMarkersToProcess({
   const rawMarkers = getRawExtractEventMarkersFromText(documentText);
 
   // Gets all markers already in the DB for this document
+  // Event if an event was rejected, we don't want to re-extract the marker.
   const existingExtractedEvents = await ExtractedEvent.findAll({
     where: {
       documentId: documentId,
