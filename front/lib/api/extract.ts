@@ -190,6 +190,16 @@ export async function getExtractedEvent({
     return null;
   }
 
+  // Make sure the event belongs to the workspace before editing
+  const schema = await EventSchema.findOne({
+    where: {
+      id: event.eventSchemaId,
+    },
+  });
+  if (!schema || schema.workspaceId !== owner.id) {
+    return null;
+  }
+
   return _getExtractedEventType(event);
 }
 

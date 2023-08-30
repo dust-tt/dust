@@ -75,18 +75,6 @@ async function handler(
     });
   }
 
-  // Checking this event is attached to a schema that belongs to the workspace
-  const schema = await getEventSchemaByModelId({ auth, id: event.schemaId });
-  if (!schema) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "event_schema_not_found",
-        message: "The event was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "PATCH":
       if (
