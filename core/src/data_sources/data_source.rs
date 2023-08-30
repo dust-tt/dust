@@ -92,13 +92,19 @@ pub struct Chunk {
 /// The "parents" field is an array of ids of parents to the document,
 /// corresponding to its hierarchy, ordered by closest parent first.
 ///
-/// At index 0 is the document's direct parent, then at index 1 is the direct
-/// parent of the element represented at index 0, etc. It is assumed that a
-/// document (or folder, or hierarchical level) only has at most one direct
-/// parent. Therefore, there is an unambiguous mapping between the parents array
-/// and the document's hierarchical position. For example, for a regular file
-/// system (or filesystem-like such as Google Drive), each parent would
-/// correspond to a subfolder in the path to the document.
+/// At index 0 is the document id itself, then at index 1 its direct parent,
+/// then at index 2 is the direct parent of the element represented at index 1,
+/// etc. It is assumed that a document (or folder, or hierarchical level) only
+/// has at most one direct parent. Therefore, there is an unambiguous mapping
+/// between the parents array and the document's hierarchical position. For
+/// example, for a regular file system (or filesystem-like such as Google
+/// Drive), each parent would correspond to a subfolder in the path to the
+/// document.
+///
+/// The document’s id is stored in the field, since the field is used in
+/// filtering search to search only parts of the hierarchy: it is natural that
+/// if the document’s id is selected as a parent filter, the document itself
+/// shows up in the search.
 ///
 /// Note however that the hierarchical system depends on the managed datasource.
 /// For example, in the Slack managed datasource, documents only have a single
