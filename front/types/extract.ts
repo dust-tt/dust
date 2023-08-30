@@ -37,7 +37,6 @@ export type EventSchemaPropertiesTypeForModel = {
 export type ExtractedEventType = {
   id: ModelId;
   sId: string;
-  schemaId: ModelId;
   marker: string;
   properties: {
     [key: string]: string | string[];

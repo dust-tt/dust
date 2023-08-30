@@ -19,7 +19,6 @@ function _getExtractedEventType(event: ExtractedEvent): ExtractedEventType {
   return {
     id: event.id,
     sId: event.sId,
-    schemaId: event.eventSchemaId,
     marker: event.marker,
     properties: event.properties,
     dataSourceName: event.dataSourceName,
@@ -246,7 +245,18 @@ export async function deleteExtractedEvent({
       sId: sId,
     },
   });
+
   if (!event) {
+    return false;
+  }
+
+  // Make sure the event belongs to the workspace before editing
+  const schema = await EventSchema.findOne({
+    where: {
+      id: event.eventSchemaId,
+    },
+  });
+  if (!schema || schema.workspaceId !== owner.id) {
     return false;
   }
 
