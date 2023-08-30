@@ -37,6 +37,9 @@ export { IconToggleButton };
 import { Tooltip } from "./components/Tooltip";
 export { Tooltip };
 
+import Spinner from "./components/Spinner";
+export { Spinner };
+
 import {
   ArrowDownCircle as ArrowDownCircleIcon,
   ArrowDownOnSquare as ArrowDownOnSquareIcon,

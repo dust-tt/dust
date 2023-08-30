@@ -26,10 +26,6 @@ module.exports = {
           100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
         },
-        success: {
-          DEFAULT: colors.emerald[500],
-          dark: colors.emerald[400],
-        },
         warning: {
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
           400: { DEFAULT: colors.red[400], dark: colors.red[600] },

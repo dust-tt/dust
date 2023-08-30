@@ -8,6 +8,85 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      keyframes: {
+        "move-square": {
+          "0%": {
+            top: "0",
+            left: "0",
+            transform: "scale(1)",
+            transformOrigin: "left",
+            right: "50%",
+            bottom: "50%",
+          },
+          "12.5%": {
+            top: "0",
+            left: "0",
+            transform: "scaleX(2)",
+            transformOrigin: "left",
+            right: "50%",
+            bottom: "50%",
+          },
+          "25%": {
+            top: "0",
+            left: "50%",
+            transform: "scale(1)",
+            transformOrigin: "right",
+            right: "0",
+            bottom: "50%",
+          },
+          "37.5%": {
+            top: "0",
+            left: "50%",
+            transform: "scaleY(2)",
+            transformOrigin: "top",
+            right: "0",
+            bottom: "0",
+          },
+          "50%": {
+            top: "50%",
+            left: "50%",
+            transform: "scale(1)",
+            transformOrigin: "bottom",
+            right: "0",
+            bottom: "0",
+          },
+          "62.5%": {
+            top: "50%",
+            left: "50%",
+            transform: "scaleX(2)",
+            transformOrigin: "right",
+            right: "0",
+            bottom: "0",
+          },
+          "75%": {
+            top: "50%",
+            left: "0",
+            transform: "scale(1)",
+            transformOrigin: "left",
+            right: "50%",
+            bottom: "0",
+          },
+          "87.5%": {
+            top: "50%",
+            left: "0",
+            transform: "scaleY(2)",
+            transformOrigin: "bottom",
+            right: "0",
+            bottom: "0",
+          },
+          "100%": {
+            top: "0",
+            left: "0",
+            transform: "scale(1)",
+            transformOrigin: "top",
+            right: "50%",
+            bottom: "50%",
+          },
+        },
+      },
+      animation: {
+        "move-square": "move-square 4s infinite",
+      },
       colors: {
         brand: {
           DEFAULT: colors.emerald[500],
@@ -25,10 +104,6 @@ module.exports = {
           300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
           100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
-        },
-        success: {
-          DEFAULT: colors.emerald[500],
-          dark: colors.emerald[400],
         },
         warning: {
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
