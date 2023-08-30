@@ -66,14 +66,10 @@ export default function AppExtractEvents({
         title="Extract"
         icon={ArrowUpOnSquareIcon}
         description="Extract is your go-to tool for capturing structured data
-        effortlessly within your notes."
+        effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
       />
 
       <div>
-        <SectionHeader
-          title="Why use Extract?"
-          description="Simplify your life by marking specific sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
-        />
         <SectionHeader
           title="How does it work?"
           description="Define unique markers like [[goals]] or [[incident]] in your notes. Add a description and properties, and Extract does the rest! For example, For example, writing [[incident:fire1]] on a Slack thread will trigger Extract to capture data like the summary, date, and people involved in the fire incident."
