@@ -7,6 +7,7 @@ import {
   ClipboardIcon,
   CloudArrowDownIcon,
   DocumentDuplicateIcon,
+  Icon,
   IconButton,
   Logo,
   PageHeader,
@@ -324,10 +325,10 @@ export function RetrievalsView({
       <div className="flex flex-row items-center">
         <div
           className={classNames(
-            "flex flex-initial flex-row items-center space-x-2",
-            "rounded px-2 py-1",
-            "text-xs font-bold text-gray-700",
-            isLatest ? "bg-orange-100" : "bg-gray-100"
+            "flex flex-initial flex-row items-center gap-2 space-x-2",
+            "rounded-xl px-4 py-2",
+            "text-sm font-bold text-amber-700",
+            isLatest ? "border-2 border-amber-200 bg-amber-100" : "bg-gray-100"
           )}
         >
           {message.retrievals && message.retrievals.length > 0 && (
@@ -337,7 +338,7 @@ export function RetrievalsView({
                 return (
                   <div
                     key={k}
-                    className="flex flex-initial flex-row items-center"
+                    className="flex flex-initial flex-row items-center text-xs text-amber-700"
                   >
                     <div className={classNames("mr-1 flex h-4 w-4")}>
                       {summary[k].provider !== "none" ? (
@@ -356,15 +357,19 @@ export function RetrievalsView({
               })}
               <div className="flex flex-initial">
                 {expanded ? (
-                  <ChevronDownIcon
-                    className="h-4 w-4 cursor-pointer"
+                  <IconButton
+                    type="secondary"
+                    size="sm"
+                    icon={ChevronDownIcon}
                     onClick={() => {
                       setExpanded(false);
                     }}
                   />
                 ) : (
-                  <ChevronRightIcon
-                    className="h-4 w-4 cursor-pointer"
+                  <IconButton
+                    type="secondary"
+                    size="sm"
+                    icon={ChevronRightIcon}
                     onClick={() => {
                       setExpanded(true);
                     }}
@@ -498,7 +503,7 @@ export function MessageView({
       ) : (
         <div
           className={classNames(
-            "my-2 flex flex-row items-start",
+            "my-2 flex flex-row items-start gap-2",
             message.role === "user" ? "my-6" : ""
           )}
         >
@@ -533,7 +538,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "relative ml-2 flex flex-1 whitespace-pre-wrap break-words pt-2",
+              "relative ml-2 flex flex-1 whitespace-pre-wrap break-words pt-2 text-base",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
