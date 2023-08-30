@@ -1119,6 +1119,7 @@ export class ExtractedEvent extends Model<
 
   declare marker: string;
   declare properties: any;
+  declare status: "pending" | "accepted" | "rejected";
 
   declare eventSchemaId: ForeignKey<EventSchema["id"]>;
 
@@ -1155,6 +1156,11 @@ ExtractedEvent.init(
     properties: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
     },
     dataSourceName: {
       type: DataTypes.STRING,
