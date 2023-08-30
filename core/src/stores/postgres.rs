@@ -1345,56 +1345,95 @@ impl Store for PostgresStore {
         let project_id = project.project_id().clone();
 
         let mut where_clauses: Vec<String> = vec![];
-        let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
         where_clauses.push("project = $1".to_string());
-        params.push(Box::new(project_id));
+        params.push(&project_id);
         where_clauses.push("data_source = $2".to_string());
-        params.push(Box::new(data_source_id));
+        params.push(&data_source_id);
 
         let mut param_index = 3;
 
-        if let Some(filter) = filter {
-            if let Some(tags_filter) = filter.tags {
-                if let Some(in_tags) = tags_filter.is_in {
-                    where_clauses
-                        .push("tags @> ARRAY[$".to_string() + &param_index.to_string() + "]");
-                    params.push(Box::new(in_tags));
-                    param_index += 1;
-                }
-                if let Some(not_in_tags) = tags_filter.is_not {
-                    where_clauses
-                        .push("NOT tags @> ARRAY[$".to_string() + &param_index.to_string() + "]");
-                    params.push(Box::new(not_in_tags));
-                    param_index += 1;
-                }
-            }
-            if let Some(parent_filter) = filter.parents {
-                if let Some(in_parents) = parent_filter.is_in {
-                    where_clauses
-                        .push("parents @> ARRAY[$".to_string() + &param_index.to_string() + "]");
-                    params.push(Box::new(in_parents));
-                    param_index += 1;
-                }
-                if let Some(not_in_parents) = parent_filter.is_not {
-                    where_clauses.push(
-                        "NOT parents @> ARRAY[$".to_string() + &param_index.to_string() + "]",
-                    );
-                    params.push(Box::new(not_in_parents));
-                    param_index += 1;
-                }
-            }
-            if let Some(ts_filter) = filter.timestamp {
-                if let Some(ts_gt_filter) = ts_filter.gt {
-                    where_clauses.push("timestamp > $".to_string() + &param_index.to_string());
-                    params.push(Box::new(i64::try_from(ts_gt_filter)?));
-                    param_index += 1;
-                }
-                if let Some(ts_lt_filter) = ts_filter.lt {
-                    where_clauses.push("timestamp < $".to_string() + &param_index.to_string());
-                    params.push(Box::new(i64::try_from(ts_lt_filter)?));
-                    param_index += 1;
-                }
+        let mut tags_is_in: Vec<String> = vec![];
+        let mut tags_is_not: Vec<String> = vec![];
+        let mut parents_is_in: Vec<String> = vec![];
+        let mut parents_is_not: Vec<String> = vec![];
+        let mut timestamp_gt: i64 = 0;
+        let mut timestamp_lt: i64 = 0;
+
+        match filter {
+            None => (),
+            Some(filter) => {
+                match filter.tags {
+                    None => (),
+                    Some(tags_filter) => {
+                        match tags_filter.is_in {
+                            None => (),
+                            Some(tags) => {
+                                where_clauses.push(format!("tags @> ARRAY[${}]", param_index));
+                                tags_is_in = tags;
+                                params.push(&tags_is_in);
+                                param_index += 1;
+                            }
+                        }
+                        match tags_filter.is_not {
+                            None => (),
+                            Some(tags) => {
+                                where_clauses.push(format!("NOT tags @> ARRAY[${}]", param_index));
+                                tags_is_not = tags;
+                                params.push(&tags_is_not);
+                                param_index += 1;
+                            }
+                        }
+                    }
+                };
+                match filter.parents {
+                    None => (),
+                    Some(parents_filter) => {
+                        match parents_filter.is_in {
+                            None => (),
+                            Some(parents) => {
+                                where_clauses.push(format!("parents @> ARRAY[${}]", param_index));
+                                parents_is_in = parents;
+                                params.push(&parents_is_in);
+                                param_index += 1;
+                            }
+                        }
+                        match parents_filter.is_not {
+                            None => (),
+                            Some(parents) => {
+                                where_clauses
+                                    .push(format!("NOT parents @> ARRAY[${}]", param_index));
+                                parents_is_not = parents;
+                                params.push(&parents_is_not);
+                                param_index += 1;
+                            }
+                        }
+                    }
+                };
+                match filter.timestamp {
+                    None => (),
+                    Some(ts_filter) => {
+                        match ts_filter.gt {
+                            None => (),
+                            Some(ts) => {
+                                where_clauses.push(format!("timestamp > ${}", param_index));
+                                timestamp_gt = ts as i64;
+                                params.push(&timestamp_gt);
+                                param_index += 1;
+                            }
+                        }
+                        match ts_filter.lt {
+                            None => (),
+                            Some(ts) => {
+                                where_clauses.push(format!("timestamp < ${}", param_index));
+                                timestamp_lt = ts as i64;
+                                params.push(&timestamp_lt);
+                                param_index += 1;
+                            }
+                        }
+                    }
+                };
             }
         }
 
@@ -1405,21 +1444,27 @@ impl Store for PostgresStore {
 
         query = query + " ORDER BY timestamp DESC";
 
-        if let Some((limit, offset)) = limit_offset {
+        let mut limit: i64 = 0;
+        let mut offset: i64 = 0;
+        match limit_offset {
+            None => (),
+            Some((l, o)) => {
+                limit = l as i64;
+                offset = o as i64;
+            }
+        };
+
+        if limit_offset.is_some() {
             query = query
                 + " LIMIT $"
                 + &param_index.to_string()
                 + " OFFSET $"
                 + &(param_index + 1).to_string();
-            params.push(Box::new(limit as i64));
-            params.push(Box::new(offset as i64));
+            params.push(&limit);
+            params.push(&offset);
         }
-        let params_ref: Vec<&(dyn ToSql + Sync)> = params.iter().map(|b| &**b).collect();
 
-        let query_future = c.query(&query, &params_ref);
-
-        // This line breaks
-        query_future.await?;
+        let r = c.query(&query, &params).await?;
 
         Ok((vec![], 0))
     }
