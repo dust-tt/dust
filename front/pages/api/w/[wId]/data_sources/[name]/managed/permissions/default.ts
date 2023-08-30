@@ -41,6 +41,17 @@ async function handler(
     });
   }
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can view the permissions of a data source.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       if (!dataSource.connectorId) {

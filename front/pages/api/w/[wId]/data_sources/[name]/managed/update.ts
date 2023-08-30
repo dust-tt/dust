@@ -73,6 +73,17 @@ async function handler(
     });
   }
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const bodyValidation =
