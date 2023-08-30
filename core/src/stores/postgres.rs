@@ -1352,7 +1352,7 @@ impl Store for PostgresStore {
         where_clauses.push("data_source = $2".to_string());
         params.push(&data_source_id);
 
-        let mut param_index = 3;
+        let mut p_idx: usize = 3;
 
         let mut tags_is_in: Vec<String> = vec![];
         let mut tags_is_not: Vec<String> = vec![];
@@ -1370,19 +1370,19 @@ impl Store for PostgresStore {
                         match tags_filter.is_in {
                             None => (),
                             Some(tags) => {
-                                where_clauses.push(format!("tags @> ARRAY[${}]", param_index));
+                                where_clauses.push(format!("tags @> ARRAY[${}]", p_idx));
+                                p_idx += 1;
                                 tags_is_in = tags;
                                 params.push(&tags_is_in);
-                                param_index += 1;
                             }
                         }
                         match tags_filter.is_not {
                             None => (),
                             Some(tags) => {
-                                where_clauses.push(format!("NOT tags @> ARRAY[${}]", param_index));
+                                where_clauses.push(format!("NOT tags @> ARRAY[${}]", p_idx));
+                                p_idx += 1;
                                 tags_is_not = tags;
                                 params.push(&tags_is_not);
-                                param_index += 1;
                             }
                         }
                     }
@@ -1393,20 +1393,19 @@ impl Store for PostgresStore {
                         match parents_filter.is_in {
                             None => (),
                             Some(parents) => {
-                                where_clauses.push(format!("parents @> ARRAY[${}]", param_index));
+                                where_clauses.push(format!("parents @> ARRAY[${}]", p_idx));
+                                p_idx += 1;
                                 parents_is_in = parents;
                                 params.push(&parents_is_in);
-                                param_index += 1;
                             }
                         }
                         match parents_filter.is_not {
                             None => (),
                             Some(parents) => {
-                                where_clauses
-                                    .push(format!("NOT parents @> ARRAY[${}]", param_index));
+                                where_clauses.push(format!("NOT parents @> ARRAY[${}]", p_idx));
+                                p_idx += 1;
                                 parents_is_not = parents;
                                 params.push(&parents_is_not);
-                                param_index += 1;
                             }
                         }
                     }
@@ -1417,19 +1416,19 @@ impl Store for PostgresStore {
                         match ts_filter.gt {
                             None => (),
                             Some(ts) => {
-                                where_clauses.push(format!("timestamp > ${}", param_index));
+                                where_clauses.push(format!("timestamp > ${}", p_idx));
+                                p_idx += 1;
                                 timestamp_gt = ts as i64;
                                 params.push(&timestamp_gt);
-                                param_index += 1;
                             }
                         }
                         match ts_filter.lt {
                             None => (),
                             Some(ts) => {
-                                where_clauses.push(format!("timestamp < ${}", param_index));
+                                where_clauses.push(format!("timestamp < ${}", p_idx));
+                                p_idx += 1;
                                 timestamp_lt = ts as i64;
                                 params.push(&timestamp_lt);
-                                param_index += 1;
                             }
                         }
                     }
