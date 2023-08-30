@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { EventSchema, ExtractedEvent, ModelId } from "@app/lib/models";
@@ -21,6 +23,7 @@ function _getExtractedEventType(event: ExtractedEvent): ExtractedEventType {
     sId: event.sId,
     marker: event.marker,
     properties: event.properties,
+    status: event.status,
     dataSourceName: event.dataSourceName,
     documentId: event.documentId,
     documentSourceUrl: event.documentSourceUrl,
@@ -220,6 +223,7 @@ export async function getExtractedEvents({
       sId: schemaSId,
       workspaceId: owner.id,
     },
+    order: [["createdAt", "DESC"]],
   });
 
   if (!schema) {
@@ -229,6 +233,9 @@ export async function getExtractedEvents({
   const events = await ExtractedEvent.findAll({
     where: {
       eventSchemaId: schema.id,
+      status: {
+        [Op.ne]: "rejected", // Op.ne == 'not equal'
+      },
     },
     order: [["createdAt", "DESC"]],
   });
