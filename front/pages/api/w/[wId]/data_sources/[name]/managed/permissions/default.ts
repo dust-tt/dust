@@ -47,7 +47,7 @@ async function handler(
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that are `builders` can retrieve managed data sources permission defaults.",
+          "Only the users that are `builders` for the current workspace can view the permissions of a data source.",
       },
     });
   }
