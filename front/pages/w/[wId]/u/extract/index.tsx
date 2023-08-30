@@ -1,12 +1,9 @@
 import {
-  ArrowDownOnSquareIcon,
-  ArrowDownOnSquareStackIcon,
-  ArrowUpTrayIcon,
-  ClipboardDocumentCheckIcon,
-  LightBulbIcon,
-  PlusIcon,
-  WrenchIcon,
-} from "@heroicons/react/24/outline";
+  ArrowUpOnSquareIcon,
+  PageHeader,
+  SectionHeader,
+} from "@dust-tt/sparkle";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -65,169 +62,77 @@ export default function AppExtractEvents({
       topNavigationCurrent="lab"
       subNavigation={subNavigationLab({ owner, current: "extract" })}
     >
-      <div className="flex h-full flex-col">
-        <div className="container">
-          {readOnly && (
-            <div
-              className="mb-10 rounded-md border-l-4 border-action-500 bg-action-100 p-4 text-action-700"
-              role="alert"
-            >
-              <p className="font-bold">Read-only view</p>
-              <p className="text-sm">
-                Only users with the role Builder or Admin in the workspace can
-                edit templates.
-              </p>
-            </div>
-          )}
+      <PageHeader
+        title="Extract"
+        icon={ArrowUpOnSquareIcon}
+        description="Extract is your go-to tool for capturing structured data
+        effortlessly within your notes."
+      />
 
-          <div className="mb-12 divide-y divide-gray-200">
-            <div className="pb-6">
-              <h3 className="text-base font-medium leading-6 text-gray-900">
-                Extract
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Extract associates a template with a [[marker]] to automate the
-                extraction of structured data from your datasources.
-              </p>
-            </div>
-            <div>
-              <div className="mt-6">
-                <p className="mb-4 text-sm ">
-                  Step1: Set some markers/templates
-                </p>
-                <ul className="list-inside text-sm font-light">
-                  <li>
-                    <LightBulbIcon className="mr-1 inline-block h-5 w-5" />
-                    Define a new marker, such as <i>idea</i> or <i>tasks</i>.
-                  </li>
-                  <li>
-                    <WrenchIcon className="mr-1 inline-block h-5 w-5" />
-                    Define the properties to extract for this template:&nbsp;
-                    for <i>idea</i> it could be a name and a description;&nbsp;
-                    for <i>tasks</i> it could be an owner, a day, and a list of
-                    tasks.
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-6">
-                <p className="mb-4 text-sm ">Step 2: Extract data</p>
-                <ul className="list-inside text-sm font-light">
-                  <li>
-                    <ArrowDownOnSquareIcon className="mr-1 inline-block h-5 w-5" />
-                    On any of your datasources, write [[idea]] or [[tasks]]
-                    whenever you want to extract this data.
-                  </li>
-                  <li>
-                    <ArrowDownOnSquareStackIcon className="mr-1 inline-block h-5 w-5" />
-                    If there are multiple ideas on the same document, you can
-                    just append a unique identifier on the marker, such as
-                    [[idea:2]].
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-6">
-                <p className="mb-4 text-sm ">
-                  Step 3: Manage your extracted data
-                </p>
-                <ul className="list-inside text-sm font-light">
-                  <li>
-                    <ClipboardDocumentCheckIcon className="mr-1 inline-block h-5 w-5" />
-                    Read and validate or fix the extracted data.
-                  </li>
-                  <li>
-                    <ArrowUpTrayIcon className="mr-1 inline-block h-5 w-5" />
-                    Export the validated data as you wish.
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="mb-10 divide-y divide-gray-200">
-            <div className="pb-6">
-              <h3 className="text-base font-medium leading-6 text-gray-900">
-                Markers & templates
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage your markers & templates and access extracted data.
-              </p>
-            </div>
-            <div>
-              <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
-                  <div className="mt-4">
-                    <table className="min-w-full text-left text-sm font-light">
-                      <thead className="font-medium">
-                        <tr>
-                          <th scope="col" className="px-3 py-4">
-                            Marker
-                          </th>
-                          <th scope="col" className="px-12 py-4">
-                            Description
-                          </th>
-                          <th scope="col" className="px-3 py-4">
-                            Template
-                          </th>
-                          <th scope="col" className="px-3 py-4">
-                            Extracted data
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {!isSchemasLoading &&
-                          schemas?.map((schema) => (
-                            <tr key={schema.marker} className="border-y">
-                              <td className="whitespace-nowrap px-3 py-4 font-medium">
-                                [[{schema.marker}]]
-                              </td>
-                              <td className="px-12 py-4">
-                                {schema.description}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4">
-                                <Button
-                                  type="submit"
-                                  onClick={() =>
-                                    router.push(
-                                      `/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`
-                                    )
-                                  }
-                                >
-                                  <div>
-                                    {readOnly
-                                      ? "View template"
-                                      : "Manage template"}
-                                  </div>
-                                </Button>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4">
-                                <Button
-                                  type="submit"
-                                  onClick={() =>
-                                    router.push(
-                                      `/w/${owner.sId}/u/extract/templates/${schema.sId}`
-                                    )
-                                  }
-                                >
-                                  <div>See extracted data</div>
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
+      <div>
+        <SectionHeader
+          title="Why use Extract?"
+          description="Simplify your life by marking specific sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
+        />
+        <SectionHeader
+          title="How does it work?"
+          description="Define unique markers like [[goals]] or [[incident]] in your notes. Add a description and properties, and Extract does the rest! For example, For example, writing [[incident:fire1]] on a Slack thread will trigger Extract to capture data like the summary, date, and people involved in the fire incident."
+        />
 
-                    <div className="my-10">
-                      <Link href={`/w/${owner.sId}/u/extract/templates/new`}>
-                        <Button disabled={readOnly}>
-                          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                          Create New
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <SectionHeader
+          title="Your worskpace's markers"
+          description="Below are the markers defined for the workspace. You can edit them to add or remove properties, and manage the extracted data."
+        />
+
+        <table className="mt-6 min-w-full text-sm font-light">
+          <tbody>
+            {!isSchemasLoading &&
+              schemas?.map((schema) => (
+                <tr key={schema.marker} className="border-y">
+                  <td className="whitespace-nowrap px-3 py-4 font-medium">
+                    [[{schema.marker}]]
+                  </td>
+                  <td className="px-12 py-4">{schema.description}</td>
+                  <td className="whitespace-nowrap px-3 py-4">
+                    <Button
+                      type="submit"
+                      onClick={() =>
+                        router.push(
+                          `/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`
+                        )
+                      }
+                    >
+                      <div>
+                        {readOnly
+                          ? "See data to extract"
+                          : "Edit data to extract"}
+                      </div>
+                    </Button>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4">
+                    <Button
+                      type="submit"
+                      onClick={() =>
+                        router.push(
+                          `/w/${owner.sId}/u/extract/templates/${schema.sId}`
+                        )
+                      }
+                    >
+                      <div>See extracted data</div>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+
+        <div className="my-10">
+          <Link href={`/w/${owner.sId}/u/extract/templates/new`}>
+            <Button disabled={readOnly}>
+              <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
+              Create New
+            </Button>
+          </Link>
         </div>
       </div>
     </AppLayout>

@@ -1,3 +1,4 @@
+import { IconButton, XCircleIcon } from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
@@ -154,90 +155,76 @@ export function ExtractEventSchemaForm({
           </div>
         )}
 
-        {/* Template main infos */}
+        {/* Form */}
         <div className="mb-24 divide-y divide-gray-200">
           <div>
             <h3 className="text-base font-medium leading-6 text-gray-900">
-              Marker configuration
+              Define what you want to extract
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Define the marker and the description for your template. Once the
-              template is defined, you'll be able to extract data from your
-              documents.
+              Extract uses LLMs to extract structured data from your non
+              structured data, such as a written Slack discussions or from raw
+              Notion or Gdrive notes.
             </p>
           </div>
-          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
-            <TextField
-              name="marker"
-              label="Marker"
-              description={
-                marker
-                  ? `Current marker is [[${marker}]].`
-                  : "Marker for your template."
-              }
-              value={marker}
-              onChange={(e) => {
-                setErrorMarker("");
-                setMarker(e.target.value);
-              }}
-              error={errorMarker}
-              disabled={readOnly}
-              className="sm:col-span-2"
-            />
-            <TextField
-              name="description"
-              label="Description"
-              description="Explain what this template is about."
-              value={description}
-              onChange={(e) => {
-                setErrorDescription("");
-                setDescription(e.target.value);
-              }}
-              error={errorDescription}
-              disabled={readOnly}
-              className="sm:col-span-4"
-            />
-          </div>
-        </div>
 
-        {/* Template properties */}
-        <div className="mb-6 divide-y divide-gray-200">
-          <div>
-            <h3 className="text-base font-medium leading-6 text-gray-900">
-              Template configuration
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Define the properties to extract for this template. Picking a list
-              as Type allows to extract multiple values for this property. The
-              Description field is key to ensure the LLM model is able to
-              extract the right information from your documents.
-            </p>
-          </div>
-          <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
-            <PropertiesFields
-              properties={properties}
-              setProperties={setProperties}
-              error={errorProperties}
-              setError={setErrorProperties}
-              readOnly={readOnly}
-            />
-          </div>
-        </div>
+          <div className="mt-6">
+            <div className=" grid grid-cols-1 gap-x-4 gap-y-6 pt-6 sm:grid-cols-6">
+              <TextField
+                name="marker"
+                label="Marker"
+                description={
+                  marker
+                    ? `Current marker is [[${marker}]].`
+                    : "This will be the marker used in your docs to trigger the extraction."
+                }
+                value={marker}
+                onChange={(e) => {
+                  setErrorMarker("");
+                  setMarker(e.target.value);
+                }}
+                error={errorMarker}
+                disabled={readOnly}
+                className="sm:col-span-2"
+              />
+              <TextField
+                name="description"
+                label="Description"
+                description='Could be "Extract the meeting notes from a Slack discussion" for a [[meeting_notes]] marker.'
+                value={description}
+                onChange={(e) => {
+                  setErrorDescription("");
+                  setDescription(e.target.value);
+                }}
+                error={errorDescription}
+                disabled={readOnly}
+                className="sm:col-span-4"
+              />
+            </div>
 
-        {/* Submit */}
-        <div className="my-10 sm:grid sm:grid-cols-6">
-          <div className="col-span-6 sm:col-span-2"></div>
-          <div className="col-span-6 flex justify-end sm:col-span-4">
-            <Button
-              type="submit"
-              disabled={isProcessing || readOnly}
-              onClick={async () => {
-                await onSubmit();
-              }}
-            >
-              {!schema && (isProcessing ? "Creating..." : "Create")}
-              {schema && (isProcessing ? "Updating..." : "Update")}
-            </Button>
+            <div className="mt-6 grid grid-cols-12 gap-x-4 gap-y-6 pt-6 sm:grid-cols-12">
+              <PropertiesFields
+                properties={properties}
+                setProperties={setProperties}
+                error={errorProperties}
+                setError={setErrorProperties}
+                readOnly={readOnly}
+              />
+            </div>
+
+            {/* Submit */}
+            <div className="col-span-6 sm:col-span-2"></div>
+            <div className="col-span-6 flex justify-end sm:col-span-4">
+              <Button
+                type="submit"
+                disabled={isProcessing || readOnly}
+                onClick={async () => {
+                  await onSubmit();
+                }}
+              >
+                {isProcessing ? "Submitting..." : "Submit"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -347,7 +334,7 @@ function PropertiesFields({
           <React.Fragment key={index}>
             <TextField
               name={`name-${index}`}
-              label="Name"
+              label="Property"
               value={prop["name"]}
               onChange={(e) => {
                 setError("");
@@ -400,19 +387,18 @@ function PropertiesFields({
                 handlePropertyChange(index, "description", e.target.value);
               }}
               disabled={readOnly}
-              className="sm:col-span-7"
+              className="col-span-7"
             />
-            <div className="flex items-end  sm:col-span-1">
-              <div className="rounded-md shadow-sm">
-                <Button
-                  disabled={readOnly}
-                  onClick={() => {
-                    removeProperty(index);
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
+            <div className="col-span-1 flex items-end">
+              <IconButton
+                icon={XCircleIcon}
+                tooltip="Remove Property"
+                type="tertiary"
+                onClick={async () => {
+                  removeProperty(index);
+                }}
+                className="ml-1"
+              />
             </div>
           </React.Fragment>
         )
@@ -423,7 +409,9 @@ function PropertiesFields({
       <div className="sm:col-span-6">
         <Button onClick={addProperty} disabled={readOnly}>
           <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-          Add property
+          {properties.length
+            ? "Add another property"
+            : "Define what to extract!"}
         </Button>
       </div>
     </>

@@ -1,10 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getEventSchemaByModelId,
-  getExtractedEvent,
-  updateExtractedEvent,
-} from "@app/lib/api/extract";
+import { getExtractedEvent, updateExtractedEvent } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
