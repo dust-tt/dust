@@ -31,7 +31,7 @@ export const SolidIconSet = () => (
       return (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle}>{iconName}</div>
+          <div style={itemStyle}>{iconName + "Icon"}</div>
         </div>
       );
     })}
@@ -47,7 +47,7 @@ export const StrokeIconSet = () => (
       return (
         <div key={iconName} style={{ textAlign: "center" }}>
           <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle}>{iconName}</div>
+          <div style={itemStyle}>{iconName + "StrokeIcon"}</div>
         </div>
       );
     })}
