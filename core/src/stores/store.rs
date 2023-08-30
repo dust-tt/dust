@@ -1,6 +1,7 @@
 use crate::blocks::block::BlockType;
 use crate::data_sources::data_source::{DataSource, Document, DocumentVersion};
 use crate::dataset::Dataset;
+use crate::documents_search_filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -93,9 +94,13 @@ pub trait Store {
         document_id: &str,
         version_hash: &Option<String>,
     ) -> Result<Option<Document>>;
-    // async fn find_data_source_documents(
-
-    // )
+    async fn find_data_source_document_ids(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        filter: Option<SearchFilter>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<String>, usize)>;
     async fn upsert_data_source_document(
         &self,
         project: &Project,

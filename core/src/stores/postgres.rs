@@ -2,6 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
 use crate::dataset::Dataset;
+use crate::documents_search_filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -16,6 +17,7 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use tokio_postgres::types::ToSql;
 use tokio_postgres::NoTls;
 
 #[derive(Clone)]
@@ -1328,6 +1330,98 @@ impl Store for PostgresStore {
         };
 
         Ok((versions, total))
+    }
+
+    async fn find_data_source_document_ids(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        filter: Option<SearchFilter>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<String>, usize)> {
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let project_id = project.project_id().clone();
+
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+        where_clauses.push("project = $1".to_string());
+        params.push(Box::new(project_id));
+        where_clauses.push("data_source = $2".to_string());
+        params.push(Box::new(data_source_id));
+
+        let mut param_index = 3;
+
+        if let Some(filter) = filter {
+            if let Some(tags_filter) = filter.tags {
+                if let Some(in_tags) = tags_filter.is_in {
+                    where_clauses
+                        .push("tags @> ARRAY[$".to_string() + &param_index.to_string() + "]");
+                    params.push(Box::new(in_tags));
+                    param_index += 1;
+                }
+                if let Some(not_in_tags) = tags_filter.is_not {
+                    where_clauses
+                        .push("NOT tags @> ARRAY[$".to_string() + &param_index.to_string() + "]");
+                    params.push(Box::new(not_in_tags));
+                    param_index += 1;
+                }
+            }
+            if let Some(parent_filter) = filter.parents {
+                if let Some(in_parents) = parent_filter.is_in {
+                    where_clauses
+                        .push("parents @> ARRAY[$".to_string() + &param_index.to_string() + "]");
+                    params.push(Box::new(in_parents));
+                    param_index += 1;
+                }
+                if let Some(not_in_parents) = parent_filter.is_not {
+                    where_clauses.push(
+                        "NOT parents @> ARRAY[$".to_string() + &param_index.to_string() + "]",
+                    );
+                    params.push(Box::new(not_in_parents));
+                    param_index += 1;
+                }
+            }
+            if let Some(ts_filter) = filter.timestamp {
+                if let Some(ts_gt_filter) = ts_filter.gt {
+                    where_clauses.push("timestamp > $".to_string() + &param_index.to_string());
+                    params.push(Box::new(i64::try_from(ts_gt_filter)?));
+                    param_index += 1;
+                }
+                if let Some(ts_lt_filter) = ts_filter.lt {
+                    where_clauses.push("timestamp < $".to_string() + &param_index.to_string());
+                    params.push(Box::new(i64::try_from(ts_lt_filter)?));
+                    param_index += 1;
+                }
+            }
+        }
+
+        let mut query = "SELECT document_id FROM data_sources_documents \
+            WHERE "
+            .to_string()
+            + &where_clauses.join(" AND ");
+
+        query = query + " ORDER BY timestamp DESC";
+
+        if let Some((limit, offset)) = limit_offset {
+            query = query
+                + " LIMIT $"
+                + &param_index.to_string()
+                + " OFFSET $"
+                + &(param_index + 1).to_string();
+            params.push(Box::new(limit as i64));
+            params.push(Box::new(offset as i64));
+        }
+        let params_ref: Vec<&(dyn ToSql + Sync)> = params.iter().map(|b| &**b).collect();
+
+        let query_future = c.query(&query, &params_ref);
+
+        // This line breaks
+        query_future.await?;
+
+        Ok((vec![], 0))
     }
 
     async fn upsert_data_source_document(
