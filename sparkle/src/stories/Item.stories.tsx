@@ -12,7 +12,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SolidIconSet = () => (
+export const ListItemExample = () => (
   <div>
     <ListItem className="s-w-40">
       <ItemSectionHeader label="Section Header" />
