@@ -1,8 +1,9 @@
 use crate::blocks::block::BlockType;
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
+use crate::data_sources::data_source::{
+    DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
+};
 use crate::dataset::Dataset;
-use crate::documents_search_filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};

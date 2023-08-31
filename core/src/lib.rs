@@ -56,4 +56,3 @@ pub mod deno {
 }
 
 pub mod consts;
-pub mod documents_search_filter;

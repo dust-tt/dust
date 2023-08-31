@@ -1,6 +1,5 @@
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::splitter::{splitter, SplitterID};
-use crate::documents_search_filter::SearchFilter;
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
@@ -24,6 +23,51 @@ use std::sync::Arc;
 use tokio::try_join;
 use tokio_stream::{self as stream};
 use uuid::Uuid;
+
+/// A filter to apply to the search query based on `tags`. All documents returned must have at least
+/// one tag in `is_in` and none of the tags in `is_not`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TagsFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
+/// A filter to apply to the search query based on document parents. All documents returned must have at least
+/// one parent in `is_in` and none of their parents in `is_not`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ParentsFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
+/// A filter to apply to the search query based on `timestamp`. All documents returned must have a
+/// timestamp greater than `gt` and less than `lt`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TimestampFilter {
+    pub gt: Option<u64>,
+    pub lt: Option<u64>,
+}
+
+/// Filter argument to perform semantic search or simple reverse-chron querying.
+/// It is used to filter the search results based on the
+/// presence of tags, parents, or time spans for timestamps.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchFilter {
+    pub tags: Option<TagsFilter>,
+    pub parents: Option<ParentsFilter>,
+    pub timestamp: Option<TimestampFilter>,
+}
+
+impl SearchFilter {
+    pub fn from_json_str(json: &str) -> Result<Self> {
+        let filter: SearchFilter = serde_json::from_str(json)?;
+        Ok(filter)
+    }
+}
 
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
