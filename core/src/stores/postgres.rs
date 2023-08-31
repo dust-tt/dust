@@ -1354,8 +1354,6 @@ impl Store for PostgresStore {
 
         let mut p_idx: usize = 3;
 
-        // these need to be declared outside of the match block
-        // otherwise we cannot add them to the params vector
         let tags_is_in: Vec<String>;
         let tags_is_not: Vec<String>;
         let parents_is_in: Vec<String>;
@@ -1363,108 +1361,82 @@ impl Store for PostgresStore {
         let ts_gt: i64;
         let ts_lt: i64;
 
-        match filter {
-            None => (),
-            Some(filter) => {
-                match filter.tags {
-                    None => (),
-                    Some(tags_filter) => {
-                        match tags_filter.is_in {
-                            None => (),
-                            Some(tags) => {
-                                where_clauses.push(format!("tags @> ARRAY[${}]", p_idx));
-                                p_idx += 1;
-                                tags_is_in = tags;
-                                params.push(&tags_is_in);
-                            }
-                        }
-                        match tags_filter.is_not {
-                            None => (),
-                            Some(tags) => {
-                                where_clauses.push(format!("NOT tags @> ARRAY[${}]", p_idx));
-                                p_idx += 1;
-                                tags_is_not = tags;
-                                params.push(&tags_is_not);
-                            }
-                        }
-                    }
-                };
-                match filter.parents {
-                    None => (),
-                    Some(parents_filter) => {
-                        match parents_filter.is_in {
-                            None => (),
-                            Some(parents) => {
-                                where_clauses.push(format!("parents @> ARRAY[${}]", p_idx));
-                                p_idx += 1;
-                                parents_is_in = parents;
-                                params.push(&parents_is_in);
-                            }
-                        }
-                        match parents_filter.is_not {
-                            None => (),
-                            Some(parents) => {
-                                where_clauses.push(format!("NOT parents @> ARRAY[${}]", p_idx));
-                                p_idx += 1;
-                                parents_is_not = parents;
-                                params.push(&parents_is_not);
-                            }
-                        }
-                    }
-                };
-                match filter.timestamp {
-                    None => (),
-                    Some(ts_filter) => {
-                        match ts_filter.gt {
-                            None => (),
-                            Some(ts) => {
-                                where_clauses.push(format!("timestamp > ${}", p_idx));
-                                p_idx += 1;
-                                ts_gt = ts as i64;
-                                params.push(&ts_gt);
-                            }
-                        }
-                        match ts_filter.lt {
-                            None => (),
-                            Some(ts) => {
-                                where_clauses.push(format!("timestamp < ${}", p_idx));
-                                p_idx += 1;
-                                ts_lt = ts as i64;
-                                params.push(&ts_lt);
-                            }
-                        }
-                    }
-                };
+        if let Some(filter) = filter {
+            if let Some(tags_filter) = filter.tags {
+                if let Some(tags) = tags_filter.is_in {
+                    where_clauses.push(format!("tags @> ARRAY[${}]", p_idx));
+                    tags_is_in = tags;
+                    params.push(&tags_is_in);
+                    p_idx += 1;
+                }
+                if let Some(tags) = tags_filter.is_not {
+                    where_clauses.push(format!("NOT tags @> ARRAY[${}]", p_idx));
+                    tags_is_not = tags;
+                    params.push(&tags_is_not);
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(parents_filter) = filter.parents {
+                if let Some(parents) = parents_filter.is_in {
+                    where_clauses.push(format!("parents @> ARRAY[${}]", p_idx));
+                    parents_is_in = parents;
+                    params.push(&parents_is_in);
+                    p_idx += 1;
+                }
+                if let Some(parents) = parents_filter.is_not {
+                    where_clauses.push(format!("NOT parents @> ARRAY[${}]", p_idx));
+                    parents_is_not = parents;
+                    params.push(&parents_is_not);
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(ts_filter) = filter.timestamp {
+                if let Some(ts) = ts_filter.gt {
+                    where_clauses.push(format!("timestamp > ${}", p_idx));
+                    ts_gt = ts as i64;
+                    params.push(&ts_gt);
+                    p_idx += 1;
+                }
+                if let Some(ts) = ts_filter.lt {
+                    where_clauses.push(format!("timestamp < ${}", p_idx));
+                    ts_lt = ts as i64;
+                    params.push(&ts_lt);
+                    p_idx += 1;
+                }
             }
         }
 
+        let serialized_where_clauses = where_clauses.join(" AND ");
         let mut query = "SELECT document_id FROM data_sources_documents \
             WHERE "
             .to_string()
-            + &where_clauses.join(" AND ");
+            + &serialized_where_clauses;
 
         query = query + " ORDER BY timestamp DESC";
 
-        let mut limit: i64 = 0;
-        let mut offset: i64 = 0;
-        match limit_offset {
-            None => (),
-            Some((l, o)) => {
-                limit = l as i64;
-                offset = o as i64;
-            }
-        };
+        let limit: i64;
+        let offset: i64;
 
-        if limit_offset.is_some() {
-            query =
-                query + " LIMIT $" + &p_idx.to_string() + " OFFSET $" + &(p_idx + 1).to_string();
+        if let Some((l, o)) = limit_offset {
+            query = query + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1);
+            limit = l as i64;
+            offset = o as i64;
             params.push(&limit);
             params.push(&offset);
         }
 
-        let _ = c.query(&query, &params).await?;
+        let rows = c.query(&query, &params).await?;
+        let document_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
 
-        Ok((vec![], 0))
+        let count_query = "SELECT COUNT(*) FROM data_sources_documents \
+            WHERE "
+            .to_string()
+            + &serialized_where_clauses;
+        let count: i64 = c.query_one(&count_query, &params).await?.get(0);
+
+        Ok((document_ids, count as usize))
     }
 
     async fn upsert_data_source_document(
