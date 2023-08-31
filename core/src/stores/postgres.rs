@@ -1417,6 +1417,14 @@ impl Store for PostgresStore {
         }
 
         let serialized_where_clauses = where_clauses.join(" AND ");
+
+        // compute the total count
+        let count_query = format!(
+            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
+            serialized_where_clauses
+        );
+        let count: i64 = c.query_one(&count_query, &params).await?.get(0);
+
         let mut query = format!(
             "SELECT document_id FROM data_sources_documents \
             WHERE {} ORDER BY timestamp DESC",
@@ -1436,18 +1444,6 @@ impl Store for PostgresStore {
 
         let rows = c.query(&query, &params).await?;
         let document_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
-
-        // compute the total count
-        let count_query = format!(
-            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
-            serialized_where_clauses
-        );
-        if let Some(_) = limit_offset {
-            // remove the LIMIT and OFFSET from the params
-            params.pop();
-            params.pop();
-        }
-        let count: i64 = c.query_one(&count_query, &params).await?.get(0);
 
         Ok((document_ids, count as usize))
     }
