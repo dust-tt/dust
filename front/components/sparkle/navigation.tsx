@@ -1,15 +1,15 @@
 import {
+  ArrowUpOnSquareIcon,
   ChatBubbleBottomCenterTextIcon,
-  CloudArrowDownStrokeIcon,
+  CloudArrowDownIcon,
   Cog6ToothIcon,
-  Cog6ToothStrokeIcon,
-  CommandLineStrokeIcon,
-  DocumentTextStrokeIcon,
-  FolderOpenStrokeIcon,
-  KeyStrokeIcon,
-  PaperAirplaneStrokeIcon,
+  CommandLineIcon,
+  DocumentTextIcon,
+  FolderOpenIcon,
+  KeyIcon,
+  PaperAirplaneIcon,
+  Square3Stack3DIcon,
   TestTubeIcon,
-  TestTubeStrokeIcon,
 } from "@dust-tt/sparkle";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
@@ -108,7 +108,7 @@ export const subNavigationAdmin = ({
     {
       id: "data_sources",
       label: "Data Sources",
-      icon: CloudArrowDownStrokeIcon,
+      icon: CloudArrowDownIcon,
       href: `/w/${owner.sId}/ds`,
       current: current === "data_sources",
       subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
@@ -120,7 +120,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "workspace",
       label: "Workspace Settings",
-      icon: KeyStrokeIcon,
+      icon: KeyIcon,
       href: `/w/${owner.sId}/workspace`,
       current: current === "workspace",
       subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
@@ -132,7 +132,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "developers",
       label: "Developers Tools",
-      icon: CommandLineStrokeIcon,
+      icon: CommandLineIcon,
       href: `/w/${owner.sId}/a`,
       current: current === "developers",
       subMenuLabel: current === "developers" ? subMenuLabel : undefined,
@@ -156,14 +156,14 @@ export const subNavigationApp = ({
     {
       id: "specification",
       label: "Specification",
-      icon: CommandLineStrokeIcon,
+      icon: CommandLineIcon,
       href: `/w/${owner.sId}/a/${app.sId}`,
       current: current === "specification",
     },
     {
       id: "datasets",
       label: "Datasets",
-      icon: DocumentTextStrokeIcon,
+      icon: DocumentTextIcon,
       href: `/w/${owner.sId}/a/${app.sId}/datasets`,
       current: current === "datasets",
     },
@@ -178,21 +178,21 @@ export const subNavigationApp = ({
       {
         id: "execute",
         label: "Run",
-        icon: PaperAirplaneStrokeIcon,
+        icon: PaperAirplaneIcon,
         href: `/w/${owner.sId}/a/${app.sId}/execute`,
         current: current === "execute",
       },
       {
         id: "runs",
         label: "Logs",
-        icon: FolderOpenStrokeIcon,
+        icon: FolderOpenIcon,
         href: `/w/${owner.sId}/a/${app.sId}/runs`,
         current: current === "runs",
       },
       {
         id: "settings",
         label: "Settings",
-        icon: Cog6ToothStrokeIcon,
+        icon: Cog6ToothIcon,
         href: `/w/${owner.sId}/a/${app.sId}/settings`,
         current: current === "settings",
       },
@@ -213,7 +213,7 @@ export const subNavigationLab = ({
     {
       id: "gens",
       label: "Gens",
-      icon: TestTubeStrokeIcon,
+      icon: Square3Stack3DIcon,
       href: `/w/${owner.sId}/u/gens`,
       current: current === "gens",
     },
@@ -223,7 +223,7 @@ export const subNavigationLab = ({
     nav.push({
       id: "extract",
       label: "Extract",
-      icon: TestTubeStrokeIcon,
+      icon: ArrowUpOnSquareIcon,
       href: `/w/${owner.sId}/u/extract`,
       current: current === "extract",
     });
