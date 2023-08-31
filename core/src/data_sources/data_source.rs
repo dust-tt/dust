@@ -10,6 +10,8 @@ use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use qdrant_client::qdrant::vectors::VectorsOptions;
+use qdrant_client::qdrant::ScrollPoints;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{
@@ -596,36 +598,148 @@ impl DataSource {
             utils::now() - now
         ));
 
-        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
-        let chunked_splits = splits
-            .chunks(8)
-            .map(|chunk| chunk.to_vec())
-            .collect::<Vec<_>>();
+        let current_doc = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
 
+        let mut should_embbed = match current_doc {
+            Some(current_doc) => current_doc.hash != document_hash,
+            None => true,
+        };
         // Ordered results with offset, stirng and vector
         let mut e: Vec<(usize, String, EmbedderVector)> = vec![];
-
-        let now = utils::now();
         let mut offset: usize = 0;
-        // Embed batched chunks sequentially.
-        for chunk in chunked_splits {
-            let r = EmbedderRequest::new(
-                self.config.provider_id.clone(),
-                &self.config.model_id,
-                chunk.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
-                self.config.extras.clone(),
-            );
+        if should_embbed == false {
+            let scroll_results = qdrant_client
+                .scroll(&ScrollPoints {
+                    collection_name: self.qdrant_collection(),
+                    with_vectors: Some(true.into()),
+                    limit: Some(10000),
+                    filter: Some(qdrant::Filter {
+                        must_not: vec![],
+                        should: vec![],
+                        must: vec![qdrant::FieldCondition {
+                            key: "document_id_hash".to_string(),
+                            r#match: Some(qdrant::Match {
+                                match_value: Some(qdrant::r#match::MatchValue::Text(
+                                    document_id_hash.clone(),
+                                )),
+                            }),
+                            ..Default::default()
+                        }
+                        .into()],
+                    }),
+                    ..Default::default()
+                })
+                .await?;
+            let mut cached_embeddings: HashMap<String, EmbedderVector> = HashMap::new();
 
-            let v = match r.execute(credentials.clone()).await {
-                Ok(v) => v,
-                Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
-            };
+            scroll_results.result.iter().for_each(|result| {
+                match result.payload.get("chunk_hash") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::StringValue(ref s)) => {
+                            match result.vectors.clone() {
+                                Some(v) => match v.vectors_options {
+                                    Some(VectorsOptions::Vector(v)) => {
+                                        cached_embeddings.insert(
+                                            s.to_string(),
+                                            EmbedderVector {
+                                                created: document.created,
+                                                vector: v
+                                                    .data
+                                                    .iter()
+                                                    .map(|v| *v as f64)
+                                                    .collect::<Vec<f64>>(),
+                                                model: self.config.model_id.clone(),
+                                                provider: self.config.provider_id.to_string(),
+                                            },
+                                        );
+                                    }
+                                    _ => {}
+                                },
+                                None => {}
+                            }
+                        }
+                        _ => {}
+                    },
+                    None => {}
+                }
+            });
 
-            for (s, v) in chunk.into_iter().zip(v.into_iter()) {
-                e.push((offset, s, v));
-                offset += 1;
+            let cache_hits = splits
+                .iter()
+                .filter(|s| {
+                    let mut hasher = blake3::Hasher::new();
+                    hasher.update(document_hash.as_bytes());
+                    hasher.update(s.as_bytes());
+                    let hash = format!("{}", hasher.finalize().to_hex());
+                    cached_embeddings.contains_key(&hash)
+                })
+                .count();
+            utils::done(&format!(
+                "Embeddings cache hits: data_source_id={} document_id={} cache_hits={} splits={}",
+                self.data_source_id,
+                document_id,
+                cache_hits,
+                splits.len()
+            ));
+            if cache_hits != splits.len() {
+                should_embbed = true;
+            } else {
+                for s in splits.clone() {
+                    let mut hasher = blake3::Hasher::new();
+                    hasher.update(document_hash.as_bytes());
+                    hasher.update(s.as_bytes());
+                    let hash = format!("{}", hasher.finalize().to_hex());
+                    match cached_embeddings.contains_key(&hash) {
+                        true => {
+                            e.push((offset, s, cached_embeddings[&hash].clone()));
+                            offset += 1;
+                        }
+                        false => {
+                            should_embbed = true;
+                            e = vec![];
+                            break;
+                        }
+                    };
+                }
             }
         }
+
+        if should_embbed {
+            // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+            let chunked_splits = splits
+                .chunks(8)
+                .map(|chunk| chunk.to_vec())
+                .collect::<Vec<_>>();
+
+            // Embed batched chunks sequentially.
+            for chunk in chunked_splits {
+                let r = EmbedderRequest::new(
+                    self.config.provider_id.clone(),
+                    &self.config.model_id,
+                    chunk.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+                    self.config.extras.clone(),
+                );
+
+                let v = match r.execute(credentials.clone()).await {
+                    Ok(v) => v,
+                    Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
+                };
+
+                for (s, v) in chunk.into_iter().zip(v.into_iter()) {
+                    e.push((offset, s, v));
+                    offset += 1;
+                }
+            }
+        }
+
+        let now = utils::now();
 
         // Embed chunks with max concurrency of 2.
         //let e = stream::iter(splits.into_iter().enumerate())
