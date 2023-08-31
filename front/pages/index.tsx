@@ -82,23 +82,24 @@ export default function Home({
   return (
     <>
       <Head>
-        <title>Dust - Smarter Teams with AI</title>
+        <title>Dust - Secure AI assistant with your company's knowledge</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
         <meta
           id="meta-description"
           name="description"
-          content="Harnesses the power of LLMs to help your teams craft better content, understand their environment faster, and ultimately take better decisions."
+          content="Dust is an AI assistant that safely brings the best large language models, continuously updated company knowledge, powerful collaboration applications, and an extensible platform to your team's fingertips."
         />
         <meta
           id="og-title"
           property="og:title"
-          content="Dust - Build Smarter Teams with Generative AI"
+          content="Dust - Secure AI assistant with your company's knowledge"
         />
         <meta
           id="og-image"
           property="og:image"
           content="/static/og_image.png"
         />
+
         <link
           rel="stylesheet"
           href="https://use.typekit.net/lzv1deb.css"
