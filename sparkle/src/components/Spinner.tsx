@@ -4,12 +4,12 @@ import { classNames } from "@sparkle/lib/utils";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
-  color?: "brand" | "action" | "lightGrey" | "darkGrey" | "white";
+  variant?: "success" | "action" | "lightGrey" | "darkGrey" | "white";
 }
 
 const Spinner: React.FC<SpinnerProps> = ({
   size = "md",
-  color = "lightGrey",
+  variant = "lightGrey",
 }) => {
   const sizeClasses = {
     xs: "s-h-4 s-w-4",
@@ -19,17 +19,17 @@ const Spinner: React.FC<SpinnerProps> = ({
   };
 
   const colorClasses = {
-    brand: "s-bg-brand",
+    success: "s-bg-success-500",
     action: "s-bg-action-500 dark:s-bg-action-500-dark",
-    white: "s-bg-white dark:s-bg-black",
+    white: "s-bg-structure-0 dark:s-bg-black",
     lightGrey: "s-bg-element-600 dark:s-bg-element-600-dark",
     darkGrey: "s-bg-element-800 dark:s-bg-element-900-dark",
   };
 
   const colorSecClasses = {
-    brand: "s-bg-emerald-300",
+    success: "s-bg-success-300",
     action: "s-bg-sky-300 dark:s-bg-sky-700",
-    white: "s-opacity-40 s-bg-white dark:s-bg-slate-950",
+    white: "s-opacity-40 s-bg-structure-0 dark:s-bg-structure-0-dark",
     lightGrey: "s-bg-element-500 dark:s-bg-element-500-dark",
     darkGrey: "s-bg-element-600 dark:s-bg-element-600-dark",
   };
@@ -40,7 +40,7 @@ const Spinner: React.FC<SpinnerProps> = ({
         <div
           className={classNames(
             "s-absolute s-inset-0 s-rounded-full",
-            colorSecClasses[color]
+            colorSecClasses[variant]
           )}
         />
         <div
@@ -50,7 +50,7 @@ const Spinner: React.FC<SpinnerProps> = ({
           )}
         >
           <div
-            className={classNames("s-h-full s-w-full", colorClasses[color])}
+            className={classNames("s-h-full s-w-full", colorClasses[variant])}
           />
         </div>
       </div>

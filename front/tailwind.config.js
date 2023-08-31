@@ -8,6 +8,67 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      keyframes: {
+        "move-square": {
+          "0%": {
+            paddingLeft: "0",
+            paddingTop: "0",
+            paddingRight: "50%",
+            paddingBottom: "50%",
+          },
+          "12.5%": {
+            paddingLeft: "0",
+            paddingTop: "0",
+            paddingRight: "0",
+            paddingBottom: "50%",
+          },
+          "25%": {
+            paddingLeft: "50%",
+            paddingTop: "0",
+            paddingRight: "0",
+            paddingBottom: "50%",
+          },
+          "37.5%": {
+            paddingLeft: "50%",
+            paddingTop: "0",
+            paddingRight: "0",
+            paddingBottom: "0",
+          },
+          "50%": {
+            paddingLeft: "50%",
+            paddingTop: "50%",
+            paddingRight: "0",
+            paddingBottom: "0",
+          },
+          "62.5%": {
+            paddingLeft: "0",
+            paddingTop: "50%",
+            paddingRight: "0",
+            paddingBottom: "0",
+          },
+          "75%": {
+            paddingLeft: "0",
+            paddingTop: "50%",
+            paddingRight: "50%",
+            paddingBottom: "0",
+          },
+          "87.5%": {
+            paddingLeft: "0",
+            paddingTop: "0",
+            paddingRight: "50%",
+            paddingBottom: "0",
+          },
+          "100%": {
+            paddingLeft: "0",
+            paddingTop: "0",
+            paddingRight: "50%",
+            paddingBottom: "50%",
+          },
+        },
+      },
+      animation: {
+        "move-square": "move-square 4s ease-out infinite",
+      },
       colors: {
         brand: {
           DEFAULT: colors.emerald[500],
