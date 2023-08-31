@@ -1347,12 +1347,19 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("project = $1".to_string());
-        params.push(&project_id);
-        where_clauses.push("data_source = $2".to_string());
-        params.push(&data_source_id);
+        let data_source_internal_id_rows = c
+            .query_one(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
 
-        let mut p_idx: usize = 3;
+        let data_source_internal_id: i64 = data_source_internal_id_rows.get(0);
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_internal_id);
+
+        let mut p_idx: usize = 2;
 
         let tags_is_in: Vec<String>;
         let tags_is_not: Vec<String>;
@@ -1364,13 +1371,13 @@ impl Store for PostgresStore {
         if let Some(filter) = filter {
             if let Some(tags_filter) = filter.tags {
                 if let Some(tags) = tags_filter.is_in {
-                    where_clauses.push(format!("tags @> ARRAY[${}]", p_idx));
+                    where_clauses.push(format!("tags_array @> ${}", p_idx));
                     tags_is_in = tags;
                     params.push(&tags_is_in);
                     p_idx += 1;
                 }
                 if let Some(tags) = tags_filter.is_not {
-                    where_clauses.push(format!("NOT tags @> ARRAY[${}]", p_idx));
+                    where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
                     tags_is_not = tags;
                     params.push(&tags_is_not);
                     p_idx += 1;
@@ -1379,13 +1386,13 @@ impl Store for PostgresStore {
 
             if let Some(parents_filter) = filter.parents {
                 if let Some(parents) = parents_filter.is_in {
-                    where_clauses.push(format!("parents @> ARRAY[${}]", p_idx));
+                    where_clauses.push(format!("parents @> ${}", p_idx));
                     parents_is_in = parents;
                     params.push(&parents_is_in);
                     p_idx += 1;
                 }
                 if let Some(parents) = parents_filter.is_not {
-                    where_clauses.push(format!("NOT parents @> ARRAY[${}]", p_idx));
+                    where_clauses.push(format!("NOT parents @> ${}", p_idx));
                     parents_is_not = parents;
                     params.push(&parents_is_not);
                     p_idx += 1;
@@ -1429,10 +1436,16 @@ impl Store for PostgresStore {
         let rows = c.query(&query, &params).await?;
         let document_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
 
+        // compute the total count
         let count_query = format!(
             "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
             serialized_where_clauses
         );
+        if let Some(_) = limit_offset {
+            // remove the LIMIT and OFFSET from the params
+            params.pop();
+            params.pop();
+        }
         let count: i64 = c.query_one(&count_query, &params).await?.get(0);
 
         Ok((document_ids, count as usize))
