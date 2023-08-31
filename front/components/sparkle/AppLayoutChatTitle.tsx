@@ -6,8 +6,8 @@ import {
   SliderToggle,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Dialog, Popover, Transition } from "@headlessui/react";
-import React, { Fragment, useEffect, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import React, { Fragment, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 import { ChatSessionVisibility } from "@app/types/chat";
