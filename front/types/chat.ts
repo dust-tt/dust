@@ -32,10 +32,10 @@ export type ChatMessageType = {
 
 export type ChatSessionType = {
   id: ModelId;
-  userId: number;
+  userId: ModelId | null;
   created: number;
   sId: string;
-  title?: string;
+  title: string | null;
   messages?: ChatMessageType[];
   visibility: ChatSessionVisibility;
 };
