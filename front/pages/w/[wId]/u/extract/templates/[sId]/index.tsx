@@ -2,16 +2,19 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   CheckCircleIcon,
+  ClipboardCheckIcon,
   IconButton,
+  LinkStrokeIcon,
   PageHeader,
   PencilSquareIcon,
   SectionHeader,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import { Dialog, Transition } from "@headlessui/react";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { Fragment } from "react";
 import { useState } from "react";
 import { mutate } from "swr";
 
@@ -21,7 +24,7 @@ import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { classNames, objectToMarkdown } from "@app/lib/utils";
 import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/ds";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -176,6 +179,8 @@ export default function AppExtractEventsReadData({
                     </td>
                     <td className="w-auto border-y px-4 py-4 align-top">
                       <div className="flex flex-row space-x-2">
+                        <ExtractButtonAndModal event={event} />
+
                         <IconButton
                           icon={CheckCircleIcon}
                           tooltip="Accept data"
@@ -302,6 +307,120 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
       ) : (
         <p>Unknown source</p>
       )}
+    </>
+  );
+};
+
+const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  const handleClick = async (format: "JSON" | "Markdown"): Promise<void> => {
+    let content: string | null = null;
+
+    if (format === "JSON") {
+      content = JSON.stringify(event.properties);
+    }
+    if (format === "Markdown") {
+      content = objectToMarkdown(event.properties);
+    }
+
+    if (!content) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(content);
+    setCopySuccess(format);
+    setTimeout(() => {
+      setCopySuccess(null);
+    }, 1000);
+  };
+
+  return (
+    <>
+      <IconButton
+        size="sm"
+        icon={ArrowUpOnSquareIcon}
+        type="primary"
+        tooltip="Copy data"
+        onClick={() => setIsOpen(true)}
+      />
+
+      <Transition show={isOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-10"
+          onClose={() => setIsOpen(false)}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="transition ease-out duration-200"
+                enterFrom="transform -translate-y-4 opacity-0 scale-100"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Dialog.Panel className="mx-16 mt-16 w-64 rounded-md bg-white py-1 shadow-lg ring-1 ring-slate-100 focus:outline-none">
+                  <div className="flex flex-col gap-y-2 px-3 py-3">
+                    <div className="text-sm font-medium text-element-800">
+                      Extract this item
+                    </div>
+                    <div className="text-xs font-normal text-element-700">
+                      Copy to clipboard in the desired format!
+                    </div>
+                    <div className="justify-center">
+                      <Button
+                        type="secondary"
+                        size="sm"
+                        label={
+                          copySuccess === "Markdown"
+                            ? "Copied!"
+                            : "Copy as Markdown"
+                        }
+                        icon={
+                          copySuccess === "Markdown"
+                            ? ClipboardCheckIcon
+                            : LinkStrokeIcon
+                        }
+                        onClick={() => handleClick("Markdown")}
+                      />
+                    </div>
+                    <div className="justify-center">
+                      <Button
+                        type="secondary"
+                        size="sm"
+                        label={
+                          copySuccess === "JSON" ? "Copied!" : "Copy as JSON"
+                        }
+                        icon={
+                          copySuccess === "JSON"
+                            ? ClipboardCheckIcon
+                            : LinkStrokeIcon
+                        }
+                        onClick={() => handleClick("JSON")}
+                      />
+                    </div>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </>
   );
 };
