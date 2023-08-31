@@ -29,6 +29,7 @@ export default function App({ Component, pageProps }) {
           <title>{`${pageProps.title} - Dust Documentation`}</title>
         )}
         <meta name="description" content={pageProps.description} />
+        <link rel="shortcut icon" href="favicon.png" />
       </Head>
       <MDXProvider components={mdxComponents}>
         <Layout {...pageProps}>
