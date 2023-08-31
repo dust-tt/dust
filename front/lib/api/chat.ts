@@ -109,6 +109,49 @@ export async function getChatSession(
   };
 }
 
+export async function takeOwnerShipOfChatSession(
+  auth: Authenticator,
+  sId: string
+): Promise<ChatSessionType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const user = auth.user();
+  if (!user) {
+    throw new Error("Unexpected `auth` without `user`.");
+  }
+
+  const chatSession = await ChatSession.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId,
+    },
+  });
+
+  if (!chatSession) {
+    throw new Error("Chat session not found.");
+  }
+
+  if (chatSession.userId !== null && chatSession.userId !== user.id) {
+    throw new Error("Chat session .");
+  }
+
+  await chatSession.update({
+    userId: user.id,
+  });
+
+  return {
+    id: chatSession.id,
+    userId: chatSession.userId,
+    created: chatSession.createdAt.getTime(),
+    sId: chatSession.sId,
+    title: chatSession.title,
+    visibility: chatSession.visibility,
+  };
+}
+
 export async function upsertChatSession(
   auth: Authenticator,
   sId: string,

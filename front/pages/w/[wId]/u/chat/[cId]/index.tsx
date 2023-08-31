@@ -1,6 +1,8 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   ClipboardCheckIcon,
   ClipboardIcon,
   CloudArrowDownIcon,
@@ -9,8 +11,8 @@ import {
   Logo,
   PageHeader,
   PaperAirplaneIcon,
+  RobotIcon,
 } from "@dust-tt/sparkle";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -578,6 +580,8 @@ export default function AppChat({
     readOnly = false;
   }
 
+  const canTakeOwnership = chatSession && !chatSession.userId;
+
   const [title, setTitle] = useState<string>(
     chatSession?.title || "New Conversation"
   );
@@ -1090,6 +1094,21 @@ export default function AppChat({
     }
   };
 
+  const handleTakeOwnership = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/use/chats/${chatSessionId}/take`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (res.ok) {
+      void mutateChatSession();
+    }
+  };
+
   return (
     <AppLayout
       user={user}
@@ -1249,6 +1268,17 @@ export default function AppChat({
                       </p>
                     </div>
                   </>
+                )}
+
+                {canTakeOwnership && (
+                  <div className="mt-8">
+                    <Button
+                      type="primary"
+                      label="Continue conversation"
+                      icon={RobotIcon}
+                      onClick={handleTakeOwnership}
+                    />
+                  </div>
                 )}
               </div>
             </div>

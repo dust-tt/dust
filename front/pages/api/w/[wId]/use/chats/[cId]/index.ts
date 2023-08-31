@@ -83,7 +83,8 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message: "Only users of the current workspace can retrieve chats.",
+        message:
+          "Only users of the current workspace can update chat sessions.",
       },
     });
   }

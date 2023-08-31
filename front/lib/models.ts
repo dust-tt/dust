@@ -721,10 +721,10 @@ export class ChatSession extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
-  declare title?: string;
+  declare title: string | null;
   declare visibility: ChatSessionVisibility;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
   declare userId: ForeignKey<User["id"]>;
 }
 
