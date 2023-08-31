@@ -23,6 +23,7 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   incrementalSync,
+  markFolderAsVisited,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -77,6 +78,7 @@ export async function googleDriveFullSync(
         `Synced ${totalCount} files`
       );
     } while (nextPageToken);
+    await markFolderAsVisited(connectorId, folder);
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveFullSync>(
         connectorId,
