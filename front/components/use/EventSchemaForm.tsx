@@ -1,5 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
+  Button,
   IconButton,
   PageHeader,
   SectionHeader,
@@ -9,7 +10,6 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import { Button } from "@app/components/Button";
 import { APIError } from "@app/lib/error";
 import { useEventSchemas } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -208,14 +208,18 @@ export function ExtractEventSchemaForm({
           <div className="col-span-6 sm:col-span-2"></div>
           <div className="col-span-6 flex justify-end sm:col-span-4">
             <Button
-              type="submit"
+              type="primary"
+              label={isProcessing ? "Submitting..." : "Submit"}
               disabled={isProcessing || readOnly}
               onClick={async () => {
                 await onSubmit();
               }}
-            >
-              {isProcessing ? "Submitting..." : "Submit"}
-            </Button>
+            />
+            <Button
+              onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
+              label="Cancel"
+              type="secondary"
+            />
           </div>
         </div>
       </div>
@@ -289,6 +293,7 @@ function PropertiesFields({
   setError: (message: string) => void;
   readOnly?: boolean;
 }) {
+  const router = useRouter();
   function handlePropertyChange(
     index: number,
     field: "name" | "type" | "description",
@@ -397,13 +402,17 @@ function PropertiesFields({
       {error && (
         <p className="text-sm font-bold text-red-400 sm:col-span-6">{error}</p>
       )}
-      <div className="sm:col-span-6">
-        <Button onClick={addProperty} disabled={readOnly}>
-          <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-          {properties.length
-            ? "Add another property"
-            : "Define what to extract!"}
-        </Button>
+      <div className="sm:col-span-12">
+        <Button
+          label={
+            properties.length
+              ? "Add another property"
+              : "Define what to extract!"
+          }
+          icon={PlusIcon}
+          onClick={addProperty}
+          disabled={readOnly}
+        />
       </div>
     </>
   );
