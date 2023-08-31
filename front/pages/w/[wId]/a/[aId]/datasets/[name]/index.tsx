@@ -1,12 +1,14 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Router from "next/router";
+import Router, { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -144,6 +146,8 @@ export default function ViewDatasetView({
     setIsFinishedEditing(true);
   };
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -153,42 +157,53 @@ export default function ViewDatasetView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "datasets" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-col">
-        <div className="flex flex-1">
-          <div className="mb-8 w-full">
-            <div className="space-y-6 divide-y divide-gray-200">
-              <DatasetView
-                readOnly={readOnly}
-                datasets={[] as DatasetType[]}
-                dataset={updatedDataset}
-                onUpdate={(
-                  initializing: boolean,
-                  valid: boolean,
-                  currentDatasetInEditor: DatasetType
-                ) => {
-                  if (!readOnly) {
-                    onUpdate(initializing, valid, currentDatasetInEditor);
-                  }
-                }}
-                nameDisabled={true}
-              />
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "datasets" })} />
+        </div>
+        <div className="mt-8 flex flex-col">
+          <div className="flex flex-1">
+            <div className="mb-8 w-full">
+              <div className="space-y-6 divide-y divide-gray-200">
+                <DatasetView
+                  readOnly={readOnly}
+                  datasets={[] as DatasetType[]}
+                  dataset={updatedDataset}
+                  onUpdate={(
+                    initializing: boolean,
+                    valid: boolean,
+                    currentDatasetInEditor: DatasetType
+                  ) => {
+                    if (!readOnly) {
+                      onUpdate(initializing, valid, currentDatasetInEditor);
+                    }
+                  }}
+                  nameDisabled={true}
+                />
 
-              {readOnly ? null : (
-                <div className="flex flex-row pt-6">
-                  <div className="flex-initial">
-                    <ActionButton
-                      disabled={disable || loading}
-                      onClick={() => handleSubmit()}
-                    >
-                      Update
-                    </ActionButton>
+                {readOnly ? null : (
+                  <div className="flex flex-row pt-6">
+                    <div className="flex-initial">
+                      <ActionButton
+                        disabled={disable || loading}
+                        onClick={() => handleSubmit()}
+                      >
+                        Update
+                      </ActionButton>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

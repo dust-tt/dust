@@ -158,6 +158,7 @@ export const subNavigationApp = ({
       label: "Specification",
       icon: CommandLineIcon,
       href: `/w/${owner.sId}/a/${app.sId}`,
+      sizing: "expand",
       current: current === "specification",
     },
     {
@@ -165,6 +166,7 @@ export const subNavigationApp = ({
       label: "Datasets",
       icon: DocumentTextIcon,
       href: `/w/${owner.sId}/a/${app.sId}/datasets`,
+      sizing: "expand",
       current: current === "datasets",
     },
   ];
@@ -180,6 +182,7 @@ export const subNavigationApp = ({
         label: "Run",
         icon: PaperAirplaneIcon,
         href: `/w/${owner.sId}/a/${app.sId}/execute`,
+        sizing: "expand",
         current: current === "execute",
       },
       {
@@ -187,6 +190,7 @@ export const subNavigationApp = ({
         label: "Logs",
         icon: FolderOpenIcon,
         href: `/w/${owner.sId}/a/${app.sId}/runs`,
+        sizing: "expand",
         current: current === "runs",
       },
       {
@@ -194,6 +198,7 @@ export const subNavigationApp = ({
         label: "Settings",
         icon: Cog6ToothIcon,
         href: `/w/${owner.sId}/a/${app.sId}/settings`,
+        sizing: "expand",
         current: current === "settings",
       },
     ]);

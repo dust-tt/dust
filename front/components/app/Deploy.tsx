@@ -1,13 +1,16 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import {
+  Button,
+  ClipboardIcon,
+  CubeIcon,
+  DocumentTextIcon,
+} from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
-import { CubeIcon, DocumentDuplicateIcon } from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Fragment, useState } from "react";
 
-import { ActionButton, Button, HighlightButton } from "@app/components/Button";
 import { useKeys } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AppType, SpecificationType } from "@app/types/app";
@@ -82,15 +85,15 @@ export default function Deploy({
 
   return (
     <div>
-      <HighlightButton
-        disabled={disabled}
+      <Button
+        label="deploy"
+        type="primary"
         onClick={() => {
           setOpen(!open);
         }}
-      >
-        <CubeIcon className="-ml-1 mr-1 h-5 w-5" />
-        Deploy
-      </HighlightButton>
+        disabled={disabled}
+        icon={CubeIcon}
+      />
 
       <Transition.Root show={open} as={Fragment}>
         <Dialog
@@ -180,10 +183,12 @@ export default function Deploy({
                         </div>
                         <div className="flex-1"></div>
                         <div className="mt-1">
-                          <ActionButton onClick={handleCopyClick}>
-                            <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                            {copyButtonText}
-                          </ActionButton>
+                          <Button
+                            type="primary"
+                            onClick={handleCopyClick}
+                            label={copyButtonText}
+                            icon={ClipboardIcon}
+                          />
                         </div>
                       </div>
                       <p className="mt-4 text-sm text-gray-500">
@@ -191,23 +196,29 @@ export default function Deploy({
                         creation parameters, refer to the API reference.
                       </p>
                       <p className="mt-2">
-                        <Link
-                          href="https://docs.dust.tt/runs"
-                          target="_blank"
-                          className="mr-2"
-                        >
-                          <Button>
-                            <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                            Visit API Reference
-                          </Button>
-                        </Link>
+                        <Button
+                          icon={DocumentTextIcon}
+                          label="Visit API Reference"
+                          type="secondary"
+                          onClick={() => {
+                            window.open(
+                              "https://docs.dust.tt/runs",
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }}
+                        />
                       </p>
                     </div>
                   </div>
                   <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
                     <div className="flex-1"></div>
                     <div className="flex flex-initial">
-                      <Button onClick={() => setOpen(false)}>Close</Button>
+                      <Button
+                        type="secondary"
+                        onClick={() => setOpen(false)}
+                        label="Close"
+                      />
                     </div>
                   </div>
                 </Dialog.Panel>

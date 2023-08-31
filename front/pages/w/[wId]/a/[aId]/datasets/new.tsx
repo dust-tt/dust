@@ -1,12 +1,14 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Router from "next/router";
+import Router, { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -117,6 +119,8 @@ export default function NewDatasetView({
     setIsFinishedEditing(true);
   };
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -126,29 +130,40 @@ export default function NewDatasetView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "datasets" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-col">
-        <div className="flex flex-1">
-          <div className="space-y-6 divide-y divide-gray-200">
-            <DatasetView
-              readOnly={false}
-              datasets={datasets}
-              dataset={dataset}
-              onUpdate={onUpdate}
-              nameDisabled={false}
-            />
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "datasets" })} />
+        </div>
+        <div className="mt-8 flex flex-col">
+          <div className="flex flex-1">
+            <div className="space-y-6 divide-y divide-gray-200">
+              <DatasetView
+                readOnly={false}
+                datasets={datasets}
+                dataset={dataset}
+                onUpdate={onUpdate}
+                nameDisabled={false}
+              />
 
-            <div className="flex flex-row pt-6">
-              <div className="flex-initial">
-                <ActionButton
-                  disabled={disable || loading}
-                  onClick={() => handleSubmit()}
-                >
-                  Create
-                </ActionButton>
+              <div className="flex flex-row pt-6">
+                <div className="flex-initial">
+                  <ActionButton
+                    disabled={disable || loading}
+                    onClick={() => handleSubmit()}
+                  >
+                    Create
+                  </ActionButton>
+                </div>
               </div>
             </div>
           </div>

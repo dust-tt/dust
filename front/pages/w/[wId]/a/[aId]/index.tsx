@@ -1,18 +1,21 @@
 import {
+  Button,
   DocumentDuplicateIcon,
-  PlayCircleIcon,
-} from "@heroicons/react/20/solid";
-import { ArrowRightCircleIcon } from "@heroicons/react/24/outline";
+  DocumentTextIcon,
+  RobotIcon,
+  SparklesIcon,
+  Tab,
+} from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { mutate } from "swr";
 
 import Deploy from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
-import { ActionButton, Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -297,6 +300,8 @@ export default function AppView({
     }, 0);
   };
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -306,13 +311,25 @@ export default function AppView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "specification" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-auto flex-col">
-        <div className="mb-4 flex flex-auto flex-row items-center space-x-2">
-          <div className="flex-initial">
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab
+            tabs={subNavigationApp({ owner, app, current: "specification" })}
+          />
+        </div>
+
+        <div className="mt-8 flex flex-auto flex-col">
+          <div className="mb-4 flex flex-row items-center space-x-2">
             <NewBlock
               disabled={readOnly}
               onClick={async (blockType) => {
@@ -322,131 +339,19 @@ export default function AppView({
               direction="down"
               small={false}
             />
-          </div>
-          <div className="flex-initial">
-            <ActionButton
+            <Button
+              type="secondary"
               disabled={
                 !runnable || runRequested || run?.status.run == "running"
               }
+              label={
+                runRequested || run?.status.run == "running" ? "Running" : "Run"
+              }
               onClick={() => handleRun()}
-            >
-              <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-              {runRequested || run?.status.run == "running" ? "Running" : "Run"}
-            </ActionButton>
-          </div>
-          {runError ? (
-            <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
-              {(() => {
-                switch (runError.code) {
-                  case "invalid_specification_error":
-                    return `Specification error: ${runError.message}`;
-                  default:
-                    return `Error: ${runError.message}`;
-                }
-              })()}
-            </div>
-          ) : null}
-          {readOnly && user ? (
-            <div className="flex-initial">
-              <Link href={`/w/${owner.sId}/a/${app.sId}/clone`}>
-                <ActionButton>
-                  <DocumentDuplicateIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                  Clone
-                </ActionButton>
-              </Link>
-            </div>
-          ) : null}
-          <div className="flex-1"></div>
-          {!readOnly ? (
-            <div className="hidden flex-initial sm:block">
-              <Link
-                href="https://docs.dust.tt"
-                target="_blank"
-                className="mr-2"
-              >
-                <Button>
-                  <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                  Documentation
-                </Button>
-              </Link>
-            </div>
-          ) : null}
-          {!readOnly && run ? (
-            <div className="flex-initial">
-              <Deploy
-                disabled={readOnly || !(run?.status.run == "succeeded")}
-                owner={owner}
-                app={app}
-                run={run}
-                spec={spec}
-                url={url}
-              />
-            </div>
-          ) : null}
-        </div>
-
-        <SpecRunView
-          owner={owner}
-          app={app}
-          readOnly={readOnly}
-          spec={spec}
-          run={run}
-          runRequested={runRequested}
-          handleSetBlock={handleSetBlock}
-          handleDeleteBlock={handleDeleteBlock}
-          handleMoveBlockUp={handleMoveBlockUp}
-          handleMoveBlockDown={handleMoveBlockDown}
-          handleNewBlock={handleNewBlock}
-        />
-
-        {spec.length == 0 ? (
-          <div className="mx-auto mt-8 text-sm text-gray-400">
-            <p className="">Welcome to your new Dust app.</p>
-            <p className="mt-4">To get started:</p>
-            <p className="mt-2">
-              <Link
-                href="https://docs.dust.tt/quickstart"
-                target="_blank"
-                className="mr-2"
-              >
-                <Button>
-                  <ArrowRightCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                  Follow the QuickStart Guide
-                </Button>
-              </Link>
-            </p>
-            <p className="mt-2">...or add your first block!</p>
-          </div>
-        ) : null}
-
-        {spec.length > 2 && !readOnly ? (
-          <div className="my-4 flex flex-row items-center space-x-2">
-            <div className="flex">
-              <NewBlock
-                disabled={readOnly}
-                onClick={async (blockType) => {
-                  await handleNewBlock(null, blockType);
-                }}
-                spec={spec}
-                direction="up"
-                small={false}
-              />
-            </div>
-            <div className="flex">
-              <ActionButton
-                disabled={
-                  !runnable || runRequested || run?.status.run == "running"
-                }
-                onClick={() => handleRun()}
-              >
-                <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                {runRequested || run?.status.run == "running"
-                  ? "Running"
-                  : "Run"}
-              </ActionButton>
-            </div>
+              icon={RobotIcon}
+            />
             {runError ? (
-              <div className="flex px-2 text-sm text-sm font-bold text-red-400">
+              <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
                 {(() => {
                   switch (runError.code) {
                     case "invalid_specification_error":
@@ -457,10 +362,122 @@ export default function AppView({
                 })()}
               </div>
             ) : null}
+            {readOnly && user ? (
+              <div className="flex-initial">
+                <Button
+                  type="secondary"
+                  label="Clone"
+                  icon={DocumentDuplicateIcon}
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/a/${app.sId}/clone`);
+                  }}
+                />
+              </div>
+            ) : null}
+            <div className="flex-1"></div>
+            {!readOnly ? (
+              <div className="hidden flex-initial sm:block">
+                <Button
+                  type="tertiary"
+                  icon={DocumentTextIcon}
+                  label="Documentation"
+                  onClick={() => {
+                    window.open("https://docs.dust.tt", "_blank");
+                  }}
+                />
+              </div>
+            ) : null}
+            {!readOnly && run ? (
+              <div className="flex-initial">
+                <Deploy
+                  disabled={readOnly || !(run?.status.run == "succeeded")}
+                  owner={owner}
+                  app={app}
+                  run={run}
+                  spec={spec}
+                  url={url}
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+
+          <SpecRunView
+            owner={owner}
+            app={app}
+            readOnly={readOnly}
+            spec={spec}
+            run={run}
+            runRequested={runRequested}
+            handleSetBlock={handleSetBlock}
+            handleDeleteBlock={handleDeleteBlock}
+            handleMoveBlockUp={handleMoveBlockUp}
+            handleMoveBlockDown={handleMoveBlockDown}
+            handleNewBlock={handleNewBlock}
+          />
+
+          {spec.length == 0 ? (
+            <div className="mx-auto mt-8 text-sm text-gray-400">
+              <p className="">Welcome to your new Dust app.</p>
+              <p className="mt-4">To get started:</p>
+              <p className="mt-2">
+                <Button
+                  type="tertiary"
+                  icon={DocumentTextIcon}
+                  label="Follow the QuickStart Guide"
+                  onClick={() => {
+                    window.open("https://docs.dust.tt/quickstart", "_blank");
+                  }}
+                />
+              </p>
+              <p className="mt-2">...or add your first block!</p>
+            </div>
+          ) : null}
+
+          {spec.length > 2 && !readOnly ? (
+            <div className="my-4 flex flex-row items-center space-x-2">
+              <div className="flex">
+                <NewBlock
+                  disabled={readOnly}
+                  onClick={async (blockType) => {
+                    await handleNewBlock(null, blockType);
+                  }}
+                  spec={spec}
+                  direction="up"
+                  small={false}
+                />
+              </div>
+              <div className="flex">
+                <Button
+                  type="secondary"
+                  disabled={
+                    !runnable || runRequested || run?.status.run == "running"
+                  }
+                  label={
+                    runRequested || run?.status.run == "running"
+                      ? "Running"
+                      : "Run"
+                  }
+                  onClick={() => handleRun()}
+                  icon={SparklesIcon}
+                />
+              </div>
+              {runError ? (
+                <div className="flex px-2 text-sm text-sm font-bold text-red-400">
+                  {(() => {
+                    switch (runError.code) {
+                      case "invalid_specification_error":
+                        return `Specification error: ${runError.message}`;
+                      default:
+                        return `Error: ${runError.message}`;
+                    }
+                  })()}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div ref={bottomRef} className="mt-4"></div>
       </div>
-      <div ref={bottomRef} className="mt-4"></div>
     </AppLayout>
   );
 }
