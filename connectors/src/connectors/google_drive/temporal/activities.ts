@@ -263,7 +263,7 @@ async function syncOneFile(
   file: GoogleDriveObjectType,
   isBatchSync = false
 ): Promise<boolean> {
-  const documentId = `gdrive-${file.id}`;
+  const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
@@ -356,17 +356,6 @@ async function syncOneFile(
         await fs.unlink(pdf_path);
       }
     }
-  } else if (file.mimeType === "application/vnd.google-apps.folder") {
-    await GoogleDriveFiles.upsert({
-      connectorId: connectorId,
-      dustFileId: documentId,
-      driveFileId: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      parentId: file.parent,
-      lastSeenTs: new Date(),
-    });
-    return false;
   } else {
     // We do not support this file type
     return false;
@@ -593,7 +582,20 @@ export async function incrementalSync(
         change.file,
         authCredentials
       );
+      if (driveFile.mimeType === "application/vnd.google-apps.folder") {
+        await GoogleDriveFiles.upsert({
+          connectorId: connectorId,
+          dustFileId: getDocumentId(driveFile.id),
+          driveFileId: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          parentId: file.parent,
+          lastSeenTs: new Date(),
+        });
+        logger.info({ file_id: change.file.id }, "done syncing file");
 
+        continue;
+      }
       await syncOneFile(
         connectorId,
         authCredentials,
@@ -957,4 +959,29 @@ async function driveObjectToDustType(
         : undefined,
     };
   }
+}
+
+function getDocumentId(driveFileId: string): string {
+  return `gdrive-${driveFileId}`;
+}
+
+export async function markFolderAsVisited(
+  connectorId: ModelId,
+  driveFileId: string
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const authCredentials = await getAuthObject(connector.connectionId);
+  const file = await getGoogleDriveObject(authCredentials, driveFileId);
+  await GoogleDriveFiles.upsert({
+    connectorId: connectorId,
+    dustFileId: getDocumentId(driveFileId),
+    driveFileId: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    parentId: file.parent,
+    lastSeenTs: new Date(),
+  });
 }
