@@ -11,9 +11,10 @@ use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::vectors::VectorsOptions;
-use qdrant_client::qdrant::ScrollPoints;
-use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
-use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
+use qdrant_client::qdrant::{
+    points_selector::PointsSelectorOneOf, Filter, PointId, PointsSelector, RetrievedPoint,
+    ScoredPoint, ScrollPoints,
+};
 use qdrant_client::{
     prelude::{Payload, QdrantClient},
     qdrant,
@@ -615,61 +616,70 @@ impl DataSource {
         let mut e: Vec<(usize, String, EmbedderVector)> = vec![];
         let mut offset: usize = 0;
         if should_embbed == false {
-            let scroll_results = qdrant_client
-                .scroll(&ScrollPoints {
-                    collection_name: self.qdrant_collection(),
-                    with_vectors: Some(true.into()),
-                    limit: Some(10000),
-                    filter: Some(qdrant::Filter {
-                        must_not: vec![],
-                        should: vec![],
-                        must: vec![qdrant::FieldCondition {
-                            key: "document_id_hash".to_string(),
-                            r#match: Some(qdrant::Match {
-                                match_value: Some(qdrant::r#match::MatchValue::Text(
-                                    document_id_hash.clone(),
-                                )),
-                            }),
-                            ..Default::default()
-                        }
-                        .into()],
-                    }),
-                    ..Default::default()
-                })
-                .await?;
             let mut cached_embeddings: HashMap<String, EmbedderVector> = HashMap::new();
-
-            scroll_results.result.iter().for_each(|result| {
-                match result.payload.get("chunk_hash") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::StringValue(ref s)) => {
-                            match result.vectors.clone() {
-                                Some(v) => match v.vectors_options {
-                                    Some(VectorsOptions::Vector(v)) => {
-                                        cached_embeddings.insert(
-                                            s.to_string(),
-                                            EmbedderVector {
-                                                created: document.created,
-                                                vector: v
-                                                    .data
-                                                    .iter()
-                                                    .map(|v| *v as f64)
-                                                    .collect::<Vec<f64>>(),
-                                                model: self.config.model_id.clone(),
-                                                provider: self.config.provider_id.to_string(),
-                                            },
-                                        );
-                                    }
-                                    _ => {}
-                                },
-                                None => {}
+            let mut page_offset: Option<PointId> = None;
+            loop {
+                let scroll_results = qdrant_client
+                    .scroll(&ScrollPoints {
+                        collection_name: self.qdrant_collection(),
+                        with_vectors: Some(true.into()),
+                        limit: Some(1000),
+                        offset: page_offset,
+                        filter: Some(qdrant::Filter {
+                            must_not: vec![],
+                            should: vec![],
+                            must: vec![qdrant::FieldCondition {
+                                key: "document_id_hash".to_string(),
+                                r#match: Some(qdrant::Match {
+                                    match_value: Some(qdrant::r#match::MatchValue::Text(
+                                        document_id_hash.clone(),
+                                    )),
+                                }),
+                                ..Default::default()
                             }
-                        }
-                        _ => {}
-                    },
-                    None => {}
+                            .into()],
+                        }),
+                        ..Default::default()
+                    })
+                    .await?;
+
+                scroll_results.result.iter().for_each(|result| {
+                    match result.payload.get("chunk_hash") {
+                        Some(t) => match t.kind {
+                            Some(qdrant::value::Kind::StringValue(ref s)) => {
+                                match result.vectors.clone() {
+                                    Some(v) => match v.vectors_options {
+                                        Some(VectorsOptions::Vector(v)) => {
+                                            cached_embeddings.insert(
+                                                s.to_string(),
+                                                EmbedderVector {
+                                                    created: document.created,
+                                                    vector: v
+                                                        .data
+                                                        .iter()
+                                                        .map(|v| *v as f64)
+                                                        .collect::<Vec<f64>>(),
+                                                    model: self.config.model_id.clone(),
+                                                    provider: self.config.provider_id.to_string(),
+                                                },
+                                            );
+                                        }
+                                        _ => {}
+                                    },
+                                    None => {}
+                                }
+                            }
+                            _ => {}
+                        },
+                        None => {}
+                    }
+                });
+                page_offset = scroll_results.next_page_offset;
+
+                if page_offset.is_none() {
+                    break;
                 }
-            });
+            }
 
             let cache_hits = splits
                 .iter()
