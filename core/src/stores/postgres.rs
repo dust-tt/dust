@@ -1143,10 +1143,23 @@ impl Store for PostgresStore {
     ) -> Result<()> {
         let document_id = document_id.to_string();
         let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-        let data_source_row_id =
-            get_data_source_row_id(project.project_id(), data_source_id.to_string(), &mut c)
-                .await?;
+        let c = pool.get().await?;
+
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
 
         c.execute(
             "UPDATE data_sources_documents SET parents = $1 \
@@ -1169,9 +1182,21 @@ impl Store for PostgresStore {
         let document_id = document_id.to_string();
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
-        let data_source_row_id =
-            get_data_source_row_id(project.project_id(), data_source_id.to_string(), &mut c)
-                .await?;
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
 
         let tx = c.transaction().await?;
 
@@ -1983,24 +2008,5 @@ impl Store for PostgresStore {
 
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {
         Box::new(self.clone())
-    }
-}
-
-async fn get_data_source_row_id(
-    project_id: i64,
-    data_source_id: String,
-    connection: &mut PooledConnection<'_, PostgresConnectionManager<NoTls>>,
-) -> Result<i64> {
-    let r = connection
-        .query(
-            "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            &[&project_id, &data_source_id],
-        )
-        .await?;
-
-    match r.len() {
-        0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-        1 => Ok(r[0].get(0)),
-        _ => unreachable!(),
     }
 }

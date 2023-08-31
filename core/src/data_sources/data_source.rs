@@ -411,13 +411,8 @@ impl DataSource {
             )
             .await?;
 
-        self.upsert_field_to_document_payload(
-            qdrant_client,
-            document_id,
-            "parents",
-            new_parents.clone(),
-        )
-        .await?;
+        self.update_document_payload(qdrant_client, document_id, "parents", new_parents.clone())
+            .await?;
         Ok(())
     }
 
@@ -438,12 +433,12 @@ impl DataSource {
                 &remove_tags,
             )
             .await?;
-        self.upsert_field_to_document_payload(qdrant_client, document_id, "tags", new_tags.clone())
+        self.update_document_payload(qdrant_client, document_id, "tags", new_tags.clone())
             .await?;
         Ok(new_tags)
     }
 
-    async fn upsert_field_to_document_payload(
+    async fn update_document_payload(
         &self,
         qdrant_client: Arc<QdrantClient>,
         document_id: String,
