@@ -96,3 +96,20 @@ export const isEmailValid = (email: string | null): boolean => {
   }
   return EMAIL_REGEX.test(email);
 };
+
+export const objectToMarkdown = (obj: any, indent = 0) => {
+  let markdown = "";
+
+  for (const key in obj) {
+    if (typeof obj[key] === "object") {
+      markdown += `${"  ".repeat(indent)}- **${key}**:\n${objectToMarkdown(
+        obj[key],
+        indent + 1
+      )}`;
+    } else {
+      markdown += `${"  ".repeat(indent)}- **${key}**: ${obj[key]}\n`;
+    }
+  }
+
+  return markdown;
+};
