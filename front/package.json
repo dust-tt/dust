@@ -13,7 +13,7 @@
     "initdb": "env $(cat .env.local) npx tsx admin/db.ts"
   },
   "dependencies": {
-    "@dust-tt/sparkle": "0.1.35",
+    "@dust-tt/sparkle": "0.1.36",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@nangohq/frontend": "^0.16.1",
