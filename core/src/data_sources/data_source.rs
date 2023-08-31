@@ -748,7 +748,7 @@ impl DataSource {
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
         qdrant_client: Arc<QdrantClient>,
-        query: &str,
+        query: &Option<String>,
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
@@ -757,6 +757,21 @@ impl DataSource {
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
         }
+
+        if query.is_none() {
+            return self
+                .search_without_query(
+                    credentials,
+                    store,
+                    qdrant_client,
+                    top_k,
+                    filter,
+                    full_text,
+                    target_document_tokens,
+                )
+                .await;
+        }
+
         let store = store.clone();
 
         let time_embedding_start = utils::now();
@@ -764,7 +779,7 @@ impl DataSource {
         let r = EmbedderRequest::new(
             self.config.provider_id,
             &self.config.model_id,
-            vec![query],
+            vec![query.as_ref().unwrap()],
             self.config.extras.clone(),
         );
         let v = r.execute(credentials).await?;
@@ -1221,6 +1236,33 @@ impl DataSource {
         ));
 
         Ok(documents)
+    }
+
+    async fn search_without_query(
+        &self,
+        credentials: Credentials,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
+        top_k: usize,
+        filter: Option<SearchFilter>,
+        full_text: bool,
+        target_document_tokens: Option<usize>,
+    ) -> Result<Vec<Document>> {
+        let store = store.clone();
+
+        let (doc_ids, count) = store
+            .find_data_source_document_ids(
+                &self.project,
+                self.data_source_id(),
+                filter,
+                Some((top_k, 0)),
+            )
+            .await?;
+
+        println!("doc_ids: {:?}", doc_ids);
+        println!("count: {:?}", count);
+
+        return Ok(vec![]);
     }
 
     pub async fn retrieve(

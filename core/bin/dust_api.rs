@@ -1100,7 +1100,7 @@ async fn data_sources_register(
 
 #[derive(serde::Deserialize)]
 struct DatasourceSearchPayload {
-    query: String,
+    query: Option<String>,
     top_k: usize,
     filter: Option<SearchFilter>,
     full_text: bool,
