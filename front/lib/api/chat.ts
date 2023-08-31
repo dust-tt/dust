@@ -135,12 +135,14 @@ export async function takeOwnerShipOfChatSession(
   }
 
   if (chatSession.userId !== null && chatSession.userId !== user.id) {
-    throw new Error("Chat session .");
+    throw new Error("Chat session already belongs to another user.");
   }
 
-  await chatSession.update({
-    userId: user.id,
-  });
+  if (chatSession.userId === null) {
+    await chatSession.update({
+      userId: user.id,
+    });
+  }
 
   return {
     id: chatSession.id,
