@@ -50,15 +50,9 @@ export class Authenticator {
    *
    * @param session any NextAuth session
    * @param wId string target workspace id
-   * @param asSuperUser boolean if true, will return an admin role for the user if the user is a
-   * superuser
    * @returns Promise<Authenticator>
    */
-  static async fromSession(
-    session: any,
-    wId: string,
-    asSuperUser = false
-  ): Promise<Authenticator> {
+  static async fromSession(session: any, wId: string): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
         return await Workspace.findOne({
@@ -84,31 +78,69 @@ export class Authenticator {
     let role = "none" as RoleType;
 
     if (user && workspace) {
-      if (asSuperUser && user.isDustSuperUser) {
-        role = "admin";
-      } else {
-        const membership = await Membership.findOne({
-          where: {
-            userId: user.id,
-            workspaceId: workspace.id,
-          },
-        });
+      const membership = await Membership.findOne({
+        where: {
+          userId: user.id,
+          workspaceId: workspace.id,
+        },
+      });
 
-        if (membership) {
-          switch (membership.role) {
-            case "admin":
-            case "builder":
-            case "user":
-              role = membership.role;
-              break;
-            default:
-              role = "none";
-          }
+      if (membership) {
+        switch (membership.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = membership.role;
+            break;
+          default:
+            role = "none";
         }
       }
     }
 
     return new Authenticator(workspace, user, role);
+  }
+
+  /**
+   * Get a an Authenticator for the target workspace and the authentified Super User user from the
+   * NextAuth session.
+   * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
+   *
+   * @param session any NextAuth session
+   * @param wId string target workspace id
+   * @returns Promise<Authenticator>
+   */
+  static async fromSuperUserSession(
+    session: any,
+    wId: string
+  ): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      (async () => {
+        return await Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+      })(),
+      (async () => {
+        if (!session) {
+          return null;
+        } else {
+          return await User.findOne({
+            where: {
+              provider: session.provider.provider,
+              providerId: session.provider.id.toString(),
+            },
+          });
+        }
+      })(),
+    ]);
+
+    if (!user || !user.isDustSuperUser) {
+      return new Authenticator(workspace, user, "none");
+    }
+
+    return new Authenticator(workspace, user, "admin");
   }
 
   /**
