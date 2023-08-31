@@ -98,7 +98,7 @@ pub trait Store {
         &self,
         project: &Project,
         data_source_id: &str,
-        filter: Option<SearchFilter>,
+        filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)>;
     async fn upsert_data_source_document(

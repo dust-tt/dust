@@ -1336,7 +1336,7 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: &str,
-        filter: Option<SearchFilter>,
+        filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)> {
         let pool = self.pool.clone();
@@ -1369,37 +1369,37 @@ impl Store for PostgresStore {
         let ts_lt: i64;
 
         if let Some(filter) = filter {
-            if let Some(tags_filter) = filter.tags {
-                if let Some(tags) = tags_filter.is_in {
+            if let Some(tags_filter) = &filter.tags {
+                if let Some(tags) = &tags_filter.is_in {
                     where_clauses.push(format!("tags_array @> ${}", p_idx));
-                    tags_is_in = tags;
+                    tags_is_in = tags.to_vec();
                     params.push(&tags_is_in);
                     p_idx += 1;
                 }
-                if let Some(tags) = tags_filter.is_not {
+                if let Some(tags) = &tags_filter.is_not {
                     where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
-                    tags_is_not = tags;
+                    tags_is_not = tags.to_vec();
                     params.push(&tags_is_not);
                     p_idx += 1;
                 }
             }
 
-            if let Some(parents_filter) = filter.parents {
-                if let Some(parents) = parents_filter.is_in {
+            if let Some(parents_filter) = &filter.parents {
+                if let Some(parents) = &parents_filter.is_in {
                     where_clauses.push(format!("parents @> ${}", p_idx));
-                    parents_is_in = parents;
+                    parents_is_in = parents.to_vec();
                     params.push(&parents_is_in);
                     p_idx += 1;
                 }
-                if let Some(parents) = parents_filter.is_not {
+                if let Some(parents) = &parents_filter.is_not {
                     where_clauses.push(format!("NOT parents @> ${}", p_idx));
-                    parents_is_not = parents;
+                    parents_is_not = parents.to_vec();
                     params.push(&parents_is_not);
                     p_idx += 1;
                 }
             }
 
-            if let Some(ts_filter) = filter.timestamp {
+            if let Some(ts_filter) = &filter.timestamp {
                 if let Some(ts) = ts_filter.gt {
                     where_clauses.push(format!("timestamp > ${}", p_idx));
                     ts_gt = ts as i64;

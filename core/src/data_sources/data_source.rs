@@ -12,6 +12,7 @@ use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
+use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{
     prelude::{Payload, QdrantClient},
     qdrant,
@@ -758,208 +759,80 @@ impl DataSource {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
         }
 
-        if query.is_none() {
-            return self
-                .search_without_query(
-                    credentials,
-                    store,
-                    qdrant_client,
-                    top_k,
-                    filter,
-                    full_text,
-                    target_document_tokens,
-                )
-                .await;
-        }
-
-        let store = store.clone();
-
         let time_embedding_start = utils::now();
 
-        let r = EmbedderRequest::new(
-            self.config.provider_id,
-            &self.config.model_id,
-            vec![query.as_ref().unwrap()],
-            self.config.extras.clone(),
-        );
-        let v = r.execute(credentials).await?;
-        assert!(v.len() == 1);
-
-        utils::done(&format!(
-            "DSSTAT Finished embedding query: duration={}ms",
-            utils::now() - time_embedding_start,
-        ));
-
-        // Construct the filters for the search query if specified.
-        let f = match filter {
-            Some(f) => {
-                let mut must_filter: Vec<qdrant::Condition> = vec![];
-                let mut must_not_filter: Vec<qdrant::Condition> = vec![];
-
-                match f.tags {
-                    Some(tags) => {
-                        match tags.is_in.clone() {
-                            Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
-                            None => (),
-                        };
-                        match tags.is_not.clone() {
-                            Some(v) => {
-                                must_not_filter.push(qdrant_match_field_condition("tags", v))
-                            }
-                            None => (),
-                        };
-                    }
-                    None => (),
-                };
-
-                match f.parents {
-                    Some(parents) => {
-                        match parents.is_in.clone() {
-                            Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
-                            None => (),
-                        };
-                        match parents.is_not.clone() {
-                            Some(v) => {
-                                must_not_filter.push(qdrant_match_field_condition("parents", v))
-                            }
-                            None => (),
-                        };
-                    }
-                    None => (),
-                };
-
-                match f.timestamp {
-                    Some(timestamp) => {
-                        match timestamp.gt.clone() {
-                            Some(v) => must_filter.push(
-                                qdrant::FieldCondition {
-                                    key: "timestamp".to_string(),
-                                    range: Some(qdrant::Range {
-                                        gte: Some(v as f64),
-                                        ..Default::default()
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ),
-                            None => (),
-                        };
-                        match timestamp.lt.clone() {
-                            Some(v) => must_filter.push(
-                                qdrant::FieldCondition {
-                                    key: "timestamp".to_string(),
-                                    range: Some(qdrant::Range {
-                                        lte: Some(v as f64),
-                                        ..Default::default()
-                                    }),
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ),
-                            None => (),
-                        };
-                    }
-                    None => (),
-                };
-
-                Some(qdrant::Filter {
-                    must: must_filter,
-                    must_not: must_not_filter,
-                    ..Default::default()
-                })
+        let chunks = match query.is_none() {
+            true => {
+                let store = store.clone();
+                if !target_document_tokens.is_none() {
+                    Err(anyhow!(
+                        "target_document_tokens is only supported with query"
+                    ))?;
+                }
+                self.retrieve_chunks_without_query(store, &qdrant_client, top_k, &filter)
+                    .await?
             }
-            None => None,
+            false => {
+                let r = EmbedderRequest::new(
+                    self.config.provider_id,
+                    &self.config.model_id,
+                    vec![query.as_ref().unwrap()],
+                    self.config.extras.clone(),
+                );
+                let v = r.execute(credentials).await?;
+                assert!(v.len() == 1);
+
+                utils::done(&format!(
+                    "DSSTAT Finished embedding query: duration={}ms",
+                    utils::now() - time_embedding_start,
+                ));
+
+                // Construct the filters for the search query if specified.
+                let f = build_qdrant_filter(&filter);
+
+                let time_search_start = utils::now();
+                let results = qdrant_client
+                    .search_points(&qdrant::SearchPoints {
+                        collection_name: self.qdrant_collection(),
+                        vector: v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
+                        filter: f,
+                        limit: top_k as u64,
+                        with_payload: Some(true.into()),
+                        params: None,
+                        score_threshold: None,
+                        offset: None,
+                        vector_name: None,
+                        with_vectors: None,
+                        read_consistency: None,
+                    })
+                    .await?;
+
+                utils::done(&format!(
+                    "DSSTAT Finished searching Qdrant documents: collection_name={}, duration={}ms, results_count={}",
+                    self.qdrant_collection(),
+                    utils::now() - time_search_start,
+                    results.result.len(),
+                ));
+
+                let time_chunk_start = utils::now();
+                let chunks = parse_points_into_chunks(
+                    &(results
+                        .result
+                        .into_iter()
+                        .map(QdrantPoint::Scored)
+                        .collect()),
+                )?;
+
+                utils::done(&format!(
+                    "DSSTAT Finished chunking documents: collection_name={}, duration={}ms, chunk_length={}",
+                    self.qdrant_collection(),
+                    utils::now() - time_chunk_start,
+                    chunks.len(),
+                ));
+
+                chunks
+            }
         };
-
-        fn qdrant_match_field_condition(key: &str, v: Vec<String>) -> qdrant::Condition {
-            qdrant::FieldCondition {
-                key: key.to_string(),
-                r#match: Some(qdrant::Match {
-                    match_value: Some(qdrant::r#match::MatchValue::Keywords(
-                        qdrant::RepeatedStrings { strings: v },
-                    )),
-                }),
-                ..Default::default()
-            }
-            .into()
-        }
-
-        let time_search_start = utils::now();
-        let results = qdrant_client
-            .search_points(&qdrant::SearchPoints {
-                collection_name: self.qdrant_collection(),
-                vector: v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
-                filter: f,
-                limit: top_k as u64,
-                with_payload: Some(true.into()),
-                params: None,
-                score_threshold: None,
-                offset: None,
-                vector_name: None,
-                with_vectors: None,
-                read_consistency: None,
-            })
-            .await?;
-
-        utils::done(&format!(
-            "DSSTAT Finished searching Qdrant documents: collection_name={}, duration={}ms, results_count={}",
-            self.qdrant_collection(),
-            utils::now() - time_search_start,
-            results.result.len()
-        ));
-
-        let time_chunk_start = utils::now();
-        let chunks = results
-            .result
-            .iter()
-            .map(|r| {
-                let document_id = match r.payload.get("document_id") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::StringValue(ref s)) => s.clone(),
-                        _ => Err(anyhow!("Missing `document_id` in chunk payload"))?,
-                    },
-                    None => Err(anyhow!("Missing `document_id` in chunk payload"))?,
-                };
-                let text = match r.payload.get("text") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::StringValue(ref s)) => s,
-                        _ => Err(anyhow!("Missing `text` in chunk payload"))?,
-                    },
-                    None => Err(anyhow!("Missing `text` in chunk payload"))?,
-                };
-                let chunk_hash = match r.payload.get("chunk_hash") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::StringValue(ref s)) => s,
-                        _ => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
-                    },
-                    None => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
-                };
-                let chunk_offset = match r.payload.get("chunk_offset") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::IntegerValue(i)) => i,
-                        _ => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
-                    },
-                    None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
-                };
-                Ok((
-                    document_id,
-                    Chunk {
-                        text: text.clone(),
-                        hash: chunk_hash.clone(),
-                        offset: chunk_offset as usize,
-                        vector: None,
-                        score: Some(r.score as f64),
-                    },
-                ))
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        utils::done(&format!(
-            "DSSTAT Finished chunking documents: collection_name={}, duration={}ms, chunk_length={}",
-            self.qdrant_collection(),
-            utils::now() - time_chunk_start,
-            chunks.len(),
-        ));
 
         // get a list of unique document_id
         let document_ids = chunks
@@ -1218,14 +1091,25 @@ impl DataSource {
             documents.len(),
         ));
 
-        // Sort the documents by the score of the first chunk (guaranteed ordered).
-        documents.sort_by(|a, b| {
-            let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
-            let a_score = a.chunks.first().unwrap().score.unwrap_or(0.0);
-            b_score
-                .partial_cmp(&a_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        if !query.is_none() {
+            // Sort the documents by the score of the first chunk (guaranteed ordered).
+            documents.sort_by(|a, b| {
+                let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
+                let a_score = a.chunks.first().unwrap().score.unwrap_or(0.0);
+                b_score
+                    .partial_cmp(&a_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        } else {
+            // Sort the documents by the timestamp of the doc (desc).
+            documents.sort_by(|a, b| {
+                let b_timestamp = b.timestamp;
+                let a_timestamp = a.timestamp;
+                b_timestamp
+                    .partial_cmp(&a_timestamp)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
 
         utils::done(&format!(
             "Searched data source: data_source_id={} document_count={} chunk_count={} duration={}ms",
@@ -1238,31 +1122,128 @@ impl DataSource {
         Ok(documents)
     }
 
-    async fn search_without_query(
+    async fn retrieve_chunks_without_query(
         &self,
-        credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_client: &Arc<QdrantClient>,
         top_k: usize,
-        filter: Option<SearchFilter>,
-        full_text: bool,
-        target_document_tokens: Option<usize>,
-    ) -> Result<Vec<Document>> {
+        filter: &Option<SearchFilter>,
+    ) -> Result<Vec<(String, Chunk)>> {
         let store = store.clone();
 
-        let (doc_ids, count) = store
+        let (doc_ids, _) = store
             .find_data_source_document_ids(
                 &self.project,
                 self.data_source_id(),
                 filter,
+                // with top_k documents, we should be guaranteed to have at
+                // least top_k chunks, if we make the assumption that each
+                // document has at least one chunk.
+                // TODO @fontanierh: confirm this is actually true
                 Some((top_k, 0)),
             )
             .await?;
 
-        println!("doc_ids: {:?}", doc_ids);
-        println!("count: {:?}", count);
+        let qdrant_batch_size: usize = 10; // number of `document_ids` to query at once in QDrant
+        let qdrant_page_size: u32 = 100; // number of points to fetch per page in QDrant
 
-        return Ok(vec![]);
+        let mut chunks: Vec<(String, Chunk)> = vec![];
+
+        let f = build_qdrant_filter(filter);
+
+        // iterate over the doc_ids in batches of qdrant_batch_size
+        for batch in doc_ids.chunks(qdrant_batch_size) {
+            let mut qdrant_batch_filter = match &f {
+                Some(f) => f.clone(),
+                None => qdrant::Filter {
+                    ..Default::default()
+                },
+            };
+
+            let document_id_hashes = batch
+                .iter()
+                .map(|document_id| {
+                    let mut hasher = blake3::Hasher::new();
+                    hasher.update(document_id.as_bytes());
+                    format!("{}", hasher.finalize().to_hex())
+                })
+                .collect::<Vec<_>>();
+            let document_id_condition = qdrant::FieldCondition {
+                key: "document_id_hash".to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keywords(
+                        qdrant::RepeatedStrings {
+                            strings: document_id_hashes,
+                        },
+                    )),
+                }),
+                ..Default::default()
+            }
+            .into();
+
+            qdrant_batch_filter.must.push(document_id_condition);
+
+            let mut page_offset: Option<PointId> = None;
+            let mut batch_points: Vec<RetrievedPoint> = vec![];
+
+            // we must scroll through all result pages of a batch, because we want to
+            // to sort by reverse-chron timestamp and then by chunk_offset
+            // and QDrant doesn't support any kind of sorting
+            loop {
+                let mut r = qdrant_client
+                    .scroll(&qdrant::ScrollPoints {
+                        collection_name: self.qdrant_collection(),
+                        filter: Some(qdrant_batch_filter.clone()),
+                        limit: Some(qdrant_page_size),
+                        offset: page_offset,
+                        ..Default::default()
+                    })
+                    .await?;
+                batch_points.append(&mut r.result);
+                page_offset = r.next_page_offset;
+                if page_offset.is_none() {
+                    break;
+                }
+            }
+
+            let mut batch_chunks: Vec<(String, Chunk)> = parse_points_into_chunks(
+                &batch_points
+                    .into_iter()
+                    .map(QdrantPoint::Retrieved)
+                    .collect(),
+            )?;
+
+            // sort chunks by document_id (in their original order)
+            // and then by chunk_offset
+            let mut batch_index: HashMap<String, usize> = HashMap::new();
+            for (idx, doc_id) in batch.iter().enumerate() {
+                batch_index.insert(doc_id.clone(), idx);
+            }
+            batch_chunks.sort_by(|(doc_id_a, a), (doc_id_b, b)| {
+                let a_idx = batch_index.get(doc_id_a).unwrap_or(&usize::MAX);
+                let b_idx = batch_index.get(doc_id_b).unwrap_or(&usize::MAX);
+
+                match a_idx.cmp(b_idx) {
+                    // if the document_ids have the same original order, sort by chunk_offset
+                    std::cmp::Ordering::Equal => a.offset.cmp(&b.offset),
+                    // Else use the original order
+                    ordering => ordering,
+                }
+            });
+
+            // add the first `top_k` chunks to the result
+            // (or all chunks if there are less than `top_k`)
+            for chunk in batch_chunks.into_iter().take(top_k) {
+                chunks.push(chunk);
+            }
+
+            // if we have enough chunks, we can stop
+            if chunks.len() >= top_k {
+                break;
+            }
+        }
+
+        Ok(chunks)
     }
 
     pub async fn retrieve(
@@ -1396,6 +1377,159 @@ impl DataSource {
 
         Ok(())
     }
+}
+
+fn build_qdrant_filter(filter: &Option<SearchFilter>) -> Option<qdrant::Filter> {
+    fn qdrant_match_field_condition(key: &str, v: Vec<String>) -> qdrant::Condition {
+        qdrant::FieldCondition {
+            key: key.to_string(),
+            r#match: Some(qdrant::Match {
+                match_value: Some(qdrant::r#match::MatchValue::Keywords(
+                    qdrant::RepeatedStrings { strings: v },
+                )),
+            }),
+            ..Default::default()
+        }
+        .into()
+    }
+
+    // Construct the filters for the search query if specified.
+    match filter {
+        Some(f) => {
+            let mut must_filter: Vec<qdrant::Condition> = vec![];
+            let mut must_not_filter: Vec<qdrant::Condition> = vec![];
+
+            match &f.tags {
+                Some(tags) => {
+                    match tags.is_in.clone() {
+                        Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
+                        None => (),
+                    };
+                    match tags.is_not.clone() {
+                        Some(v) => must_not_filter.push(qdrant_match_field_condition("tags", v)),
+                        None => (),
+                    };
+                }
+                None => (),
+            };
+
+            match &f.parents {
+                Some(parents) => {
+                    match parents.is_in.clone() {
+                        Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
+                        None => (),
+                    };
+                    match parents.is_not.clone() {
+                        Some(v) => must_not_filter.push(qdrant_match_field_condition("parents", v)),
+                        None => (),
+                    };
+                }
+                None => (),
+            };
+
+            match &f.timestamp {
+                Some(timestamp) => {
+                    match timestamp.gt.clone() {
+                        Some(v) => must_filter.push(
+                            qdrant::FieldCondition {
+                                key: "timestamp".to_string(),
+                                range: Some(qdrant::Range {
+                                    gte: Some(v as f64),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
+                        None => (),
+                    };
+                    match timestamp.lt.clone() {
+                        Some(v) => must_filter.push(
+                            qdrant::FieldCondition {
+                                key: "timestamp".to_string(),
+                                range: Some(qdrant::Range {
+                                    lte: Some(v as f64),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
+                        None => (),
+                    };
+                }
+                None => (),
+            };
+
+            Some(qdrant::Filter {
+                must: must_filter,
+                must_not: must_not_filter,
+                ..Default::default()
+            })
+        }
+        None => None,
+    }
+}
+
+enum QdrantPoint {
+    Retrieved(RetrievedPoint),
+    Scored(ScoredPoint),
+}
+
+fn parse_points_into_chunks(
+    points: &Vec<QdrantPoint>,
+) -> Result<Vec<(String, Chunk)>, anyhow::Error> {
+    let chunks: Vec<(String, Chunk)> = points
+        .iter()
+        .map(|r| {
+            let (payload, maybe_score) = match r {
+                QdrantPoint::Retrieved(r) => (&r.payload, None),
+                QdrantPoint::Scored(s) => (&s.payload, Some(s.score as f64)),
+            };
+
+            let document_id = match payload.get("document_id") {
+                Some(t) => match t.kind {
+                    Some(qdrant::value::Kind::StringValue(ref s)) => s.clone(),
+                    _ => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+                },
+                None => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+            };
+            let text = match payload.get("text") {
+                Some(t) => match t.kind {
+                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                    _ => Err(anyhow!("Missing `text` in chunk payload"))?,
+                },
+                None => Err(anyhow!("Missing `text` in chunk payload"))?,
+            };
+            let chunk_hash = match payload.get("chunk_hash") {
+                Some(t) => match t.kind {
+                    Some(qdrant::value::Kind::StringValue(ref s)) => s,
+                    _ => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+                },
+                None => Err(anyhow!("Missing `chunk_hash` in chunk payload"))?,
+            };
+            let chunk_offset = match payload.get("chunk_offset") {
+                Some(t) => match t.kind {
+                    Some(qdrant::value::Kind::IntegerValue(i)) => i,
+                    _ => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+                },
+                None => Err(anyhow!("Missing `chunk_offset` in chunk payload"))?,
+            };
+
+            Ok((
+                document_id,
+                Chunk {
+                    text: text.clone(),
+                    hash: chunk_hash.clone(),
+                    offset: chunk_offset as usize,
+                    vector: None,
+                    score: maybe_score,
+                },
+            ))
+        })
+        .collect::<Result<Vec<(String, Chunk)>>>()?;
+
+    Ok(chunks)
 }
 
 #[cfg(test)]
