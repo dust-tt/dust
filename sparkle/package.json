@@ -71,9 +71,5 @@
   "bugs": {
     "url": "https://github.com/dust/dust-tt/issues"
   },
-  "homepage": "https://github.com/dust/dust-tt#readme",
-  "dependencies": {
-    "@rive-app/react-canvas": "^4.1.6",
-    "rive-js": "^0.7.33"
-  }
+  "homepage": "https://github.com/dust/dust-tt#readme"
 }
