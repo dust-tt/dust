@@ -9,8 +9,6 @@ import {
   Logo,
   PageHeader,
   PaperAirplaneIcon,
-  UserGroupIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
@@ -23,7 +21,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import remarkGfm from "remark-gfm";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { AppLayoutChatTitle } from "@app/components/sparkle/AppLayoutChatTitle";
 import { Spinner } from "@app/components/Spinner";
 import { ChatSidebarMenu } from "@app/components/use/chat/ChatSidebarMenu";
 import TimeRangePicker, {
@@ -53,6 +51,7 @@ import { classNames } from "@app/lib/utils";
 import {
   ChatMessageType,
   ChatRetrievedDocumentType,
+  ChatSessionVisibility,
   MessageFeedbackStatus,
   MessageRole,
 } from "@app/types/chat";
@@ -1074,15 +1073,16 @@ export default function AppChat({
     return false;
   };
 
-  const handleToggleConversationVisibility = async () => {
+  const handleToggleConversationVisibility = async (
+    visibility: ChatSessionVisibility
+  ) => {
     const res = await fetch(`/api/w/${owner.sId}/use/chats/${chatSessionId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        visibility:
-          chatSession?.visibility === "private" ? "workspace" : "private",
+        visibility,
       }),
     });
     if (res.ok) {
@@ -1106,19 +1106,13 @@ export default function AppChat({
       }
       titleChildren={
         messages.length > 0 && (
-          <AppLayoutTitle
+          <AppLayoutChatTitle
             readOnly={readOnly}
             title={title}
             shareLink={`${url}/w/${owner.sId}/u/chat/${chatSessionId}`}
             onDelete={handleDelete}
-            toggle={{
-              labelChecked: "Private",
-              labelUnchecked: "Workspace",
-              iconChecked: <UserIcon className="s-h-5 s-w-5" />,
-              iconUnchecked: <UserGroupIcon className="s-h-5 s-w-5" />,
-              onToggle: handleToggleConversationVisibility,
-              isChecked: chatSession?.visibility !== "workspace",
-            }}
+            onUpdateVisibility={handleToggleConversationVisibility}
+            visibility={chatSession?.visibility || "private"}
           />
         )
       }

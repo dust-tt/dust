@@ -58,27 +58,38 @@ function NavigationBar({
                       />
                     </Menu.Button>
                   </div>
-                  <Menu.Items className="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <Menu.Item>
-                      {({ active }) => (
-                        <a
-                          href="#"
-                          onClick={() =>
-                            signOut({
-                              callbackUrl: "/",
-                              redirect: true,
-                            })
-                          }
-                          className={classNames(
-                            active ? "bg-gray-50" : "",
-                            "block px-4 py-2 text-sm text-gray-700"
-                          )}
-                        >
-                          Sign&nbsp;out
-                        </a>
-                      )}
-                    </Menu.Item>
-                  </Menu.Items>
+
+                  <Transition
+                    as={Fragment}
+                    enter="transition ease-out duration-200"
+                    enterFrom="transform -translate-y-4 opacity-0 scale-100"
+                    enterTo="transform opacity-100 scale-100"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 scale-100"
+                    leaveTo="transform opacity-0 scale-95"
+                  >
+                    <Menu.Items className="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      <Menu.Item>
+                        {({ active }) => (
+                          <a
+                            href="#"
+                            onClick={() =>
+                              signOut({
+                                callbackUrl: "/",
+                                redirect: true,
+                              })
+                            }
+                            className={classNames(
+                              active ? "bg-gray-50" : "",
+                              "block px-4 py-2 text-sm text-gray-700"
+                            )}
+                          >
+                            Sign&nbsp;out
+                          </a>
+                        )}
+                      </Menu.Item>
+                    </Menu.Items>
+                  </Transition>
                 </Menu>
               </div>
             )}
@@ -285,7 +296,7 @@ export default function AppLayout({
             )}
           >
             <div className="grow">
-              <div className="mx-auto h-full max-w-4xl grow px-6">
+              <div className="mx-auto h-full grow px-6">
                 {titleChildren && titleChildren}
               </div>
             </div>
