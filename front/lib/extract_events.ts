@@ -5,19 +5,17 @@ import {
   DocumentsPostProcessHookOnUpsertParams,
 } from "@app/documents_post_process_hooks/hooks";
 import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
-import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
+import {
+  _getMaxTextContentToProcess,
+  _runExtractEventApp,
+} from "@app/lib/extract_event_app";
 import {
   getExtractEventMarkersToProcess,
   getRawExtractEventMarkersFromText,
+  getUniqueMarkersWithoutSuffix,
   hasExtractEventMarker,
-  sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
-import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -47,13 +45,13 @@ export async function shouldProcessExtractEvents(
     return false;
   }
 
-  const rawMarkers = getRawExtractEventMarkersFromText(documentText);
-  const markers = sanitizeRawExtractEventMarkers(rawMarkers);
+  const markersWithSuffix = getRawExtractEventMarkersFromText(documentText);
+  const markersWithoutSuffix = getUniqueMarkersWithoutSuffix(markersWithSuffix);
 
   const activeSchema: EventSchema | null = await EventSchema.findOne({
     where: {
       marker: {
-        [Op.in]: Object.keys(markers),
+        [Op.in]: markersWithoutSuffix,
       },
       status: "active",
     },
@@ -91,20 +89,18 @@ export async function processExtractEvents({
   }
 
   // Getting the markers from the doc and keeping only those not already in the DB
-  const rawMarkers = await getExtractEventMarkersToProcess({
+  const markersToProcess = await getExtractEventMarkersToProcess({
     documentId,
     dataSourceName: dataSourceName,
     documentText,
   });
-  const markers = sanitizeRawExtractEventMarkers(rawMarkers);
 
   await Promise.all(
-    Object.keys(markers).map((marker) => {
-      return _processExtractEvent({
+    markersToProcess.map((marker) => {
+      return _processExtractEventsForMarker({
         auth: auth,
         dataSourceName: dataSourceName,
-        sanitizedMarker: marker,
-        markers: markers[marker],
+        marker: marker,
         documentText: documentText,
         documentId: documentId,
         documentSourceUrl: documentSourceUrl || null,
@@ -114,31 +110,31 @@ export async function processExtractEvents({
 }
 
 /**
- * Gets the schema for the marker, runs the Dust app to extract properties, and saves the event(s)
+ * 1/ Gets the schema for the marker,
+ * 2/ Checks that the document is not too big for the Dust app,
+ * 3/ Runs the Dust app to extract schema properties from the document,
+ * 4/ Saves the event(s) in the DB.
  */
-async function _processExtractEvent(data: {
+async function _processExtractEventsForMarker({
+  auth,
+  dataSourceName,
+  marker,
+  documentId,
+  documentSourceUrl,
+  documentText,
+}: {
   auth: Authenticator;
   dataSourceName: string;
-  sanitizedMarker: string;
-  markers: string[];
+  marker: string;
   documentText: string;
   documentId: string;
   documentSourceUrl: string | null;
 }) {
-  const {
-    auth,
-    dataSourceName,
-    sanitizedMarker,
-    markers,
-    documentId,
-    documentSourceUrl,
-    documentText,
-  } = data;
-
+  // 1/ Get the schema for the marker
   const schema: EventSchema | null = await EventSchema.findOne({
     where: {
       workspaceId: auth.workspace()?.id,
-      marker: sanitizedMarker,
+      marker: marker.split(":")[0],
       status: "active",
     },
   });
@@ -147,82 +143,57 @@ async function _processExtractEvent(data: {
     return;
   }
 
-  const inputsForApp = [
-    {
-      document_text: documentText,
-      markers: markers,
-      schema_properties: formatPropertiesForModel(schema.properties),
-    },
-  ];
-
-  const results = await _runExtractEventApp(auth, inputsForApp);
-  results.map(async (result: string) => {
-    const properties = JSON.parse(result);
-    if (!properties.marker) {
-      logger.error(
-        { properties, marker: schema.marker, documentSourceUrl, documentId },
-        "Extract event app did not return a marker. Skipping."
-      );
-      return;
-    }
-
-    const event = await ExtractedEvent.create({
-      sId: generateModelSId(),
-      documentId: documentId,
-      properties: properties,
-      status: "pending",
-      eventSchemaId: schema.id,
-      dataSourceName: dataSourceName,
-      documentSourceUrl: documentSourceUrl || null,
-      marker: properties.marker,
-    });
-
-    // Temp: we log on slack events that are extracted from the Dust workspace
-    if (schema.debug === true) {
-      await _logDebugEventOnSlack({ event, schema, documentSourceUrl });
-    }
-    logger.info(
-      { properties, marker: schema.marker, documentSourceUrl, documentId },
-      "[Extract Event] Event saved and logged."
-    );
+  // 2/ Check that the document is not to big for the Dust App.
+  const contentToProcess = await _getMaxTextContentToProcess({
+    fullDocumentText: documentText,
+    marker: marker,
   });
-}
 
-type ExtractEventAppResponseResults = {
-  value: {
-    results: { value: string[] }[][];
-  };
-};
+  // 3/ Run the Dust app to extract properties
+  const result = await _runExtractEventApp({
+    auth,
+    content: contentToProcess,
+    marker: marker,
+    schema: schema,
+  });
 
-/**
- * Runs the Extract event app and returns just only the results in which extracted events are found
- * @param auth
- * @param inputs
- */
-async function _runExtractEventApp(
-  auth: Authenticator,
-  inputs: { document_text: string; markers: string[]; schema_properties: any }[]
-): Promise<string[]> {
-  const ACTION_NAME = "extract-events";
-  const config = cloneBaseConfig(DustProdActionRegistry[ACTION_NAME]?.config);
-  const response = await runAction(auth, ACTION_NAME, config, inputs);
-
-  if (response.isErr()) {
-    logger.error(
-      { error: response.error },
-      `api_error: ${JSON.stringify(response.error)}`
+  if (result.length === 0) {
+    logger.info(
+      { marker: schema.marker, documentSourceUrl, documentId },
+      "[Extract Event] No event extracted."
     );
-    return [];
+    return;
   }
 
-  const successResponse = response as ExtractEventAppResponseResults;
+  // 4/ Save the event(s) in the DB
+  const properties = JSON.parse(result);
+  if (!properties.marker) {
+    logger.error(
+      { properties, marker: schema.marker, documentSourceUrl, documentId },
+      "Extract event app did not return a marker. Skipping."
+    );
+    return;
+  }
 
+  const event = await ExtractedEvent.create({
+    sId: generateModelSId(),
+    documentId: documentId,
+    properties: properties,
+    status: "pending",
+    eventSchemaId: schema.id,
+    dataSourceName: dataSourceName,
+    documentSourceUrl: documentSourceUrl || null,
+    marker: properties.marker,
+  });
+
+  // 5/ Temp: we log on slack events that are extracted from the Dust workspace
+  if (schema.debug === true) {
+    await _logDebugEventOnSlack({ event, schema, documentSourceUrl });
+  }
   logger.info(
-    { response: successResponse.value },
-    "[Extract Event] Extract event app ran successfully."
+    { properties, marker: schema.marker, documentSourceUrl, documentId },
+    "[Extract Event] Event saved and logged."
   );
-
-  return successResponse.value.results[0][0].value;
 }
 
 /**
