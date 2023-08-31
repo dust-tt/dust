@@ -1,4 +1,10 @@
-import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChatBubbleBottomCenterPlusIcon,
+  Item,
+  ItemSectionHeader,
+  ListItem,
+} from "@dust-tt/sparkle";
 import { PlanetIcon } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
@@ -50,26 +56,24 @@ export function ChatSidebarMenu({
         <div className="flex grow flex-col">
           {sessions.length > 0 && (
             <div className="py-2 text-xs uppercase text-slate-400">
-              Past Conversations
+              <ItemSectionHeader label="Past Conversations" />
             </div>
           )}
-          <div className="flex ">
-            <div className="flex w-full flex-col">
-              {sessions.length === 0
-                ? null
-                : sessions.map((s) => {
-                    return (
-                      <Item
-                        key={s.sId}
-                        size="sm"
-                        selected={router.query.cId === s.sId}
-                        label={s.title || ""}
-                        href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                      ></Item>
-                    );
-                  })}
-            </div>
-          </div>
+          <ListItem>
+            {sessions.length === 0
+              ? null
+              : sessions.map((s) => {
+                  return (
+                    <Item
+                      key={s.sId}
+                      size="sm"
+                      selected={router.query.cId === s.sId}
+                      label={s.title || ""}
+                      href={`/w/${owner.sId}/u/chat/${s.sId}`}
+                    ></Item>
+                  );
+                })}
+          </ListItem>
         </div>
       </div>
     </div>
