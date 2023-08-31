@@ -1,5 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
+  Button,
   CheckCircleIcon,
   IconButton,
   PageHeader,
@@ -8,6 +9,7 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 import { useState } from "react";
@@ -137,7 +139,7 @@ export default function AppExtractEventsReadData({
         effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
       />
 
-      <div className="text-sm font-light">
+      <div className="pb-10 text-sm font-light">
         <SectionHeader
           title={`Extracted data for [[${schema.marker}]]`}
           description="Review the extracted data for this marker. You can accept or reject the data, and consult the source document."
@@ -157,7 +159,12 @@ export default function AppExtractEventsReadData({
                           : "text-gray-900"
                       )}
                     >
-                      <EventProperties event={event} />
+                      <Link
+                        href={`/w/${owner.sId}/u/extract/events/${event.sId}/edit`}
+                        className="block"
+                      >
+                        <EventProperties event={event} />
+                      </Link>
                     </td>
                     <td className="w-auto border-y px-4 py-4 text-right align-top">
                       <div className="flex flex-row space-x-2">
@@ -219,6 +226,11 @@ export default function AppExtractEventsReadData({
             </tbody>
           </table>
         </div>
+        <Button
+          onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
+          label="Back"
+          type="secondary"
+        />
       </div>
     </AppLayout>
   );

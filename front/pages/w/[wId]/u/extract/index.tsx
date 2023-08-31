@@ -1,5 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
+  Button,
   PageHeader,
   SectionHeader,
 } from "@dust-tt/sparkle";
@@ -9,7 +10,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 
-import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -71,11 +71,6 @@ export default function AppExtractEvents({
 
       <div>
         <SectionHeader
-          title="How does it work?"
-          description="Define unique markers like [[goals]] or [[incident]] in your notes. Add a description and properties, and Extract does the rest! For example, For example, writing [[incident:fire1]] on a Slack thread will trigger Extract to capture data like the summary, date, and people involved in the fire incident."
-        />
-
-        <SectionHeader
           title="Your worskpace's markers"
           description="Below are the markers defined for the workspace. You can edit them to add or remove properties, and manage the extracted data."
         />
@@ -86,36 +81,33 @@ export default function AppExtractEvents({
               schemas?.map((schema) => (
                 <tr key={schema.marker} className="border-y">
                   <td className="whitespace-nowrap px-3 py-4 font-medium">
-                    [[{schema.marker}]]
-                  </td>
-                  <td className="px-12 py-4">{schema.description}</td>
-                  <td className="whitespace-nowrap px-3 py-4">
-                    <Button
-                      type="submit"
-                      onClick={() =>
-                        router.push(
-                          `/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`
-                        )
-                      }
+                    <Link
+                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}`}
+                      className="block"
                     >
-                      <div>
-                        {readOnly
-                          ? "See data to extract"
-                          : "Edit data to extract"}
-                      </div>
-                    </Button>
+                      [[{schema.marker}]]
+                    </Link>
+                  </td>
+                  <td className="w-full px-12 py-4">
+                    {" "}
+                    {/* Set the second column to take max width */}
+                    <Link
+                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}`}
+                      className="block"
+                    >
+                      {schema.description}
+                    </Link>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4">
                     <Button
-                      type="submit"
+                      label="See extracted data"
+                      type="tertiary"
                       onClick={() =>
                         router.push(
                           `/w/${owner.sId}/u/extract/templates/${schema.sId}`
                         )
                       }
-                    >
-                      <div>See extracted data</div>
-                    </Button>
+                    />
                   </td>
                 </tr>
               ))}
@@ -124,10 +116,7 @@ export default function AppExtractEvents({
 
         <div className="my-10">
           <Link href={`/w/${owner.sId}/u/extract/templates/new`}>
-            <Button disabled={readOnly}>
-              <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-              Create New
-            </Button>
+            <Button label="Create New" icon={PlusIcon} disabled={readOnly} />
           </Link>
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -109,6 +110,7 @@ const BasicEventPropsEditor = ({
   const [jsonText, setJsonText] = useState(
     JSON.stringify(event.properties, null, 2)
   );
+  const router = useRouter();
   const [isValid, setIsValid] = useState(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -146,7 +148,9 @@ const BasicEventPropsEditor = ({
         body: JSON.stringify({ properties: jsonText }),
       }
     );
-    if (!res.ok) {
+    if (res.ok) {
+      await router.back();
+    } else {
       const err = (await res.json()) as { error: APIError };
       window.alert(
         `Failed to update: ${err.error.message} (Contact team@dust.tt for assistance).`
@@ -177,6 +181,7 @@ const BasicEventPropsEditor = ({
           await onSubmit();
         }}
       />
+      <Button onClick={() => router.back()} label="Back" type="secondary" />
     </div>
   );
 };
