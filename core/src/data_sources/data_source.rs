@@ -805,22 +805,28 @@ impl DataSource {
 
         let time_embedding_start = utils::now();
 
-        let chunks = match query.is_none() {
-            true => {
+        let chunks = match query {
+            None => {
                 let store = store.clone();
                 if !target_document_tokens.is_none() {
                     Err(anyhow!(
                         "target_document_tokens is only supported with query"
                     ))?;
                 }
-                self.retrieve_chunks_without_query(store, &qdrant_client, top_k, &filter)
-                    .await?
+                let chunks = self
+                    .retrieve_chunks_without_query(store, &qdrant_client, top_k, &filter)
+                    .await?;
+                utils::done(&format!(
+                    "DSSTAT Finished retrieving chunks without query: duration={}ms",
+                    utils::now() - time_embedding_start,
+                ));
+                chunks
             }
-            false => {
+            Some(q) => {
                 let r = EmbedderRequest::new(
                     self.config.provider_id,
                     &self.config.model_id,
-                    vec![query.as_ref().unwrap()],
+                    vec![&q],
                     self.config.extras.clone(),
                 );
                 let v = r.execute(credentials).await?;
