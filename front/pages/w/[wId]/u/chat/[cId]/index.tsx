@@ -1274,7 +1274,7 @@ export default function AppChat({
                   <div className="mt-8">
                     <Button
                       type="primary"
-                      label="Continue conversation"
+                      label="Continue Conversation"
                       icon={RobotIcon}
                       onClick={handleTakeOwnership}
                     />
