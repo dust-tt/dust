@@ -3,7 +3,6 @@ import { Op } from "sequelize";
 import { ExtractedEvent } from "@app/lib/models";
 
 const EXTRACT_EVENT_PATTERN = /\[\[(.*?)\]\]/; // Ex: [[event]]
-type ExtractedMarkersType = { [key: string]: string[] };
 
 /**
  * Check if a text contains an extract event marker
@@ -32,22 +31,19 @@ export function getRawExtractEventMarkersFromText(text: string): string[] {
 /**
  * We can use [[idea]] or [[idea:2]] in a document to mark 2 events of the same type.
  * This function will return a dict of markers with the same name.
- * @param rawMarkers string[]
- * @returns ExtractedMarkersType
- * @example ["idea", "idea:2", "idea:3", "goals"] returns { "idea": ["idea", "idea:2", "idea:3"], "goals": ["goals"] }
+ * @param markersWithSuffix string[]
+ * @returns uniqueMarkersWithoutSuffix string[]
+ * @example ["idea", "idea:2", "idea:3", "goals"] returns ["idea",  "goals"]
  */
-export function sanitizeRawExtractEventMarkers(
-  rawMarkers: string[]
-): ExtractedMarkersType {
-  const markers: { [key: string]: string[] } = {};
-  rawMarkers.map((m) => {
-    const [key] = m.split(":");
-    if (!markers[key]) {
-      markers[key] = [];
-    }
-    markers[key].push(m);
+export function getUniqueMarkersWithoutSuffix(
+  markersWithSuffix: string[]
+): string[] {
+  const uniqueMarkers = new Set<string>();
+  markersWithSuffix.forEach((marker) => {
+    const [markerWithoutSuffix] = marker.split(":");
+    uniqueMarkers.add(markerWithoutSuffix);
   });
-  return markers;
+  return Array.from(uniqueMarkers);
 }
 
 /**

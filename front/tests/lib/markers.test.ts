@@ -1,7 +1,6 @@
 import {
   getRawExtractEventMarkersFromText,
   hasExtractEventMarker,
-  sanitizeRawExtractEventMarkers,
 } from "@app/lib/extract_event_markers";
 
 describe("Test hasExtractEventMarker", function () {
@@ -73,33 +72,5 @@ describe("Test getExtractEventMarker", function () {
     cases.forEach((c) => {
       expect(getRawExtractEventMarkersFromText(c.text)).toEqual(c.markers);
     });
-  });
-});
-
-describe("Test getExtractEventMarker", function () {
-  const cases = [
-    {
-      markers: ["idea", "goal", "to do"],
-      expected: {
-        idea: ["idea"],
-        goal: ["goal"],
-        "to do": ["to do"],
-      },
-    },
-    {
-      markers: ["idea", "goal", "to do", "idea:2"],
-      expected: {
-        idea: ["idea", "idea:2"],
-        goal: ["goal"],
-        "to do": ["to do"],
-      },
-    },
-    {
-      markers: [],
-      expected: {},
-    },
-  ];
-  cases.forEach((c) => {
-    expect(sanitizeRawExtractEventMarkers(c.markers)).toEqual(c.expected);
   });
 });

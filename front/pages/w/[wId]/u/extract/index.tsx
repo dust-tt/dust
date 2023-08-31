@@ -82,7 +82,7 @@ export default function AppExtractEvents({
                 <tr key={schema.marker} className="border-y">
                   <td className="whitespace-nowrap px-3 py-4 font-medium">
                     <Link
-                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}`}
+                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`}
                       className="block"
                     >
                       [[{schema.marker}]]
@@ -92,7 +92,7 @@ export default function AppExtractEvents({
                     {" "}
                     {/* Set the second column to take max width */}
                     <Link
-                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}`}
+                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`}
                       className="block"
                     >
                       {schema.description}
