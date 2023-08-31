@@ -1271,7 +1271,7 @@ export default function AppChat({
                 )}
 
                 {canTakeOwnership && (
-                  <div className="mt-8">
+                  <div className="mt-16 flex justify-center">
                     <Button
                       type="primary"
                       label="Continue Conversation"
