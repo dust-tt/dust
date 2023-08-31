@@ -1,3 +1,5 @@
+import { Sequelize } from "sequelize";
+
 import {
   Connector,
   GithubConnectorState,
@@ -10,6 +12,7 @@ import {
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
+  sequelize_conn,
   SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
@@ -33,6 +36,22 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
+
+  // enable the `unaccent` extension
+  await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
+
+  await addSearchVectorTrigger(
+    sequelize_conn,
+    "notion_pages",
+    "notion_pages_vector_update",
+    "notion_pages_trigger"
+  );
+  await addSearchVectorTrigger(
+    sequelize_conn,
+    "notion_databases",
+    "notion_databases_vector_update",
+    "notion_databases_trigger"
+  );
 }
 
 main()
@@ -49,3 +68,33 @@ main()
     );
     process.exit(1);
   });
+
+async function addSearchVectorTrigger(
+  sequelize_conn: Sequelize,
+  tableName: string,
+  triggerName: string,
+  functionName: string
+) {
+  // this creates/updates a function that will be called on every insert/update
+  await sequelize_conn.query(`
+      CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$
+      begin
+        if TG_OP = 'INSERT' OR new.title IS DISTINCT FROM old.title then
+          new."titleSearchVector" := to_tsvector('english', unaccent(coalesce(new.title, '')));
+        end if;
+        return new;
+      end
+      $$ LANGUAGE plpgsql;
+    `);
+
+  // this creates/updates a trigger that will call the function above
+  await sequelize_conn.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = '${triggerName}') THEN
+          CREATE TRIGGER ${triggerName}
+          BEFORE INSERT OR UPDATE ON "${tableName}"
+          FOR EACH ROW EXECUTE FUNCTION ${functionName}();
+        END IF;
+      END $$;
+    `);
+}

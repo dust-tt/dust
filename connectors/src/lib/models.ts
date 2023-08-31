@@ -442,6 +442,7 @@ export class NotionPage extends Model<
   declare parentType?: string | null;
   declare parentId?: string | null;
   declare title?: string | null;
+  declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 
   declare connectorId: ForeignKey<Connector["id"]> | null;
@@ -492,6 +493,10 @@ NotionPage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    titleSearchVector: {
+      type: DataTypes.TSVECTOR,
+      allowNull: true,
+    },
     notionUrl: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -504,6 +509,11 @@ NotionPage.init(
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
+      {
+        fields: ["titleSearchVector"],
+        using: "gist",
+        name: "notion_pages_title_search_vector_gist_idx",
+      },
     ],
     modelName: "notion_pages",
   }
@@ -526,6 +536,7 @@ export class NotionDatabase extends Model<
   declare parentType?: string | null;
   declare parentId?: string | null;
   declare title?: string | null;
+  declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 
   declare connectorId: ForeignKey<Connector["id"]> | null;
@@ -572,6 +583,10 @@ NotionDatabase.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    titleSearchVector: {
+      type: DataTypes.TSVECTOR,
+      allowNull: true,
+    },
     notionUrl: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -584,6 +599,11 @@ NotionDatabase.init(
       { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
+      {
+        fields: ["titleSearchVector"],
+        using: "gist",
+        name: "notion_databases_title_search_vector_gist_idx",
+      },
     ],
     modelName: "notion_databases",
   }
