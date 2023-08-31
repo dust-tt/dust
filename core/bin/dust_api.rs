@@ -1212,13 +1212,14 @@ fn error_response(
     message: &str,
     error: Option<anyhow::Error>,
 ) -> (StatusCode, Json<APIResponse>) {
+    utils::error(&format!("{}: {}\nError: {:?}", code, message, error));
     (
         status,
         Json(APIResponse {
             error: Some(APIError {
                 code: code.to_string(),
                 message: match error {
-                    Some(err) => format!("{}\nError: {}", message, err),
+                    Some(err) => format!("{}\nError: {:?}", message, err),
                     None => message.to_string(),
                 },
             }),

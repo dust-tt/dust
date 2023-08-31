@@ -13,7 +13,7 @@ use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use bb8::{Pool, PooledConnection};
+use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
