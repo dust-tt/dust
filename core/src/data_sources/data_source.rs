@@ -675,12 +675,10 @@ impl DataSource {
                     }
                 });
                 page_offset = scroll_results.next_page_offset;
-
                 if page_offset.is_none() {
                     break;
                 }
             }
-
             let cache_hits = splits
                 .iter()
                 .filter(|s| {
