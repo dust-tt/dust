@@ -1,20 +1,18 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CloudArrowDownIcon,
+  DocumentDuplicateIcon,
   IconButton,
   Logo,
   PageHeader,
   PaperAirplaneIcon,
+  UserGroupIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  ClipboardDocumentCheckIcon,
-  ClipboardDocumentIcon,
-  DocumentDuplicateIcon,
-  UserIcon,
-  UsersIcon,
-} from "@heroicons/react/24/outline";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -468,7 +466,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
     <div className="invisible float-right hover:cursor-pointer group-hover:visible">
       <IconButton
         type="tertiary"
-        icon={confirmed ? ClipboardDocumentCheckIcon : ClipboardDocumentIcon}
+        icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
         onClick={handleClick}
       />
     </div>
@@ -1117,7 +1115,7 @@ export default function AppChat({
               labelChecked: "Private",
               labelUnchecked: "Workspace",
               iconChecked: <UserIcon className="s-h-5 s-w-5" />,
-              iconUnchecked: <UsersIcon className="s-h-5 s-w-5" />,
+              iconUnchecked: <UserGroupIcon className="s-h-5 s-w-5" />,
               onToggle: handleToggleConversationVisibility,
               isChecked: chatSession?.visibility !== "workspace",
             }}

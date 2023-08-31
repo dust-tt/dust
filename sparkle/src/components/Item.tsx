@@ -1,4 +1,4 @@
-import React, { ComponentType, MouseEvent } from "react";
+import React, { ComponentType, MouseEvent, ReactNode } from "react";
 
 import {
   noHrefLink,
@@ -22,7 +22,7 @@ type ItemProps = {
 };
 
 const sizeClasses = {
-  sm: "s-py-2 s-text-sm s-font-medium",
+  sm: "s-py-2 s-text-sm s-font-normal",
   md: "s-py-3 s-text-sm s-font-semibold",
 };
 
@@ -164,3 +164,25 @@ export function Item({
     </Link>
   );
 }
+
+export const ItemSectionHeader: React.FC<{ label: string }> = ({ label }) => (
+  <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
+);
+
+interface ListItemProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export const ListItem: React.FC<ListItemProps> = ({ children, className }) => (
+  <div className="s-flex">
+    <div
+      className={classNames(
+        className ? className : "",
+        "s-flex s-w-full s-flex-col"
+      )}
+    >
+      {children}
+    </div>
+  </div>
+);

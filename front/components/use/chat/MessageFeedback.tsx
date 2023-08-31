@@ -24,7 +24,7 @@ export function MessageFeedback({
   return (
     <div
       className={classNames(
-        "flex-end flex flex-row-reverse pt-2 text-gray-400",
+        "flex-end flex flex-row-reverse gap-1 pl-1 pt-2 text-gray-400",
         !message.feedback && hover ? "invisible group-hover:visible" : ""
       )}
     >

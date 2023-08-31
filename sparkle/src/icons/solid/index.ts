@@ -2,6 +2,7 @@ export { default as ArrowDownCircle } from "./ArrowDownCircle";
 export { default as ArrowDownOnSquare } from "./ArrowDownOnSquare";
 export { default as ArrowPath } from "./ArrowPath";
 export { default as ArrowUpOnSquare } from "./ArrowUpOnSquare";
+export { default as Attachment } from "./Attachment";
 export { default as Backspace } from "./Backspace";
 export { default as Bookmark } from "./Bookmark";
 export { default as ChatBubbleBottomCenterPlus } from "./ChatBubbleBottomCenterPlus";

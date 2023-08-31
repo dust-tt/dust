@@ -11,7 +11,8 @@ type IconToggleButtonProps = {
   size?: "xs" | "sm" | "md";
   tooltip?: string;
   tooltipPosition?: TooltipProps["position"];
-  icon?: ComponentType;
+  icon: ComponentType;
+  iconSelected?: ComponentType;
   className?: string;
   disabled?: boolean;
   selected?: boolean;
@@ -58,6 +59,7 @@ export function IconToggleButton({
   tooltip,
   tooltipPosition = "above",
   icon,
+  iconSelected,
   className = "",
   selected = false,
   size = "sm",
@@ -93,7 +95,12 @@ export function IconToggleButton({
       }}
       disabled={disabled}
     >
-      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
+      {icon && (
+        <Icon
+          visual={selected && iconSelected ? iconSelected : icon}
+          size={size as IconProps["size"]}
+        />
+      )}
     </button>
   );
 
