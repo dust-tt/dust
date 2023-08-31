@@ -1199,17 +1199,8 @@ impl DataSource {
 
         let mut chunks: Vec<(String, Chunk)> = vec![];
 
-        let f = build_qdrant_filter(filter);
-
         // iterate over the doc_ids in batches of qdrant_batch_size
         for batch in doc_ids.chunks(qdrant_batch_size) {
-            let mut qdrant_batch_filter = match &f {
-                Some(f) => f.clone(),
-                None => qdrant::Filter {
-                    ..Default::default()
-                },
-            };
-
             let document_id_hashes = batch
                 .iter()
                 .map(|document_id| {
@@ -1230,8 +1221,10 @@ impl DataSource {
                 ..Default::default()
             }
             .into();
-
-            qdrant_batch_filter.must.push(document_id_condition);
+            let qdrant_batch_filter = qdrant::Filter {
+                must: vec![document_id_condition],
+                ..Default::default()
+            };
 
             let mut page_offset: Option<PointId> = None;
             let mut batch_points: Vec<RetrievedPoint> = vec![];
