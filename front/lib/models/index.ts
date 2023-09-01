@@ -4,7 +4,7 @@ import {
   AssistantConversation,
   AssistantMessage,
   AssistantUserMessage,
-} from "@app/lib/models/assistant";
+} from "@app/lib/models/assistant/conversation";
 import {
   ChatMessage,
   ChatRetrievedDocument,
