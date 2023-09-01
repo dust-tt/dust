@@ -39,7 +39,7 @@ export function Intro() {
           <Title className="inline-block w-auto" />
         </Link>
       </div>
-      <h1 className="mt-14 font-display text-4xl/tight font-light text-white">
+      <h1 className="mt-14 font-display text-4xl/tight font-bold text-white">
         Build Smarter Teams<br />
         <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">with Generative AI</span>
       </h1>

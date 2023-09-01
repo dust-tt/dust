@@ -18,6 +18,11 @@ export default function App({ Component, pageProps }) {
           name="description"
           content="Dust's mission is to harness the power of LLMs to help teams craft better content, understand their environment faster, and ultimately take better decisions. Here we document our voyage."
         />
+        <link
+          rel="stylesheet"
+          href="https://use.typekit.net/lzv1deb.css"
+        ></link>
+
       </Head>
       <ThemeProvider attribute="class" disableTransitionOnChange>
         <MDXProvider components={mdxComponents}>
