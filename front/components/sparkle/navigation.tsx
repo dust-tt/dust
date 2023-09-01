@@ -68,7 +68,8 @@ export const topNavigation = ({
     },
   ];
 
-  if (!owner.disableLabs) {
+  const displayLabs = isDevelopmentOrDustWorkspace(owner);
+  if (displayLabs) {
     nav.push({
       id: "lab",
       label: "Lab",
@@ -211,6 +212,13 @@ export const subNavigationLab = ({
 }) => {
   const nav: SparkleAppLayoutNavigation[] = [
     {
+      id: "extract",
+      label: "Extract",
+      icon: ArrowUpOnSquareIcon,
+      href: `/w/${owner.sId}/u/extract`,
+      current: current === "extract",
+    },
+    {
       id: "gens",
       label: "Gens",
       icon: Square3Stack3DIcon,
@@ -218,16 +226,6 @@ export const subNavigationLab = ({
       current: current === "gens",
     },
   ];
-
-  if (isDevelopmentOrDustWorkspace(owner)) {
-    nav.push({
-      id: "extract",
-      label: "Extract",
-      icon: ArrowUpOnSquareIcon,
-      href: `/w/${owner.sId}/u/extract`,
-      current: current === "extract",
-    });
-  }
 
   return nav;
 };
