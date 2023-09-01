@@ -1241,10 +1241,9 @@ DataSource.hasMany(DocumentTrackerChangeSuggestion, {
   onDelete: "CASCADE",
 });
 
-// Assistant V2
-export class Conversation extends Model<
-  InferAttributes<Conversation>,
-  InferCreationAttributes<Conversation>
+export class AssistantConversation extends Model<
+  InferAttributes<AssistantConversation>,
+  InferCreationAttributes<AssistantConversation>
 > {
   declare id: number;
   declare sId: string;
@@ -1253,7 +1252,7 @@ export class Conversation extends Model<
   declare visibility: ChatSessionVisibility;
 }
 
-Conversation.init(
+AssistantConversation.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -1280,21 +1279,21 @@ Conversation.init(
     },
   },
   {
-    modelName: "conversation",
+    modelName: "assistant_conversation",
     sequelize: front_sequelize,
   }
 );
 
-export class UserMessage extends Model<
-  InferAttributes<UserMessage>,
-  InferCreationAttributes<UserMessage>
+export class AssistantUserMessage extends Model<
+  InferAttributes<AssistantUserMessage>,
+  InferCreationAttributes<AssistantUserMessage>
 > {
   declare id: number;
   declare textContent: string;
   declare userId: ForeignKey<User["id"]>;
 }
 
-UserMessage.init(
+AssistantUserMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -1307,23 +1306,23 @@ UserMessage.init(
     },
   },
   {
-    modelName: "user_message",
+    modelName: "assistant_user_message",
     sequelize: front_sequelize,
   }
 );
 
-UserMessage.belongsTo(User, { foreignKey: "userId" });
-User.hasMany(UserMessage, { foreignKey: "userId" });
+AssistantUserMessage.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(AssistantUserMessage, { foreignKey: "userId" });
 
-export class AssistantMessage extends Model<
-  InferAttributes<AssistantMessage>,
-  InferCreationAttributes<AssistantMessage>
+export class AssistantAgentMessage extends Model<
+  InferAttributes<AssistantAgentMessage>,
+  InferCreationAttributes<AssistantAgentMessage>
 > {
   declare id: number;
   declare textContent: string | null;
 }
 
-AssistantMessage.init(
+AssistantAgentMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -1336,30 +1335,31 @@ AssistantMessage.init(
     },
   },
   {
-    modelName: "assistant_message",
+    modelName: "assistant_agent_message",
     sequelize: front_sequelize,
   }
 );
 
-export class Message extends Model<
-  InferAttributes<Message>,
-  InferCreationAttributes<Message>
+export class AssistantMessage extends Model<
+  InferAttributes<AssistantMessage>,
+  InferCreationAttributes<AssistantMessage>
 > {
   declare id: number;
   declare sId: string;
 
-  declare conversation_id: number;
   declare version: number;
   declare rank: number;
+  declare isDeleted: boolean;
 
-  declare is_deleted: boolean;
-
-  declare parentId: ForeignKey<Message["id"]> | null;
-  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
-  declare assistantMessageId: ForeignKey<AssistantMessage["id"]> | null;
+  declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
+  declare parentId: ForeignKey<AssistantMessage["id"]> | null;
+  declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
+  declare assistantAgentMessageId: ForeignKey<
+    AssistantAgentMessage["id"]
+  > | null;
 }
 
-Message.init(
+AssistantMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -1376,14 +1376,10 @@ Message.init(
       allowNull: false,
       defaultValue: 0,
     },
-    is_deleted: {
+    isDeleted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    conversation_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     rank: {
       type: DataTypes.INTEGER,
@@ -1391,23 +1387,23 @@ Message.init(
     },
   },
   {
-    modelName: "message",
+    modelName: "assistant_message",
     sequelize: front_sequelize,
     indexes: [
       {
         unique: true,
-        fields: ["version", "conversationId", "rank"],
+        fields: ["version", "assistantConversationId", "rank"],
       },
     ],
     hooks: {
       // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
       beforeValidate: (message) => {
         if (
-          (message.userMessageId === null) ===
-          (message.assistantMessageId === null)
+          (message.assistantUserMessageId === null) ===
+          (message.assistantAgentMessageId === null)
         ) {
           throw new Error(
-            "Exactly one of userMessageId, assistantMessageId must be non-null"
+            "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
           );
         }
       },
@@ -1415,25 +1411,37 @@ Message.init(
   }
 );
 
-Message.belongsTo(Conversation, {
-  foreignKey: "conversationId",
+AssistantMessage.belongsTo(AssistantConversation, {
+  foreignKey: "assistantConversationId",
   onDelete: "CASCADE",
 });
-Conversation.hasMany(Message, { foreignKey: "conversationId" });
-UserMessage.hasOne(Message, {
-  foreignKey: "userMessageId",
+AssistantConversation.hasMany(AssistantMessage, {
+  foreignKey: "assistantAgentMessageId",
+});
+AssistantUserMessage.hasOne(AssistantMessage, {
+  foreignKey: "assistantUserMessageId",
   sourceKey: "id",
   onDelete: "RESTRICT",
 });
-Message.belongsTo(UserMessage, { foreignKey: "userMessageId" });
-AssistantMessage.hasOne(Message, {
-  foreignKey: "assistantMessageId",
+AssistantMessage.belongsTo(AssistantUserMessage, {
+  foreignKey: "assistantUserMessageId",
+});
+AssistantAgentMessage.hasOne(AssistantMessage, {
+  foreignKey: "assistantAgentMessageId",
   sourceKey: "id",
   onDelete: "RESTRICT",
 });
-Message.belongsTo(AssistantMessage, { foreignKey: "assistantMessageId" });
-Message.belongsTo(Message, { foreignKey: "parent_id", as: "parent" });
-Message.hasMany(Message, { foreignKey: "parent_id", as: "children" });
+AssistantMessage.belongsTo(AssistantAgentMessage, {
+  foreignKey: "assistantAgentMessageId",
+});
+AssistantMessage.belongsTo(AssistantMessage, {
+  foreignKey: "parentId",
+  as: "parent",
+});
+AssistantMessage.hasMany(AssistantMessage, {
+  foreignKey: "parentId",
+  as: "children",
+});
 
 // XP1
 

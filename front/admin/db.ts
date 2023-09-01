@@ -1,11 +1,13 @@
 import {
   App,
+  AssistantAgentMessage,
+  AssistantConversation,
   AssistantMessage,
+  AssistantUserMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
   Clone,
-  Conversation,
   Dataset,
   DataSource,
   DocumentTrackerChangeSuggestion,
@@ -15,12 +17,10 @@ import {
   Key,
   Membership,
   MembershipInvitation,
-  Message,
   Provider,
   Run,
   TrackedDocument,
   User,
-  UserMessage,
   UserMetadata,
   Workspace,
   XP1Run,
@@ -49,10 +49,10 @@ async function main() {
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await UserMessage.sync({ alter: true });
+  await AssistantConversation.sync({ alter: true });
+  await AssistantUserMessage.sync({ alter: true });
+  await AssistantAgentMessage.sync({ alter: true });
   await AssistantMessage.sync({ alter: true });
-  await Message.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
