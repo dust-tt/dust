@@ -1189,7 +1189,6 @@ impl DataSource {
                 // with top_k documents, we should be guaranteed to have at
                 // least top_k chunks, if we make the assumption that each
                 // document has at least one chunk.
-                // TODO @fontanierh: confirm this is actually true
                 Some((top_k, 0)),
             )
             .await?;
