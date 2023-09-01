@@ -1,5 +1,5 @@
 import { RoleType } from "@app/lib/auth";
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 /**
  *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no

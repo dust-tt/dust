@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;

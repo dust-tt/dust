@@ -1,3 +1,4 @@
+import { front_sequelize } from "@app/lib/databases";
 import { generateModelSId, new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -15,12 +16,7 @@ import { cloneBaseConfig, DustProdActionRegistry } from "../actions/registry";
 import { runAction, runActionStreamed } from "../actions/server";
 import { Authenticator, prodAPICredentialsForOwner } from "../auth";
 import { DustAPI } from "../dust_api";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
-  front_sequelize,
-} from "../models";
+import { ChatMessage, ChatRetrievedDocument, ChatSession } from "../models";
 
 /**
  *
