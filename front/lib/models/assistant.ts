@@ -108,7 +108,6 @@ AssistantUserMessage.init(
   }
 );
 
-AssistantUserMessage.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(AssistantUserMessage, { foreignKey: "userId" });
 
 export class AssistantAgentMessage extends Model<
@@ -207,33 +206,14 @@ AssistantMessage.init(
     },
   }
 );
-
-AssistantMessage.belongsTo(AssistantConversation, {
-  foreignKey: "assistantConversationId",
-  onDelete: "CASCADE",
-});
 AssistantConversation.hasMany(AssistantMessage, {
-  foreignKey: "assistantAgentMessageId",
+  foreignKey: "assistantConversationId",
 });
 AssistantUserMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantUserMessageId",
-  sourceKey: "id",
-  onDelete: "RESTRICT",
-});
-AssistantMessage.belongsTo(AssistantUserMessage, {
   foreignKey: "assistantUserMessageId",
 });
 AssistantAgentMessage.hasOne(AssistantMessage, {
   foreignKey: "assistantAgentMessageId",
-  sourceKey: "id",
-  onDelete: "RESTRICT",
-});
-AssistantMessage.belongsTo(AssistantAgentMessage, {
-  foreignKey: "assistantAgentMessageId",
-});
-AssistantMessage.belongsTo(AssistantMessage, {
-  foreignKey: "parentId",
-  as: "parent",
 });
 AssistantMessage.hasMany(AssistantMessage, {
   foreignKey: "parentId",
