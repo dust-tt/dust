@@ -75,14 +75,8 @@ export default function WorkspaceAdmin({
   const { members, isMembersLoading } = useMembers(owner);
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
-  const [disableLabs, setDisableLabs] = useState(owner.disableLabs || false);
-
   const formValidation = () => {
-    if (
-      workspaceName === owner.name &&
-      allowedDomain === owner.allowedDomain &&
-      owner.disableLabs === disableLabs
-    ) {
+    if (workspaceName === owner.name && allowedDomain === owner.allowedDomain) {
       return false;
     }
     let valid = true;
@@ -115,7 +109,7 @@ export default function WorkspaceAdmin({
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [workspaceName, allowedDomain, disableLabs]);
+  }, [workspaceName, allowedDomain]);
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);
@@ -127,7 +121,6 @@ export default function WorkspaceAdmin({
       body: JSON.stringify({
         name: workspaceName,
         allowedDomain: allowedDomain,
-        disableLabs: disableLabs,
       }),
     });
     if (!res.ok) {
@@ -295,30 +288,6 @@ export default function WorkspaceAdmin({
                   </div>
                 </div>
               ) : null}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-5">
-            <div className="sm:col-span-3">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="appName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Manage experimental features
-                </label>
-              </div>
-            </div>
-            <div className="sm:col-span-3">
-              <div className="mt-2 flex">
-                <Checkbox
-                  checked={disableLabs}
-                  onChange={(checked) => setDisableLabs(checked)}
-                />
-                <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Hide experimental features for the workspace.
-                </p>
-              </div>
             </div>
           </div>
 

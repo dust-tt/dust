@@ -147,7 +147,6 @@ export class Workspace extends Model<
   declare description?: string;
   declare allowedDomain?: string;
   declare plan?: string | null;
-  declare disableLabs?: boolean;
 }
 Workspace.init(
   {
@@ -182,10 +181,6 @@ Workspace.init(
     },
     plan: {
       type: DataTypes.STRING,
-    },
-    disableLabs: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
     },
   },
   {

@@ -92,7 +92,6 @@ async function handler(
           allowedDomain: workspace.allowedDomain || null,
           role: "admin",
           plan,
-          disableLabs: workspace.disableLabs,
         },
       });
 

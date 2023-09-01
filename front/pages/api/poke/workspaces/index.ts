@@ -145,7 +145,6 @@ async function handler(
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,
           plan: planForWorkspace(ws),
-          disableLabs: ws.disableLabs,
           role: "admin",
         })),
       });
