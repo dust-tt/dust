@@ -170,7 +170,7 @@ async function handler(
       res.status(200).json({
         dataset: {
           name: dataset.name,
-          description: dataset.description,
+          description: dataset.description ?? undefined,
         },
       });
       return;
