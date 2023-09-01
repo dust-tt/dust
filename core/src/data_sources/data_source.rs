@@ -1193,8 +1193,9 @@ impl DataSource {
             )
             .await?;
 
-        let qdrant_batch_size: usize = 10; // number of `document_ids` to query at once in QDrant
-        let qdrant_page_size: u32 = 100; // number of points to fetch per page in QDrant
+        let qdrant_batch_size: usize = 8; // number of `document_ids` to query at once in QDrant
+        let qdrant_page_size: u32 = 128; // number of points to fetch per page in QDrant
+        let qdrant_max_pages: usize = 16_000; // stop iteration if we can't get all the points in a batch after iterating this many pages
 
         let mut chunks: Vec<(String, Chunk)> = vec![];
 
@@ -1231,6 +1232,7 @@ impl DataSource {
             // we must scroll through all result pages of a batch, because we want to
             // to sort by reverse-chron timestamp and then by chunk_offset
             // and QDrant doesn't support any kind of sorting
+            let mut page_count = 0;
             loop {
                 let mut r = qdrant_client
                     .scroll(&qdrant::ScrollPoints {
@@ -1245,6 +1247,13 @@ impl DataSource {
                 page_offset = r.next_page_offset;
                 if page_offset.is_none() {
                     break;
+                }
+                page_count += 1;
+                if page_count > qdrant_max_pages {
+                    return Err(anyhow!(
+                        "Reached max page count ({}) for batch",
+                        qdrant_max_pages
+                    ));
                 }
             }
 
