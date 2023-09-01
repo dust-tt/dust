@@ -1,6 +1,5 @@
 import { ModelId } from "@app/lib/models";
-
-import { UserProviderType, UserType } from "../user";
+import { UserProviderType, UserType } from "@app/types/user";
 
 /**
  * Mentions
