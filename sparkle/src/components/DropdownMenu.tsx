@@ -111,6 +111,7 @@ interface DropdownItemProps {
   label: string;
   href: string;
   disabled?: boolean;
+  key?: string;
   onClick?: () => void;
 }
 
@@ -118,10 +119,11 @@ DropdownMenu.Item = function ({
   label,
   href,
   disabled,
+  key = "",
   onClick,
 }: DropdownItemProps) {
   return (
-    <Menu.Item disabled={disabled}>
+    <Menu.Item disabled={disabled} key={key}>
       <StandardItem
         variant="dropdown"
         size="md"
