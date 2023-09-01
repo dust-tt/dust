@@ -17,7 +17,7 @@ export class AssistantConversation extends Model<
 > {
   declare id: number;
   declare sId: string;
-  declare title: string;
+  declare title: string | null;
   declare created: Date;
   declare visibility: ChatSessionVisibility;
 }
@@ -36,7 +36,7 @@ AssistantConversation.init(
     },
     title: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
     created: {
       type: DataTypes.DATE,
