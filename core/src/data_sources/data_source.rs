@@ -402,7 +402,7 @@ impl DataSource {
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
-        let new_parents = store
+        store
             .update_data_source_document_parents(
                 &self.project,
                 &self.data_source_id(),
@@ -411,7 +411,11 @@ impl DataSource {
             )
             .await?;
 
-        self.update_document_payload(qdrant_client, document_id, "parents", new_parents.clone())
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        self.update_document_payload(qdrant_client, document_id_hash, "parents", parents)
             .await?;
         Ok(())
     }
@@ -433,7 +437,12 @@ impl DataSource {
                 &remove_tags,
             )
             .await?;
-        self.update_document_payload(qdrant_client, document_id, "tags", new_tags.clone())
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        self.update_document_payload(qdrant_client, document_id_hash, "tags", new_tags.clone())
             .await?;
         Ok(new_tags)
     }
@@ -441,7 +450,7 @@ impl DataSource {
     async fn update_document_payload(
         &self,
         qdrant_client: Arc<QdrantClient>,
-        document_id: String,
+        document_id_hash: String,
         field_name: &str,
         field_value: impl Into<Value>,
     ) -> Result<()> {
@@ -451,7 +460,7 @@ impl DataSource {
         let field_condition = qdrant::FieldCondition {
             key: "document_id_hash".to_string(),
             r#match: Some(qdrant::Match {
-                match_value: Some(qdrant::r#match::MatchValue::Text(document_id)),
+                match_value: Some(qdrant::r#match::MatchValue::Text(document_id_hash)),
             }),
             ..Default::default()
         };
