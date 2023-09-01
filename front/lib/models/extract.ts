@@ -22,9 +22,9 @@ export class EventSchema extends Model<
   declare sId: string;
 
   declare marker: string;
-  declare description?: string;
+  declare description: string | null;
   declare status: EventSchemaStatus;
-  declare debug?: boolean;
+  declare debug: boolean | null;
   declare properties: EventSchemaPropertyType[];
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;

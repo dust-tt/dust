@@ -12,7 +12,7 @@ function _getEventSchemaType(schema: EventSchema): EventSchemaType {
     id: schema.id,
     sId: schema.sId,
     marker: schema.marker,
-    description: schema.description,
+    description: schema.description ?? undefined,
     status: schema.status,
     properties: schema.properties,
   };
