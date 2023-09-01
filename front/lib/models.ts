@@ -1247,6 +1247,7 @@ export class Conversation extends Model<
   InferCreationAttributes<Conversation>
 > {
   declare id: number;
+  declare sId: string;
   declare title: string;
   declare created: Date;
   declare visibility: string;
@@ -1258,6 +1259,11 @@ Conversation.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
     title: {
       type: DataTypes.TEXT,
