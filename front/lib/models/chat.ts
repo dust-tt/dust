@@ -25,7 +25,7 @@ export class ChatSession extends Model<
   declare visibility: ChatSessionVisibility;
 
   declare workspaceId: ForeignKey<Workspace["id"]> | null;
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
 }
 
 ChatSession.init(
@@ -83,9 +83,9 @@ export class ChatMessage extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare feedback: MessageFeedbackStatus;
   declare role: "user" | "retrieval" | "assistant" | "error";
-  declare message?: string;
+  declare message: string | null;
   // `retrievals` are stored in a separate table
-  declare chatSessionId: ForeignKey<ChatSession["id"]>;
+  declare chatSessionId: ForeignKey<ChatSession["id"]> | null;
 }
 
 ChatMessage.init(
@@ -149,7 +149,7 @@ export class ChatRetrievedDocument extends Model<
   declare score: number;
   // `chunks` are not stored for Chat history
 
-  declare chatMessageId: ForeignKey<ChatMessage["id"]>;
+  declare chatMessageId: ForeignKey<ChatMessage["id"]> | null;
 }
 
 ChatRetrievedDocument.init(

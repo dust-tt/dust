@@ -224,7 +224,7 @@ async function handler(
       });
       // return the deleted message
       res.status(200).json({
-        message,
+        message: { ...message, message: message.message ?? undefined },
       });
       return;
     }
