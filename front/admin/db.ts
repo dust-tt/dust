@@ -1,5 +1,6 @@
 import {
   App,
+  AssistantMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
@@ -50,6 +51,7 @@ async function main() {
 
   await Conversation.sync({ alter: true });
   await UserMessage.sync({ alter: true });
+  await AssistantMessage.sync({ alter: true });
   await Message.sync({ alter: true });
 
   await XP1User.sync({ alter: true });

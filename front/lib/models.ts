@@ -1283,7 +1283,7 @@ export class UserMessage extends Model<
   InferCreationAttributes<UserMessage>
 > {
   declare id: number;
-  declare message: string;
+  declare textContent: string;
 }
 
 UserMessage.init(
@@ -1293,7 +1293,7 @@ UserMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    message: {
+    textContent: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
@@ -1309,7 +1309,7 @@ export class AssistantMessage extends Model<
   InferCreationAttributes<AssistantMessage>
 > {
   declare id: number;
-  declare message: string | null;
+  declare textContent: string | null;
 }
 
 AssistantMessage.init(
@@ -1319,7 +1319,7 @@ AssistantMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    message: {
+    textContent: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -1336,8 +1336,8 @@ export class Message extends Model<
 > {
   declare id: number;
   declare parent_id: number | null;
-  declare user_message_id: number | null;
-  declare assistant_message_id: number | null;
+  declare userMessageId: number | null;
+  declare assistantMessageId: number | null;
   declare version: number;
   declare is_deleted: boolean;
   declare conversation_id: number;
@@ -1355,12 +1355,12 @@ Message.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    user_message_id: {
+    userMessageId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       unique: true,
     },
-    assistant_message_id: {
+    assistantMessageId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       unique: true,
@@ -1390,18 +1390,18 @@ Message.init(
     indexes: [
       {
         unique: true,
-        fields: ["version", "conversation_id", "rank"],
+        fields: ["version", "conversationId", "rank"],
       },
     ],
     hooks: {
       // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
       beforeValidate: (message) => {
         if (
-          (message.user_message_id === null) ===
-          (message.assistant_message_id === null)
+          (message.userMessageId === null) ===
+          (message.assistantMessageId === null)
         ) {
           throw new Error(
-            "Exactly one of user_message_id, assistant_message_id must be non-null"
+            "Exactly one of userMessageId, assistantMessageId must be non-null"
           );
         }
       },
@@ -1410,18 +1410,18 @@ Message.init(
 );
 
 Message.belongsTo(Conversation, {
-  foreignKey: "conversation_id",
+  foreignKey: "conversationId",
   onDelete: "CASCADE",
 });
-Message.hasOne(UserMessage, {
-  foreignKey: "id",
-  sourceKey: "user_message_id",
-  onDelete: "CASCADE",
+UserMessage.hasOne(Message, {
+  foreignKey: "userMessageId",
+  sourceKey: "id",
+  onDelete: "RESTRICT",
 });
-Message.hasOne(AssistantMessage, {
-  foreignKey: "id",
-  sourceKey: "assistant_message_id",
-  onDelete: "CASCADE",
+AssistantMessage.hasOne(Message, {
+  foreignKey: "assistantMessageId",
+  sourceKey: "id",
+  onDelete: "RESTRICT",
 });
 
 // XP1
