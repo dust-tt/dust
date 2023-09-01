@@ -1,21 +1,27 @@
+import { Button } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ActionButton, Button } from "@app/components/Button";
 import { checkProvider } from "@app/lib/providers";
+import { WorkspaceType } from "@app/types/user";
 
-export default function AzureOpenAISetup({
+export default function CohereSetup({
   owner,
   open,
   setOpen,
   config,
   enabled,
+}: {
+  owner: WorkspaceType;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  config: { [key: string]: string };
+  enabled: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
-  const [endpoint, setEndpoint] = useState(config ? config.endpoint : "");
   const [testSuccessful, setTestSuccessful] = useState(false);
   const [testRunning, setTestRunning] = useState(false);
   const [testError, setTestError] = useState("");
@@ -25,19 +31,13 @@ export default function AzureOpenAISetup({
     if (config && config.api_key.length > 0 && apiKey.length == 0) {
       setApiKey(config.api_key);
     }
-    if (config && config.endpoint.length > 0 && endpoint.length == 0) {
-      setEndpoint(config.endpoint);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider(owner, "azure_openai", {
-      api_key: apiKey,
-      endpoint,
-    });
+    const check = await checkProvider(owner, "cohere", { api_key: apiKey });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -52,7 +52,7 @@ export default function AzureOpenAISetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/w/${owner.sId}/providers/azure_openai`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/cohere`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -60,7 +60,6 @@ export default function AzureOpenAISetup({
       body: JSON.stringify({
         config: JSON.stringify({
           api_key: apiKey,
-          endpoint,
         }),
       }),
     });
@@ -71,7 +70,7 @@ export default function AzureOpenAISetup({
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/w/${owner.sId}/providers/azure_openai`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/cohere`, {
       method: "DELETE",
     });
     await res.json();
@@ -81,7 +80,7 @@ export default function AzureOpenAISetup({
 
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={() => setOpen(false)}>
+      <Dialog as="div" className="relative z-30" onClose={() => setOpen(false)}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -94,7 +93,7 @@ export default function AzureOpenAISetup({
           <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-10 overflow-y-auto">
+        <div className="fixed inset-0 z-30 overflow-y-auto">
           <div className="flex min-h-full items-end items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
@@ -109,14 +108,20 @@ export default function AzureOpenAISetup({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-900"
                     >
-                      Setup Azure OpenAI
+                      Setup Cohere
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        To use Azure OpenAI models you must provide your API key
-                        and Endpoint. They can be found in the left menu of your
-                        OpenAI Azure Resource portal (menu item `Keys and
-                        Endpoint`).
+                        To use Cohere models you must provide your API key. It
+                        can be found{" "}
+                        <a
+                          className="font-bold text-action-600 hover:text-action-500"
+                          href="https://dashboard.cohere.ai/api-keys"
+                          target="_blank"
+                        >
+                          here
+                        </a>
+                        &nbsp;(you can create a new key specifically for Dust).
                       </p>
                       <p className="mt-2 text-sm text-gray-500">
                         We'll never use your API key for anything other than to
@@ -126,20 +131,8 @@ export default function AzureOpenAISetup({
                     <div className="mt-6">
                       <input
                         type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                        placeholder="Azure OpenAI Endpoint"
-                        value={endpoint}
-                        onChange={(e) => {
-                          setEndpoint(e.target.value);
-                          setTestSuccessful(false);
-                        }}
-                      />
-                    </div>
-                    <div className="mt-6">
-                      <input
-                        type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
-                        placeholder="Azure OpenAI API Key"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
+                        placeholder="Cohere API Key"
                         value={apiKey}
                         onChange={(e) => {
                           setApiKey(e.target.value);
@@ -154,7 +147,7 @@ export default function AzureOpenAISetup({
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
                     <span className="text-green-600">
-                      Test succeeded! You can enable Azure OpenAI.
+                      Test succeeded! You can enable Cohere.
                     </span>
                   ) : (
                     <span>&nbsp;</span>
@@ -173,29 +166,33 @@ export default function AzureOpenAISetup({
                   )}
                   <div className="flex-1"></div>
                   <div className="flex flex-initial">
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button
+                      onClick={() => setOpen(false)}
+                      label="Cancel"
+                      type="secondary"
+                    />
                   </div>
                   <div className="flex flex-initial">
                     {testSuccessful ? (
-                      <ActionButton
+                      <Button
                         onClick={() => handleEnable()}
                         disabled={enableRunning}
-                      >
-                        {enabled
-                          ? enableRunning
-                            ? "Updating..."
-                            : "Update"
-                          : enableRunning
-                          ? "Enabling..."
-                          : "Enable"}
-                      </ActionButton>
+                        label={
+                          enabled
+                            ? enableRunning
+                              ? "Updating..."
+                              : "Update"
+                            : enableRunning
+                            ? "Enabling..."
+                            : "Enable"
+                        }
+                      />
                     ) : (
-                      <ActionButton
+                      <Button
                         disabled={apiKey.length == 0 || testRunning}
                         onClick={() => runTest()}
-                      >
-                        {testRunning ? "Testing..." : "Test"}
-                      </ActionButton>
+                        label={testRunning ? "Testing..." : "Test"}
+                      />
                     )}
                   </div>
                 </div>

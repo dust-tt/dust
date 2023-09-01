@@ -1,12 +1,11 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Tab } from "@dust-tt/sparkle";
+import { Button, Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Router, { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -194,12 +193,12 @@ export default function ViewDatasetView({
                 {readOnly ? null : (
                   <div className="flex flex-row pt-6">
                     <div className="flex-initial">
-                      <ActionButton
+                      <Button
                         disabled={disable || loading}
                         onClick={() => handleSubmit()}
-                      >
-                        Update
-                      </ActionButton>
+                        label="Update"
+                        type="primary"
+                      />
                     </div>
                   </div>
                 )}

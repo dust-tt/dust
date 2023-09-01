@@ -1,14 +1,9 @@
-import { Tab } from "@dust-tt/sparkle";
-import {
-  ArrowLeftCircleIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
 import SpecRunView from "@app/components/app/SpecRunView";
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -195,21 +190,19 @@ export default function AppRun({
             </div>
             <p className="flex items-center text-xs text-gray-400">
               {savedRunId !== run.run_id ? (
-                <>
-                  {" "}
-                  <ActionButton onClick={restore} disabled={isLoading}>
-                    <ArrowLeftCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                    {isLoading ? "Restoring..." : "Restore"}
-                  </ActionButton>
-                </>
+                <Button
+                  onClick={restore}
+                  disabled={isLoading}
+                  icon={ClockIcon}
+                  label={isLoading ? "Restoring..." : "Restore"}
+                />
               ) : (
-                <>
-                  {" "}
-                  <ActionButton disabled={true}>
-                    <CheckCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                    Latest version
-                  </ActionButton>
-                </>
+                <Button
+                  disabled={true}
+                  icon={CheckCircleIcon}
+                  label="Latest version"
+                  type="secondary"
+                />
               )}
             </p>
           </div>

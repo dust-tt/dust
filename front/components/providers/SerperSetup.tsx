@@ -1,11 +1,24 @@
+import { Button } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ActionButton, Button } from "@app/components/Button";
 import { checkProvider } from "@app/lib/providers";
+import { WorkspaceType } from "@app/types/user";
 
-export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
+export default function SerperSetup({
+  owner,
+  open,
+  setOpen,
+  config,
+  enabled,
+}: {
+  owner: WorkspaceType;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  config: { [key: string]: string };
+  enabled: boolean;
+}) {
   const { mutate } = useSWRConfig();
 
   const [apiKey, setApiKey] = useState(config ? config.api_key : "");
@@ -24,7 +37,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider(owner, "serper", { api_key: apiKey });
+    const check = await checkProvider(owner, "serper", { api_key: apiKey });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -39,7 +52,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/w/${owner.sId}/providers/serper`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/serper`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -57,7 +70,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/w/${owner.sId}/providers/serper`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/serper`, {
       method: "DELETE",
     });
     await res.json();
@@ -67,7 +80,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
 
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={() => setOpen(false)}>
+      <Dialog as="div" className="relative z-30" onClose={() => setOpen(false)}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -80,7 +93,7 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
           <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-10 overflow-y-auto">
+        <div className="fixed inset-0 z-30 overflow-y-auto">
           <div className="flex min-h-full items-end items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
@@ -153,29 +166,33 @@ export default function SerperSetup({ owner, open, setOpen, config, enabled }) {
                   )}
                   <div className="flex-1"></div>
                   <div className="flex flex-initial">
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button
+                      onClick={() => setOpen(false)}
+                      label="Cancel"
+                      type="secondary"
+                    />
                   </div>
                   <div className="flex flex-initial">
                     {testSuccessful ? (
-                      <ActionButton
+                      <Button
                         onClick={() => handleEnable()}
                         disabled={enableRunning}
-                      >
-                        {enabled
-                          ? enableRunning
-                            ? "Updating..."
-                            : "Update"
-                          : enableRunning
-                          ? "Enabling..."
-                          : "Enable"}
-                      </ActionButton>
+                        label={
+                          enabled
+                            ? enableRunning
+                              ? "Updating..."
+                              : "Update"
+                            : enableRunning
+                            ? "Enabling..."
+                            : "Enable"
+                        }
+                      />
                     ) : (
-                      <ActionButton
+                      <Button
                         disabled={apiKey.length == 0 || testRunning}
                         onClick={() => runTest()}
-                      >
-                        {testRunning ? "Testing..." : "Test"}
-                      </ActionButton>
+                        label={testRunning ? "Testing..." : "Test"}
+                      />
                     )}
                   </div>
                 </div>

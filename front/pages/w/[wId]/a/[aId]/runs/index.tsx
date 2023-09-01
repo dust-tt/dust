@@ -1,10 +1,9 @@
-import { Tab } from "@dust-tt/sparkle";
+import { Button, Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -158,13 +157,13 @@ export default function RunsView({
                   tab.runType == runType
                     ? "border-gray-700 bg-gray-700 text-white hover:bg-gray-800"
                     : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-700",
-                  tabIdx === 0 ? "rounded-l-md" : "",
-                  tabIdx === tabs.length - 1 ? "rounded-r-md" : "",
-                  "flex-1 cursor-pointer border px-3 py-1 text-center text-sm font-medium shadow-sm focus:z-10"
+                  tabIdx === 0 ? "rounded-l-2xl border-r-0" : "",
+                  tabIdx === tabs.length - 1 ? "rounded-r-2xl border-l-0" : "",
+                  "flex flex-1 cursor-pointer flex-row border px-3 text-sm font-medium focus:z-10"
                 )}
                 onClick={() => setRunType(tab.runType)}
               >
-                <div className="py-0.5">{tab.name}</div>
+                <div className="flex items-center">{tab.name}</div>
               </a>
             ))}
           </nav>
@@ -173,6 +172,7 @@ export default function RunsView({
           <div className="flex flex-initial">
             <div className="flex">
               <Button
+                type="tertiary"
                 disabled={offset < limit}
                 onClick={() => {
                   if (offset >= limit) {
@@ -181,27 +181,26 @@ export default function RunsView({
                     setOffset(0);
                   }
                 }}
-              >
-                Previous
-              </Button>
+                label="Previous"
+              />
             </div>
             <div className="ml-2 flex">
               <Button
+                type="tertiary"
                 disabled={offset + limit >= total}
                 onClick={() => {
                   if (offset + limit < total) {
                     setOffset(offset + limit);
                   }
                 }}
-              >
-                Next
-              </Button>
+                label="Next"
+              />
             </div>
           </div>
         </div>
 
         {runs.length > 0 ? (
-          <div className="mt-3 flex flex-auto pl-1 text-sm text-gray-700">
+          <div className="mt-4 flex flex-auto pl-1 text-sm text-gray-700">
             Showing runs {offset + 1} - {last} of {total} runs
           </div>
         ) : null}

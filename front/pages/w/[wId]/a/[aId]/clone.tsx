@@ -1,11 +1,10 @@
-import { Tab } from "@dust-tt/sparkle";
+import { Button, Tab } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -353,9 +352,11 @@ export default function CloneView({
 
             <div className="pt-6">
               <div className="flex">
-                <Button disabled={disable || cloning} onClick={handleClone}>
-                  {cloning ? "Cloning..." : "Clone"}
-                </Button>
+                <Button
+                  disabled={disable || cloning}
+                  onClick={handleClone}
+                  label={cloning ? "Cloning..." : "Clone"}
+                />
               </div>
             </div>
           </div>

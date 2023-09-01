@@ -1,4 +1,4 @@
-import { Tab } from "@dust-tt/sparkle";
+import { Button, Tab } from "@dust-tt/sparkle";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -15,7 +15,6 @@ import TextareaAutosize from "react-textarea-autosize";
 import { SSE } from "sse.js";
 
 import { Execution } from "@app/components/app/blocks/Output";
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -607,13 +606,13 @@ export default function ExecuteView({
               <div className="flex flex-1"></div>
               <div className="flex flex-initial">
                 <div className="">
-                  <ActionButton
+                  <Button
+                    type="primary"
                     disabled={!canRun()}
                     onClick={() => handleRun()}
-                  >
-                    <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                    Execute
-                  </ActionButton>
+                    icon={PlayCircleIcon}
+                    label="Execute"
+                  />
                 </div>
               </div>
             </div>

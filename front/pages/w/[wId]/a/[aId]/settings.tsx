@@ -1,12 +1,10 @@
-import { Tab } from "@dust-tt/sparkle";
+import { Button, Tab } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useEffect } from "react";
 
-import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -343,22 +341,25 @@ export default function SettingsView({
               <Button
                 disabled={disable || isUpdating || isDeleting}
                 onClick={handleUpdate}
-              >
-                {isUpdating ? "Updating..." : "Update"}
-              </Button>
+                label={isUpdating ? "Updating..." : "Update"}
+              />
               <div className="flex-1"></div>
               <div className="flex">
-                <Link href={`/w/${owner.sId}/a/${app.sId}/clone`}>
-                  <Button>Clone</Button>
-                </Link>
+                <Button
+                  type="secondary"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/a/${app.sId}/clone`);
+                  }}
+                  label="Clone"
+                />
               </div>
               <div className="ml-2 flex">
                 <Button
+                  type="secondaryWarning"
                   onClick={handleDelete}
                   disabled={isDeleting || isUpdating}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
+                  label={isDeleting ? "Deleting..." : "Delete"}
+                />
               </div>
             </div>
           </div>

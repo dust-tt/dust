@@ -98,7 +98,7 @@ export default function Deploy({
       <Transition.Root show={open} as={Fragment}>
         <Dialog
           as="div"
-          className="relative z-10"
+          className="relative z-30"
           onClose={() => setOpen(false)}
         >
           <Transition.Child

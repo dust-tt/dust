@@ -388,7 +388,7 @@ export default function AppView({
               </div>
             ) : null}
             {!readOnly && run ? (
-              <div className="flex-initial">
+              <div className="hidden flex-initial sm:block">
                 <Deploy
                   disabled={readOnly || !(run?.status.run == "succeeded")}
                   owner={owner}
@@ -418,8 +418,8 @@ export default function AppView({
           {spec.length == 0 ? (
             <div className="mx-auto mt-8 text-sm text-gray-400">
               <p className="">Welcome to your new Dust app.</p>
-              <p className="mt-4">To get started:</p>
-              <p className="mt-2">
+              <p className="mt-4">To get started, add your first block or:</p>
+              <p className="mt-4">
                 <Button
                   type="tertiary"
                   icon={DocumentTextIcon}
@@ -429,7 +429,6 @@ export default function AppView({
                   }}
                 />
               </p>
-              <p className="mt-2">...or add your first block!</p>
             </div>
           ) : null}
 

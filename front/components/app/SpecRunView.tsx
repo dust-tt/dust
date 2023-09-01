@@ -61,7 +61,7 @@ export default function SpecRunView({
           TODO(spolu): investigate */}
       <TextareaAutosize className="hidden" value="foo" />
 
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col gap-y-4">
         {spec.map((block, idx) => {
           // Match status with block
           let status = null;

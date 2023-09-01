@@ -1,16 +1,23 @@
+import { Button } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ActionButton, Button } from "@app/components/Button";
 import { checkProvider } from "@app/lib/providers";
+import { WorkspaceType } from "@app/types/user";
 
-export default function BrowserlessAPISetup({
+export default function OpenAISetup({
   owner,
   open,
   setOpen,
   config,
   enabled,
+}: {
+  owner: WorkspaceType;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  config: { [key: string]: string };
+  enabled: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -30,9 +37,7 @@ export default function BrowserlessAPISetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    let check = await checkProvider(owner, "browserlessapi", {
-      api_key: apiKey,
-    });
+    const check = await checkProvider(owner, "openai", { api_key: apiKey });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -47,7 +52,7 @@ export default function BrowserlessAPISetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    let res = await fetch(`/api/w/${owner.sId}/providers/browserlessapi`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/openai`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -65,7 +70,7 @@ export default function BrowserlessAPISetup({
   };
 
   const handleDisable = async () => {
-    let res = await fetch(`/api/w/${owner.sId}/providers/browserlessapi`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/openai`, {
       method: "DELETE",
     });
     await res.json();
@@ -75,7 +80,7 @@ export default function BrowserlessAPISetup({
 
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={() => setOpen(false)}>
+      <Dialog as="div" className="relative z-30" onClose={() => setOpen(false)}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -88,7 +93,7 @@ export default function BrowserlessAPISetup({
           <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-10 overflow-y-auto">
+        <div className="fixed inset-0 z-30 overflow-y-auto">
           <div className="flex min-h-full items-end items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
@@ -103,26 +108,20 @@ export default function BrowserlessAPISetup({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-900"
                     >
-                      Setup Browserless API
+                      Setup OpenAI
                     </Dialog.Title>
                     <div className="mt-4">
                       <p className="text-sm text-gray-500">
-                        Browserless lets you use headless browsers to scrape web
-                        content. To use Browserless, you must provide your API
-                        key. It can be found{" "}
+                        To use OpenAI models you must provide your API key. It
+                        can be found{" "}
                         <a
                           className="font-bold text-action-600 hover:text-action-500"
-                          href="https://cloud.browserless.io/account/"
+                          href="https://platform.openai.com/account/api-keys"
                           target="_blank"
                         >
                           here
                         </a>
-                        .
-                      </p>
-                      <p className="mt-2 text-sm text-gray-500">
-                        Note that it generally takes{" "}
-                        <span className="font-bold">5 mins</span> for the API
-                        key to become active (an email is sent when it's ready).
+                        &nbsp;(you can create a new key specifically for Dust).
                       </p>
                       <p className="mt-2 text-sm text-gray-500">
                         We'll never use your API key for anything other than to
@@ -133,7 +132,7 @@ export default function BrowserlessAPISetup({
                       <input
                         type="text"
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
-                        placeholder="Browserless API Key"
+                        placeholder="OpenAI API Key"
                         value={apiKey}
                         onChange={(e) => {
                           setApiKey(e.target.value);
@@ -148,7 +147,7 @@ export default function BrowserlessAPISetup({
                     <span className="text-red-500">Error: {testError}</span>
                   ) : testSuccessful ? (
                     <span className="text-green-600">
-                      Test succeeded! You can enable the Browserless API.
+                      Test succeeded! You can enable OpenAI.
                     </span>
                   ) : (
                     <span>&nbsp;</span>
@@ -167,29 +166,33 @@ export default function BrowserlessAPISetup({
                   )}
                   <div className="flex-1"></div>
                   <div className="flex flex-initial">
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button
+                      onClick={() => setOpen(false)}
+                      label="Cancel"
+                      type="secondary"
+                    />
                   </div>
                   <div className="flex flex-initial">
                     {testSuccessful ? (
-                      <ActionButton
+                      <Button
                         onClick={() => handleEnable()}
                         disabled={enableRunning}
-                      >
-                        {enabled
-                          ? enableRunning
-                            ? "Updating..."
-                            : "Update"
-                          : enableRunning
-                          ? "Enabling..."
-                          : "Enable"}
-                      </ActionButton>
+                        label={
+                          enabled
+                            ? enableRunning
+                              ? "Updating..."
+                              : "Update"
+                            : enableRunning
+                            ? "Enabling..."
+                            : "Enable"
+                        }
+                      />
                     ) : (
-                      <ActionButton
+                      <Button
                         disabled={apiKey.length == 0 || testRunning}
                         onClick={() => runTest()}
-                      >
-                        {testRunning ? "Testing..." : "Test"}
-                      </ActionButton>
+                        label={testRunning ? "Testing..." : "Test"}
+                      />
                     )}
                   </div>
                 </div>

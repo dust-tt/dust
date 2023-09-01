@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
 
