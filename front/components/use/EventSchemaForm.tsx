@@ -293,7 +293,6 @@ function PropertiesFields({
   setError: (message: string) => void;
   readOnly?: boolean;
 }) {
-  const router = useRouter();
   function handlePropertyChange(
     index: number,
     field: "name" | "type" | "description",

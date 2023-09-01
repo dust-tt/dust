@@ -1,3 +1,4 @@
+import { Button, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import {
   BookmarkIcon as BookmarkIconSolid,
@@ -9,14 +10,12 @@ import {
   ClipboardDocumentCheckIcon,
   ClipboardDocumentIcon,
   DocumentDuplicateIcon,
-  MagnifyingGlassIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { ActionButton, Button, HighlightButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
@@ -830,13 +829,15 @@ export function TemplatesView({
                       )}
                       <div className="flex-1"></div>
                       <div className="flex flex-initial">
-                        <Button onClick={() => setFormExpanded(false)}>
-                          {editable ? "Cancel" : "Close"}
-                        </Button>
+                        <Button
+                          onClick={() => setFormExpanded(false)}
+                          type="secondary"
+                          label={editable ? "Cancel" : "Close"}
+                        />
                       </div>
                       {editable && (
                         <>
-                          <ActionButton
+                          <Button
                             onClick={async () => {
                               setFormExpanded(false);
                               const new_template: GensTemplateType = {
@@ -883,9 +884,8 @@ export function TemplatesView({
                               setEditingTemplateColor("bg-red-500");
                               setEditingTemplateVisibility("user");
                             }}
-                          >
-                            Save
-                          </ActionButton>
+                            label="Save"
+                          />
                         </>
                       )}
                     </div>
@@ -1399,9 +1399,11 @@ export default function AppGens({
         </Transition.Root>
         <div className="">
           <div className="m-auto my-3">
-            <Button onClick={() => setExplainExpanded(true)}>
-              How does Gens work?
-            </Button>
+            <Button
+              type="tertiary"
+              onClick={() => setExplainExpanded(true)}
+              label="How does Gens work?"
+            />
           </div>
           <div className="m-auto flex flex-row flex-wrap space-x-6 sm:flex-nowrap">
             <div className="flex w-full flex-col space-y-3 text-sm font-medium leading-8 text-gray-700 sm:w-2/3">
@@ -1464,23 +1466,22 @@ export default function AppGens({
                   <div className="my-2 flex flex-col items-start space-y-2">
                     <div className="flex-shrink-0 flex-grow-0">
                       {!genLoading ? (
-                        <ActionButton
+                        <Button
                           disabled={genLoading}
                           onClick={() => {
                             void handleGenerate();
                           }}
-                        >
-                          Generate with template
-                        </ActionButton>
+                          label="Generate with template"
+                        />
                       ) : (
-                        <HighlightButton
+                        <Button
+                          type="secondaryWarning"
                           disabled={!genLoading || genInterruptRef.current}
                           onClick={() => {
                             genInterruptRef.current = true;
                           }}
-                        >
-                          Interrupt
-                        </HighlightButton>
+                          label="Interrupt"
+                        />
                       )}
                     </div>
                     <TemplatesView
@@ -1513,24 +1514,23 @@ export default function AppGens({
                       <div className="mt-1 flex">
                         <div className="flex flex-1"></div>
                         <div className="flex flex-initial">
-                          <ActionButton
+                          <Button
+                            type="secondary"
                             disabled={
                               retrievalLoading || !(selecting || searchQuery)
                             }
-                            onMouseDown={(
-                              e: React.MouseEvent<HTMLDivElement>
-                            ) => {
-                              e.preventDefault();
+                            onClick={() => {
                               void handleSearch();
                             }}
-                          >
-                            <MagnifyingGlassIcon className="mr-1 h-4 w-4 text-gray-100" />
-                            {retrievalLoading
-                              ? "Loading..."
-                              : selecting
-                              ? "Search selection"
-                              : "Search"}
-                          </ActionButton>
+                            icon={MagnifyingGlassIcon}
+                            label={
+                              retrievalLoading
+                                ? "Loading..."
+                                : selecting
+                                ? "Search selection"
+                                : "Search"
+                            }
+                          />
                         </div>
                       </div>
                     </div>
