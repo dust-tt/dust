@@ -109,7 +109,7 @@ DropdownMenu.Button = function ({
 
 interface DropdownItemProps {
   label: string;
-  href: string;
+  href?: string;
   disabled?: boolean;
   key?: string;
   onClick?: () => void;
