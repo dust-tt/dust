@@ -265,7 +265,7 @@ export async function getChatSessionWithMessages(
     messages: messages.map((m) => {
       return {
         role: m.role,
-        message: m.message,
+        message: m.message ?? undefined,
         feedback: m.feedback,
         sId: m.sId,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
@@ -328,7 +328,7 @@ export async function getChatMessage(
 
   return {
     role: chatMessage.role,
-    message: chatMessage.message,
+    message: chatMessage.message ?? undefined,
     feedback: chatMessage.feedback,
     sId: chatMessage.sId,
     retrievals: retrievedDocuments.map((r) => {
