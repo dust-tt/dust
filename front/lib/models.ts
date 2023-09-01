@@ -1241,6 +1241,189 @@ DataSource.hasMany(DocumentTrackerChangeSuggestion, {
   onDelete: "CASCADE",
 });
 
+// Assistant V2
+export class Conversation extends Model<
+  InferAttributes<Conversation>,
+  InferCreationAttributes<Conversation>
+> {
+  declare id: number;
+  declare title: string;
+  declare created: Date;
+  declare visibility: string;
+}
+
+Conversation.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    created: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "conversation",
+    sequelize: front_sequelize,
+  }
+);
+
+export class UserMessage extends Model<
+  InferAttributes<UserMessage>,
+  InferCreationAttributes<UserMessage>
+> {
+  declare id: number;
+  declare message: string;
+}
+
+UserMessage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "user_message",
+    sequelize: front_sequelize,
+  }
+);
+
+export class AssistantMessage extends Model<
+  InferAttributes<AssistantMessage>,
+  InferCreationAttributes<AssistantMessage>
+> {
+  declare id: number;
+  declare message: string | null;
+}
+
+AssistantMessage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "assistant_message",
+    sequelize: front_sequelize,
+  }
+);
+
+export class Message extends Model<
+  InferAttributes<Message>,
+  InferCreationAttributes<Message>
+> {
+  declare id: number;
+  declare parent_id: number | null;
+  declare user_message_id: number | null;
+  declare assistant_message_id: number | null;
+  declare version: number;
+  declare is_deleted: boolean;
+  declare conversation_id: number;
+  declare rank: number;
+}
+
+Message.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    parent_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    user_message_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      unique: true,
+    },
+    assistant_message_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      unique: true,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    is_deleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    conversation_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    rank: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "message",
+    sequelize: front_sequelize,
+    indexes: [
+      {
+        unique: true,
+        fields: ["version", "conversation_id", "rank"],
+      },
+    ],
+    hooks: {
+      // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
+      beforeValidate: (message) => {
+        if (
+          (message.user_message_id === null) ===
+          (message.assistant_message_id === null)
+        ) {
+          throw new Error(
+            "Exactly one of user_message_id, assistant_message_id must be non-null"
+          );
+        }
+      },
+    },
+  }
+);
+
+Message.belongsTo(Conversation, {
+  foreignKey: "conversation_id",
+  onDelete: "CASCADE",
+});
+Message.hasOne(UserMessage, {
+  foreignKey: "id",
+  sourceKey: "user_message_id",
+  onDelete: "CASCADE",
+});
+Message.hasOne(AssistantMessage, {
+  foreignKey: "id",
+  sourceKey: "assistant_message_id",
+  onDelete: "CASCADE",
+});
+
 // XP1
 
 const { XP1_DATABASE_URI } = process.env;
