@@ -43,9 +43,17 @@ const chevronClasses = {
   },
 };
 
-export function DropdownMenu({ children }: { children: React.ReactNode }) {
+export interface DropdownMenuProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
+export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
   return (
-    <Menu as="div" className="s-relative s-inline-block">
+    <Menu
+      as="div"
+      className={classNames(className, "s-relative s-inline-block")}
+    >
       {children}
     </Menu>
   );
