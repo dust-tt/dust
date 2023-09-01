@@ -1345,6 +1345,7 @@ export class Message extends Model<
   InferCreationAttributes<Message>
 > {
   declare id: number;
+  declare sId: string;
 
   declare conversation_id: number;
   declare version: number;
@@ -1363,6 +1364,11 @@ Message.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
     version: {
       type: DataTypes.INTEGER,
