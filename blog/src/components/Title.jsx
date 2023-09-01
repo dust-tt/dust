@@ -2,11 +2,7 @@ import { useId } from 'react'
 
 export function DustIcon(props) {
   return (
-    <div className="flex rotate-[30deg]">
-      <div className="h-4 w-[8px] rounded-xl bg-gray-400 group-hover:bg-violet-700"></div>
-      <div className="h-4 w-[2px] bg-transparent"></div>
-      <div className="h-6 w-[8px] rounded-xl bg-gray-400 group-hover:bg-violet-700"></div>
-    </div>
+    <img src="/favicon180.png" alt="dust" className="h-6 w-6" />
   )
 }
 
