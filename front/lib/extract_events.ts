@@ -154,7 +154,7 @@ async function _processExtractEventsForMarker({
     auth,
     content: contentToProcess,
     marker: marker,
-    schema: schema,
+    schema: { ...schema, description: schema.description ?? undefined },
   });
 
   if (result.length === 0) {

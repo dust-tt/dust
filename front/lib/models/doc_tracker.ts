@@ -81,7 +81,7 @@ export class DocumentTrackerChangeSuggestion extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare suggestion: string;
-  declare reason?: string | null;
+  declare reason: string | null;
   declare status: "pending" | "done" | "rejected";
 
   declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
