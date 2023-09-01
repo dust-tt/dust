@@ -41,7 +41,7 @@ export function Intro() {
       </div>
       <h1 className="mt-14 font-display text-4xl/tight font-bold text-element-900-dark">
         Build Smarter Teams<br />
-        <span className="bg-gradient-to-r text-brand bg-clip-text text-transparent">with Generative AI</span>
+        <span className="bg-gradient-to-r text-brand bg-clip-text">with Generative AI</span>
       </h1>
       <p className="mt-4 text-sm/6 text-element-800-dark">
         Dust's mission is to harness the power of LLMs to help teams craft better content, understand their environment faster, and ultimately take better decisions.
