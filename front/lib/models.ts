@@ -1335,13 +1335,16 @@ export class Message extends Model<
   InferCreationAttributes<Message>
 > {
   declare id: number;
-  declare parentId: number | null;
-  declare userMessageId: number | null;
-  declare assistantMessageId: number | null;
-  declare version: number;
-  declare is_deleted: boolean;
+
   declare conversation_id: number;
+  declare version: number;
   declare rank: number;
+
+  declare is_deleted: boolean;
+
+  declare parentId: ForeignKey<Message["id"]> | null;
+  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
+  declare assistantMessageId: ForeignKey<AssistantMessage["id"]> | null;
 }
 
 Message.init(
@@ -1350,20 +1353,6 @@ Message.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
-    },
-    parentId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    userMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      unique: true,
-    },
-    assistantMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      unique: true,
     },
     version: {
       type: DataTypes.INTEGER,
