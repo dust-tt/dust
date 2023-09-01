@@ -1289,7 +1289,7 @@ export class AssistantUserMessage extends Model<
   InferCreationAttributes<AssistantUserMessage>
 > {
   declare id: number;
-  declare textContent: string;
+  declare message: string;
   declare userId: ForeignKey<User["id"]>;
 }
 
@@ -1300,7 +1300,7 @@ AssistantUserMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    textContent: {
+    message: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
@@ -1319,7 +1319,7 @@ export class AssistantAgentMessage extends Model<
   InferCreationAttributes<AssistantAgentMessage>
 > {
   declare id: number;
-  declare textContent: string | null;
+  declare message: string | null;
 }
 
 AssistantAgentMessage.init(
@@ -1329,7 +1329,7 @@ AssistantAgentMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    textContent: {
+    message: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
