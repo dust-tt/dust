@@ -42,13 +42,7 @@ export type AssistantUserMessageType = {
  * Retrieval action
  */
 
-export type AssistantUserFeedbackType = {
-  user: UserType;
-  value: "positive" | "negative" | null;
-  comment?: string;
-};
-
-export type AssistantRetrievalDocumentType = {
+export type RetrievalDocumentType = {
   id: ModelId;
   dataSourceId: string;
   sourceUrl?: string;
@@ -63,19 +57,25 @@ export type AssistantRetrievalDocumentType = {
   }[];
 };
 
-export type AssistantRetrievalActionType = {
+export type RetrievalActionType = {
   id: ModelId;
   params: {
     query: string;
   };
-  documents: AssistantRetrievalDocumentType[];
+  documents: RetrievalDocumentType[];
 };
 
 /**
  * Agent messages
  */
 
-export type AssistantAgentActionType = AssistantRetrievalActionType;
+export type AssistantUserFeedbackType = {
+  user: UserType;
+  value: "positive" | "negative" | null;
+  comment?: string;
+};
+
+export type AssistantAgentActionType = RetrievalActionType;
 
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
