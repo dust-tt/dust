@@ -162,9 +162,9 @@ async function handler(
         dataSource: {
           id: ds.id,
           name: ds.name,
-          description: ds.description,
+          description: ds.description ?? undefined,
           visibility: ds.visibility,
-          config: ds.config,
+          config: ds.config ?? undefined,
           dustAPIProjectId: ds.dustAPIProjectId,
           assistantDefaultSelected: ds.assistantDefaultSelected,
         },

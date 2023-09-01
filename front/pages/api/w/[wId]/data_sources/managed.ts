@@ -242,9 +242,9 @@ async function handler(
         dataSource: {
           id: dataSource.id,
           name: dataSource.name,
-          description: dataSource.description,
+          description: dataSource.description ?? undefined,
           visibility: dataSource.visibility,
-          config: dataSource.config,
+          config: dataSource.config ?? undefined,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
