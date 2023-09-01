@@ -1349,7 +1349,7 @@ export class AssistantMessage extends Model<
 
   declare version: number;
   declare rank: number;
-  declare isDeleted: boolean;
+  declare status: CreationOptional<"visible" | "deleted">;
 
   declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
@@ -1376,10 +1376,10 @@ AssistantMessage.init(
       allowNull: false,
       defaultValue: 0,
     },
-    isDeleted: {
-      type: DataTypes.BOOLEAN,
+    status: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: false,
+      defaultValue: "visible",
     },
     rank: {
       type: DataTypes.INTEGER,
