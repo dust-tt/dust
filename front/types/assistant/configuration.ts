@@ -2,12 +2,12 @@
  * Data Source configuration
  */
 
-type RelativeTimeFrame = {
+export type RelativeTimeFrame = {
   count: number;
   duration: "hour" | "day" | "week" | "month" | "year";
 };
 
-type DataSourceConfiguration = {
+export type DataSourceConfiguration = {
   since?: RelativeTimeFrame;
   timestamp?: { gt?: number; lt?: number };
   tags?: { in?: string[]; not?: string[] };
@@ -55,10 +55,12 @@ export type AgentMessageConfigurationType = {
  * Agent configuration
  */
 
+export type AgentConfigurationStatus = "active" | "archived";
+
 export type AgentConfigurationType = {
   sId: string;
   name: string;
-  status: "active" | "archived";
+  status: AgentConfigurationStatus;
 
   // If undefined, no action performed, otherwise the action is
   // performed (potentially NoOp eg autoSkip above).

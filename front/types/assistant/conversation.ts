@@ -87,7 +87,7 @@ export type AssistantAgentMessageType = {
   id: ModelId;
   sId: string;
   status: "visible" | "deleted";
-  parentMessageId: string;
+  parentMessageId?: string;
   action?: AssistantAgentActionType;
   message?: string;
   feedbacks: AssistantUserFeedbackType[];
