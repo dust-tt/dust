@@ -21,9 +21,11 @@ export default function WorkspacePicker({
       <DropdownMenu.Items>
         {user.workspaces.map((w) => {
           return (
-            <DropdownMenu.Item key={w.sId}>
-              <span onClick={() => onWorkspaceUpdate(w)}>{w.name}</span>
-            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              key={w.sId}
+              onClick={() => onWorkspaceUpdate(w)}
+              label={w.name}
+            />
           );
         })}
       </DropdownMenu.Items>
