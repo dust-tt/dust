@@ -1,13 +1,11 @@
-import {
-  ArrowLeftCircleIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 import SpecRunView from "@app/components/app/SpecRunView";
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -137,6 +135,8 @@ export default function AppRun({
     setSavedRunId(run.run_id);
   };
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -146,85 +146,94 @@ export default function AppRun({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "runs" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-col">
-        <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
-          <div className="flex flex-col items-start">
-            <div className="flex items-center">
-              <span>
-                Viewing run:{" "}
-                <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
-                  {run.run_id}
-                </span>
-                <span className="font-mono ml-1 text-gray-600 sm:hidden">
-                  {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
-                </span>
-              </span>
-            </div>
-            {run.app_hash ? (
-              <div className="flex items-center text-xs italic text-gray-400">
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "runs" })} />
+        </div>
+        <div className="mt-8 flex flex-col">
+          <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
+            <div className="flex flex-col items-start">
+              <div className="flex items-center">
                 <span>
-                  Specification Hash:{" "}
-                  <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
-                    {run.app_hash}
+                  Viewing run:{" "}
+                  <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
+                    {run.run_id}
                   </span>
-                  <span className="font-mono ml-1 text-gray-400 sm:hidden">
-                    {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
+                  <span className="font-mono ml-1 text-gray-600 sm:hidden">
+                    {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                   </span>
                 </span>
               </div>
-            ) : null}
+              {run.app_hash ? (
+                <div className="flex items-center text-xs italic text-gray-400">
+                  <span>
+                    Specification Hash:{" "}
+                    <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
+                      {run.app_hash}
+                    </span>
+                    <span className="font-mono ml-1 text-gray-400 sm:hidden">
+                      {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
+                    </span>
+                  </span>
+                </div>
+              ) : null}
+            </div>
+            <p className="flex items-center text-xs text-gray-400">
+              {savedRunId !== run.run_id ? (
+                <Button
+                  onClick={restore}
+                  disabled={isLoading}
+                  icon={ClockIcon}
+                  label={isLoading ? "Restoring..." : "Restore"}
+                />
+              ) : (
+                <Button
+                  disabled={true}
+                  icon={CheckCircleIcon}
+                  label="Latest version"
+                  type="secondary"
+                />
+              )}
+            </p>
           </div>
-          <p className="flex items-center text-xs text-gray-400">
-            {savedRunId !== run.run_id ? (
-              <>
-                {" "}
-                <ActionButton onClick={restore} disabled={isLoading}>
-                  <ArrowLeftCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                  {isLoading ? "Restoring..." : "Restore"}
-                </ActionButton>
-              </>
-            ) : (
-              <>
-                {" "}
-                <ActionButton disabled={true}>
-                  <CheckCircleIcon className="-ml-1 mr-1 h-5 w-5" />
-                  Latest version
-                </ActionButton>
-              </>
-            )}
-          </p>
         </div>
+        <div className="mt-2 flex flex-auto flex-col">
+          <SpecRunView
+            owner={owner}
+            app={app}
+            readOnly={true}
+            spec={spec}
+            run={run}
+            runRequested={false}
+            handleSetBlock={() => {
+              // no-op
+            }}
+            handleDeleteBlock={() => {
+              // no-op
+            }}
+            handleMoveBlockUp={() => {
+              // no-op
+            }}
+            handleMoveBlockDown={() => {
+              // no-op
+            }}
+            handleNewBlock={() => {
+              // no-op
+            }}
+          />
+        </div>
+        <div className="mt-4"></div>
       </div>
-      <div className="mt-2 flex flex-auto flex-col">
-        <SpecRunView
-          owner={owner}
-          app={app}
-          readOnly={true}
-          spec={spec}
-          run={run}
-          runRequested={false}
-          handleSetBlock={() => {
-            // no-op
-          }}
-          handleDeleteBlock={() => {
-            // no-op
-          }}
-          handleMoveBlockUp={() => {
-            // no-op
-          }}
-          handleMoveBlockDown={() => {
-            // no-op
-          }}
-          handleNewBlock={() => {
-            // no-op
-          }}
-        />
-      </div>
-      <div className="mt-4"></div>
     </AppLayout>
   );
 }

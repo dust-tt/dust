@@ -1,12 +1,12 @@
+import { Button, Tab } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useEffect } from "react";
 
-import { Button } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -160,187 +160,207 @@ export default function SettingsView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "settings" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-1">
-        <div className="space-y-8 divide-y divide-gray-200">
-          <div className="space-y-4 divide-y divide-gray-200">
-            <div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="appName"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    App Name
-                  </label>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                      {owner.name}
-                      <ChevronRightIcon
-                        className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
-                        aria-hidden="true"
-                      />
-                    </span>
-                    <input
-                      type="text"
-                      name="name"
-                      id="appName"
-                      className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
-                        appNameError
-                          ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                      )}
-                      value={appName}
-                      onChange={(e) => setAppName(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-6">
-                  <div className="flex justify-between">
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "settings" })} />
+        </div>
+        <div className="mt-8 flex flex-1">
+          <div className="space-y-8 divide-y divide-gray-200">
+            <div className="space-y-4 divide-y divide-gray-200">
+              <div>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
+                  <div className="sm:col-span-3">
                     <label
-                      htmlFor="appDescription"
+                      htmlFor="appName"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Description
+                      App Name
                     </label>
-                    <div className="text-sm font-normal text-gray-400">
-                      optional
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                      <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
+                        {owner.name}
+                        <ChevronRightIcon
+                          className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <input
+                        type="text"
+                        name="name"
+                        id="appName"
+                        className={classNames(
+                          "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
+                          appNameError
+                            ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
+                            : "border-gray-300 focus:border-action-500 focus:ring-action-500"
+                        )}
+                        value={appName}
+                        onChange={(e) => setAppName(e.target.value)}
+                      />
                     </div>
                   </div>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <input
-                      type="text"
-                      name="description"
-                      id="appDescription"
-                      className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
-                      value={appDescription}
-                      onChange={(e) => setAppDescription(e.target.value)}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500">
-                    A good description will help others discover and understand
-                    the purpose of your app. It is also visible at the top of
-                    your app specification.
-                  </p>
-                </div>
 
-                <div className="sm:col-span-6">
-                  <fieldset className="mt-2">
-                    <legend className="contents text-sm font-medium text-gray-700">
-                      Visibility
-                    </legend>
-                    <div className="mt-4 space-y-4">
-                      <div className="flex items-center">
-                        <input
-                          id="appVisibilityPublic"
-                          name="visibility"
-                          type="radio"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                          value="public"
-                          checked={appVisibility == "public"}
-                          onChange={(e) => {
-                            if (e.target.value != appVisibility) {
-                              setAppVisibility(e.target.value as AppVisibility);
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="appVisibilityPublic"
-                          className="ml-3 block text-sm font-medium text-gray-700"
-                        >
-                          Public
-                          <p className="mt-0 text-sm font-normal text-gray-500">
-                            Anyone on the Internet can see the app. Only you can
-                            edit.
-                          </p>
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          id="appVisibilityPrivate"
-                          name="visibility"
-                          type="radio"
-                          value="private"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                          checked={appVisibility == "private"}
-                          onChange={(e) => {
-                            if (e.target.value != appVisibility) {
-                              setAppVisibility(e.target.value as AppVisibility);
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="appVisibilityPrivate"
-                          className="ml-3 block text-sm font-medium text-gray-700"
-                        >
-                          Private
-                          <p className="mt-0 text-sm font-normal text-gray-500">
-                            Only you can see and edit the app.
-                          </p>
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          id="appVisibilityUnlisted"
-                          name="visibility"
-                          type="radio"
-                          value="unlisted"
-                          className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                          checked={appVisibility == "unlisted"}
-                          onChange={(e) => {
-                            if (e.target.value != appVisibility) {
-                              setAppVisibility(e.target.value as AppVisibility);
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="app-visibility-unlisted"
-                          className="ml-3 block text-sm font-medium text-gray-700"
-                        >
-                          Unlisted
-                          <p className="mt-0 text-sm font-normal text-gray-500">
-                            Anyone with the link can see the app. Only you can
-                            edit.
-                          </p>
-                        </label>
+                  <div className="sm:col-span-6">
+                    <div className="flex justify-between">
+                      <label
+                        htmlFor="appDescription"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Description
+                      </label>
+                      <div className="text-sm font-normal text-gray-400">
+                        optional
                       </div>
                     </div>
-                    {appVisibility == "deleted" ? (
-                      <p className="mt-4 text-sm font-normal text-gray-500">
-                        This app is currently marked as deleted. Change its
-                        visibility above to restore it.
-                      </p>
-                    ) : null}
-                  </fieldset>
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                      <input
+                        type="text"
+                        name="description"
+                        id="appDescription"
+                        className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
+                        value={appDescription}
+                        onChange={(e) => setAppDescription(e.target.value)}
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-gray-500">
+                      A good description will help others discover and
+                      understand the purpose of your app. It is also visible at
+                      the top of your app specification.
+                    </p>
+                  </div>
+
+                  <div className="sm:col-span-6">
+                    <fieldset className="mt-2">
+                      <legend className="contents text-sm font-medium text-gray-700">
+                        Visibility
+                      </legend>
+                      <div className="mt-4 space-y-4">
+                        <div className="flex items-center">
+                          <input
+                            id="appVisibilityPublic"
+                            name="visibility"
+                            type="radio"
+                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                            value="public"
+                            checked={appVisibility == "public"}
+                            onChange={(e) => {
+                              if (e.target.value != appVisibility) {
+                                setAppVisibility(
+                                  e.target.value as AppVisibility
+                                );
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="appVisibilityPublic"
+                            className="ml-3 block text-sm font-medium text-gray-700"
+                          >
+                            Public
+                            <p className="mt-0 text-sm font-normal text-gray-500">
+                              Anyone on the Internet can see the app. Only you
+                              can edit.
+                            </p>
+                          </label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            id="appVisibilityPrivate"
+                            name="visibility"
+                            type="radio"
+                            value="private"
+                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                            checked={appVisibility == "private"}
+                            onChange={(e) => {
+                              if (e.target.value != appVisibility) {
+                                setAppVisibility(
+                                  e.target.value as AppVisibility
+                                );
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="appVisibilityPrivate"
+                            className="ml-3 block text-sm font-medium text-gray-700"
+                          >
+                            Private
+                            <p className="mt-0 text-sm font-normal text-gray-500">
+                              Only you can see and edit the app.
+                            </p>
+                          </label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            id="appVisibilityUnlisted"
+                            name="visibility"
+                            type="radio"
+                            value="unlisted"
+                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
+                            checked={appVisibility == "unlisted"}
+                            onChange={(e) => {
+                              if (e.target.value != appVisibility) {
+                                setAppVisibility(
+                                  e.target.value as AppVisibility
+                                );
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="app-visibility-unlisted"
+                            className="ml-3 block text-sm font-medium text-gray-700"
+                          >
+                            Unlisted
+                            <p className="mt-0 text-sm font-normal text-gray-500">
+                              Anyone with the link can see the app. Only you can
+                              edit.
+                            </p>
+                          </label>
+                        </div>
+                      </div>
+                      {appVisibility == "deleted" ? (
+                        <p className="mt-4 text-sm font-normal text-gray-500">
+                          This app is currently marked as deleted. Change its
+                          visibility above to restore it.
+                        </p>
+                      ) : null}
+                    </fieldset>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="flex pt-6">
-            <Button
-              disabled={disable || isUpdating || isDeleting}
-              onClick={handleUpdate}
-            >
-              {isUpdating ? "Updating..." : "Update"}
-            </Button>
-            <div className="flex-1"></div>
-            <div className="flex">
-              <Link href={`/w/${owner.sId}/a/${app.sId}/clone`}>
-                <Button>Clone</Button>
-              </Link>
-            </div>
-            <div className="ml-2 flex">
+            <div className="flex pt-6">
               <Button
-                onClick={handleDelete}
-                disabled={isDeleting || isUpdating}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </Button>
+                disabled={disable || isUpdating || isDeleting}
+                onClick={handleUpdate}
+                label={isUpdating ? "Updating..." : "Update"}
+              />
+              <div className="flex-1"></div>
+              <div className="flex">
+                <Button
+                  type="secondary"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/a/${app.sId}/clone`);
+                  }}
+                  label="Clone"
+                />
+              </div>
+              <div className="ml-2 flex">
+                <Button
+                  type="secondaryWarning"
+                  onClick={handleDelete}
+                  disabled={isDeleting || isUpdating}
+                  label={isDeleting ? "Deleting..." : "Delete"}
+                />
+              </div>
             </div>
           </div>
         </div>

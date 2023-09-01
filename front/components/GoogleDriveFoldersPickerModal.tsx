@@ -1,3 +1,4 @@
+import { Button } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import TreeView, { INode } from "react-accessible-treeview";
@@ -6,8 +7,6 @@ import { IoMdArrowDropdown, IoMdArrowDropright } from "react-icons/io";
 
 import { GoogleDriveSelectedFolderType } from "@app/lib/connectors_api";
 import { WorkspaceType } from "@app/types/user";
-
-import { ActionButton, Button } from "./Button";
 
 export default function GoogleDriveFoldersPickerModal(props: {
   owner: WorkspaceType;
@@ -153,12 +152,13 @@ export default function GoogleDriveFoldersPickerModal(props: {
                       onClick={() => {
                         props.setOpen(false);
                       }}
-                    >
-                      Cancel
-                    </Button>
+                      label="Cancel"
+                      type="secondary"
+                    />
                   </div>
                   <div className="ml-3">
-                    <ActionButton
+                    <Button
+                      type="primary"
                       onClick={async () => {
                         if (selectedFoldersToSave) {
                           await onSave(selectedFoldersToSave);
@@ -166,9 +166,8 @@ export default function GoogleDriveFoldersPickerModal(props: {
                         props.setOpen(false);
                       }}
                       disabled={!selectedFoldersToSave}
-                    >
-                      Save
-                    </ActionButton>
+                      label="Save"
+                    />
                   </div>
                 </div>
               </Dialog.Panel>

@@ -2,9 +2,9 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  Square3Stack3DStrokeIcon,
   TrashIcon,
-} from "@heroicons/react/20/solid";
-import { CircleStackIcon } from "@heroicons/react/24/outline";
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import NewBlock from "@app/components/app/NewBlock";
@@ -89,7 +89,7 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "group flex flex-auto flex-col rounded border border-gray-300 px-4 pb-3 pt-1"
+          "border-material-300 group flex flex-auto flex-col rounded-lg border px-4 pb-3 pt-1"
         )}
       >
         <div className="flex flex-row items-center">
@@ -133,7 +133,7 @@ export default function Block({
                   handleUseCacheChange(false);
                 }}
               >
-                <CircleStackIcon className="h-4 w-4" />
+                <Square3Stack3DStrokeIcon className="h-4 w-4" />
               </div>
             ) : (
               <div
@@ -179,7 +179,7 @@ export default function Block({
               className="flex-initial cursor-pointer text-gray-400"
               onClick={onBlockDelete}
             >
-              <TrashIcon className="ml-2 h-4 w-4 hover:text-red-700" />
+              <TrashIcon className="ml-2 h-4 w-4 hover:text-red-600" />
             </div>
           </div>
         </div>

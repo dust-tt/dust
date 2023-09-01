@@ -1,3 +1,4 @@
+import { Button, Tab } from "@dust-tt/sparkle";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -6,6 +7,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 // TODO: type sse.js or use something else
@@ -13,8 +15,8 @@ import TextareaAutosize from "react-textarea-autosize";
 import { SSE } from "sse.js";
 
 import { Execution } from "@app/components/app/blocks/Output";
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -558,6 +560,8 @@ export default function ExecuteView({
     };
   }, [handleKeyPress]);
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -567,95 +571,113 @@ export default function ExecuteView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "execute" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="flex flex-col">
-        <div className="mt-2 flex flex-col">
-          <div className="mb-6 flex w-full flex-row">
-            <div className="flex flex-initial items-center text-sm leading-snug text-gray-400">
-              <div>
-                This panel lets you use your app on custom{" "}
-                <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                  input
-                </span>{" "}
-                values once finalized.{" "}
-                {savedRun?.app_hash ? null : (
-                  <>
-                    You must run your app at least once from the Specification
-                    panel to be able to execute it here with custom values.
-                  </>
-                )}
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "execute" })} />
+        </div>
+        <div className="mt-8 flex flex-col">
+          <div className="mt-2 flex flex-col">
+            <div className="mb-6 flex w-full flex-row">
+              <div className="flex flex-initial items-center text-sm leading-snug text-gray-400">
+                <div>
+                  This panel lets you use your app on custom{" "}
+                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
+                    input
+                  </span>{" "}
+                  values once finalized.{" "}
+                  {savedRun?.app_hash ? null : (
+                    <>
+                      You must run your app at least once from the Specification
+                      panel to be able to execute it here with custom values.
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-1"></div>
+              <div className="flex flex-initial">
+                <div className="">
+                  <Button
+                    type="primary"
+                    disabled={!canRun()}
+                    onClick={() => handleRun()}
+                    icon={PlayCircleIcon}
+                    label="Execute"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex flex-1"></div>
-            <div className="flex flex-initial">
+            {inputDatasetKeys.length ? (
+              <>
+                <h3 className="text-sm font-medium text-gray-700">Input</h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  The input fields are inferred from the Dataset attached to
+                  your app's{" "}
+                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
+                    input
+                  </span>{" "}
+                  block.
+                </p>
+                <ul className="mb-6 mt-4 space-y-1">
+                  {inputDatasetKeys.map((k) => (
+                    <li key={k}>
+                      <ExecuteInput
+                        inputName={k}
+                        inputValue={inputData[k]}
+                        onChange={(value) => handleValueChange(k, value)}
+                        inputType={datasetTypes[k]}
+                        onKeyDown={handleKeyPress}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {executionLogs.blockOrder.length ? (
               <div className="">
-                <ActionButton disabled={!canRun()} onClick={() => handleRun()}>
-                  <PlayCircleIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                  Execute
-                </ActionButton>
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
+                  Execution Trace
+                </h3>
+                <ExecuteOutput
+                  executionLogs={executionLogs}
+                  expandedByBlockTypeName={outputExpandedByBlockTypeName}
+                  onToggleExpand={(blockName) => {
+                    setOutputExpandedByBlockTypeName((prev) => {
+                      const newExpanded: { [key: string]: boolean } = {
+                        ...prev,
+                      };
+                      newExpanded[blockName] = !newExpanded[blockName];
+                      return newExpanded;
+                    });
+                  }}
+                />
               </div>
-            </div>
+            ) : null}
+            {finalOutputBlockTypeName && (
+              <div className="mt-6">
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
+                  Output
+                </h3>
+                <ExecuteFinalOutput
+                  value={getTraceFromEvents(
+                    executionLogs.outputByBlockTypeName[
+                      finalOutputBlockTypeName
+                    ]
+                  )}
+                  errored={isErrored}
+                />
+              </div>
+            )}
           </div>
-          {inputDatasetKeys.length ? (
-            <>
-              <h3 className="text-sm font-medium text-gray-700">Input</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                The input fields are inferred from the Dataset attached to your
-                app's{" "}
-                <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                  input
-                </span>{" "}
-                block.
-              </p>
-              <ul className="mb-6 mt-4 space-y-1">
-                {inputDatasetKeys.map((k) => (
-                  <li key={k}>
-                    <ExecuteInput
-                      inputName={k}
-                      inputValue={inputData[k]}
-                      onChange={(value) => handleValueChange(k, value)}
-                      inputType={datasetTypes[k]}
-                      onKeyDown={handleKeyPress}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-          {executionLogs.blockOrder.length ? (
-            <div className="">
-              <h3 className="mb-3 text-sm font-medium text-gray-700">
-                Execution Trace
-              </h3>
-              <ExecuteOutput
-                executionLogs={executionLogs}
-                expandedByBlockTypeName={outputExpandedByBlockTypeName}
-                onToggleExpand={(blockName) => {
-                  setOutputExpandedByBlockTypeName((prev) => {
-                    const newExpanded: { [key: string]: boolean } = {
-                      ...prev,
-                    };
-                    newExpanded[blockName] = !newExpanded[blockName];
-                    return newExpanded;
-                  });
-                }}
-              />
-            </div>
-          ) : null}
-          {finalOutputBlockTypeName && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-sm font-medium text-gray-700">Output</h3>
-              <ExecuteFinalOutput
-                value={getTraceFromEvents(
-                  executionLogs.outputByBlockTypeName[finalOutputBlockTypeName]
-                )}
-                errored={isErrored}
-              />
-            </div>
-          )}
         </div>
       </div>
     </AppLayout>

@@ -1,6 +1,9 @@
+import { Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -84,6 +87,8 @@ export default function Specification({
   specification,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -93,12 +98,25 @@ export default function Specification({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "specification" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="font-mono whitespace-pre text-[13px] text-gray-700">
-        {specification}
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab
+            tabs={subNavigationApp({ owner, app, current: "specification" })}
+          />
+        </div>
+        <div className="font-mono mt-8 whitespace-pre text-[13px] text-gray-700">
+          {specification}
+        </div>
       </div>
     </AppLayout>
   );

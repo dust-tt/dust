@@ -1,10 +1,10 @@
-import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { Button, PlusIcon, Tab, TrashIcon } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import Router from "next/router";
+import Router, { useRouter } from "next/router";
 
-import { ActionButton } from "@app/components/Button";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationAdmin,
   subNavigationApp,
@@ -88,6 +88,8 @@ export default function DatasetsView({
     }
   };
 
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -97,79 +99,98 @@ export default function DatasetsView({
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
-        subMenuLabel: app.name,
-        subMenu: subNavigationApp({ owner, app, current: "datasets" }),
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/a`);
+          }}
+        />
+      }
     >
-      <div className="leadingflex flex-col">
-        <div className="flex flex-1">
-          <div className="mb-4 flex flex-auto flex-col">
-            <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/new`}>
-              <ActionButton disabled={readOnly}>
-                <PlusIcon className="-ml-1 mr-1 mt-0.5 h-5 w-5" />
-                New Dataset
-              </ActionButton>
-            </Link>
-
-            <div className="mt-4">
-              <ul role="list" className="flex-1 space-y-4">
-                {datasets.map((d) => {
-                  return (
-                    <Link
-                      key={d.name}
-                      href={`/w/${owner.sId}/a/${app.sId}/datasets/${d.name}`}
-                      className="block"
-                    >
-                      <div
+      <div className="flex w-full flex-col">
+        <div className="mt-2">
+          <Tab tabs={subNavigationApp({ owner, app, current: "datasets" })} />
+        </div>
+        <div className="mt-8 flex flex-col">
+          <div className="flex flex-1">
+            <div className="mb-4 flex flex-auto flex-col gap-y-4">
+              <div className="flex flex-row items-center justify-between">
+                <Button
+                  disabled={readOnly}
+                  type="primary"
+                  label="New Dataset"
+                  icon={PlusIcon}
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/a/${app.sId}/datasets/new`
+                    );
+                  }}
+                />
+              </div>
+              <div className="mt-2">
+                <ul role="list" className="flex-1 space-y-4">
+                  {datasets.map((d) => {
+                    return (
+                      <Link
                         key={d.name}
-                        className="group rounded border border-gray-300 px-4 py-4"
+                        href={`/w/${owner.sId}/a/${app.sId}/datasets/${d.name}`}
+                        className="block"
                       >
-                        <div className="flex items-center justify-between">
-                          <p className="truncate text-base font-bold text-action-500">
-                            {d.name}
-                          </p>
-                          {readOnly ? null : (
-                            <div className="ml-2 flex flex-shrink-0">
-                              <TrashIcon
-                                className="hidden h-4 w-4 text-gray-400 hover:text-red-700 group-hover:block"
-                                onClick={async (e) => {
-                                  e.preventDefault();
-                                  await handleDelete(d.name);
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-2 sm:flex sm:justify-between">
-                          <div className="sm:flex">
-                            <p
-                              className={classNames(
-                                d.description
-                                  ? "text-gray-700"
-                                  : "text-gray-300",
-                                "flex items-center text-sm text-gray-700"
-                              )}
-                            >
-                              {d.description ? d.description : "No description"}
+                        <div
+                          key={d.name}
+                          className="group rounded border border-gray-300 px-4 py-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="truncate text-base font-bold text-action-500">
+                              {d.name}
                             </p>
+                            {readOnly ? null : (
+                              <div className="ml-2 flex flex-shrink-0">
+                                <TrashIcon
+                                  className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block"
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    await handleDelete(d.name);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-2 sm:flex sm:justify-between">
+                            <div className="sm:flex">
+                              <p
+                                className={classNames(
+                                  d.description
+                                    ? "text-gray-700"
+                                    : "text-gray-300",
+                                  "flex items-center text-sm text-gray-700"
+                                )}
+                              >
+                                {d.description
+                                  ? d.description
+                                  : "No description"}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </ul>
-              <div className="mt-2 max-w-4xl px-2">
-                <div className="py-2 text-sm text-gray-400">
-                  Datasets are used as input data to apps (
-                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                    input
-                  </span>{" "}
-                  block) or few-shot examples to prompt models (
-                  <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
-                    data
-                  </span>{" "}
-                  block).
+                      </Link>
+                    );
+                  })}
+                </ul>
+                <div className="mt-2 max-w-4xl px-2">
+                  <div className="py-2 text-sm text-gray-400">
+                    Datasets are used as input data to apps (
+                    <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
+                      input
+                    </span>{" "}
+                    block) or few-shot examples to prompt models (
+                    <span className="rounded-md bg-gray-200 px-1 py-0.5 font-bold">
+                      data
+                    </span>{" "}
+                    block).
+                  </div>
                 </div>
               </div>
             </div>
