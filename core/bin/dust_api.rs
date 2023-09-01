@@ -728,15 +728,20 @@ async fn runs_create_stream(
             });
         }
         Err((_, api_error)) => {
-            if let Some(error) = &api_error.0.error {
-                let _ = tx.send(json!({
-                    "type": "error",
-                    "content": {
-                        "code": error.code,
-                        "message": error.message,
-                    },
-                }));
-            }
+            let error = match api_error.0.error {
+                Some(error) => error,
+                None => APIError {
+                    code: "internal_server_error".to_string(),
+                    message: "The app execution failed unexpectedly".to_string(),
+                },
+            };
+            let _ = tx.send(json!({
+                "type": "error",
+                "content": {
+                    "code": error.code,
+                    "message": error.message,
+                },
+            }));
         }
     }
 
@@ -1219,7 +1224,7 @@ fn error_response(
             error: Some(APIError {
                 code: code.to_string(),
                 message: match error {
-                    Some(err) => format!("{}\nError: {:?}", message, err),
+                    Some(err) => format!("{} (error: {:?})", message, err),
                     None => message.to_string(),
                 },
             }),

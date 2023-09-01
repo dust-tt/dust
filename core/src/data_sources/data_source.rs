@@ -449,7 +449,7 @@ impl DataSource {
         payload.insert(field_name, field_value.into());
 
         let field_condition = qdrant::FieldCondition {
-            key: "document_id".to_string(),
+            key: "document_id_hash".to_string(),
             r#match: Some(qdrant::Match {
                 match_value: Some(qdrant::r#match::MatchValue::Text(document_id)),
             }),
