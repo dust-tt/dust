@@ -13,7 +13,7 @@ export default function WorkspacePicker({
   onWorkspaceUpdate: (w: WorkspaceType) => void;
 }) {
   return (
-    <DropdownMenu>
+    <DropdownMenu className="flex">
       <DropdownMenu.Button
         label={workspace ? workspace.name : "Select workspace"}
       />
