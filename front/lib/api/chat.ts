@@ -714,7 +714,7 @@ export async function* newChat(
         return;
       }
 
-      const ds = dsRes.value;
+      const ds = dsRes.value.filter((d) => d.assistantDefaultSelected);
 
       configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
         return {
