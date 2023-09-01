@@ -1,6 +1,5 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 import { BlockType } from "@app/types/run";
-
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
 export type BlockRunConfig = {

@@ -1,5 +1,5 @@
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 export type DataSourceVisibility = "public" | "private";
 
