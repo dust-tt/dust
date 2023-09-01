@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 import { UserProviderType, UserType } from "@app/types/user";
 
 /**

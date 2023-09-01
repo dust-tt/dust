@@ -8,13 +8,10 @@ import {
   userIsChatSessionOwner,
 } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  front_sequelize,
-} from "@app/lib/models";
+import { ChatMessage, ChatRetrievedDocument } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 
