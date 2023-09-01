@@ -1335,7 +1335,7 @@ export class Message extends Model<
   InferCreationAttributes<Message>
 > {
   declare id: number;
-  declare parent_id: number | null;
+  declare parentId: number | null;
   declare userMessageId: number | null;
   declare assistantMessageId: number | null;
   declare version: number;
@@ -1351,7 +1351,7 @@ Message.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    parent_id: {
+    parentId: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -1413,16 +1413,21 @@ Message.belongsTo(Conversation, {
   foreignKey: "conversationId",
   onDelete: "CASCADE",
 });
+Conversation.hasMany(Message, { foreignKey: "conversationId" });
 UserMessage.hasOne(Message, {
   foreignKey: "userMessageId",
   sourceKey: "id",
   onDelete: "RESTRICT",
 });
+Message.belongsTo(UserMessage, { foreignKey: "userMessageId" });
 AssistantMessage.hasOne(Message, {
   foreignKey: "assistantMessageId",
   sourceKey: "id",
   onDelete: "RESTRICT",
 });
+Message.belongsTo(AssistantMessage, { foreignKey: "assistantMessageId" });
+Message.belongsTo(Message, { foreignKey: "parent_id", as: "parent" });
+Message.hasMany(Message, { foreignKey: "parent_id", as: "children" });
 
 // XP1
 
