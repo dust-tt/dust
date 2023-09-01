@@ -1284,6 +1284,7 @@ export class UserMessage extends Model<
 > {
   declare id: number;
   declare textContent: string;
+  declare userId: ForeignKey<User["id"]>;
 }
 
 UserMessage.init(
@@ -1303,6 +1304,9 @@ UserMessage.init(
     sequelize: front_sequelize,
   }
 );
+
+UserMessage.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(UserMessage, { foreignKey: "userId" });
 
 export class AssistantMessage extends Model<
   InferAttributes<AssistantMessage>,
