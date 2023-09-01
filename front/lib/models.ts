@@ -1250,7 +1250,7 @@ export class Conversation extends Model<
   declare sId: string;
   declare title: string;
   declare created: Date;
-  declare visibility: string;
+  declare visibility: ChatSessionVisibility;
 }
 
 Conversation.init(
@@ -1276,6 +1276,7 @@ Conversation.init(
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "private",
     },
   },
   {
