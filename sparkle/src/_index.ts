@@ -10,8 +10,11 @@ export { SliderToggle };
 import { Tab } from "./components/Tab";
 export { Tab };
 
-import { Item, ItemSectionHeader, ListItem } from "./components/Item";
-export { Item, ItemSectionHeader, ListItem };
+import { Item } from "./components/Item";
+export { Item };
+
+import { DropdownMenu } from "./components/DropdownMenu";
+export { DropdownMenu };
 
 import { PageHeader } from "./components/PageHeader";
 export { PageHeader };

@@ -71,5 +71,8 @@
   "bugs": {
     "url": "https://github.com/dust/dust-tt/issues"
   },
-  "homepage": "https://github.com/dust/dust-tt#readme"
+  "homepage": "https://github.com/dust/dust-tt#readme",
+  "dependencies": {
+    "@headlessui/react": "^1.7.17"
+  }
 }
