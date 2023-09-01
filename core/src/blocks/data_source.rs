@@ -196,7 +196,7 @@ impl DataSource {
                 env.credentials.clone(),
                 env.store.clone(),
                 env.qdrant_client.clone(),
-                &q,
+                &Some(q.to_string()),
                 top_k,
                 filter,
                 self.full_text,

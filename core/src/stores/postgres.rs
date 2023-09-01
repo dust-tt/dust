@@ -1,6 +1,8 @@
 use crate::blocks::block::BlockType;
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
+use crate::data_sources::data_source::{
+    DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
+};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -16,6 +18,7 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use tokio_postgres::types::ToSql;
 use tokio_postgres::NoTls;
 
 #[derive(Clone)]
@@ -1328,6 +1331,121 @@ impl Store for PostgresStore {
         };
 
         Ok((versions, total))
+    }
+
+    async fn find_data_source_document_ids(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        filter: &Option<SearchFilter>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<String>, usize)> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let project_id = project.project_id().clone();
+
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        let data_source_internal_id_rows = c
+            .query_one(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_internal_id: i64 = data_source_internal_id_rows.get(0);
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_internal_id);
+
+        let mut p_idx: usize = 2;
+
+        let tags_is_in: Vec<String>;
+        let tags_is_not: Vec<String>;
+        let parents_is_in: Vec<String>;
+        let parents_is_not: Vec<String>;
+        let ts_gt: i64;
+        let ts_lt: i64;
+
+        if let Some(filter) = filter {
+            if let Some(tags_filter) = &filter.tags {
+                if let Some(tags) = &tags_filter.is_in {
+                    where_clauses.push(format!("tags_array @> ${}", p_idx));
+                    tags_is_in = tags.to_vec();
+                    params.push(&tags_is_in);
+                    p_idx += 1;
+                }
+                if let Some(tags) = &tags_filter.is_not {
+                    where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
+                    tags_is_not = tags.to_vec();
+                    params.push(&tags_is_not);
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(parents_filter) = &filter.parents {
+                if let Some(parents) = &parents_filter.is_in {
+                    where_clauses.push(format!("parents @> ${}", p_idx));
+                    parents_is_in = parents.to_vec();
+                    params.push(&parents_is_in);
+                    p_idx += 1;
+                }
+                if let Some(parents) = &parents_filter.is_not {
+                    where_clauses.push(format!("NOT parents @> ${}", p_idx));
+                    parents_is_not = parents.to_vec();
+                    params.push(&parents_is_not);
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(ts_filter) = &filter.timestamp {
+                if let Some(ts) = ts_filter.gt {
+                    where_clauses.push(format!("timestamp > ${}", p_idx));
+                    ts_gt = ts as i64;
+                    params.push(&ts_gt);
+                    p_idx += 1;
+                }
+                if let Some(ts) = ts_filter.lt {
+                    where_clauses.push(format!("timestamp < ${}", p_idx));
+                    ts_lt = ts as i64;
+                    params.push(&ts_lt);
+                    p_idx += 1;
+                }
+            }
+        }
+
+        let serialized_where_clauses = where_clauses.join(" AND ");
+
+        // compute the total count
+        let count_query = format!(
+            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
+            serialized_where_clauses
+        );
+        let count: i64 = c.query_one(&count_query, &params).await?.get(0);
+
+        let mut query = format!(
+            "SELECT document_id FROM data_sources_documents \
+            WHERE {} ORDER BY timestamp DESC",
+            serialized_where_clauses
+        );
+
+        let limit: i64;
+        let offset: i64;
+
+        if let Some((l, o)) = limit_offset {
+            query = query + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1);
+            limit = l as i64;
+            offset = o as i64;
+            params.push(&limit);
+            params.push(&offset);
+        }
+
+        let rows = c.query(&query, &params).await?;
+        let document_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
+
+        Ok((document_ids, count as usize))
     }
 
     async fn upsert_data_source_document(
