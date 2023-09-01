@@ -20,14 +20,14 @@ export class App extends Model<
 
   declare sId: string;
   declare name: string;
-  declare description?: string;
+  declare description: string | null;
   declare visibility: "public" | "private" | "unlisted" | "deleted";
-  declare savedSpecification?: string;
-  declare savedConfig?: string;
-  declare savedRun?: string;
+  declare savedSpecification: string | null;
+  declare savedConfig: string | null;
+  declare savedRun: string | null;
   declare dustAPIProjectId: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
 }
 App.init(
   {
@@ -98,7 +98,7 @@ export class Provider extends Model<
   declare providerId: string;
   declare config: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
 }
 Provider.init(
   {
@@ -143,10 +143,10 @@ export class Dataset extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare description?: string;
+  declare description: string | null;
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare appId: ForeignKey<App["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare appId: ForeignKey<App["id"]> | null;
 }
 Dataset.init(
   {
@@ -190,8 +190,8 @@ export class Clone extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare fromId: ForeignKey<App["id"]>;
-  declare toId: ForeignKey<App["id"]>;
+  declare fromId: ForeignKey<App["id"]> | null;
+  declare toId: ForeignKey<App["id"]> | null;
 }
 Clone.init(
   {
@@ -246,8 +246,8 @@ export class Run extends Model<
   declare dustRunId: string;
   declare runType: string;
 
-  declare appId: ForeignKey<App["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare appId: ForeignKey<App["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
 }
 
 Run.init(

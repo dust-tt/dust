@@ -37,11 +37,11 @@ export async function getApp(
     id: app.id,
     sId: app.sId,
     name: app.name,
-    description: app.description,
+    description: app.description ?? undefined,
     visibility: app.visibility,
-    savedSpecification: app.savedSpecification,
-    savedConfig: app.savedConfig,
-    savedRun: app.savedRun,
+    savedSpecification: app.savedSpecification ?? undefined,
+    savedConfig: app.savedConfig ?? undefined,
+    savedRun: app.savedRun ?? undefined,
     dustAPIProjectId: app.dustAPIProjectId,
   };
 }
@@ -73,11 +73,11 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
       id: app.id,
       sId: app.sId,
       name: app.name,
-      description: app.description,
+      description: app.description ?? undefined,
       visibility: app.visibility,
-      savedSpecification: app.savedSpecification,
-      savedConfig: app.savedConfig,
-      savedRun: app.savedRun,
+      savedSpecification: app.savedSpecification ?? undefined,
+      savedConfig: app.savedConfig ?? undefined,
+      savedRun: app.savedRun ?? undefined,
       dustAPIProjectId: app.dustAPIProjectId,
     };
   });
