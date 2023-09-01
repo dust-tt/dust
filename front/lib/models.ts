@@ -1290,6 +1290,13 @@ export class AssistantUserMessage extends Model<
 > {
   declare id: number;
   declare message: string;
+
+  declare userContextUsername: string;
+  declare userContextTimezone: string;
+  declare userContextFullName: string | null;
+  declare userContextEmail: string | null;
+  declare userContextProfilePictureUrl: string | null;
+
   declare userId: ForeignKey<User["id"]>;
 }
 
@@ -1303,6 +1310,26 @@ AssistantUserMessage.init(
     message: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    userContextUsername: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    userContextTimezone: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    userContextFullName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextProfilePictureUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
