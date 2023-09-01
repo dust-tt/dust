@@ -215,7 +215,6 @@ AssistantUserMessage.hasOne(AssistantMessage, {
 AssistantAgentMessage.hasOne(AssistantMessage, {
   foreignKey: "assistantAgentMessageId",
 });
-AssistantMessage.hasMany(AssistantMessage, {
+AssistantMessage.belongsTo(AssistantMessage, {
   foreignKey: "parentId",
-  as: "children",
 });
