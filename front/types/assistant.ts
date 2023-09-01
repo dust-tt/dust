@@ -39,7 +39,7 @@ export type AssistantUserMessageType = {
 };
 
 /**
- * Agent messages
+ * Retrieval action
  */
 
 export type AssistantUserFeedbackType = {
@@ -70,6 +70,10 @@ export type AssistantRetrievalActionType = {
   };
   documents: AssistantRetrievalDocumentType[];
 };
+
+/**
+ * Agent messages
+ */
 
 export type AssistantAgentActionType = AssistantRetrievalActionType;
 
