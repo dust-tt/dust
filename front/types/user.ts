@@ -26,9 +26,11 @@ export type WorkspaceType = {
   plan: PlanType;
 };
 
+export type UserProviderType = "github" | "google";
+
 export type UserType = {
   id: ModelId;
-  provider: "github" | "google";
+  provider: UserProviderType;
   providerId: string;
   username: string;
   email: string;
