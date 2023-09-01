@@ -145,7 +145,7 @@ async function _processExtractEventsForMarker({
 
   // 2/ Check that the document is not to big for the Dust App.
   const contentToProcess = await _getMaxTextContentToProcess({
-    fullDocumentText: documentText,
+    fullText: documentText,
     marker: marker,
   });
 

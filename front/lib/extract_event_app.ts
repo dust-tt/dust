@@ -9,8 +9,6 @@ import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";
 import { EventSchemaType } from "@app/types/extract";
 
-const EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS = 6000;
-
 export type ExtractEventAppResponseResults = {
   value: {
     results: { value: string }[][];
@@ -67,18 +65,78 @@ export async function _runExtractEventApp({
 /**
  * Return the content to process by the Extract Event app.
  * If the document is too big, we send only part of it to the Dust App.
- * @param fullDocumentText
+ * We first expand to get content before the marker, and then after it.
+ * @param fullText
  * @param marker
  */
 export async function _getMaxTextContentToProcess({
-  fullDocumentText,
+  fullText,
   marker,
 }: {
-  fullDocumentText: string;
+  fullText: string;
   marker: string;
 }): Promise<string> {
+  const MAX_TOKENS = 6000;
+
+  // If the text is small enough, just return it
+  const totalTokens = await computeNbTokens(fullText);
+  if (totalTokens < MAX_TOKENS) {
+    return fullText;
+  }
+
+  const markerIndex = fullText.indexOf(marker);
+  if (markerIndex === -1) {
+    logger.error({ marker }, "Extract: Missing marker in document to process.");
+    // Marker not found; should not happen
+    // Return empty string to make sure we don't extract anything
+    return "";
+  }
+
+  let result = marker;
+  let remainingTokens = MAX_TOKENS - (await computeNbTokens(marker));
+
+  // Start expanding before the marker
+  let start = markerIndex;
+  while (remainingTokens > 0 && start > 0) {
+    const nextChunk = fullText.substring(Math.max(0, start - 100), start);
+    const chunkTokens = await computeNbTokens(nextChunk);
+    if (chunkTokens < remainingTokens) {
+      start = Math.max(0, start - 100);
+      result = nextChunk + result;
+      remainingTokens -= chunkTokens;
+    } else {
+      break;
+    }
+  }
+
+  // Start expanding after the marker
+  let end = markerIndex + marker.length;
+  while (remainingTokens > 0 && end < fullText.length) {
+    const nextChunk = fullText.substring(
+      end,
+      Math.min(fullText.length, end + 100)
+    );
+    const chunkTokens = await computeNbTokens(nextChunk);
+    if (chunkTokens < remainingTokens) {
+      end = Math.min(fullText.length, end + 100);
+      result += nextChunk;
+      remainingTokens -= chunkTokens;
+    } else {
+      break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Calling Core API to get the number of tokens in a text.
+ * @param text
+ * @returns number of tokens
+ */
+export async function computeNbTokens(text: string): Promise<number> {
   const tokensInDocumentText = await CoreAPI.tokenize({
-    text: fullDocumentText,
+    text: text,
     modelId: "text-embedding-ada-002",
     providerId: "openai",
   });
@@ -89,29 +147,8 @@ export async function _getMaxTextContentToProcess({
     logger.error(
       "Could not get number of tokens for document, trying with full doc."
     );
-    return fullDocumentText;
+    return 0;
   }
 
-  const numberOfTokens = tokensInDocumentText.value.tokens.length;
-  let documentTextToProcess: string;
-
-  if (numberOfTokens > EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS) {
-    // Document is too big, we need to send only part of it to the Dust App.
-    const fullDocLength = fullDocumentText.length;
-    const markerIndex = fullDocumentText.indexOf(marker);
-    const markerLength = marker.length;
-
-    // We can go half the max number of tokens on each side of the marker.
-    // We multiply by 4 because we assume 1 token is approximately 4 characters
-    const maxLength = (EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS / 2) * 4;
-
-    const start = Math.max(0, markerIndex - maxLength);
-    const end = Math.min(fullDocLength, markerIndex + markerLength + maxLength);
-    documentTextToProcess = fullDocumentText.substring(start, end);
-  } else {
-    // Document is small enough, we send the whole text.
-    documentTextToProcess = fullDocumentText;
-  }
-
-  return documentTextToProcess;
+  return tokensInDocumentText.value.tokens.length;
 }
