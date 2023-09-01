@@ -14,7 +14,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.71.1
+          toolchain: stable
 
       - name: checkout
         uses: actions/checkout@v3

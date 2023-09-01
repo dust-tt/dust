@@ -1,5 +1,5 @@
 use anyhow::Result;
-use deno_core::{op, Extension, JsRuntime, OpState, ZeroCopyBuf};
+use deno_core::{op, Extension, JsRuntime, OpState};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -155,7 +155,6 @@ impl deno_core::Resource for ResultResource {
 fn op_return(
     state: &mut OpState,
     args: serde_json::Value,
-    _buf: Option<ZeroCopyBuf>,
 ) -> Result<serde_json::Value, deno_core::error::AnyError> {
     let entry = ResultResource { json_value: args };
     let resource_table = &mut state.resource_table;
