@@ -95,7 +95,7 @@ async function handler(
         });
       }
 
-      let ds: DataSourceType;
+      let ds: DataSource;
       if (dataSource.connectorId) {
         // managed data source
         if (
@@ -143,13 +143,13 @@ async function handler(
         dataSource: {
           id: ds.id,
           name: ds.name,
-          description: ds.description,
+          description: ds.description ?? undefined,
           visibility: ds.visibility,
           assistantDefaultSelected: ds.assistantDefaultSelected,
-          config: ds.config,
+          config: ds.config ?? undefined,
           dustAPIProjectId: ds.dustAPIProjectId,
-          connectorId: ds.connectorId,
-          connectorProvider: ds.connectorProvider,
+          connectorId: ds.connectorId ?? undefined,
+          connectorProvider: ds.connectorProvider ?? undefined,
         },
       });
 

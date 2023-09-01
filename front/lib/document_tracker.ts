@@ -13,6 +13,11 @@ export async function updateTrackedDocuments(
   if (!dataSource) {
     throw new Error(`Could not find data source with id ${dataSourceId}`);
   }
+  if (!dataSource.workspaceId) {
+    throw new Error(
+      `Data source with id ${dataSourceId} has no workspace id set`
+    );
+  }
 
   const hasExistingTrackedDocs = !!(await TrackedDocument.count({
     where: {

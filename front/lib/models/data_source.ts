@@ -20,14 +20,14 @@ export class DataSource extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare description?: string;
+  declare description: string | null;
   declare visibility: "public" | "private";
   declare assistantDefaultSelected: boolean;
-  declare config?: string;
+  declare config: string | null;
   declare dustAPIProjectId: string;
-  declare connectorId?: string;
-  declare connectorProvider?: ConnectorProvider;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare connectorId: string | null;
+  declare connectorProvider: ConnectorProvider | null;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
 }
 
 DataSource.init(
