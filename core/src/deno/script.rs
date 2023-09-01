@@ -1,5 +1,5 @@
 use anyhow::Result;
-use deno_core::{op, Extension, JsRuntime, OpState, ZeroCopyBuf};
+use deno_core::{op, Extension, JsRuntime, Op, OpState};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -37,9 +37,11 @@ impl Script {
     }
 
     fn create_script(js_code: String) -> Result<Self> {
-        let ext = Extension::builder("script")
-            .ops(vec![(op_return::decl())])
-            .build();
+        let ext = Extension {
+            name: "script",
+            ops: Cow::Owned(vec![(op_return::DECL)]),
+            ..Default::default()
+        };
 
         let options = deno_core::RuntimeOptions {
             module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
@@ -102,10 +104,6 @@ impl Script {
                 tokio::time::sleep(timeout).await;
                 handle.terminate_execution();
             });
-            // thread::spawn(move || {
-            //     thread::sleep(timeout);
-            //     handle.terminate_execution();
-            // });
         }
 
         // syncing ops is required cause they sometimes change while preparing the engine
@@ -155,7 +153,6 @@ impl deno_core::Resource for ResultResource {
 fn op_return(
     state: &mut OpState,
     args: serde_json::Value,
-    _buf: Option<ZeroCopyBuf>,
 ) -> Result<serde_json::Value, deno_core::error::AnyError> {
     let entry = ResultResource { json_value: args };
     let resource_table = &mut state.resource_table;
