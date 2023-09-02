@@ -8,6 +8,10 @@ import {
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
+  getParents,
+  updateParentsField,
+} from "@connectors/connectors/notion/lib/parents";
+import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
 } from "@connectors/connectors/notion/lib/garbage_collect";
@@ -36,6 +40,7 @@ import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+import { connect } from "http2";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -240,9 +245,13 @@ export async function notionUpsertPageActivity(
 
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
 
+  let needParentsUpdate =
+    parsedPage?.parentType !== notionPage?.parentType ||
+    parsedPage?.parentId !== notionPage?.parentId;
+
   if (parsedPage && parsedPage.rendered.length > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info("Skipping page with too large body");
-    await upsertNotionPageInConnectorsDb({
+    const newNotionPage = await upsertNotionPageInConnectorsDb({
       dataSourceInfo: dataSourceConfig,
       notionPageId: pageId,
       lastSeenTs: runTimestamp,
@@ -253,12 +262,21 @@ export async function notionUpsertPageActivity(
       lastUpsertedTs: upsertTs,
       skipReason: "body_too_large",
     });
+    needParentsUpdate && updateParentsField(newNotionPage);
     return;
   }
 
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
+    let parents = await getParents(
+      {
+        notionId: pageId,
+        parentType: parsedPage.parentType,
+        parentId: parsedPage.parentId,
+      },
+      dataSourceConfig
+    );
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
@@ -266,7 +284,7 @@ export async function notionUpsertPageActivity(
       documentUrl: parsedPage.url,
       timestampMs: parsedPage.updatedTime,
       tags: getTagsForPage(parsedPage),
-      parents: [],
+      parents,
       retries: 3,
       delayBetweenRetriesMs: 500,
       loggerArgs,
@@ -279,7 +297,7 @@ export async function notionUpsertPageActivity(
   }
 
   localLogger.info("notionUpsertPageActivity: Upserting notion page in DB.");
-  await upsertNotionPageInConnectorsDb({
+  const newNotionPage = await upsertNotionPageInConnectorsDb({
     dataSourceInfo: dataSourceConfig,
     notionPageId: pageId,
     lastSeenTs: runTimestamp,
@@ -289,6 +307,7 @@ export async function notionUpsertPageActivity(
     notionUrl: parsedPage ? parsedPage.url : null,
     lastUpsertedTs: upsertTs,
   });
+  needParentsUpdate && updateParentsField(newNotionPage);
 }
 
 export async function notionUpsertDatabaseActivity(
@@ -329,7 +348,11 @@ export async function notionUpsertDatabaseActivity(
 
   const parsedDb = await getParsedDatabase(accessToken, databaseId, loggerArgs);
 
-  await upsertNotionDatabaseInConnectorsDb({
+  let needParentsUpdate =
+    parsedDb?.parentType !== notionDatabase?.parentType ||
+    parsedDb?.parentId !== notionDatabase?.parentId;
+
+  const newNotionDb = await upsertNotionDatabaseInConnectorsDb({
     dataSourceInfo: dataSourceConfig,
     notionDatabaseId: databaseId,
     lastSeenTs: runTimestamp,
@@ -338,6 +361,7 @@ export async function notionUpsertDatabaseActivity(
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
   });
+  needParentsUpdate && updateParentsField(newNotionDb);
 }
 
 export async function saveSuccessSyncActivity(
@@ -809,3 +833,8 @@ export async function garbageCollectActivity(
     lastGarbageCollectionFinishTime: new Date(),
   });
 }
+
+/*export async function notionFillParentsActivity (
+  accessToken: string,
+
+)*/
