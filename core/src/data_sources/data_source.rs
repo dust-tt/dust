@@ -599,7 +599,7 @@ impl DataSource {
             utils::now() - now
         ));
 
-        // Ordered results with offset, stirng and vector
+        let now = utils::now();
         let mut texthash2embedding: HashMap<String, EmbedderVector> = HashMap::new();
         let mut page_offset: Option<PointId> = None;
         loop {
@@ -709,6 +709,7 @@ impl DataSource {
             }
         }
 
+        // Ordered results with offset, stirng and vector
         let embedded_vectors = splits
             .iter()
             .enumerate()
@@ -716,7 +717,6 @@ impl DataSource {
                 let mut hasher = blake3::Hasher::new();
                 hasher.update(s.as_bytes());
                 let text_only_hash = format!("{}", hasher.finalize().to_hex());
-                // let v = cached_embeddings.get(&chunk_hash).unwrap();
                 let r = match texthash2embedding.contains_key(&text_only_hash) {
                     true => Ok((
                         i,
@@ -735,8 +735,6 @@ impl DataSource {
                 Err(e) => return Err(anyhow!("DataSource chunk embedding error: {}", e))?,
             }
         }
-
-        let now = utils::now();
 
         // Embed chunks with max concurrency of 2.
         //let e = stream::iter(splits.into_iter().enumerate())
