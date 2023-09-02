@@ -19,6 +19,10 @@ import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_g
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
+import {
+  setBotEnabledAPIHandler as setBotEnabledAPIHandler,
+  getBotEnabledAPIHandler as getBotEnabledAPIHandler,
+} from "@connectors/api/bot_enabled";
 
 export function startServer(port: number) {
   const app = express();
@@ -46,6 +50,8 @@ export function startServer(port: number) {
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
+  app.get("/connectors/:connector_id/bot_enabled", getBotEnabledAPIHandler);
+  app.post("/connectors/:connector_id/bot_enabled", setBotEnabledAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",

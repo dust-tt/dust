@@ -279,6 +279,46 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
+
+  async getBotEnabled(connectorId: string): Promise<
+    ConnectorsAPIResponse<{
+      botEnabled: boolean;
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async setBotEnabled(
+    connectorId: string,
+    botEnabled: boolean
+  ): Promise<
+    ConnectorsAPIResponse<{
+      botEnabled: boolean;
+    }>
+  > {
+    const headers = getDefaultHeaders();
+
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          botEnabled,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
 };
 
 function getDefaultHeaders() {
