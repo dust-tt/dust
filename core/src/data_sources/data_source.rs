@@ -599,151 +599,140 @@ impl DataSource {
             utils::now() - now
         ));
 
-        let current_doc = store
-            .load_data_source_document(
-                &self.project,
-                &self.data_source_id(),
-                &document_id.to_string(),
-                &None,
-            )
-            .await?;
-
-        let mut should_embbed = match current_doc {
-            Some(current_doc) => current_doc.hash != document_hash,
-            None => true,
-        };
         // Ordered results with offset, stirng and vector
-        let mut e: Vec<(usize, String, EmbedderVector)> = vec![];
-        let mut offset: usize = 0;
-        if should_embbed == false {
-            let mut cached_embeddings: HashMap<String, EmbedderVector> = HashMap::new();
-            let mut page_offset: Option<PointId> = None;
-            loop {
-                let scroll_results = qdrant_client
-                    .scroll(&ScrollPoints {
-                        collection_name: self.qdrant_collection(),
-                        with_vectors: Some(true.into()),
-                        limit: Some(1000),
-                        offset: page_offset,
-                        filter: Some(qdrant::Filter {
-                            must_not: vec![],
-                            should: vec![],
-                            must: vec![qdrant::FieldCondition {
-                                key: "document_id_hash".to_string(),
-                                r#match: Some(qdrant::Match {
-                                    match_value: Some(qdrant::r#match::MatchValue::Text(
-                                        document_id_hash.clone(),
-                                    )),
-                                }),
-                                ..Default::default()
-                            }
-                            .into()],
-                        }),
-                        ..Default::default()
-                    })
-                    .await?;
-
-                scroll_results.result.iter().for_each(|result| {
-                    match result.payload.get("chunk_hash") {
-                        Some(t) => match t.kind {
-                            Some(qdrant::value::Kind::StringValue(ref s)) => {
-                                match result.vectors.clone() {
-                                    Some(v) => match v.vectors_options {
-                                        Some(VectorsOptions::Vector(v)) => {
-                                            cached_embeddings.insert(
-                                                s.to_string(),
-                                                EmbedderVector {
-                                                    created: document.created,
-                                                    vector: v
-                                                        .data
-                                                        .iter()
-                                                        .map(|v| *v as f64)
-                                                        .collect::<Vec<f64>>(),
-                                                    model: self.config.model_id.clone(),
-                                                    provider: self.config.provider_id.to_string(),
-                                                },
-                                            );
-                                        }
-                                        _ => {}
-                                    },
-                                    None => {}
-                                }
-                            }
-                            _ => {}
-                        },
-                        None => {}
-                    }
-                });
-                page_offset = scroll_results.next_page_offset;
-                if page_offset.is_none() {
-                    break;
-                }
-            }
-            let cache_hits = splits
-                .iter()
-                .filter(|s| {
-                    let mut hasher = blake3::Hasher::new();
-                    hasher.update(document_hash.as_bytes());
-                    hasher.update(s.as_bytes());
-                    let hash = format!("{}", hasher.finalize().to_hex());
-                    cached_embeddings.contains_key(&hash)
+        let mut texthash2embedding: HashMap<String, EmbedderVector> = HashMap::new();
+        let mut page_offset: Option<PointId> = None;
+        loop {
+            let scroll_results = qdrant_client
+                .scroll(&ScrollPoints {
+                    collection_name: self.qdrant_collection(),
+                    with_vectors: Some(true.into()),
+                    limit: Some(1000),
+                    offset: page_offset,
+                    filter: Some(qdrant::Filter {
+                        must_not: vec![],
+                        should: vec![],
+                        must: vec![qdrant::FieldCondition {
+                            key: "document_id_hash".to_string(),
+                            r#match: Some(qdrant::Match {
+                                match_value: Some(qdrant::r#match::MatchValue::Text(
+                                    document_id_hash.clone(),
+                                )),
+                            }),
+                            ..Default::default()
+                        }
+                        .into()],
+                    }),
+                    ..Default::default()
                 })
-                .count();
-            utils::done(&format!(
-                "Embeddings cache hits: data_source_id={} document_id={} cache_hits={} splits={}",
-                self.data_source_id,
-                document_id,
-                cache_hits,
-                splits.len()
-            ));
-            if cache_hits != splits.len() {
-                should_embbed = true;
-            } else {
-                for s in splits.clone() {
-                    let mut hasher = blake3::Hasher::new();
-                    hasher.update(document_hash.as_bytes());
-                    hasher.update(s.as_bytes());
-                    let hash = format!("{}", hasher.finalize().to_hex());
-                    match cached_embeddings.contains_key(&hash) {
-                        true => {
-                            e.push((offset, s, cached_embeddings[&hash].clone()));
-                            offset += 1;
+                .await?;
+
+            scroll_results
+                .result
+                .iter()
+                .for_each(|result| match result.payload.get("text") {
+                    Some(t) => match t.kind {
+                        Some(qdrant::value::Kind::StringValue(ref chunk_text)) => {
+                            match result.vectors.clone() {
+                                Some(v) => match v.vectors_options {
+                                    Some(VectorsOptions::Vector(v)) => {
+                                        let mut hasher = blake3::Hasher::new();
+                                        hasher.update(chunk_text.as_bytes());
+                                        let text_only_hash =
+                                            format!("{}", hasher.finalize().to_hex());
+
+                                        texthash2embedding.insert(
+                                            text_only_hash.to_string(),
+                                            EmbedderVector {
+                                                created: document.created,
+                                                vector: v
+                                                    .data
+                                                    .iter()
+                                                    .map(|v| *v as f64)
+                                                    .collect::<Vec<f64>>(),
+                                                model: self.config.model_id.clone(),
+                                                provider: self.config.provider_id.to_string(),
+                                            },
+                                        );
+                                    }
+                                    _ => {}
+                                },
+                                None => {}
+                            }
                         }
-                        false => {
-                            should_embbed = true;
-                            e = vec![];
-                            break;
-                        }
-                    };
-                }
+                        _ => {}
+                    },
+                    None => {}
+                });
+            page_offset = scroll_results.next_page_offset;
+            if page_offset.is_none() {
+                break;
             }
         }
 
-        if should_embbed {
-            // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
-            let chunked_splits = splits
-                .chunks(8)
-                .map(|chunk| chunk.to_vec())
-                .collect::<Vec<_>>();
+        let splits_to_embbed = splits
+            .iter()
+            .filter(|s| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(s.as_bytes());
+                let text_only_hash = format!("{}", hasher.finalize().to_hex());
+                !texthash2embedding.contains_key(&text_only_hash)
+            })
+            .collect::<Vec<_>>();
 
-            // Embed batched chunks sequentially.
-            for chunk in chunked_splits {
-                let r = EmbedderRequest::new(
-                    self.config.provider_id.clone(),
-                    &self.config.model_id,
-                    chunk.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
-                    self.config.extras.clone(),
-                );
+        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+        let chunked_splits = splits_to_embbed
+            .chunks(8)
+            .map(|chunk| chunk.to_vec())
+            .collect::<Vec<_>>();
 
-                let v = match r.execute(credentials.clone()).await {
-                    Ok(v) => v,
-                    Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
+        // Embed batched chunks sequentially.
+        for chunk in chunked_splits {
+            let r = EmbedderRequest::new(
+                self.config.provider_id.clone(),
+                &self.config.model_id,
+                chunk.iter().map(|ev| ev.as_str()).collect::<Vec<_>>(),
+                self.config.extras.clone(),
+            );
+
+            let v = match r.execute(credentials.clone()).await {
+                Ok(v) => v,
+                Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
+            };
+
+            for (s, v) in chunk.into_iter().zip(v.into_iter()) {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(s.as_bytes());
+                let text_only_hash = format!("{}", hasher.finalize().to_hex());
+
+                texthash2embedding.insert(text_only_hash, v);
+            }
+        }
+
+        let embedded_vectors = splits
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(s.as_bytes());
+                let text_only_hash = format!("{}", hasher.finalize().to_hex());
+                // let v = cached_embeddings.get(&chunk_hash).unwrap();
+                let r = match texthash2embedding.contains_key(&text_only_hash) {
+                    true => Ok((
+                        i,
+                        s.to_string(),
+                        texthash2embedding.get(&text_only_hash).unwrap(),
+                    )),
+                    false => Err(anyhow!("Chunk not found in cache")),
                 };
+                r
+            })
+            .collect::<Vec<_>>();
 
-                for (s, v) in chunk.into_iter().zip(v.into_iter()) {
-                    e.push((offset, s, v));
-                    offset += 1;
-                }
+        for r in embedded_vectors.iter() {
+            match r {
+                Ok(_) => {}
+                Err(e) => return Err(anyhow!("DataSource chunk embedding error: {}", e))?,
             }
         }
 
@@ -774,12 +763,13 @@ impl DataSource {
             "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
             self.data_source_id,
             document_id,
-            e.len(),
+            embedded_vectors.len(),
             utils::now() - now
         ));
 
-        document.chunks = e
+        document.chunks = embedded_vectors
             .into_iter()
+            .map(|r| r.unwrap())
             .map(|(i, s, v)| {
                 let mut hasher = blake3::Hasher::new();
                 hasher.update(document_hash.as_bytes());
@@ -790,7 +780,7 @@ impl DataSource {
                     text: s,
                     hash,
                     offset: i,
-                    vector: Some(v.vector),
+                    vector: Some(v.vector.clone()),
                     score: None,
                 }
             })
