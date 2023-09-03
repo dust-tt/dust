@@ -69,7 +69,7 @@ export async function _runExtractEventApp({
  * @param fullText
  * @param marker
  */
-export async function _getMaxTextContentToProcess({
+export async function _getMaxTextContentToProcessV0({
   fullText,
   marker,
 }: {
@@ -77,6 +77,7 @@ export async function _getMaxTextContentToProcess({
   marker: string;
 }): Promise<string> {
   const MAX_TOKENS = 6000;
+  const CHUNK_SIZE = 250;
 
   // If the text is small enough, just return it
   const totalTokens = await computeNbTokens(fullText);
@@ -98,10 +99,13 @@ export async function _getMaxTextContentToProcess({
   // Start expanding before the marker
   let start = markerIndex;
   while (remainingTokens > 0 && start > 0) {
-    const nextChunk = fullText.substring(Math.max(0, start - 100), start);
+    const nextChunk = fullText.substring(
+      Math.max(0, start - CHUNK_SIZE),
+      start
+    );
     const chunkTokens = await computeNbTokens(nextChunk);
     if (chunkTokens < remainingTokens) {
-      start = Math.max(0, start - 100);
+      start = Math.max(0, start - CHUNK_SIZE);
       result = nextChunk + result;
       remainingTokens -= chunkTokens;
     } else {
@@ -114,11 +118,11 @@ export async function _getMaxTextContentToProcess({
   while (remainingTokens > 0 && end < fullText.length) {
     const nextChunk = fullText.substring(
       end,
-      Math.min(fullText.length, end + 100)
+      Math.min(fullText.length, end + CHUNK_SIZE)
     );
     const chunkTokens = await computeNbTokens(nextChunk);
     if (chunkTokens < remainingTokens) {
-      end = Math.min(fullText.length, end + 100);
+      end = Math.min(fullText.length, end + CHUNK_SIZE);
       result += nextChunk;
       remainingTokens -= chunkTokens;
     } else {
@@ -150,5 +154,88 @@ export async function computeNbTokens(text: string): Promise<number> {
     return 0;
   }
 
+  console.log(tokensInDocumentText.value);
+
   return tokensInDocumentText.value.tokens.length;
+}
+
+export async function _getMaxTextContentToProcess({
+  fullText,
+  marker,
+}: {
+  fullText: string;
+  marker: string;
+}): Promise<string> {
+  const MAX_TOKENS = 6000;
+
+  // If the text is small enough, just return it
+  const totalTokens = await computeNbTokens(fullText);
+  if (totalTokens < MAX_TOKENS) {
+    return fullText;
+  }
+
+  const markerIndex = fullText.indexOf(marker);
+  if (markerIndex === -1) {
+    // Marker not found; return an empty string or some default value
+    return "";
+  }
+
+  let result = marker;
+  let remainingTokens = MAX_TOKENS - (await computeNbTokens(marker));
+
+  const BATCH_SIZE = 1000; // Number of characters in each batch
+
+  // Expand before the marker
+  let start = markerIndex;
+  while (remainingTokens > 0 && start > 0) {
+    const nextChunkStart = Math.max(0, start - BATCH_SIZE);
+    const nextChunk = fullText.substring(nextChunkStart, start);
+    const chunkTokens = await computeNbTokens(nextChunk);
+
+    if (chunkTokens <= remainingTokens) {
+      start = nextChunkStart;
+      result = nextChunk + result;
+      remainingTokens -= chunkTokens;
+    } else {
+      // Further divide the chunk to fit into remaining tokens
+      for (let i = nextChunk.length; i >= 0; i -= 10) {
+        const subChunk = nextChunk.substring(0, i);
+        const subChunkTokens = await computeNbTokens(subChunk);
+        if (subChunkTokens <= remainingTokens) {
+          result = subChunk + result;
+          remainingTokens -= subChunkTokens;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  // Expand after the marker
+  let end = markerIndex + marker.length;
+  while (remainingTokens > 0 && end < fullText.length) {
+    const nextChunkEnd = Math.min(fullText.length, end + BATCH_SIZE);
+    const nextChunk = fullText.substring(end, nextChunkEnd);
+    const chunkTokens = await computeNbTokens(nextChunk);
+
+    if (chunkTokens <= remainingTokens) {
+      end = nextChunkEnd;
+      result += nextChunk;
+      remainingTokens -= chunkTokens;
+    } else {
+      // Further divide the chunk to fit into remaining tokens
+      for (let i = 1; i <= nextChunk.length; i += 10) {
+        const subChunk = nextChunk.substring(0, i);
+        const subChunkTokens = await computeNbTokens(subChunk);
+        if (subChunkTokens <= remainingTokens) {
+          result += subChunk;
+          remainingTokens -= subChunkTokens;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  return result;
 }

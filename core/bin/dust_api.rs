@@ -1611,22 +1611,30 @@ async fn tokenize(
     extract::Json(payload): extract::Json<TokenizePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let embedder = provider(payload.provider_id).embedder(payload.model_id);
-    match embedder.encode(&payload.text).await {
-        Err(e) => error_response(
+    match embedder.custom_tokenize(payload.text).await {
+        Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to tokenize text",
             Some(e),
         ),
-        Ok(tokens) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "tokens": tokens,
-                })),
-            }),
-        ),
+        Ok(tokens) => {
+            // let tokens_with_numbers: Vec<(usize, String)> = tokens
+            //     .iter()
+            //     .enumerate()
+            //     .map(|(i, &token)| (i, token))
+            //     .collect();
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "tokens": tokens,
+                    })),
+                }),
+            )
+        }
     }
 }
 

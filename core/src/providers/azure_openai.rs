@@ -600,6 +600,10 @@ impl Embedder for AzureOpenAIEmbedder {
         Ok(str)
     }
 
+    async fn custom_tokenize(&self, _text: String) -> Result<(Vec<usize>, Vec<String>)> {
+        Err(anyhow!("Tokenize not implemented for provider `anthropic`"))
+    }
+
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         let e = embed(
             self.uri()?,

@@ -28,7 +28,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
 use super::llm::{ChatFunction, ChatFunctionCall};
-use super::tiktoken::tiktoken::{decode_async, encode_async};
+use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -1573,6 +1573,10 @@ impl Embedder for OpenAIEmbedder {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn custom_tokenize(&self, text: String) -> Result<(Vec<usize>, Vec<String>)> {
+        tokenize_async(self.tokenizer(), text).await
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

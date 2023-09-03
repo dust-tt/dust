@@ -112,6 +112,14 @@ pub async fn encode_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<us
     Ok(r)
 }
 
+pub async fn tokenize_async(
+    bpe: Arc<Mutex<CoreBPE>>,
+    text: String,
+) -> Result<(Vec<usize>, Vec<String>)> {
+    let r = task::spawn_blocking(move || bpe.lock().tokenize_with_text_offsets(&text)).await?;
+    Ok(r)
+}
+
 fn _byte_pair_merge(piece: &[u8], ranks: &HashMap<Vec<u8>, usize>) -> Vec<std::ops::Range<usize>> {
     let mut parts: Vec<_> = (0..piece.len()).map(|i| i..i + 1).collect();
 
@@ -239,6 +247,24 @@ impl CoreBPE {
             ret.extend(&byte_pair_encode(piece, &self.encoder));
         }
         ret
+    }
+
+    fn _tokenize_with_text_offsets(&self, text: &String) -> (Vec<usize>, Vec<String>) {
+        let regex = self._get_regex();
+        let mut tokens = vec![];
+        let mut strings: Vec<String> = vec![];
+
+        for mat in regex.find_iter(text) {
+            let string = mat.unwrap().as_str();
+            let bstring = string.as_bytes();
+            if let Some(token) = self.encoder.get(bstring) {
+                tokens.push(*token);
+                strings.push((*string).to_string());
+                continue;
+            }
+            tokens.extend(&byte_pair_encode(bstring, &self.encoder));
+        }
+        (tokens, strings)
     }
 
     fn _encode_native(&self, text: &str, allowed_special: &HashSet<&str>) -> (Vec<usize>, usize) {
@@ -504,6 +530,10 @@ impl CoreBPE {
 
     pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize> {
         self._encode_native(text, &allowed_special).0
+    }
+
+    pub fn tokenize_with_text_offsets(&self, text: &String) -> (Vec<usize>, Vec<String>) {
+        self._tokenize_with_text_offsets(text)
     }
 
     pub fn encode_with_special_tokens(&self, text: &str) -> Vec<usize> {
