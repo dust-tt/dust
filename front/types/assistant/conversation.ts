@@ -18,7 +18,7 @@ export type AssistantUserMention = {
 
 export type AssistantMention = AssistantAgentMention | AssistantUserMention;
 
-export type AssistantMessageStatus = "visible" | "deleted";
+export type AssistantMessageVisibility = "visible" | "deleted";
 
 /**
  * User messages
@@ -35,7 +35,7 @@ export type AssistantUserMessageContext = {
 export type AssistantUserMessageType = {
   id: ModelId;
   sId: string;
-  status: AssistantMessageStatus;
+  visibility: AssistantMessageVisibility;
   version: number;
   parentMessageId: string;
   user?: UserType;
@@ -66,7 +66,8 @@ export type AssistantAgentActionType = RetrievalActionType;
 export type AssistantAgentMessageType = {
   id: ModelId;
   sId: string;
-  status: AssistantMessageStatus;
+  visibility: AssistantMessageVisibility;
+  status: "action_running" | "writing" | "succeeded" | "failed";
   version: number;
   parentMessageId: string | null;
   action: AssistantAgentActionType | null;
