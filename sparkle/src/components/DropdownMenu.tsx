@@ -6,6 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem } from "./Item";
+import { Tooltip, TooltipProps } from "./Tooltip";
 
 const labelClasses = {
   base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
@@ -61,14 +62,20 @@ export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
 
 export interface DropdownButtonProps {
   label?: string;
+  tooltip?: string;
+  tooltipPosition?: TooltipProps["position"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
+  children?: React.ReactNode;
 }
 
 DropdownMenu.Button = function ({
   label,
+  tooltip,
   icon,
+  children,
+  tooltipPosition = "above",
   className = "",
   disabled = false,
 }: DropdownButtonProps) {
@@ -98,20 +105,69 @@ DropdownMenu.Button = function ({
     disabled ? chevronClasses.disabled : ""
   );
 
+  if (children) {
+    return (
+      <Menu.Button
+        disabled={disabled}
+        className={classNames(
+          disabled ? "s-cursor-default" : "s-cursor-pointer",
+          className,
+          "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+          label ? "s-gap-1.5" : "s-gap-0"
+        )}
+      >
+        {tooltip ? (
+          <Tooltip position={tooltipPosition} label={tooltip}>
+            {children}
+          </Tooltip>
+        ) : (
+          children
+        )}
+      </Menu.Button>
+    );
+  }
+
   return (
-    <Menu.Button
-      disabled={disabled}
-      className={classNames(
-        disabled ? "s-cursor-default" : "s-cursor-pointer",
-        className,
-        "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-        label ? "s-gap-1.5" : "s-gap-0"
+    <>
+      {tooltip ? (
+        <Tooltip label={tooltip} position={tooltipPosition}>
+          <Menu.Button
+            disabled={disabled}
+            className={classNames(
+              disabled ? "s-cursor-default" : "s-cursor-pointer",
+              className,
+              "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+              label ? "s-gap-1.5" : "s-gap-0"
+            )}
+          >
+            <Icon visual={icon} size="sm" className={finalIconClasses} />
+            <Icon
+              visual={ChevronDown}
+              size="xs"
+              className={finalChevronClasses}
+            />
+          </Menu.Button>
+        </Tooltip>
+      ) : (
+        <Menu.Button
+          disabled={disabled}
+          className={classNames(
+            disabled ? "s-cursor-default" : "s-cursor-pointer",
+            className,
+            "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+            label ? "s-gap-1.5" : "s-gap-0"
+          )}
+        >
+          <Icon visual={icon} size="sm" className={finalIconClasses} />
+          <span className={finalLabelClasses}>{label}</span>
+          <Icon
+            visual={ChevronDown}
+            size="xs"
+            className={finalChevronClasses}
+          />
+        </Menu.Button>
       )}
-    >
-      <Icon visual={icon} size="sm" className={finalIconClasses} />
-      <span className={finalLabelClasses}>{label}</span>
-      <Icon visual={ChevronDown} size="xs" className={finalChevronClasses} />
-    </Menu.Button>
+    </>
   );
 };
 

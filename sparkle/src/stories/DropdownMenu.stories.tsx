@@ -4,6 +4,8 @@ import React from "react";
 import {
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
+  Icon,
+  Logo,
   PlanetIcon,
 } from "../index_with_tw_base";
 
@@ -42,7 +44,11 @@ export const DropdownExample = () => (
     <div className="s-flex s-gap-6">
       <div className="s-text-sm">Top left menu</div>
       <DropdownMenu>
-        <DropdownMenu.Button icon={ChatBubbleBottomCenterTextIcon} />
+        <DropdownMenu.Button
+          icon={ChatBubbleBottomCenterTextIcon}
+          tooltip="Moonlab"
+          tooltipPosition="below"
+        />
         <DropdownMenu.Items origin="topLeft">
           <DropdownMenu.Item label="item 1" href="#" />
           <DropdownMenu.Item label="item 2" href="#" />
@@ -66,6 +72,21 @@ export const DropdownExample = () => (
       <DropdownMenu>
         <DropdownMenu.Button icon={ChatBubbleBottomCenterTextIcon} />
         <DropdownMenu.Items origin="bottomRight">
+          <DropdownMenu.Item label="item 1" href="#" />
+          <DropdownMenu.Item label="item 2" href="#" />
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    </div>
+    <div className="s-h-8" />
+    <div className="s-flex s-gap-6">
+      <div className="s-text-sm">
+        Custom button menu (Takes anything as button)
+      </div>
+      <DropdownMenu>
+        <DropdownMenu.Button tooltip="This is anything">
+          <Icon visual={ChatBubbleBottomCenterTextIcon} size="sm" />
+        </DropdownMenu.Button>
+        <DropdownMenu.Items>
           <DropdownMenu.Item label="item 1" href="#" />
           <DropdownMenu.Item label="item 2" href="#" />
         </DropdownMenu.Items>
