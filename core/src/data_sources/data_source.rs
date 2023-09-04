@@ -463,7 +463,7 @@ impl DataSource {
         let field_condition = qdrant::FieldCondition {
             key: "document_id_hash".to_string(),
             r#match: Some(qdrant::Match {
-                match_value: Some(qdrant::r#match::MatchValue::Text(document_id_hash)),
+                match_value: Some(qdrant::r#match::MatchValue::Keyword(document_id_hash)),
             }),
             ..Default::default()
         };
