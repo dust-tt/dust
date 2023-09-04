@@ -59,7 +59,7 @@ export async function updateParentsField(
     (pageOrDb as NotionPage).notionPageId ||
     (pageOrDb as NotionDatabase).notionDatabaseId;
 
-  parents = await getParents(
+  parents = parents ? [notionId, ...parents] : await getParents(
     {
       notionId,
       parentType: pageOrDb.parentType,
@@ -70,17 +70,16 @@ export async function updateParentsField(
   // dbs are not in the Datasource so they don't have a parents field
   // only notion pages need an update
   (pageOrDb as NotionPage).notionPageId &&
-    updateParentsFieldInDatasource(pageOrDb, parents);
+    updateParentsFieldInDatasource(pageOrDb as NotionPage, parents);
   for (const child of getChildren(pageOrDb)) {
     await updateParentsField(child, dataSourceInfo, parents);
   }
 }
 
-function updateParentsFieldInDb(
-  pageOrDb: NotionPage | NotionDatabase,
+function updateParentsFieldInDatasource(
+  pageOrDb: NotionPage,
   parents: string[]
 ) {}
 
 function getChildren(pageOrDb: NotionPage | NotionDatabase) {
-  return pageOrDb.children;
 }
