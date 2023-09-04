@@ -726,7 +726,7 @@ export const CoreAPI = {
     text: string;
     modelId: string;
     providerId: string;
-  }): Promise<CoreAPIResponse<{ tokens: number[] }>> {
+  }): Promise<CoreAPIResponse<{ tokens: number[]; strings: string[] }>> {
     const response = await fetch(`${CORE_API}/tokenize`, {
       method: "POST",
       headers: {

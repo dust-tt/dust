@@ -63,102 +63,9 @@ export async function _runExtractEventApp({
 }
 
 /**
- * Return the content to process by the Extract Event app.
- * If the document is too big, we send only part of it to the Dust App.
- * We first expand to get content before the marker, and then after it.
- * @param fullText
- * @param marker
+ * Gets the maximum text content to process for the Dust app.
+ * We don't go up to the maximum number of tokens because the Dust app
  */
-export async function _getMaxTextContentToProcessV0({
-  fullText,
-  marker,
-}: {
-  fullText: string;
-  marker: string;
-}): Promise<string> {
-  const MAX_TOKENS = 6000;
-  const CHUNK_SIZE = 250;
-
-  // If the text is small enough, just return it
-  const totalTokens = await computeNbTokens(fullText);
-  if (totalTokens < MAX_TOKENS) {
-    return fullText;
-  }
-
-  const markerIndex = fullText.indexOf(marker);
-  if (markerIndex === -1) {
-    logger.error({ marker }, "Extract: Missing marker in document to process.");
-    // Marker not found; should not happen
-    // Return empty string to make sure we don't extract anything
-    return "";
-  }
-
-  let result = marker;
-  let remainingTokens = MAX_TOKENS - (await computeNbTokens(marker));
-
-  // Start expanding before the marker
-  let start = markerIndex;
-  while (remainingTokens > 0 && start > 0) {
-    const nextChunk = fullText.substring(
-      Math.max(0, start - CHUNK_SIZE),
-      start
-    );
-    const chunkTokens = await computeNbTokens(nextChunk);
-    if (chunkTokens < remainingTokens) {
-      start = Math.max(0, start - CHUNK_SIZE);
-      result = nextChunk + result;
-      remainingTokens -= chunkTokens;
-    } else {
-      break;
-    }
-  }
-
-  // Start expanding after the marker
-  let end = markerIndex + marker.length;
-  while (remainingTokens > 0 && end < fullText.length) {
-    const nextChunk = fullText.substring(
-      end,
-      Math.min(fullText.length, end + CHUNK_SIZE)
-    );
-    const chunkTokens = await computeNbTokens(nextChunk);
-    if (chunkTokens < remainingTokens) {
-      end = Math.min(fullText.length, end + CHUNK_SIZE);
-      result += nextChunk;
-      remainingTokens -= chunkTokens;
-    } else {
-      break;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Calling Core API to get the number of tokens in a text.
- * @param text
- * @returns number of tokens
- */
-export async function computeNbTokens(text: string): Promise<number> {
-  const tokensInDocumentText = await CoreAPI.tokenize({
-    text: text,
-    modelId: "text-embedding-ada-002",
-    providerId: "openai",
-  });
-  if (tokensInDocumentText.isErr()) {
-    {
-      tokensInDocumentText.error;
-    }
-    logger.error(
-      "Could not get number of tokens for document, trying with full doc."
-    );
-    return 0;
-  }
-
-  console.log(tokensInDocumentText.value);
-
-  return tokensInDocumentText.value.tokens.length;
-}
-
 export async function _getMaxTextContentToProcess({
   fullText,
   marker,
@@ -166,76 +73,144 @@ export async function _getMaxTextContentToProcess({
   fullText: string;
   marker: string;
 }): Promise<string> {
-  const MAX_TOKENS = 6000;
+  const MAX_TOKENS = 10;
+  const tokenized = await getTokenizedText(fullText);
+  const tokens = tokenized.tokens;
+  const strings = tokenized.strings;
+  const nbTokens = tokens.length;
 
   // If the text is small enough, just return it
-  const totalTokens = await computeNbTokens(fullText);
-  if (totalTokens < MAX_TOKENS) {
+  if (nbTokens < MAX_TOKENS) {
     return fullText;
   }
 
+  // Otherwise we extract the tokens around the marker
+  // and return the text corresponding to those tokens
+  const extractTokensResult = extractTokens({
+    fullText,
+    tokens,
+    strings,
+    marker,
+    maxTokens: MAX_TOKENS,
+  });
+
+  return extractTokensResult.strings.join("");
+}
+
+/**
+ * Gets the indexes of the tokens around the marker
+ */
+function findMarkersIndexes({
+  fullText,
+  marker,
+  strings,
+}: {
+  fullText: string;
+  marker: string;
+  strings: string[];
+}): { start: number; end: number } {
   const markerIndex = fullText.indexOf(marker);
-  if (markerIndex === -1) {
-    // Marker not found; return an empty string or some default value
-    return "";
-  }
+  if (markerIndex === -1) return { start: -1, end: -1 };
 
-  let result = marker;
-  let remainingTokens = MAX_TOKENS - (await computeNbTokens(marker));
+  let charCount = 0;
+  let startIndex = -1;
+  let endIndex = -1;
 
-  const BATCH_SIZE = 1000; // Number of characters in each batch
+  for (let i = 0; i < strings.length; i++) {
+    const str = strings[i];
+    charCount += str.length;
 
-  // Expand before the marker
-  let start = markerIndex;
-  while (remainingTokens > 0 && start > 0) {
-    const nextChunkStart = Math.max(0, start - BATCH_SIZE);
-    const nextChunk = fullText.substring(nextChunkStart, start);
-    const chunkTokens = await computeNbTokens(nextChunk);
+    if (startIndex === -1 && charCount > markerIndex) {
+      startIndex = i;
+    }
 
-    if (chunkTokens <= remainingTokens) {
-      start = nextChunkStart;
-      result = nextChunk + result;
-      remainingTokens -= chunkTokens;
-    } else {
-      // Further divide the chunk to fit into remaining tokens
-      for (let i = nextChunk.length; i >= 0; i -= 10) {
-        const subChunk = nextChunk.substring(0, i);
-        const subChunkTokens = await computeNbTokens(subChunk);
-        if (subChunkTokens <= remainingTokens) {
-          result = subChunk + result;
-          remainingTokens -= subChunkTokens;
-          break;
-        }
-      }
+    if (charCount >= markerIndex + marker.length) {
+      endIndex = i;
       break;
     }
   }
 
-  // Expand after the marker
-  let end = markerIndex + marker.length;
-  while (remainingTokens > 0 && end < fullText.length) {
-    const nextChunkEnd = Math.min(fullText.length, end + BATCH_SIZE);
-    const nextChunk = fullText.substring(end, nextChunkEnd);
-    const chunkTokens = await computeNbTokens(nextChunk);
+  return { start: startIndex, end: endIndex };
+}
 
-    if (chunkTokens <= remainingTokens) {
-      end = nextChunkEnd;
-      result += nextChunk;
-      remainingTokens -= chunkTokens;
-    } else {
-      // Further divide the chunk to fit into remaining tokens
-      for (let i = 1; i <= nextChunk.length; i += 10) {
-        const subChunk = nextChunk.substring(0, i);
-        const subChunkTokens = await computeNbTokens(subChunk);
-        if (subChunkTokens <= remainingTokens) {
-          result += subChunk;
-          remainingTokens -= subChunkTokens;
-          break;
-        }
-      }
-      break;
+/**
+ * Extracts the tokens around the marker
+ */
+function extractTokens({
+  fullText,
+  tokens,
+  strings,
+  marker,
+  maxTokens,
+}: {
+  fullText: string;
+  tokens: number[];
+  strings: string[];
+  marker: string;
+  maxTokens: number;
+}): { tokens: number[]; strings: string[] } {
+  const { start, end } = findMarkersIndexes({ fullText, marker, strings });
+
+  if (start === -1 || end === -1) {
+    return { tokens: [], strings: [] };
+  }
+
+  // The number of tokens that the marker takes up
+  const markerTokens = end - start + 1;
+
+  // The number of remaining tokens that can be included around the marker
+  const remainingTokens = maxTokens - markerTokens;
+
+  // Initialize the slicing start and end points around the marker
+  let startSlice = start;
+  let endSlice = end;
+
+  // Try to add tokens before the marker first
+  if (remainingTokens > 0) {
+    startSlice = Math.max(0, start - remainingTokens);
+
+    // Calculate any remaining tokens that can be used after the marker
+    const remainingAfter = remainingTokens - (start - startSlice);
+
+    // If there are any tokens left, add them after the marker
+    if (remainingAfter > 0) {
+      endSlice = Math.min(tokens.length - 1, end + remainingAfter);
     }
   }
 
-  return result;
+  return {
+    tokens: tokens.slice(startSlice, endSlice + 1),
+    strings: strings.slice(startSlice, endSlice + 1),
+  };
+}
+
+/**
+ * Calling Core API to get the number of tokens in a text.
+ */
+export async function getTokenizedText(
+  text: string
+): Promise<{ tokens: number[]; strings: string[] }> {
+  console.log("computeNbTokens4");
+  const tokenizeResponse = await CoreAPI.tokenize({
+    text: text,
+    modelId: "text-embedding-ada-002",
+    providerId: "openai",
+  });
+  if (tokenizeResponse.isErr()) {
+    {
+      tokenizeResponse.error;
+    }
+    logger.error(
+      "Could not get number of tokens for document, trying with full doc."
+    );
+    return { tokens: [], strings: [] };
+  }
+
+  const tokens = tokenizeResponse.value.tokens;
+  const strings = tokenizeResponse.value.strings;
+
+  return {
+    tokens: tokens,
+    strings: strings,
+  };
 }

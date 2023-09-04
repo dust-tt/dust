@@ -1618,23 +1618,16 @@ async fn tokenize(
             "Failed to tokenize text",
             Some(e),
         ),
-        Ok(tokens) => {
-            // let tokens_with_numbers: Vec<(usize, String)> = tokens
-            //     .iter()
-            //     .enumerate()
-            //     .map(|(i, &token)| (i, token))
-            //     .collect();
-
-            (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "tokens": tokens,
-                    })),
-                }),
-            )
-        }
+        Ok((tokens, strings)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tokens": tokens,
+                    "strings": strings,
+                })),
+            }),
+        ),
     }
 }
 
