@@ -16,6 +16,12 @@ export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;
 };
 
+export type DataSourceConfigurationType = {
+  workspaceId: string;
+  dataSourceId: string;
+  filter: DataSourceFilter;
+};
+
 /**
  * Retrieval configuration
  */
@@ -27,7 +33,7 @@ export type TemplatedQuery = {
 };
 
 export type RetrievalConfigurationType = {
-  dataSources: DataSourceFilter[];
+  dataSources: DataSourceConfigurationType[];
   query: AutoQuery | NoQuery | TemplatedQuery;
   top_k: number;
 
