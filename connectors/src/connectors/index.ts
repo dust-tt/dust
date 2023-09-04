@@ -1,4 +1,4 @@
-import { Model, Transaction } from "sequelize";
+import { Transaction } from "sequelize";
 
 import {
   cleanupGithubConnector,
@@ -33,7 +33,7 @@ import {
   updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
@@ -137,8 +137,7 @@ type BotToggler = (
 ) => Promise<Result<void, Error>>;
 
 const toggleBotNotImplemented = async (
-  connectorId: ModelId,
-  botEnabled: boolean
+  connectorId: ModelId
 ): Promise<Result<void, Error>> => {
   return new Err(
     new Error(`Toggling bot for connector ${connectorId} is not implemented.`)
