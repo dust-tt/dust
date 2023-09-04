@@ -111,7 +111,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   // Get slackbot enabled status
-  let slackConnectorId = dataSources.find(
+  const slackConnectorId = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
   )?.connectorId;
 

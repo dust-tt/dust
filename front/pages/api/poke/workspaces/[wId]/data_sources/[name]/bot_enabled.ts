@@ -108,7 +108,10 @@ async function handler(
         });
       }
 
-      ConnectorsAPI.setBotEnabled(dataSource.connectorId || "", botEnabled);
+      await ConnectorsAPI.setBotEnabled(
+        dataSource.connectorId || "",
+        botEnabled
+      );
 
       return res.status(200).json({ botEnabled: botEnabled });
 
