@@ -1612,7 +1612,7 @@ async fn tokenize(
 ) -> (StatusCode, Json<APIResponse>) {
     let embedder = provider(payload.provider_id).embedder(payload.model_id);
     match embedder.tokenize(payload.text).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to tokenize text",
