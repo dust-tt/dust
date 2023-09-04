@@ -9,7 +9,11 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
-import { ChatSessionVisibility } from "@app/types/chat";
+import {
+  AssistantAgentMessageStatus,
+  AssistantConversationVisibility,
+  AssistantMessageVisibility,
+} from "@app/types/assistant/conversation";
 
 export class AssistantConversation extends Model<
   InferAttributes<AssistantConversation>,
@@ -19,7 +23,7 @@ export class AssistantConversation extends Model<
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: ChatSessionVisibility;
+  declare visibility: AssistantConversationVisibility;
 }
 
 AssistantConversation.init(
@@ -115,7 +119,12 @@ export class AssistantAgentMessage extends Model<
   InferCreationAttributes<AssistantAgentMessage>
 > {
   declare id: number;
+
+  declare status: CreationOptional<AssistantAgentMessageStatus>;
+
   declare message: string | null;
+  declare errorCode: string | null;
+  declare errorMessage: string | null;
 }
 
 AssistantAgentMessage.init(
@@ -125,7 +134,20 @@ AssistantAgentMessage.init(
       autoIncrement: true,
       primaryKey: true,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "created",
+    },
     message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    errorCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -145,7 +167,7 @@ export class AssistantMessage extends Model<
 
   declare version: number;
   declare rank: number;
-  declare status: CreationOptional<"visible" | "deleted">;
+  declare visibility: CreationOptional<AssistantMessageVisibility>;
 
   declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
@@ -172,7 +194,7 @@ AssistantMessage.init(
       allowNull: false,
       defaultValue: 0,
     },
-    status: {
+    visibility: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "visible",

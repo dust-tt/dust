@@ -38,7 +38,7 @@ export type AssistantUserMessageType = {
   visibility: AssistantMessageVisibility;
   version: number;
   parentMessageId: string;
-  user?: UserType;
+  user: UserType | null;
   mentions: AssistantMention[];
   message: string;
   context: AssistantUserMessageContext;
@@ -56,6 +56,13 @@ export type AssistantUserFeedbackType = {
 
 export type AssistantAgentActionType = RetrievalActionType;
 
+export type AssistantAgentMessageStatus =
+  | "created"
+  | "action_running"
+  | "writing"
+  | "succeeded"
+  | "failed";
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -67,9 +74,9 @@ export type AssistantAgentMessageType = {
   id: ModelId;
   sId: string;
   visibility: AssistantMessageVisibility;
-  status: "action_running" | "writing" | "succeeded" | "failed";
   version: number;
   parentMessageId: string | null;
+  status: AssistantAgentMessageStatus;
   action: AssistantAgentActionType | null;
   message: string | null;
   feedbacks: AssistantUserFeedbackType[];
