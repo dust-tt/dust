@@ -15,7 +15,6 @@ const meta = {
 } satisfies Meta<typeof DropdownMenu>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const DropdownExample = () => (
   <>
