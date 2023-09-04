@@ -256,22 +256,18 @@ impl CoreBPE {
 
         for mat in regex.find_iter(text) {
             let string = mat.unwrap().as_str();
-            let bstring = string.as_bytes();
-
-            if let Some(token) = self.encoder.get(bstring) {
+            let piece = string.as_bytes();
+            if let Some(token) = self.encoder.get(piece) {
                 tokens.push(*token);
                 strings.push((*string).to_string());
                 continue;
-            } else {
-                let mut _rank_pieces = Vec::new();
-                let mut _string_pieces = Vec::new();
-
-                (_rank_pieces, _string_pieces) =
-                    Self::_tokenize_byte_pair_encode(bstring, &self.encoder);
-
-                tokens.extend(_rank_pieces);
-                strings.extend(_string_pieces);
             }
+
+            let (_rank_pieces, _string_pieces) =
+                Self::_tokenize_byte_pair_encode(piece, &self.encoder);
+
+            tokens.extend(_rank_pieces);
+            strings.extend(_string_pieces);
         }
         (tokens, strings)
     }
