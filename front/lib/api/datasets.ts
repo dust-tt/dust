@@ -24,7 +24,8 @@ export async function getDatasets(
 
   return datasets.map((dataset) => ({
     name: dataset.name,
-    description: dataset.description ?? undefined,
+    description: dataset.description,
+    data: null,
   }));
 }
 
@@ -52,7 +53,8 @@ export async function getDataset(
 
   return {
     name: dataset.name,
-    description: dataset.description ?? undefined,
+    description: dataset.description,
+    data: null,
   };
 }
 
@@ -110,7 +112,7 @@ export async function getDatasetHash(
 
   return {
     name: dataset.name,
-    description: dataset.description ?? undefined,
+    description: dataset.description,
     data: apiDataset.value.dataset.data,
   };
 }
