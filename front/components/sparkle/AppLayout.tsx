@@ -5,7 +5,7 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Dialog, Menu, Transition } from "@headlessui/react";
+import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import { useRouter } from "next/router";
