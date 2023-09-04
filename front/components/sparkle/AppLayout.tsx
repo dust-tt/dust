@@ -1,10 +1,4 @@
-import {
-  DropdownMenu,
-  Item as StandardItem,
-  Logo,
-  Tab,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { DropdownMenu, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -105,14 +99,14 @@ function NavigationBar({
             {subNavigation.map((nav) => {
               return (
                 <div key={nav.label} className="flex grow flex-col">
-                  <StandardItem
+                  <Item
                     size="md"
                     selected={nav.current}
                     label={nav.label}
                     icon={nav.icon}
                     className="grow px-4"
                     href={nav.href}
-                  ></StandardItem>
+                  ></Item>
                   {nav.subMenuLabel && (
                     <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
                       {nav.subMenuLabel}
@@ -123,14 +117,14 @@ function NavigationBar({
                       {nav.subMenu.map((nav) => {
                         return (
                           <div key={nav.label} className="flex grow">
-                            <StandardItem
+                            <Item
                               size="sm"
                               selected={nav.current}
                               label={nav.label}
                               icon={nav.icon}
                               className="grow pl-14 pr-4"
                               href={nav.href}
-                            ></StandardItem>
+                            ></Item>
                           </div>
                         );
                       })}
