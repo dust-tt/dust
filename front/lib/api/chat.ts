@@ -102,6 +102,7 @@ export async function getChatSession(
     sId: chatSession.sId,
     title: chatSession.title,
     visibility: chatSession.visibility,
+    messages: null,
   };
 }
 
@@ -147,6 +148,7 @@ export async function takeOwnerShipOfChatSession(
     sId: chatSession.sId,
     title: chatSession.title,
     visibility: chatSession.visibility,
+    messages: null,
   };
 }
 
@@ -220,6 +222,7 @@ export async function upsertChatSession(
       sId: chatSession.sId,
       title: chatSession.title,
       visibility: chatSession.visibility,
+      messages: null,
     };
   });
 }
@@ -265,7 +268,7 @@ export async function getChatSessionWithMessages(
     messages: messages.map((m) => {
       return {
         role: m.role,
-        message: m.message ?? undefined,
+        message: m.message,
         feedback: m.feedback,
         sId: m.sId,
         retrievals: chatMessagesRetrieval[m.id].map((r) => {
@@ -279,6 +282,7 @@ export async function getChatSessionWithMessages(
             chunks: [],
           };
         }),
+        params: null,
       };
     }),
   };
@@ -328,7 +332,7 @@ export async function getChatMessage(
 
   return {
     role: chatMessage.role,
-    message: chatMessage.message ?? undefined,
+    message: chatMessage.message,
     feedback: chatMessage.feedback,
     sId: chatMessage.sId,
     retrievals: retrievedDocuments.map((r) => {
@@ -342,6 +346,7 @@ export async function getChatMessage(
         chunks: [],
       };
     }),
+    params: null,
   };
 }
 
@@ -570,6 +575,9 @@ export async function* newChat(
       sId: new_id(),
       role: "user",
       message: userMessage,
+      retrievals: null,
+      params: null,
+      feedback: null,
     },
   ];
 
@@ -582,6 +590,9 @@ export async function* newChat(
       sId: new_id(),
       role: "error",
       message: errorMessage,
+      retrievals: null,
+      params: null,
+      feedback: null,
     });
 
     yield {
@@ -672,7 +683,10 @@ export async function* newChat(
             messages.push({
               sId: new_id(),
               role: "assistant",
-              message: m.message,
+              message: m.message ?? null,
+              retrievals: null,
+              params: null,
+              feedback: null,
             });
           }
 
@@ -685,6 +699,9 @@ export async function* newChat(
               sId: new_id(),
               role: "retrieval",
               params: m.params,
+              retrievals: null,
+              feedback: null,
+              message: null,
             });
           }
         }

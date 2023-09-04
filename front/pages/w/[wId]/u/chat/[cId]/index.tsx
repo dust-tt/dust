@@ -855,6 +855,9 @@ export default function AppChat({
       sId: client_side_new_id(),
       role: "assistant",
       message: "",
+      retrievals: null,
+      params: null,
+      feedback: null,
     };
     setResponse(assistantMessage);
 
@@ -954,6 +957,9 @@ export default function AppChat({
       sId: client_side_new_id(),
       role: "user",
       message: processedInput,
+      retrievals: null,
+      params: null,
+      feedback: null,
     };
 
     // on first message, persist chat session
