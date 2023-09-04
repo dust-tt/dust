@@ -23,7 +23,7 @@ export default function WorkspacePicker({
           return (
             <DropdownMenu.Item
               key={w.sId}
-              onClick={() => onWorkspaceUpdate(w)}
+              onClick={() => void onWorkspaceUpdate(w)}
               label={w.name}
             />
           );
