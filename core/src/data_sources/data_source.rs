@@ -645,42 +645,36 @@ impl DataSource {
                 })
                 .await?;
 
-            scroll_results
-                .result
-                .iter()
-                .for_each(|result| match result.payload.get("text") {
-                    Some(t) => match t.kind {
-                        Some(qdrant::value::Kind::StringValue(ref chunk_text)) => {
-                            match result.vectors.clone() {
-                                Some(v) => match v.vectors_options {
-                                    Some(VectorsOptions::Vector(v)) => {
-                                        let mut hasher = blake3::Hasher::new();
-                                        hasher.update(chunk_text.as_bytes());
-                                        let text_hash = format!("{}", hasher.finalize().to_hex());
+            for result in &scroll_results.result {
+                if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
+                    result.payload.get("text").and_then(|t| t.kind.as_ref())
+                {
+                    if let Some(VectorsOptions::Vector(v)) = result
+                        .vectors
+                        .as_ref()
+                        .and_then(|v| v.vectors_options.as_ref())
+                    {
+                        let text_hash = format!(
+                            "{}",
+                            blake3::Hasher::new()
+                                .update(chunk_text.as_bytes())
+                                .finalize()
+                                .to_hex()
+                        );
 
-                                        embeddings.insert(
-                                            text_hash.to_string(),
-                                            EmbedderVector {
-                                                created: document.created,
-                                                vector: v
-                                                    .data
-                                                    .iter()
-                                                    .map(|v| *v as f64)
-                                                    .collect::<Vec<f64>>(),
-                                                model: self.config.model_id.clone(),
-                                                provider: self.config.provider_id.to_string(),
-                                            },
-                                        );
-                                    }
-                                    _ => {}
-                                },
-                                None => {}
-                            }
-                        }
-                        _ => {}
-                    },
-                    None => {}
-                });
+                        embeddings.insert(
+                            text_hash,
+                            EmbedderVector {
+                                created: document.created,
+                                vector: v.data.iter().map(|&v| v as f64).collect(),
+                                model: self.config.model_id.clone(),
+                                provider: self.config.provider_id.to_string(),
+                            },
+                        );
+                    }
+                }
+            }
+
             page_offset = scroll_results.next_page_offset;
             if page_offset.is_none() {
                 break;
