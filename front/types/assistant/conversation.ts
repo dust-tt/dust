@@ -1,67 +1,47 @@
 import { ModelId } from "@app/lib/databases";
-import { UserProviderType, UserType } from "@app/types/user";
+import { UserType } from "@app/types/user";
+
+import { RetrievalActionType } from "./actions/retrieval";
 
 /**
  * Mentions
  */
 
 export type AssistantAgentMention = {
-  assistantId: string;
+  configurationId: string;
 };
 
 export type AssistantUserMention = {
-  provider: UserProviderType;
+  provider: string;
   providerId: string;
 };
 
 export type AssistantMention = AssistantAgentMention | AssistantUserMention;
 
+export type AssistantMessageStatus = "visible" | "deleted";
+
 /**
  * User messages
  */
 
+export type AssistantUserMessageContext = {
+  username: string;
+  timezone: string;
+  fullName?: string;
+  email?: string;
+  profilePictureUrl?: string;
+};
+
 export type AssistantUserMessageType = {
   id: ModelId;
   sId: string;
-  status: "visible" | "deleted";
+  status: AssistantMessageStatus;
+  version: number;
   parentMessageId: string;
   user?: UserType;
   mentions: AssistantMention[];
   message: string;
-  context: {
-    username: string;
-    timezone: string;
-    fullName?: string;
-    email?: string;
-    profilePictureUrl?: string;
-  };
-};
-
-/**
- * Retrieval action
- */
-
-export type RetrievalDocumentType = {
-  id: ModelId;
-  dataSourceId: string;
-  sourceUrl?: string;
-  documentId: string;
-  timestamp: number;
-  tags: string[];
-  score: number;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number;
-  }[];
-};
-
-export type RetrievalActionType = {
-  id: ModelId;
-  params: {
-    query: string;
-  };
-  documents: RetrievalDocumentType[];
+  context: AssistantUserMessageContext;
 };
 
 /**
@@ -86,7 +66,8 @@ export type AssistantAgentActionType = RetrievalActionType;
 export type AssistantAgentMessageType = {
   id: ModelId;
   sId: string;
-  status: "visible" | "deleted";
+  status: AssistantMessageStatus;
+  version: number;
   parentMessageId?: string;
   action?: AssistantAgentActionType;
   message?: string;
