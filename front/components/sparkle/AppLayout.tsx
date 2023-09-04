@@ -1,4 +1,10 @@
-import { Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  DropdownMenu,
+  Item as StandardItem,
+  Logo,
+  Tab,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -43,54 +49,31 @@ function NavigationBar({
           <div className="flex flex-initial">
             {user && (
               <div className="static inset-auto right-0 flex flex-initial items-center pr-4">
-                <Menu as="div" className="relative">
-                  <div>
-                    <Menu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
-                      <span className="sr-only">Open user menu</span>
-                      <img
-                        className="h-10 w-10 rounded-xl"
-                        src={
-                          user.image
-                            ? user.image
-                            : "https://gravatar.com/avatar/anonymous?d=mp"
-                        }
-                        alt=""
-                      />
-                    </Menu.Button>
-                  </div>
-
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-out duration-200"
-                    enterFrom="transform -translate-y-4 opacity-0 scale-100"
-                    enterTo="transform opacity-100 scale-100"
-                    leave="transition ease-in duration-75"
-                    leaveFrom="transform opacity-100 scale-100"
-                    leaveTo="transform opacity-0 scale-95"
-                  >
-                    <Menu.Items className="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="#"
-                            onClick={() =>
-                              signOut({
-                                callbackUrl: "/",
-                                redirect: true,
-                              })
-                            }
-                            className={classNames(
-                              active ? "bg-gray-50" : "",
-                              "block px-4 py-2 text-sm text-gray-700"
-                            )}
-                          >
-                            Sign&nbsp;out
-                          </a>
-                        )}
-                      </Menu.Item>
-                    </Menu.Items>
-                  </Transition>
-                </Menu>
+                <DropdownMenu>
+                  <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
+                    <span className="sr-only">Open user menu</span>
+                    <img
+                      className="h-10 w-10 rounded-xl"
+                      src={
+                        user.image
+                          ? user.image
+                          : "https://gravatar.com/avatar/anonymous?d=mp"
+                      }
+                      alt=""
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="topRight">
+                    <DropdownMenu.Item
+                      label="Sign&nbsp;out"
+                      onClick={() => {
+                        signOut({
+                          callbackUrl: "/",
+                          redirect: true,
+                        });
+                      }}
+                    />
+                  </DropdownMenu.Items>
+                </DropdownMenu>
               </div>
             )}
           </div>
@@ -122,14 +105,14 @@ function NavigationBar({
             {subNavigation.map((nav) => {
               return (
                 <div key={nav.label} className="flex grow flex-col">
-                  <Item
+                  <StandardItem
                     size="md"
                     selected={nav.current}
                     label={nav.label}
                     icon={nav.icon}
                     className="grow px-4"
                     href={nav.href}
-                  ></Item>
+                  ></StandardItem>
                   {nav.subMenuLabel && (
                     <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
                       {nav.subMenuLabel}
@@ -140,14 +123,14 @@ function NavigationBar({
                       {nav.subMenu.map((nav) => {
                         return (
                           <div key={nav.label} className="flex grow">
-                            <Item
+                            <StandardItem
                               size="sm"
                               selected={nav.current}
                               label={nav.label}
                               icon={nav.icon}
                               className="grow pl-14 pr-4"
                               href={nav.href}
-                            ></Item>
+                            ></StandardItem>
                           </div>
                         );
                       })}
