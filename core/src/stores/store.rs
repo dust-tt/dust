@@ -114,6 +114,13 @@ pub trait Store {
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>>;
+    async fn update_data_source_document_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()>;
     async fn list_data_source_document_versions(
         &self,
         project: &Project,

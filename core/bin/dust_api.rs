@@ -14,7 +14,8 @@ use dust::{
     app,
     blocks::block::BlockType,
     data_sources::data_source::{self, SearchFilter},
-    dataset, project,
+    dataset,
+    project::{self},
     providers::provider::{provider, ProviderID},
     run,
     stores::postgres,
@@ -141,15 +142,11 @@ async fn projects_create(
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.create_project().await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to create a new project: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to create a new project",
+            Some(e),
         ),
         Ok(project) => (
             StatusCode::OK,
@@ -175,15 +172,11 @@ async fn projects_clone(
     // Create cloned project
     let project = match state.store.create_project().await {
         Err(e) => {
-            return (
+            return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to create cloned project: {}", e),
-                    }),
-                    response: None,
-                }),
+                "internal_server_error",
+                "Failed to create cloned project",
+                Some(e),
             )
         }
         Ok(project) => project,
@@ -192,15 +185,11 @@ async fn projects_clone(
     // Retrieve datasets
     let datasets = match state.store.list_datasets(&cloned).await {
         Err(e) => {
-            return (
+            return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to list cloned project datasets: {}", e),
-                    }),
-                    response: None,
-                }),
+                "internal_server_error",
+                "Failed to list cloned project datasets",
+                Some(e),
             )
         }
         Ok(datasets) => datasets,
@@ -227,15 +216,11 @@ async fn projects_clone(
     .collect::<Result<Vec<_>>>()
     {
         Err(e) => {
-            return (
+            return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to clone project datasets: {}", e),
-                    }),
-                    response: None,
-                }),
+                "internal_server_error",
+                "Failed to clone project datasets",
+                Some(e),
             )
         }
         Ok(_) => (),
@@ -265,15 +250,11 @@ async fn specifications_check(
 ) -> (StatusCode, Json<APIResponse>) {
     let _project = project::Project::new_from_id(project_id);
     match app::App::new(&payload.specification).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("invalid_specification_error"),
-                    message: e.to_string(),
-                }),
-                response: None,
-            }),
+            "invalid_specification_error",
+            "Invalid specification",
+            Some(e),
         ),
         Ok(app) => (
             StatusCode::OK,
@@ -298,26 +279,18 @@ async fn specifications_retrieve(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_specification(&project, &hash).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve specification: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve specification",
+            Some(e),
         ),
         Ok(s) => match s {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("specification_not_found"),
-                        message: format!("No specification found with hash `{}`", hash),
-                    }),
-                    response: None,
-                }),
+                "specification_not_found",
+                &format!("No specification found with hash `{}`", hash),
+                None,
             ),
             Some((created, spec)) => (
                 StatusCode::OK,
@@ -350,15 +323,11 @@ async fn datasets_register(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match dataset::Dataset::new_from_jsonl(&payload.dataset_id, payload.data).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("invalid_dataset_error"),
-                    message: e.to_string(),
-                }),
-                response: None,
-            }),
+            "invalid_dataset_error",
+            "Invalid dataset",
+            Some(e),
         ),
         Ok(d) => {
             // First retrieve the latest hash of the dataset to avoid registering if it matches the
@@ -373,15 +342,11 @@ async fn datasets_register(
             };
             if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
                 match state.store.register_dataset(&project, &d).await {
-                    Err(e) => (
+                    Err(e) => error_response(
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(APIResponse {
-                            error: Some(APIError {
-                                code: String::from("internal_server_error"),
-                                message: format!("Failed to store dataset: {}", e),
-                            }),
-                            response: None,
-                        }),
+                        "internal_server_error",
+                        "Failed to store dataset",
+                        Some(e),
                     ),
                     Ok(()) => (
                         StatusCode::OK,
@@ -424,15 +389,11 @@ async fn datasets_list(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.list_datasets(&project).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to list datasets: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to list datasets",
+            Some(e),
         ),
         Ok(datasets) => {
             let datasets = datasets
@@ -470,29 +431,21 @@ async fn datasets_retrieve(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_dataset(&project, &dataset_id, &hash).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve dataset: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve dataset",
+            Some(e),
         ),
         Ok(dataset) => match dataset {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("dataset_not_found"),
-                        message: format!(
-                            "No dataset found for id `{}` and hash `{}`",
-                            dataset_id, hash
-                        ),
-                    }),
-                    response: None,
-                }),
+                "dataset_not_found",
+                &format!(
+                    "No dataset found for id `{}` and hash `{}`",
+                    dataset_id, hash,
+                ),
+                None,
             ),
             Some(d) => (
                 StatusCode::OK,
@@ -522,7 +475,7 @@ async fn run_helper(
     project_id: i64,
     payload: RunsCreatePayload,
     state: Arc<APIState>,
-) -> Result<app::App, (StatusCode, APIError)> {
+) -> Result<app::App, (StatusCode, Json<APIResponse>)> {
     let project = project::Project::new_from_id(project_id);
 
     let mut register_spec = true;
@@ -530,20 +483,18 @@ async fn run_helper(
         Some(spec) => spec,
         None => match payload.specification_hash {
             Some(hash) => match state.store.load_specification(&project, &hash).await {
-                Err(e) => Err((
+                Err(e) => Err(error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to retrieve specification: {}", e),
-                    },
+                    "internal_server_error",
+                    "Failed to retrieve specification",
+                    Some(e),
                 ))?,
                 Ok(spec) => match spec {
-                    None => Err((
+                    None => Err(error_response(
                         StatusCode::NOT_FOUND,
-                        APIError {
-                            code: String::from("specification_not_found"),
-                            message: format!("No specification found for hash `{}`", hash),
-                        },
+                        "specification_not_found",
+                        &format!("No specification found for hash `{}`", hash),
+                        None,
                     ))?,
                     Some((_, s)) => {
                         register_spec = false;
@@ -551,26 +502,22 @@ async fn run_helper(
                     }
                 },
             },
-            None => Err((
+            None => Err(error_response(
                 StatusCode::BAD_REQUEST,
-                APIError {
-                    code: String::from("missing_specification_error"),
-                    message: String::from(
-                        "No specification provided, \
-                                 either `specification` or `specification_hash` must be provided",
-                    ),
-                },
+                "missing_specification_error",
+                "No specification provided, either `specification` or 
+                `specification_hash` must be provided",
+                None,
             ))?,
         },
     };
 
     let mut app = match app::App::new(&specification).await {
-        Err(e) => Err((
+        Err(e) => Err(error_response(
             StatusCode::BAD_REQUEST,
-            APIError {
-                code: String::from("invalid_specification_error"),
-                message: e.to_string(),
-            },
+            "invalid_specification_error",
+            "Invalid specification",
+            Some(e),
         ))?,
         Ok(app) => app,
     };
@@ -578,31 +525,28 @@ async fn run_helper(
     let mut d = match payload.dataset_id.as_ref() {
         None => None,
         Some(dataset_id) => match state.store.latest_dataset_hash(&project, dataset_id).await {
-            Err(e) => Err((
+            Err(e) => Err(error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve dataset: {}", e),
-                },
+                "internal_server_error",
+                "Failed to retrieve dataset",
+                Some(e),
             ))?,
-            Ok(None) => Err((
+            Ok(None) => Err(error_response(
                 StatusCode::NOT_FOUND,
-                APIError {
-                    code: String::from("dataset_not_found"),
-                    message: format!("No dataset found for id `{}`", dataset_id),
-                },
+                "dataset_not_found",
+                &format!("No dataset found for id `{}`", dataset_id),
+                None,
             ))?,
             Ok(Some(latest)) => match state
                 .store
                 .load_dataset(&project, dataset_id, &latest)
                 .await
             {
-                Err(e) => Err((
+                Err(e) => Err(error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to retrieve dataset: {}", e),
-                    },
+                    "internal_server_error",
+                    "Failed to retrieve dataset",
+                    Some(e),
                 ))?,
                 Ok(d) => match d {
                     None => unreachable!(),
@@ -614,27 +558,23 @@ async fn run_helper(
 
     if d.is_some() {
         if payload.run_type != run::RunType::Local {
-            Err((
+            Err(error_response(
                 StatusCode::BAD_REQUEST,
-                APIError {
-                    code: String::from("invalid_run_type_error"),
-                    message: String::from(
-                        "RunType `local` is expected when a `dataset_id` is provided",
-                    ),
-                },
+                "invalid_run_type_error",
+                "RunType `local` is expected when a `dataset_id` is provided",
+                None,
             ))?
         }
 
         if d.as_ref().unwrap().len() == 0 {
-            Err((
+            Err(error_response(
                 StatusCode::BAD_REQUEST,
-                APIError {
-                    code: String::from("dataset_empty_error"),
-                    message: format!(
-                        "Dataset `{}` has 0 record",
-                        payload.dataset_id.as_ref().unwrap()
-                    ),
-                },
+                "dataset_empty_error",
+                &format!(
+                    "Dataset `{}` has 0 record",
+                    payload.dataset_id.as_ref().unwrap()
+                ),
+                None,
             ))?
         }
 
@@ -650,12 +590,11 @@ async fn run_helper(
 
     if payload.inputs.is_some() {
         d = match dataset::Dataset::new_from_jsonl("inputs", payload.inputs.unwrap()).await {
-            Err(e) => Err((
+            Err(e) => Err(error_response(
                 StatusCode::BAD_REQUEST,
-                APIError {
-                    code: String::from("invalid_inputs_error"),
-                    message: e.to_string(),
-                },
+                "invalid_inputs_error",
+                "Invalid inputs",
+                Some(e),
             ))?,
             Ok(d) => Some(d),
         };
@@ -670,12 +609,11 @@ async fn run_helper(
             .register_specification(&project, &app.hash(), &specification)
             .await
         {
-            Err(e) => Err((
+            Err(e) => Err(error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to register specification: {}", e),
-                },
+                "internal_server_error",
+                "Failed to register specification",
+                Some(e),
             ))?,
             Ok(_) => (),
         }
@@ -691,12 +629,11 @@ async fn run_helper(
         )
         .await
     {
-        Err(e) => Err((
+        Err(e) => Err(error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            APIError {
-                code: String::from("internal_server_error"),
-                message: format!("Failed prepare run: {}", e),
-            },
+            "internal_server_error",
+            "Failed prepare run",
+            Some(e),
         ))?,
         Ok(()) => (),
     }
@@ -737,13 +674,7 @@ async fn runs_create(
                 }),
             )
         }
-        Err((status_code, api_error)) => (
-            status_code,
-            Json(APIResponse {
-                error: Some(api_error),
-                response: None,
-            }),
-        ),
+        Err(err) => err,
     }
 }
 
@@ -797,11 +728,18 @@ async fn runs_create_stream(
             });
         }
         Err((_, api_error)) => {
+            let error = match api_error.0.error {
+                Some(error) => error,
+                None => APIError {
+                    code: "internal_server_error".to_string(),
+                    message: "The app execution failed unexpectedly".to_string(),
+                },
+            };
             let _ = tx.send(json!({
                 "type": "error",
                 "content": {
-                    "code": api_error.code,
-                    "message": api_error.message,
+                    "code": error.code,
+                    "message": error.message,
                 },
             }));
         }
@@ -848,15 +786,11 @@ async fn runs_list(
         .list_runs(&project, query.run_type, Some((query.limit, query.offset)))
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to list runs: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to list runs",
+            Some(e),
         ),
         Ok((runs, total)) => (
             StatusCode::OK,
@@ -885,15 +819,11 @@ async fn runs_retrieve_batch(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_runs(&project, payload.run_ids).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve runs: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve runs",
+            Some(e),
         ),
         Ok(runs) => (
             StatusCode::OK,
@@ -913,26 +843,18 @@ async fn runs_retrieve(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_run(&project, &run_id, None).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve run",
+            Some(e),
         ),
         Ok(run) => match run {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
-                    }),
-                    response: None,
-                }),
+                "run_not_found",
+                &format!("No run found for id `{}`", run_id),
+                None,
             ),
             Some(run) => (
                 StatusCode::OK,
@@ -962,26 +884,18 @@ async fn runs_retrieve_block(
         .load_run(&project, &run_id, Some(Some((block_type, block_name))))
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve run",
+            Some(e),
         ),
         Ok(run) => match run {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
-                    }),
-                    response: None,
-                }),
+                "run_not_found",
+                &format!("No run found for id `{}`", run_id),
+                None,
             ),
             Some(run) => (
                 StatusCode::OK,
@@ -1002,26 +916,18 @@ async fn runs_retrieve_status(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_run(&project, &run_id, Some(None)).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve run: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve run",
+            Some(e),
         ),
         Ok(run) => match run {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("run_not_found"),
-                        message: format!("No run found for id `{}`", run_id),
-                    }),
-                    response: None,
-                }),
+                "run_not_found",
+                &format!("No run found for id `{}`", run_id),
+                None,
             ),
             Some(run) => (
                 StatusCode::OK,
@@ -1056,26 +962,18 @@ async fn data_sources_register(
         .setup(payload.credentials, state.qdrant_client.clone())
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to register data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to register data source",
+            Some(e),
         ),
         Ok(()) => match state.store.register_data_source(&project, &ds).await {
-            Err(e) => (
+            Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("internal_server_error"),
-                        message: format!("Failed to register data source: {}", e),
-                    }),
-                    response: None,
-                }),
+                "internal_server_error",
+                "Failed to register data source",
+                Some(e),
             ),
             Ok(()) => (
                 StatusCode::OK,
@@ -1117,26 +1015,18 @@ async fn data_sources_search(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => match ds
                 .search(
@@ -1160,15 +1050,11 @@ async fn data_sources_search(
                         })),
                     }),
                 ),
-                Err(e) => (
+                Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to perform the search: {}", e),
-                        }),
-                        response: None,
-                    }),
+                    "internal_server_error",
+                    "Failed to perform the search",
+                    Some(e),
                 ),
             },
         },
@@ -1199,18 +1085,13 @@ async fn data_sources_documents_update_tags(
     };
     let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
     let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
+
     if add_tags_set.intersection(&remove_tags_set).count() > 0 {
-        return (
+        return error_response(
             StatusCode::BAD_REQUEST,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("bad_request"),
-                    message: String::from(
-                        "The `add_tags` and `remove_tags` lists have a non-empty intersection.",
-                    ),
-                }),
-                response: None,
-            }),
+            "bad_request",
+            "The `add_tags` and `remove_tags` lists have a non-empty intersection.",
+            None,
         );
     }
     match state
@@ -1218,26 +1099,18 @@ async fn data_sources_documents_update_tags(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => match ds
                 .update_tags(
@@ -1249,15 +1122,11 @@ async fn data_sources_documents_update_tags(
                 )
                 .await
             {
-                Err(e) => (
+                Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to update document tags: {}", e),
-                        }),
-                        response: None,
-                    }),
+                    "internal_server_error",
+                    "Failed to update document tags",
+                    Some(e),
                 ),
                 Ok(_) => (
                     StatusCode::OK,
@@ -1275,6 +1144,93 @@ async fn data_sources_documents_update_tags(
             },
         },
     }
+}
+
+/// Update parents of a document in a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsUpdateParentsPayload {
+    parents: Vec<String>,
+}
+
+async fn data_sources_documents_update_parents(
+    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DataSourcesDocumentsUpdateParentsPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => match ds
+                .update_parents(
+                    state.store.clone(),
+                    state.qdrant_client.clone(),
+                    document_id,
+                    payload.parents,
+                )
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to update document parents",
+                    Some(e),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_source": {
+                                "created": ds.created(),
+                                "data_source_id": ds.data_source_id(),
+                                "config": ds.config(),
+                            },
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
+fn error_response(
+    status: StatusCode,
+    code: &str,
+    message: &str,
+    error: Option<anyhow::Error>,
+) -> (StatusCode, Json<APIResponse>) {
+    utils::error(&format!("{}: {}\nError: {:?}", code, message, error));
+    (
+        status,
+        Json(APIResponse {
+            error: Some(APIError {
+                code: code.to_string(),
+                message: match error {
+                    Some(err) => format!("{} (error: {:?})", message, err),
+                    None => message.to_string(),
+                },
+            }),
+            response: None,
+        }),
+    )
 }
 
 // List versions of a document in a data source.
@@ -1304,15 +1260,11 @@ async fn data_sources_documents_versions_list(
         )
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to list document versions: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to list document versions",
+            Some(e),
         ),
         Ok((versions, total)) => (
             StatusCode::OK,
@@ -1358,26 +1310,18 @@ async fn data_sources_documents_upsert(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => {
                 match ds
@@ -1395,15 +1339,11 @@ async fn data_sources_documents_upsert(
                     )
                     .await
                 {
-                    Err(e) => (
+                    Err(e) => error_response(
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(APIResponse {
-                            error: Some(APIError {
-                                code: String::from("internal_server_error"),
-                                message: format!("Failed to upsert document: {}", e),
-                            }),
-                            response: None,
-                        }),
+                        "internal_server_error",
+                        "Failed to upsert document",
+                        Some(e),
                     ),
                     Ok(d) => {
                         let mut response_data = json!({
@@ -1462,15 +1402,11 @@ async fn data_sources_documents_list(
         )
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to list data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to list data source",
+            Some(e),
         ),
         Ok((documents, total)) => (
             StatusCode::OK,
@@ -1504,50 +1440,34 @@ async fn data_sources_documents_retrieve(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => match ds
                 .retrieve(state.store.clone(), &document_id, true, &query.version_hash)
                 .await
             {
-                Err(e) => (
+                Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to retrieve document: {}", e),
-                        }),
-                        response: None,
-                    }),
+                    "internal_server_error",
+                    "Failed to retrieve document",
+                    Some(e),
                 ),
-                Ok(None) => (
+                Ok(None) => error_response(
                     StatusCode::NOT_FOUND,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("data_source_document_not_found"),
-                            message: format!("No document found for id `{}`", document_id),
-                        }),
-                        response: None,
-                    }),
+                    "data_source_document_not_found",
+                    &format!("No document found for id `{}`", document_id),
+                    None,
                 ),
                 Ok(Some(d)) => (
                     StatusCode::OK,
@@ -1580,26 +1500,18 @@ async fn data_sources_documents_delete(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => match ds
                 .delete_document(
@@ -1609,15 +1521,11 @@ async fn data_sources_documents_delete(
                 )
                 .await
             {
-                Err(e) => (
+                Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to delete document: {}", e),
-                        }),
-                        response: None,
-                    }),
+                    "internal_server_error",
+                    "Failed to delete document",
+                    Some(e),
                 ),
                 Ok(_) => (
                     StatusCode::OK,
@@ -1649,40 +1557,28 @@ async fn data_sources_delete(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to retrieve data source: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
         ),
         Ok(ds) => match ds {
-            None => (
+            None => error_response(
                 StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: String::from("data_source_not_found"),
-                        message: format!("No data source found for id `{}`", data_source_id),
-                    }),
-                    response: None,
-                }),
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
             ),
             Some(ds) => match ds
                 .delete(state.store.clone(), state.qdrant_client.clone())
                 .await
             {
-                Err(e) => (
+                Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(APIResponse {
-                        error: Some(APIError {
-                            code: String::from("internal_server_error"),
-                            message: format!("Failed to delete data source: {}", e),
-                        }),
-                        response: None,
-                    }),
+                    "internal_server_error",
+                    "Failed to delete data source",
+                    Some(e),
                 ),
                 Ok(_) => (
                     StatusCode::OK,
@@ -1716,15 +1612,11 @@ async fn tokenize(
 ) -> (StatusCode, Json<APIResponse>) {
     let embedder = provider(payload.provider_id).embedder(payload.model_id);
     match embedder.encode(&payload.text).await {
-        Err(e) => (
+        Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(APIResponse {
-                error: Some(APIError {
-                    code: String::from("internal_server_error"),
-                    message: format!("Failed to tokenize text: {}", e),
-                }),
-                response: None,
-            }),
+            "internal_server_error",
+            "Failed to tokenize text",
+            Some(e),
         ),
         Ok(tokens) => (
             StatusCode::OK,
@@ -1839,6 +1731,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
             patch(data_sources_documents_update_tags),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/parents",
+            patch(data_sources_documents_update_parents),
         )
         // Provided by the data_source block.
         .route(

@@ -92,13 +92,19 @@ pub struct Chunk {
 /// The "parents" field is an array of ids of parents to the document,
 /// corresponding to its hierarchy, ordered by closest parent first.
 ///
-/// At index 0 is the document's direct parent, then at index 1 is the direct
-/// parent of the element represented at index 0, etc. It is assumed that a
-/// document (or folder, or hierarchical level) only has at most one direct
-/// parent. Therefore, there is an unambiguous mapping between the parents array
-/// and the document's hierarchical position. For example, for a regular file
-/// system (or filesystem-like such as Google Drive), each parent would
-/// correspond to a subfolder in the path to the document.
+/// At index 0 is the document id itself, then at index 1 its direct parent,
+/// then at index 2 is the direct parent of the element represented at index 1,
+/// etc. It is assumed that a document (or folder, or hierarchical level) only
+/// has at most one direct parent. Therefore, there is an unambiguous mapping
+/// between the parents array and the document's hierarchical position. For
+/// example, for a regular file system (or filesystem-like such as Google
+/// Drive), each parent would correspond to a subfolder in the path to the
+/// document.
+///
+/// The document’s id is stored in the field, since the field is used in
+/// filtering search to search only parts of the hierarchy: it is natural that
+/// if the document’s id is selected as a parent filter, the document itself
+/// shows up in the search.
 ///
 /// Note however that the hierarchical system depends on the managed datasource.
 /// For example, in the Slack managed datasource, documents only have a single
@@ -389,6 +395,31 @@ impl DataSource {
         Ok(())
     }
 
+    pub async fn update_parents(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_client: Arc<QdrantClient>,
+        document_id: String,
+        parents: Vec<String>,
+    ) -> Result<()> {
+        store
+            .update_data_source_document_parents(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &parents,
+            )
+            .await?;
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        self.update_document_payload(qdrant_client, document_id_hash, "parents", parents)
+            .await?;
+        Ok(())
+    }
+
     pub async fn update_tags(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -406,21 +437,41 @@ impl DataSource {
                 &remove_tags,
             )
             .await?;
+
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(document_id.as_bytes());
+        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+        self.update_document_payload(qdrant_client, document_id_hash, "tags", new_tags.clone())
+            .await?;
+        Ok(new_tags)
+    }
+
+    async fn update_document_payload(
+        &self,
+        qdrant_client: Arc<QdrantClient>,
+        document_id_hash: String,
+        field_name: &str,
+        field_value: impl Into<Value>,
+    ) -> Result<()> {
         let mut payload = Payload::new();
-        payload.insert("tags", new_tags.clone());
+        payload.insert(field_name, field_value.into());
+
         let field_condition = qdrant::FieldCondition {
-            key: "document_id".to_string(),
+            key: "document_id_hash".to_string(),
             r#match: Some(qdrant::Match {
-                match_value: Some(qdrant::r#match::MatchValue::Text(document_id)),
+                match_value: Some(qdrant::r#match::MatchValue::Text(document_id_hash)),
             }),
             ..Default::default()
         };
+
         let points_selector = PointsSelector {
             points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter {
                 must: vec![field_condition.into()],
                 ..Default::default()
             })),
         };
+
         qdrant_client
             .set_payload(
                 self.qdrant_collection().to_string(),
@@ -429,8 +480,7 @@ impl DataSource {
                 None,
             )
             .await?;
-
-        Ok(new_tags)
+        Ok(())
     }
 
     pub async fn upsert(
