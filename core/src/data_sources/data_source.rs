@@ -581,6 +581,10 @@ impl DataSource {
         ));
 
         let now = utils::now();
+        struct ChunkInfo {
+            text: String,
+            hash: String,
+        };
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -591,6 +595,20 @@ impl DataSource {
                 text,
             )
             .await?;
+
+        let splits_with_hash: Vec<ChunkInfo> = splits
+            .iter()
+            .map(|s| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(s.as_bytes());
+                let text_hash = format!("{}", hasher.finalize().to_hex());
+                ChunkInfo {
+                    text: s.clone(),
+                    hash: text_hash,
+                }
+            })
+            .collect::<Vec<_>>();
+
         utils::done(&format!(
             "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
             self.data_source_id,
@@ -600,14 +618,14 @@ impl DataSource {
         ));
 
         let now = utils::now();
-        let mut texthash2embedding: HashMap<String, EmbedderVector> = HashMap::new();
+        let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
         let mut page_offset: Option<PointId> = None;
         loop {
             let scroll_results = qdrant_client
                 .scroll(&ScrollPoints {
                     collection_name: self.qdrant_collection(),
                     with_vectors: Some(true.into()),
-                    limit: Some(1000),
+                    limit: Some(1024),
                     offset: page_offset,
                     filter: Some(qdrant::Filter {
                         must_not: vec![],
@@ -638,11 +656,10 @@ impl DataSource {
                                     Some(VectorsOptions::Vector(v)) => {
                                         let mut hasher = blake3::Hasher::new();
                                         hasher.update(chunk_text.as_bytes());
-                                        let text_only_hash =
-                                            format!("{}", hasher.finalize().to_hex());
+                                        let text_hash = format!("{}", hasher.finalize().to_hex());
 
-                                        texthash2embedding.insert(
-                                            text_only_hash.to_string(),
+                                        embeddings.insert(
+                                            text_hash.to_string(),
                                             EmbedderVector {
                                                 created: document.created,
                                                 vector: v
@@ -670,14 +687,9 @@ impl DataSource {
             }
         }
 
-        let splits_to_embbed = splits
+        let splits_to_embbed = splits_with_hash
             .iter()
-            .filter(|s| {
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(s.as_bytes());
-                let text_only_hash = format!("{}", hasher.finalize().to_hex());
-                !texthash2embedding.contains_key(&text_only_hash)
-            })
+            .filter(|ci| !embeddings.contains_key(&ci.hash))
             .collect::<Vec<_>>();
 
         // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
@@ -691,7 +703,7 @@ impl DataSource {
             let r = EmbedderRequest::new(
                 self.config.provider_id.clone(),
                 &self.config.model_id,
-                chunk.iter().map(|ev| ev.as_str()).collect::<Vec<_>>(),
+                chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
                 self.config.extras.clone(),
             );
 
@@ -700,29 +712,18 @@ impl DataSource {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
             };
 
-            for (s, v) in chunk.into_iter().zip(v.into_iter()) {
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(s.as_bytes());
-                let text_only_hash = format!("{}", hasher.finalize().to_hex());
-
-                texthash2embedding.insert(text_only_hash, v);
+            for (ci, v) in chunk.into_iter().zip(v.into_iter()) {
+                embeddings.insert(ci.hash.clone(), v);
             }
         }
 
         // Ordered results with offset, stirng and vector
-        let embedded_vectors = splits
+        let embedded_vectors = splits_with_hash
             .iter()
             .enumerate()
-            .map(|(i, s)| {
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(s.as_bytes());
-                let text_only_hash = format!("{}", hasher.finalize().to_hex());
-                let r = match texthash2embedding.contains_key(&text_only_hash) {
-                    true => Ok((
-                        i,
-                        s.to_string(),
-                        texthash2embedding.get(&text_only_hash).unwrap(),
-                    )),
+            .map(|(i, ci)| {
+                let r = match embeddings.contains_key(&ci.hash) {
+                    true => Ok((i, ci.text.clone(), embeddings.get(&ci.hash).unwrap())),
                     false => Err(anyhow!("Chunk not found in cache")),
                 };
                 r
