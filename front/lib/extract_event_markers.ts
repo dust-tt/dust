@@ -84,3 +84,44 @@ export async function getExtractEventMarkersToProcess({
     (rawMarker) => !existingExtractedEventMarkers.includes(rawMarker)
   );
 }
+
+/**
+ * Gets the indexes of the tokens corresponding to the marker.
+ * Example, for params:
+ * - full_text: Un petit Soupinou des bois [[idea:2]]
+ * - strings: ["Un", " petit", " Sou", "pin", "ou", " des", " bois", " [[", "idea", ":", "2", "]]"];
+ * - marker: "[[idea:2]]"
+ * Will return { start: 7, end: 11 }
+ */
+export function findMarkersIndexes({
+  fullText,
+  marker,
+  strings,
+}: {
+  fullText: string;
+  marker: string;
+  strings: string[];
+}): { start: number; end: number } {
+  const markerIndex = fullText.indexOf(marker);
+  if (markerIndex === -1) return { start: -1, end: -1 };
+
+  let charCount = 0;
+  let startIndex = -1;
+  let endIndex = -1;
+
+  for (let i = 0; i < strings.length; i++) {
+    const str = strings[i];
+    charCount += str.length;
+
+    if (startIndex === -1 && charCount > markerIndex) {
+      startIndex = i;
+    }
+
+    if (charCount >= markerIndex + marker.length) {
+      endIndex = i;
+      break;
+    }
+  }
+
+  return { start: startIndex, end: endIndex };
+}
