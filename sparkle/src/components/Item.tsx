@@ -13,6 +13,7 @@ import { Icon } from "./Icon";
 type ItemProps = {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   size?: "sm" | "md";
+  variant?: "default" | "dropdown";
   selected?: boolean;
   disabled?: boolean;
   label: string;
@@ -101,6 +102,7 @@ export function Item({
   selected = false,
   size = "sm",
   disabled = false,
+  variant = "default",
   label,
   icon,
   className = "",
@@ -160,7 +162,10 @@ export function Item({
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
       <span className="s-grow">{label}</span>
-      <Icon visual={ChevronRight} className={finalCevronClasses} size="sm" />
+
+      {variant === "default" && (
+        <Icon visual={ChevronRight} className={finalCevronClasses} size="sm" />
+      )}
     </Link>
   );
 }
@@ -169,20 +174,25 @@ export const ItemSectionHeader: React.FC<{ label: string }> = ({ label }) => (
   <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
 );
 
+interface ItemSectionHeaderProps {
+  label: string;
+}
+
+Item.SectionHeader = function ({ label }: ItemSectionHeaderProps) {
+  return (
+    <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
+  );
+};
+
 interface ListItemProps {
   children: ReactNode;
   className?: string;
 }
 
-export const ListItem: React.FC<ListItemProps> = ({ children, className }) => (
-  <div className="s-flex">
-    <div
-      className={classNames(
-        className ? className : "",
-        "s-flex s-w-full s-flex-col"
-      )}
-    >
-      {children}
+Item.List = function ({ children, className }: ListItemProps) {
+  return (
+    <div className={classNames(className ? className : "", "s-flex")}>
+      <div className={"s-flex s-w-full s-flex-col"}>{children}</div>
     </div>
-  </div>
-);
+  );
+};
