@@ -2,18 +2,22 @@ import { Request, Response } from "express";
 
 import { Connector, SlackConfiguration } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import {
+  GET_BOT_ENABLED_BY_TYPE,
+  TOGGLE_BOT_BY_TYPE,
+} from "@connectors/connectors";
 
-type GetSlackbotEnabledRes = {
+type GetBotEnabledRes = {
   botEnabled: boolean;
 };
 
-type ToggleSlackbotReqBody = {
+type ToggleBotReqBody = {
   botEnabled: boolean;
 };
 
 const _getBotEnabled = async (
-  req: Request<{ connector_id: string }, GetSlackbotEnabledRes, undefined>,
-  res: Response<GetSlackbotEnabledRes>
+  req: Request<{ connector_id: string }, GetBotEnabledRes, undefined>,
+  res: Response<GetBotEnabledRes>
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
@@ -44,30 +48,27 @@ const _getBotEnabled = async (
     });
   }
 
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connector.id,
-    },
-  });
+  const botEnabledRes = await GET_BOT_ENABLED_BY_TYPE[connector.type](
+    connector.id
+  );
 
-  if (!slackConfig) {
+  if (botEnabledRes.isErr()) {
     return apiError(req, res, {
       api_error: {
-        type: "not_found",
-        message: "Slack configuration not found",
+        type: "internal_server_error",
+        message: `An error occurred while getting the bot status: ${botEnabledRes.error}`,
       },
       status_code: 500,
     });
   }
-
   return res.status(200).json({
-    botEnabled: slackConfig.botEnabled,
+    botEnabled: botEnabledRes.value,
   });
 };
 
 const _setBotEnabled = async (
-  req: Request<{ connector_id: string }, ToggleSlackbotReqBody>,
-  res: Response<ToggleSlackbotReqBody>
+  req: Request<{ connector_id: string }, ToggleBotReqBody>,
+  res: Response<ToggleBotReqBody>
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
@@ -86,31 +87,6 @@ const _setBotEnabled = async (
         message: "Connector not found",
       },
       status_code: 404,
-    });
-  }
-  if (connector.type !== "slack") {
-    return apiError(req, res, {
-      api_error: {
-        type: "invalid_request_error",
-        message: "Connector is not a slack connector",
-      },
-      status_code: 500,
-    });
-  }
-
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-
-  if (!slackConfig) {
-    return apiError(req, res, {
-      api_error: {
-        type: "not_found",
-        message: "Slack configuration not found",
-      },
-      status_code: 500,
     });
   }
   if (!req.body || typeof req.body.botEnabled !== "boolean") {
@@ -122,11 +98,23 @@ const _setBotEnabled = async (
       status_code: 400,
     });
   }
-  slackConfig.botEnabled = req.body.botEnabled;
-  await slackConfig.save();
 
+  const toggleRes = await TOGGLE_BOT_BY_TYPE[connector.type](
+    connector.id,
+    req.body.botEnabled
+  );
+
+  if (toggleRes.isErr()) {
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: `An error occurred while enabling the bot: ${toggleRes.error}`,
+      },
+      status_code: 500,
+    });
+  }
   return res.status(200).json({
-    botEnabled: slackConfig.botEnabled,
+    botEnabled: req.body.botEnabled,
   });
 };
 

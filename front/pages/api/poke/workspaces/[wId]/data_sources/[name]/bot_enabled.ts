@@ -108,10 +108,20 @@ async function handler(
         });
       }
 
-      await ConnectorsAPI.setBotEnabled(
+      const connectorRes = await ConnectorsAPI.setBotEnabled(
         dataSource.connectorId || "",
         botEnabled
       );
+
+      if (connectorRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `An error occurred while enabling the bot.`,
+          },
+        });
+      }
 
       return res.status(200).json({ botEnabled: botEnabled });
 

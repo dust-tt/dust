@@ -7,7 +7,7 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
-import { enableSlackBot } from "@connectors/connectors/slack/bot";
+import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 
@@ -264,7 +264,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
-      await throwOnError(enableSlackBot(connector.id));
+      await throwOnError(toggleSlackbot(connector.id, true));
       break;
     }
   }
