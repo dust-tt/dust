@@ -47,6 +47,7 @@ export async function* postUserMessage(
 > {
   yield {
     type: "agent_error",
+    created: Date.now(),
     configurationId: "foo",
     messageId: "bar",
     error: {
@@ -77,6 +78,7 @@ export async function* retryAgentMessage(
 > {
   yield {
     type: "agent_error",
+    created: Date.now(),
     configurationId: "foo",
     messageId: "bar",
     error: {
@@ -110,6 +112,7 @@ export async function* editUserMessage(
 > {
   yield {
     type: "agent_error",
+    created: Date.now(),
     configurationId: "foo",
     messageId: "bar",
     error: {

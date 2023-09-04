@@ -13,6 +13,7 @@ import {
 // Event sent during retrieval with the finalized query used to retrieve documents.
 export type RetrievalQueryEvent = {
   type: "retrieval_query";
+  created: number;
   dataSources: DataSourceFilter[];
   query: string | null;
   top_k: number;
@@ -21,6 +22,7 @@ export type RetrievalQueryEvent = {
 // Event sent during retrieval once the retrieved documents have been generated.
 export type RetrievalDocumentsEvent = {
   type: "retrieval_documents";
+  created: number;
   configurationId: string;
   messageId: string;
   documents: RetrievalDocumentType[];
@@ -28,6 +30,7 @@ export type RetrievalDocumentsEvent = {
 
 export type RetrievalErrorEvent = {
   type: "retrieval_error";
+  created: number;
   configurationId: string;
   messageId: string;
   error: {
@@ -38,6 +41,7 @@ export type RetrievalErrorEvent = {
 
 export type RetrievalSuccessEvent = {
   type: "retrieval_success";
+  created: number;
   configurationId: string;
   messageId: string;
   action: RetrievalActionType;
@@ -59,6 +63,7 @@ export async function* runRetrieval(
 > {
   yield {
     type: "retrieval_error",
+    created: Date.now(),
     configurationId: configuration.sId,
     messageId: message.sId,
     error: {

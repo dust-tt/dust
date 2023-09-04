@@ -79,6 +79,7 @@ export async function updateAgentConfiguration(
 // Event sent when a new message is created (empty) and the agent is about to be executed.
 export type AgentMessageNewEvent = {
   type: "agent_message_new";
+  created: number;
   configurationId: string;
   message: AssistantAgentMessageType;
 };
@@ -86,6 +87,7 @@ export type AgentMessageNewEvent = {
 // Generic event sent when an error occured (whether it's during the action or the message generation).
 export type AgentErrorEvent = {
   type: "agent_error";
+  created: number;
   configurationId: string;
   messageId: string;
   error: {
@@ -100,6 +102,7 @@ export type AgentActionEvent = RetrievalQueryEvent | RetrievalDocumentsEvent;
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
   type: "agent_action_success";
+  created: number;
   configurationId: string;
   messageId: string;
   action: AssistantAgentActionType;
@@ -108,6 +111,7 @@ export type AgentActionSuccessEvent = {
 // Event sent when tokens are streamed as the the agent is generating a message.
 export type AgentMessageTokensEvent = {
   type: "agent_message_tokens";
+  created: number;
   configurationId: string;
   messageId: string;
   text: string;
@@ -116,6 +120,7 @@ export type AgentMessageTokensEvent = {
 // Event sent once the message is completed and successful.
 export type AgentMessageSuccessEvent = {
   type: "agent_message_success";
+  created: number;
   configurationId: string;
   messageId: string;
   message: AssistantAgentMessageType;
@@ -138,6 +143,7 @@ export async function* runAgent(
 > {
   yield {
     type: "agent_error",
+    created: Date.now(),
     configurationId: configuration.sId,
     messageId: generateModelSId(),
     error: {
