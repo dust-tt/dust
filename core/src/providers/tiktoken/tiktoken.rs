@@ -266,6 +266,10 @@ impl CoreBPE {
         results
     }
 
+    /**
+     * Implemented to match the logic in _encode_ordinary_native
+     * Used in tokenize function
+     */
     pub fn _tokenize_byte_pair_encode(
         piece: &[u8],
         ranks: &HashMap<Vec<u8>, usize>,
