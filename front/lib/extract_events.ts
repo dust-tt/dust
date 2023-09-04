@@ -21,6 +21,8 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
 
+const { URL } = process.env;
+
 export async function shouldProcessExtractEvents(
   params: DocumentsPostProcessHookFilterParams
 ) {
@@ -187,8 +189,14 @@ async function _processExtractEventsForMarker({
   });
 
   // 5/ Temp: we log on slack events that are extracted from the Dust workspace
-  if (schema.debug === true) {
-    await _logDebugEventOnSlack({ event, schema, documentSourceUrl });
+  const wId = auth.workspace()?.sId;
+  if (schema.debug === true && wId) {
+    await _logDebugEventOnSlack({
+      wId,
+      event,
+      schema,
+      documentSourceUrl,
+    });
   }
   logger.info(
     { properties, marker: schema.marker, documentSourceUrl, documentId },
@@ -204,10 +212,12 @@ async function _processExtractEventsForMarker({
  * @param documentSourceUrl
  */
 export async function _logDebugEventOnSlack({
+  wId,
   event,
   schema,
   documentSourceUrl,
 }: {
+  wId: string;
   event: ExtractedEvent;
   schema: EventSchema;
   documentSourceUrl: string | null;
@@ -243,16 +253,32 @@ export async function _logDebugEventOnSlack({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "Wanna check the source document?",
+        text: "Link to source document",
       },
       accessory: {
         type: "button",
         text: {
           type: "plain_text",
-          text: "Open document",
+          text: "Document",
           emoji: true,
         },
         url: documentSourceUrl || "",
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: "Link to Extracted Event",
+      },
+      accessory: {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "Event",
+          emoji: true,
+        },
+        url: URL + `/w/${wId}/u/extract/events/${event.sId}/edit`,
       },
     },
   ];
