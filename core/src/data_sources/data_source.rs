@@ -739,7 +739,7 @@ impl DataSource {
         let vectors = splits_with_hash
             .iter()
             .enumerate()
-            .map(|(i, ci)| match embeddings.remove(&ci.hash) {
+            .map(|(i, ci)| match embeddings.get(&ci.hash) {
                 Some(v) => Ok((i, ci.text.clone(), v)),
                 None => Err(anyhow!(
                     "DataSource embedding error: Chunk not found in cache"
@@ -759,7 +759,7 @@ impl DataSource {
                     text: s,
                     hash,
                     offset: i,
-                    vector: Some(v.vector),
+                    vector: Some(v.vector.clone()),
                     score: None,
                 }
             })
