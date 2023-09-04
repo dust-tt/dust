@@ -66,7 +66,7 @@ function NavigationBar({
                     <DropdownMenu.Item
                       label="Sign&nbsp;out"
                       onClick={() => {
-                        signOut({
+                        void signOut({
                           callbackUrl: "/",
                           redirect: true,
                         });
