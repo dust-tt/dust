@@ -69,7 +69,7 @@ export const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
     }),
     feedback: nullable({ type: "string" }),
   },
-  required: ["role", "message"],
+  required: ["role"],
 };
 
 export type ChatMessageResponseBody = {
