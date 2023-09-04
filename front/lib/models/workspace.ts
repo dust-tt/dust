@@ -107,8 +107,14 @@ Membership.init(
     indexes: [{ fields: ["userId", "role"] }],
   }
 );
-User.hasMany(Membership);
-Workspace.hasMany(Membership);
+User.hasMany(Membership, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+Workspace.hasMany(Membership, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,
