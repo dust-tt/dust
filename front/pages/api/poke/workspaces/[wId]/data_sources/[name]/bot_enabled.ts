@@ -108,8 +108,18 @@ async function handler(
         });
       }
 
+      if (!dataSource.connectorId) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "ConnectorId not set.",
+          },
+        });
+      }
+
       const connectorRes = await ConnectorsAPI.setBotEnabled(
-        dataSource.connectorId || "",
+        dataSource.connectorId,
         botEnabled
       );
 
@@ -118,7 +128,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `An error occurred while enabling the bot.`,
+            message: `An error occurred while enabling the bot: ${connectorRes.error}`,
           },
         });
       }
