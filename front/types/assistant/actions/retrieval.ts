@@ -10,10 +10,10 @@ export type RelativeTimeFrame = {
 };
 
 export type DataSourceFilter = {
-  since?: RelativeTimeFrame;
-  timestamp?: { gt?: number; lt?: number };
-  tags?: { in?: string[]; not?: string[] };
-  parents?: { in?: string[]; not?: string[] };
+  since: RelativeTimeFrame | null;
+  timestamp: { gt: number | null; lt: number | null } | null;
+  tags: { in: string[]; not: string[] } | null;
+  parents: { in: string[]; not: string[] } | null;
 };
 
 /**
@@ -42,7 +42,7 @@ export type RetrievalConfigurationType = {
 export type RetrievalDocumentType = {
   id: ModelId;
   dataSourceId: string;
-  sourceUrl?: string;
+  sourceUrl: string | null;
   documentId: string;
   timestamp: number;
   tags: string[];

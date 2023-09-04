@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { AssistantAgentMessage } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentActionConfigurationType,
@@ -39,10 +38,10 @@ export async function createAgentConfiguration(
   return {
     sId: generateModelSId(),
     name,
-    pictureUrl,
+    pictureUrl: pictureUrl || null,
     status: "active",
-    action,
-    message,
+    action: action || null,
+    message: message || null,
   };
 }
 
@@ -66,10 +65,10 @@ export async function updateAgentConfiguration(
   return {
     sId: generateModelSId(),
     name,
-    pictureUrl,
+    pictureUrl: pictureUrl || null,
     status,
-    action,
-    message,
+    action: action || null,
+    message: message || null,
   };
 }
 

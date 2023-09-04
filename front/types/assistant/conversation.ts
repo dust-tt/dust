@@ -27,9 +27,9 @@ export type AssistantMessageStatus = "visible" | "deleted";
 export type AssistantUserMessageContext = {
   username: string;
   timezone: string;
-  fullName?: string;
-  email?: string;
-  profilePictureUrl?: string;
+  fullName: string | null;
+  email: string | null;
+  profilePictureUrl: string | null;
 };
 
 export type AssistantUserMessageType = {
@@ -51,7 +51,7 @@ export type AssistantUserMessageType = {
 export type AssistantUserFeedbackType = {
   user: UserType;
   value: "positive" | "negative" | null;
-  comment?: string;
+  comment: string | null;
 };
 
 export type AssistantAgentActionType = RetrievalActionType;
@@ -68,14 +68,14 @@ export type AssistantAgentMessageType = {
   sId: string;
   status: AssistantMessageStatus;
   version: number;
-  parentMessageId?: string;
-  action?: AssistantAgentActionType;
-  message?: string;
+  parentMessageId: string | null;
+  action: AssistantAgentActionType | null;
+  message: string | null;
   feedbacks: AssistantUserFeedbackType[];
-  error?: {
+  error: {
     code: string;
     message: string;
-  };
+  } | null;
 };
 
 /**
@@ -92,7 +92,7 @@ export type AssistantConversationType = {
   id: ModelId;
   created: number;
   sId: string;
-  title?: string;
+  title: string | null;
   participants: UserType[];
   content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
   visibility: AssistantConversationVisibility;
