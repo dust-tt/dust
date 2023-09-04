@@ -7,7 +7,7 @@ export type EventSchemaType = {
   id: ModelId;
   sId: string;
   marker: string;
-  description?: string;
+  description: string | null;
   status: EventSchemaStatus;
   properties: EventSchemaPropertyType[];
 };
