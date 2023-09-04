@@ -1,10 +1,15 @@
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { Avatar } from "../index_with_tw_base";
 
-export default {
+const meta = {
   title: "Atoms/Avatar",
-};
+  component: Avatar,
+} satisfies Meta<typeof Avatar>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const AvatarExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
@@ -62,11 +67,6 @@ export const AvatarExample = () => (
         visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
       />
       <Avatar
-        size="md"
-        name="Edouard Wautier"
-        visual="http://edouardwautier.com/img/me.jpg"
-      />
-      <Avatar
         size="lg"
         name="Omar Doe"
         visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
@@ -75,3 +75,21 @@ export const AvatarExample = () => (
     <div>System Avatar</div>
   </div>
 );
+
+export const AvatarWithImage: Story = {
+  args: {
+    size: "md",
+    visual: "http://edouardwautier.com/img/me.jpg",
+  },
+};
+export const AvatarWithName: Story = {
+  args: {
+    name: "John Doe",
+    size: "md",
+  },
+};
+export const AvatarEmpty: Story = {
+  args: {
+    size: "md",
+  },
+};

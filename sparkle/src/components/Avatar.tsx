@@ -3,11 +3,11 @@ import React from "react";
 import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
-interface AvatarProps {
+type AvatarProps = {
   size: "xs" | "sm" | "md" | "lg" | "full";
   name?: string;
   visual?: string | React.ReactNode;
-}
+};
 
 const colors = [
   "s-bg-red-300",
@@ -63,7 +63,7 @@ const textSize = {
   full: "s-text-6xl",
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ size, name, visual }) => {
+export function Avatar({ size = "sm", name, visual }: AvatarProps) {
   const getColor = (name: string) => {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -111,4 +111,4 @@ export const Avatar: React.FC<AvatarProps> = ({ size, name, visual }) => {
       )}
     </div>
   );
-};
+}
