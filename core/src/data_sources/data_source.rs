@@ -10,11 +10,8 @@ use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
-use qdrant_client::qdrant::vectors::VectorsOptions;
-use qdrant_client::qdrant::{
-    points_selector::PointsSelectorOneOf, Filter, PointId, PointsSelector, RetrievedPoint,
-    ScoredPoint, ScrollPoints,
-};
+use qdrant_client::qdrant::{points_selector::PointsSelectorOneOf, Filter, PointsSelector};
+use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{
     prelude::{Payload, QdrantClient},
     qdrant,
@@ -617,14 +614,6 @@ impl DataSource {
         ));
 
         let now = utils::now();
-
-        // ChunkInfo is used to store the chunk text and associated hash to avoid recomputing the
-        // hash multiple time.
-        struct ChunkInfo {
-            text: String,
-            hash: String,
-        }
-
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -635,20 +624,6 @@ impl DataSource {
                 text,
             )
             .await?;
-
-        let splits_with_hash: Vec<ChunkInfo> = splits
-            .iter()
-            .map(|s| {
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(s.as_bytes());
-                let text_hash = format!("{}", hasher.finalize().to_hex());
-                ChunkInfo {
-                    text: s.clone(),
-                    hash: text_hash,
-                }
-            })
-            .collect::<Vec<_>>();
-
         utils::done(&format!(
             "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
             self.data_source_id,
@@ -657,97 +632,23 @@ impl DataSource {
             utils::now() - now
         ));
 
-        let now = utils::now();
-        let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
-        let mut page_offset: Option<PointId> = None;
-        loop {
-            let scroll_results = qdrant_client
-                .scroll(&ScrollPoints {
-                    collection_name: self.qdrant_collection(),
-                    with_vectors: Some(true.into()),
-                    limit: Some(1024),
-                    offset: page_offset,
-                    filter: Some(qdrant::Filter {
-                        must_not: vec![],
-                        should: vec![],
-                        must: vec![qdrant::FieldCondition {
-                            key: "document_id_hash".to_string(),
-                            r#match: Some(qdrant::Match {
-                                match_value: Some(qdrant::r#match::MatchValue::Text(
-                                    document_id_hash.clone(),
-                                )),
-                            }),
-                            ..Default::default()
-                        }
-                        .into()],
-                    }),
-                    ..Default::default()
-                })
-                .await?;
-
-            for result in &scroll_results.result {
-                if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
-                    result.payload.get("text").and_then(|t| t.kind.as_ref())
-                {
-                    if let Some(VectorsOptions::Vector(v)) = result
-                        .vectors
-                        .as_ref()
-                        .and_then(|v| v.vectors_options.as_ref())
-                    {
-                        let text_hash = format!(
-                            "{}",
-                            blake3::Hasher::new()
-                                .update(chunk_text.as_bytes())
-                                .finalize()
-                                .to_hex()
-                        );
-
-                        embeddings.insert(
-                            text_hash,
-                            EmbedderVector {
-                                created: document.created,
-                                vector: v.data.iter().map(|&v| v as f64).collect(),
-                                model: self.config.model_id.clone(),
-                                provider: self.config.provider_id.to_string(),
-                            },
-                        );
-                    }
-                }
-            }
-
-            page_offset = scroll_results.next_page_offset;
-            if page_offset.is_none() {
-                break;
-            }
-        }
-
-        utils::done(&format!(
-            "Finished retrieving cache from QDrant: data_source_id={} document_id={} chunk_count={} duration={}ms",
-            self.data_source_id,
-            document_id,
-            embeddings.len(),
-            utils::now() - now
-        ));
-
-        let now = utils::now();
-
-        let splits_to_embbed = splits_with_hash
-            .iter()
-            .filter(|ci| !embeddings.contains_key(&ci.hash))
-            .collect::<Vec<_>>();
-
         // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
-        let chunked_splits = splits_to_embbed
+        let chunked_splits = splits
             .chunks(8)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
+        // Ordered results with offset, stirng and vector
+        let mut e: Vec<(usize, String, EmbedderVector)> = vec![];
+
+        let now = utils::now();
+        let mut offset: usize = 0;
         // Embed batched chunks sequentially.
         for chunk in chunked_splits {
             let r = EmbedderRequest::new(
                 self.config.provider_id.clone(),
                 &self.config.model_id,
-                chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
+                chunk.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
                 self.config.extras.clone(),
             );
 
@@ -756,34 +657,42 @@ impl DataSource {
                 Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
             };
 
-            for (ci, v) in chunk.into_iter().zip(v.into_iter()) {
-                embeddings.insert(ci.hash.clone(), v);
+            for (s, v) in chunk.into_iter().zip(v.into_iter()) {
+                e.push((offset, s, v));
+                offset += 1;
             }
         }
+
+        // Embed chunks with max concurrency of 2.
+        //let e = stream::iter(splits.into_iter().enumerate())
+        //    .map(|(i, s)| {
+        //        let provider_id = self.config.provider_id.clone();
+        //        let model_id = self.config.model_id.clone();
+        //        let credentials = credentials.clone();
+        //        let extras = self.config.extras.clone();
+        //        tokio::spawn(async move {
+        //            let r = EmbedderRequest::new(provider_id, &model_id, &s, extras);
+        //            let v = r.execute(credentials).await?;
+        //            Ok::<(usize, std::string::String, EmbedderVector), anyhow::Error>((i, s, v))
+        //        })
+        //    })
+        //    .buffer_unordered(2)
+        //    .map(|r| match r {
+        //        Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
+        //        Ok(r) => r,
+        //    })
+        //    .try_collect::<Vec<_>>()
+        //    .await?;
 
         utils::done(&format!(
             "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
             self.data_source_id,
             document_id,
-            splits_to_embbed.len(),
+            e.len(),
             utils::now() - now
         ));
 
-        // Final ordered results with (offset, string, vector). `splits_with_hash` is the original
-        // list of splits, including all chunks. We go retrieve in embeddings their vector which
-        // should all be populated (from qdrant retrieval or actual embedding).
-        let vectors = splits_with_hash
-            .iter()
-            .enumerate()
-            .map(|(i, ci)| match embeddings.get(&ci.hash) {
-                Some(v) => Ok((i, ci.text.clone(), v)),
-                None => Err(anyhow!(
-                    "DataSource embedding error: Chunk not found in cache"
-                )),
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        document.chunks = vectors
+        document.chunks = e
             .into_iter()
             .map(|(i, s, v)| {
                 let mut hasher = blake3::Hasher::new();
@@ -795,7 +704,7 @@ impl DataSource {
                     text: s,
                     hash,
                     offset: i,
-                    vector: Some(v.vector.clone()),
+                    vector: Some(v.vector),
                     score: None,
                 }
             })
@@ -826,7 +735,6 @@ impl DataSource {
                 None,
             )
             .await?;
-
         utils::done(&format!(
             "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
             self.data_source_id,
