@@ -73,7 +73,7 @@ export async function _getMaxTextContentToProcess({
   fullText: string;
   marker: string;
 }): Promise<string> {
-  const MAX_TOKENS = 10;
+  const MAX_TOKENS = 6000;
   const tokenized = await getTokenizedText(fullText);
   const tokens = tokenized.tokens;
   const strings = tokenized.strings;
