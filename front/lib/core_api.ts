@@ -88,6 +88,8 @@ export type CoreAPIRun = {
   traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
 };
 
+export type CoreAPITokenType = [number, string];
+
 type CoreAPICreateRunParams = {
   projectId: string;
   runAsWorkspaceId: string;
@@ -726,7 +728,7 @@ export const CoreAPI = {
     text: string;
     modelId: string;
     providerId: string;
-  }): Promise<CoreAPIResponse<{ tokens: number[] }>> {
+  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const response = await fetch(`${CORE_API}/tokenize`, {
       method: "POST",
       headers: {

@@ -4,12 +4,11 @@ import {
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI, CoreAPITokenType } from "@app/lib/core_api";
+import { findMarkersIndexes } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";
 import { EventSchemaType } from "@app/types/extract";
-
-const EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS = 6000;
 
 export type ExtractEventAppResponseResults = {
   value: {
@@ -65,53 +64,124 @@ export async function _runExtractEventApp({
 }
 
 /**
- * Return the content to process by the Extract Event app.
- * If the document is too big, we send only part of it to the Dust App.
- * @param fullDocumentText
- * @param marker
+ * Gets the maximum text content to process for the Dust app.
+ * We define a maximum number of tokens that the Dust app can process.
+ * It will return the text around the marker: first we expand the text before the marker, than after the marker.
  */
 export async function _getMaxTextContentToProcess({
-  fullDocumentText,
+  fullText,
   marker,
 }: {
-  fullDocumentText: string;
+  fullText: string;
   marker: string;
 }): Promise<string> {
-  const tokensInDocumentText = await CoreAPI.tokenize({
-    text: fullDocumentText,
+  const tokenized = await getTokenizedText(fullText);
+  const tokens = tokenized.tokens;
+  const nbTokens = tokens.length;
+  const MAX_TOKENS = 6000;
+
+  // If the text is small enough, just return it
+  if (nbTokens < MAX_TOKENS) {
+    return fullText;
+  }
+
+  // Otherwise we extract the tokens around the marker
+  // and return the text corresponding to those tokens
+  const extractTokensResult = extractMaxTokens({
+    fullText,
+    tokens,
+    marker,
+    maxTokens: MAX_TOKENS,
+  });
+
+  return extractTokensResult.map((t) => t[1]).join("");
+}
+
+/**
+ * Extracts the maximum number of tokens around the marker.
+ */
+function extractMaxTokens({
+  fullText,
+  tokens,
+  marker,
+  maxTokens,
+}: {
+  fullText: string;
+  tokens: CoreAPITokenType[];
+  marker: string;
+  maxTokens: number;
+}): CoreAPITokenType[] {
+  const { start, end } = findMarkersIndexes({ fullText, marker, tokens });
+
+  if (start === -1 || end === -1) {
+    return [];
+  }
+
+  // The number of tokens that the marker takes up
+  const markerTokens = end - start + 1;
+
+  // The number of remaining tokens that can be included around the marker
+  const remainingTokens = maxTokens - markerTokens;
+
+  // Initialize the slicing start and end points around the marker
+  let startSlice = start;
+  let endSlice = end;
+
+  // Try to add tokens before the marker first
+  if (remainingTokens > 0) {
+    startSlice = Math.max(0, start - remainingTokens);
+
+    // Calculate any remaining tokens that can be used after the marker
+    const remainingAfter = remainingTokens - (start - startSlice);
+
+    // If there are any tokens left, add them after the marker
+    if (remainingAfter > 0) {
+      endSlice = Math.min(tokens.length - 1, end + remainingAfter);
+    }
+  }
+
+  return tokens.slice(startSlice, endSlice + 1);
+}
+
+/**
+ * Calls Core API to get the tokens and associated strings for a given text.
+ * Ex: "Un petit Soupinou des bois [[idea:2]]" will return:
+ * {
+ *   tokens: [
+      [ 1844, 'Un' ],
+      [ 46110, ' petit' ],
+      [ 9424, ' Sou' ],
+      [ 13576, 'pin' ],
+      [ 283, 'ou' ],
+      [ 951, ' des' ],
+      [ 66304, ' bois' ],
+      [ 4416, ' [[' ],
+      [ 42877, 'idea' ],
+      [ 25, ':' ],
+      [ 17, '2' ],
+      [ 5163, ']]' ]
+    ],
+ * }
+ */
+
+export async function getTokenizedText(
+  text: string
+): Promise<{ tokens: CoreAPITokenType[] }> {
+  console.log("computeNbTokens4");
+  const tokenizeResponse = await CoreAPI.tokenize({
+    text: text,
     modelId: "text-embedding-ada-002",
     providerId: "openai",
   });
-  if (tokensInDocumentText.isErr()) {
+  if (tokenizeResponse.isErr()) {
     {
-      tokensInDocumentText.error;
+      tokenizeResponse.error;
     }
     logger.error(
       "Could not get number of tokens for document, trying with full doc."
     );
-    return fullDocumentText;
+    return { tokens: [] };
   }
 
-  const numberOfTokens = tokensInDocumentText.value.tokens.length;
-  let documentTextToProcess: string;
-
-  if (numberOfTokens > EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS) {
-    // Document is too big, we need to send only part of it to the Dust App.
-    const fullDocLength = fullDocumentText.length;
-    const markerIndex = fullDocumentText.indexOf(marker);
-    const markerLength = marker.length;
-
-    // We can go half the max number of tokens on each side of the marker.
-    // We multiply by 4 because we assume 1 token is approximately 4 characters
-    const maxLength = (EXTRACT_MAX_NUMBER_TOKENS_TO_PROCESS / 2) * 4;
-
-    const start = Math.max(0, markerIndex - maxLength);
-    const end = Math.min(fullDocLength, markerIndex + markerLength + maxLength);
-    documentTextToProcess = fullDocumentText.substring(start, end);
-  } else {
-    // Document is small enough, we send the whole text.
-    documentTextToProcess = fullDocumentText;
-  }
-
-  return documentTextToProcess;
+  return tokenizeResponse.value;
 }

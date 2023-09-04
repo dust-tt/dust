@@ -1611,7 +1611,7 @@ async fn tokenize(
     extract::Json(payload): extract::Json<TokenizePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let embedder = provider(payload.provider_id).embedder(payload.model_id);
-    match embedder.encode(&payload.text).await {
+    match embedder.tokenize(payload.text).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
