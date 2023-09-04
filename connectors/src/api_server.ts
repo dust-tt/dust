@@ -1,6 +1,10 @@
 import bodyParser from "body-parser";
 import express from "express";
 
+import {
+  getBotEnabledAPIHandler,
+  setBotEnabledAPIHandler,
+} from "@connectors/api/bot_enabled";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
@@ -19,10 +23,6 @@ import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_g
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
-import {
-  setBotEnabledAPIHandler as setBotEnabledAPIHandler,
-  getBotEnabledAPIHandler as getBotEnabledAPIHandler,
-} from "@connectors/api/bot_enabled";
 
 export function startServer(port: number) {
   const app = express();

@@ -43,6 +43,7 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
+
 import { getBotEnabled, toggleSlackbot } from "./slack/bot";
 
 type ConnectorCreator = (

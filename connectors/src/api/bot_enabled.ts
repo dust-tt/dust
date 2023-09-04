@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 
-import { Connector, SlackConfiguration } from "@connectors/lib/models";
-import { apiError, withLogging } from "@connectors/logger/withlogging";
 import {
   GET_BOT_ENABLED_BY_TYPE,
   TOGGLE_BOT_BY_TYPE,
 } from "@connectors/connectors";
+import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 type GetBotEnabledRes = {
   botEnabled: boolean;
