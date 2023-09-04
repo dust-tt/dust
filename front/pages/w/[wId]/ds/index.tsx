@@ -49,7 +49,7 @@ type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
   logoPath: string;
   description: string;
-  synchronizedAgo?: string | null;
+  synchronizedAgo: string | null;
   setupWithSuffix: string | null;
 };
 
