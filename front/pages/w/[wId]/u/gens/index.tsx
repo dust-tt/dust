@@ -49,7 +49,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 type DataSource = {
   name: string;
-  description?: string;
+  description: string | null;
   provider: ConnectorProvider | "none";
   selected: boolean;
 };

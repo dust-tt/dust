@@ -1,6 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { nullable } from "@app/lib/ajv_utils";
 import {
   getChatMessage,
   getChatSession,
@@ -53,22 +54,20 @@ export const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   properties: {
     sId: { type: "string" },
     role: { type: "string" },
-    message: { type: "string", nullable: true },
-    retrievals: {
+    message: nullable({ type: "string" }),
+    retrievals: nullable({
       type: "array",
       items: chatRetrievedDocumentSchema,
-      nullable: true,
-    },
-    params: {
+    }),
+    params: nullable({
       type: "object",
-      nullable: true,
       properties: {
         query: { type: "string" },
         minTimestamp: { type: "number" },
       },
       required: ["query", "minTimestamp"],
-    },
-    feedback: { type: "string", nullable: true },
+    }),
+    feedback: nullable({ type: "string" }),
   },
   required: ["role"],
 };
@@ -224,7 +223,12 @@ async function handler(
       });
       // return the deleted message
       res.status(200).json({
-        message: { ...message, message: message.message ?? undefined },
+        message: {
+          ...message,
+          message: message.message,
+          retrievals: null,
+          params: null,
+        },
       });
       return;
     }

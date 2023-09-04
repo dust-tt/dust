@@ -6,11 +6,11 @@ export type DataSourceVisibility = "public" | "private";
 export type DataSourceType = {
   id: ModelId;
   name: string;
-  description?: string;
+  description: string | null;
   visibility: DataSourceVisibility;
   assistantDefaultSelected: boolean;
-  config?: string;
+  config: string | null;
   dustAPIProjectId: string;
-  connectorId?: string;
-  connectorProvider?: ConnectorProvider;
+  connectorId: string | null;
+  connectorProvider: ConnectorProvider | null;
 };
