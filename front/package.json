@@ -67,7 +67,6 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@esbuild/darwin-arm64": "^0.19.2",
     "@google-cloud/storage": "^6.11.0",
     "@types/fs-extra": "^11.0.1",
     "@types/jest": "^29.5.0",
