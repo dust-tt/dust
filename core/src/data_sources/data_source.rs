@@ -539,8 +539,6 @@ impl DataSource {
 
         let document_id_path = format!("{}/document_id.txt", bucket_path);
         let content_path = format!("{}/{}/content.txt", bucket_path, document_hash);
-        let tags_path = format!("{}/{}/tags.json", bucket_path, document_hash);
-        let timestamp_path = format!("{}/{}/timestamp.txt", bucket_path, document_hash);
 
         let now = utils::now();
         let _ = try_join!(
@@ -554,18 +552,6 @@ impl DataSource {
                 &bucket,
                 text.as_bytes().to_vec(),
                 &content_path,
-                "application/text",
-            ),
-            Object::create(
-                &bucket,
-                serde_json::to_string(&tags).unwrap().as_bytes().to_vec(),
-                &tags_path,
-                "application/json",
-            ),
-            Object::create(
-                &bucket,
-                format!("{}", timestamp).as_bytes().to_vec(),
-                &timestamp_path,
                 "application/text",
             ),
         )?;
