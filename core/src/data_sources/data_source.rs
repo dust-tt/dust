@@ -587,7 +587,7 @@ impl DataSource {
         struct ChunkInfo {
             text: String,
             hash: String,
-        };
+        }
 
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
