@@ -64,7 +64,8 @@ export async function _runExtractEventApp({
 
 /**
  * Gets the maximum text content to process for the Dust app.
- * We don't go up to the maximum number of tokens because the Dust app
+ * We define a maximum number of tokens that the Dust app can process.
+ * It will return the text around the marker: first we expand the text before the marker, than after the marker.
  */
 export async function _getMaxTextContentToProcess({
   fullText,
@@ -73,11 +74,11 @@ export async function _getMaxTextContentToProcess({
   fullText: string;
   marker: string;
 }): Promise<string> {
-  const MAX_TOKENS = 6000;
   const tokenized = await getTokenizedText(fullText);
   const tokens = tokenized.tokens;
   const strings = tokenized.strings;
   const nbTokens = tokens.length;
+  const MAX_TOKENS = 6000;
 
   // If the text is small enough, just return it
   if (nbTokens < MAX_TOKENS) {
@@ -86,7 +87,7 @@ export async function _getMaxTextContentToProcess({
 
   // Otherwise we extract the tokens around the marker
   // and return the text corresponding to those tokens
-  const extractTokensResult = extractTokens({
+  const extractTokensResult = extractMaxTokens({
     fullText,
     tokens,
     strings,
@@ -98,7 +99,12 @@ export async function _getMaxTextContentToProcess({
 }
 
 /**
- * Gets the indexes of the tokens around the marker
+ * Gets the indexes of the tokens corresponding to the marker.
+ * Example, for params:
+ * - full_text: Un petit Soupinou des bois [[idea:2]]
+ * - strings: ["Un", " petit", " Sou", "pin", "ou", " des", " bois", " [[", "idea", ":", "2", "]]"];
+ * - marker: "[[idea:2]]"
+ * Will return { start: 7, end: 11 }
  */
 function findMarkersIndexes({
   fullText,
@@ -134,9 +140,9 @@ function findMarkersIndexes({
 }
 
 /**
- * Extracts the tokens around the marker
+ * Extracts the maximum number of tokens around the marker.
  */
-function extractTokens({
+function extractMaxTokens({
   fullText,
   tokens,
   strings,
@@ -185,7 +191,12 @@ function extractTokens({
 }
 
 /**
- * Calling Core API to get the number of tokens in a text.
+ * Calls Core API to get the tokens and associated strings for a given text.
+ * Ex: "Un petit Soupinou des bois [[idea:2]]" will return:
+ * {
+ *   tokens: [1844, 46110,  9424, 13576, 283, 951, 66304,  4416, 42877, 25, 17, 5163],
+ *   strings: ["Un", " petit", " Sou", "pin", "ou", " des", " bois", " [[", "idea", ":", "2", "]]"],
+ * }
  */
 export async function getTokenizedText(
   text: string
