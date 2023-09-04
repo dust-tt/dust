@@ -116,7 +116,7 @@ pub async fn tokenize_async(
     bpe: Arc<Mutex<CoreBPE>>,
     text: String,
 ) -> Result<Vec<(usize, String)>> {
-    let r = task::spawn_blocking(move || bpe.lock().tokenize_with_matching_string(&text)).await?;
+    let r = task::spawn_blocking(move || bpe.lock().tokenize(&text)).await?;
     Ok(r)
 }
 
@@ -249,7 +249,7 @@ impl CoreBPE {
         ret
     }
 
-    fn _tokenize_with_matching_string(&self, text: &String) -> Vec<(usize, String)> {
+    fn _tokenize(&self, text: &String) -> Vec<(usize, String)> {
         let regex = self._get_regex();
         let mut results = vec![];
 
@@ -553,8 +553,8 @@ impl CoreBPE {
         self._encode_native(text, &allowed_special).0
     }
 
-    pub fn tokenize_with_matching_string(&self, text: &String) -> Vec<(usize, String)> {
-        self._tokenize_with_matching_string(text)
+    pub fn tokenize(&self, text: &String) -> Vec<(usize, String)> {
+        self._tokenize(text)
     }
 
     pub fn encode_with_special_tokens(&self, text: &str) -> Vec<usize> {
