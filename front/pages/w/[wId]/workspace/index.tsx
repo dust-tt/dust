@@ -1,10 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  KeyIcon,
-  PageHeader,
-  SectionHeader,
-} from "@dust-tt/sparkle";
+import { Button, KeyIcon, PageHeader, SectionHeader } from "@dust-tt/sparkle";
 import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
