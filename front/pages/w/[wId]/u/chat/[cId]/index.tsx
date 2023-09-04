@@ -70,7 +70,7 @@ const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
 
 type DataSource = {
   name: string;
-  description?: string;
+  description: string | null;
   provider: ConnectorProvider | "none";
   selected: boolean;
 };

@@ -162,11 +162,13 @@ async function handler(
         dataSource: {
           id: ds.id,
           name: ds.name,
-          description: ds.description ?? undefined,
+          description: ds.description,
           visibility: ds.visibility,
-          config: ds.config ?? undefined,
+          config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
           assistantDefaultSelected: ds.assistantDefaultSelected,
+          connectorId: null,
+          connectorProvider: null,
         },
       });
       return;

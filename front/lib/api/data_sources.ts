@@ -37,12 +37,12 @@ export async function getDataSource(
   return {
     id: dataSource.id,
     name: dataSource.name,
-    description: dataSource.description ?? undefined,
+    description: dataSource.description,
     visibility: dataSource.visibility,
-    config: dataSource.config ?? undefined,
+    config: dataSource.config,
     dustAPIProjectId: dataSource.dustAPIProjectId,
-    connectorId: dataSource.connectorId ?? undefined,
-    connectorProvider: dataSource.connectorProvider ?? undefined,
+    connectorId: dataSource.connectorId,
+    connectorProvider: dataSource.connectorProvider,
     assistantDefaultSelected: dataSource.assistantDefaultSelected,
   };
 }
@@ -75,12 +75,12 @@ export async function getDataSources(
     return {
       id: dataSource.id,
       name: dataSource.name,
-      description: dataSource.description ?? undefined,
+      description: dataSource.description,
       visibility: dataSource.visibility,
-      config: dataSource.config ?? undefined,
+      config: dataSource.config,
       dustAPIProjectId: dataSource.dustAPIProjectId,
-      connectorId: dataSource.connectorId ?? undefined,
-      connectorProvider: dataSource.connectorProvider ?? undefined,
+      connectorId: dataSource.connectorId,
+      connectorProvider: dataSource.connectorProvider,
       assistantDefaultSelected: dataSource.assistantDefaultSelected,
     };
   });
