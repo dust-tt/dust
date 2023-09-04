@@ -1,11 +1,10 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
   Icon,
-  Logo,
   PlanetIcon,
 } from "../index_with_tw_base";
 
