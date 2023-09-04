@@ -2,6 +2,8 @@ import { Op } from "sequelize";
 
 import { ExtractedEvent } from "@app/lib/models";
 
+import { CoreAPITokenType } from "./core_api";
+
 const EXTRACT_EVENT_PATTERN = /\[\[(.*?)\]\]/; // Ex: [[event]]
 
 /**
@@ -89,18 +91,31 @@ export async function getExtractEventMarkersToProcess({
  * Gets the indexes of the tokens corresponding to the marker.
  * Example, for params:
  * - full_text: Un petit Soupinou des bois [[idea:2]]
- * - strings: ["Un", " petit", " Sou", "pin", "ou", " des", " bois", " [[", "idea", ":", "2", "]]"];
+ * - tokens: [
+    [ 1844, 'Un' ],
+    [ 46110, ' petit' ],
+    [ 9424, ' Sou' ],
+    [ 13576, 'pin' ],
+    [ 283, 'ou' ],
+    [ 951, ' des' ],
+    [ 66304, ' bois' ],
+    [ 4416, ' [[' ],
+    [ 42877, 'idea' ],
+    [ 25, ':' ],
+    [ 17, '2' ],
+    [ 5163, ']]' ]
+  ]
  * - marker: "[[idea:2]]"
  * Will return { start: 7, end: 11 }
  */
 export function findMarkersIndexes({
   fullText,
   marker,
-  strings,
+  tokens,
 }: {
   fullText: string;
   marker: string;
-  strings: string[];
+  tokens: CoreAPITokenType[];
 }): { start: number; end: number } {
   const markerIndex = fullText.indexOf(marker);
   if (markerIndex === -1) return { start: -1, end: -1 };
@@ -109,8 +124,8 @@ export function findMarkersIndexes({
   let startIndex = -1;
   let endIndex = -1;
 
-  for (let i = 0; i < strings.length; i++) {
-    const str = strings[i];
+  for (let i = 0; i < tokens.length; i++) {
+    const str = tokens[i][1];
     charCount += str.length;
 
     if (startIndex === -1 && charCount > markerIndex) {

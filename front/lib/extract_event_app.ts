@@ -4,7 +4,7 @@ import {
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI, CoreAPITokenType } from "@app/lib/core_api";
 import { findMarkersIndexes } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";
@@ -77,7 +77,6 @@ export async function _getMaxTextContentToProcess({
 }): Promise<string> {
   const tokenized = await getTokenizedText(fullText);
   const tokens = tokenized.tokens;
-  const strings = tokenized.strings;
   const nbTokens = tokens.length;
   const MAX_TOKENS = 6000;
 
@@ -91,12 +90,11 @@ export async function _getMaxTextContentToProcess({
   const extractTokensResult = extractMaxTokens({
     fullText,
     tokens,
-    strings,
     marker,
     maxTokens: MAX_TOKENS,
   });
 
-  return extractTokensResult.strings.join("");
+  return extractTokensResult.map((t) => t[1]).join("");
 }
 
 /**
@@ -105,20 +103,18 @@ export async function _getMaxTextContentToProcess({
 function extractMaxTokens({
   fullText,
   tokens,
-  strings,
   marker,
   maxTokens,
 }: {
   fullText: string;
-  tokens: number[];
-  strings: string[];
+  tokens: CoreAPITokenType[];
   marker: string;
   maxTokens: number;
-}): { tokens: number[]; strings: string[] } {
-  const { start, end } = findMarkersIndexes({ fullText, marker, strings });
+}): CoreAPITokenType[] {
+  const { start, end } = findMarkersIndexes({ fullText, marker, tokens });
 
   if (start === -1 || end === -1) {
-    return { tokens: [], strings: [] };
+    return [];
   }
 
   // The number of tokens that the marker takes up
@@ -144,23 +140,33 @@ function extractMaxTokens({
     }
   }
 
-  return {
-    tokens: tokens.slice(startSlice, endSlice + 1),
-    strings: strings.slice(startSlice, endSlice + 1),
-  };
+  return tokens.slice(startSlice, endSlice + 1);
 }
 
 /**
  * Calls Core API to get the tokens and associated strings for a given text.
  * Ex: "Un petit Soupinou des bois [[idea:2]]" will return:
  * {
- *   tokens: [1844, 46110,  9424, 13576, 283, 951, 66304,  4416, 42877, 25, 17, 5163],
- *   strings: ["Un", " petit", " Sou", "pin", "ou", " des", " bois", " [[", "idea", ":", "2", "]]"],
+ *   tokens: [
+      [ 1844, 'Un' ],
+      [ 46110, ' petit' ],
+      [ 9424, ' Sou' ],
+      [ 13576, 'pin' ],
+      [ 283, 'ou' ],
+      [ 951, ' des' ],
+      [ 66304, ' bois' ],
+      [ 4416, ' [[' ],
+      [ 42877, 'idea' ],
+      [ 25, ':' ],
+      [ 17, '2' ],
+      [ 5163, ']]' ]
+    ],
  * }
  */
+
 export async function getTokenizedText(
   text: string
-): Promise<{ tokens: number[]; strings: string[] }> {
+): Promise<{ tokens: CoreAPITokenType[] }> {
   console.log("computeNbTokens4");
   const tokenizeResponse = await CoreAPI.tokenize({
     text: text,
@@ -174,14 +180,8 @@ export async function getTokenizedText(
     logger.error(
       "Could not get number of tokens for document, trying with full doc."
     );
-    return { tokens: [], strings: [] };
+    return { tokens: [] };
   }
 
-  const tokens = tokenizeResponse.value.tokens;
-  const strings = tokenizeResponse.value.strings;
-
-  return {
-    tokens: tokens,
-    strings: strings,
-  };
+  return tokenizeResponse.value;
 }

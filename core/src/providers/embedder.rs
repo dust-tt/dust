@@ -26,7 +26,7 @@ pub trait Embedder {
     async fn encode(&self, text: &str) -> Result<Vec<usize>>;
     async fn decode(&self, tokens: Vec<usize>) -> Result<String>;
 
-    async fn custom_tokenize(&self, text: String) -> Result<(Vec<usize>, Vec<String>)>;
+    async fn tokenize(&self, text: String) -> Result<Vec<(usize, String)>>;
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>>;
 }

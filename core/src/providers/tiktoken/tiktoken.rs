@@ -115,7 +115,7 @@ pub async fn encode_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<us
 pub async fn tokenize_async(
     bpe: Arc<Mutex<CoreBPE>>,
     text: String,
-) -> Result<(Vec<usize>, Vec<String>)> {
+) -> Result<Vec<(usize, String)>> {
     let r = task::spawn_blocking(move || bpe.lock().tokenize_with_matching_string(&text)).await?;
     Ok(r)
 }
@@ -249,54 +249,43 @@ impl CoreBPE {
         ret
     }
 
-    fn _tokenize_with_matching_string(&self, text: &String) -> (Vec<usize>, Vec<String>) {
+    fn _tokenize_with_matching_string(&self, text: &String) -> Vec<(usize, String)> {
         let regex = self._get_regex();
-        let mut tokens = vec![];
-        let mut strings: Vec<String> = vec![];
+        let mut results = vec![];
 
         for mat in regex.find_iter(text) {
             let string = mat.unwrap().as_str();
             let piece = string.as_bytes();
             if let Some(token) = self.encoder.get(piece) {
-                tokens.push(*token);
-                strings.push((*string).to_string());
+                results.push((*token, string.to_string()));
                 continue;
             }
 
-            let (_rank_pieces, _string_pieces) =
-                Self::_tokenize_byte_pair_encode(piece, &self.encoder);
-
-            tokens.extend(_rank_pieces);
-            strings.extend(_string_pieces);
+            results.extend(Self::_tokenize_byte_pair_encode(piece, &self.encoder));
         }
-        (tokens, strings)
+        results
     }
 
     pub fn _tokenize_byte_pair_encode(
         piece: &[u8],
         ranks: &HashMap<Vec<u8>, usize>,
-    ) -> (Vec<usize>, Vec<String>) {
+    ) -> Vec<(usize, String)> {
         if piece.len() == 1 {
             let string = std::str::from_utf8(&piece).unwrap();
-            return (vec![ranks[piece]], vec![string.to_string()]);
+            return vec![(ranks[piece], string.to_string())];
         }
 
-        let merged_pieces = _byte_pair_merge(piece, ranks);
-
-        let mut byte_pieces = Vec::new();
-        let mut rank_pieces = Vec::new();
-        let mut string_pieces = Vec::new();
-
-        for p in &merged_pieces {
-            let sub_piece = piece[p.start..p.end].to_vec();
-            let sub_string = std::str::from_utf8(&sub_piece).unwrap();
-            let rank = ranks[&sub_piece];
-            string_pieces.push(sub_string.to_string());
-            byte_pieces.push(sub_piece);
-            rank_pieces.push(rank);
-        }
-
-        (rank_pieces, string_pieces)
+        _byte_pair_merge(piece, ranks)
+            .iter()
+            .map(|p| {
+                (
+                    ranks[&piece[p.start..p.end]],
+                    std::str::from_utf8(&piece[p.start..p.end])
+                        .unwrap()
+                        .to_string(),
+                )
+            })
+            .collect()
     }
 
     fn _encode_native(&self, text: &str, allowed_special: &HashSet<&str>) -> (Vec<usize>, usize) {
@@ -564,7 +553,7 @@ impl CoreBPE {
         self._encode_native(text, &allowed_special).0
     }
 
-    pub fn tokenize_with_matching_string(&self, text: &String) -> (Vec<usize>, Vec<String>) {
+    pub fn tokenize_with_matching_string(&self, text: &String) -> Vec<(usize, String)> {
         self._tokenize_with_matching_string(text)
     }
 

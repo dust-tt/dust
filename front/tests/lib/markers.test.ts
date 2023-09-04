@@ -1,3 +1,4 @@
+import { CoreAPITokenType } from "@app/lib/core_api";
 import {
   findMarkersIndexes,
   getRawExtractEventMarkersFromText,
@@ -79,65 +80,65 @@ describe("Test getExtractEventMarker", function () {
 describe("Test findMarkerIndexes", function () {
   test("findMarkerIndexes", function () {
     const fullTextSoupinou = "Un petit Soupinou des bois [[idea:2]]";
-    const stringsSoupinou = [
-      "Un",
-      " petit",
-      " Sou",
-      "pin",
-      "ou",
-      " des",
-      " bois",
-      " [[",
-      "idea",
-      ":",
-      "2",
-      "]]",
+    const tokensSoupinou: CoreAPITokenType[] = [
+      [1844, "Un"],
+      [46110, " petit"],
+      [9424, " Sou"],
+      [13576, "pin"],
+      [283, "ou"],
+      [951, " des"],
+      [66304, " bois"],
+      [4416, " [["],
+      [42877, "idea"],
+      [25, ":"],
+      [17, "2"],
+      [5163, "]]"],
     ];
 
     const fullTextSticious =
-      "I’m not superstitious [[office_quote]], but I am a little stitious. [[office_quote]]";
-    const stringsSticious = [
-      "I",
-      "’m",
-      " not",
-      " super",
-      "stit",
-      "ious",
-      " [[",
-      "office",
-      "_quote",
-      "]],",
-      " but",
-      " I",
-      " am",
-      " a",
-      " little",
-      " st",
-      "itious",
-      ".",
-      " [[",
-      "office",
-      "_quote",
-      "]]",
+      "I’m not superstitious [[office_quote]] but I am a little stitious. [[office_quote]]";
+    const tokensStitious: CoreAPITokenType[] = [
+      [40, "I"],
+      [4344, "’m"],
+      [539, " not"],
+      [2307, " super"],
+      [3781, "stit"],
+      [1245, "ious"],
+      [4416, " [["],
+      [27614, "office"],
+      [46336, "_quote"],
+      [21128, "]],"],
+      [719, " but"],
+      [358, " I"],
+      [1097, " am"],
+      [264, " a"],
+      [2697, " little"],
+      [357, " st"],
+      [65795, "itious"],
+      [13, "."],
+      [4416, " [["],
+      [27614, "office"],
+      [46336, "_quote"],
+      [5163, "]]"],
     ];
 
     const cases = [
       {
         fullText: fullTextSoupinou,
         marker: "[[idea:2]]",
-        strings: stringsSoupinou,
+        tokens: tokensSoupinou,
         expected: { start: 7, end: 11 }, // main case
       },
       {
         fullText: fullTextSoupinou,
         marker: "[[idea]]",
-        strings: stringsSoupinou,
+        tokens: tokensSoupinou,
         expected: { start: -1, end: -1 }, // not found
       },
       {
         fullText: fullTextSticious,
         marker: "[[office_quote]]",
-        strings: stringsSticious,
+        tokens: tokensStitious,
         expected: { start: 6, end: 9 }, // takes the first one
       },
     ];
@@ -146,7 +147,7 @@ describe("Test findMarkerIndexes", function () {
         findMarkersIndexes({
           fullText: c.fullText,
           marker: c.marker,
-          strings: c.strings,
+          tokens: c.tokens,
         })
       ).toEqual(c.expected);
     });

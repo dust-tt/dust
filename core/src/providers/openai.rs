@@ -1575,7 +1575,7 @@ impl Embedder for OpenAIEmbedder {
         decode_async(self.tokenizer(), tokens).await
     }
 
-    async fn custom_tokenize(&self, text: String) -> Result<(Vec<usize>, Vec<String>)> {
+    async fn tokenize(&self, text: String) -> Result<Vec<(usize, String)>> {
         tokenize_async(self.tokenizer(), text).await
     }
 
