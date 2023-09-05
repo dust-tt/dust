@@ -1,17 +1,26 @@
-import { DataSourceInfo } from "@connectors/types/data_source_config";
-import { getNotionPageFromConnectorsDb } from "./connectors_db_helpers";
+import {
+  DataSourceConfig,
+  DataSourceInfo,
+} from "@connectors/types/data_source_config";
+import {
+  getDatabaseChildrenOfDocument,
+  getNotionPageFromConnectorsDb,
+  getPageChildrenOfDocument,
+} from "./connectors_db_helpers";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models";
+import memoize from "lodash.memoize";
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 
 /** Compute the parents field for a notion document
  * See the [Design Doc](TODO) and the field [documentation in core](TODO) for relevant details
  */
-export async function getParents(
+async function _getParents(
+  dataSourceInfo: DataSourceInfo,
   document: {
     notionId: string;
     parentType: string | null | undefined;
     parentId: string | null | undefined;
-  },
-  dataSourceInfo: DataSourceInfo
+  }
 ): Promise<string[]> {
   const parents: string[] = [document.notionId];
   switch (document.parentType) {
@@ -35,51 +44,88 @@ export async function getParents(
         return parents;
       }
       return parents.concat(
-        await getParents(
-          {
-            notionId: parent.notionPageId,
-            parentType: parent.parentType,
-            parentId: parent.parentId,
-          },
-          dataSourceInfo
-        )
+        await getParents(dataSourceInfo, {
+          notionId: parent.notionPageId,
+          parentType: parent.parentType,
+          parentId: parent.parentId,
+        })
       );
     default:
       throw new Error(`Unhandled parent type ${document.parentType}`);
   }
 }
 
-export async function updateParentsField(
-  pageOrDb: NotionPage | NotionDatabase,
-  dataSourceInfo: DataSourceInfo,
-  parents?: string[]
-) {
-  let notionId =
-    (pageOrDb as NotionPage).notionPageId ||
-    (pageOrDb as NotionDatabase).notionDatabaseId;
+export const getParents = memoize(_getParents, (dataSourceInfo, document) => {
+  return `${dataSourceInfo.dataSourceName}:${document.notionId}`;
+});
 
-  parents = parents
-    ? [notionId, ...parents]
-    : await getParents(
-        {
-          notionId,
-          parentType: pageOrDb.parentType,
-          parentId: pageOrDb.parentId,
-        },
-        dataSourceInfo
-      );
-  // dbs are not in the Datasource so they don't have a parents field
-  // only notion pages need an update
-  (pageOrDb as NotionPage).notionPageId &&
-    updateParentsFieldInDatasource(pageOrDb as NotionPage, parents);
-  for (const child of getChildren(pageOrDb)) {
-    await updateParentsField(child, dataSourceInfo, parents);
+export async function updateAllParentsFields(
+  dataSourceConfig: DataSourceConfig,
+  documents: (NotionPage | NotionDatabase)[]
+) {
+  /* Computing all descendants, then updating, ensures the field is updated only
+    once per page, limiting the load on the Datasource */
+  const pagesToUpdate = await getPagesToUpdate(documents, dataSourceConfig);
+
+  // Update everybody's parents field
+  for (const page of pagesToUpdate) {
+    const parents = await getParents(dataSourceConfig, {
+      notionId: page.notionPageId,
+      parentType: page.parentType,
+      parentId: page.parentId,
+    });
+
+    await updateDocumentParentsField(
+      dataSourceConfig,
+      `notion-${page.notionPageId}`,
+      parents
+    );
+    // TODO how to handle errors here
   }
 }
 
-function updateParentsFieldInDatasource(
-  pageOrDb: NotionPage,
-  parents: string[]
-) {}
+/**  Get ids of all pages whose parents field should be updated: inital pages in
+ * documentIds, and all the descendants of documentIds that are pages (including
+ * children of databases)
+ *
+ * Note: databases are not stored in the Datasource, so they don't need to be
+ * updated
+ */
+async function getPagesToUpdate(
+  documents: (NotionPage | NotionDatabase)[],
+  dataSourceConfig: DataSourceConfig
+): Promise<NotionPage[]> {
+  const documentVisitedIds = new Set<NotionPage | NotionDatabase>(documents);
 
-function getChildren(pageOrDb: NotionPage | NotionDatabase) {}
+  // documents is a queue of documents whose children should be fetched
+  while (documents.length !== 0) {
+    const document = documents.shift()!;
+
+    // Get children of the document
+    const documentId =
+      (document as NotionPage).notionPageId ||
+      (document as NotionDatabase).notionDatabaseId;
+    const pageChildren = await getPageChildrenOfDocument(
+      dataSourceConfig,
+      documentId
+    );
+    const databaseChildren = await getDatabaseChildrenOfDocument(
+      dataSourceConfig,
+      documentId
+    );
+
+    // If they haven't yet been visited, add them to documents visited
+    // and to the list of documents whose children should be fetched
+    for (const child of [...pageChildren, ...databaseChildren]) {
+      if (!documentVisitedIds.has(child)) {
+        documentVisitedIds.add(child);
+        documents.push(child);
+      }
+    }
+  }
+
+  // only return pages since databases are not updated
+  return Array.from(documentVisitedIds).filter(
+    (d) => (d as NotionPage).notionPageId
+  ) as NotionPage[];
+}

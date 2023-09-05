@@ -7,7 +7,10 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
-import { getParents } from "@connectors/connectors/notion/lib/parents";
+import {
+  getParents,
+  updateAllParentsFields,
+} from "@connectors/connectors/notion/lib/parents";
 import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
@@ -269,14 +272,11 @@ export async function notionUpsertPageActivity(
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
-    let parents = await getParents(
-      {
-        notionId: pageId,
-        parentType: parsedPage.parentType,
-        parentId: parsedPage.parentId,
-      },
-      dataSourceConfig
-    );
+    let parents = await getParents(dataSourceConfig, {
+      notionId: pageId,
+      parentType: parsedPage.parentType,
+      parentId: parsedPage.parentId,
+    });
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
@@ -832,4 +832,16 @@ export async function garbageCollectActivity(
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
+}
+
+export async function updateParentsFieldsActivity(
+  dataSourceConfig: DataSourceConfig,
+  activitiesResults: UpsertActivityResult[]
+) {
+  // Get documents whose path changed (created or moved) If there is
+  // createdOrMoved, then the document cannot be null thus the cast is safe
+  const documents = activitiesResults
+    .filter((aRes) => aRes.createdOrMoved)
+    .map((aRes) => aRes.document) as (NotionPage | NotionDatabase)[];
+  await updateAllParentsFields(dataSourceConfig, documents);
 }
