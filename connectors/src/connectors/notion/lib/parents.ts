@@ -1,21 +1,20 @@
 import { DataSourceInfo } from "@connectors/types/data_source_config";
 import { getNotionPageFromConnectorsDb } from "./connectors_db_helpers";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models";
-import { get } from "http";
 
 /** Compute the parents field for a notion document
  * See the [Design Doc](TODO) and the field [documentation in core](TODO) for relevant details
  */
 export async function getParents(
-  page: {
+  document: {
     notionId: string;
     parentType: string | null | undefined;
     parentId: string | null | undefined;
   },
   dataSourceInfo: DataSourceInfo
 ): Promise<string[]> {
-  const parents: string[] = [page.notionId];
-  switch (page.parentType) {
+  const parents: string[] = [document.notionId];
+  switch (document.parentType) {
     case "workspace":
       return parents;
     case "block":
@@ -28,7 +27,7 @@ export async function getParents(
       // and add it to the parents array
       let parent = await getNotionPageFromConnectorsDb(
         dataSourceInfo,
-        page.parentId as string // (cannot be null here)
+        document.parentId as string // (cannot be null here)
       );
       if (!parent) {
         // The parent is either not synced yet (not an issue, see design doc) or
@@ -46,7 +45,7 @@ export async function getParents(
         )
       );
     default:
-      throw new Error(`Unhandled parent type ${page.parentType}`);
+      throw new Error(`Unhandled parent type ${document.parentType}`);
   }
 }
 
@@ -59,14 +58,16 @@ export async function updateParentsField(
     (pageOrDb as NotionPage).notionPageId ||
     (pageOrDb as NotionDatabase).notionDatabaseId;
 
-  parents = parents ? [notionId, ...parents] : await getParents(
-    {
-      notionId,
-      parentType: pageOrDb.parentType,
-      parentId: pageOrDb.parentId,
-    },
-    dataSourceInfo
-  );
+  parents = parents
+    ? [notionId, ...parents]
+    : await getParents(
+        {
+          notionId,
+          parentType: pageOrDb.parentType,
+          parentId: pageOrDb.parentId,
+        },
+        dataSourceInfo
+      );
   // dbs are not in the Datasource so they don't have a parents field
   // only notion pages need an update
   (pageOrDb as NotionPage).notionPageId &&
@@ -81,5 +82,4 @@ function updateParentsFieldInDatasource(
   parents: string[]
 ) {}
 
-function getChildren(pageOrDb: NotionPage | NotionDatabase) {
-}
+function getChildren(pageOrDb: NotionPage | NotionDatabase) {}

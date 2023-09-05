@@ -7,10 +7,7 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
-import {
-  getParents,
-  updateParentsField,
-} from "@connectors/connectors/notion/lib/parents";
+import { getParents } from "@connectors/connectors/notion/lib/parents";
 import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
@@ -40,7 +37,6 @@ import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
-import { connect } from "http2";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -209,6 +205,11 @@ export async function notionGetToSyncActivity(
   };
 }
 
+export type UpsertActivityResult = {
+  document: NotionPage | NotionDatabase | null;
+  createdOrMoved: boolean;
+};
+
 export async function notionUpsertPageActivity(
   accessToken: string,
   pageId: string,
@@ -216,7 +217,7 @@ export async function notionUpsertPageActivity(
   runTimestamp: number,
   loggerArgs: Record<string, string | number>,
   isFullSync: boolean
-) {
+): Promise<UpsertActivityResult> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
   const notionPage = await getNotionPageFromConnectorsDb(
@@ -228,7 +229,7 @@ export async function notionUpsertPageActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping page already seen in this run");
-    return;
+    return { document: notionPage, createdOrMoved: false };
   }
 
   const isSkipped = !!notionPage?.skipReason;
@@ -238,14 +239,14 @@ export async function notionUpsertPageActivity(
       { skipReason: notionPage.skipReason },
       "Skipping page with skip reason"
     );
-    return;
+    return { document: notionPage, createdOrMoved: false };
   }
 
   let upsertTs: number | undefined = undefined;
 
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
 
-  let needParentsUpdate =
+  let createdOrMoved =
     parsedPage?.parentType !== notionPage?.parentType ||
     parsedPage?.parentId !== notionPage?.parentId;
 
@@ -262,8 +263,7 @@ export async function notionUpsertPageActivity(
       lastUpsertedTs: upsertTs,
       skipReason: "body_too_large",
     });
-    needParentsUpdate && updateParentsField(newNotionPage);
-    return;
+    return { document: newNotionPage, createdOrMoved };
   }
 
   if (parsedPage && parsedPage.hasBody) {
@@ -307,7 +307,7 @@ export async function notionUpsertPageActivity(
     notionUrl: parsedPage ? parsedPage.url : null,
     lastUpsertedTs: upsertTs,
   });
-  needParentsUpdate && updateParentsField(newNotionPage);
+  return { document: newNotionPage, createdOrMoved };
 }
 
 export async function notionUpsertDatabaseActivity(
@@ -316,7 +316,7 @@ export async function notionUpsertDatabaseActivity(
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number,
   loggerArgs: Record<string, string | number>
-) {
+): Promise<UpsertActivityResult> {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
   const notionDatabase = await getNotionDatabaseFromConnectorsDb(
@@ -329,7 +329,7 @@ export async function notionUpsertDatabaseActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping database already seen in this run");
-    return;
+    return { document: notionDatabase, createdOrMoved: false };
   }
 
   const isSkipped = !!notionDatabase?.skipReason;
@@ -339,7 +339,7 @@ export async function notionUpsertDatabaseActivity(
       { skipReason: notionDatabase.skipReason },
       "Skipping database with skip reason"
     );
-    return;
+    return { document: notionDatabase, createdOrMoved: false };
   }
 
   localLogger.info(
@@ -348,7 +348,7 @@ export async function notionUpsertDatabaseActivity(
 
   const parsedDb = await getParsedDatabase(accessToken, databaseId, loggerArgs);
 
-  let needParentsUpdate =
+  let createdOrMoved =
     parsedDb?.parentType !== notionDatabase?.parentType ||
     parsedDb?.parentId !== notionDatabase?.parentId;
 
@@ -361,7 +361,7 @@ export async function notionUpsertDatabaseActivity(
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
   });
-  needParentsUpdate && updateParentsField(newNotionDb);
+  return { document: notionDatabase, createdOrMoved: createdOrMoved };
 }
 
 export async function saveSuccessSyncActivity(
@@ -833,8 +833,3 @@ export async function garbageCollectActivity(
     lastGarbageCollectionFinishTime: new Date(),
   });
 }
-
-/*export async function notionFillParentsActivity (
-  accessToken: string,
-
-)*/

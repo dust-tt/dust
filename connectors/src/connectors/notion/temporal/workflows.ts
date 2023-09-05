@@ -13,6 +13,15 @@ import type * as activities from "@connectors/connectors/notion/temporal/activit
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
+import { UpsertActivityResult } from "@connectors/connectors/notion/temporal/activities";
+import { updateParentsField } from "../lib/parents";
+import {
+  getDatabaseChildrenOfDocument,
+  getNotionDatabaseFromConnectorsDb,
+  getNotionPageFromConnectorsDb,
+  getPageChildrenOfDocument,
+} from "../lib/connectors_db_helpers";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models";
 
 const { garbageCollectActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
@@ -89,7 +98,7 @@ export async function notionSyncWorkflow(
     const childWorkflowQueue = new PQueue({
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
-    const promises: Promise<void>[] = [];
+    const promises: Promise<SyncWorkflowResult>[] = [];
 
     do {
       const { pageIds, databaseIds, nextCursor } =
@@ -170,7 +179,7 @@ export async function notionSyncWorkflow(
                 parentClosePolicy:
                   ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
               })
-            )
+            ) as Promise<SyncWorkflowResult>
           );
         }
       }
@@ -204,14 +213,19 @@ export async function notionSyncWorkflow(
                 parentClosePolicy:
                   ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
               })
-            )
+            ) as Promise<SyncWorkflowResult>
           );
         }
       }
     } while (cursor);
 
     // wait for all child workflows to finish
-    await Promise.all(promises);
+    const syncWorkflowResults = await Promise.all(promises);
+
+    await executeChild(updateParentsFieldsWorkflow, {
+      args: [dataSourceConfig, syncWorkflowResults],
+      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+    });
 
     if (!isGargageCollectionRun) {
       await saveSuccessSyncActivity(dataSourceConfig);
@@ -246,18 +260,22 @@ export async function notionSyncWorkflow(
   );
 }
 
+type SyncWorkflowResult = {
+  activitiesResults: UpsertActivityResult[];
+};
+
 export async function notionSyncResultPageWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   pageIds: string[],
   runTimestamp: number,
   isBatchSync = false
-) {
+): Promise<SyncWorkflowResult> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<void>[] = [];
+  const promises: Promise<UpsertActivityResult>[] = [];
 
   for (const [pageIndex, pageId] of pageIds.entries()) {
     const loggerArgs = {
@@ -275,11 +293,11 @@ export async function notionSyncResultPageWorkflow(
           loggerArgs,
           isBatchSync
         )
-      )
+      ) as Promise<UpsertActivityResult>
     );
   }
 
-  await Promise.all(promises);
+  return { activitiesResults: await Promise.all(promises) };
 }
 
 export async function notionSyncResultPageDatabaseWorkflow(
@@ -287,12 +305,12 @@ export async function notionSyncResultPageDatabaseWorkflow(
   notionAccessToken: string,
   databaseIds: string[],
   runTimestamp: number
-) {
+): Promise<SyncWorkflowResult> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<void>[] = [];
+  const promises: Promise<UpsertActivityResult>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
@@ -309,9 +327,77 @@ export async function notionSyncResultPageDatabaseWorkflow(
           runTimestamp,
           loggerArgs
         )
-      )
+      ) as Promise<UpsertActivityResult>
     );
   }
+  return { activitiesResults: await Promise.all(promises) };
+}
 
-  await Promise.all(promises);
+export async function updateParentsFieldsWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  syncWorkflowResults: SyncWorkflowResult[]
+) {
+  // Get documents whose path changed (created or moved) If there is
+  // createdOrMoved, then the document cannot be null thus the cast is safe
+  const documents = syncWorkflowResults.flatMap((result) =>
+    result.activitiesResults
+      .filter((aRes) => aRes.createdOrMoved)
+      .map((aRes) => aRes.document)
+  ) as (NotionPage | NotionDatabase)[];
+
+  /* Computing all descendants, then updating, ensures the field is updated only
+    once per page, limiting the load on the Datasource */
+  const pagesToUpdate = await getPagesToUpdate(documents, dataSourceConfig);
+
+  // Update everybody's parents field
+  for (const page of pagesToUpdate) {
+    await updateParentsFieldInDatasource(page);
+    handleErrors();
+  }
+}
+
+/**  Get ids of all pages whose parents field should be updated: inital pages in
+ * documentIds, and all the descendants of documentIds that are pages (including
+ * children of databases)
+ *
+ * Note: databases are not stored in the Datasource, so they don't need to be
+ * updated
+ */
+async function getPagesToUpdate(
+  documents: (NotionPage | NotionDatabase)[],
+  dataSourceConfig: DataSourceConfig
+): Promise<NotionPage[]> {
+  const documentVisitedIds = new Set<NotionPage | NotionDatabase>(documents);
+
+  // documents is a queue of documents whose children should be fetched
+  while (documents.length !== 0) {
+    const document = documents.shift()!;
+
+    // Get children of the document
+    const documentId =
+      (document as NotionPage).notionPageId ||
+      (document as NotionDatabase).notionDatabaseId;
+    const pageChildren = await getPageChildrenOfDocument(
+      dataSourceConfig,
+      documentId
+    );
+    const databaseChildren = await getDatabaseChildrenOfDocument(
+      dataSourceConfig,
+      documentId
+    );
+
+    // If they haven't yet been visited, add them to documents visited
+    // and to the list of documents whose children should be fetched
+    for (const child of [...pageChildren, ...databaseChildren]) {
+      if (!documentVisitedIds.has(child)) {
+        documentVisitedIds.add(child);
+        documents.push(child);
+      }
+    }
+  }
+
+  // only return pages since databases are not updated
+  return Array.from(documentVisitedIds).filter(
+    (d) => (d as NotionPage).notionPageId
+  ) as NotionPage[];
 }

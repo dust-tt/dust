@@ -218,3 +218,65 @@ export async function getNotionDatabaseFromConnectorsDb(
 
   return NotionDatabase.findOne({ where });
 }
+
+/**
+ * Get children *that are pages* of a given notion page or database
+ *
+ * !! Not children *of a page*
+ * @param dataSourceInfo
+ * @param notionId
+ * @returns
+ */
+export async function getPageChildrenOfDocument(
+  dataSourceInfo: DataSourceInfo,
+  notionId: string
+): Promise<NotionPage[]> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  return NotionPage.findAll({
+    where: {
+      parentId: notionId,
+      connectorId: connector.id,
+    },
+  });
+}
+
+/**
+ * Get children *that are databases* of a given notion page or database
+ *
+ * !! Not children *of a database*
+ * @param dataSourceInfo
+ * @param notionId
+ * @returns
+ */
+export async function getDatabaseChildrenOfDocument(
+  dataSourceInfo: DataSourceInfo,
+  notionId: string
+): Promise<NotionDatabase[]> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  return NotionDatabase.findAll({
+    where: {
+      parentId: notionId,
+      connectorId: connector.id,
+    },
+  });
+}
