@@ -98,37 +98,45 @@ async function getPagesToUpdate(
   documents: (NotionPage | NotionDatabase)[],
   dataSourceConfig: DataSourceConfig
 ): Promise<NotionPage[]> {
-  const documentVisitedIds = new Set<NotionPage | NotionDatabase>(documents);
+  const pagesToUpdate: NotionPage[] = [];
 
-  // documents is a queue of documents whose children should be fetched
-  while (documents.length !== 0) {
-    const document = documents.shift();
+  let i = 0;
+  while (i < documents.length) {
+    // Visit next document and if it's a page add it to update list
+    const document = documents[i++]!;
+    let documentId = notionId(document);
+    if (document instanceof NotionPage) {
+      pagesToUpdate.push(document);
+    }
 
     // Get children of the document
-    const documentId =
-      (document as NotionPage).notionPageId ||
-      (document as NotionDatabase).notionDatabaseId;
     const pageChildren = await getPageChildrenOfDocument(
       dataSourceConfig,
-      documentId
+      documentId!
     );
     const databaseChildren = await getDatabaseChildrenOfDocument(
       dataSourceConfig,
-      documentId
+      documentId!
     );
 
     // If they haven't yet been visited, add them to documents visited
     // and to the list of documents whose children should be fetched
     for (const child of [...pageChildren, ...databaseChildren]) {
-      if (!documentVisitedIds.has(child)) {
-        documentVisitedIds.add(child);
+      if (!documents.some((d) => notionId(d) === notionId(child))) {
         documents.push(child);
       }
     }
   }
 
-  // only return pages since databases are not updated
-  return Array.from(documentVisitedIds).filter(
-    (d) => (d as NotionPage).notionPageId
-  ) as NotionPage[];
+  return pagesToUpdate;
+}
+
+function notionId(document: NotionPage | NotionDatabase): string {
+  if (document instanceof NotionPage) {
+    return document.notionPageId;
+  } else if (document instanceof NotionDatabase) {
+    return document.notionDatabaseId;
+  } else {
+    throw new Error("Unexpected error");
+  }
 }
