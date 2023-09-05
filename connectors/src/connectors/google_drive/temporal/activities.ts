@@ -915,7 +915,7 @@ export async function getGoogleDriveObject(
   return await driveObjectToDustType(file, authCredentials);
 }
 
-async function driveObjectToDustType(
+export async function driveObjectToDustType(
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
 ): Promise<GoogleDriveObjectType> {
@@ -984,4 +984,30 @@ export async function markFolderAsVisited(
     parentId: file.parent,
     lastSeenTs: new Date(),
   });
+}
+
+export async function folderHasChildren(
+  connectorId: ModelId,
+  folderId: string
+): Promise<boolean> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const drive = await getDriveClient(connector.connectionId);
+  const res = await drive.files.list({
+    corpora: "allDrives",
+    pageSize: 1,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    fields:
+      "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+    q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+  });
+  if (!res.data.files) {
+    return false;
+  }
+
+  return res.data.files?.length > 0;
 }

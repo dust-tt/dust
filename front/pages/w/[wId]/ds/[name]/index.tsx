@@ -12,9 +12,10 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
+import ConnectorPermissionsModal, {
+  CONNECTOR_TYPE_TO_SHOW_EXPAND,
+} from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
-import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -365,13 +366,6 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
 };
 
-const CONNECTOR_TYPE_TO_SHOW_EXPAND: Record<ConnectorProvider, boolean> = {
-  notion: true,
-  slack: false,
-  github: false,
-  google_drive: false,
-};
-
 function ManagedDataSourceView({
   owner,
   readOnly,
@@ -397,7 +391,6 @@ function ManagedDataSourceView({
   const router = useRouter();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
   const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
@@ -438,10 +431,6 @@ function ManagedDataSourceView({
       );
       if (updateRes.error) {
         window.alert(updateRes.error);
-      }
-
-      if (connector && connector.type === "google_drive") {
-        setGoogleDrivePickerOpen(true);
       }
     } else if (provider === "github") {
       const installationId = await githubAuth(githubAppUrl).catch((e) => {
@@ -510,14 +499,6 @@ function ManagedDataSourceView({
           void handleUpdatePermissions();
         }}
       />
-      {connector && connector?.type == "google_drive" && (
-        <GoogleDriveFoldersPickerModal
-          owner={owner}
-          connectorId={connector.id}
-          isOpen={googleDrivePickerOpen}
-          setOpen={setGoogleDrivePickerOpen}
-        />
-      )}
       <div className="flex flex-col gap-8">
         <SectionHeader
           title={`Managed ${DATA_SOURCE_INTEGRATIONS[connectorProvider].name} Data Source`}
@@ -559,7 +540,7 @@ function ManagedDataSourceView({
               label="Edit permissions"
               type="secondary"
               onClick={() => {
-                if (connectorProvider === "slack") {
+                if (["slack", "google_drive"].includes(connectorProvider)) {
                   setShowPermissionModal(true);
                 } else {
                   void handleUpdatePermissions();

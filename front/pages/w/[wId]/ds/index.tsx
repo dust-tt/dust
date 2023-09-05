@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import GoogleDriveFoldersPickerModal from "@app/components/GoogleDriveFoldersPickerModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -371,10 +370,6 @@ export default function DataSourcesView({
     setLocalIntegrations(localIntegrations);
   }, [localIntegrations]);
 
-  const googleDrive = localIntegrations.find((integration) => {
-    return integration.connectorProvider === "google_drive";
-  });
-
   const router = useRouter();
 
   return (
@@ -398,14 +393,6 @@ export default function DataSourcesView({
         />
 
         <div>
-          {googleDrive && googleDrive.connector && (
-            <GoogleDriveFoldersPickerModal
-              owner={owner}
-              connectorId={googleDrive.connector.id}
-              isOpen={googleDrivePickerOpen}
-              setOpen={setGoogleDrivePickerOpen}
-            />
-          )}
           <ul role="list" className="mt-4 divide-y divide-structure-200">
             {localIntegrations.map((ds) => {
               return (

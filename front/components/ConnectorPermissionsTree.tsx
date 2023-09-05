@@ -95,13 +95,13 @@ function PermissionTreeChildren({
       {isResourcesLoading ? (
         <Spinner />
       ) : (
-        <div className="space-y-1">
+        <div className="flex-1 space-y-1">
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const titlePrefix = r.type === "channel" ? "#" : "";
             return (
               <div key={r.internalId}>
-                <div className="flex flex-row items-center py-1 text-sm">
+                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
                   {showExpand && (
                     <div className="mr-4">
                       {expanded[r.internalId] ? (
