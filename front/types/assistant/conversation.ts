@@ -1,67 +1,47 @@
 import { ModelId } from "@app/lib/databases";
-import { UserProviderType, UserType } from "@app/types/user";
+import { UserType } from "@app/types/user";
+
+import { RetrievalActionType } from "./actions/retrieval";
 
 /**
  * Mentions
  */
 
 export type AssistantAgentMention = {
-  assistantId: string;
+  configurationId: string;
 };
 
 export type AssistantUserMention = {
-  provider: UserProviderType;
+  provider: string;
   providerId: string;
 };
 
 export type AssistantMention = AssistantAgentMention | AssistantUserMention;
 
+export type AssistantMessageVisibility = "visible" | "deleted";
+
 /**
  * User messages
  */
 
+export type AssistantUserMessageContext = {
+  username: string;
+  timezone: string;
+  fullName: string | null;
+  email: string | null;
+  profilePictureUrl: string | null;
+};
+
 export type AssistantUserMessageType = {
   id: ModelId;
   sId: string;
-  status: "visible" | "deleted";
+  visibility: AssistantMessageVisibility;
+  version: number;
   parentMessageId: string;
-  user?: UserType;
+  user: UserType | null;
   mentions: AssistantMention[];
   message: string;
-  context: {
-    username: string;
-    timezone: string;
-    fullName?: string;
-    email?: string;
-    profilePictureUrl?: string;
-  };
-};
-
-/**
- * Retrieval action
- */
-
-export type RetrievalDocumentType = {
-  id: ModelId;
-  dataSourceId: string;
-  sourceUrl?: string;
-  documentId: string;
-  timestamp: number;
-  tags: string[];
-  score: number;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number;
-  }[];
-};
-
-export type RetrievalActionType = {
-  id: ModelId;
-  params: {
-    query: string;
-  };
-  documents: RetrievalDocumentType[];
+  context: AssistantUserMessageContext;
 };
 
 /**
@@ -71,10 +51,17 @@ export type RetrievalActionType = {
 export type AssistantUserFeedbackType = {
   user: UserType;
   value: "positive" | "negative" | null;
-  comment?: string;
+  comment: string | null;
 };
 
 export type AssistantAgentActionType = RetrievalActionType;
+
+export type AssistantAgentMessageStatus =
+  | "created"
+  | "action_running"
+  | "writing"
+  | "succeeded"
+  | "failed";
 
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
@@ -86,15 +73,17 @@ export type AssistantAgentActionType = RetrievalActionType;
 export type AssistantAgentMessageType = {
   id: ModelId;
   sId: string;
-  status: "visible" | "deleted";
-  parentMessageId: string;
-  action?: AssistantAgentActionType;
-  message?: string;
+  visibility: AssistantMessageVisibility;
+  version: number;
+  parentMessageId: string | null;
+  status: AssistantAgentMessageStatus;
+  action: AssistantAgentActionType | null;
+  message: string | null;
   feedbacks: AssistantUserFeedbackType[];
-  error?: {
+  error: {
     code: string;
     message: string;
-  };
+  } | null;
 };
 
 /**
@@ -111,7 +100,7 @@ export type AssistantConversationType = {
   id: ModelId;
   created: number;
   sId: string;
-  title?: string;
+  title: string | null;
   participants: UserType[];
   content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
   visibility: AssistantConversationVisibility;
