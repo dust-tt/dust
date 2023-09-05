@@ -4,6 +4,9 @@ import { RetrievalConfigurationType } from "@app/types/assistant/actions/retriev
  * Agent Action configuration
  */
 
+// New AgentActionConfigurationType checklist:
+// - Add the type to the union type below
+// - Add model rendering support in `renderConversationForModel`
 export type AgentActionConfigurationType = RetrievalConfigurationType;
 
 // Each AgentActionConfigurationType is capable of generating this type at runtime to specify which
@@ -43,7 +46,7 @@ export type AgentActionSpecification = {
 export type AgentMessageConfigurationType = {
   prompt: string;
   model: {
-    provider: string;
+    providerId: string;
     modelId: string;
   };
 };

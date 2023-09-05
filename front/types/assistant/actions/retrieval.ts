@@ -4,6 +4,9 @@
 
 import { ModelId } from "@app/lib/databases";
 
+import { AgentActionConfigurationType } from "../agent";
+import { AssistantAgentActionType } from "../conversation";
+
 export type TimeFrame = {
   count: number;
   duration: "hour" | "day" | "week" | "month" | "year";
@@ -47,6 +50,12 @@ export type RetrievalConfigurationType = {
   // autoSkip: boolean;
 };
 
+export function isRetrievalConfiguration(
+  arg: AgentActionConfigurationType | null
+): arg is RetrievalConfigurationType {
+  return arg !== null && arg.type && arg.type === "retrieval_configuration";
+}
+
 /**
  * Retrieval action
  */
@@ -66,9 +75,17 @@ export type RetrievalDocumentType = {
   }[];
 };
 
+export function isRetrievalActionType(
+  arg: AssistantAgentActionType
+): arg is RetrievalActionType {
+  return arg.type === "retrieval_action";
+}
+
 export type RetrievalActionType = {
   id: ModelId; // AssistantAgentRetrieval.
+  type: "retrieval_action";
   params: {
+    dataSources: "all" | DataSourceConfiguration[];
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;

@@ -1,5 +1,10 @@
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions/registry";
+import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
-import { Ok, Result } from "@app/lib/result";
+import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentActionConfigurationType,
@@ -18,6 +23,7 @@ import {
   RetrievalDocumentsEvent,
   RetrievalParamsEvent,
 } from "./actions/retrieval";
+import { renderConversationForModel } from "./conversation";
 
 /**
  * Agent configuration.
@@ -85,6 +91,61 @@ export async function generateActionInputs(
   conversation: AssistantConversationType,
   message: AssistantAgentMessageType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  // Turn the conversation into a digest that can be presented to the model.
+  const model = {
+    providerId: "openai",
+    modelId: "gpt-3.5-turbo-16k",
+  };
+
+  const modelConversationRes = await renderConversationForModel(auth, {
+    conversation,
+    model,
+    allowedTokenCount: 12288,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return modelConversationRes;
+  }
+
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-inputs-generator"].config
+  );
+
+  const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
+    {
+      conversation: modelConversationRes.value,
+      specification,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return new Err(new Error(`Error generating action inputs: ${res.error}`));
+  }
+
+  const run = res.value;
+
+  // TODO(spolu): finish implementation
+
+  /*
+
+    for (const t of run.traces) {
+      if (t[1][0][0].error) {
+        yield* handleError(t[1][0][0].error);
+        return;
+      }
+      if (t[0][1] === "OUTPUT") {
+        messages[messages.length - 1].retrievals = (
+          t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
+        ).retrievals;
+        yield {
+          type: "chat_message_create",
+          message: messages[messages.length - 1],
+        } as ChatMessageCreateEvent;
+      }
+    }
+  }
+  */
+
   return new Ok({});
 }
 

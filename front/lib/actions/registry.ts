@@ -12,6 +12,16 @@ const createActionRegistry = <K extends string, R extends Record<K, Action>>(
 ) => registry;
 
 export const DustProdActionRegistry = createActionRegistry({
+  "assistant-v2-inputs-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "f4816b1e13",
+      appHash:
+        "8ff4a24d26322e4c9dcd28ba2635d4d521c97d564adee9444ffaaf73d545e7f1",
+    },
+    config: {},
+  },
+
   "chat-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

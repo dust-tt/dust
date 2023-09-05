@@ -2,13 +2,13 @@ import { Authenticator } from "@app/lib/auth";
 import { Ok, Result } from "@app/lib/result";
 import {
   DataSourceConfiguration,
+  isRetrievalConfiguration,
   RetrievalActionType,
   RetrievalConfigurationType,
   RetrievalDocumentType,
   TimeFrame,
 } from "@app/types/assistant/actions/retrieval";
 import {
-  AgentActionConfigurationType,
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
@@ -18,11 +18,19 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { generateActionInputs } from "../agent";
+import { ModelMessageType } from "../conversation";
 
-export function isRetrievalConfiguration(
-  arg: AgentActionConfigurationType | null
-): arg is RetrievalConfigurationType {
-  return arg !== null && arg.type && arg.type === "retrieval_configuration";
+/**
+ * Model rendering of retrievals.
+ */
+export function renderRetrievalActionForModel(
+  action: RetrievalActionType
+): ModelMessageType {
+  return {
+    role: "action" as const,
+    name: "search_data_sources",
+    content: "TODO",
+  };
 }
 
 /**
