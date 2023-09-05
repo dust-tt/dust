@@ -9,7 +9,6 @@ import {
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment, useState } from "react";
 
-import { classNames } from "@app/lib/utils";
 import { ChatSessionVisibility } from "@app/types/chat";
 
 export function AppLayoutChatTitle({
@@ -39,18 +38,12 @@ export function AppLayoutChatTitle({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="flex h-full flex-row items-center">
-      <div className="flex flex-initial font-bold">
-        <div
-          className={classNames(
-            "w-48 overflow-hidden truncate sm:w-96 lg:w-auto lg:px-0"
-          )}
-        >
-          <span>{title}</span>
-        </div>
+    <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">
+      <div className="overflow-hidden truncate">
+        <span className="font-bold">{title}</span>
       </div>
-      <div className="flex flex-1"></div>
-      <div className="-ml-8 hidden flex-initial space-x-1 lg:ml-0 lg:flex">
+
+      <div className="hidden space-x-1 lg:flex">
         {!readOnly && onDelete && (
           <div className="flex flex-initial">
             <Button
