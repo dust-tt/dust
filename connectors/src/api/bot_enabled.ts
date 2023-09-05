@@ -4,7 +4,7 @@ import {
   GET_BOT_ENABLED_BY_TYPE,
   TOGGLE_BOT_BY_TYPE,
 } from "@connectors/connectors";
-import { Connector, SlackConfiguration } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 type GetBotEnabledRes = {

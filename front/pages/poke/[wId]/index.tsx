@@ -237,7 +237,7 @@ const WorkspacePage = ({
       if (!r.ok) {
         throw new Error("Failed to toggle slackbot.");
       }
-      //      router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while toggling slackbot.");
