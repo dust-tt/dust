@@ -696,6 +696,38 @@ export const CoreAPI = {
 
     return _resultFromResponse(response);
   },
+  async updateDataSourceDocumentParents({
+    projectId,
+    dataSourceName,
+    documentId,
+    parents,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    documentId: string;
+    parents: string[];
+  }): Promise<
+    CoreAPIResponse<{
+      data_source: CoreAPIDataSource;
+    }>
+  > {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+        documentId
+      )}/parents`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parents: parents,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
 
   async deleteDataSourceDocument({
     projectId,
