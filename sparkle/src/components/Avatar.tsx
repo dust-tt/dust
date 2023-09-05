@@ -7,6 +7,8 @@ type AvatarProps = {
   size: "xs" | "sm" | "md" | "lg" | "full";
   name?: string;
   visual?: string | React.ReactNode;
+  onClick?: () => void;
+  busy?: boolean;
 };
 
 const colors = [
@@ -63,7 +65,13 @@ const textSize = {
   full: "s-text-6xl",
 };
 
-export function Avatar({ size = "sm", name, visual }: AvatarProps) {
+export function Avatar({
+  size = "sm",
+  name,
+  visual,
+  onClick,
+  busy = false,
+}: AvatarProps) {
   const getColor = (name: string) => {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -80,10 +88,19 @@ export function Avatar({ size = "sm", name, visual }: AvatarProps) {
     return txtColors[Math.abs(hash) % txtColors.length];
   };
 
+  const clickableStyles =
+    onClick && !busy
+      ? "s-cursor-pointer hover:s-filter hover:s-brightness-110 active:s-brightness-90 s-transition s-duration-200 s-ease-out"
+      : "";
+
+  const busyStyles = busy ? "s-animate-breathing s-cursor-default" : "";
+
   const avatarClass = classNames(
     sizeClasses[size],
     name ? getColor(name) : "s-bg-slate-200",
-    "s-flex s-items-center s-justify-center s-overflow-hidden"
+    "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
+    clickableStyles,
+    busyStyles
   );
 
   return (

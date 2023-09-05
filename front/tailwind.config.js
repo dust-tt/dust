@@ -65,9 +65,18 @@ module.exports = {
             paddingBottom: "50%",
           },
         },
+        breathing: {
+          "0%, 100%": {
+            filter: "brightness(105%)",
+          },
+          "50%": {
+            filter: "brightness(80%)",
+          },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
+        breathing: "breathing 4s infinite ease-in-out",
       },
       colors: {
         brand: {
