@@ -1,15 +1,17 @@
+import memoize from "lodash.memoize";
+
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models";
 import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+
 import {
   getDatabaseChildrenOfDocument,
   getNotionPageFromConnectorsDb,
   getPageChildrenOfDocument,
 } from "./connectors_db_helpers";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models";
-import memoize from "lodash.memoize";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 
 /** Compute the parents field for a notion document
  * See the [Design Doc](TODO) and the field [documentation in core](TODO) for relevant details
@@ -31,10 +33,10 @@ async function _getParents(
       // are ignored for now, see the design doc for details
       return parents;
     case "page":
-    case "database":
+    case "database": {
       // retrieve the parent from notion connectors db
       // and add it to the parents array
-      let parent = await getNotionPageFromConnectorsDb(
+      const parent = await getNotionPageFromConnectorsDb(
         dataSourceInfo,
         document.parentId as string // (cannot be null here)
       );
@@ -50,6 +52,7 @@ async function _getParents(
           parentId: parent.parentId,
         })
       );
+    }
     default:
       throw new Error(`Unhandled parent type ${document.parentType}`);
   }
@@ -99,7 +102,7 @@ async function getPagesToUpdate(
 
   // documents is a queue of documents whose children should be fetched
   while (documents.length !== 0) {
-    const document = documents.shift()!;
+    const document = documents.shift();
 
     // Get children of the document
     const documentId =

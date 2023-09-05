@@ -8,10 +8,6 @@ import {
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
-  getParents,
-  updateAllParentsFields,
-} from "@connectors/connectors/notion/lib/parents";
-import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
 } from "@connectors/connectors/notion/lib/garbage_collect";
@@ -21,6 +17,10 @@ import {
   getParsedPage,
   isAccessibleAndUnarchived,
 } from "@connectors/connectors/notion/lib/notion_api";
+import {
+  getParents,
+  updateAllParentsFields,
+} from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
 import {
   deleteFromDataSource,
@@ -249,7 +249,7 @@ export async function notionUpsertPageActivity(
 
   const parsedPage = await getParsedPage(accessToken, pageId, loggerArgs);
 
-  let createdOrMoved =
+  const createdOrMoved =
     parsedPage?.parentType !== notionPage?.parentType ||
     parsedPage?.parentId !== notionPage?.parentId;
 
@@ -272,7 +272,7 @@ export async function notionUpsertPageActivity(
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
-    let parents = await getParents(dataSourceConfig, {
+    const parents = await getParents(dataSourceConfig, {
       notionId: pageId,
       parentType: parsedPage.parentType,
       parentId: parsedPage.parentId,
@@ -348,7 +348,7 @@ export async function notionUpsertDatabaseActivity(
 
   const parsedDb = await getParsedDatabase(accessToken, databaseId, loggerArgs);
 
-  let createdOrMoved =
+  const createdOrMoved =
     parsedDb?.parentType !== notionDatabase?.parentType ||
     parsedDb?.parentId !== notionDatabase?.parentId;
 
@@ -361,7 +361,7 @@ export async function notionUpsertDatabaseActivity(
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
   });
-  return { document: notionDatabase, createdOrMoved: createdOrMoved };
+  return { document: newNotionDb, createdOrMoved: createdOrMoved };
 }
 
 export async function saveSuccessSyncActivity(

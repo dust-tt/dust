@@ -221,6 +221,7 @@ export async function updateDocumentParentsField(
       dustRequestConfig
     );
   } catch (e) {
+    localLogger.error({ error: e }, "Error updating document parents field.");
     throw e;
   }
 
