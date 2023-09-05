@@ -16,8 +16,8 @@ const gridStyle = {
 const itemStyle = {
   marginTop: "12px",
   textOverflow: "ellipsis",
-  overflow: "hidden", // Add this
-  whiteSpace: "nowrap", // Add this
+  overflow: "hidden",
+  whiteSpace: "nowrap",
   textAlign: "left",
   width: "100%",
 };
@@ -25,13 +25,15 @@ const itemStyle = {
 export const SolidIconSet = () => (
   <div style={gridStyle}>
     {Object.entries(SolidIcons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = IconComponent.default
-        ? IconComponent.default
-        : IconComponent;
+      const CurrentIcon = (
+        "default" in IconComponent ? IconComponent.default : IconComponent
+      ) as React.ComponentType<{ className?: string | undefined }>;
       return (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle}>{iconName + "Icon"}</div>
+          <div style={itemStyle as React.CSSProperties}>
+            {iconName + "Icon"}
+          </div>
         </div>
       );
     })}
@@ -41,13 +43,15 @@ export const SolidIconSet = () => (
 export const StrokeIconSet = () => (
   <div style={gridStyle}>
     {Object.entries(StrokeIcons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = IconComponent.default
-        ? IconComponent.default
-        : IconComponent;
+      const CurrentIcon = (
+        "default" in IconComponent ? IconComponent.default : IconComponent
+      ) as React.ComponentType<{ className?: string | undefined }>;
       return (
-        <div key={iconName} style={{ textAlign: "center" }}>
+        <div key={iconName}>
           <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle}>{iconName + "StrokeIcon"}</div>
+          <div style={itemStyle as React.CSSProperties}>
+            {iconName + "Icon"}
+          </div>
         </div>
       );
     })}

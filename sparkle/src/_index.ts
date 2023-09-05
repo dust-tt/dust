@@ -47,6 +47,15 @@ import Spinner from "./components/Spinner";
 export { Spinner };
 
 import {
+  Drive as DriveLogo,
+  Github as GithubLogo,
+  Notion as NotionLogo,
+  Slack as SlackLogo,
+} from "./logo/platforms";
+
+export { DriveLogo, GithubLogo, NotionLogo, SlackLogo };
+
+import {
   ArrowDownCircle as ArrowDownCircleIcon,
   ArrowDownOnSquare as ArrowDownOnSquareIcon,
   ArrowPath as ArrowPathIcon,

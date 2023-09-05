@@ -72,7 +72,6 @@ export const AvatarExample = () => (
         visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
       />
     </div>
-    <div>System Avatar</div>
   </div>
 );
 
