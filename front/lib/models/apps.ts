@@ -27,7 +27,7 @@ export class App extends Model<
   declare savedRun: string | null;
   declare dustAPIProjectId: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 App.init(
   {
@@ -85,7 +85,10 @@ App.init(
     ],
   }
 );
-Workspace.hasMany(App);
+Workspace.hasMany(App, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class Provider extends Model<
   InferAttributes<Provider>,
@@ -98,7 +101,7 @@ export class Provider extends Model<
   declare providerId: string;
   declare config: string;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Provider.init(
   {
@@ -132,7 +135,10 @@ Provider.init(
     indexes: [{ fields: ["workspaceId"] }],
   }
 );
-Workspace.hasMany(Provider);
+Workspace.hasMany(Provider, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class Dataset extends Model<
   InferAttributes<Dataset>,
@@ -145,8 +151,8 @@ export class Dataset extends Model<
   declare name: string;
   declare description: string | null;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
-  declare appId: ForeignKey<App["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare appId: ForeignKey<App["id"]>;
 }
 Dataset.init(
   {
@@ -179,8 +185,14 @@ Dataset.init(
     indexes: [{ fields: ["workspaceId", "appId", "name"] }],
   }
 );
-App.hasMany(Dataset);
-Workspace.hasMany(Dataset);
+App.hasMany(Dataset, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+Workspace.hasMany(Dataset, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class Clone extends Model<
   InferAttributes<Clone>,
@@ -190,8 +202,8 @@ export class Clone extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare fromId: ForeignKey<App["id"]> | null;
-  declare toId: ForeignKey<App["id"]> | null;
+  declare fromId: ForeignKey<App["id"]>;
+  declare toId: ForeignKey<App["id"]>;
 }
 Clone.init(
   {
@@ -232,8 +244,14 @@ Clone.init(
     sequelize: front_sequelize,
   }
 );
-Clone.belongsTo(App, { foreignKey: "fromId" });
-Clone.belongsTo(App, { foreignKey: "toId" });
+Clone.belongsTo(App, {
+  foreignKey: { name: "fromId", allowNull: false },
+  onDelete: "CASCADE",
+});
+Clone.belongsTo(App, {
+  foreignKey: { name: "toId", allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class Run extends Model<
   InferAttributes<Run>,
@@ -246,8 +264,8 @@ export class Run extends Model<
   declare dustRunId: string;
   declare runType: string;
 
-  declare appId: ForeignKey<App["id"]> | null;
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare appId: ForeignKey<App["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 Run.init(
@@ -285,5 +303,11 @@ Run.init(
     ],
   }
 );
-App.hasMany(Run);
-Workspace.hasMany(Run);
+App.hasMany(Run, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+Workspace.hasMany(Run, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
