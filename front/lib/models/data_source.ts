@@ -27,7 +27,7 @@ export class DataSource extends Model<
   declare dustAPIProjectId: string;
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 DataSource.init(
@@ -87,4 +87,7 @@ DataSource.init(
     ],
   }
 );
-Workspace.hasMany(DataSource);
+Workspace.hasMany(DataSource, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
