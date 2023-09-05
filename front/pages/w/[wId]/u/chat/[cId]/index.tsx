@@ -7,7 +7,6 @@ import {
   ClipboardIcon,
   CloudArrowDownIcon,
   DocumentDuplicateIcon,
-  Icon,
   IconButton,
   Logo,
   PageHeader,
@@ -327,8 +326,10 @@ export function RetrievalsView({
           className={classNames(
             "flex flex-initial flex-row items-center gap-2 space-x-2",
             "rounded-xl px-4 py-2",
-            "text-sm font-bold text-amber-700",
-            isLatest ? "border-2 border-amber-200 bg-amber-100" : "bg-gray-100"
+            "text-sm font-bold",
+            isLatest
+              ? "border-1 border-amber-200 bg-amber-100 text-amber-700"
+              : "bg-structure-100 text-element-700"
           )}
         >
           {message.retrievals && message.retrievals.length > 0 && (
@@ -442,7 +443,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
             a({ href, children }) {
               return (
                 <Link href={href ? href : ""} target="_blank">
-                  <span className="text-blue-600 hover:underline">
+                  <span className="text-action-500 hover:text-action-400">
                     {children}
                   </span>
                 </Link>
@@ -1199,7 +1200,7 @@ export default function AppChat({
 
         {canStartConversation && (
           <>
-            <div className="flex-1">
+            <div id="MessageView" className="flex-1">
               <div className="flex flex-col pb-32">
                 {messages.length > 0 ? (
                   <div className="text-sm">
@@ -1296,7 +1297,10 @@ export default function AppChat({
 
             {/* Input fixed panel */}
             {!readOnly && (
-              <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial bg-white lg:left-80">
+              <div
+                id="ChatPrompter"
+                className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80"
+              >
                 <div className="mx-auto max-w-4xl px-6">
                   {/* Input bar  */}
                   <div className="">
@@ -1342,7 +1346,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-8 mt-4 flex flex-row flex-wrap items-center text-xs">
+                  <div className="flex flex-row flex-wrap items-center bg-white pb-8 pt-4 text-xs">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>
