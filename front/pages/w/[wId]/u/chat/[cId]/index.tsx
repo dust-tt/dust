@@ -653,6 +653,9 @@ export default function AppChat({
     setInput(input);
   };
 
+  const [stickyDataSourceSelectionUpdate, setStickyDataSourceSelectionUpdate] =
+    useState<{ [key: string]: boolean }>({});
+
   const handleSwitchDataSourceSelection = async (name: string) => {
     let selected = false;
 
@@ -668,25 +671,10 @@ export default function AppChat({
       }
     });
     setDataSources(newSelection);
-    try {
-      const currentStickySelectionRaw = await getUserMetadataFromClient(
-        "chat-data-sources-selection"
-      );
-
-      const stickySelection: { [key: string]: boolean } =
-        currentStickySelectionRaw
-          ? JSON.parse(currentStickySelectionRaw.value)
-          : new Set();
-
-      stickySelection[name] = selected;
-
-      await setUserMetadataFromClient({
-        key: "chat-data-sources-selection",
-        value: JSON.stringify(stickySelection),
-      });
-    } catch (e) {
-      console.error("Error saving Data Sources selection", e);
-    }
+    setStickyDataSourceSelectionUpdate({
+      ...stickyDataSourceSelectionUpdate,
+      [name]: selected,
+    });
   };
 
   const handleTimeRangeChange = (timeRange: ChatTimeRange) => {
@@ -1069,6 +1057,25 @@ export default function AppChat({
       await upsertChatSession(t);
       void mutateChatSession();
       void mutateChatSessions();
+    })();
+
+    // Save sticky data source selection preferences
+    void (async () => {
+      let stickySelection: { [key: string]: boolean } = {};
+      const currentStickySelectionRaw = await getUserMetadataFromClient(
+        "chat-data-sources-selection"
+      );
+      if (currentStickySelectionRaw) {
+        stickySelection = JSON.parse(currentStickySelectionRaw.value);
+      }
+      stickySelection = {
+        ...stickySelection,
+        ...stickyDataSourceSelectionUpdate,
+      };
+      await setUserMetadataFromClient({
+        key: "chat-data-sources-selection",
+        value: JSON.stringify(stickySelection),
+      });
     })();
 
     setLoading(false);
