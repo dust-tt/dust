@@ -1,43 +1,80 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
-import { Logo } from "../index_with_tw_base";
+import {
+  LogoHorizontalColor,
+  LogoHorizontalDark,
+  LogoHorizontalWhite,
+  LogoSquareColor,
+  LogoSquareDark,
+  LogoSquareWhite,
+} from "../logo/dust";
 
-const meta = {
-  title: "Assets/Logo",
-  component: Logo,
-} satisfies Meta<typeof Logo>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const LogoFullColor: Story = {
-  args: {
-    shape: "full",
-    type: "full-color",
-    className: "w-32",
-  },
+export default {
+  title: "Assets/logo",
 };
 
-export const LogoColoredGrey: Story = {
-  args: {
-    shape: "full",
-    type: "colored-grey",
-    className: "w-32",
-  },
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  gap: "48px 16px",
+};
+const itemStyle = {
+  marginTop: "12px",
+  textOverflow: "ellipsis",
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+  textAlign: "left",
+  width: "100%",
 };
 
-export const LogoSquareFullColor: Story = {
-  args: {
-    shape: "square",
-    type: "full-color",
-    className: "w-32",
-  },
-};
+export const DustLogoSet = () => (
+  <>
+    <div style={gridStyle}>
+      <div className="s-p-6">
+        <LogoHorizontalColor className="s-h-8 s-w-32" />
+        <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+          LogoHorizontalColor
+        </div>
+      </div>
+      <div className="s-p-6">
+        <LogoHorizontalDark className="s-h-8 s-w-32" />
+        <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+          LogoHorizontalDark
+        </div>
+      </div>
+      <div className="s-bg-slate-800 s-p-6">
+        <LogoHorizontalWhite className="s-h-8 s-w-32" />
+        <div
+          style={itemStyle as React.CSSProperties}
+          className="s-text-sm s-text-white"
+        >
+          LogoHorizontalWhite
+        </div>
+      </div>
+    </div>
 
-export const LogoSquareColoredGrey: Story = {
-  args: {
-    shape: "square",
-    type: "colored-grey",
-    className: "w-32",
-  },
-};
+    <div style={gridStyle}>
+      <div className="s-p-6">
+        <LogoSquareColor className="s-h-16 s-w-16" />
+        <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+          LogoHorizontalColor
+        </div>
+      </div>
+      <div className="s-p-6">
+        <LogoSquareDark className="s-h-16 s-w-16" />
+        <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+          LogoHorizontalDark
+        </div>
+      </div>
+      <div className="s-bg-slate-800 s-p-6">
+        <LogoSquareWhite className="s-h-16 s-w-16" />
+        <div
+          style={itemStyle as React.CSSProperties}
+          className="s-text-sm s-text-white"
+        >
+          LogoHorizontalWhite
+        </div>
+      </div>
+    </div>
+  </>
+);

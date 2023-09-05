@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Icon } from "../index_with_tw_base";
-import * as PlatformIcons from "../logo/platforms/";
+import * as PlatformIcons from "../logo/platforms";
 
 export default {
   title: "Assets/Platform_Icons",
@@ -21,7 +21,7 @@ const itemStyle = {
   width: "100%",
 };
 
-export const PlatformIconset = () => (
+export const PlatformIconSet = () => (
   <div style={gridStyle}>
     {Object.entries(PlatformIcons).map(([iconName, IconComponent]) => {
       const CurrentIcon = (
@@ -30,7 +30,7 @@ export const PlatformIconset = () => (
       return (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="lg" />
-          <div style={itemStyle as React.CSSProperties}>
+          <div style={itemStyle as React.CSSProperties} className="s-text-base">
             {iconName + "Icon"}
           </div>
         </div>
