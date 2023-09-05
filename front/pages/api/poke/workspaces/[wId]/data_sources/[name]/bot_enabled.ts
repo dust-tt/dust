@@ -124,13 +124,18 @@ async function handler(
       );
 
       if (connectorRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `An error occurred while enabling the bot: ${connectorRes.error}`,
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `An error occurred while enabling the bot`,
+            },
           },
-        });
+          new Error(JSON.stringify(connectorRes.error.error))
+        );
       }
 
       return res.status(200).json({ botEnabled: botEnabled });
