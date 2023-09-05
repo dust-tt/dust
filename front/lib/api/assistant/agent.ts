@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentActionConfigurationType,
+  AgentActionInputsSpecification,
   AgentConfigurationStatus,
   AgentConfigurationType,
   AgentMessageConfigurationType,
@@ -14,7 +15,7 @@ import {
 
 import {
   RetrievalDocumentsEvent,
-  RetrievalQueryEvent,
+  RetrievalParamsEvent,
 } from "./actions/retrieval";
 
 /**
@@ -38,10 +39,10 @@ export async function createAgentConfiguration(
   return {
     sId: generateModelSId(),
     name,
-    pictureUrl: pictureUrl || null,
+    pictureUrl: pictureUrl ?? null,
     status: "active",
-    action: action || null,
-    message: message || null,
+    action: action ?? null,
+    message: message ?? null,
   };
 }
 
@@ -65,11 +66,23 @@ export async function updateAgentConfiguration(
   return {
     sId: generateModelSId(),
     name,
-    pictureUrl: pictureUrl || null,
+    pictureUrl: pictureUrl ?? null,
     status,
-    action: action || null,
-    message: message || null,
+    action: action ?? null,
+    message: message ?? null,
   };
+}
+
+/**
+ * Action Inputs generation.
+ */
+
+// This method is used by actions to generate its inputs if needed.
+export async function generateActionInputs(
+  auth: Authenticator,
+  specification: AgentActionInputsSpecification
+): Promise<Record<string, string | boolean | number>> {
+  return {};
 }
 
 /**
@@ -97,7 +110,7 @@ export type AgentErrorEvent = {
 };
 
 // Event sent durint the execution of an action. These are action specific.
-export type AgentActionEvent = RetrievalQueryEvent | RetrievalDocumentsEvent;
+export type AgentActionEvent = RetrievalParamsEvent | RetrievalDocumentsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

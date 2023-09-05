@@ -1,22 +1,45 @@
 import { Authenticator } from "@app/lib/auth";
 import {
+  DataSourceConfiguration,
   DataSourceFilter,
   RetrievalActionType,
   RetrievalDocumentType,
+  TimeFrame,
 } from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
+import {
+  AgentActionInputsSpecification,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
 import {
   AssistantAgentMessageType,
   AssistantConversationType,
 } from "@app/types/assistant/conversation";
 
+/**
+ * Inputs generation.
+ */
+
+export async function retrievalInputsSpecification(
+  auth: Authenticator,
+  configuration: AgentConfigurationType
+): Promise<AgentActionInputsSpecification> {
+  return {
+    inputs: [],
+  };
+}
+
+/**
+ * Action execution.
+ */
+
 // Event sent during retrieval with the finalized query used to retrieve documents.
-export type RetrievalQueryEvent = {
-  type: "retrieval_query";
+export type RetrievalParamsEvent = {
+  type: "retrieval_params";
   created: number;
-  dataSources: DataSourceFilter[];
+  dataSources: "all" | DataSourceConfiguration[];
   query: string | null;
-  top_k: number;
+  relativeTimeFrame: TimeFrame | null;
+  topK: number;
 };
 
 // Event sent during retrieval once the retrieved documents have been generated.
@@ -56,7 +79,7 @@ export async function* runRetrieval(
   conversation: AssistantConversationType,
   message: AssistantAgentMessageType
 ): AsyncGenerator<
-  | RetrievalQueryEvent
+  | RetrievalParamsEvent
   | RetrievalDocumentsEvent
   | RetrievalSuccessEvent
   | RetrievalErrorEvent
