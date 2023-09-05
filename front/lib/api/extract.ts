@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { ModelId } from "@app/lib/databases";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
@@ -26,7 +27,7 @@ function _getExtractedEventType(
     id: event.id,
     sId: event.sId,
     marker: event.marker,
-    properties: event.properties,
+    properties: sortedEventProperties(schema.properties, event.properties),
     status: event.status,
     dataSourceName: event.dataSourceName,
     documentId: event.documentId,

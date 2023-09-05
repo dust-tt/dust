@@ -23,7 +23,6 @@ import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
-import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/ds";
@@ -167,7 +166,7 @@ export default function AppExtractEventsReadData({
                         href={`/w/${owner.sId}/u/extract/events/${event.sId}/edit`}
                         className="block"
                       >
-                        <EventProperties event={event} schema={schema} />
+                        <EventProperties event={event} />
                       </Link>
                     </td>
                     <td className="w-auto border-y px-4 py-4 text-right align-top">
@@ -180,7 +179,7 @@ export default function AppExtractEventsReadData({
                     </td>
                     <td className="w-auto border-y px-4 py-4 align-top">
                       <div className="flex flex-row space-x-2">
-                        <ExtractButtonAndModal event={event} schema={schema} />
+                        <ExtractButtonAndModal event={event} />
 
                         <IconButton
                           icon={CheckCircleIcon}
@@ -249,18 +248,7 @@ export default function AppExtractEventsReadData({
 // ]
 // In event properties are stored as an object with undefined order as it is a JSONB column
 // Example: {"name": "My idea", "author": "Michael Scott"}
-const EventProperties = ({
-  event,
-  schema,
-}: {
-  event: ExtractedEventType;
-  schema: EventSchemaType;
-}) => {
-  const sortedProps = sortedEventProperties(
-    schema.properties,
-    event.properties
-  );
-
+const EventProperties = ({ event }: { event: ExtractedEventType }) => {
   const renderPropertyValue = (value: string | string[]) => {
     if (typeof value === "string") {
       return <p>{value}</p>;
@@ -283,10 +271,10 @@ const EventProperties = ({
 
   return (
     <div className="space-y-4">
-      {Object.keys(sortedProps).map((key) => (
+      {Object.keys(event.properties).map((key) => (
         <div key={key} className="flex flex-col">
           <span className="font-bold">{key}</span>
-          {renderPropertyValue(sortedProps[key])}
+          {renderPropertyValue(event.properties[key])}
         </div>
       ))}
     </div>
@@ -328,29 +316,18 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   );
 };
 
-const ExtractButtonAndModal = ({
-  event,
-  schema,
-}: {
-  event: ExtractedEventType;
-  schema: EventSchemaType;
-}) => {
+const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   const handleClick = async (format: "JSON" | "Markdown"): Promise<void> => {
     let content: string | null = null;
 
-    const sortedProps = sortedEventProperties(
-      schema.properties,
-      event.properties
-    );
-
     if (format === "JSON") {
-      content = JSON.stringify(sortedProps);
+      content = JSON.stringify(event.properties);
     }
     if (format === "Markdown") {
-      content = objectToMarkdown(sortedProps);
+      content = objectToMarkdown(event.properties);
     }
 
     if (!content) {
