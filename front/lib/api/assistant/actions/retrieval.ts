@@ -1,13 +1,15 @@
 import { Authenticator } from "@app/lib/auth";
+import { Ok, Result } from "@app/lib/result";
 import {
   DataSourceConfiguration,
-  DataSourceFilter,
   RetrievalActionType,
+  RetrievalConfigurationType,
   RetrievalDocumentType,
   TimeFrame,
 } from "@app/types/assistant/actions/retrieval";
 import {
-  AgentActionInputsSpecification,
+  AgentActionConfigurationType,
+  AgentActionSpecification,
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
 import {
@@ -15,17 +17,84 @@ import {
   AssistantConversationType,
 } from "@app/types/assistant/conversation";
 
+import { generateActionInputs } from "../agent";
+
+export function isRetrievalConfiguration(
+  arg: AgentActionConfigurationType | null
+): arg is RetrievalConfigurationType {
+  return arg !== null && arg.type && arg.type === "retrieval_configuration";
+}
+
 /**
- * Inputs generation.
+ * Params generation.
  */
 
-export async function retrievalInputsSpecification(
-  auth: Authenticator,
-  configuration: AgentConfigurationType
-): Promise<AgentActionInputsSpecification> {
+export async function retrievalActionSpecification(
+  configuration: RetrievalConfigurationType
+): Promise<AgentActionSpecification> {
+  const inputs = [];
+
+  if (configuration.query === "auto") {
+    inputs.push({
+      name: "query",
+      description:
+        "The string used to retrieve relevant chunks of information using semantic similarity" +
+        " based on the user request and conversation context.",
+      type: "string" as const,
+    });
+  }
+  if (configuration.relativeTimeFrame === "auto") {
+    inputs.push({
+      name: "relativeTimeFrame",
+      description:
+        "The time frame (relative to now) to restrict the search based on the user request and conversation context." +
+        " Possible values are: `all`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number.",
+      type: "string" as const,
+    });
+  }
+
   return {
-    inputs: [],
+    name: "search_data_sources",
+    description:
+      "Search the data sources specified by the user for information to answer their request." +
+      " The search is based on semantic similarity between the query and chunks of information from the data sources.",
+    inputs,
   };
+}
+
+export async function generateRetrievalParams(
+  auth: Authenticator,
+  configuration: RetrievalConfigurationType,
+  conversation: AssistantConversationType,
+  message: AssistantAgentMessageType
+): Promise<
+  Result<
+    { query: string | null; relativeTimeFrame: TimeFrame | null; topK: number },
+    Error
+  >
+> {
+  const spec = await retrievalActionSpecification(configuration);
+
+  if (spec.inputs.length > 0) {
+    const rawInputsRes = await generateActionInputs(
+      auth,
+      spec,
+      conversation,
+      message
+    );
+
+    if (rawInputsRes.isErr()) {
+      return rawInputsRes;
+    }
+  }
+
+  // TODO(spolu): turn rawInputs into actual params
+
+  return new Ok({
+    query: null,
+    relativeTimeFrame: null,
+    topK: configuration.topK,
+  });
 }
 
 /**
@@ -84,14 +153,48 @@ export async function* runRetrieval(
   | RetrievalSuccessEvent
   | RetrievalErrorEvent
 > {
+  const c = configuration.action;
+  if (!isRetrievalConfiguration(c)) {
+    return yield {
+      type: "retrieval_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "internal_server_error",
+        message: "Unexpected action configuration received in `runRetrieval`",
+      },
+    };
+  }
+
+  const paramsRes = await generateRetrievalParams(
+    auth,
+    c,
+    conversation,
+    message
+  );
+
+  if (paramsRes.isErr()) {
+    return yield {
+      type: "retrieval_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "retrieval_parameters_generation_error",
+        message: `Error generating parameters for retrieval: ${paramsRes.error.message}`,
+      },
+    };
+  }
+
+  const params = paramsRes.value;
+
   yield {
-    type: "retrieval_error",
+    type: "retrieval_params",
     created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: message.sId,
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
+    dataSources: c.dataSources,
+    query: params.query,
+    relativeTimeFrame: params.relativeTimeFrame,
+    topK: params.topK,
   };
 }

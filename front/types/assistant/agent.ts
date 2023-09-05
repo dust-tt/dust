@@ -26,7 +26,9 @@ export type AgentActionConfigurationType = RetrievalConfigurationType;
 //   ]
 // }
 // ```
-export type AgentActionInputsSpecification = {
+export type AgentActionSpecification = {
+  name: string;
+  description: string;
   inputs: {
     name: string;
     description: string;

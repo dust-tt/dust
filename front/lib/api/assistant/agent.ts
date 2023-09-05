@@ -1,8 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
+import { Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentActionConfigurationType,
-  AgentActionInputsSpecification,
+  AgentActionSpecification,
   AgentConfigurationStatus,
   AgentConfigurationType,
   AgentMessageConfigurationType,
@@ -80,9 +81,11 @@ export async function updateAgentConfiguration(
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
-  specification: AgentActionInputsSpecification
-): Promise<Record<string, string | boolean | number>> {
-  return {};
+  specification: AgentActionSpecification,
+  conversation: AssistantConversationType,
+  message: AssistantAgentMessageType
+): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  return new Ok({});
 }
 
 /**
