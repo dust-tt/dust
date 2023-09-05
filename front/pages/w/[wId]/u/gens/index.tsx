@@ -585,30 +585,31 @@ export function TemplatesView({
   savedTemplates: GensTemplateType[];
   isBuilder: boolean;
 }) {
-  const [templates, setTemplates] = useState<GensTemplateType[]>(
-    [
-      {
-        name: "Neutral",
-        color: "bg-green-500",
-        instructions: "",
-        sId: "0000",
-        visibility: "default" as GensTemplateVisibilityType,
-      },
-      {
-        name: "Fact Gatherer",
-        color: "bg-red-500",
-        instructions: [
-          "Extract facts and important information in a list",
-          "Present your answers in list format",
-          "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
-          "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
-          "We just want to gather facts and answers related to the document text",
-        ].join("\n"),
-        sId: "0000",
-        visibility: "default" as GensTemplateVisibilityType,
-      },
-    ].concat(savedTemplates)
-  );
+  const [templates, setTemplates] = useState<GensTemplateType[]>([
+    {
+      name: "Neutral",
+      color: "bg-green-500",
+      instructions: "",
+      sId: "0000",
+      visibility: "default" as GensTemplateVisibilityType,
+      userId: null,
+    },
+    {
+      name: "Fact Gatherer",
+      color: "bg-red-500",
+      instructions: [
+        "Extract facts and important information in a list",
+        "Present your answers in list format",
+        "The user text is part of a document they're writing on the topic, and we want to help them get access to more information. The user might be mid-sentence, we just want to get context and helpful information",
+        "Don't say things like 'based on the document', 'The main points are', ... If you can't find useful information, just say so",
+        "We just want to gather facts and answers related to the document text",
+      ].join("\n"),
+      sId: "0000",
+      visibility: "default" as GensTemplateVisibilityType,
+      userId: null,
+    },
+    ...savedTemplates,
+  ]);
   const [selectedTemplate, setSelectedTemplate] = useState<number>(0);
   const [editingTemplate, setEditingTemplate] = useState<number>(-1);
   const [editingTemplateTitle, setEditingTemplateTitle] = useState<string>("");
@@ -847,6 +848,7 @@ export function TemplatesView({
                                 instructions: editingTemplateInstructions,
                                 sId: client_side_new_id(),
                                 visibility: editingTemplateVisibility,
+                                userId: null,
                               };
                               const curr_templates = templates.map((d) => d);
                               if (editingTemplate == -1) {
