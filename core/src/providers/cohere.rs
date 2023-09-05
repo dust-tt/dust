@@ -534,6 +534,10 @@ impl Embedder for CohereEmbedder {
         api_decode(self.api_key.as_ref().unwrap(), tokens).await
     }
 
+    async fn tokenize(&self, _text: String) -> Result<Vec<(usize, String)>> {
+        Err(anyhow!("Tokenize not implemented for provider `Cohere`"))
+    }
+
     async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         assert!(self.api_key.is_some());
 

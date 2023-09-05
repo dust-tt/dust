@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 export type EventSchemaStatus = "active" | "disabled";
 export type ExtractedEventStatus = "pending" | "accepted" | "rejected";
@@ -7,7 +7,7 @@ export type EventSchemaType = {
   id: ModelId;
   sId: string;
   marker: string;
-  description?: string;
+  description: string | null;
   status: EventSchemaStatus;
   properties: EventSchemaPropertyType[];
 };
@@ -39,11 +39,17 @@ export type ExtractedEventType = {
   id: ModelId;
   sId: string;
   marker: string;
-  properties: {
-    [key: string]: string | string[];
-  };
+  properties: ExtractedEventPropertyType;
   status: ExtractedEventStatus;
   dataSourceName: string;
   documentId: string;
   documentSourceUrl: string | null;
+  schema: {
+    marker: string;
+    sId: string;
+  };
+};
+
+export type ExtractedEventPropertyType = {
+  [key: string]: string | string[];
 };

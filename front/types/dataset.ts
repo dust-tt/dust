@@ -4,6 +4,6 @@ export type DatasetEntry = {
 
 export type DatasetType = {
   name: string;
-  description?: string;
-  data?: Array<DatasetEntry>;
+  description: string | null;
+  data: Array<DatasetEntry> | null;
 };

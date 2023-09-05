@@ -166,6 +166,7 @@ async function handler(
         dataset: {
           name: req.body.name,
           description,
+          data: null,
         },
       });
       return;

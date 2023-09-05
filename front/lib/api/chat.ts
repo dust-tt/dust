@@ -1,3 +1,4 @@
+import { front_sequelize } from "@app/lib/databases";
 import { generateModelSId, new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
@@ -15,12 +16,7 @@ import { cloneBaseConfig, DustProdActionRegistry } from "../actions/registry";
 import { runAction, runActionStreamed } from "../actions/server";
 import { Authenticator, prodAPICredentialsForOwner } from "../auth";
 import { DustAPI } from "../dust_api";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
-  front_sequelize,
-} from "../models";
+import { ChatMessage, ChatRetrievedDocument, ChatSession } from "../models";
 
 /**
  *
@@ -106,6 +102,7 @@ export async function getChatSession(
     sId: chatSession.sId,
     title: chatSession.title,
     visibility: chatSession.visibility,
+    messages: null,
   };
 }
 
@@ -151,6 +148,7 @@ export async function takeOwnerShipOfChatSession(
     sId: chatSession.sId,
     title: chatSession.title,
     visibility: chatSession.visibility,
+    messages: null,
   };
 }
 
@@ -224,6 +222,7 @@ export async function upsertChatSession(
       sId: chatSession.sId,
       title: chatSession.title,
       visibility: chatSession.visibility,
+      messages: null,
     };
   });
 }
@@ -283,6 +282,7 @@ export async function getChatSessionWithMessages(
             chunks: [],
           };
         }),
+        params: null,
       };
     }),
   };
@@ -346,6 +346,7 @@ export async function getChatMessage(
         chunks: [],
       };
     }),
+    params: null,
   };
 }
 
@@ -574,6 +575,9 @@ export async function* newChat(
       sId: new_id(),
       role: "user",
       message: userMessage,
+      retrievals: null,
+      params: null,
+      feedback: null,
     },
   ];
 
@@ -586,6 +590,9 @@ export async function* newChat(
       sId: new_id(),
       role: "error",
       message: errorMessage,
+      retrievals: null,
+      params: null,
+      feedback: null,
     });
 
     yield {
@@ -676,7 +683,10 @@ export async function* newChat(
             messages.push({
               sId: new_id(),
               role: "assistant",
-              message: m.message,
+              message: m.message ?? null,
+              retrievals: null,
+              params: null,
+              feedback: null,
             });
           }
 
@@ -689,6 +699,9 @@ export async function* newChat(
               sId: new_id(),
               role: "retrieval",
               params: m.params,
+              retrievals: null,
+              feedback: null,
+              message: null,
             });
           }
         }
@@ -718,7 +731,7 @@ export async function* newChat(
         return;
       }
 
-      const ds = dsRes.value;
+      const ds = dsRes.value.filter((d) => d.assistantDefaultSelected);
 
       configRetrieval.DATASOURCE.data_sources = ds.map((d) => {
         return {

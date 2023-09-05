@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 

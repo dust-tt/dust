@@ -1,6 +1,5 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 import { BlockType } from "@app/types/run";
-
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
 export type BlockRunConfig = {
@@ -11,11 +10,11 @@ export type AppType = {
   id: ModelId;
   sId: string;
   name: string;
-  description?: string;
+  description: string | null;
   visibility: AppVisibility;
-  savedSpecification?: string;
-  savedConfig?: string;
-  savedRun?: string;
+  savedSpecification: string | null;
+  savedConfig: string | null;
+  savedRun: string | null;
   dustAPIProjectId: string;
 };
 
@@ -24,7 +23,7 @@ export type SpecificationBlockType = {
   name: string;
   spec: any;
   config: BlockRunConfig;
-  indent?: number;
+  indent: number | null;
 };
 
 export type SpecificationType = Array<SpecificationBlockType>;

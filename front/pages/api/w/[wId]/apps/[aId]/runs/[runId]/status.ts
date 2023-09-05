@@ -32,7 +32,8 @@ async function handler(
     });
   }
 
-  let runId = req.query.runId;
+  let runId: string | null =
+    typeof req.query.runId === "string" ? req.query.runId : null;
   if (runId === "saved") {
     runId = app.savedRun;
   }
@@ -46,7 +47,7 @@ async function handler(
 
       const run = await CoreAPI.getRunStatus({
         projectId: app.dustAPIProjectId,
-        runId: runId as string,
+        runId: runId,
       });
       if (run.isErr()) {
         return apiError(req, res, {

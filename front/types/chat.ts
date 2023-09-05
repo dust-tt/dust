@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 export type ChatRetrievedDocumentType = {
   dataSourceId: string;
@@ -20,14 +20,14 @@ export type MessageRole = "user" | "retrieval" | "assistant" | "error";
 export type ChatMessageType = {
   sId: string;
   role: MessageRole;
-  message?: string; // for `user`, `assistant` and `error` messages
-  retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
-  params?: {
+  message: string | null; // for `user`, `assistant` and `error` messages
+  retrievals: ChatRetrievedDocumentType[] | null; // for `retrieval` messages
+  params: {
     // for `retrieval` messages (not persisted)
     query: string;
     minTimestamp: number; // timestamp in ms, 0 if
-  };
-  feedback?: MessageFeedbackStatus;
+  } | null;
+  feedback: MessageFeedbackStatus | null;
 };
 
 export type ChatSessionType = {
@@ -36,7 +36,7 @@ export type ChatSessionType = {
   created: number;
   sId: string;
   title: string | null;
-  messages?: ChatMessageType[];
+  messages: ChatMessageType[] | null;
   visibility: ChatSessionVisibility;
 };
 

@@ -12,7 +12,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { generateModelSId, new_id } from "@app/lib/utils";
+import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";

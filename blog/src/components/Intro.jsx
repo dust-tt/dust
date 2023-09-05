@@ -31,7 +31,7 @@ function TryitIcon(props) {
   )
 }
 
-export function Intro() {
+export function Intro({ isRootUrl }) {
   return (
     <>
       <div>
@@ -39,21 +39,24 @@ export function Intro() {
           <Title className="inline-block w-auto" />
         </Link>
       </div>
-      <h1 className="mt-14 font-display text-4xl/tight font-light text-white">
-        Build Smarter Teams<br />
-        <span className="bg-gradient-to-r from-violet-700 to-purple-500 bg-clip-text text-transparent">with Generative AI</span>
-      </h1>
-      <p className="mt-4 text-sm/6 text-gray-200">
-        Dust's mission is to harness the power of LLMs to help teams craft better content, understand their environment faster, and ultimately take better decisions.
-        Here we document our voyage.
-      </p>
-      <div className="mt-8 flex flex-wrap justify-center gap-x-1 gap-y-3 sm:gap-x-2 lg:justify-start">
-        <IconLink href="https://dust.tt" icon={TryitIcon} className="flex-none">
-          Try Dust!
-        </IconLink>
-        <IconLink href="/rss/feed.xml" icon={FeedIcon} className="flex-none">
-          RSS
-        </IconLink>
+      <div className={// do not display the intro on mobile when not on the root url
+        !isRootUrl ? "hidden sm:block" : ""}>
+        <h1 className="mt-14 font-display text-4xl/tight font-bold text-element-900-dark">
+          Build Smarter Teams<br />
+          <span className="bg-gradient-to-r text-brand bg-clip-text">with Generative AI</span>
+        </h1>
+        <p className="mt-4 text-sm/6 text-element-800-dark">
+          Dust's mission is to harness the power of LLMs to help teams craft better content, understand their environment faster, and ultimately take better decisions.
+          Here we document our voyage.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-x-1 gap-y-3 sm:gap-x-2 lg:justify-start">
+          <IconLink href="https://dust.tt" icon={TryitIcon} className="flex-none">
+            Try Dust!
+          </IconLink>
+          <IconLink href="/rss/feed.xml" icon={FeedIcon} className="flex-none">
+            RSS
+          </IconLink>
+        </div>
       </div>
     </>
   )
@@ -61,7 +64,7 @@ export function Intro() {
 
 export function IntroFooter() {
   return (
-    <p className="flex items-baseline gap-x-2 text-[0.8125rem]/6 text-purple-500">
+    <p className="flex items-baseline gap-x-2 text-[0.8125rem]/6 text-brand">
       Brought to you by{' '}
       <IconLink href="https://twitter.com/dust4ai" icon={TwitterIcon} compact large>
         The Dust team

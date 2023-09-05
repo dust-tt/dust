@@ -167,6 +167,8 @@ async function handler(
           config: ds.config,
           dustAPIProjectId: ds.dustAPIProjectId,
           assistantDefaultSelected: ds.assistantDefaultSelected,
+          connectorId: null,
+          connectorProvider: null,
         },
       });
       return;

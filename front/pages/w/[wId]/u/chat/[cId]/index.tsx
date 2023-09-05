@@ -70,7 +70,7 @@ const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
 
 type DataSource = {
   name: string;
-  description?: string;
+  description: string | null;
   provider: ConnectorProvider | "none";
   selected: boolean;
 };
@@ -324,10 +324,12 @@ export function RetrievalsView({
       <div className="flex flex-row items-center">
         <div
           className={classNames(
-            "flex flex-initial flex-row items-center space-x-2",
-            "rounded px-2 py-1",
-            "text-xs font-bold text-gray-700",
-            isLatest ? "bg-orange-100" : "bg-gray-100"
+            "flex flex-initial flex-row items-center gap-2 space-x-2",
+            "rounded-xl px-4 py-2",
+            "text-sm font-bold",
+            isLatest
+              ? "border-1 border-amber-200 bg-amber-100 text-amber-700"
+              : "bg-structure-100 text-element-700"
           )}
         >
           {message.retrievals && message.retrievals.length > 0 && (
@@ -337,7 +339,7 @@ export function RetrievalsView({
                 return (
                   <div
                     key={k}
-                    className="flex flex-initial flex-row items-center"
+                    className="flex flex-initial flex-row items-center text-xs text-amber-700"
                   >
                     <div className={classNames("mr-1 flex h-4 w-4")}>
                       {summary[k].provider !== "none" ? (
@@ -356,15 +358,19 @@ export function RetrievalsView({
               })}
               <div className="flex flex-initial">
                 {expanded ? (
-                  <ChevronDownIcon
-                    className="h-4 w-4 cursor-pointer"
+                  <IconButton
+                    type="secondary"
+                    size="sm"
+                    icon={ChevronDownIcon}
                     onClick={() => {
                       setExpanded(false);
                     }}
                   />
                 ) : (
-                  <ChevronRightIcon
-                    className="h-4 w-4 cursor-pointer"
+                  <IconButton
+                    type="secondary"
+                    size="sm"
+                    icon={ChevronRightIcon}
                     onClick={() => {
                       setExpanded(true);
                     }}
@@ -437,7 +443,7 @@ function toMarkdown(message: ChatMessageType): JSX.Element {
             a({ href, children }) {
               return (
                 <Link href={href ? href : ""} target="_blank">
-                  <span className="text-blue-600 hover:underline">
+                  <span className="text-action-500 hover:text-action-400">
                     {children}
                   </span>
                 </Link>
@@ -498,7 +504,7 @@ export function MessageView({
       ) : (
         <div
           className={classNames(
-            "my-2 flex flex-row items-start",
+            "my-2 flex flex-row items-start gap-2",
             message.role === "user" ? "my-6" : ""
           )}
         >
@@ -533,7 +539,7 @@ export function MessageView({
           </div>
           <div
             className={classNames(
-              "relative ml-2 flex flex-1 whitespace-pre-wrap break-words pt-2",
+              "relative ml-2 flex flex-1 whitespace-pre-wrap break-words pt-2 text-base",
               message.role === "user" ? "italic text-gray-500" : "text-gray-700"
             )}
           >
@@ -855,6 +861,9 @@ export default function AppChat({
       sId: client_side_new_id(),
       role: "assistant",
       message: "",
+      retrievals: null,
+      params: null,
+      feedback: null,
     };
     setResponse(assistantMessage);
 
@@ -954,6 +963,9 @@ export default function AppChat({
       sId: client_side_new_id(),
       role: "user",
       message: processedInput,
+      retrievals: null,
+      params: null,
+      feedback: null,
     };
 
     // on first message, persist chat session
@@ -1285,7 +1297,7 @@ export default function AppChat({
 
             {/* Input fixed panel */}
             {!readOnly && (
-              <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial bg-white lg:left-80">
+              <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
                 <div className="mx-auto max-w-4xl px-6">
                   {/* Input bar  */}
                   <div className="">
@@ -1331,7 +1343,7 @@ export default function AppChat({
                       </div>
                     </div>
                   </div>
-                  <div className="mb-8 mt-4 flex flex-row flex-wrap items-center text-xs">
+                  <div className="flex flex-row flex-wrap items-center bg-white pb-8 pt-4 text-xs">
                     <div className="flex flex-initial text-gray-400">
                       Data Sources:
                     </div>

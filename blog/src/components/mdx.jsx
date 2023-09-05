@@ -60,17 +60,17 @@ function ArticleHeader({ id, date }) {
         <Link href={`${id}`} className="inline-flex">
           <FormattedDate
             date={date}
-            className="hidden xl:pointer-events-auto xl:block xl:text-2xs/4 xl:font-medium xl:text-white"
+            className="hidden xl:pointer-events-auto xl:block xl:text-2xs/4 xl:font-medium xl:text-element-900"
           />
         </Link>
-        <div className="h-[0.0625rem] w-3.5 bg-gray-400 lg:-mr-3.5 xl:mr-0 xl:bg-gray-300" />
+        <div className="h-[0.0625rem] w-3.5 bg-element-600-dark lg:-mr-3.5 xl:mr-0 xl:bg-element-700-dark" />
       </div>
       <ContentWrapper>
         <div className="flex">
           <Link href={`${id}`} className="inline-flex">
             <FormattedDate
               date={date}
-              className="text-2xs/4 font-medium text-gray-500 dark:text-white/50 xl:hidden"
+              className="text-2xs/4 font-medium text-element-800 dark:text-element-800-dark xl:hidden"
             />
           </Link>
         </div>

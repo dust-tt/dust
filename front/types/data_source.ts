@@ -1,16 +1,16 @@
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { ModelId } from "@app/lib/models";
+import { ModelId } from "@app/lib/databases";
 
 export type DataSourceVisibility = "public" | "private";
 
 export type DataSourceType = {
   id: ModelId;
   name: string;
-  description?: string;
+  description: string | null;
   visibility: DataSourceVisibility;
   assistantDefaultSelected: boolean;
-  config?: string;
+  config: string | null;
   dustAPIProjectId: string;
-  connectorId?: string;
-  connectorProvider?: ConnectorProvider;
+  connectorId: string | null;
+  connectorProvider: ConnectorProvider | null;
 };

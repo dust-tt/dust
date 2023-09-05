@@ -10,8 +10,11 @@ export { SliderToggle };
 import { Tab } from "./components/Tab";
 export { Tab };
 
-import { Item, ItemSectionHeader, ListItem } from "./components/Item";
-export { Item, ItemSectionHeader, ListItem };
+import { Item } from "./components/Item";
+export { Item };
+
+import { DropdownMenu } from "./components/DropdownMenu";
+export { DropdownMenu };
 
 import { PageHeader } from "./components/PageHeader";
 export { PageHeader };
@@ -37,8 +40,20 @@ export { IconToggleButton };
 import { Tooltip } from "./components/Tooltip";
 export { Tooltip };
 
+import { Avatar } from "./components/Avatar";
+export { Avatar };
+
 import Spinner from "./components/Spinner";
 export { Spinner };
+
+import {
+  Drive as DriveLogo,
+  Github as GithubLogo,
+  Notion as NotionLogo,
+  Slack as SlackLogo,
+} from "./logo/platforms";
+
+export { DriveLogo, GithubLogo, NotionLogo, SlackLogo };
 
 import {
   ArrowDownCircle as ArrowDownCircleIcon,

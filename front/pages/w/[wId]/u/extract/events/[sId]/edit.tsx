@@ -10,11 +10,11 @@ import React, { useEffect, useRef, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
-import { getExtractedEvent } from "@app/lib/api/extract";
+import { getEventSchema, getExtractedEvent } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
-import { ExtractedEventType } from "@app/types/extract";
+import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -22,6 +22,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   event: ExtractedEventType;
+  schema: EventSchemaType;
   readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
@@ -48,11 +49,23 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const schema = await getEventSchema({
+    auth,
+    sId: event.schema.sId,
+  });
+
+  if (!schema) {
+    return {
+      notFound: true,
+    };
+  }
+
   return {
     props: {
       user,
       owner,
       event,
+      schema,
       readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -63,6 +76,7 @@ export default function AppExtractEventsCreate({
   user,
   owner,
   event,
+  schema,
   readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -108,7 +122,7 @@ const BasicEventPropsEditor = ({
   readOnly: boolean;
 }) => {
   const [jsonText, setJsonText] = useState(
-    JSON.stringify(event.properties, null, 2)
+    JSON.stringify(event.properties, null, 4)
   );
   const router = useRouter();
   const [isValid, setIsValid] = useState(true);
@@ -145,11 +159,13 @@ const BasicEventPropsEditor = ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ properties: jsonText }),
+        body: JSON.stringify({ properties: jsonText, status: "accepted" }),
       }
     );
     if (res.ok) {
-      await router.back();
+      await router.push(
+        `/w/${owner.sId}/u/extract/templates/${event.schema.sId}`
+      );
     } else {
       const err = (await res.json()) as { error: APIError };
       window.alert(
@@ -181,7 +197,13 @@ const BasicEventPropsEditor = ({
           await onSubmit();
         }}
       />
-      <Button onClick={() => router.back()} label="Back" type="secondary" />
+      <Button
+        onClick={() =>
+          router.push(`/w/${owner.sId}/u/extract/templates/${event.schema.sId}`)
+        }
+        label="Back"
+        type="secondary"
+      />
     </div>
   );
 };

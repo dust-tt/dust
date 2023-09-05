@@ -1,5 +1,9 @@
 import {
   App,
+  AssistantAgentMessage,
+  AssistantConversation,
+  AssistantMessage,
+  AssistantUserMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
@@ -44,6 +48,11 @@ async function main() {
   await EventSchema.sync({ alter: true });
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await AssistantConversation.sync({ alter: true });
+  await AssistantUserMessage.sync({ alter: true });
+  await AssistantAgentMessage.sync({ alter: true });
+  await AssistantMessage.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

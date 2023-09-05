@@ -1,6 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { nullable } from "@app/lib/ajv_utils";
 import {
   getChatMessage,
   getChatSession,
@@ -8,13 +9,10 @@ import {
   userIsChatSessionOwner,
 } from "@app/lib/api/chat";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  front_sequelize,
-} from "@app/lib/models";
+import { ChatMessage, ChatRetrievedDocument } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ChatMessageType, ChatRetrievedDocumentType } from "@app/types/chat";
 
@@ -56,22 +54,20 @@ export const chatMessageSchema: JSONSchemaType<ChatMessageType> = {
   properties: {
     sId: { type: "string" },
     role: { type: "string" },
-    message: { type: "string", nullable: true },
-    retrievals: {
+    message: nullable({ type: "string" }),
+    retrievals: nullable({
       type: "array",
       items: chatRetrievedDocumentSchema,
-      nullable: true,
-    },
-    params: {
+    }),
+    params: nullable({
       type: "object",
-      nullable: true,
       properties: {
         query: { type: "string" },
         minTimestamp: { type: "number" },
       },
       required: ["query", "minTimestamp"],
-    },
-    feedback: { type: "string", nullable: true },
+    }),
+    feedback: nullable({ type: "string" }),
   },
   required: ["role"],
 };
@@ -227,7 +223,12 @@ async function handler(
       });
       // return the deleted message
       res.status(200).json({
-        message,
+        message: {
+          ...message,
+          message: message.message,
+          retrievals: null,
+          params: null,
+        },
       });
       return;
     }

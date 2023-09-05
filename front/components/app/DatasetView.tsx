@@ -1,19 +1,17 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import {
+  ArrowDownOnSquareIcon,
+  ArrowUpOnSquareIcon,
+  Button,
   PlusCircleIcon,
   PlusIcon,
   XCircleIcon,
-} from "@heroicons/react/20/solid";
-import {
-  ArrowDownOnSquareIcon,
-  ArrowUpOnSquareStackIcon,
-} from "@heroicons/react/24/outline";
+} from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { Button } from "@app/components/Button";
 import { checkDatasetData } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
@@ -614,17 +612,18 @@ export default function DatasetView({
             <div className="mt-6 flex flex-row">
               {!readOnly ? (
                 <Button
+                  type="secondary"
                   onClick={() => {
                     handleNewEntry(datasetData.length - 1);
                   }}
-                >
-                  <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-                  New Entry
-                </Button>
+                  icon={PlusIcon}
+                  label="New Entry"
+                />
               ) : null}
               <div className="flex-1"></div>
               <div className="ml-2 flex-initial">
                 <Button
+                  type="tertiary"
                   onClick={() => {
                     const dataStr =
                       "data:text/jsonl;charset=utf-8," +
@@ -643,10 +642,9 @@ export default function DatasetView({
                     downloadAnchorNode.click();
                     downloadAnchorNode.remove();
                   }}
-                >
-                  <ArrowDownOnSquareIcon className="-ml-1 mr-1 h-5 w-5" />
-                  Download
-                </Button>
+                  icon={ArrowDownOnSquareIcon}
+                  label="Download"
+                />
               </div>
               <div className="ml-2 flex-initial">
                 <input
@@ -662,15 +660,15 @@ export default function DatasetView({
                 ></input>
                 {!readOnly ? (
                   <Button
+                    type="tertiary"
                     onClick={() => {
                       if (fileInputRef.current) {
                         fileInputRef.current.click();
                       }
                     }}
-                  >
-                    <ArrowUpOnSquareStackIcon className="-ml-1 mr-1 h-5 w-5" />
-                    JSONL
-                  </Button>
+                    icon={ArrowUpOnSquareIcon}
+                    label="JSONL"
+                  />
                 ) : null}
               </div>
             </div>

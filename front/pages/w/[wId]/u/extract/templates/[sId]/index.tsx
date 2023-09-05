@@ -241,10 +241,15 @@ export default function AppExtractEventsReadData({
   );
 }
 
+// In schema properties are stored as an array of objects
+// Example: [
+//   {"name": "name", "type": "string", "description": "Name of the idea"}]
+//   {"name": "author", "type": "string", "description": "Author of the idea "}
+// ]
+// In event properties are stored as an object with undefined order as it is a JSONB column
+// Example: {"name": "My idea", "author": "Michael Scott"}
 const EventProperties = ({ event }: { event: ExtractedEventType }) => {
-  const properties = event.properties;
-
-  const renderValue = (value: string | string[]) => {
+  const renderPropertyValue = (value: string | string[]) => {
     if (typeof value === "string") {
       return <p>{value}</p>;
     }
@@ -266,10 +271,10 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 
   return (
     <div className="space-y-4">
-      {Object.entries(properties).map(([key, value]) => (
+      {Object.keys(event.properties).map((key) => (
         <div key={key} className="flex flex-col">
           <span className="font-bold">{key}</span>
-          {renderValue(value)}
+          {renderPropertyValue(event.properties[key])}
         </div>
       ))}
     </div>

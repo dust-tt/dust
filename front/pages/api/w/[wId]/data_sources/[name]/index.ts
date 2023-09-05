@@ -95,7 +95,7 @@ async function handler(
         });
       }
 
-      let ds: DataSourceType;
+      let ds: DataSource;
       if (dataSource.connectorId) {
         // managed data source
         if (

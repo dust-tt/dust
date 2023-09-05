@@ -1,3 +1,4 @@
+import { Button } from "@dust-tt/sparkle";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
@@ -121,18 +122,13 @@ export default function NewBlock({
             <PlusIcon className="h-4 w-4" />
           </Menu.Button>
         ) : (
-          <Menu.Button
-            className={classNames(
-              "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium leading-6",
-              disabled
-                ? "border-gray-200 bg-white text-gray-300"
-                : "border-gray-700 bg-gray-700 text-white hover:bg-gray-800",
-              "shadow-sm focus:outline-none focus:ring-0 focus:ring-2"
-            )}
-            disabled={disabled}
-          >
-            <PlusIcon className="-ml-1 mr-1 h-5 w-5" />
-            Block
+          <Menu.Button as="div" disabled={disabled}>
+            <Button
+              type="secondary"
+              label="Add Block"
+              icon={PlusIcon}
+              disabled={disabled}
+            />
           </Menu.Button>
         )}
       </div>

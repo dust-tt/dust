@@ -141,8 +141,9 @@ async function handler(
 
       res.status(200).json({
         dataset: {
-          name: req.body.name,
+          name: typeof req.body.name == "string" ? req.body.name : null,
           description,
+          data: null,
         },
       });
       return;
@@ -171,6 +172,7 @@ async function handler(
         dataset: {
           name: dataset.name,
           description: dataset.description,
+          data: null,
         },
       });
       return;

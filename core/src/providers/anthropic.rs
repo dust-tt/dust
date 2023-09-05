@@ -631,6 +631,10 @@ impl Embedder for AnthropicEmbedder {
         ))
     }
 
+    async fn tokenize(&self, _text: String) -> Result<Vec<(usize, String)>> {
+        Err(anyhow!("Tokenize not implemented for provider `anthropic`"))
+    }
+
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         Err(anyhow!("Embeddings not available for provider `anthropic`"))
     }

@@ -12,7 +12,7 @@ function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   return true;
 }
 
-export function checkDatasetData(data: Array<object> | undefined): string[] {
+export function checkDatasetData(data?: Array<object> | null): string[] {
   if (!data) {
     throw new Error("data must be defined");
   }
