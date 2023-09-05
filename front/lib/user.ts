@@ -37,7 +37,10 @@ export function setUserMetadataFromClient(metadata: UserMetadataType) {
         `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
         {
           method: "POST",
-          body: JSON.stringify(metadata),
+          body: JSON.stringify({ value: metadata.value }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -51,5 +54,5 @@ export function setUserMetadataFromClient(metadata: UserMetadataType) {
     } catch (err) {
       console.error("setUserMetadata error", err);
     }
-  });
+  })();
 }
