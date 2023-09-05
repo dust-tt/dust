@@ -311,6 +311,7 @@ export async function retrieveGoogleDriveConnectorPermissions(
   const authCredentials = await getAuthObject(c.connectionId);
   if (filterPermission === "read") {
     if (parentInternalId === null) {
+      // Return the list of folders explicitly selected by the user.
       const folders = await GoogleDriveFolders.findAll({
         where: {
           connectorId: connectorId,
@@ -357,6 +358,7 @@ export async function retrieveGoogleDriveConnectorPermissions(
 
       return new Ok(resources);
     } else {
+      // Return the list of all folders and files synced in a parent folder.
       const folders = await GoogleDriveFiles.findAll({
         where: {
           connectorId: connectorId,
@@ -400,6 +402,7 @@ export async function retrieveGoogleDriveConnectorPermissions(
     }
   } else if (filterPermission === null) {
     if (parentInternalId === null) {
+      // Return the list of remote shared drives.
       const drives = await getDrivesIds(c.connectionId);
       const resources: ConnectorResource[] = await Promise.all(
         drives.map(async (d): Promise<ConnectorResource> => {
@@ -427,6 +430,7 @@ export async function retrieveGoogleDriveConnectorPermissions(
 
       return new Ok(resources);
     } else {
+      //Return the list of remote folders inside a parent folder
       const drive = await getDriveClient(authCredentials);
       let nextPageToken: string | undefined = undefined;
       let remoteFolders: drive_v3.Schema$File[] = [];
