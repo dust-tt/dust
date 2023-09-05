@@ -121,7 +121,6 @@ const BasicEventPropsEditor = ({
   owner: WorkspaceType;
   readOnly: boolean;
 }) => {
-  // Order object keys according to schema (jsonb column in db is unordered)
   const [jsonText, setJsonText] = useState(
     JSON.stringify(event.properties, null, 4)
   );

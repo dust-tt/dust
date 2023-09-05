@@ -67,6 +67,10 @@ export function formatPropertiesForModel(
   return result;
 }
 
+/**
+ * Util to event properties according to schema
+ * (Envent properties are stored in a jsonb column in db, which is unordered)
+ */
 export function sortedEventProperties(
   shemaProperties: EventSchemaPropertyType[],
   eventProperties: ExtractedEventPropertyType
