@@ -266,6 +266,59 @@ impl CoreBPE {
         results
     }
 
+    fn _tokenize_with_spe_regex(
+        &self,
+        text: &str,
+        allowed_special: &HashSet<&str>,
+    ) -> Vec<(usize, String)> {
+        let special_regex = self._get_special_regex();
+        let regex = self._get_regex();
+        let mut ret = vec![];
+
+        let mut start = 0;
+        loop {
+            let mut next_special;
+            let mut start_find = start;
+            loop {
+                // Find the next allowed special token, if any
+                next_special = special_regex.find_from_pos(text, start_find).unwrap();
+                match next_special {
+                    Some(m) => {
+                        if allowed_special.contains(&text[m.start()..m.end()]) {
+                            break;
+                        }
+                        start_find = m.start() + 1;
+                    }
+                    None => break,
+                }
+            }
+            let end = next_special.map_or(text.len(), |m| m.start());
+
+            // Okay, here we go, compare this logic to _encode_ordinary_native
+            for mat in regex.find_iter(&text[start..end]) {
+                let string = mat.unwrap().as_str();
+                let piece = string.as_bytes();
+                if let Some(token) = self.encoder.get(piece) {
+                    ret.push((*token, string.to_string()));
+                    continue;
+                }
+                ret.extend(Self::_tokenize_byte_pair_encode(piece, &self.encoder));
+            }
+
+            match next_special {
+                // And here we push the special token
+                Some(m) => {
+                    let piece = m.as_str();
+                    let token = self.special_tokens_encoder[piece];
+                    ret.push((token, piece.to_string()));
+                    start = m.end();
+                }
+                None => break,
+            }
+        }
+        ret
+    }
+
     /**
      * Implemented to match the logic in _encode_ordinary_native
      * Used in tokenize function
@@ -275,7 +328,7 @@ impl CoreBPE {
         ranks: &HashMap<Vec<u8>, usize>,
     ) -> Vec<(usize, String)> {
         if piece.len() == 1 {
-            let string = std::str::from_utf8(&piece).unwrap();
+            let string = String::from_utf8_lossy(&piece);
             return vec![(ranks[piece], string.to_string())];
         }
 
@@ -284,9 +337,7 @@ impl CoreBPE {
             .map(|p| {
                 (
                     ranks[&piece[p.start..p.end]],
-                    std::str::from_utf8(&piece[p.start..p.end])
-                        .unwrap()
-                        .to_string(),
+                    String::from_utf8_lossy(&piece[p.start..p.end]).to_string(),
                 )
             })
             .collect()
@@ -558,7 +609,12 @@ impl CoreBPE {
     }
 
     pub fn tokenize(&self, text: &String) -> Vec<(usize, String)> {
-        self._tokenize(text)
+        let allowed_special = self
+            .special_tokens_encoder
+            .keys()
+            .map(|s| s.as_str())
+            .collect();
+        self._tokenize_with_spe_regex(text, &allowed_special)
     }
 
     pub fn encode_with_special_tokens(&self, text: &str) -> Vec<usize> {
