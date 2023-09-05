@@ -13,6 +13,7 @@ import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema, getExtractedEvent } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
+import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { classNames } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -125,18 +126,12 @@ const BasicEventPropsEditor = ({
   readOnly: boolean;
 }) => {
   // Order object keys according to schema (jsonb column in db is unordered)
-  const eventProps = event.properties;
-  const orderedEventProps: {
-    [key: string]: string | string[];
-  } = { marker: eventProps.marker };
-  schema.properties.forEach(({ name }) => {
-    if (Object.prototype.hasOwnProperty.call(eventProps, name)) {
-      orderedEventProps[name] = eventProps[name];
-    }
-  });
-
   const [jsonText, setJsonText] = useState(
-    JSON.stringify(orderedEventProps, null, 4)
+    JSON.stringify(
+      sortedEventProperties(schema.properties, event.properties),
+      null,
+      4
+    )
   );
   const router = useRouter();
   const [isValid, setIsValid] = useState(true);

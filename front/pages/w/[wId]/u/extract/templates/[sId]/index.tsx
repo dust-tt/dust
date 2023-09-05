@@ -23,6 +23,7 @@ import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
+import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/ds";
@@ -179,7 +180,7 @@ export default function AppExtractEventsReadData({
                     </td>
                     <td className="w-auto border-y px-4 py-4 align-top">
                       <div className="flex flex-row space-x-2">
-                        <ExtractButtonAndModal event={event} />
+                        <ExtractButtonAndModal event={event} schema={schema} />
 
                         <IconButton
                           icon={CheckCircleIcon}
@@ -255,7 +256,10 @@ const EventProperties = ({
   event: ExtractedEventType;
   schema: EventSchemaType;
 }) => {
-  const eventProperties = event.properties;
+  const sortedProps = sortedEventProperties(
+    schema.properties,
+    event.properties
+  );
 
   const renderPropertyValue = (value: string | string[]) => {
     if (typeof value === "string") {
@@ -279,21 +283,12 @@ const EventProperties = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col">
-        <span className="font-bold">marker</span>
-        {renderPropertyValue(eventProperties["marker"])}
-      </div>
-
-      {schema.properties.map((eventProperty) => {
-        const propertyName = eventProperty.name;
-        const propertyValue = eventProperties[propertyName];
-        return (
-          <div key={propertyName} className="flex flex-col">
-            <span className="font-bold">{propertyName}</span>
-            {renderPropertyValue(propertyValue)}
-          </div>
-        );
-      })}
+      {Object.keys(sortedProps).map((key) => (
+        <div key={key} className="flex flex-col">
+          <span className="font-bold">{key}</span>
+          {renderPropertyValue(sortedProps[key])}
+        </div>
+      ))}
     </div>
   );
 };
@@ -333,18 +328,29 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   );
 };
 
-const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
+const ExtractButtonAndModal = ({
+  event,
+  schema,
+}: {
+  event: ExtractedEventType;
+  schema: EventSchemaType;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   const handleClick = async (format: "JSON" | "Markdown"): Promise<void> => {
     let content: string | null = null;
 
+    const sortedProps = sortedEventProperties(
+      schema.properties,
+      event.properties
+    );
+
     if (format === "JSON") {
-      content = JSON.stringify(event.properties);
+      content = JSON.stringify(sortedProps);
     }
     if (format === "Markdown") {
-      content = objectToMarkdown(event.properties);
+      content = objectToMarkdown(sortedProps);
     }
 
     if (!content) {
