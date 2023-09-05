@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Icon } from "../index_with_tw_base";
-import * as PlatformIcons from "../logo/platforms";
+import * as PlatformIcons from "../logo/platforms/";
 
 export default {
   title: "Assets/Platform_Icons",
