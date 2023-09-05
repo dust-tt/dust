@@ -100,6 +100,7 @@ export async function githubUpsertIssueActivity(
     renderedIssue += `${issue.body}||\n`;
   }
   let resultPage = 1;
+  let lastCommentUpdateTime: Date | null = null;
   for (;;) {
     const resultPageLogger = localLogger.child({
       page: resultPage,
@@ -119,6 +120,12 @@ export async function githubUpsertIssueActivity(
       renderedIssue += `${renderGithubUser(comment.creator)}: ${
         comment.body
       }||\n`;
+      if (
+        !lastCommentUpdateTime ||
+        comment.updatedAt.getTime() > lastCommentUpdateTime.getTime()
+      ) {
+        lastCommentUpdateTime = comment.updatedAt;
+      }
     }
     resultPage += 1;
   }
@@ -133,13 +140,19 @@ export async function githubUpsertIssueActivity(
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
   }
+
+  const lastUpdateTimestamp = Math.max(
+    issue.updatedAt.getTime(),
+    lastCommentUpdateTime ? lastCommentUpdateTime.getTime() : 0
+  );
+
   // TODO: last commentor, last comment date, issue labels (as tags)
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
     documentText: renderedIssue,
     documentUrl: issue.url,
-    timestampMs: issue.createdAt.getTime(),
+    timestampMs: lastUpdateTimestamp,
     tags: tags,
     parents: [],
     retries: 3,
