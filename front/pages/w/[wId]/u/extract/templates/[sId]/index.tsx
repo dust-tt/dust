@@ -279,6 +279,11 @@ const EventProperties = ({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-col">
+        <span className="font-bold">marker</span>
+        {renderPropertyValue(eventProperties["marker"])}
+      </div>
+
       {schema.properties.map((eventProperty) => {
         const propertyName = eventProperty.name;
         const propertyValue = eventProperties[propertyName];
