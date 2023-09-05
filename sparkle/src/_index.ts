@@ -40,8 +40,20 @@ export { IconToggleButton };
 import { Tooltip } from "./components/Tooltip";
 export { Tooltip };
 
+import { Avatar } from "./components/Avatar";
+export { Avatar };
+
 import Spinner from "./components/Spinner";
 export { Spinner };
+
+import {
+  Drive as DriveLogo,
+  Github as GithubLogo,
+  Notion as NotionLogo,
+  Slack as SlackLogo,
+} from "./logo/platforms";
+
+export { DriveLogo, GithubLogo, NotionLogo, SlackLogo };
 
 import {
   ArrowDownCircle as ArrowDownCircleIcon,
