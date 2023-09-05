@@ -44,7 +44,7 @@ const _getBotEnabled = async (
         type: "invalid_request_error",
         message: "Connector is not a slack connector",
       },
-      status_code: 500,
+      status_code: 400,
     });
   }
 
