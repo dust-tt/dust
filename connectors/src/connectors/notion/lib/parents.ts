@@ -13,8 +13,9 @@ import {
   getPageChildrenOfDocument,
 } from "./connectors_db_helpers";
 
-/** Compute the parents field for a notion document
- * See the [Design Doc](TODO) and the field [documentation in core](TODO) for relevant details
+/** Compute the parents field for a notion document See the [Design
+ * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
+ * and the field documentation [in core]() for relevant details
  */
 async function _getParents(
   dataSourceInfo: DataSourceInfo,
@@ -83,7 +84,6 @@ export async function updateAllParentsFields(
       `notion-${page.notionPageId}`,
       parents
     );
-    // TODO how to handle errors here
   }
 }
 
