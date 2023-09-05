@@ -270,7 +270,7 @@ export async function githubUpsertDiscussionActivity(
   );
   const tags = [
     `title:${discussion.title}`,
-    `author:${discussion.author.login}`,
+    `author:${discussion.author ? discussion.author.login : "unknown"}`,
     `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
