@@ -39,6 +39,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
+import { getUserMetadata } from "@app/lib/api/user";
 import {
   Authenticator,
   getSession,
@@ -48,6 +49,10 @@ import {
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI, DustAPICredentials } from "@app/lib/dust_api";
 import { useChatSession, useChatSessions } from "@app/lib/swr";
+import {
+  getUserMetadataFromClient,
+  setUserMetadataFromClient,
+} from "@app/lib/user";
 import { client_side_new_id } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
@@ -111,12 +116,31 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  let stickyDataSourceSelection: { [key: string]: boolean } = {};
+
+  if (user) {
+    const stickyDataSourceSelectionRaw = await getUserMetadata(
+      user,
+      "chat-data-sources-selection"
+    );
+    if (stickyDataSourceSelectionRaw) {
+      try {
+        stickyDataSourceSelection = JSON.parse(
+          stickyDataSourceSelectionRaw.value
+        );
+      } catch (e) {
+        console.error("Error parsing sticky data source selection", e);
+      }
+    }
+  }
+
   const dataSources: DataSource[] = dsRes.value.map((ds) => {
     return {
       name: ds.name,
       description: ds.description,
       provider: ds.connectorProvider || "none",
-      selected: ds.assistantDefaultSelected,
+      selected:
+        stickyDataSourceSelection[ds.name] ?? ds.assistantDefaultSelected,
     };
   });
 
@@ -629,18 +653,40 @@ export default function AppChat({
     setInput(input);
   };
 
-  const handleSwitchDataSourceSelection = (name: string) => {
+  const handleSwitchDataSourceSelection = async (name: string) => {
+    let selected = false;
+
     const newSelection = dataSources.map((ds) => {
       if (ds.name === name) {
+        selected = !ds.selected;
         return {
           ...ds,
-          selected: !ds.selected,
+          selected,
         };
       } else {
         return ds;
       }
     });
     setDataSources(newSelection);
+    try {
+      const currentStickySelectionRaw = await getUserMetadataFromClient(
+        "chat-data-sources-selection"
+      );
+
+      const stickySelection: { [key: string]: boolean } =
+        currentStickySelectionRaw
+          ? JSON.parse(currentStickySelectionRaw.value)
+          : new Set();
+
+      stickySelection[name] = selected;
+
+      await setUserMetadataFromClient({
+        key: "chat-data-sources-selection",
+        value: JSON.stringify(stickySelection),
+      });
+    } catch (e) {
+      console.error("Error saving Data Sources selection", e);
+    }
   };
 
   const handleTimeRangeChange = (timeRange: ChatTimeRange) => {
@@ -1361,7 +1407,11 @@ export default function AppChat({
                                 ds.selected ? "opacity-100" : "opacity-25"
                               )}
                               onClick={() => {
-                                handleSwitchDataSourceSelection(ds.name);
+                                handleSwitchDataSourceSelection(ds.name).catch(
+                                  (e) => {
+                                    console.error(e);
+                                  }
+                                );
                               }}
                             >
                               {ds.provider !== "none" ? (
