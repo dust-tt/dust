@@ -24,7 +24,7 @@ export class ChatSession extends Model<
   declare title: string | null;
   declare visibility: ChatSessionVisibility;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare userId: ForeignKey<User["id"]> | null;
 }
 
@@ -70,7 +70,10 @@ ChatSession.init(
   }
 );
 
-Workspace.hasMany(ChatSession);
+Workspace.hasMany(ChatSession, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 User.hasMany(ChatSession);
 
 export class ChatMessage extends Model<
@@ -85,7 +88,7 @@ export class ChatMessage extends Model<
   declare role: "user" | "retrieval" | "assistant" | "error";
   declare message: string | null;
   // `retrievals` are stored in a separate table
-  declare chatSessionId: ForeignKey<ChatSession["id"]> | null;
+  declare chatSessionId: ForeignKey<ChatSession["id"]>;
 }
 
 ChatMessage.init(
@@ -131,7 +134,10 @@ ChatMessage.init(
   }
 );
 
-ChatSession.hasMany(ChatMessage, { onDelete: "CASCADE" });
+ChatSession.hasMany(ChatMessage, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class ChatRetrievedDocument extends Model<
   InferAttributes<ChatRetrievedDocument>,
@@ -149,7 +155,7 @@ export class ChatRetrievedDocument extends Model<
   declare score: number;
   // `chunks` are not stored for Chat history
 
-  declare chatMessageId: ForeignKey<ChatMessage["id"]> | null;
+  declare chatMessageId: ForeignKey<ChatMessage["id"]>;
 }
 
 ChatRetrievedDocument.init(
@@ -202,5 +208,6 @@ ChatRetrievedDocument.init(
 );
 
 ChatMessage.hasMany(ChatRetrievedDocument, {
+  foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });

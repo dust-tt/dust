@@ -85,7 +85,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "There was an error upserting the document.",
+            message: "There was an error updating the `parents` field.",
             data_source_error: updateRes.error,
           },
         });

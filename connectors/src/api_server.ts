@@ -1,6 +1,10 @@
 import bodyParser from "body-parser";
 import express from "express";
 
+import {
+  getBotEnabledAPIHandler,
+  setBotEnabledAPIHandler,
+} from "@connectors/api/bot_enabled";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
@@ -46,6 +50,8 @@ export function startServer(port: number) {
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
+  app.get("/connectors/:connector_id/bot_enabled", getBotEnabledAPIHandler);
+  app.post("/connectors/:connector_id/bot_enabled", setBotEnabledAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",
