@@ -18,7 +18,10 @@ function _getEventSchemaType(schema: EventSchema): EventSchemaType {
   };
 }
 
-function _getExtractedEventType(event: ExtractedEvent): ExtractedEventType {
+function _getExtractedEventType(
+  event: ExtractedEvent,
+  schema: EventSchema
+): ExtractedEventType {
   return {
     id: event.id,
     sId: event.sId,
@@ -28,6 +31,10 @@ function _getExtractedEventType(event: ExtractedEvent): ExtractedEventType {
     dataSourceName: event.dataSourceName,
     documentId: event.documentId,
     documentSourceUrl: event.documentSourceUrl,
+    schema: {
+      marker: schema.marker,
+      sId: schema.sId,
+    },
   };
 }
 
@@ -204,7 +211,7 @@ export async function getExtractedEvent({
     return null;
   }
 
-  return _getExtractedEventType(event);
+  return _getExtractedEventType(event, schema);
 }
 
 export async function getExtractedEvents({
@@ -242,7 +249,7 @@ export async function getExtractedEvents({
   });
 
   return events.map((event): ExtractedEventType => {
-    return _getExtractedEventType(event);
+    return _getExtractedEventType(event, schema);
   });
 }
 
@@ -292,5 +299,5 @@ export async function updateExtractedEvent({
     });
   }
 
-  return _getExtractedEventType(event);
+  return _getExtractedEventType(event, schema);
 }

@@ -166,7 +166,7 @@ export default function AppExtractEventsReadData({
                         href={`/w/${owner.sId}/u/extract/events/${event.sId}/edit`}
                         className="block"
                       >
-                        <EventProperties event={event} />
+                        <EventProperties event={event} schema={schema} />
                       </Link>
                     </td>
                     <td className="w-auto border-y px-4 py-4 text-right align-top">
@@ -241,10 +241,23 @@ export default function AppExtractEventsReadData({
   );
 }
 
-const EventProperties = ({ event }: { event: ExtractedEventType }) => {
-  const properties = event.properties;
+// In schema properties are stored as an array of objects
+// Example: [
+//   {"name": "name", "type": "string", "description": "Name of the idea"}]
+//   {"name": "author", "type": "string", "description": "Author of the idea "}
+// ]
+// In event properties are stored as an object with undefined order as it is a JSONB column
+// Example: {"name": "My idea", "author": "Michael Scott"}
+const EventProperties = ({
+  event,
+  schema,
+}: {
+  event: ExtractedEventType;
+  schema: EventSchemaType;
+}) => {
+  const eventProperties = event.properties;
 
-  const renderValue = (value: string | string[]) => {
+  const renderPropertyValue = (value: string | string[]) => {
     if (typeof value === "string") {
       return <p>{value}</p>;
     }
@@ -266,12 +279,21 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 
   return (
     <div className="space-y-4">
-      {Object.entries(properties).map(([key, value]) => (
-        <div key={key} className="flex flex-col">
-          <span className="font-bold">{key}</span>
-          {renderValue(value)}
-        </div>
-      ))}
+      <div className="flex flex-col">
+        <span className="font-bold">marker</span>
+        {renderPropertyValue(eventProperties["marker"])}
+      </div>
+
+      {schema.properties.map((eventProperty) => {
+        const propertyName = eventProperty.name;
+        const propertyValue = eventProperties[propertyName];
+        return (
+          <div key={propertyName} className="flex flex-col">
+            <span className="font-bold">{propertyName}</span>
+            {renderPropertyValue(propertyValue)}
+          </div>
+        );
+      })}
     </div>
   );
 };

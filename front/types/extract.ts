@@ -46,4 +46,8 @@ export type ExtractedEventType = {
   dataSourceName: string;
   documentId: string;
   documentSourceUrl: string | null;
+  schema: {
+    marker: string;
+    sId: string;
+  };
 };
