@@ -103,7 +103,6 @@ export default function AppExtractEventsCreate({
         <div className="mt-6">
           <BasicEventPropsEditor
             event={event}
-            schema={schema}
             owner={owner}
             readOnly={readOnly}
           />
@@ -115,28 +114,15 @@ export default function AppExtractEventsCreate({
 
 const BasicEventPropsEditor = ({
   event,
-  schema,
   owner,
   readOnly,
 }: {
   event: ExtractedEventType;
-  schema: EventSchemaType;
   owner: WorkspaceType;
   readOnly: boolean;
 }) => {
-  // Order object keys according to schema (jsonb column in db is unordered)
-  const eventProps = event.properties;
-  const orderedEventProps: {
-    [key: string]: string | string[];
-  } = { marker: eventProps.marker };
-  schema.properties.forEach(({ name }) => {
-    if (Object.prototype.hasOwnProperty.call(eventProps, name)) {
-      orderedEventProps[name] = eventProps[name];
-    }
-  });
-
   const [jsonText, setJsonText] = useState(
-    JSON.stringify(orderedEventProps, null, 4)
+    JSON.stringify(event.properties, null, 4)
   );
   const router = useRouter();
   const [isValid, setIsValid] = useState(true);

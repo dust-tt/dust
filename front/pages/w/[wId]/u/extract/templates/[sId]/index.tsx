@@ -166,7 +166,7 @@ export default function AppExtractEventsReadData({
                         href={`/w/${owner.sId}/u/extract/events/${event.sId}/edit`}
                         className="block"
                       >
-                        <EventProperties event={event} schema={schema} />
+                        <EventProperties event={event} />
                       </Link>
                     </td>
                     <td className="w-auto border-y px-4 py-4 text-right align-top">
@@ -248,15 +248,7 @@ export default function AppExtractEventsReadData({
 // ]
 // In event properties are stored as an object with undefined order as it is a JSONB column
 // Example: {"name": "My idea", "author": "Michael Scott"}
-const EventProperties = ({
-  event,
-  schema,
-}: {
-  event: ExtractedEventType;
-  schema: EventSchemaType;
-}) => {
-  const eventProperties = event.properties;
-
+const EventProperties = ({ event }: { event: ExtractedEventType }) => {
   const renderPropertyValue = (value: string | string[]) => {
     if (typeof value === "string") {
       return <p>{value}</p>;
@@ -279,21 +271,12 @@ const EventProperties = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col">
-        <span className="font-bold">marker</span>
-        {renderPropertyValue(eventProperties["marker"])}
-      </div>
-
-      {schema.properties.map((eventProperty) => {
-        const propertyName = eventProperty.name;
-        const propertyValue = eventProperties[propertyName];
-        return (
-          <div key={propertyName} className="flex flex-col">
-            <span className="font-bold">{propertyName}</span>
-            {renderPropertyValue(propertyValue)}
-          </div>
-        );
-      })}
+      {Object.keys(event.properties).map((key) => (
+        <div key={key} className="flex flex-col">
+          <span className="font-bold">{key}</span>
+          {renderPropertyValue(event.properties[key])}
+        </div>
+      ))}
     </div>
   );
 };

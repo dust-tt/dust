@@ -39,9 +39,7 @@ export type ExtractedEventType = {
   id: ModelId;
   sId: string;
   marker: string;
-  properties: {
-    [key: string]: string | string[];
-  };
+  properties: ExtractedEventPropertyType;
   status: ExtractedEventStatus;
   dataSourceName: string;
   documentId: string;
@@ -50,4 +48,8 @@ export type ExtractedEventType = {
     marker: string;
     sId: string;
   };
+};
+
+export type ExtractedEventPropertyType = {
+  [key: string]: string | string[];
 };
