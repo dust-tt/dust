@@ -728,6 +728,7 @@ mod tests {
     use crate::providers::tiktoken::tiktoken::r50k_base;
     // use crate::providers::tiktoken::tiktoken::cl100k_base_singleton;
     use crate::providers::tiktoken::tiktoken::cl100k_base;
+    use crate::providers::tiktoken::tiktoken::tokenize_async;
 
     #[test]
     fn very_simple_test() {
@@ -804,5 +805,48 @@ mod tests {
             guard.decode(tokens.clone()).unwrap();
         }
         // println!("p50k_base encode/decode 2: {:?}", now.elapsed());
+    }
+
+    #[tokio::test]
+    async fn tokenize_test() {
+        async fn run_tokenize_test(soupinou: String, expected_soupinou: Vec<(usize, String)>) {
+            let bpe = p50k_base_singleton();
+            let res = tokenize_async(bpe, soupinou).await;
+            assert_eq!(res.unwrap(), expected_soupinou);
+        }
+
+        let regular = "Un petit Soupinou".to_string();
+        let expected_regular: Vec<(usize, String)> = vec![
+            (3118, "Un".to_string()),
+            (4273, " pet".to_string()),
+            (270, "it".to_string()),
+            (34011, " Soup".to_string()),
+            (259, "in".to_string()),
+            (280, "ou".to_string()),
+        ];
+        run_tokenize_test(regular, expected_regular).await;
+
+        let unicode = "Soupinou 🤗".to_string();
+        let expected_unicode: Vec<(usize, String)> = vec![
+            (50, "S".to_string()),
+            (10486, "oup".to_string()),
+            (259, "in".to_string()),
+            (280, "ou".to_string()),
+            (12520, " �".to_string()),
+            (97, "�".to_string()),
+            (245, "�".to_string()),
+        ];
+
+        run_tokenize_test(unicode, expected_unicode).await;
+
+        let japanese = "ほこり".to_string();
+        let expected_japanese: Vec<(usize, String)> = vec![
+            (2515, "�".to_string()),
+            (119, "�".to_string()),
+            (46036, "こ".to_string()),
+            (28255, "り".to_string()),
+        ];
+
+        run_tokenize_test(japanese, expected_japanese).await;
     }
 }
