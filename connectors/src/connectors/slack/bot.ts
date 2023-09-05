@@ -214,8 +214,28 @@ async function botAnswerMessage(
   return new Err(new Error("Failed to get the final answer from Dust"));
 }
 
-export async function enableSlackBot(
+export async function getBotEnabled(
   connectorId: ModelId
+): Promise<Result<boolean, Error>> {
+  const slackConfig = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  return new Ok(slackConfig.botEnabled);
+}
+
+export async function toggleSlackbot(
+  connectorId: ModelId,
+  botEnabled: boolean
 ): Promise<Result<void, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
@@ -229,7 +249,7 @@ export async function enableSlackBot(
       )
     );
   }
-  slackConfig.botEnabled = true;
+  slackConfig.botEnabled = botEnabled;
   await slackConfig.save();
 
   return new Ok(void 0);

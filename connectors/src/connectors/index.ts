@@ -44,6 +44,8 @@ import {
   ConnectorResource,
 } from "@connectors/types/resources";
 
+import { getBotEnabled, toggleSlackbot } from "./slack/bot";
+
 type ConnectorCreator = (
   dataSourceConfig: DataSourceConfig,
   connectionId: string
@@ -127,6 +129,50 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   google_drive: async (connectorId: string) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
+};
+
+type BotToggler = (
+  connectorId: ModelId,
+  botEnabled: boolean
+) => Promise<Result<void, Error>>;
+
+const toggleBotNotImplemented = async (
+  connectorId: ModelId
+): Promise<Result<void, Error>> => {
+  return new Err(
+    new Error(`Toggling bot for connector ${connectorId} is not implemented.`)
+  );
+};
+
+export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
+  slack: toggleSlackbot,
+  notion: toggleBotNotImplemented,
+  github: toggleBotNotImplemented,
+  google_drive: toggleBotNotImplemented,
+};
+
+type BotEnabledGetter = (
+  connectorId: ModelId
+) => Promise<Result<boolean, Error>>;
+
+const getBotEnabledNotImplemented = async (
+  connectorId: ModelId
+): Promise<Result<boolean, Error>> => {
+  return new Err(
+    new Error(
+      `Getting botEnabled for connector ${connectorId} is not implemented.`
+    )
+  );
+};
+
+export const GET_BOT_ENABLED_BY_TYPE: Record<
+  ConnectorProvider,
+  BotEnabledGetter
+> = {
+  slack: getBotEnabled,
+  notion: getBotEnabledNotImplemented,
+  github: getBotEnabledNotImplemented,
+  google_drive: getBotEnabledNotImplemented,
 };
 
 type SyncConnector = (

@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, SliderToggle } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -18,6 +18,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   workspace: WorkspaceType;
   dataSources: DataSourceType[];
+  slackbotEnabled?: boolean;
   documentCounts: Record<string, number>;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
@@ -109,11 +110,26 @@ export const getServerSideProps: GetServerSideProps<{
     })
   );
 
+  // Get slackbot enabled status
+  const slackConnectorId = dataSources.find(
+    (ds) => ds.connectorProvider === "slack"
+  )?.connectorId;
+
+  let slackbotEnabled;
+  if (slackConnectorId) {
+    const botEnabledRes = await ConnectorsAPI.getBotEnabled(slackConnectorId);
+    if (botEnabledRes.isErr()) {
+      throw botEnabledRes.error;
+    }
+    slackbotEnabled = botEnabledRes.value.botEnabled;
+  }
+
   return {
     props: {
       user,
       workspace,
       dataSources,
+      slackbotEnabled,
       documentCounts: docCountByDsName,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },
@@ -123,6 +139,7 @@ export const getServerSideProps: GetServerSideProps<{
 const WorkspacePage = ({
   workspace,
   dataSources,
+  slackbotEnabled,
   documentCounts,
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -200,6 +217,30 @@ const WorkspacePage = ({
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while deleting the data source.");
+    }
+  };
+
+  const onSlackbotToggle = async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${workspace.sId}/data_sources/managed-slack/bot_enabled`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            botEnabled: !slackbotEnabled,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
     }
   };
 
@@ -293,6 +334,20 @@ const WorkspacePage = ({
                   <p className="mb-2 text-sm text-gray-600">
                     Synchronized {dataSourcesSynchronizedAgo[ds.name]} ago
                   </p>
+                )}
+                {ds.connectorProvider === "slack" && (
+                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                    <div>
+                      Slackbot enabled?{" "}
+                      <span className="font-medium">
+                        {JSON.stringify(slackbotEnabled)}
+                      </span>
+                    </div>
+                    <SliderToggle
+                      selected={slackbotEnabled}
+                      onClick={onSlackbotToggle}
+                    />
+                  </div>
                 )}
               </div>
             ))}
