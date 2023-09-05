@@ -266,6 +266,8 @@ impl CoreBPE {
         results
     }
 
+    // Copy of _encode_native but returns both the tokens and the associated string in a tuple
+    // As needed in tokenize function
     fn _tokenize_with_spe_regex(
         &self,
         text: &str,
