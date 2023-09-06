@@ -272,11 +272,15 @@ export async function notionUpsertPageActivity(
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${parsedPage.id}`;
-    const parents = await getParents(dataSourceConfig, {
-      notionId: pageId,
-      parentType: parsedPage.parentType,
-      parentId: parsedPage.parentId,
-    });
+    const parents = await getParents(
+      dataSourceConfig,
+      {
+        notionId: pageId,
+        parentType: parsedPage.parentType,
+        parentId: parsedPage.parentId,
+      },
+      runTimestamp.toString() // memoize at notionSyncWorkflow main inner loop level
+    );
     await upsertToDatasource({
       dataSourceConfig,
       documentId,

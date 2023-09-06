@@ -12,10 +12,16 @@ import {
   getNotionPageFromConnectorsDb,
   getPageChildrenOfDocument,
 } from "./connectors_db_helpers";
+import { uuid4 } from "@temporalio/workflow";
 
 /** Compute the parents field for a notion document See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
- * and the field documentation [in core]() for relevant details
+ * and the field documentation [in
+ * core](https://github.com/dust-tt/dust/blob/main/core/src/data_sources/data_source.rs)
+ * for relevant details
+ *
+ * @param memoizationKey optional key to control memoization of this function
+ *
  */
 async function _getParents(
   dataSourceInfo: DataSourceInfo,
@@ -23,7 +29,8 @@ async function _getParents(
     notionId: string;
     parentType: string | null | undefined;
     parentId: string | null | undefined;
-  }
+  },
+  memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [document.notionId];
   switch (document.parentType) {
@@ -59,9 +66,12 @@ async function _getParents(
   }
 }
 
-export const getParents = memoize(_getParents, (dataSourceInfo, document) => {
-  return `${dataSourceInfo.dataSourceName}:${document.notionId}`;
-});
+export const getParents = memoize(
+  _getParents,
+  (dataSourceInfo, document, memoizationKey) => {
+    return `${dataSourceInfo.dataSourceName}:${document.notionId}:${memoizationKey}`;
+  }
+);
 
 export async function updateAllParentsFields(
   dataSourceConfig: DataSourceConfig,
@@ -71,13 +81,20 @@ export async function updateAllParentsFields(
     once per page, limiting the load on the Datasource */
   const pagesToUpdate = await getPagesToUpdate(documents, dataSourceConfig);
 
-  // Update everybody's parents field
+  // Update everybody's parents field. Use of a memoization key to avoid
+  // potentially sharing memoization across updateAllParentsFields calls, which
+  // would be incorrect
+  let memoizationKey = uuid4();
   for (const page of pagesToUpdate) {
-    const parents = await getParents(dataSourceConfig, {
-      notionId: page.notionPageId,
-      parentType: page.parentType,
-      parentId: page.parentId,
-    });
+    const parents = await getParents(
+      dataSourceConfig,
+      {
+        notionId: page.notionPageId,
+        parentType: page.parentType,
+        parentId: page.parentId,
+      },
+      memoizationKey
+    );
 
     await updateDocumentParentsField(
       dataSourceConfig,
@@ -87,7 +104,7 @@ export async function updateAllParentsFields(
   }
 }
 
-/**  Get ids of all pages whose parents field should be updated: inital pages in
+/**  Get ids of all pages whose parents field should be updated: initial pages in
  * documentIds, and all the descendants of documentIds that are pages (including
  * children of databases)
  *
