@@ -71,20 +71,18 @@ AgentRetrievalConfiguration.init(
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for templated Query
         if (retrieval.query == "templated") {
-          if (retrieval.queryTemplate === null) {
+          if (!retrieval.queryTemplate) {
             throw new Error("Must set a template for templated query");
           }
-        } else {
-          if (retrieval.queryTemplate) {
-            throw new Error("Can't set a template without templated query");
-          }
+        } else if (retrieval.queryTemplate) {
+          throw new Error("Can't set a template without templated query");
         }
 
         // Validation for Timeframe
         if (retrieval.relativeTimeFrame == "custom") {
           if (
-            retrieval.relativeTimeFrameDuration === null ||
-            retrieval.relativeTimeFrameUnit === null
+            !retrieval.relativeTimeFrameDuration ||
+            !retrieval.relativeTimeFrameUnit
           ) {
             throw new Error(
               "Custom relative time frame must have a duration and unit set"
@@ -99,9 +97,9 @@ AgentRetrievalConfiguration.init(
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AgentDatasourceConfiguration extends Model<
-  InferAttributes<AgentDatasourceConfiguration>,
-  InferCreationAttributes<AgentDatasourceConfiguration>
+export class AgentDataSourceConfiguration extends Model<
+  InferAttributes<AgentDataSourceConfiguration>,
+  InferCreationAttributes<AgentDataSourceConfiguration>
 > {
   declare id: number;
 
@@ -110,17 +108,17 @@ export class AgentDatasourceConfiguration extends Model<
   declare timeframeDuration: number | null;
   declare timeframeUnit: TimeframeUnit | null;
 
-  declare tagsIn: string[];
-  declare tagsOut: string[];
-  declare parentsIn: string[];
-  declare parentsOut: string[];
+  declare tagsIn: string[] | null;
+  declare tagsNotIn: string[] | null;
+  declare parentsIn: string[] | null;
+  declare parentsNotIn: string[] | null;
 
-  declare datasourceId: ForeignKey<DataSource["id"]>;
+  declare dataSourceId: ForeignKey<DataSource["id"]>;
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   >;
 }
-AgentDatasourceConfiguration.init(
+AgentDataSourceConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -145,49 +143,40 @@ AgentDatasourceConfiguration.init(
     },
     tagsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+      allowNull: true,
     },
-    tagsOut: {
+    tagsNotIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+      allowNull: true,
     },
     parentsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+      allowNull: true,
     },
-    parentsOut: {
+    parentsNotIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+      allowNull: true,
     },
   },
   {
-    modelName: "agent_datasource_configuration",
+    modelName: "agent_data_source_configuration",
     sequelize: front_sequelize,
     hooks: {
-      beforeValidate: (datasourceConfig: AgentDatasourceConfiguration) => {
-        if (
-          (datasourceConfig.minTimestamp === null) !==
-          (datasourceConfig.maxTimestamp === null)
-        ) {
+      beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
+        if (!dataSourceConfig.minTimestamp !== !dataSourceConfig.maxTimestamp) {
           throw new Error("Timestamps must be both set or both null");
         }
         if (
-          (datasourceConfig.timeframeDuration === null) !==
-          (datasourceConfig.timeframeUnit === null)
+          !dataSourceConfig.timeframeDuration !==
+          !dataSourceConfig.timeframeUnit
         ) {
           throw new Error(
             "Timeframe duration/unit must be both set or both null"
           );
         }
         if (
-          (datasourceConfig.minTimestamp !== null ||
-            datasourceConfig.maxTimestamp !== null) &&
-          (datasourceConfig.timeframeDuration !== null ||
-            datasourceConfig.timeframeUnit !== null)
+          (dataSourceConfig.minTimestamp || dataSourceConfig.maxTimestamp) &&
+          (dataSourceConfig.timeframeDuration || dataSourceConfig.timeframeUnit)
         ) {
           throw new Error("Cannot use both timestamps and timeframe");
         }
@@ -196,8 +185,8 @@ AgentDatasourceConfiguration.init(
   }
 );
 
-// Retrieval config <> datasource config
-AgentRetrievalConfiguration.hasMany(AgentDatasourceConfiguration, {
+// Retrieval config <> data source config
+AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalId", allowNull: false },
   onDelete: "CASCADE",
 });

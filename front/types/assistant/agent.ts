@@ -56,6 +56,7 @@ export type AgentGenerationConfigurationType = {
  */
 
 export type AgentConfigurationStatus = "active" | "archived";
+export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {
   sId: string;

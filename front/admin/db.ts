@@ -27,7 +27,7 @@ import {
   XP1User,
 } from "@app/lib/models";
 import {
-  AgentDatasourceConfiguration,
+  AgentDataSourceConfiguration,
   AgentRetrievalConfiguration,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
@@ -65,7 +65,7 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentGenerationConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
-  await AgentDatasourceConfiguration.sync({ alter: true });
+  await AgentDataSourceConfiguration.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
