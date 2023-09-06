@@ -274,11 +274,7 @@ export async function notionUpsertPageActivity(
     const documentId = `notion-${parsedPage.id}`;
     const parents = await getParents(
       dataSourceConfig,
-      {
-        notionId: pageId,
-        parentType: parsedPage.parentType,
-        parentId: parsedPage.parentId,
-      },
+      pageId,
       runTimestamp.toString() // memoize at notionSyncWorkflow main inner loop level
     );
     await upsertToDatasource({
@@ -843,14 +839,19 @@ export async function updateParentsFieldsActivity(
   activitiesResults: UpsertActivityResult[],
   activityExecutionTimestamp: number
 ) {
+  const localLogger = logger.child({
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceName: dataSourceConfig.dataSourceName,
+  });
   // Get documents whose path changed (created or moved) If there is
   // createdOrMoved, then the document cannot be null thus the cast is safe
   const documents = activitiesResults
     .filter((aRes) => aRes.createdOrMoved)
     .map((aRes) => aRes.pageOrDb) as (NotionPage | NotionDatabase)[];
-  await updateAllParentsFields(
+  const nbUpdated = await updateAllParentsFields(
     dataSourceConfig,
     documents,
     activityExecutionTimestamp.toString()
   );
+  localLogger.info({ nbUpdated }, "Updated parents fields.");
 }

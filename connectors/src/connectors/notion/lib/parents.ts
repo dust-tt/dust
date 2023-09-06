@@ -2,6 +2,7 @@ import memoize from "lodash.memoize";
 
 import {
   getDatabaseChildrenOf,
+  getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
@@ -23,15 +24,19 @@ import {
  */
 async function _getParents(
   dataSourceInfo: DataSourceInfo,
-  pageOrDb: {
-    notionId: string;
-    parentType: string | null | undefined;
-    parentId: string | null | undefined;
-  },
+  pageOrDbId: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
-  const parents: string[] = [pageOrDb.notionId];
+  const parents: string[] = [pageOrDbId];
+  const pageOrDb =
+    (await getNotionPageFromConnectorsDb(dataSourceInfo, pageOrDbId)) ||
+    (await getNotionDatabaseFromConnectorsDb(dataSourceInfo, pageOrDbId));
+  if (!pageOrDb) {
+    // pageOrDb is either not synced yet (not an issue, see design doc) or
+    // is not in Dust's scope, in both cases we can just return the page id
+    return parents;
+  }
   switch (pageOrDb.parentType) {
     case "workspace":
       return parents;
@@ -41,23 +46,10 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
-      // retrieve the parent from notion connectors db
-      // and add it to the parents array
-      const parent = await getNotionPageFromConnectorsDb(
-        dataSourceInfo,
-        pageOrDb.parentId as string // (cannot be null here)
-      );
-      if (!parent) {
-        // The parent is either not synced yet (not an issue, see design doc) or
-        // is not in Dust's scope, in both cases we can just return the page id
-        return parents;
-      }
       return parents.concat(
-        await getParents(dataSourceInfo, {
-          notionId: parent.notionPageId,
-          parentType: parent.parentType,
-          parentId: parent.parentId,
-        })
+        // parentId cannot be undefined here
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        await getParents(dataSourceInfo, pageOrDb.parentId!, memoizationKey)
       );
     }
     default:
@@ -67,8 +59,8 @@ async function _getParents(
 
 export const getParents = memoize(
   _getParents,
-  (dataSourceInfo, pageOrDb, memoizationKey) => {
-    return `${dataSourceInfo.dataSourceName}:${pageOrDb.notionId}:${memoizationKey}`;
+  (dataSourceInfo, pageOrDbId, memoizationKey) => {
+    return `${dataSourceInfo.dataSourceName}:${pageOrDbId}:${memoizationKey}`;
   }
 );
 
@@ -76,7 +68,7 @@ export async function updateAllParentsFields(
   dataSourceConfig: DataSourceConfig,
   pageOrDbs: (NotionPage | NotionDatabase)[],
   memoizationKey?: string
-) {
+): Promise<number> {
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
   const pagesToUpdate = await getPagesToUpdate(pageOrDbs, dataSourceConfig);
@@ -87,11 +79,7 @@ export async function updateAllParentsFields(
   for (const page of pagesToUpdate) {
     const parents = await getParents(
       dataSourceConfig,
-      {
-        notionId: page.notionPageId,
-        parentType: page.parentType,
-        parentId: page.parentId,
-      },
+      page.notionPageId,
       memoizationKey
     );
 
@@ -101,6 +89,7 @@ export async function updateAllParentsFields(
       parents
     );
   }
+  return pagesToUpdate.length;
 }
 
 /**  Get ids of all pages whose parents field should be updated: initial pages in

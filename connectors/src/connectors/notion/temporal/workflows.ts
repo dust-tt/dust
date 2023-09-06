@@ -221,7 +221,7 @@ export async function notionSyncWorkflow(
     await updateParentsFieldsActivity(
       dataSourceConfig,
       syncWorkflowResults.flat().filter((r) => r) as UpsertActivityResult[],
-      runTimestamp
+      new Date().getTime()
     );
 
     if (!isGargageCollectionRun) {
