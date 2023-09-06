@@ -40,8 +40,59 @@ export { IconToggleButton };
 import { Tooltip } from "./components/Tooltip";
 export { Tooltip };
 
+import { Avatar } from "./components/Avatar";
+export { Avatar };
+
 import Spinner from "./components/Spinner";
 export { Spinner };
+
+import {
+  LogoHorizontalColor as LogoHorizontalColorLogo,
+  LogoHorizontalDark as LogoHorizontalDarkLogo,
+  LogoHorizontalWhite as LogoHorizontalWhiteLogo,
+  LogoSquareColor as LogoSquareColorLogo,
+  LogoSquareDark as LogoSquareDarkLogo,
+  LogoSquareWhite as LogoSquareWhiteLogo,
+} from "./logo/dust";
+
+export {
+  LogoHorizontalColorLogo,
+  LogoHorizontalDarkLogo,
+  LogoHorizontalWhiteLogo,
+  LogoSquareColorLogo,
+  LogoSquareDarkLogo,
+  LogoSquareWhiteLogo,
+};
+
+import {
+  Ai21 as Ai21Logo,
+  Claude as ClaudeLogo,
+  Cohere as CohereLogo,
+  Drive as DriveLogo,
+  Github as GithubLogo,
+  Gpt3 as Gpt3Logo,
+  Gpt4 as Gpt4Logo,
+  HuggingFace as HuggingFaceLogo,
+  Microsoft as MicrosoftLogo,
+  Notion as NotionLogo,
+  Replicate as ReplicateLogo,
+  Slack as SlackLogo,
+} from "./logo/platforms";
+
+export {
+  Ai21Logo,
+  ClaudeLogo,
+  CohereLogo,
+  DriveLogo,
+  GithubLogo,
+  Gpt3Logo,
+  Gpt4Logo,
+  HuggingFaceLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  ReplicateLogo,
+  SlackLogo,
+};
 
 import {
   ArrowDownCircle as ArrowDownCircleIcon,

@@ -70,5 +70,11 @@ GensTemplate.init(
   }
 );
 
-User.hasMany(GensTemplate);
-Workspace.hasMany(GensTemplate);
+User.hasMany(GensTemplate, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+Workspace.hasMany(GensTemplate, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});

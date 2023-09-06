@@ -1,8 +1,14 @@
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions/registry";
+import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
+import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentActionConfigurationType,
-  AgentActionInputsSpecification,
+  AgentActionSpecification,
   AgentConfigurationStatus,
   AgentConfigurationType,
   AgentMessageConfigurationType,
@@ -17,6 +23,7 @@ import {
   RetrievalDocumentsEvent,
   RetrievalParamsEvent,
 } from "./actions/retrieval";
+import { renderConversationForModel } from "./conversation";
 
 /**
  * Agent configuration.
@@ -80,9 +87,68 @@ export async function updateAgentConfiguration(
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
-  specification: AgentActionInputsSpecification
-): Promise<Record<string, string | boolean | number>> {
-  return {};
+  specification: AgentActionSpecification,
+  conversation: AssistantConversationType
+): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  const model = {
+    providerId: "openai",
+    modelId: "gpt-3.5-turbo-16k",
+  };
+  const allowedTokenCount = 12288; // for 16k model.
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel({
+    conversation,
+    model,
+    allowedTokenCount,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return modelConversationRes;
+  }
+
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-inputs-generator"].config
+  );
+  config.MODEL.function_call = specification.name;
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
+    {
+      conversation: modelConversationRes.value,
+      specification,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return new Err(new Error(`Error generating action inputs: ${res.error}`));
+  }
+
+  const run = res.value;
+
+  const output: Record<string, string | boolean | number> = {};
+  for (const t of run.traces) {
+    if (t[1][0][0].error) {
+      return new Err(
+        new Error(`Error generating action inputs: ${t[1][0][0].error}`)
+      );
+    }
+    if (t[0][1] === "OUTPUT") {
+      const v = t[1][0][0].value as any;
+      for (const k in v) {
+        if (
+          typeof v[k] === "string" ||
+          typeof v[k] === "boolean" ||
+          typeof v[k] === "number"
+        ) {
+          output[k] = v[k];
+        }
+      }
+    }
+  }
+
+  return new Ok(output);
 }
 
 /**

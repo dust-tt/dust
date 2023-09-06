@@ -112,7 +112,10 @@ AssistantUserMessage.init(
   }
 );
 
-User.hasMany(AssistantUserMessage, { foreignKey: "userId" });
+User.hasMany(AssistantUserMessage, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class AssistantAgentMessage extends Model<
   InferAttributes<AssistantAgentMessage>,
@@ -170,6 +173,7 @@ export class AssistantMessage extends Model<
   declare visibility: CreationOptional<AssistantMessageVisibility>;
 
   declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
+
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
   declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
   declare assistantAgentMessageId: ForeignKey<
@@ -229,7 +233,8 @@ AssistantMessage.init(
   }
 );
 AssistantConversation.hasMany(AssistantMessage, {
-  foreignKey: "assistantConversationId",
+  foreignKey: { name: "assistantConversationId", allowNull: false },
+  onDelete: "CASCADE",
 });
 AssistantUserMessage.hasOne(AssistantMessage, {
   foreignKey: "assistantUserMessageId",

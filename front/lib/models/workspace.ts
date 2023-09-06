@@ -20,9 +20,9 @@ export class Workspace extends Model<
 
   declare sId: string;
   declare name: string;
-  declare description?: string;
-  declare allowedDomain?: string;
-  declare plan?: string | null;
+  declare description: string | null;
+  declare allowedDomain: string | null;
+  declare plan: string | null;
 }
 Workspace.init(
   {
@@ -128,7 +128,7 @@ export class MembershipInvitation extends Model<
   declare status: "pending" | "consumed" | "revoked";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare invitedUserId: ForeignKey<User["id"]>;
+  declare invitedUserId: ForeignKey<User["id"]> | null;
 }
 MembershipInvitation.init(
   {
@@ -170,7 +170,10 @@ MembershipInvitation.init(
     indexes: [{ fields: ["workspaceId", "status"] }],
   }
 );
-Workspace.hasMany(MembershipInvitation);
+Workspace.hasMany(MembershipInvitation, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 User.hasMany(MembershipInvitation, {
   foreignKey: "invitedUserId",
 });
@@ -229,4 +232,7 @@ Key.init(
     ],
   }
 );
-Workspace.hasMany(Key);
+Workspace.hasMany(Key, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
