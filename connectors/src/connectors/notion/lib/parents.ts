@@ -1,3 +1,4 @@
+import { uuid4 } from "@temporalio/workflow";
 import memoize from "lodash.memoize";
 
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
@@ -12,7 +13,6 @@ import {
   getNotionPageFromConnectorsDb,
   getPageChildrenOfDocument,
 } from "./connectors_db_helpers";
-import { uuid4 } from "@temporalio/workflow";
 
 /** Compute the parents field for a notion document See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -20,7 +20,7 @@ import { uuid4 } from "@temporalio/workflow";
  * core](https://github.com/dust-tt/dust/blob/main/core/src/data_sources/data_source.rs)
  * for relevant details
  *
- * @param memoizationKey optional key to control memoization of this function
+ * @param memoizationKey optional key to control memoization of this function (not actually used by the functio)
  *
  */
 async function _getParents(
@@ -30,6 +30,7 @@ async function _getParents(
     parentType: string | null | undefined;
     parentId: string | null | undefined;
   },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [document.notionId];
@@ -84,7 +85,7 @@ export async function updateAllParentsFields(
   // Update everybody's parents field. Use of a memoization key to avoid
   // potentially sharing memoization across updateAllParentsFields calls, which
   // would be incorrect
-  let memoizationKey = uuid4();
+  const memoizationKey = uuid4();
   for (const page of pagesToUpdate) {
     const parents = await getParents(
       dataSourceConfig,
@@ -120,8 +121,8 @@ async function getPagesToUpdate(
   let i = 0;
   while (i < documents.length) {
     // Visit next document and if it's a page add it to update list
-    const document = documents[i++]!;
-    let documentId = notionId(document);
+    const document = documents[i++] as NotionPage | NotionDatabase;
+    const documentId = notionId(document);
     if (document instanceof NotionPage) {
       pagesToUpdate.push(document);
     }
@@ -129,11 +130,11 @@ async function getPagesToUpdate(
     // Get children of the document
     const pageChildren = await getPageChildrenOfDocument(
       dataSourceConfig,
-      documentId!
+      documentId
     );
     const databaseChildren = await getDatabaseChildrenOfDocument(
       dataSourceConfig,
-      documentId!
+      documentId
     );
 
     // If they haven't yet been visited, add them to documents visited
