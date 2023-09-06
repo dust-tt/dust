@@ -229,7 +229,6 @@ export async function* postUserMessage(
       type: "user_message",
       visibility: "visible",
       version: 0,
-      parentMessageId: null,
       user: user,
       mentions: mentions,
       message: message,
