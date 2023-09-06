@@ -65,6 +65,7 @@ export type RetrievalDocumentType = {
   dataSourceId: string;
   sourceUrl: string | null;
   documentId: string;
+  reference: string; // Short random string so that the model can refer to the document.
   timestamp: number;
   tags: string[];
   score: number;

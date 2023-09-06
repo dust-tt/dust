@@ -38,18 +38,15 @@ export type ModelConversationType = {
 
 // This function transforms a conversation in a simplified format that we feed the model as context.
 // It takes care of truncating the conversation all the way to `allowedTokenCount` tokens.
-export async function renderConversationForModel(
-  auth: Authenticator,
-  {
-    conversation,
-    model,
-    allowedTokenCount,
-  }: {
-    conversation: AssistantConversationType;
-    model: { providerId: string; modelId: string };
-    allowedTokenCount: number;
-  }
-): Promise<Result<ModelConversationType, Error>> {
+export async function renderConversationForModel({
+  conversation,
+  model,
+  allowedTokenCount,
+}: {
+  conversation: AssistantConversationType;
+  model: { providerId: string; modelId: string };
+  allowedTokenCount: number;
+}): Promise<Result<ModelConversationType, Error>> {
   const messages = [];
 
   let retrievalFound = false;

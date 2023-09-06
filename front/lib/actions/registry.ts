@@ -17,9 +17,16 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "f4816b1e13",
       appHash:
-        "8ff4a24d26322e4c9dcd28ba2635d4d521c97d564adee9444ffaaf73d545e7f1",
+        "67c42a248bd203a7ae3a1cf895e8b83e2f8d771e42d8ec46e4d5dadae2623f9f",
     },
-    config: {},
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-16k",
+        function_call: "auto",
+        use_cache: false,
+      },
+    },
   },
 
   "chat-retrieval": {

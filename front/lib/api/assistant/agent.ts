@@ -88,8 +88,7 @@ export async function updateAgentConfiguration(
 export async function generateActionInputs(
   auth: Authenticator,
   specification: AgentActionSpecification,
-  conversation: AssistantConversationType,
-  message: AssistantAgentMessageType
+  conversation: AssistantConversationType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
   // Turn the conversation into a digest that can be presented to the model.
   const model = {
@@ -97,7 +96,7 @@ export async function generateActionInputs(
     modelId: "gpt-3.5-turbo-16k",
   };
 
-  const modelConversationRes = await renderConversationForModel(auth, {
+  const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
     allowedTokenCount: 12288,
@@ -110,6 +109,7 @@ export async function generateActionInputs(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-inputs-generator"].config
   );
+  config.MODEL.function_call = specification.name;
 
   const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
     {
@@ -124,29 +124,28 @@ export async function generateActionInputs(
 
   const run = res.value;
 
-  // TODO(spolu): finish implementation
-
-  /*
-
-    for (const t of run.traces) {
-      if (t[1][0][0].error) {
-        yield* handleError(t[1][0][0].error);
-        return;
-      }
-      if (t[0][1] === "OUTPUT") {
-        messages[messages.length - 1].retrievals = (
-          t[1][0][0].value as { retrievals: ChatRetrievedDocumentType[] }
-        ).retrievals;
-        yield {
-          type: "chat_message_create",
-          message: messages[messages.length - 1],
-        } as ChatMessageCreateEvent;
+  const output: Record<string, string | boolean | number> = {};
+  for (const t of run.traces) {
+    if (t[1][0][0].error) {
+      return new Err(
+        new Error(`Error generating action inputs: ${t[1][0][0].error}`)
+      );
+    }
+    if (t[0][1] === "OUTPUT") {
+      const v = t[1][0][0].value as any;
+      for (const k in v) {
+        if (
+          typeof v[k] === "string" ||
+          typeof v[k] === "boolean" ||
+          typeof v[k] === "number"
+        ) {
+          output[k] = v[k];
+        }
       }
     }
   }
-  */
 
-  return new Ok({});
+  return new Ok(output);
 }
 
 /**
