@@ -137,6 +137,7 @@ export async function googleDriveIncrementalSync(
           nangoConnectionId,
           dataSourceConfig,
           googleDrive.id,
+          googleDrive.sharedDrive,
           startSyncTs,
           nextPageToken
         );
