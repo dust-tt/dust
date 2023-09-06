@@ -20,6 +20,9 @@ export class Conversation extends Model<
   InferCreationAttributes<Conversation>
 > {
   declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare sId: string;
   declare title: string | null;
   declare created: Date;
@@ -32,6 +35,16 @@ Conversation.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     sId: {
       type: DataTypes.STRING,
@@ -63,6 +76,8 @@ export class UserMessage extends Model<
   InferCreationAttributes<UserMessage>
 > {
   declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare message: string;
 
@@ -81,6 +96,16 @@ UserMessage.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     message: {
       type: DataTypes.TEXT,
@@ -122,6 +147,8 @@ export class AgentMessage extends Model<
   InferCreationAttributes<AgentMessage>
 > {
   declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare status: CreationOptional<AgentMessageStatus>;
 
@@ -136,6 +163,16 @@ AgentMessage.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     status: {
       type: DataTypes.STRING,
@@ -166,6 +203,9 @@ export class Message extends Model<
   InferCreationAttributes<Message>
 > {
   declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare sId: string;
 
   declare version: CreationOptional<number>;
@@ -185,6 +225,16 @@ Message.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     sId: {
       type: DataTypes.STRING,
