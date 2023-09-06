@@ -58,9 +58,9 @@ Conversation.init(
   }
 );
 
-export class AssistantUserMessage extends Model<
-  InferAttributes<AssistantUserMessage>,
-  InferCreationAttributes<AssistantUserMessage>
+export class UserMessage extends Model<
+  InferAttributes<UserMessage>,
+  InferCreationAttributes<UserMessage>
 > {
   declare id: CreationOptional<number>;
 
@@ -75,7 +75,7 @@ export class AssistantUserMessage extends Model<
   declare userId: ForeignKey<User["id"]> | null;
 }
 
-AssistantUserMessage.init(
+UserMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -113,7 +113,7 @@ AssistantUserMessage.init(
   }
 );
 
-User.hasMany(AssistantUserMessage, {
+User.hasMany(UserMessage, {
   foreignKey: { name: "userId" },
 });
 
@@ -175,7 +175,7 @@ export class AssistantMessage extends Model<
   declare assistantConversationId: ForeignKey<Conversation["id"]>;
 
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
-  declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
+  declare assistantUserMessageId: ForeignKey<UserMessage["id"]> | null;
   declare assistantAgentMessageId: ForeignKey<
     AssistantAgentMessage["id"]
   > | null;
@@ -234,7 +234,7 @@ Conversation.hasMany(AssistantMessage, {
   foreignKey: { name: "assistantConversationId", allowNull: false },
   onDelete: "CASCADE",
 });
-AssistantUserMessage.hasOne(AssistantMessage, {
+UserMessage.hasOne(AssistantMessage, {
   foreignKey: "assistantUserMessageId",
 });
 AssistantAgentMessage.hasOne(AssistantMessage, {

@@ -2,7 +2,6 @@ import {
   App,
   AssistantAgentMessage,
   AssistantMessage,
-  AssistantUserMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
@@ -21,6 +20,7 @@ import {
   Run,
   TrackedDocument,
   User,
+  UserMessage,
   UserMetadata,
   Workspace,
   XP1Run,
@@ -50,7 +50,7 @@ async function main() {
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
-  await AssistantUserMessage.sync({ alter: true });
+  await UserMessage.sync({ alter: true });
   await AssistantAgentMessage.sync({ alter: true });
   await AssistantMessage.sync({ alter: true });
 

@@ -12,7 +12,7 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AssistantAgentMessage,
   AssistantMessage,
-  AssistantUserMessage,
+  UserMessage,
 } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
@@ -21,12 +21,12 @@ import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
   AssistantAgentMessageType,
   AssistantMention,
-  AssistantUserMessageContext,
-  AssistantUserMessageType,
   ConversationType,
   isAgentMessageType,
   isAssistantAgentMention,
   isUserMessageType,
+  UserMessageContext,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionForModel } from "./actions/retrieval";
@@ -156,7 +156,7 @@ export async function renderConversationForModel({
 // Event sent when the user message is created.
 export type UserMessageNewEvent = {
   type: "user_message_new";
-  message: AssistantUserMessageType;
+  message: UserMessageType;
 };
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -172,7 +172,7 @@ export async function* postUserMessage(
     conversation: ConversationType;
     message: string;
     mentions: AssistantMention[];
-    context: AssistantUserMessageContext;
+    context: UserMessageContext;
   }
 ): AsyncGenerator<
   | UserMessageNewEvent
@@ -185,7 +185,7 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
-  let userMessage: AssistantUserMessageType | null = null;
+  let userMessage: UserMessageType | null = null;
   const agentMessages: AssistantAgentMessageType[] = [];
 
   await front_sequelize.transaction(async (t) => {
@@ -204,7 +204,7 @@ export async function* postUserMessage(
         assistantConversationId: conversation.id,
         parentId: null,
         assistantUserMessageId: (
-          await AssistantUserMessage.create(
+          await UserMessage.create(
             {
               message: message,
               userContextUsername: context.username,
@@ -349,7 +349,7 @@ export async function* editUserMessage(
     content,
   }: {
     conversation: ConversationType;
-    message: AssistantUserMessageType;
+    message: UserMessageType;
     content: string;
   }
 ): AsyncGenerator<

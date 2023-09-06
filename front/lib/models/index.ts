@@ -2,8 +2,8 @@ import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
   AssistantAgentMessage,
   AssistantMessage,
-  AssistantUserMessage,
   Conversation,
+  UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import {
   ChatMessage,
@@ -30,7 +30,6 @@ export {
   App,
   AssistantAgentMessage,
   AssistantMessage,
-  AssistantUserMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
@@ -49,6 +48,7 @@ export {
   Run,
   TrackedDocument,
   User,
+  UserMessage,
   UserMetadata,
   Workspace,
   XP1Run,

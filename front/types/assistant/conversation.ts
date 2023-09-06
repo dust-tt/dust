@@ -41,7 +41,7 @@ export function isAssistantUserMention(
  * User messages
  */
 
-export type AssistantUserMessageContext = {
+export type UserMessageContext = {
   username: string;
   timezone: string;
   fullName: string | null;
@@ -49,7 +49,7 @@ export type AssistantUserMessageContext = {
   profilePictureUrl: string | null;
 };
 
-export type AssistantUserMessageType = {
+export type UserMessageType = {
   id: ModelId;
   type: "user_message";
   sId: string;
@@ -58,12 +58,12 @@ export type AssistantUserMessageType = {
   user: UserType | null;
   mentions: AssistantMention[];
   message: string;
-  context: AssistantUserMessageContext;
+  context: UserMessageContext;
 };
 
 export function isUserMessageType(
-  arg: AssistantUserMessageType | AssistantAgentMessageType
-): arg is AssistantUserMessageType {
+  arg: UserMessageType | AssistantAgentMessageType
+): arg is UserMessageType {
   return arg.type === "user_message";
 }
 
@@ -113,7 +113,7 @@ export type AssistantAgentMessageType = {
 };
 
 export function isAgentMessageType(
-  arg: AssistantUserMessageType | AssistantAgentMessageType
+  arg: UserMessageType | AssistantAgentMessageType
 ): arg is AssistantAgentMessageType {
   return arg.type === "agent_message";
 }
@@ -133,6 +133,6 @@ export type ConversationType = {
   created: number;
   sId: string;
   title: string | null;
-  content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
+  content: (UserMessageType[] | AssistantAgentMessageType[])[];
   visibility: ConversationVisibility;
 };
