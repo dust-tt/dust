@@ -16,9 +16,8 @@ import { Icon } from "./Icon";
 import { Item as StandardItem } from "./Item";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
-const ButtonRefContext = React.createContext<MutableRefObject<any> | null>(
-  null
-);
+const ButtonRefContext =
+  React.createContext<MutableRefObject<HTMLElement | null> | null>(null);
 
 const labelClasses = {
   base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
