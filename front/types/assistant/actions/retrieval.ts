@@ -14,7 +14,6 @@ export type TimeFrame = {
 export type DataSourceFilter = {
   tags: { in: string[]; not: string[] } | null;
   parents: { in: string[]; not: string[] } | null;
-  // timestamp: { gt?: number; lt?: number } | null;
 };
 
 export type DataSourceConfiguration = {
