@@ -1,3 +1,5 @@
+import { generateActionInputs } from "@app/lib/api/assistant/agent";
+import { ModelMessageType } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
@@ -18,9 +20,6 @@ import {
   AssistantConversationType,
   AssistantUserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { generateActionInputs } from "../agent";
-import { ModelMessageType } from "../conversation";
 
 /**
  * TimeFrame parsing
