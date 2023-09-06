@@ -4,7 +4,7 @@
 
 import { ModelId } from "@app/lib/databases";
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
-import { AssistantAgentActionType } from "@app/types/assistant/conversation";
+import { AgentActionType } from "@app/types/assistant/conversation";
 
 export type TimeFrame = {
   count: number;
@@ -76,13 +76,13 @@ export type RetrievalDocumentType = {
 };
 
 export function isRetrievalActionType(
-  arg: AssistantAgentActionType
+  arg: AgentActionType
 ): arg is RetrievalActionType {
   return arg.type === "retrieval_action";
 }
 
 export type RetrievalActionType = {
-  id: ModelId; // AssistantAgentRetrieval.
+  id: ModelId; // AgentRetrieval.
   type: "retrieval_action";
   params: {
     dataSources: "all" | DataSourceConfiguration[];

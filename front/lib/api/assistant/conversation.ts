@@ -9,24 +9,20 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { front_sequelize } from "@app/lib/databases";
-import {
-  AssistantAgentMessage,
-  AssistantMessage,
-  AssistantUserMessage,
-} from "@app/lib/models";
+import { AgentMessage, Message, UserMessage } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
-  AssistantAgentMessageType,
-  AssistantConversationType,
-  AssistantMention,
-  AssistantUserMessageContext,
-  AssistantUserMessageType,
+  AgentMessageType,
+  ConversationType,
+  isAgentMention,
   isAgentMessageType,
-  isAssistantAgentMention,
   isUserMessageType,
+  Mention,
+  UserMessageContext,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionForModel } from "./actions/retrieval";
@@ -52,7 +48,7 @@ export async function renderConversationForModel({
   model,
   allowedTokenCount,
 }: {
-  conversation: AssistantConversationType;
+  conversation: ConversationType;
   model: { providerId: string; modelId: string };
   allowedTokenCount: number;
 }): Promise<Result<ModelConversationType, Error>> {
@@ -156,7 +152,7 @@ export async function renderConversationForModel({
 // Event sent when the user message is created.
 export type UserMessageNewEvent = {
   type: "user_message_new";
-  message: AssistantUserMessageType;
+  message: UserMessageType;
 };
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -169,10 +165,10 @@ export async function* postUserMessage(
     mentions,
     context,
   }: {
-    conversation: AssistantConversationType;
+    conversation: ConversationType;
     message: string;
-    mentions: AssistantMention[];
-    context: AssistantUserMessageContext;
+    mentions: Mention[];
+    context: UserMessageContext;
   }
 ): AsyncGenerator<
   | UserMessageNewEvent
@@ -185,26 +181,26 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
-  let userMessage: AssistantUserMessageType | null = null;
-  const agentMessages: AssistantAgentMessageType[] = [];
+  let userMessage: UserMessageType | null = null;
+  const agentMessages: AgentMessageType[] = [];
 
   await front_sequelize.transaction(async (t) => {
     let nextMessageRank =
-      ((await AssistantMessage.max<number | null, AssistantMessage>("rank", {
+      ((await Message.max<number | null, Message>("rank", {
         where: {
-          assistantConversationId: conversation.id,
+          conversationId: conversation.id,
         },
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessageRow = await AssistantMessage.create(
+    const userMessageRow = await Message.create(
       {
         sId: generateModelSId(),
         rank: nextMessageRank++,
-        assistantConversationId: conversation.id,
+        conversationId: conversation.id,
         parentId: null,
-        assistantUserMessageId: (
-          await AssistantUserMessage.create(
+        userMessageId: (
+          await UserMessage.create(
             {
               message: message,
               userContextUsername: context.username,
@@ -237,15 +233,15 @@ export async function* postUserMessage(
 
     // for each assistant mention, create an "empty" agent message
     for (const m of mentions) {
-      if (isAssistantAgentMention(m)) {
-        const agentMessageRow = await AssistantMessage.create(
+      if (isAgentMention(m)) {
+        const agentMessageRow = await Message.create(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,
-            assistantConversationId: conversation.id,
+            conversationId: conversation.id,
             parentId: userMessage.id,
-            assistantAgentMessageId: (
-              await AssistantAgentMessage.create({}, { transaction: t })
+            agentMessageId: (
+              await AgentMessage.create({}, { transaction: t })
             ).id,
           },
           {
@@ -309,15 +305,15 @@ export async function* postUserMessage(
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
-// AssistantAgentMessage as a result)
+// AgentMessage as a result)
 export async function* retryAgentMessage(
   auth: Authenticator,
   {
     conversation,
     message,
   }: {
-    conversation: AssistantConversationType;
-    message: AssistantAgentMessageType;
+    conversation: ConversationType;
+    message: AgentMessageType;
   }
 ): AsyncGenerator<
   | AgentMessageNewEvent
@@ -348,8 +344,8 @@ export async function* editUserMessage(
     message,
     content,
   }: {
-    conversation: AssistantConversationType;
-    message: AssistantUserMessageType;
+    conversation: ConversationType;
+    message: UserMessageType;
     content: string;
   }
 ): AsyncGenerator<
