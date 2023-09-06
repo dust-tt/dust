@@ -172,7 +172,7 @@ export class AssistantMessage extends Model<
   declare rank: number;
   declare visibility: CreationOptional<AssistantMessageVisibility>;
 
-  declare assistantConversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<Conversation["id"]>;
 
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
   declare assistantUserMessageId: ForeignKey<UserMessage["id"]> | null;
@@ -214,7 +214,7 @@ AssistantMessage.init(
     indexes: [
       {
         unique: true,
-        fields: ["version", "assistantConversationId", "rank"],
+        fields: ["version", "conversationId", "rank"],
       },
     ],
     hooks: {
@@ -231,7 +231,7 @@ AssistantMessage.init(
   }
 );
 Conversation.hasMany(AssistantMessage, {
-  foreignKey: { name: "assistantConversationId", allowNull: false },
+  foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "CASCADE",
 });
 UserMessage.hasOne(AssistantMessage, {

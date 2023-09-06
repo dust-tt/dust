@@ -192,7 +192,7 @@ export async function* postUserMessage(
     let nextMessageRank =
       ((await AssistantMessage.max<number | null, AssistantMessage>("rank", {
         where: {
-          assistantConversationId: conversation.id,
+          conversationId: conversation.id,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -201,7 +201,7 @@ export async function* postUserMessage(
       {
         sId: generateModelSId(),
         rank: nextMessageRank++,
-        assistantConversationId: conversation.id,
+        conversationId: conversation.id,
         parentId: null,
         assistantUserMessageId: (
           await UserMessage.create(
@@ -242,7 +242,7 @@ export async function* postUserMessage(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,
-            assistantConversationId: conversation.id,
+            conversationId: conversation.id,
             parentId: userMessage.id,
             assistantAgentMessageId: (
               await AssistantAgentMessage.create({}, { transaction: t })
