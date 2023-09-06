@@ -93,7 +93,7 @@ export async function notionSyncWorkflow(
     const childWorkflowQueue = new PQueue({
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
-    const promises: Promise<SyncWorkflowResult>[] = [];
+    const promises: Promise<UpsertActivityResult[]>[] = [];
 
     do {
       const { pageIds, databaseIds, nextCursor } =
@@ -174,7 +174,7 @@ export async function notionSyncWorkflow(
                 parentClosePolicy:
                   ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
               })
-            ) as Promise<SyncWorkflowResult>
+            ) as Promise<UpsertActivityResult[]>
           );
         }
       }
@@ -208,7 +208,7 @@ export async function notionSyncWorkflow(
                 parentClosePolicy:
                   ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
               })
-            ) as Promise<SyncWorkflowResult>
+            ) as Promise<UpsertActivityResult[]>
           );
         }
       }
@@ -219,7 +219,7 @@ export async function notionSyncWorkflow(
 
     await updateParentsFieldsActivity(
       dataSourceConfig,
-      syncWorkflowResults.flatMap((r) => r.activitiesResults)
+      syncWorkflowResults.flat()
     );
 
     if (!isGargageCollectionRun) {
@@ -255,17 +255,13 @@ export async function notionSyncWorkflow(
   );
 }
 
-type SyncWorkflowResult = {
-  activitiesResults: UpsertActivityResult[];
-};
-
 export async function notionSyncResultPageWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   pageIds: string[],
   runTimestamp: number,
   isBatchSync = false
-): Promise<SyncWorkflowResult> {
+): Promise<UpsertActivityResult[]> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
@@ -292,7 +288,7 @@ export async function notionSyncResultPageWorkflow(
     );
   }
 
-  return { activitiesResults: await Promise.all(promises) };
+  return await Promise.all(promises);
 }
 
 export async function notionSyncResultPageDatabaseWorkflow(
@@ -300,7 +296,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
   notionAccessToken: string,
   databaseIds: string[],
   runTimestamp: number
-): Promise<SyncWorkflowResult> {
+): Promise<UpsertActivityResult[]> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
@@ -325,5 +321,5 @@ export async function notionSyncResultPageDatabaseWorkflow(
       ) as Promise<UpsertActivityResult>
     );
   }
-  return { activitiesResults: await Promise.all(promises) };
+  return await Promise.all(promises);
 }
