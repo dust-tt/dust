@@ -42,11 +42,11 @@ spec:
           resources:
             requests:
               cpu: 2000m
-              memory: 8Gi
+              memory: 6Gi
 
             limits:
               cpu: 2000m
-              memory: 8Gi
+              memory: 6Gi
 
       volumes:
         - name: cert-volume
