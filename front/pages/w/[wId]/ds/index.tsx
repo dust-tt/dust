@@ -350,7 +350,9 @@ export default function DataSourcesView({
           })
         );
         if (provider === "google_drive") {
-          setGoogleDrivePickerOpen(true);
+          void router.push(
+            `/w/${owner.sId}/ds/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
+          );
         }
       } else {
         const responseText = await res.text();

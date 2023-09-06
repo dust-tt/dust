@@ -402,6 +402,16 @@ function ManagedDataSourceView({
   }
 
   useEffect(() => {
+    if (
+      typeof router.query.edit_permissions === "string" &&
+      router.query.edit_permissions === "true"
+    ) {
+      void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      setShowPermissionModal(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (connector.lastSyncSuccessfulTime)
       setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
   }, []);
