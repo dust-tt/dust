@@ -522,7 +522,11 @@ function ManagedDataSourceView({
           description={
             synchronizedTimeAgo
               ? `Last Sync ~ ${synchronizedTimeAgo}`
-              : connector.firstSyncProgress
+              : `Synchronizing ${
+                  connector.firstSyncProgress
+                    ? `(${connector.firstSyncProgress})`
+                    : ""
+                }`
           }
           action={
             readOnly
