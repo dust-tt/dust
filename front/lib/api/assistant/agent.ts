@@ -90,16 +90,17 @@ export async function generateActionInputs(
   specification: AgentActionSpecification,
   conversation: AssistantConversationType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
-  // Turn the conversation into a digest that can be presented to the model.
   const model = {
     providerId: "openai",
     modelId: "gpt-3.5-turbo-16k",
   };
+  const allowedTokenCount = 12288; // for 16k model.
 
+  // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
-    allowedTokenCount: 12288,
+    allowedTokenCount,
   });
 
   if (modelConversationRes.isErr()) {
@@ -110,6 +111,8 @@ export async function generateActionInputs(
     DustProdActionRegistry["assistant-v2-inputs-generator"].config
   );
   config.MODEL.function_call = specification.name;
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
 
   const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
     {

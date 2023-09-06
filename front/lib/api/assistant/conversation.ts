@@ -110,7 +110,7 @@ export async function renderConversationForModel({
     })
   );
 
-  // Go backward and accumulate as much as we can withih allowedTokenCount.
+  // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected = [];
   let tokensUsed = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
