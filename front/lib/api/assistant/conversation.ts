@@ -8,7 +8,14 @@ import {
 } from "@app/lib/api/assistant/agent";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
+import { front_sequelize } from "@app/lib/databases";
+import {
+  AssistantAgentMessage,
+  AssistantMessage,
+  AssistantUserMessage,
+} from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
+import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
@@ -18,6 +25,7 @@ import {
   AssistantUserMessageContext,
   AssistantUserMessageType,
   isAgentMessageType,
+  isAssistantAgentMention,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
@@ -175,6 +183,119 @@ export async function* postUserMessage(
   | AgentMessageTokensEvent
   | AgentMessageSuccessEvent
 > {
+  const user = auth.user();
+
+  let userMessage: AssistantUserMessageType | null = null;
+  const agentMessages: AssistantAgentMessageType[] = [];
+
+  await front_sequelize.transaction(async (t) => {
+    let nextMessageRank =
+      ((await AssistantMessage.max<number | null, AssistantMessage>("rank", {
+        where: {
+          assistantConversationId: conversation.id,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+
+    const userMessageRow = await AssistantMessage.create(
+      {
+        sId: generateModelSId(),
+        rank: nextMessageRank++,
+        assistantConversationId: conversation.id,
+        parentId: null,
+        assistantUserMessageId: (
+          await AssistantUserMessage.create(
+            {
+              message: message,
+              userContextUsername: context.username,
+              userContextTimezone: context.timezone,
+              userContextFullName: context.fullName,
+              userContextEmail: context.email,
+              userContextProfilePictureUrl: context.profilePictureUrl,
+              userId: user ? user.id : null,
+            },
+            { transaction: t }
+          )
+        ).id,
+      },
+      {
+        transaction: t,
+      }
+    );
+
+    userMessage = {
+      id: userMessageRow.id,
+      sId: userMessageRow.sId,
+      type: "user_message",
+      visibility: "visible",
+      version: 0,
+      user: user,
+      mentions: mentions,
+      message: message,
+      context: context,
+    };
+
+    // for each assistant mention, create an "empty" agent message
+    for (const m of mentions) {
+      if (isAssistantAgentMention(m)) {
+        const agentMessageRow = await AssistantMessage.create(
+          {
+            sId: generateModelSId(),
+            rank: nextMessageRank++,
+            assistantConversationId: conversation.id,
+            parentId: userMessage.id,
+            assistantAgentMessageId: (
+              await AssistantAgentMessage.create({}, { transaction: t })
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+        agentMessages.push({
+          id: agentMessageRow.id,
+          sId: agentMessageRow.sId,
+          type: "agent_message",
+          visibility: "visible",
+          version: 0,
+          parentMessageId: userMessage.sId,
+          status: "created",
+          action: null,
+          message: null,
+          feedbacks: [],
+          error: null,
+          configuration: {
+            sId: m.configurationId,
+            status: "active",
+            name: "foo", // TODO
+            pictureUrl: null, // TODO
+            action: null, // TODO
+            message: null, // TODO
+          },
+        });
+      }
+    }
+  });
+
+  if (!userMessage) {
+    throw new Error("Unreachable.");
+  }
+  yield {
+    type: "user_message_new",
+    message: userMessage,
+  };
+
+  for (const m of agentMessages) {
+    yield {
+      type: "agent_message_new",
+      message: m,
+      created: Date.now(),
+      configurationId: m.configuration.sId,
+    };
+  }
+
+  // TODO: run agents
+
   yield {
     type: "agent_error",
     created: Date.now(),
