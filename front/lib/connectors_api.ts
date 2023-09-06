@@ -240,7 +240,7 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
-  
+
   async getBotEnabled(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       botEnabled: boolean;
@@ -280,7 +280,6 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
-
 };
 
 function getDefaultHeaders() {
