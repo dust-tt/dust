@@ -11,7 +11,6 @@ import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import {
   DataSourceConfiguration,
-  DataSourceFilter,
   isRetrievalConfiguration,
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -299,8 +298,8 @@ export type RetrievalSuccessEvent = {
   action: RetrievalActionType;
 };
 
-// This method is in charge of running the retrieval and creating an AgentRetrieval DB
-// object in the database (along with the RetrievedDocument objects). It does not create any generic
+// This method is in charge of running the retrieval and creating an AgentRetrievalAction
+// object in the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not create any generic
 // model related to the conversation.
 export async function* runRetrieval(
   auth: Authenticator,
