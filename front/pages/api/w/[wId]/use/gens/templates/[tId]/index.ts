@@ -103,7 +103,7 @@ async function handler(
           });
         }
 
-        result = await updateTemplate(auth, pRes.value);
+        result = await updateTemplate(auth, { ...pRes.value, userId: null });
         if (!result) {
           return apiError(req, res, {
             status_code: 404,
@@ -125,7 +125,7 @@ async function handler(
         });
       }
       res.status(201).json({
-        template: pRes.value,
+        template: { ...pRes.value, userId: null },
       });
       return;
 
