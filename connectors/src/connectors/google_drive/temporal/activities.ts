@@ -241,6 +241,7 @@ export async function syncFiles(
             authCredentials,
             dataSourceConfig,
             file,
+            startSyncTs,
             true // isBatchSync
           );
         } else {
@@ -261,6 +262,7 @@ async function syncOneFile(
   oauth2client: OAuth2Client,
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
+  startSyncTs: number,
   isBatchSync = false
 ): Promise<boolean> {
   const documentId = getDocumentId(file.id);
@@ -389,6 +391,12 @@ async function syncOneFile(
   });
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+    const parents = (
+      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
+    ).map((f) => f.id);
+    parents.push(file.id);
+    parents.reverse();
+
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
@@ -396,7 +404,7 @@ async function syncOneFile(
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
-      parents: [],
+      parents: parents,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
@@ -600,7 +608,8 @@ export async function incrementalSync(
         connectorId,
         authCredentials,
         dataSourceConfig,
-        driveFile
+        driveFile,
+        startSyncTs
       );
       logger.info({ file_id: change.file.id }, "done syncing file");
     }
