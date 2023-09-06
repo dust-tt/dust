@@ -585,11 +585,14 @@ function renderGithubUser(user: GithubUser | null): string {
   return `@${user.id}`;
 }
 
-function getIssueDocumentId(repoId: string, issueNumber: number): string {
+export function getIssueDocumentId(
+  repoId: string,
+  issueNumber: number
+): string {
   return `github-issue-${repoId}-${issueNumber}`;
 }
 
-function getDiscussionDocumentId(
+export function getDiscussionDocumentId(
   repoId: string,
   discussionNumber: number
 ): string {
