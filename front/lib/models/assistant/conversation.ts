@@ -62,7 +62,8 @@ export class AssistantUserMessage extends Model<
   InferAttributes<AssistantUserMessage>,
   InferCreationAttributes<AssistantUserMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+
   declare message: string;
 
   declare userContextUsername: string;
@@ -165,10 +166,10 @@ export class AssistantMessage extends Model<
   InferAttributes<AssistantMessage>,
   InferCreationAttributes<AssistantMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
   declare sId: string;
 
-  declare version: number;
+  declare version: CreationOptional<number>;
   declare rank: number;
   declare visibility: CreationOptional<AssistantMessageVisibility>;
 

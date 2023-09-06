@@ -8,7 +8,10 @@ import {
 } from "@app/lib/api/assistant/agent";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
+import { front_sequelize } from "@app/lib/databases";
+import { AssistantMessage, AssistantUserMessage } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
+import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
@@ -175,6 +178,73 @@ export async function* postUserMessage(
   | AgentMessageTokensEvent
   | AgentMessageSuccessEvent
 > {
+  const user = auth.user();
+  if (!user) {
+    // TBD
+    throw new Error("User not found");
+  }
+
+  const transaction = await front_sequelize.transaction();
+
+  const lastMessageRank = await AssistantMessage.max<
+    number | null,
+    AssistantMessage
+  >("rank", {
+    where: {
+      assistantConversationId: conversation.id,
+    },
+    transaction,
+  });
+
+  const newUserMessage = await AssistantUserMessage.create(
+    {
+      message: message,
+      userContextUsername: context.username,
+      userContextTimezone: context.timezone,
+      userContextFullName: context.fullName,
+      userContextEmail: context.email,
+      userContextProfilePictureUrl: context.profilePictureUrl,
+      userId: user.id,
+    },
+    {
+      transaction,
+    }
+  );
+  const newMessage = await AssistantMessage.create(
+    {
+      sId: generateModelSId(),
+      rank: lastMessageRank ? lastMessageRank + 1 : 0,
+      assistantConversationId: conversation.id,
+      parentId: null,
+      assistantUserMessageId: newUserMessage.id,
+    },
+    {
+      transaction,
+    }
+  );
+
+  try {
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+
+  yield {
+    type: "user_message_new",
+    message: {
+      id: newUserMessage.id,
+      sId: newMessage.sId,
+      visibility: "visible",
+      version: 0,
+      parentMessageId: null,
+      user: user,
+      mentions: mentions,
+      message: message,
+      context: context,
+    },
+  };
+
   yield {
     type: "agent_error",
     created: Date.now(),

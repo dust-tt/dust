@@ -39,8 +39,7 @@ export type AssistantUserMessageType = {
   sId: string;
   visibility: AssistantMessageVisibility;
   version: number;
-  parentMessageId: string;
-
+  parentMessageId: string | null;
   user: UserType | null;
   mentions: AssistantMention[];
   message: string;
