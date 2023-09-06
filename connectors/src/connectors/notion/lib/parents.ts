@@ -123,8 +123,8 @@ async function getPagesToUpdate(
     // Visit next document and if it's a page add it to update list
     const document = documents[i++] as NotionPage | NotionDatabase;
     const documentId = notionId(document);
-    if (document instanceof NotionPage) {
-      pagesToUpdate.push(document);
+    if ((document as NotionPage).notionPageId) {
+      pagesToUpdate.push(document as NotionPage);
     }
 
     // Get children of the document
@@ -150,11 +150,8 @@ async function getPagesToUpdate(
 }
 
 function notionId(document: NotionPage | NotionDatabase): string {
-  if (document instanceof NotionPage) {
-    return document.notionPageId;
-  } else if (document instanceof NotionDatabase) {
-    return document.notionDatabaseId;
-  } else {
-    throw new Error("Unexpected error");
-  }
+  return (
+    (document as NotionPage).notionPageId ||
+    (document as NotionDatabase).notionDatabaseId
+  );
 }
