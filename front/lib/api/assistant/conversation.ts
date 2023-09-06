@@ -185,8 +185,8 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
-  let userMessageEvent: UserMessageNewEvent | null = null;
-  const agentMessageEvents: AgentMessageNewEvent[] = [];
+  let userMessage: AssistantUserMessageType | null = null;
+  const agentMessages: AssistantAgentMessageType[] = [];
 
   await front_sequelize.transaction(async (t) => {
     let nextMessageRank =
@@ -196,7 +196,8 @@ export async function* postUserMessage(
         },
         transaction: t,
       })) ?? -1) + 1;
-    const userMessage = await AssistantMessage.create(
+
+    const userMessageRow = await AssistantMessage.create(
       {
         sId: generateModelSId(),
         rank: nextMessageRank++,
@@ -221,26 +222,24 @@ export async function* postUserMessage(
         transaction: t,
       }
     );
-    userMessageEvent = {
-      type: "user_message_new",
-      message: {
-        id: userMessage.id,
-        sId: userMessage.sId,
-        type: "user_message",
-        visibility: "visible",
-        version: 0,
-        parentMessageId: null,
-        user: user,
-        mentions: mentions,
-        message: message,
-        context: context,
-      },
+
+    userMessage = {
+      id: userMessageRow.id,
+      sId: userMessageRow.sId,
+      type: "user_message",
+      visibility: "visible",
+      version: 0,
+      parentMessageId: null,
+      user: user,
+      mentions: mentions,
+      message: message,
+      context: context,
     };
 
     // for each assistant mention, create an "empty" agent message
     for (const m of mentions) {
       if (isAssistantAgentMention(m)) {
-        const agentMessage = await AssistantMessage.create(
+        const agentMessageRow = await AssistantMessage.create(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,
@@ -254,44 +253,46 @@ export async function* postUserMessage(
             transaction: t,
           }
         );
-
-        agentMessageEvents.push({
-          type: "agent_message_new",
-          created: Date.now(),
-          configurationId: m.configurationId,
-          message: {
-            id: agentMessage.id,
-            sId: agentMessage.sId,
-            type: "agent_message",
-            visibility: "visible",
-            version: 0,
-            parentMessageId: userMessage.sId,
-            status: "created",
-            action: null,
-            message: null,
-            feedbacks: [],
-            error: null,
-            configuration: {
-              sId: m.configurationId,
-              status: "active",
-              name: "foo", // TODO
-              pictureUrl: null, // TODO
-              action: null, // TODO
-              message: null, // TODO
-            },
+        agentMessages.push({
+          id: agentMessageRow.id,
+          sId: agentMessageRow.sId,
+          type: "agent_message",
+          visibility: "visible",
+          version: 0,
+          parentMessageId: userMessage.sId,
+          status: "created",
+          action: null,
+          message: null,
+          feedbacks: [],
+          error: null,
+          configuration: {
+            sId: m.configurationId,
+            status: "active",
+            name: "foo", // TODO
+            pictureUrl: null, // TODO
+            action: null, // TODO
+            message: null, // TODO
           },
         });
       }
     }
   });
 
-  if (!userMessageEvent) {
+  if (!userMessage) {
     throw new Error("Unreachable.");
   }
-  yield userMessageEvent;
+  yield {
+    type: "user_message_new",
+    message: userMessage,
+  };
 
-  for (const e of agentMessageEvents) {
-    yield e;
+  for (const m of agentMessages) {
+    yield {
+      type: "agent_message_new",
+      message: m,
+      created: Date.now(),
+      configurationId: m.configuration.sId,
+    };
   }
 
   // TODO: run agents
