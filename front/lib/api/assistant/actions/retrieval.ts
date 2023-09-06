@@ -23,9 +23,9 @@ import {
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
 import {
-  AssistantAgentMessageType,
-  AssistantConversationType,
-  AssistantUserMessageType,
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 /**
@@ -174,8 +174,8 @@ export async function retrievalActionSpecification(
 export async function generateRetrievalParams(
   auth: Authenticator,
   configuration: RetrievalConfigurationType,
-  conversation: AssistantConversationType,
-  userMessage: AssistantUserMessageType
+  conversation: ConversationType,
+  userMessage: UserMessageType
 ): Promise<
   Result<
     { query: string | null; relativeTimeFrame: TimeFrame | null; topK: number },
@@ -299,15 +299,15 @@ export type RetrievalSuccessEvent = {
   action: RetrievalActionType;
 };
 
-// This method is in charge of running the retrieval and creating an AssistantAgentRetrieval DB
+// This method is in charge of running the retrieval and creating an AgentRetrieval DB
 // object in the database (along with the RetrievedDocument objects). It does not create any generic
 // model related to the conversation.
 export async function* runRetrieval(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: AssistantConversationType,
-  userMessage: AssistantUserMessageType,
-  agentMessage: AssistantAgentMessageType
+  conversation: ConversationType,
+  userMessage: UserMessageType,
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
   | RetrievalParamsEvent
   | RetrievalDocumentsEvent

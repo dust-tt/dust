@@ -10,23 +10,23 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import {
-  AssistantAgentMessageStatus,
-  AssistantConversationVisibility,
-  AssistantMessageVisibility,
+  AgentMessageStatus,
+  ConversationVisibility,
+  MessageVisibility,
 } from "@app/types/assistant/conversation";
 
-export class AssistantConversation extends Model<
-  InferAttributes<AssistantConversation>,
-  InferCreationAttributes<AssistantConversation>
+export class Conversation extends Model<
+  InferAttributes<Conversation>,
+  InferCreationAttributes<Conversation>
 > {
   declare id: CreationOptional<number>;
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: CreationOptional<AssistantConversationVisibility>;
+  declare visibility: CreationOptional<ConversationVisibility>;
 }
 
-AssistantConversation.init(
+Conversation.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -53,14 +53,14 @@ AssistantConversation.init(
     },
   },
   {
-    modelName: "assistant_conversation",
+    modelName: "conversation",
     sequelize: front_sequelize,
   }
 );
 
-export class AssistantUserMessage extends Model<
-  InferAttributes<AssistantUserMessage>,
-  InferCreationAttributes<AssistantUserMessage>
+export class UserMessage extends Model<
+  InferAttributes<UserMessage>,
+  InferCreationAttributes<UserMessage>
 > {
   declare id: CreationOptional<number>;
 
@@ -75,7 +75,7 @@ export class AssistantUserMessage extends Model<
   declare userId: ForeignKey<User["id"]> | null;
 }
 
-AssistantUserMessage.init(
+UserMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -108,29 +108,29 @@ AssistantUserMessage.init(
     },
   },
   {
-    modelName: "assistant_user_message",
+    modelName: "user_message",
     sequelize: front_sequelize,
   }
 );
 
-User.hasMany(AssistantUserMessage, {
+User.hasMany(UserMessage, {
   foreignKey: { name: "userId" },
 });
 
-export class AssistantAgentMessage extends Model<
-  InferAttributes<AssistantAgentMessage>,
-  InferCreationAttributes<AssistantAgentMessage>
+export class AgentMessage extends Model<
+  InferAttributes<AgentMessage>,
+  InferCreationAttributes<AgentMessage>
 > {
   declare id: CreationOptional<number>;
 
-  declare status: CreationOptional<AssistantAgentMessageStatus>;
+  declare status: CreationOptional<AgentMessageStatus>;
 
   declare message: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 }
 
-AssistantAgentMessage.init(
+AgentMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -156,32 +156,30 @@ AssistantAgentMessage.init(
     },
   },
   {
-    modelName: "assistant_agent_message",
+    modelName: "agent_message",
     sequelize: front_sequelize,
   }
 );
 
-export class AssistantMessage extends Model<
-  InferAttributes<AssistantMessage>,
-  InferCreationAttributes<AssistantMessage>
+export class Message extends Model<
+  InferAttributes<Message>,
+  InferCreationAttributes<Message>
 > {
   declare id: CreationOptional<number>;
   declare sId: string;
 
   declare version: CreationOptional<number>;
   declare rank: number;
-  declare visibility: CreationOptional<AssistantMessageVisibility>;
+  declare visibility: CreationOptional<MessageVisibility>;
 
-  declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
+  declare conversationId: ForeignKey<Conversation["id"]>;
 
-  declare parentId: ForeignKey<AssistantMessage["id"]> | null;
-  declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
-  declare assistantAgentMessageId: ForeignKey<
-    AssistantAgentMessage["id"]
-  > | null;
+  declare parentId: ForeignKey<Message["id"]> | null;
+  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 
-AssistantMessage.init(
+Message.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -209,37 +207,37 @@ AssistantMessage.init(
     },
   },
   {
-    modelName: "assistant_message",
+    modelName: "message",
     sequelize: front_sequelize,
     indexes: [
       {
         unique: true,
-        fields: ["version", "assistantConversationId", "rank"],
+        fields: ["version", "conversationId", "rank"],
       },
     ],
     hooks: {
       beforeValidate: (message) => {
-        if (
-          !message.assistantUserMessageId === !message.assistantAgentMessageId
-        ) {
+        if (!message.userMessageId === !message.agentMessageId) {
           throw new Error(
-            "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
+            "Exactly one of userMessageId, agentMessageId must be non-null"
           );
         }
       },
     },
   }
 );
-AssistantConversation.hasMany(AssistantMessage, {
-  foreignKey: { name: "assistantConversationId", allowNull: false },
+Conversation.hasMany(Message, {
+  foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "CASCADE",
 });
-AssistantUserMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantUserMessageId",
+UserMessage.hasOne(Message, {
+  foreignKey: "userMessageId",
+  as: "_message",
 });
-AssistantAgentMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantAgentMessageId",
+AgentMessage.hasOne(Message, {
+  foreignKey: "agentMessageId",
+  as: "_message",
 });
-AssistantMessage.belongsTo(AssistantMessage, {
+Message.belongsTo(Message, {
   foreignKey: "parentId",
 });

@@ -14,9 +14,9 @@ import {
   AgentMessageConfigurationType,
 } from "@app/types/assistant/agent";
 import {
-  AssistantAgentActionType,
-  AssistantAgentMessageType,
-  AssistantConversationType,
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
 } from "@app/types/assistant/conversation";
 
 import {
@@ -88,7 +88,7 @@ export async function updateAgentConfiguration(
 export async function generateActionInputs(
   auth: Authenticator,
   specification: AgentActionSpecification,
-  conversation: AssistantConversationType
+  conversation: ConversationType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
   const model = {
     providerId: "openai",
@@ -160,7 +160,7 @@ export type AgentMessageNewEvent = {
   type: "agent_message_new";
   created: number;
   configurationId: string;
-  message: AssistantAgentMessageType;
+  message: AgentMessageType;
 };
 
 // Generic event sent when an error occured (whether it's during the action or the message generation).
@@ -184,7 +184,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AssistantAgentActionType;
+  action: AgentActionType;
 };
 
 // Event sent when tokens are streamed as the the agent is generating a message.
@@ -202,16 +202,16 @@ export type AgentMessageSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AssistantAgentMessageType;
+  message: AgentMessageType;
 };
 
-// This interface is used to execute an agent. It is in charge of creating the AssistantAgentMessage
+// This interface is used to execute an agent. It is in charge of creating the AgentMessage
 // object in database (fully completed or with error set if an error occured). It is called to run
 // an agent or when retrying a previous agent interaction.
 export async function* runAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: AssistantConversationType
+  conversation: ConversationType
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
