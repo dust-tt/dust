@@ -28,6 +28,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-retrieval": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "471b6aa923",
+      appHash:
+        "3b634a84930020a7a18d3b32f4c5f5cd85690bf4958127ba51061fb101edea33",
+    },
+    config: {
+      DATASOURCE: {
+        data_sources: [],
+        top_k: 32,
+        filter: { tags: null, parent: null, timestamp: null },
+        use_cache: false,
+      },
+    },
+  },
 
   "chat-retrieval": {
     app: {
