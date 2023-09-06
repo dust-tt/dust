@@ -1,10 +1,17 @@
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions/registry";
+import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/conversation";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import {
   DataSourceConfiguration,
+  DataSourceFilter,
   isRetrievalConfiguration,
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -65,6 +72,24 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
     count,
     duration,
   };
+}
+
+// Turns a TimeFrame into a number of milliseconds from now.
+export function timeFrameFromNow(timeFrame: TimeFrame): number {
+  const now = Date.now();
+
+  switch (timeFrame.duration) {
+    case "hour":
+      return now - timeFrame.count * 60 * 60 * 1000;
+    case "day":
+      return now - timeFrame.count * 24 * 60 * 60 * 1000;
+    case "week":
+      return now - timeFrame.count * 7 * 24 * 60 * 60 * 1000;
+    case "month":
+      return now - timeFrame.count * 30 * 24 * 60 * 60 * 1000;
+    case "year":
+      return now - timeFrame.count * 365 * 24 * 60 * 60 * 1000;
+  }
 }
 
 /**
@@ -289,6 +314,11 @@ export async function* runRetrieval(
   | RetrievalSuccessEvent
   | RetrievalErrorEvent
 > {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+  }
+
   const c = configuration.action;
   if (!isRetrievalConfiguration(c)) {
     return yield {
@@ -334,5 +364,143 @@ export async function* runRetrieval(
     topK: params.topK,
   };
 
-  // TODO(spolu): Implement the retrieval.
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-retrieval"].config
+  );
+
+  // Handle data sources list and parents/tags filtering.
+  if (c.dataSources === "all") {
+    const prodCredentials = await prodAPICredentialsForOwner(owner);
+    const api = new DustAPI(prodCredentials);
+
+    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+    if (dsRes.isErr()) {
+      return yield {
+        type: "retrieval_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "retrieval_data_sources_error",
+          message: `Error retrieving workspace data sources: ${dsRes.error.message}`,
+        },
+      };
+    }
+
+    const ds = dsRes.value.filter((d) => d.assistantDefaultSelected);
+
+    config.DATASOURCE.data_sources = ds.map((d) => {
+      return {
+        workspace_id: prodCredentials.workspaceId,
+        data_source_id: d.name,
+      };
+    });
+  } else {
+    config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
+      workspace_id: d.workspaceId,
+      data_source_id: d.dataSourceId,
+    }));
+
+    for (const ds of c.dataSources) {
+      if (ds.filter.tags) {
+        if (!config.DATASOURCE.filter.tags) {
+          config.DATASOURCE.filter.tags = { in: [], not: [] };
+        }
+
+        config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
+        config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
+      }
+
+      if (ds.filter.parents) {
+        if (!config.DATASOURCE.filter.parents) {
+          config.DATASOURCE.filter.parents = { in: [], not: [] };
+        }
+
+        config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
+        config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
+      }
+    }
+  }
+
+  // Handle timestamp filtering.
+  if (params.relativeTimeFrame) {
+    config.DATASOURCE.filter.timestamp = {
+      gt: timeFrameFromNow(params.relativeTimeFrame),
+    };
+  }
+
+  // Handle top k.
+  config.DATASOURCE.top_k = params.topK;
+
+  const res = await runAction(auth, "assistant-v2-retrieval", config, [
+    {
+      query: params.query,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return yield {
+      type: "retrieval_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "retrieval_search_error",
+        message: `Error searching data sources: ${res.error.message}`,
+      },
+    };
+  }
+
+  const run = res.value;
+  let documents: RetrievalDocumentType[] = [];
+
+  //const output: Record<string, string | boolean | number> = {};
+  for (const t of run.traces) {
+    if (t[1][0][0].error) {
+      return yield {
+        type: "retrieval_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "retrieval_search_error",
+          message: `Error searching data sources: ${t[1][0][0].error}`,
+        },
+      };
+    }
+    if (t[0][1] === "DATASOURCE") {
+      const v = t[1][0][0].value as {
+        data_source_id: string;
+        created: number;
+        document_id: string;
+        timestamp: number;
+        tags: string[];
+        parents: string[];
+        source_url: string | null;
+        hash: string;
+        text_size: number;
+        chunk_count: number;
+        chunks: { text: string; hash: string; offset: number; score: number }[];
+        token_count: number;
+      }[];
+
+      documents = v.map((d) => ({
+        id: 0,
+        dataSourceId: d.data_source_id,
+        documentId: d.document_id,
+        reference: "",
+        timestamp: d.timestamp,
+        tags: d.tags,
+        sourceUrl: d.source_url ?? null,
+        score: d.chunks.map((c) => c.score)[0],
+        chunks: d.chunks.map((c) => ({
+          text: c.text,
+          offset: c.offset,
+          score: c.score,
+        })),
+      }));
+    }
+  }
+
+  // Documents are set with a dummy ModelId, now we need to create the actual objects in DB.
 }
