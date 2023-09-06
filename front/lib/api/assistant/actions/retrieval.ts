@@ -363,6 +363,8 @@ export async function* runRetrieval(
     topK: params.topK,
   };
 
+  // TODO(spolu): create the AgentRetrievalAction object in the database here.
+
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-retrieval"].config
   );
@@ -501,5 +503,6 @@ export async function* runRetrieval(
     }
   }
 
-  // Documents are set with a dummy ModelId, now we need to create the actual objects in DB.
+  // TODO(spolu): create the RetrievalDocument[Chunk] objects in the database here.
+  // TODO(spolu): emit success event with fully materialized RetrievalActionType.
 }
