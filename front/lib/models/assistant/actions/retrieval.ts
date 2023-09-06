@@ -61,7 +61,6 @@ AgentRetrievalConfiguration.init(
     topK: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 5,
     },
   },
   {
