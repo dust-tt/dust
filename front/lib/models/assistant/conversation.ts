@@ -72,7 +72,7 @@ export class AssistantUserMessage extends Model<
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
 }
 
 AssistantUserMessage.init(
@@ -114,8 +114,7 @@ AssistantUserMessage.init(
 );
 
 User.hasMany(AssistantUserMessage, {
-  foreignKey: { name: "userId", allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "userId" },
 });
 
 export class AssistantAgentMessage extends Model<

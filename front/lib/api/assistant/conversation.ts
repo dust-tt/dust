@@ -25,6 +25,7 @@ import {
   AssistantUserMessageContext,
   AssistantUserMessageType,
   isAgentMessageType,
+  isAssistantAgentMention,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
@@ -183,130 +184,117 @@ export async function* postUserMessage(
   | AgentMessageSuccessEvent
 > {
   const user = auth.user();
-  if (!user) {
-    // TBD
-    throw new Error("User not found");
-  }
 
-  // create the user message
-  let transaction = await front_sequelize.transaction();
+  let userMessageEvent: UserMessageNewEvent | null = null;
+  const agentMessageEvents: AgentMessageNewEvent[] = [];
 
-  let lastMessageRank = await AssistantMessage.max<
-    number | null,
-    AssistantMessage
-  >("rank", {
-    where: {
-      assistantConversationId: conversation.id,
-    },
-    transaction,
+  await front_sequelize.transaction(async (t) => {
+    let nextMessageRank =
+      ((await AssistantMessage.max<number | null, AssistantMessage>("rank", {
+        where: {
+          assistantConversationId: conversation.id,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+    const userMessage = await AssistantMessage.create(
+      {
+        sId: generateModelSId(),
+        rank: nextMessageRank++,
+        assistantConversationId: conversation.id,
+        parentId: null,
+        assistantUserMessageId: (
+          await AssistantUserMessage.create(
+            {
+              message: message,
+              userContextUsername: context.username,
+              userContextTimezone: context.timezone,
+              userContextFullName: context.fullName,
+              userContextEmail: context.email,
+              userContextProfilePictureUrl: context.profilePictureUrl,
+              userId: user ? user.id : null,
+            },
+            { transaction: t }
+          )
+        ).id,
+      },
+      {
+        transaction: t,
+      }
+    );
+    userMessageEvent = {
+      type: "user_message_new",
+      message: {
+        id: userMessage.id,
+        sId: userMessage.sId,
+        type: "user_message",
+        visibility: "visible",
+        version: 0,
+        parentMessageId: null,
+        user: user,
+        mentions: mentions,
+        message: message,
+        context: context,
+      },
+    };
+
+    // for each assistant mention, create an "empty" agent message
+    for (const m of mentions) {
+      if (isAssistantAgentMention(m)) {
+        const agentMessage = await AssistantMessage.create(
+          {
+            sId: generateModelSId(),
+            rank: nextMessageRank++,
+            assistantConversationId: conversation.id,
+            parentId: userMessage.id,
+            assistantAgentMessageId: (
+              await AssistantAgentMessage.create({}, { transaction: t })
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+
+        agentMessageEvents.push({
+          type: "agent_message_new",
+          created: Date.now(),
+          configurationId: m.configurationId,
+          message: {
+            id: agentMessage.id,
+            sId: agentMessage.sId,
+            type: "agent_message",
+            visibility: "visible",
+            version: 0,
+            parentMessageId: userMessage.sId,
+            status: "created",
+            action: null,
+            message: null,
+            feedbacks: [],
+            error: null,
+            configuration: {
+              sId: m.configurationId,
+              status: "active",
+              name: "foo", // TODO
+              pictureUrl: null, // TODO
+              action: null, // TODO
+              message: null, // TODO
+            },
+          },
+        });
+      }
+    }
   });
 
-  const newUserMessage = await AssistantUserMessage.create(
-    {
-      message: message,
-      userContextUsername: context.username,
-      userContextTimezone: context.timezone,
-      userContextFullName: context.fullName,
-      userContextEmail: context.email,
-      userContextProfilePictureUrl: context.profilePictureUrl,
-      userId: user.id,
-    },
-    {
-      transaction,
-    }
-  );
-  const newUserAssistantMessage = await AssistantMessage.create(
-    {
-      sId: generateModelSId(),
-      rank: lastMessageRank ? lastMessageRank + 1 : 0,
-      assistantConversationId: conversation.id,
-      parentId: null,
-      assistantUserMessageId: newUserMessage.id,
-    },
-    {
-      transaction,
-    }
-  );
+  if (!userMessageEvent) {
+    throw new Error("Unreachable.");
+  }
+  yield userMessageEvent;
 
-  try {
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
+  for (const e of agentMessageEvents) {
+    yield e;
   }
 
-  yield {
-    type: "user_message_new",
-    message: {
-      id: newUserAssistantMessage.id,
-      sId: newUserAssistantMessage.sId,
-      visibility: "visible",
-      version: 0,
-      parentMessageId: null,
-      user: user,
-      mentions: mentions,
-      message: message,
-      context: context,
-    },
-  };
-
-  // create the agent message
-  transaction = await front_sequelize.transaction();
-
-  // this is a separate transaction, so we have to re-compute the rank
-  // there could be, technically, a different user message created in the meantime
-  lastMessageRank = await AssistantMessage.max<number | null, AssistantMessage>(
-    "rank",
-    {
-      where: {
-        assistantConversationId: conversation.id,
-      },
-      transaction,
-    }
-  );
-  const newAgentMessage = await AssistantAgentMessage.create(
-    {},
-    {
-      transaction,
-    }
-  );
-  const newAgentAssistantMessage = await AssistantMessage.create(
-    {
-      sId: generateModelSId(),
-      rank: lastMessageRank ? lastMessageRank + 1 : 0,
-      assistantConversationId: conversation.id,
-      parentId: newUserAssistantMessage.id,
-      assistantAgentMessageId: newAgentMessage.id,
-    },
-    {
-      transaction,
-    }
-  );
-
-  try {
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
-
-  yield {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: "foo",
-    message: {
-      id: newAgentAssistantMessage.id,
-      sId: newAgentAssistantMessage.sId,
-      visibility: "visible",
-      version: 0,
-      parentMessageId: newUserAssistantMessage.sId,
-      status: "created",
-      action: null,
-      message: null,
-      feedbacks: [],
-      error: null,
-    },
-  };
+  // TODO: run agents
 
   yield {
     type: "agent_error",
