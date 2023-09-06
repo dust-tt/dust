@@ -133,7 +133,6 @@ export type AssistantConversationType = {
   created: number;
   sId: string;
   title: string | null;
-  participants: UserType[];
   content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
   visibility: AssistantConversationVisibility;
 };
