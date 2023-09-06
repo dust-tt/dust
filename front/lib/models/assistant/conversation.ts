@@ -19,11 +19,11 @@ export class AssistantConversation extends Model<
   InferAttributes<AssistantConversation>,
   InferCreationAttributes<AssistantConversation>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: AssistantConversationVisibility;
+  declare visibility: CreationOptional<AssistantConversationVisibility>;
 }
 
 AssistantConversation.init(
@@ -218,11 +218,9 @@ AssistantMessage.init(
       },
     ],
     hooks: {
-      // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
       beforeValidate: (message) => {
         if (
-          (message.assistantUserMessageId === null) ===
-          (message.assistantAgentMessageId === null)
+          !message.assistantUserMessageId === !message.assistantAgentMessageId
         ) {
           throw new Error(
             "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
