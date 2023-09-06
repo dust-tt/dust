@@ -38,7 +38,7 @@ async function updateParentsFieldForConnector(connector: Connector) {
   });
 
   // update all parents fields for all pages and databases
-  updateAllParentsFields(connector, [...pages, ...databases]);
+  await updateAllParentsFields(connector, [...pages, ...databases]);
 }
 
 main()
