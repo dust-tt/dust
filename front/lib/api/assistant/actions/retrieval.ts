@@ -188,7 +188,7 @@ export async function generateRetrievalParams(
         {
           elapsed: Date.now() - now,
         },
-        "Generated retrieval action inputs"
+        "[ASSISTANT_STATS] retrieval action inputs generation"
       );
 
       if (configuration.query === "auto") {

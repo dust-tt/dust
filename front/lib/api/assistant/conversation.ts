@@ -9,6 +9,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
   AssistantAgentMessageType,
@@ -103,11 +104,21 @@ export async function renderConversationForModel({
     return new Ok(res.value.tokens.length);
   }
 
+  const now = Date.now();
+
   // This is a bit aggressive but fuck it.
   const tokenCountRes = await Promise.all(
     messages.map((m) => {
       return tokenCountForMessage(m, model);
     })
+  );
+
+  logger.info(
+    {
+      messageCount: messages.length,
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_STATS] message token counts for model conversation rendering"
   );
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
