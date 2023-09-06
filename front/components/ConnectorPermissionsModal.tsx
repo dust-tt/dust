@@ -49,7 +49,15 @@ const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
+  "google_drive",
 ]);
+export const CONNECTOR_TYPE_TO_SHOW_EXPAND: Record<ConnectorProvider, boolean> =
+  {
+    notion: true,
+    slack: false,
+    github: false,
+    google_drive: true,
+  };
 
 export default function ConnectorPermissionsModal({
   owner,
@@ -99,10 +107,7 @@ export default function ConnectorPermissionsModal({
     }:`;
 
   const defaultPermissionTitleText =
-    CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT[connector.type] ??
-    `Automatically include new ${
-      CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]
-    }:`;
+    CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT[connector.type];
 
   async function save() {
     try {
@@ -235,7 +240,7 @@ export default function ConnectorPermissionsModal({
                 {!isDefaultNewResourcePermissionLoading &&
                 defaultNewResourcePermission ? (
                   <>
-                    {canUpdatePermissions ? (
+                    {canUpdatePermissions && defaultPermissionTitleText ? (
                       <div className="ml-2 mt-8 flex flex-row">
                         <span className="text-sm text-gray-500">
                           {defaultPermissionTitleText}
@@ -274,6 +279,9 @@ export default function ConnectorPermissionsModal({
                             [internalId]: permission,
                           }));
                         }}
+                        showExpand={
+                          CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]
+                        }
                       />
                     </div>
                   </>

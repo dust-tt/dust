@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import {
   ConnectorPermission,
+  ConnectorProvider,
   ConnectorResourceType,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
@@ -44,6 +45,22 @@ function getIconForType(type: ConnectorResourceType): IconComponentType {
       })(type);
   }
 }
+
+const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
+  ConnectorProvider,
+  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
+> = {
+  slack: {
+    selected: "read_write",
+    unselected: "write",
+  },
+  google_drive: {
+    selected: "read",
+    unselected: "none",
+  },
+  notion: undefined,
+  github: undefined,
+};
 
 function PermissionTreeChildren({
   owner,
@@ -82,6 +99,16 @@ function PermissionTreeChildren({
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
+  const selectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
+    "none";
+  const unselectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
+        ?.unselected) ||
+    "none";
+
   if (isResourcesError) {
     return (
       <div className="text-warning text-sm">
@@ -95,13 +122,13 @@ function PermissionTreeChildren({
       {isResourcesLoading ? (
         <Spinner />
       ) : (
-        <div className="space-y-1">
+        <div className="flex-1 space-y-1">
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const titlePrefix = r.type === "channel" ? "#" : "";
             return (
               <div key={r.internalId}>
-                <div className="flex flex-row items-center py-1 text-sm">
+                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
                   {showExpand && (
                     <div className="mr-4">
                       {expanded[r.internalId] ? (
@@ -151,7 +178,9 @@ function PermissionTreeChildren({
                           }));
                           onPermissionUpdate({
                             internalId: r.internalId,
-                            permission: checked ? "read_write" : "write",
+                            permission: checked
+                              ? selectedPermission
+                              : unselectedPermission,
                           });
                         }}
                       />
