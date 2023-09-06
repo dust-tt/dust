@@ -7,17 +7,16 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
 import { AgentConfigurationStatus } from "@app/types/assistant/agent";
-
-import { AssistantAgentRetrievalConfiguration } from "./actions/retrieval";
 
 /**
  * Agent configuration
  */
-export class AssistantAgentConfiguration extends Model<
-  InferAttributes<AssistantAgentConfiguration>,
-  InferCreationAttributes<AssistantAgentConfiguration>
+export class AgentConfiguration extends Model<
+  InferAttributes<AgentConfiguration>,
+  InferCreationAttributes<AgentConfiguration>
 > {
   declare id: number;
 
@@ -29,9 +28,9 @@ export class AssistantAgentConfiguration extends Model<
   declare isGlobal: boolean;
   declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
 
-  declare model: ForeignKey<AssistantAgentRetrievalConfiguration["id"]> | null;
+  declare model: ForeignKey<AgentRetrievalConfiguration["id"]> | null;
 }
-AssistantAgentConfiguration.init(
+AgentConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -63,7 +62,7 @@ AssistantAgentConfiguration.init(
     },
   },
   {
-    modelName: "assistant_agent_configuration",
+    modelName: "agent_configuration",
     sequelize: front_sequelize,
     indexes: [
       { fields: ["workspaceId"] },
@@ -75,7 +74,7 @@ AssistantAgentConfiguration.init(
       { fields: ["sId"], unique: true },
     ],
     hooks: {
-      beforeValidate: (agent: AssistantAgentConfiguration) => {
+      beforeValidate: (agent: AgentConfiguration) => {
         if (agent.isGlobal && agent.workspaceId) {
           throw new Error("Workspace id must be null for global agent");
         }
@@ -90,9 +89,9 @@ AssistantAgentConfiguration.init(
 /**
  * Configuration of Agent generation.
  */
-export class AssistantAgentGenerationConfiguration extends Model<
-  InferAttributes<AssistantAgentGenerationConfiguration>,
-  InferCreationAttributes<AssistantAgentGenerationConfiguration>
+export class AgentGenerationConfiguration extends Model<
+  InferAttributes<AgentGenerationConfiguration>,
+  InferCreationAttributes<AgentGenerationConfiguration>
 > {
   declare id: number;
 
@@ -100,9 +99,9 @@ export class AssistantAgentGenerationConfiguration extends Model<
   declare modelProvider: string;
   declare modelId: string;
 
-  declare agentId: ForeignKey<AssistantAgentConfiguration["id"]>;
+  declare agentId: ForeignKey<AgentConfiguration["id"]>;
 }
-AssistantAgentGenerationConfiguration.init(
+AgentGenerationConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -123,19 +122,19 @@ AssistantAgentGenerationConfiguration.init(
     },
   },
   {
-    modelName: "assistant_agent_generation_configuration",
+    modelName: "agent_generation_configuration",
     sequelize: front_sequelize,
   }
 );
 
 // Workspace <> Agent config
-Workspace.hasMany(AssistantAgentConfiguration, {
+Workspace.hasMany(AgentConfiguration, {
   foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
   onDelete: "CASCADE",
 });
 
 // Agent config <> Generation config
-AssistantAgentConfiguration.hasOne(AssistantAgentGenerationConfiguration, {
+AgentConfiguration.hasOne(AgentGenerationConfiguration, {
   foreignKey: { name: "agentId", allowNull: false }, // null = no retrieval action set for this Agent
   onDelete: "CASCADE",
 });

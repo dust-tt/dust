@@ -7,16 +7,16 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AssistantAgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
 /**
  * Action Retrieval configuration
  */
-export class AssistantAgentRetrievalConfiguration extends Model<
-  InferAttributes<AssistantAgentRetrievalConfiguration>,
-  InferCreationAttributes<AssistantAgentRetrievalConfiguration>
+export class AgentRetrievalConfiguration extends Model<
+  InferAttributes<AgentRetrievalConfiguration>,
+  InferCreationAttributes<AgentRetrievalConfiguration>
 > {
   declare id: number;
 
@@ -27,9 +27,9 @@ export class AssistantAgentRetrievalConfiguration extends Model<
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
 
-  declare agentId: ForeignKey<AssistantAgentConfiguration["id"]>;
+  declare agentId: ForeignKey<AgentConfiguration["id"]>;
 }
-AssistantAgentRetrievalConfiguration.init(
+AgentRetrievalConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -65,10 +65,10 @@ AssistantAgentRetrievalConfiguration.init(
     },
   },
   {
-    modelName: "assistant_agent_retrieval_configuration",
+    modelName: "agent_retrieval_configuration",
     sequelize: front_sequelize,
     hooks: {
-      beforeValidate: (retrieval: AssistantAgentRetrievalConfiguration) => {
+      beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for templated Query
         if (retrieval.query == "templated") {
           if (retrieval.queryTemplate === null) {
@@ -99,9 +99,9 @@ AssistantAgentRetrievalConfiguration.init(
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AssistantAgentDatasourceConfiguration extends Model<
-  InferAttributes<AssistantAgentDatasourceConfiguration>,
-  InferCreationAttributes<AssistantAgentDatasourceConfiguration>
+export class AgentDatasourceConfiguration extends Model<
+  InferAttributes<AgentDatasourceConfiguration>,
+  InferCreationAttributes<AgentDatasourceConfiguration>
 > {
   declare id: number;
 
@@ -117,10 +117,10 @@ export class AssistantAgentDatasourceConfiguration extends Model<
 
   declare datasourceId: ForeignKey<DataSource["id"]>;
   declare retrievalConfigurationId: ForeignKey<
-    AssistantAgentRetrievalConfiguration["id"]
+    AgentRetrievalConfiguration["id"]
   >;
 }
-AssistantAgentDatasourceConfiguration.init(
+AgentDatasourceConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -165,12 +165,10 @@ AssistantAgentDatasourceConfiguration.init(
     },
   },
   {
-    modelName: "assistant_agent_datasource_configuration",
+    modelName: "agent_datasource_configuration",
     sequelize: front_sequelize,
     hooks: {
-      beforeValidate: (
-        datasourceConfig: AssistantAgentDatasourceConfiguration
-      ) => {
+      beforeValidate: (datasourceConfig: AgentDatasourceConfiguration) => {
         if (
           (datasourceConfig.minTimestamp === null) !==
           (datasourceConfig.maxTimestamp === null)
@@ -199,16 +197,13 @@ AssistantAgentDatasourceConfiguration.init(
 );
 
 // Retrieval config <> datasource config
-AssistantAgentRetrievalConfiguration.hasMany(
-  AssistantAgentDatasourceConfiguration,
-  {
-    foreignKey: { name: "retrievalId", allowNull: false },
-    onDelete: "CASCADE",
-  }
-);
+AgentRetrievalConfiguration.hasMany(AgentDatasourceConfiguration, {
+  foreignKey: { name: "retrievalId", allowNull: false },
+  onDelete: "CASCADE",
+});
 
 // Agent config <> Retrieval config
-AssistantAgentConfiguration.hasOne(AssistantAgentRetrievalConfiguration, {
+AgentConfiguration.hasOne(AgentRetrievalConfiguration, {
   foreignKey: { name: "agentId", allowNull: true }, // null = no generation set for this Agent
   onDelete: "CASCADE",
 });
