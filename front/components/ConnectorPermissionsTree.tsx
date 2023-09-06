@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import {
   ConnectorPermission,
+  ConnectorProvider,
   ConnectorResourceType,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
@@ -44,6 +45,22 @@ function getIconForType(type: ConnectorResourceType): IconComponentType {
       })(type);
   }
 }
+
+const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
+  ConnectorProvider,
+  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
+> = {
+  slack: {
+    selected: "read_write",
+    unselected: "write",
+  },
+  google_drive: {
+    selected: "read",
+    unselected: "none",
+  },
+  notion: undefined,
+  github: undefined,
+};
 
 function PermissionTreeChildren({
   owner,
@@ -81,6 +98,16 @@ function PermissionTreeChildren({
   >({});
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const selectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
+    "none";
+  const unselectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
+        ?.unselected) ||
+    "none";
 
   if (isResourcesError) {
     return (
@@ -151,7 +178,9 @@ function PermissionTreeChildren({
                           }));
                           onPermissionUpdate({
                             internalId: r.internalId,
-                            permission: checked ? "read_write" : "write",
+                            permission: checked
+                              ? selectedPermission
+                              : unselectedPermission,
                           });
                         }}
                       />
