@@ -109,10 +109,12 @@ pub struct Chunk {
 /// if the document’s id is selected as a parent filter, the document itself
 /// shows up in the search.
 ///
+///
 /// Note however that the hierarchical system depends on the managed datasource.
-/// For example, in the Slack managed datasource, documents only have a single
-/// parent in the array, their channel (since a channel does not have any
-/// parent).
+/// For example, in the Slack managed datasource, documents are aggregated
+/// messages from a channel. A channel does not have any parent, and there are
+/// no slack ids for our slack "documents" so the only value in the parents
+/// array is the slack channel id
 ///
 /// Parents are at the time of writing only relevant for managed datasources
 /// since standard datasources do not allow specifying a hierarchy. A parent is
