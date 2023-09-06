@@ -21,6 +21,22 @@ export type AssistantMention = AssistantAgentMention | AssistantUserMention;
 
 export type AssistantMessageVisibility = "visible" | "deleted";
 
+export function isAssistantAgentMention(
+  arg: AssistantMention
+): arg is AssistantAgentMention {
+  return (arg as AssistantAgentMention).configurationId !== undefined;
+}
+
+export function isAssistantUserMention(
+  arg: AssistantMention
+): arg is AssistantUserMention {
+  const maybeUserMention = arg as AssistantUserMention;
+  return (
+    maybeUserMention.provider !== undefined &&
+    maybeUserMention.providerId !== undefined
+  );
+}
+
 /**
  * User messages
  */
@@ -39,8 +55,6 @@ export type AssistantUserMessageType = {
   sId: string;
   visibility: AssistantMessageVisibility;
   version: number;
-  parentMessageId: string;
-
   user: UserType | null;
   mentions: AssistantMention[];
   message: string;
@@ -119,7 +133,6 @@ export type AssistantConversationType = {
   created: number;
   sId: string;
   title: string | null;
-  participants: UserType[];
   content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
   visibility: AssistantConversationVisibility;
 };

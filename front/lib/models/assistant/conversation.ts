@@ -19,11 +19,11 @@ export class AssistantConversation extends Model<
   InferAttributes<AssistantConversation>,
   InferCreationAttributes<AssistantConversation>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: AssistantConversationVisibility;
+  declare visibility: CreationOptional<AssistantConversationVisibility>;
 }
 
 AssistantConversation.init(
@@ -62,7 +62,8 @@ export class AssistantUserMessage extends Model<
   InferAttributes<AssistantUserMessage>,
   InferCreationAttributes<AssistantUserMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+
   declare message: string;
 
   declare userContextUsername: string;
@@ -71,7 +72,7 @@ export class AssistantUserMessage extends Model<
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
 }
 
 AssistantUserMessage.init(
@@ -113,15 +114,14 @@ AssistantUserMessage.init(
 );
 
 User.hasMany(AssistantUserMessage, {
-  foreignKey: { name: "userId", allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "userId" },
 });
 
 export class AssistantAgentMessage extends Model<
   InferAttributes<AssistantAgentMessage>,
   InferCreationAttributes<AssistantAgentMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
 
   declare status: CreationOptional<AssistantAgentMessageStatus>;
 
@@ -165,10 +165,10 @@ export class AssistantMessage extends Model<
   InferAttributes<AssistantMessage>,
   InferCreationAttributes<AssistantMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
   declare sId: string;
 
-  declare version: number;
+  declare version: CreationOptional<number>;
   declare rank: number;
   declare visibility: CreationOptional<AssistantMessageVisibility>;
 
@@ -218,11 +218,9 @@ AssistantMessage.init(
       },
     ],
     hooks: {
-      // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
       beforeValidate: (message) => {
         if (
-          (message.assistantUserMessageId === null) ===
-          (message.assistantAgentMessageId === null)
+          !message.assistantUserMessageId === !message.assistantAgentMessageId
         ) {
           throw new Error(
             "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
