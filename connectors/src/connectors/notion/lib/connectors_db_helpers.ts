@@ -223,11 +223,8 @@ export async function getNotionDatabaseFromConnectorsDb(
  * Get children *that are pages* of a given notion page or database
  *
  * !! Not children *of a page*
- * @param dataSourceInfo
- * @param notionId
- * @returns
  */
-export async function getPageChildrenOfDocument(
+export async function getPageChildrenOf(
   dataSourceInfo: DataSourceInfo,
   notionId: string
 ): Promise<NotionPage[]> {
@@ -254,11 +251,8 @@ export async function getPageChildrenOfDocument(
  * Get children *that are databases* of a given notion page or database
  *
  * !! Not children *of a database*
- * @param dataSourceInfo
- * @param notionId
- * @returns
  */
-export async function getDatabaseChildrenOfDocument(
+export async function getDatabaseChildrenOf(
   dataSourceInfo: DataSourceInfo,
   notionId: string
 ): Promise<NotionDatabase[]> {

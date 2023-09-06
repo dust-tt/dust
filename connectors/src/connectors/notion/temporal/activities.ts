@@ -209,7 +209,7 @@ export async function notionGetToSyncActivity(
 }
 
 export type UpsertActivityResult = {
-  document: NotionPage | NotionDatabase | null;
+  pageOrDb: NotionPage | NotionDatabase | null;
   createdOrMoved: boolean;
 };
 
@@ -232,7 +232,7 @@ export async function notionUpsertPageActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping page already seen in this run");
-    return { document: notionPage, createdOrMoved: false };
+    return { pageOrDb: notionPage, createdOrMoved: false };
   }
 
   const isSkipped = !!notionPage?.skipReason;
@@ -242,7 +242,7 @@ export async function notionUpsertPageActivity(
       { skipReason: notionPage.skipReason },
       "Skipping page with skip reason"
     );
-    return { document: notionPage, createdOrMoved: false };
+    return { pageOrDb: notionPage, createdOrMoved: false };
   }
 
   let upsertTs: number | undefined = undefined;
@@ -266,7 +266,7 @@ export async function notionUpsertPageActivity(
       lastUpsertedTs: upsertTs,
       skipReason: "body_too_large",
     });
-    return { document: newNotionPage, createdOrMoved };
+    return { pageOrDb: newNotionPage, createdOrMoved };
   }
 
   if (parsedPage && parsedPage.hasBody) {
@@ -311,7 +311,7 @@ export async function notionUpsertPageActivity(
     notionUrl: parsedPage ? parsedPage.url : null,
     lastUpsertedTs: upsertTs,
   });
-  return { document: newNotionPage, createdOrMoved };
+  return { pageOrDb: newNotionPage, createdOrMoved };
 }
 
 export async function notionUpsertDatabaseActivity(
@@ -333,7 +333,7 @@ export async function notionUpsertDatabaseActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping database already seen in this run");
-    return { document: notionDatabase, createdOrMoved: false };
+    return { pageOrDb: notionDatabase, createdOrMoved: false };
   }
 
   const isSkipped = !!notionDatabase?.skipReason;
@@ -343,7 +343,7 @@ export async function notionUpsertDatabaseActivity(
       { skipReason: notionDatabase.skipReason },
       "Skipping database with skip reason"
     );
-    return { document: notionDatabase, createdOrMoved: false };
+    return { pageOrDb: notionDatabase, createdOrMoved: false };
   }
 
   localLogger.info(
@@ -365,7 +365,7 @@ export async function notionUpsertDatabaseActivity(
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
   });
-  return { document: newNotionDb, createdOrMoved: createdOrMoved };
+  return { pageOrDb: newNotionDb, createdOrMoved: createdOrMoved };
 }
 
 export async function saveSuccessSyncActivity(
@@ -847,7 +847,7 @@ export async function updateParentsFieldsActivity(
   // createdOrMoved, then the document cannot be null thus the cast is safe
   const documents = activitiesResults
     .filter((aRes) => aRes.createdOrMoved)
-    .map((aRes) => aRes.document) as (NotionPage | NotionDatabase)[];
+    .map((aRes) => aRes.pageOrDb) as (NotionPage | NotionDatabase)[];
   await updateAllParentsFields(
     dataSourceConfig,
     documents,
