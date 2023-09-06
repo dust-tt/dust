@@ -3,6 +3,8 @@
  */
 
 import { ModelId } from "@app/lib/databases";
+import { AgentActionConfigurationType } from "@app/types/assistant/agent";
+import { AssistantAgentActionType } from "@app/types/assistant/conversation";
 
 export type TimeFrame = {
   count: number;
@@ -37,6 +39,7 @@ export type TemplatedQuery = {
 // in charge of generating the action inputs. The results will be used along with `topK` and
 // `dataSources` to query the data.
 export type RetrievalConfigurationType = {
+  type: "retrieval_configuration";
   dataSources: "all" | DataSourceConfiguration[];
   query: "auto" | "none" | TemplatedQuery;
   relativeTimeFrame: "auto" | "none" | TimeFrame;
@@ -45,6 +48,12 @@ export type RetrievalConfigurationType = {
   // Dynamically decide to skip, if needed in the future
   // autoSkip: boolean;
 };
+
+export function isRetrievalConfiguration(
+  arg: AgentActionConfigurationType | null
+): arg is RetrievalConfigurationType {
+  return arg !== null && arg.type && arg.type === "retrieval_configuration";
+}
 
 /**
  * Retrieval action
@@ -55,6 +64,7 @@ export type RetrievalDocumentType = {
   dataSourceId: string;
   sourceUrl: string | null;
   documentId: string;
+  reference: string; // Short random string so that the model can refer to the document.
   timestamp: number;
   tags: string[];
   score: number;
@@ -65,9 +75,17 @@ export type RetrievalDocumentType = {
   }[];
 };
 
+export function isRetrievalActionType(
+  arg: AssistantAgentActionType
+): arg is RetrievalActionType {
+  return arg.type === "retrieval_action";
+}
+
 export type RetrievalActionType = {
   id: ModelId; // AssistantAgentRetrieval.
+  type: "retrieval_action";
   params: {
+    dataSources: "all" | DataSourceConfiguration[];
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;

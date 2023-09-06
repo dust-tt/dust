@@ -2,6 +2,7 @@ import { ModelId } from "@app/lib/databases";
 import { UserType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
+import { AgentConfigurationType } from "./agent";
 
 /**
  * Mentions
@@ -34,15 +35,23 @@ export type AssistantUserMessageContext = {
 
 export type AssistantUserMessageType = {
   id: ModelId;
+  type: "user_message";
   sId: string;
   visibility: AssistantMessageVisibility;
   version: number;
   parentMessageId: string;
+
   user: UserType | null;
   mentions: AssistantMention[];
   message: string;
   context: AssistantUserMessageContext;
 };
+
+export function isUserMessageType(
+  arg: AssistantUserMessageType | AssistantAgentMessageType
+): arg is AssistantUserMessageType {
+  return arg.type === "user_message";
+}
 
 /**
  * Agent messages
@@ -72,10 +81,13 @@ export type AssistantAgentMessageStatus =
  */
 export type AssistantAgentMessageType = {
   id: ModelId;
+  type: "agent_message";
   sId: string;
   visibility: AssistantMessageVisibility;
   version: number;
   parentMessageId: string | null;
+
+  configuration: AgentConfigurationType;
   status: AssistantAgentMessageStatus;
   action: AssistantAgentActionType | null;
   message: string | null;
@@ -85,6 +97,12 @@ export type AssistantAgentMessageType = {
     message: string;
   } | null;
 };
+
+export function isAgentMessageType(
+  arg: AssistantUserMessageType | AssistantAgentMessageType
+): arg is AssistantAgentMessageType {
+  return arg.type === "agent_message";
+}
 
 /**
  * Conversations
