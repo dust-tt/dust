@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChevronDownIcon,
@@ -13,7 +14,6 @@ import {
   PaperAirplaneIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -509,7 +509,6 @@ export function MessageView({
   message,
   loading,
   isLatestRetrieval,
-  readOnly,
   feedback,
 }: {
   user: UserType | null;
@@ -539,26 +538,23 @@ export function MessageView({
             )}
           >
             {message.role === "assistant" ? (
-              <Logo
-                shape="square"
-                type="colored-grey"
-                className={classNames(
-                  "mx-2 my-2 h-6 w-6",
-                  loading ? "animate-pulse" : ""
-                )}
-              ></Logo>
+              <>
+                <Avatar
+                  visual="/static/systemavatar/dust_avatar_full.png"
+                  size="sm"
+                  busy={loading}
+                />
+                <Logo
+                  shape="square"
+                  type="colored-grey"
+                  className={classNames(
+                    "mx-2 my-2 h-6 w-6",
+                    loading ? "animate-pulse" : ""
+                  )}
+                ></Logo>
+              </>
             ) : (
-              <div className="flex">
-                {!readOnly && user?.image ? (
-                  <img
-                    className="h-10 w-10 rounded-xl"
-                    src={user?.image}
-                    alt=""
-                  />
-                ) : (
-                  <UserCircleIcon className="mx-2 my-2 h-6 w-6 text-slate-500"></UserCircleIcon>
-                )}
-              </div>
+              <Avatar visual={user?.image} size="sm" />
             )}
           </div>
           <div
