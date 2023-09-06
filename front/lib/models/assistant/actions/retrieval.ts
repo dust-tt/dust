@@ -1,4 +1,5 @@
 import {
+  CreationOptional,
   DataTypes,
   ForeignKey,
   InferAttributes,
@@ -18,7 +19,9 @@ export class AgentRetrievalConfiguration extends Model<
   InferAttributes<AgentRetrievalConfiguration>,
   InferCreationAttributes<AgentRetrievalConfiguration>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare query: "auto" | "none" | "templated";
   declare queryTemplate: string | null;
@@ -35,6 +38,16 @@ AgentRetrievalConfiguration.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     query: {
       type: DataTypes.STRING,
@@ -100,7 +113,9 @@ export class AgentDataSourceConfiguration extends Model<
   InferAttributes<AgentDataSourceConfiguration>,
   InferCreationAttributes<AgentDataSourceConfiguration>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare minTimestamp: number | null;
   declare maxTimestamp: number | null;
@@ -123,6 +138,16 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     minTimestamp: {
       type: DataTypes.INTEGER,

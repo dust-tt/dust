@@ -1,4 +1,5 @@
 import {
+  CreationOptional,
   DataTypes,
   ForeignKey,
   InferAttributes,
@@ -21,7 +22,9 @@ export class AgentConfiguration extends Model<
   InferAttributes<AgentConfiguration>,
   InferCreationAttributes<AgentConfiguration>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
   declare status: AgentConfigurationStatus;
@@ -39,6 +42,16 @@ AgentConfiguration.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     sId: {
       type: DataTypes.STRING,
@@ -95,7 +108,9 @@ export class AgentGenerationConfiguration extends Model<
   InferAttributes<AgentGenerationConfiguration>,
   InferCreationAttributes<AgentGenerationConfiguration>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare prompt: string;
   declare modelProvider: string;
@@ -109,6 +124,16 @@ AgentGenerationConfiguration.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     prompt: {
       type: DataTypes.TEXT,
