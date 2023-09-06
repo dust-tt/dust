@@ -76,16 +76,16 @@ export const getParents = memoize(
 
 export async function updateAllParentsFields(
   dataSourceConfig: DataSourceConfig,
-  documents: (NotionPage | NotionDatabase)[]
+  documents: (NotionPage | NotionDatabase)[],
+  memoizationKey?: string
 ) {
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
   const pagesToUpdate = await getPagesToUpdate(documents, dataSourceConfig);
 
-  // Update everybody's parents field. Use of a memoization key to avoid
-  // potentially sharing memoization across updateAllParentsFields calls, which
-  // would be incorrect
-  const memoizationKey = uuid4();
+  // Update everybody's parents field. Use of a memoization key to control
+  // sharing memoization across updateAllParentsFields calls, which
+  // can be desired or not depending on the use case
   for (const page of pagesToUpdate) {
     const parents = await getParents(
       dataSourceConfig,

@@ -220,7 +220,8 @@ export async function notionSyncWorkflow(
     // remove potential void results indicating execution timeouts
     await updateParentsFieldsActivity(
       dataSourceConfig,
-      syncWorkflowResults.flat().filter((r) => r) as UpsertActivityResult[]
+      syncWorkflowResults.flat().filter((r) => r) as UpsertActivityResult[],
+      runTimestamp
     );
 
     if (!isGargageCollectionRun) {

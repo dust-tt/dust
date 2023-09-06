@@ -840,12 +840,17 @@ export async function garbageCollectActivity(
 
 export async function updateParentsFieldsActivity(
   dataSourceConfig: DataSourceConfig,
-  activitiesResults: UpsertActivityResult[]
+  activitiesResults: UpsertActivityResult[],
+  activityExecutionTimestamp: number
 ) {
   // Get documents whose path changed (created or moved) If there is
   // createdOrMoved, then the document cannot be null thus the cast is safe
   const documents = activitiesResults
     .filter((aRes) => aRes.createdOrMoved)
     .map((aRes) => aRes.document) as (NotionPage | NotionDatabase)[];
-  await updateAllParentsFields(dataSourceConfig, documents);
+  await updateAllParentsFields(
+    dataSourceConfig,
+    documents,
+    activityExecutionTimestamp.toString()
+  );
 }
