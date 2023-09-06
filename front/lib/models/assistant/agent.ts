@@ -73,7 +73,7 @@ AgentConfiguration.init(
       // Note that on PostgreSQL a unique constraint on multiple columns will treat NULL
       // as distinct from any other value, so we can create twice the same name if at least
       // one of the workspaceId is null. We're okay with it.
-      { fields: ["workspaceId", "name", "isGlobal"], unique: true },
+      { fields: ["workspaceId", "name", "scope"], unique: true },
       { fields: ["sId"], unique: true },
     ],
     hooks: {
