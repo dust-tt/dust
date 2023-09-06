@@ -266,7 +266,7 @@ export async function* postUserMessage(
             name: "foo", // TODO
             pictureUrl: null, // TODO
             action: null, // TODO
-            message: null, // TODO
+            generation: null, // TODO
           },
         });
       }
