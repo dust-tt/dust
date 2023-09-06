@@ -213,7 +213,7 @@ export async function updateDocumentParentsField(
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.patch(
+    dustRequestResult = await axios.post(
       endpoint,
       {
         parents: parents,
