@@ -5,10 +5,6 @@ import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
-import {
-  googleDriveGetFoldersAPIHandler,
-  googleDriveSetFoldersAPIHandler,
-} from "@connectors/api/google_drive";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
@@ -65,15 +61,6 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
     webhookGithubAPIHandler
-  );
-
-  app.get(
-    "/connectors/:connector_id/google_drive/folders",
-    googleDriveGetFoldersAPIHandler
-  );
-  app.post(
-    "/connectors/:connector_id/google_drive/folders",
-    googleDriveSetFoldersAPIHandler
   );
 
   app.listen(port, () => {

@@ -240,45 +240,6 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
-
-  async setGoogleDriveFolders(
-    connectorId: string,
-    folders: string[]
-  ): Promise<ConnectorsAPIResponse<void>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders`,
-      {
-        method: "POST",
-        headers: getDefaultHeaders(),
-        body: JSON.stringify({
-          folders: folders,
-        }),
-      }
-    );
-
-    return _resultFromResponse(res);
-  },
-
-  async getGoogleDriveFolders(
-    connectorId: string,
-    parentId?: string
-  ): Promise<
-    ConnectorsAPIResponse<{
-      folders: GoogleDriveSelectedFolderType[];
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/google_drive/folders?parentId=${
-        parentId || ""
-      }`,
-      {
-        method: "GET",
-        headers: getDefaultHeaders(),
-      }
-    );
-
-    return _resultFromResponse(res);
-  },
 };
 
 function getDefaultHeaders() {

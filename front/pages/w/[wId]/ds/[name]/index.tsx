@@ -406,8 +406,15 @@ function ManagedDataSourceView({
       typeof router.query.edit_permissions === "string" &&
       router.query.edit_permissions === "true"
     ) {
-      void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
-      setShowPermissionModal(true);
+      // The edit_permissions flag directs users to the permissions editor modal.
+      // To prevent it from reopening on page refresh,
+      // we remove the flag from the URL and then display the modal.
+      router
+        .push(`/w/${owner.sId}/ds/${dataSource.name}`)
+        .then(() => {
+          setShowPermissionModal(true);
+        })
+        .catch(console.error);
     }
   }, []);
 
@@ -515,7 +522,7 @@ function ManagedDataSourceView({
           description={
             synchronizedTimeAgo
               ? `Last Sync ~ ${synchronizedTimeAgo}`
-              : `Synchronizing`
+              : connector.firstSyncProgress
           }
           action={
             readOnly
