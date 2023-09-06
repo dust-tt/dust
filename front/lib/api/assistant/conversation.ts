@@ -20,10 +20,10 @@ import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
   AssistantAgentMessageType,
-  AssistantConversationType,
   AssistantMention,
   AssistantUserMessageContext,
   AssistantUserMessageType,
+  ConversationType,
   isAgentMessageType,
   isAssistantAgentMention,
   isUserMessageType,
@@ -52,7 +52,7 @@ export async function renderConversationForModel({
   model,
   allowedTokenCount,
 }: {
-  conversation: AssistantConversationType;
+  conversation: ConversationType;
   model: { providerId: string; modelId: string };
   allowedTokenCount: number;
 }): Promise<Result<ModelConversationType, Error>> {
@@ -169,7 +169,7 @@ export async function* postUserMessage(
     mentions,
     context,
   }: {
-    conversation: AssistantConversationType;
+    conversation: ConversationType;
     message: string;
     mentions: AssistantMention[];
     context: AssistantUserMessageContext;
@@ -316,7 +316,7 @@ export async function* retryAgentMessage(
     conversation,
     message,
   }: {
-    conversation: AssistantConversationType;
+    conversation: ConversationType;
     message: AssistantAgentMessageType;
   }
 ): AsyncGenerator<
@@ -348,7 +348,7 @@ export async function* editUserMessage(
     message,
     content,
   }: {
-    conversation: AssistantConversationType;
+    conversation: ConversationType;
     message: AssistantUserMessageType;
     content: string;
   }

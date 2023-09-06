@@ -24,8 +24,8 @@ import {
 } from "@app/types/assistant/agent";
 import {
   AssistantAgentMessageType,
-  AssistantConversationType,
   AssistantUserMessageType,
+  ConversationType,
 } from "@app/types/assistant/conversation";
 
 /**
@@ -174,7 +174,7 @@ export async function retrievalActionSpecification(
 export async function generateRetrievalParams(
   auth: Authenticator,
   configuration: RetrievalConfigurationType,
-  conversation: AssistantConversationType,
+  conversation: ConversationType,
   userMessage: AssistantUserMessageType
 ): Promise<
   Result<
@@ -305,7 +305,7 @@ export type RetrievalSuccessEvent = {
 export async function* runRetrieval(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: AssistantConversationType,
+  conversation: ConversationType,
   userMessage: AssistantUserMessageType,
   agentMessage: AssistantAgentMessageType
 ): AsyncGenerator<

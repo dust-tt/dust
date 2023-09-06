@@ -11,22 +11,22 @@ import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import {
   AssistantAgentMessageStatus,
-  AssistantConversationVisibility,
   AssistantMessageVisibility,
+  ConversationVisibility,
 } from "@app/types/assistant/conversation";
 
-export class AssistantConversation extends Model<
-  InferAttributes<AssistantConversation>,
-  InferCreationAttributes<AssistantConversation>
+export class Conversation extends Model<
+  InferAttributes<Conversation>,
+  InferCreationAttributes<Conversation>
 > {
   declare id: CreationOptional<number>;
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: CreationOptional<AssistantConversationVisibility>;
+  declare visibility: CreationOptional<ConversationVisibility>;
 }
 
-AssistantConversation.init(
+Conversation.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -172,7 +172,7 @@ export class AssistantMessage extends Model<
   declare rank: number;
   declare visibility: CreationOptional<AssistantMessageVisibility>;
 
-  declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
+  declare assistantConversationId: ForeignKey<Conversation["id"]>;
 
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
   declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
@@ -230,7 +230,7 @@ AssistantMessage.init(
     },
   }
 );
-AssistantConversation.hasMany(AssistantMessage, {
+Conversation.hasMany(AssistantMessage, {
   foreignKey: { name: "assistantConversationId", allowNull: false },
   onDelete: "CASCADE",
 });

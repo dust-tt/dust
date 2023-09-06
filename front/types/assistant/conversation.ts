@@ -122,17 +122,17 @@ export function isAgentMessageType(
  * Conversations
  */
 
-export type AssistantConversationVisibility = "private" | "workspace";
+export type ConversationVisibility = "private" | "workspace";
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
  * messages).
  */
-export type AssistantConversationType = {
+export type ConversationType = {
   id: ModelId;
   created: number;
   sId: string;
   title: string | null;
   content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
-  visibility: AssistantConversationVisibility;
+  visibility: ConversationVisibility;
 };

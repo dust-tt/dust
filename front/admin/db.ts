@@ -1,13 +1,13 @@
 import {
   App,
   AssistantAgentMessage,
-  AssistantConversation,
   AssistantMessage,
   AssistantUserMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
   Clone,
+  Conversation,
   Dataset,
   DataSource,
   DocumentTrackerChangeSuggestion,
@@ -49,7 +49,7 @@ async function main() {
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
-  await AssistantConversation.sync({ alter: true });
+  await Conversation.sync({ alter: true });
   await AssistantUserMessage.sync({ alter: true });
   await AssistantAgentMessage.sync({ alter: true });
   await AssistantMessage.sync({ alter: true });

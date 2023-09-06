@@ -16,7 +16,7 @@ import {
 import {
   AssistantAgentActionType,
   AssistantAgentMessageType,
-  AssistantConversationType,
+  ConversationType,
 } from "@app/types/assistant/conversation";
 
 import {
@@ -88,7 +88,7 @@ export async function updateAgentConfiguration(
 export async function generateActionInputs(
   auth: Authenticator,
   specification: AgentActionSpecification,
-  conversation: AssistantConversationType
+  conversation: ConversationType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
   const model = {
     providerId: "openai",
@@ -211,7 +211,7 @@ export type AgentMessageSuccessEvent = {
 export async function* runAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: AssistantConversationType
+  conversation: ConversationType
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
