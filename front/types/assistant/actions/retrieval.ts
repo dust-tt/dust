@@ -6,9 +6,10 @@ import { ModelId } from "@app/lib/databases";
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
 import { AgentActionType } from "@app/types/assistant/conversation";
 
+export type TimeframeUnit = "hour" | "day" | "week" | "month" | "year";
 export type TimeFrame = {
-  count: number;
-  duration: "hour" | "day" | "week" | "month" | "year";
+  duration: number;
+  unit: TimeframeUnit;
 };
 
 export type DataSourceFilter = {
