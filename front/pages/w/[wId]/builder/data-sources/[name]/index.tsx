@@ -37,7 +37,7 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { DATA_SOURCE_INTEGRATIONS } from "..";
+import { DATA_SOURCE_INTEGRATIONS } from "../data-sources";
 
 const {
   GA_TRACKING_ID = "",
