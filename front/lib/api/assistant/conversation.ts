@@ -9,7 +9,11 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { front_sequelize } from "@app/lib/databases";
-import { AssistantMessage, AssistantUserMessage } from "@app/lib/models";
+import {
+  AssistantAgentMessage,
+  AssistantMessage,
+  AssistantUserMessage,
+} from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -184,9 +188,10 @@ export async function* postUserMessage(
     throw new Error("User not found");
   }
 
-  const transaction = await front_sequelize.transaction();
+  // create the user message
+  let transaction = await front_sequelize.transaction();
 
-  const lastMessageRank = await AssistantMessage.max<
+  let lastMessageRank = await AssistantMessage.max<
     number | null,
     AssistantMessage
   >("rank", {
@@ -210,7 +215,7 @@ export async function* postUserMessage(
       transaction,
     }
   );
-  const newMessage = await AssistantMessage.create(
+  const newUserAssistantMessage = await AssistantMessage.create(
     {
       sId: generateModelSId(),
       rank: lastMessageRank ? lastMessageRank + 1 : 0,
@@ -233,8 +238,8 @@ export async function* postUserMessage(
   yield {
     type: "user_message_new",
     message: {
-      id: newUserMessage.id,
-      sId: newMessage.sId,
+      id: newUserAssistantMessage.id,
+      sId: newUserAssistantMessage.sId,
       visibility: "visible",
       version: 0,
       parentMessageId: null,
@@ -242,6 +247,64 @@ export async function* postUserMessage(
       mentions: mentions,
       message: message,
       context: context,
+    },
+  };
+
+  // create the agent message
+  transaction = await front_sequelize.transaction();
+
+  // this is a separate transaction, so we have to re-compute the rank
+  // there could be, technically, a different user message created in the meantime
+  lastMessageRank = await AssistantMessage.max<number | null, AssistantMessage>(
+    "rank",
+    {
+      where: {
+        assistantConversationId: conversation.id,
+      },
+      transaction,
+    }
+  );
+  const newAgentMessage = await AssistantAgentMessage.create(
+    {},
+    {
+      transaction,
+    }
+  );
+  const newAgentAssistantMessage = await AssistantMessage.create(
+    {
+      sId: generateModelSId(),
+      rank: lastMessageRank ? lastMessageRank + 1 : 0,
+      assistantConversationId: conversation.id,
+      parentId: newUserAssistantMessage.id,
+      assistantAgentMessageId: newAgentMessage.id,
+    },
+    {
+      transaction,
+    }
+  );
+
+  try {
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+
+  yield {
+    type: "agent_message_new",
+    created: Date.now(),
+    configurationId: "foo",
+    message: {
+      id: newAgentAssistantMessage.id,
+      sId: newAgentAssistantMessage.sId,
+      visibility: "visible",
+      version: 0,
+      parentMessageId: newUserAssistantMessage.sId,
+      status: "created",
+      action: null,
+      message: null,
+      feedbacks: [],
+      error: null,
     },
   };
 

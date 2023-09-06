@@ -122,7 +122,7 @@ export class AssistantAgentMessage extends Model<
   InferAttributes<AssistantAgentMessage>,
   InferCreationAttributes<AssistantAgentMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
 
   declare status: CreationOptional<AssistantAgentMessageStatus>;
 
