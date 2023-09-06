@@ -3,9 +3,8 @@
  */
 
 import { ModelId } from "@app/lib/databases";
-
-import { AgentActionConfigurationType } from "../agent";
-import { AssistantAgentActionType } from "../conversation";
+import { AgentActionConfigurationType } from "@app/types/assistant/agent";
+import { AssistantAgentActionType } from "@app/types/assistant/conversation";
 
 export type TimeFrame = {
   count: number;
