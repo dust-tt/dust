@@ -109,7 +109,9 @@ export default function DataSourceSettings({
       }
     );
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      await router.push(
+        `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+      );
     } else {
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };
@@ -133,7 +135,9 @@ export default function DataSourceSettings({
         <AppLayoutSimpleCloseTitle
           title="Data Source Settings"
           onClose={() => {
-            void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+            void router.push(
+              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+            );
           }}
         />
       }
@@ -204,7 +208,7 @@ function StandardDataSourceSettings({
       );
       if (res.ok) {
         await mutate(`/api/w/${owner.sId}/data_sources`);
-        await router.push(`/w/${owner.sId}/ds`);
+        await router.push(`/w/${owner.sId}/builder/data-sources`);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -367,7 +371,9 @@ function StandardDataSourceSettings({
           <Button
             type="tertiary"
             onClick={() => {
-              void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+              void router.push(
+                `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+              );
             }}
             disabled={isDeleting || isUpdating}
             label={"Cancel"}
@@ -447,7 +453,9 @@ function ManagedDataSourceSettings({
             <Button
               type="tertiary"
               onClick={() => {
-                void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+                );
               }}
               disabled={isUpdating}
               label={"Cancel"}

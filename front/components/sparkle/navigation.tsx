@@ -86,7 +86,7 @@ export const topNavigation = ({
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/ds`,
+      href: `/w/${owner.sId}/builder/data-sources`,
       current: current === "settings",
     });
   }
@@ -110,7 +110,7 @@ export const subNavigationAdmin = ({
       id: "data_sources",
       label: "Data Sources",
       icon: CloudArrowDownIcon,
-      href: `/w/${owner.sId}/ds`,
+      href: `/w/${owner.sId}/builder/data-sources`,
       current: current === "data_sources",
       subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
       subMenu: current === "data_sources" ? subMenu : undefined,
