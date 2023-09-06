@@ -78,17 +78,17 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
 export function timeFrameFromNow(timeFrame: TimeFrame): number {
   const now = Date.now();
 
-  switch (timeFrame.duration) {
+  switch (timeFrame.unit) {
     case "hour":
-      return now - timeFrame.count * 60 * 60 * 1000;
+      return now - timeFrame.duration * 60 * 60 * 1000;
     case "day":
-      return now - timeFrame.count * 24 * 60 * 60 * 1000;
+      return now - timeFrame.duration * 24 * 60 * 60 * 1000;
     case "week":
-      return now - timeFrame.count * 7 * 24 * 60 * 60 * 1000;
+      return now - timeFrame.duration * 7 * 24 * 60 * 60 * 1000;
     case "month":
-      return now - timeFrame.count * 30 * 24 * 60 * 60 * 1000;
+      return now - timeFrame.duration * 30 * 24 * 60 * 60 * 1000;
     case "year":
-      return now - timeFrame.count * 365 * 24 * 60 * 60 * 1000;
+      return now - timeFrame.duration * 365 * 24 * 60 * 60 * 1000;
   }
 }
 
