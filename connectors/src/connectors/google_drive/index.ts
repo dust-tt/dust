@@ -1,4 +1,6 @@
 import { google } from "googleapis";
+import { drive_v3 } from "googleapis";
+import { GaxiosResponse } from "googleapis-common";
 import { Transaction } from "sequelize";
 
 import {
@@ -22,7 +24,16 @@ import {
 } from "@connectors/types/resources";
 
 import { registerWebhook } from "./lib";
-import { getDriveClient, getGoogleCredentials } from "./temporal/activities";
+import {
+  driveObjectToDustType,
+  folderHasChildren,
+  getAuthObject,
+  getDriveClient,
+  getDrivesIds,
+  getGoogleCredentials,
+  getGoogleDriveObject,
+} from "./temporal/activities";
+import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
 export type NangoConnectionId = string;
 
 const {
@@ -285,16 +296,9 @@ export async function cleanupGoogleDriveConnector(
 
 export async function retrieveGoogleDriveConnectorPermissions(
   connectorId: ModelId,
-  parentInternalId: string | null
+  parentInternalId: string | null,
+  filterPermission: ConnectorPermission | null
 ): Promise<Result<ConnectorResource[], Error>> {
-  if (parentInternalId) {
-    return new Err(
-      new Error(
-        "GoogleDrive connector does not support permission retrieval with `parentInternalId`"
-      )
-    );
-  }
-
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -304,43 +308,212 @@ export async function retrieveGoogleDriveConnectorPermissions(
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
   }
+  const authCredentials = await getAuthObject(c.connectionId);
+  if (filterPermission === "read") {
+    if (parentInternalId === null) {
+      // Return the list of folders explicitly selected by the user.
+      const folders = await GoogleDriveFolders.findAll({
+        where: {
+          connectorId: connectorId,
+        },
+      });
 
-  const folders = await GoogleDriveFolders.findAll({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+      const driveClient = await getDriveClient(authCredentials);
 
-  const driveClient = await getDriveClient(c.connectionId);
-
-  const resources: ConnectorResource[] = await Promise.all(
-    folders.map((f) => {
-      return (async () => {
-        const folder = await driveClient.files.get({
-          fileId: f.folderId,
-          supportsAllDrives: true,
-          fields: "id, name, webViewLink, driveId",
-        });
-        const fd = folder.data;
-        if (fd.driveId === f.folderId) {
-          const d = await driveClient.drives.get({
-            driveId: f.folderId,
+      const resources: ConnectorResource[] = await Promise.all(
+        folders.map(async (f): Promise<ConnectorResource> => {
+          const folder = await driveClient.files.get({
+            fileId: f.folderId,
+            supportsAllDrives: true,
+            fields: "id, name, webViewLink, driveId",
           });
-          fd.name = d.data.name;
-        }
-        return {
-          provider: c.type,
-          internalId: f.folderId,
-          parentInternalId: null,
-          type: "folder" as ConnectorResourceType,
-          title: fd.name || "",
-          sourceUrl: fd.webViewLink || null,
-          expandable: false,
-          permission: "read" as ConnectorPermission,
-        };
-      })();
-    })
-  );
+          const fd = folder.data;
+          if (fd.driveId === f.folderId) {
+            const d = await driveClient.drives.get({
+              driveId: f.folderId,
+            });
+            fd.name = d.data.name;
+          }
+          return {
+            provider: c.type,
+            internalId: f.folderId,
+            parentInternalId: null,
+            type: "folder",
+            title: fd.name || "",
+            sourceUrl: fd.webViewLink || null,
+            expandable:
+              (await GoogleDriveFiles.count({
+                where: {
+                  connectorId: connectorId,
+                  parentId: f.folderId,
+                  mimeType: "application/vnd.google-apps.folder",
+                },
+              })) > 0,
+            permission: "read",
+          };
+        })
+      );
 
-  return new Ok(resources);
+      return new Ok(resources);
+    } else {
+      // Return the list of all folders and files synced in a parent folder.
+      const folders = await GoogleDriveFiles.findAll({
+        where: {
+          connectorId: connectorId,
+          parentId: parentInternalId,
+        },
+      });
+      const resources: ConnectorResource[] = await Promise.all(
+        folders.map((f) => {
+          return (async () => {
+            return {
+              provider: c.type,
+              internalId: f.driveFileId,
+              parentInternalId: null,
+              type:
+                f.mimeType === "application/vnd.google-apps.folder"
+                  ? "folder"
+                  : "file",
+              title: f.name || "",
+              sourceUrl: null,
+              expandable:
+                (await GoogleDriveFiles.count({
+                  where: {
+                    connectorId: connectorId,
+                    parentId: f.driveFileId,
+                    mimeType: "application/vnd.google-apps.folder",
+                  },
+                })) > 0,
+              permission: "read",
+            };
+          })();
+        })
+      );
+      return new Ok(resources);
+    }
+  } else if (filterPermission === null) {
+    if (parentInternalId === null) {
+      // Return the list of remote shared drives.
+      const drives = await getDrivesIds(c.connectionId);
+      const resources: ConnectorResource[] = await Promise.all(
+        drives.map(async (d): Promise<ConnectorResource> => {
+          const driveObject = await getGoogleDriveObject(authCredentials, d.id);
+
+          return {
+            provider: c.type,
+            internalId: driveObject.id,
+            parentInternalId: driveObject.parent,
+            type: "folder" as ConnectorResourceType,
+            title: driveObject.name,
+            sourceUrl: driveObject.webViewLink || null,
+            expandable: await folderHasChildren(connectorId, driveObject.id),
+            permission: (await GoogleDriveFolders.findOne({
+              where: {
+                connectorId: connectorId,
+                folderId: driveObject.id,
+              },
+            }))
+              ? "read"
+              : "none",
+          };
+        })
+      );
+
+      return new Ok(resources);
+    } else {
+      //Return the list of remote folders inside a parent folder
+      const drive = await getDriveClient(authCredentials);
+      let nextPageToken: string | undefined = undefined;
+      let remoteFolders: drive_v3.Schema$File[] = [];
+      do {
+        const res: GaxiosResponse<drive_v3.Schema$FileList> =
+          await drive.files.list({
+            corpora: "allDrives",
+            pageSize: 200,
+            includeItemsFromAllDrives: true,
+            supportsAllDrives: true,
+            fields:
+              "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+            q: `'${parentInternalId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+            pageToken: nextPageToken,
+          });
+
+        if (res.status !== 200) {
+          throw new Error(
+            `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
+          );
+        }
+        if (!res.data.files) {
+          throw new Error("Files list is undefined");
+        }
+        remoteFolders = remoteFolders.concat(res.data.files);
+        nextPageToken = res.data.nextPageToken || undefined;
+      } while (nextPageToken);
+      const resources: ConnectorResource[] = await Promise.all(
+        remoteFolders.map(async (rf): Promise<ConnectorResource> => {
+          const driveObject = await driveObjectToDustType(rf, authCredentials);
+
+          return {
+            provider: c.type,
+            internalId: driveObject.id,
+            parentInternalId: driveObject.parent,
+            type: "folder" as ConnectorResourceType,
+            title: driveObject.name,
+            sourceUrl: driveObject.webViewLink || null,
+            expandable: await folderHasChildren(connectorId, driveObject.id),
+            permission: (await GoogleDriveFolders.findOne({
+              where: {
+                connectorId: connectorId,
+                folderId: driveObject.id,
+              },
+            }))
+              ? "read"
+              : "none",
+          };
+        })
+      );
+
+      return new Ok(resources);
+    }
+  } else {
+    return new Err(new Error(`Invalid permission: ${filterPermission}`));
+  }
+}
+
+export async function setGoogleDriveConnectorPermissions(
+  connectorId: ModelId,
+  permissions: Record<string, ConnectorPermission>
+): Promise<Result<void, Error>> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  let shouldFullSync = false;
+  for (const [id, permission] of Object.entries(permissions)) {
+    shouldFullSync = true;
+    if (permission === "none") {
+      await GoogleDriveFolders.destroy({
+        where: {
+          connectorId: connectorId,
+          folderId: id,
+        },
+      });
+    } else if (permission === "read") {
+      await GoogleDriveFolders.upsert({
+        connectorId: connectorId,
+        folderId: id,
+      });
+    } else {
+      return new Err(
+        new Error(`Invalid permission ${permission} for resource ${id}`)
+      );
+    }
+  }
+
+  if (shouldFullSync) {
+    await launchGoogleDriveFullSyncWorkflow(connectorId.toString(), null);
+  }
+
+  return new Ok(undefined);
 }

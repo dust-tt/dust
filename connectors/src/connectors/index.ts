@@ -13,6 +13,7 @@ import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
   retrieveGoogleDriveConnectorPermissions,
+  setGoogleDriveConnectorPermissions,
   updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
@@ -225,11 +226,5 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
       new Error(`Setting Github connector permissions is not implemented yet.`)
     );
   },
-  google_drive: async () => {
-    return new Err(
-      new Error(
-        `Setting Google Drive connector permissions is not implemented yet.`
-      )
-    );
-  },
+  google_drive: setGoogleDriveConnectorPermissions,
 };
