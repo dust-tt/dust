@@ -138,6 +138,16 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
   const drive = await getDriveClient(nangoConnectionId);
   let nextPageToken = undefined;
   const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
+  const myDriveRes = await drive.files.get({ fileId: "root" });
+  if (myDriveRes.status !== 200) {
+    throw new Error(
+      `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
+    );
+  }
+  if (!myDriveRes.data.id) {
+    throw new Error("My drive id is undefined");
+  }
+  ids.push({ id: myDriveRes.data.id, name: "My Drive", sharedDrive: false });
   do {
     const res = await drive.drives.list({
       pageSize: 100,
@@ -158,17 +168,6 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
     }
     nextPageToken = res.data.nextPageToken;
   } while (nextPageToken);
-
-  const myDriveRes = await drive.files.get({ fileId: "root" });
-  if (myDriveRes.status !== 200) {
-    throw new Error(
-      `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
-    );
-  }
-  if (!myDriveRes.data.id) {
-    throw new Error("My drive id is undefined");
-  }
-  ids.push({ id: myDriveRes.data.id, name: "My Drive", sharedDrive: false });
 
   return ids;
 }
