@@ -53,7 +53,7 @@ Conversation.init(
     },
   },
   {
-    modelName: "assistant_conversation",
+    modelName: "conversation",
     sequelize: front_sequelize,
   }
 );
@@ -108,7 +108,7 @@ UserMessage.init(
     },
   },
   {
-    modelName: "assistant_user_message",
+    modelName: "user_message",
     sequelize: front_sequelize,
   }
 );
@@ -156,7 +156,7 @@ AgentMessage.init(
     },
   },
   {
-    modelName: "assistant_agent_message",
+    modelName: "agent_message",
     sequelize: front_sequelize,
   }
 );
@@ -207,7 +207,7 @@ Message.init(
     },
   },
   {
-    modelName: "assistant_message",
+    modelName: "message",
     sequelize: front_sequelize,
     indexes: [
       {
@@ -232,9 +232,11 @@ Conversation.hasMany(Message, {
 });
 UserMessage.hasOne(Message, {
   foreignKey: "userMessageId",
+  as: "_message",
 });
 AgentMessage.hasOne(Message, {
   foreignKey: "agentMessageId",
+  as: "_message",
 });
 Message.belongsTo(Message, {
   foreignKey: "parentId",
