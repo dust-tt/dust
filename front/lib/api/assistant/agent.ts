@@ -11,7 +11,7 @@ import {
   AgentActionSpecification,
   AgentConfigurationStatus,
   AgentConfigurationType,
-  AgentMessageConfigurationType,
+  AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 import {
   AgentActionType,
@@ -35,12 +35,12 @@ export async function createAgentConfiguration(
     name,
     pictureUrl,
     action,
-    message,
+    generation,
   }: {
     name: string;
     pictureUrl?: string;
     action?: AgentActionConfigurationType;
-    message?: AgentMessageConfigurationType;
+    generation?: AgentGenerationConfigurationType;
   }
 ): Promise<AgentConfigurationType> {
   return {
@@ -49,7 +49,7 @@ export async function createAgentConfiguration(
     pictureUrl: pictureUrl ?? null,
     status: "active",
     action: action ?? null,
-    message: message ?? null,
+    generation: generation ?? null,
   };
 }
 
@@ -61,13 +61,13 @@ export async function updateAgentConfiguration(
     pictureUrl,
     status,
     action,
-    message,
+    generation,
   }: {
     name: string;
     pictureUrl?: string;
     status: AgentConfigurationStatus;
     action?: AgentActionConfigurationType;
-    message?: AgentMessageConfigurationType;
+    generation?: AgentGenerationConfigurationType;
   }
 ): Promise<AgentConfigurationType> {
   return {
@@ -76,7 +76,7 @@ export async function updateAgentConfiguration(
     pictureUrl: pictureUrl ?? null,
     status,
     action: action ?? null,
-    message: message ?? null,
+    generation: generation ?? null,
   };
 }
 
@@ -188,8 +188,8 @@ export type AgentActionSuccessEvent = {
 };
 
 // Event sent when tokens are streamed as the the agent is generating a message.
-export type AgentMessageTokensEvent = {
-  type: "agent_message_tokens";
+export type AgentGenerationTokensEvent = {
+  type: "agent_generation_tokens";
   created: number;
   configurationId: string;
   messageId: string;
@@ -197,11 +197,11 @@ export type AgentMessageTokensEvent = {
 };
 
 // Event sent once the message is completed and successful.
-export type AgentMessageSuccessEvent = {
-  type: "agent_message_success";
+export type AgentGenerationSuccessEvent = {
+  type: "agent_generation_success";
   created: number;
   configurationId: string;
-  messageId: string;
+  generationId: string;
   message: AgentMessageType;
 };
 
@@ -217,8 +217,8 @@ export async function* runAgent(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentMessageTokensEvent
-  | AgentMessageSuccessEvent
+  | AgentGenerationTokensEvent
+  | AgentGenerationSuccessEvent
 > {
   yield {
     type: "agent_error",
