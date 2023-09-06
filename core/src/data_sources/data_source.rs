@@ -114,6 +114,9 @@ pub struct Chunk {
 /// parent in the array, their channel (since a channel does not have any
 /// parent).
 ///
+/// For github, we store the github issue / discussion's number (as string), and
+/// the repo name (its "parent" in the hierarchy).
+///
 /// Parents are at the time of writing only relevant for managed datasources
 /// since standard datasources do not allow specifying a hierarchy. A parent is
 /// represented by a string of characters which correspond to the parent's
