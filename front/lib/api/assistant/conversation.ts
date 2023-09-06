@@ -9,18 +9,18 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { front_sequelize } from "@app/lib/databases";
-import { AgentMessage, AssistantMessage, UserMessage } from "@app/lib/models";
+import { AgentMessage, Message, UserMessage } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
   AgentMessageType,
-  AssistantMention,
   ConversationType,
+  isAgentMention,
   isAgentMessageType,
-  isAssistantAgentMention,
   isUserMessageType,
+  Mention,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -167,7 +167,7 @@ export async function* postUserMessage(
   }: {
     conversation: ConversationType;
     message: string;
-    mentions: AssistantMention[];
+    mentions: Mention[];
     context: UserMessageContext;
   }
 ): AsyncGenerator<
@@ -186,14 +186,14 @@ export async function* postUserMessage(
 
   await front_sequelize.transaction(async (t) => {
     let nextMessageRank =
-      ((await AssistantMessage.max<number | null, AssistantMessage>("rank", {
+      ((await Message.max<number | null, Message>("rank", {
         where: {
           conversationId: conversation.id,
         },
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessageRow = await AssistantMessage.create(
+    const userMessageRow = await Message.create(
       {
         sId: generateModelSId(),
         rank: nextMessageRank++,
@@ -233,8 +233,8 @@ export async function* postUserMessage(
 
     // for each assistant mention, create an "empty" agent message
     for (const m of mentions) {
-      if (isAssistantAgentMention(m)) {
-        const agentMessageRow = await AssistantMessage.create(
+      if (isAgentMention(m)) {
+        const agentMessageRow = await Message.create(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,

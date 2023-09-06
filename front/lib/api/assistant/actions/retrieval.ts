@@ -299,7 +299,7 @@ export type RetrievalSuccessEvent = {
   action: RetrievalActionType;
 };
 
-// This method is in charge of running the retrieval and creating an AssistantAgentRetrieval DB
+// This method is in charge of running the retrieval and creating an AgentRetrieval DB
 // object in the database (along with the RetrievedDocument objects). It does not create any generic
 // model related to the conversation.
 export async function* runRetrieval(

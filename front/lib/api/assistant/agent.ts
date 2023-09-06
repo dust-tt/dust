@@ -14,8 +14,8 @@ import {
   AgentMessageConfigurationType,
 } from "@app/types/assistant/agent";
 import {
+  AgentActionType,
   AgentMessageType,
-  AssistantAgentActionType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 
@@ -184,7 +184,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AssistantAgentActionType;
+  action: AgentActionType;
 };
 
 // Event sent when tokens are streamed as the the agent is generating a message.

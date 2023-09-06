@@ -8,29 +8,25 @@ import { AgentConfigurationType } from "./agent";
  * Mentions
  */
 
-export type AssistantAgentMention = {
+export type AgentMention = {
   configurationId: string;
 };
 
-export type AssistantUserMention = {
+export type UserMention = {
   provider: string;
   providerId: string;
 };
 
-export type AssistantMention = AssistantAgentMention | AssistantUserMention;
+export type Mention = AgentMention | UserMention;
 
-export type AssistantMessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible" | "deleted";
 
-export function isAssistantAgentMention(
-  arg: AssistantMention
-): arg is AssistantAgentMention {
-  return (arg as AssistantAgentMention).configurationId !== undefined;
+export function isAgentMention(arg: Mention): arg is AgentMention {
+  return (arg as AgentMention).configurationId !== undefined;
 }
 
-export function isAssistantUserMention(
-  arg: AssistantMention
-): arg is AssistantUserMention {
-  const maybeUserMention = arg as AssistantUserMention;
+export function isUserMention(arg: Mention): arg is UserMention {
+  const maybeUserMention = arg as UserMention;
   return (
     maybeUserMention.provider !== undefined &&
     maybeUserMention.providerId !== undefined
@@ -53,10 +49,10 @@ export type UserMessageType = {
   id: ModelId;
   type: "user_message";
   sId: string;
-  visibility: AssistantMessageVisibility;
+  visibility: MessageVisibility;
   version: number;
   user: UserType | null;
-  mentions: AssistantMention[];
+  mentions: Mention[];
   message: string;
   context: UserMessageContext;
 };
@@ -71,13 +67,13 @@ export function isUserMessageType(
  * Agent messages
  */
 
-export type AssistantUserFeedbackType = {
+export type UserFeedbackType = {
   user: UserType;
   value: "positive" | "negative" | null;
   comment: string | null;
 };
 
-export type AssistantAgentActionType = RetrievalActionType;
+export type AgentActionType = RetrievalActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -97,15 +93,15 @@ export type AgentMessageType = {
   id: ModelId;
   type: "agent_message";
   sId: string;
-  visibility: AssistantMessageVisibility;
+  visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
 
   configuration: AgentConfigurationType;
   status: AgentMessageStatus;
-  action: AssistantAgentActionType | null;
+  action: AgentActionType | null;
   message: string | null;
-  feedbacks: AssistantUserFeedbackType[];
+  feedbacks: UserFeedbackType[];
   error: {
     code: string;
     message: string;

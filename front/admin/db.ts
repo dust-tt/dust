@@ -1,7 +1,6 @@
 import {
   AgentMessage,
   App,
-  AssistantMessage,
   ChatMessage,
   ChatRetrievedDocument,
   ChatSession,
@@ -16,6 +15,7 @@ import {
   Key,
   Membership,
   MembershipInvitation,
+  Message,
   Provider,
   Run,
   TrackedDocument,
@@ -52,7 +52,7 @@ async function main() {
   await Conversation.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
-  await AssistantMessage.sync({ alter: true });
+  await Message.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });
