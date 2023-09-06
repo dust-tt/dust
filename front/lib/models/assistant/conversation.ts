@@ -175,7 +175,7 @@ export class AssistantMessage extends Model<
   declare conversationId: ForeignKey<Conversation["id"]>;
 
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
-  declare assistantUserMessageId: ForeignKey<UserMessage["id"]> | null;
+  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
   declare assistantAgentMessageId: ForeignKey<
     AssistantAgentMessage["id"]
   > | null;
@@ -219,11 +219,9 @@ AssistantMessage.init(
     ],
     hooks: {
       beforeValidate: (message) => {
-        if (
-          !message.assistantUserMessageId === !message.assistantAgentMessageId
-        ) {
+        if (!message.userMessageId === !message.assistantAgentMessageId) {
           throw new Error(
-            "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
+            "Exactly one of userMessageId, assistantAgentMessageId must be non-null"
           );
         }
       },
@@ -235,7 +233,7 @@ Conversation.hasMany(AssistantMessage, {
   onDelete: "CASCADE",
 });
 UserMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantUserMessageId",
+  foreignKey: "userMessageId",
 });
 AssistantAgentMessage.hasOne(AssistantMessage, {
   foreignKey: "assistantAgentMessageId",

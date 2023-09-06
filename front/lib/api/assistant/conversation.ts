@@ -203,7 +203,7 @@ export async function* postUserMessage(
         rank: nextMessageRank++,
         conversationId: conversation.id,
         parentId: null,
-        assistantUserMessageId: (
+        userMessageId: (
           await UserMessage.create(
             {
               message: message,
