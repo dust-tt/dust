@@ -120,7 +120,7 @@ export default function DataSourceNew({
       }),
     });
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/ds`);
+      await router.push(`/w/${owner.sId}/builder/data-sources`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setCreating(false);
@@ -237,7 +237,7 @@ export default function DataSourceNew({
             type="tertiary"
             disabled={creating}
             onClick={async () => {
-              void router.push(`/w/${owner.sId}/ds`);
+              void router.push(`/w/${owner.sId}/builder/data-sources`);
             }}
             label="Cancel"
           />

@@ -155,7 +155,9 @@ export default function DataSourceView({
         <AppLayoutSimpleCloseTitle
           title="Search documents"
           onClose={() => {
-            void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+            void router.push(
+              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+            );
           }}
         />
       }
@@ -197,7 +199,7 @@ export default function DataSourceView({
                               </div>
                             ) : null}
                             <Link
-                              href={`/w/${owner.sId}/ds/${
+                              href={`/w/${owner.sId}/builder/data-sources/${
                                 dataSource.name
                               }/upsert?documentId=${encodeURIComponent(
                                 d.document_id

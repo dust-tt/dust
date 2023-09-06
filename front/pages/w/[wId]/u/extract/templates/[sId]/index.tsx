@@ -25,7 +25,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
-import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/ds";
+import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/builder/data-sources";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 

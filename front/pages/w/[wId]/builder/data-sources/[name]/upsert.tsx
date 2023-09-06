@@ -181,7 +181,9 @@ export default function DataSourceUpsert({
     );
 
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+      await router.push(
+        `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+      );
     } else {
       const data = await res.json();
       console.log("UPSERT Error", data.error);
@@ -220,7 +222,9 @@ export default function DataSourceUpsert({
         <AppLayoutSimpleCloseTitle
           title="Upsert document"
           onClose={() => {
-            void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+            void router.push(
+              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+            );
           }}
         />
       }
@@ -398,7 +402,9 @@ export default function DataSourceUpsert({
               type="tertiary"
               disabled={loading || readOnly}
               onClick={async () => {
-                void router.push(`/w/${owner.sId}/ds/${dataSource.name}`);
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+                );
               }}
               label="Cancel"
             />

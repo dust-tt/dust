@@ -1219,7 +1219,9 @@ export default function AppChat({
                       icon={CloudArrowDownIcon}
                       label="Set up your first Data Source"
                       onClick={() => {
-                        void router.push(`/w/${owner.sId}/ds`);
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources`
+                        );
                       }}
                     />
                   </div>

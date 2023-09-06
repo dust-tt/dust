@@ -195,7 +195,7 @@ function StandardDataSourceView({
                 icon: Cog6ToothIcon,
                 onClick: () => {
                   void router.push(
-                    `/w/${owner.sId}/ds/${dataSource.name}/settings`
+                    `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
                   );
                 },
               }
@@ -264,7 +264,7 @@ function StandardDataSourceView({
                     return;
                   } else {
                     void router.push(
-                      `/w/${owner.sId}/ds/${dataSource.name}/upsert`
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
                     );
                   }
                 }}
@@ -282,7 +282,7 @@ function StandardDataSourceView({
               className="group rounded border border-gray-300 px-2 px-4"
             >
               <Link
-                href={`/w/${owner.sId}/ds/${
+                href={`/w/${owner.sId}/builder/data-sources/${
                   dataSource.name
                 }/upsert?documentId=${encodeURIComponent(d.document_id)}`}
                 className="block"
@@ -410,7 +410,7 @@ function ManagedDataSourceView({
       // To prevent it from reopening on page refresh,
       // we remove the flag from the URL and then display the modal.
       router
-        .push(`/w/${owner.sId}/ds/${dataSource.name}`)
+        .push(`/w/${owner.sId}/builder/data-sources/${dataSource.name}`)
         .then(() => {
           setShowPermissionModal(true);
         })
@@ -537,7 +537,7 @@ function ManagedDataSourceView({
                   icon: Cog6ToothIcon,
                   onClick: () => {
                     void router.push(
-                      `/w/${owner.sId}/ds/${dataSource.name}/settings`
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
                     );
                   },
                 }
@@ -551,7 +551,7 @@ function ManagedDataSourceView({
               type="secondary"
               onClick={() => {
                 void router.push(
-                  `/w/${owner.sId}/ds/${dataSource.name}/search`
+                  `/w/${owner.sId}/builder/data-sources/${dataSource.name}/search`
                 );
               }}
             />

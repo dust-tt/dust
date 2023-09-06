@@ -351,7 +351,7 @@ export default function DataSourcesView({
         );
         if (provider === "google_drive") {
           void router.push(
-            `/w/${owner.sId}/ds/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
+            `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
           );
         }
       } else {
@@ -418,7 +418,7 @@ export default function DataSourcesView({
                       <div className="flex flex-col sm:flex-row sm:items-center">
                         {ds.connector ? (
                           <Link
-                            href={`/w/${owner.sId}/ds/${ds.dataSourceName}`}
+                            href={`/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`}
                             className="flex"
                           >
                             <span
@@ -525,7 +525,7 @@ export default function DataSourcesView({
                               }
                               onClick={() => {
                                 void router.push(
-                                  `/w/${owner.sId}/ds/${ds.dataSourceName}`
+                                  `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
                                 );
                               }}
                               label={isAdmin ? "Manage" : "View"}
@@ -563,7 +563,9 @@ export default function DataSourcesView({
                       );
                       return;
                     } else {
-                      void router.push(`/w/${owner.sId}/ds/new`);
+                      void router.push(
+                        `/w/${owner.sId}/builder/data-sources/new`
+                      );
                     }
                   },
                 }
@@ -582,7 +584,7 @@ export default function DataSourcesView({
                     </div>
                     <div className="fexl flex-col">
                       <Link
-                        href={`/w/${owner.sId}/ds/${ds.name}`}
+                        href={`/w/${owner.sId}/builder/data-sources/${ds.name}`}
                         className="flex"
                       >
                         <p className="truncate text-sm font-bold text-element-900">
@@ -601,7 +603,9 @@ export default function DataSourcesView({
                         type="secondary"
                         icon={Cog6ToothIcon}
                         onClick={() => {
-                          void router.push(`/w/${owner.sId}/ds/${ds.name}`);
+                          void router.push(
+                            `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                          );
                         }}
                         label="Manage"
                       />
