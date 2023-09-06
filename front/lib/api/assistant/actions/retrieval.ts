@@ -45,32 +45,32 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
     return null;
   }
 
-  const count = parseInt(m[1], 10);
-  if (isNaN(count)) {
+  const duration = parseInt(m[1], 10);
+  if (isNaN(duration)) {
     return null;
   }
 
-  let duration: TimeFrame["duration"];
+  let unit: TimeFrame["unit"];
   switch (m[2]) {
     case "d":
-      duration = "day";
+      unit = "day";
       break;
     case "w":
-      duration = "week";
+      unit = "week";
       break;
     case "m":
-      duration = "month";
+      unit = "month";
       break;
     case "y":
-      duration = "year";
+      unit = "year";
       break;
     default:
       return null;
   }
 
   return {
-    count,
     duration,
+    unit,
   };
 }
 

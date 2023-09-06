@@ -43,7 +43,7 @@ export type AgentActionSpecification = {
  * Agent Message configuration
  */
 
-export type AgentMessageConfigurationType = {
+export type AgentGenerationConfigurationType = {
   prompt: string;
   model: {
     providerId: string;
@@ -69,5 +69,5 @@ export type AgentConfigurationType = {
   action: AgentActionConfigurationType | null;
 
   // If undefined, no text generation.
-  message: AgentMessageConfigurationType | null;
+  generation: AgentGenerationConfigurationType | null;
 };

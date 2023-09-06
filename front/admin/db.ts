@@ -26,6 +26,14 @@ import {
   XP1Run,
   XP1User,
 } from "@app/lib/models";
+import {
+  AssistantAgentDatasourceConfiguration,
+  AssistantAgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AssistantAgentConfiguration,
+  AssistantAgentGenerationConfiguration,
+} from "@app/lib/models/assistant/agent";
 
 async function main() {
   await User.sync({ alter: true });
@@ -53,6 +61,11 @@ async function main() {
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
   await Message.sync({ alter: true });
+
+  await AssistantAgentConfiguration.sync({ alter: true });
+  await AssistantAgentGenerationConfiguration.sync({ alter: true });
+  await AssistantAgentRetrievalConfiguration.sync({ alter: true });
+  await AssistantAgentDatasourceConfiguration.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

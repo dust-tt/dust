@@ -2,9 +2,9 @@ import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationSuccessEvent,
+  AgentGenerationTokensEvent,
   AgentMessageNewEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageTokensEvent,
 } from "@app/lib/api/assistant/agent";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
@@ -176,8 +176,8 @@ export async function* postUserMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentMessageTokensEvent
-  | AgentMessageSuccessEvent
+  | AgentGenerationTokensEvent
+  | AgentGenerationSuccessEvent
 > {
   const user = auth.user();
 
@@ -320,8 +320,8 @@ export async function* retryAgentMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentMessageTokensEvent
-  | AgentMessageSuccessEvent
+  | AgentGenerationTokensEvent
+  | AgentGenerationSuccessEvent
 > {
   yield {
     type: "agent_error",
@@ -354,8 +354,8 @@ export async function* editUserMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentMessageTokensEvent
-  | AgentMessageSuccessEvent
+  | AgentGenerationTokensEvent
+  | AgentGenerationSuccessEvent
 > {
   yield {
     type: "agent_error",
