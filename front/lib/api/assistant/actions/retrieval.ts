@@ -23,7 +23,7 @@ import {
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
 import {
-  AssistantAgentMessageType,
+  AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -307,7 +307,7 @@ export async function* runRetrieval(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AssistantAgentMessageType
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
   | RetrievalParamsEvent
   | RetrievalDocumentsEvent

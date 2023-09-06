@@ -62,7 +62,7 @@ export type UserMessageType = {
 };
 
 export function isUserMessageType(
-  arg: UserMessageType | AssistantAgentMessageType
+  arg: UserMessageType | AgentMessageType
 ): arg is UserMessageType {
   return arg.type === "user_message";
 }
@@ -79,7 +79,7 @@ export type AssistantUserFeedbackType = {
 
 export type AssistantAgentActionType = RetrievalActionType;
 
-export type AssistantAgentMessageStatus =
+export type AgentMessageStatus =
   | "created"
   | "action_running"
   | "writing"
@@ -93,7 +93,7 @@ export type AssistantAgentMessageStatus =
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type AssistantAgentMessageType = {
+export type AgentMessageType = {
   id: ModelId;
   type: "agent_message";
   sId: string;
@@ -102,7 +102,7 @@ export type AssistantAgentMessageType = {
   parentMessageId: string | null;
 
   configuration: AgentConfigurationType;
-  status: AssistantAgentMessageStatus;
+  status: AgentMessageStatus;
   action: AssistantAgentActionType | null;
   message: string | null;
   feedbacks: AssistantUserFeedbackType[];
@@ -113,8 +113,8 @@ export type AssistantAgentMessageType = {
 };
 
 export function isAgentMessageType(
-  arg: UserMessageType | AssistantAgentMessageType
-): arg is AssistantAgentMessageType {
+  arg: UserMessageType | AgentMessageType
+): arg is AgentMessageType {
   return arg.type === "agent_message";
 }
 
@@ -133,6 +133,6 @@ export type ConversationType = {
   created: number;
   sId: string;
   title: string | null;
-  content: (UserMessageType[] | AssistantAgentMessageType[])[];
+  content: (UserMessageType[] | AgentMessageType[])[];
   visibility: ConversationVisibility;
 };

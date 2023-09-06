@@ -14,8 +14,8 @@ import {
   AgentMessageConfigurationType,
 } from "@app/types/assistant/agent";
 import {
+  AgentMessageType,
   AssistantAgentActionType,
-  AssistantAgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 
@@ -160,7 +160,7 @@ export type AgentMessageNewEvent = {
   type: "agent_message_new";
   created: number;
   configurationId: string;
-  message: AssistantAgentMessageType;
+  message: AgentMessageType;
 };
 
 // Generic event sent when an error occured (whether it's during the action or the message generation).
@@ -202,10 +202,10 @@ export type AgentMessageSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AssistantAgentMessageType;
+  message: AgentMessageType;
 };
 
-// This interface is used to execute an agent. It is in charge of creating the AssistantAgentMessage
+// This interface is used to execute an agent. It is in charge of creating the AgentMessage
 // object in database (fully completed or with error set if an error occured). It is called to run
 // an agent or when retrying a previous agent interaction.
 export async function* runAgent(

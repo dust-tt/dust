@@ -10,7 +10,7 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import {
-  AssistantAgentMessageStatus,
+  AgentMessageStatus,
   AssistantMessageVisibility,
   ConversationVisibility,
 } from "@app/types/assistant/conversation";
@@ -117,20 +117,20 @@ User.hasMany(UserMessage, {
   foreignKey: { name: "userId" },
 });
 
-export class AssistantAgentMessage extends Model<
-  InferAttributes<AssistantAgentMessage>,
-  InferCreationAttributes<AssistantAgentMessage>
+export class AgentMessage extends Model<
+  InferAttributes<AgentMessage>,
+  InferCreationAttributes<AgentMessage>
 > {
   declare id: CreationOptional<number>;
 
-  declare status: CreationOptional<AssistantAgentMessageStatus>;
+  declare status: CreationOptional<AgentMessageStatus>;
 
   declare message: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 }
 
-AssistantAgentMessage.init(
+AgentMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -176,9 +176,7 @@ export class AssistantMessage extends Model<
 
   declare parentId: ForeignKey<AssistantMessage["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
-  declare assistantAgentMessageId: ForeignKey<
-    AssistantAgentMessage["id"]
-  > | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 
 AssistantMessage.init(
@@ -219,9 +217,9 @@ AssistantMessage.init(
     ],
     hooks: {
       beforeValidate: (message) => {
-        if (!message.userMessageId === !message.assistantAgentMessageId) {
+        if (!message.userMessageId === !message.agentMessageId) {
           throw new Error(
-            "Exactly one of userMessageId, assistantAgentMessageId must be non-null"
+            "Exactly one of userMessageId, agentMessageId must be non-null"
           );
         }
       },
@@ -235,8 +233,8 @@ Conversation.hasMany(AssistantMessage, {
 UserMessage.hasOne(AssistantMessage, {
   foreignKey: "userMessageId",
 });
-AssistantAgentMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantAgentMessageId",
+AgentMessage.hasOne(AssistantMessage, {
+  foreignKey: "agentMessageId",
 });
 AssistantMessage.belongsTo(AssistantMessage, {
   foreignKey: "parentId",

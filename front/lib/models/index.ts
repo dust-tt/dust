@@ -1,6 +1,6 @@
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
-  AssistantAgentMessage,
+  AgentMessage,
   AssistantMessage,
   Conversation,
   UserMessage,
@@ -27,8 +27,8 @@ import {
 import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
+  AgentMessage,
   App,
-  AssistantAgentMessage,
   AssistantMessage,
   ChatMessage,
   ChatRetrievedDocument,

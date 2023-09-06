@@ -9,17 +9,13 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { front_sequelize } from "@app/lib/databases";
-import {
-  AssistantAgentMessage,
-  AssistantMessage,
-  UserMessage,
-} from "@app/lib/models";
+import { AgentMessage, AssistantMessage, UserMessage } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
-  AssistantAgentMessageType,
+  AgentMessageType,
   AssistantMention,
   ConversationType,
   isAgentMessageType,
@@ -186,7 +182,7 @@ export async function* postUserMessage(
   const user = auth.user();
 
   let userMessage: UserMessageType | null = null;
-  const agentMessages: AssistantAgentMessageType[] = [];
+  const agentMessages: AgentMessageType[] = [];
 
   await front_sequelize.transaction(async (t) => {
     let nextMessageRank =
@@ -244,8 +240,8 @@ export async function* postUserMessage(
             rank: nextMessageRank++,
             conversationId: conversation.id,
             parentId: userMessage.id,
-            assistantAgentMessageId: (
-              await AssistantAgentMessage.create({}, { transaction: t })
+            agentMessageId: (
+              await AgentMessage.create({}, { transaction: t })
             ).id,
           },
           {
@@ -309,7 +305,7 @@ export async function* postUserMessage(
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
-// AssistantAgentMessage as a result)
+// AgentMessage as a result)
 export async function* retryAgentMessage(
   auth: Authenticator,
   {
@@ -317,7 +313,7 @@ export async function* retryAgentMessage(
     message,
   }: {
     conversation: ConversationType;
-    message: AssistantAgentMessageType;
+    message: AgentMessageType;
   }
 ): AsyncGenerator<
   | AgentMessageNewEvent
