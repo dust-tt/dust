@@ -7,8 +7,7 @@ import {
   SliderToggle,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useState } from "react";
+import React, { useState } from "react";
 
 import { ChatSessionVisibility } from "@app/types/chat";
 
@@ -35,8 +34,6 @@ export function AppLayoutChatTitle({
       setCopyLinkSuccess(false);
     }, 1000);
   };
-
-  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">

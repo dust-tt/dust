@@ -538,21 +538,11 @@ export function MessageView({
             )}
           >
             {message.role === "assistant" ? (
-              <>
-                <Avatar
-                  visual="/static/systemavatar/dust_avatar_full.png"
-                  size="sm"
-                  busy={loading}
-                />
-                <Logo
-                  shape="square"
-                  type="colored-grey"
-                  className={classNames(
-                    "mx-2 my-2 h-6 w-6",
-                    loading ? "animate-pulse" : ""
-                  )}
-                ></Logo>
-              </>
+              <Avatar
+                visual="/static/systemavatar/dust_avatar_full.png"
+                size="sm"
+                busy={loading}
+              />
             ) : (
               <Avatar visual={user?.image} size="sm" />
             )}
