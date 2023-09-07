@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 
-import { ChevronDown } from "@sparkle/icons/solid";
+import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -76,6 +76,7 @@ export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
 
 export interface DropdownButtonProps {
   label?: string;
+  type?: "menu" | "select";
   tooltip?: string;
   tooltipPosition?: TooltipProps["position"];
   icon?: ComponentType;
@@ -86,6 +87,7 @@ export interface DropdownButtonProps {
 
 DropdownMenu.Button = function ({
   label,
+  type = "menu",
   tooltip,
   icon,
   children,
@@ -160,7 +162,7 @@ DropdownMenu.Button = function ({
           >
             <Icon visual={icon} size="sm" className={finalIconClasses} />
             <Icon
-              visual={ChevronDown}
+              visual={type === "select" ? ChevronUpDown : ChevronDown}
               size="xs"
               className={finalChevronClasses}
             />
@@ -180,7 +182,7 @@ DropdownMenu.Button = function ({
           <Icon visual={icon} size="sm" className={finalIconClasses} />
           <span className={finalLabelClasses}>{label}</span>
           <Icon
-            visual={ChevronDown}
+            visual={type === "select" ? ChevronUpDown : ChevronDown}
             size="xs"
             className={finalChevronClasses}
           />

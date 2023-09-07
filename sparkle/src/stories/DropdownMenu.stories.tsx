@@ -103,6 +103,17 @@ export const DropdownExample = () => {
       </div>
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
+        <div className="s-text-sm">Type = Select</div>
+        <DropdownMenu>
+          <DropdownMenu.Button type="select" label="Every 6 months" />
+          <DropdownMenu.Items origin="topRight">
+            <DropdownMenu.Item label="item 1" href="#" />
+            <DropdownMenu.Item label="item 2" href="#" />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
         <div className="s-text-sm">With custom button</div>
         <DropdownMenu>
           <DropdownMenu.Button>
