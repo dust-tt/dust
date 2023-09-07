@@ -36,6 +36,7 @@ import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+import { getNotionPageDocumentId } from "@connectors/lib/ids";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -258,10 +259,9 @@ export async function notionUpsertPageActivity(
 
   if (parsedPage && parsedPage.hasBody) {
     upsertTs = new Date().getTime();
-    const documentId = `notion-${parsedPage.id}`;
     await upsertToDatasource({
       dataSourceConfig,
-      documentId,
+      documentId: getNotionPageDocumentId(parsedPage.id),
       documentText: parsedPage.rendered,
       documentUrl: parsedPage.url,
       timestampMs: parsedPage.updatedTime,
@@ -717,7 +717,10 @@ export async function garbageCollectActivity(
     }
 
     iterationLogger.info("Deleting page.");
-    await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
+    await deleteFromDataSource(
+      dataSourceConfig,
+      getNotionPageDocumentId(page.notionPageId)
+    );
     await page.destroy();
 
     deletedPagesCount++;

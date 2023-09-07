@@ -27,6 +27,10 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
+import {
+  getNotionDatabaseResourceId,
+  getNotionPageDocumentId,
+} from "@connectors/lib/ids";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -352,6 +356,18 @@ export async function retrieveNotionConnectorPermissions(
     }),
   ]);
 
+  const getParentInternalId = (p: NotionPage | NotionDatabase) => {
+    if (!p.parentId) return null;
+    switch (p.parentType) {
+      case "page":
+        return getNotionPageDocumentId(p.parentId);
+      case "database":
+        return getNotionDatabaseResourceId(p.parentId);
+      default:
+        return null;
+    }
+  };
+
   const pageResources: ConnectorResource[] = await Promise.all(
     pages.map((p) => {
       return (async () => {
@@ -361,23 +377,21 @@ export async function retrieveNotionConnectorPermissions(
           NotionPage.findOne({
             where: {
               connectorId,
-              parentId: p.notionPageId,
+              parentId: getNotionPageDocumentId(p.notionPageId),
             },
           }),
           NotionDatabase.findOne({
             where: {
               connectorId,
-              parentId: p.notionPageId,
+              parentId: getNotionPageDocumentId(p.notionPageId),
             },
           }),
         ]);
         const expandable = childPage || childDB ? true : false;
-
         return {
           provider: c.type,
-          internalId: p.notionPageId,
-          parentInternalId:
-            !p.parentId || p.parentId === "workspace" ? null : p.parentId,
+          internalId: getNotionPageDocumentId(p.notionPageId),
+          parentInternalId: getParentInternalId(p),
           type: "file",
           title: p.title || "",
           sourceUrl: p.notionUrl || null,
@@ -392,8 +406,7 @@ export async function retrieveNotionConnectorPermissions(
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
-      parentInternalId:
-        !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+      parentInternalId: getParentInternalId(db),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,

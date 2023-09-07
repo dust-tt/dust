@@ -35,6 +35,7 @@ import {
 import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
+import { getGDriveFileDocumentId } from "@connectors/lib/ids";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
@@ -276,7 +277,7 @@ async function syncOneFile(
   startSyncTs: number,
   isBatchSync = false
 ): Promise<boolean> {
-  const documentId = getDocumentId(file.id);
+  const documentId = getGDriveFileDocumentId(file.id);
   let documentContent: string | undefined = undefined;
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
@@ -612,7 +613,7 @@ export async function incrementalSync(
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
-          dustFileId: getDocumentId(driveFile.id),
+          dustFileId: getGDriveFileDocumentId(driveFile.id),
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
@@ -995,10 +996,6 @@ export async function driveObjectToDustType(
   }
 }
 
-function getDocumentId(driveFileId: string): string {
-  return `gdrive-${driveFileId}`;
-}
-
 export async function markFolderAsVisited(
   connectorId: ModelId,
   driveFileId: string
@@ -1011,7 +1008,7 @@ export async function markFolderAsVisited(
   const file = await getGoogleDriveObject(authCredentials, driveFileId);
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
-    dustFileId: getDocumentId(driveFileId),
+    dustFileId: getGDriveFileDocumentId(driveFileId),
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,

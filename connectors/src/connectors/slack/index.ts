@@ -30,6 +30,7 @@ import {
 } from "@connectors/types/resources";
 
 import { getAccessToken, getSlackClient } from "./temporal/activities";
+import { getSlackChannelResourceId } from "@connectors/lib/ids";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;
@@ -345,7 +346,7 @@ export async function retrieveSlackConnectorPermissions(
 
   const resources: ConnectorResource[] = slackChannels.map((ch) => ({
     provider: "slack",
-    internalId: ch.slackChannelId,
+    internalId: getSlackChannelResourceId(ch.slackChannelId),
     parentInternalId: null,
     type: "channel",
     title: ch.slackChannelName,

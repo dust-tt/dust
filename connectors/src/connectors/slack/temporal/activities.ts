@@ -34,6 +34,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
+import { getSlackMessagesDocumentId, getSlackThreadDocumentId } from "@connectors/lib/ids";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });
@@ -378,11 +379,11 @@ export async function syncNonThreaded(
     client
   );
 
-  const startDate = new Date(startTsMs);
-  const endDate = new Date(endTsMs);
-  const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
-  const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
-  const documentId = `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+  const documentId = getSlackMessagesDocumentId(
+    channelId,
+    startTsMs,
+    endTsMs
+  );
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
 
@@ -529,7 +530,7 @@ export async function syncThread(
     connectorId,
     client
   );
-  const documentId = `slack-${channelId}-thread-${threadTs}`;
+  const documentId = getSlackThreadDocumentId(channelId, threadTs);
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;

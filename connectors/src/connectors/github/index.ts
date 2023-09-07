@@ -20,6 +20,7 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
+import { getGithubRepoResourceId } from "@connectors/lib/ids";
 
 type GithubInstallationId = string;
 
@@ -294,7 +295,7 @@ export async function retrieveGithubConnectorPermissions(
     resources = resources.concat(
       page.map((repo) => ({
         provider: c.type,
-        internalId: repo.id.toString(),
+        internalId: getGithubRepoResourceId(repo.id.toString()),
         parentInternalId: null,
         type: "folder",
         title: repo.name,

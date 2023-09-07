@@ -23,6 +23,10 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
+import {
+  getGithubDiscussionDocumentId,
+  getGithubIssueDocumentId,
+} from "@connectors/lib/ids";
 
 const logger = mainLogger.child({
   provider: "github",
@@ -130,7 +134,7 @@ export async function githubUpsertIssueActivity(
     resultPage += 1;
   }
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getGithubIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
     `title:${issue.title}`,
@@ -264,7 +268,7 @@ export async function githubUpsertDiscussionActivity(
     nextCursor = cursor;
   }
 
-  const documentId = getDiscussionDocumentId(
+  const documentId = getGithubDiscussionDocumentId(
     repoId.toString(),
     discussionNumber
   );
@@ -506,7 +510,7 @@ async function deleteIssue(
     );
   }
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getGithubIssueDocumentId(repoId.toString(), issueNumber);
   localLogger.info(
     { documentId },
     "Deleting GitHub issue from Dust data source."
@@ -555,7 +559,7 @@ async function deleteDiscussion(
     localLogger.warn("Discussion not found in DB");
   }
 
-  const documentId = getDiscussionDocumentId(
+  const documentId = getGithubDiscussionDocumentId(
     repoId.toString(),
     discussionNumber
   );
@@ -583,15 +587,4 @@ function renderGithubUser(user: GithubUser | null): string {
     return `@${user.login}`;
   }
   return `@${user.id}`;
-}
-
-function getIssueDocumentId(repoId: string, issueNumber: number): string {
-  return `github-issue-${repoId}-${issueNumber}`;
-}
-
-function getDiscussionDocumentId(
-  repoId: string,
-  discussionNumber: number
-): string {
-  return `github-discussion-${repoId}-${discussionNumber}`;
 }

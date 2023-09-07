@@ -34,6 +34,11 @@ import {
   getGoogleDriveObject,
 } from "./temporal/activities";
 import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
+import {
+  getGDriveFileDocumentId,
+  getGDriveFolderResourceId,
+} from "@connectors/lib/ids";
+import { get } from "http";
 export type NangoConnectionId = string;
 
 const {
@@ -336,7 +341,7 @@ export async function retrieveGoogleDriveConnectorPermissions(
           }
           return {
             provider: c.type,
-            internalId: f.folderId,
+            internalId: getGDriveFolderResourceId(f.folderId),
             parentInternalId: null,
             type: "folder",
             title: fd.name || "",
@@ -368,7 +373,10 @@ export async function retrieveGoogleDriveConnectorPermissions(
           return (async () => {
             return {
               provider: c.type,
-              internalId: f.driveFileId,
+              internalId:
+                f.mimeType === "application/vnd.google-apps.folder"
+                  ? getGDriveFolderResourceId(f.driveFileId)
+                  : getGDriveFileDocumentId(f.driveFileId),
               parentInternalId: null,
               type:
                 f.mimeType === "application/vnd.google-apps.folder"
@@ -401,8 +409,11 @@ export async function retrieveGoogleDriveConnectorPermissions(
 
           return {
             provider: c.type,
-            internalId: driveObject.id,
-            parentInternalId: driveObject.parent,
+            internalId: getGDriveFolderResourceId(driveObject.id),
+            parentInternalId:
+              driveObject.parent === null
+                ? null
+                : getGDriveFolderResourceId(driveObject.parent),
             type: "folder" as ConnectorResourceType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
@@ -455,8 +466,11 @@ export async function retrieveGoogleDriveConnectorPermissions(
 
           return {
             provider: c.type,
-            internalId: driveObject.id,
-            parentInternalId: driveObject.parent,
+            internalId: getGDriveFolderResourceId(driveObject.id),
+            parentInternalId:
+              driveObject.parent === null
+                ? null
+                : getGDriveFolderResourceId(driveObject.parent),
             type: "folder" as ConnectorResourceType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
