@@ -3,11 +3,11 @@ import {
   Button,
   ChevronUpDownIcon,
   Icon,
-  InformationCircleStrokeIcon,
+  InformationCircleIcon,
   PageHeader,
   PencilSquareIcon,
   PlusIcon,
-  RobotStrokeIcon,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -84,7 +84,7 @@ export default function CreateAssistant({
       <div className="mt-8 flex flex-col space-y-8 pb-8">
         <PageHeader
           title="Assistant Editor"
-          icon={RobotStrokeIcon}
+          icon={RobotIcon}
           description="Make and maintain your customized assistants."
         />
         <div className="mt-8 flex flex-row items-start">
@@ -164,7 +164,7 @@ export default function CreateAssistant({
               <div className="text-sm font-semibold text-action-500">
                 Select a specific LLM model
               </div>
-              <Icon size="xs" visual={InformationCircleStrokeIcon} />
+              <Icon size="xs" visual={InformationCircleIcon} />
             </div>
           </div>
         </div>

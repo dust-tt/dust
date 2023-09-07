@@ -8,7 +8,7 @@ import {
   FolderOpenIcon,
   KeyIcon,
   PaperAirplaneIcon,
-  RobotStrokeIcon,
+  RobotIcon,
   Square3Stack3DIcon,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
@@ -148,7 +148,7 @@ export const subNavigationAdmin = ({
       nav.push({
         id: "assistants",
         label: "Assistants Manager",
-        icon: RobotStrokeIcon,
+        icon: RobotIcon,
         href: `/w/${owner.sId}/builder/assistants`,
         current: current === "assistants",
         subMenuLabel: current === "assistants" ? subMenuLabel : undefined,

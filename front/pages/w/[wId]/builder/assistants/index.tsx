@@ -1,7 +1,7 @@
 import {
   PageHeader,
   PlusIcon,
-  RobotStrokeIcon,
+  RobotIcon,
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -66,7 +66,7 @@ export default function AssistantsBuilder({
     >
       <PageHeader
         title="Assistants Builder"
-        icon={RobotStrokeIcon}
+        icon={RobotIcon}
         description="Build an assistant."
       />
       <div>
