@@ -57,6 +57,7 @@ export const DustProdActionRegistry = createActionRegistry({
         model_id: "gpt-4",
         function_call: null,
         use_cache: false,
+        use_stream: true,
       },
     },
   },
