@@ -29,14 +29,14 @@ export function MessageFeedback({
       )}
     >
       <IconToggleButton
-        type="tertiary"
+        variant="tertiary"
         icon={HandThumbUpIcon}
         onClick={() => feedbackHandler(message, "positive")}
         className="ml-1"
         selected={message.feedback === "positive"}
       />
       <IconToggleButton
-        type="tertiary"
+        variant="tertiary"
         icon={HandThumbDownIcon}
         onClick={() => feedbackHandler(message, "negative")}
         className="ml-1"

@@ -184,7 +184,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={CheckCircleIcon}
                           tooltip="Accept data"
-                          type={
+                          variant={
                             event.status === "pending" ? "primary" : "tertiary"
                           }
                           onClick={async () => {
@@ -197,7 +197,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={PencilSquareIcon}
                           tooltip="Edit data"
-                          type={
+                          variant={
                             event.status === "pending" ? "primary" : "tertiary"
                           }
                           onClick={() =>
@@ -212,7 +212,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={XCircleIcon}
                           tooltip="Reject data"
-                          type={
+                          variant={
                             event.status === "pending" ? "warning" : "tertiary"
                           }
                           onClick={async () => {
@@ -346,7 +346,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
       <IconButton
         size="sm"
         icon={ArrowUpOnSquareIcon}
-        type="primary"
+        variant="primary"
         tooltip="Copy data"
         onClick={() => setIsOpen(true)}
       />

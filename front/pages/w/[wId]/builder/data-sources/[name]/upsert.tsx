@@ -301,7 +301,7 @@ export default function DataSourceUpsert({
                       {!readOnly ? (
                         <IconButton
                           icon={XCircleIcon}
-                          type="tertiary"
+                          variant="tertiary"
                           onClick={() => {
                             handleTagDelete(index);
                           }}
