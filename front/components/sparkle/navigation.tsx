@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   KeyIcon,
   PaperAirplaneIcon,
+  RobotStrokeIcon,
   Square3Stack3DIcon,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
@@ -23,7 +24,11 @@ import { WorkspaceType } from "@app/types/user";
  */
 export type TopNavigationId = "assistant" | "lab" | "settings";
 
-export type SubNavigationAdminId = "data_sources" | "workspace" | "developers";
+export type SubNavigationAdminId =
+  | "data_sources"
+  | "workspace"
+  | "developers"
+  | "assistants";
 export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
@@ -139,6 +144,17 @@ export const subNavigationAdmin = ({
       subMenuLabel: current === "developers" ? subMenuLabel : undefined,
       subMenu: current === "developers" ? subMenu : undefined,
     });
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      nav.push({
+        id: "assistants",
+        label: "Assistants Manager",
+        icon: RobotStrokeIcon,
+        href: `/w/${owner.sId}/builder/assistants`,
+        current: current === "assistants",
+        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
+        subMenu: current === "assistants" ? subMenu : undefined,
+      });
+    }
   }
 
   return nav;
