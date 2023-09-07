@@ -1215,7 +1215,7 @@ export default function AppChat({
                   </p>
                   <div className="pt-4 text-center">
                     <Button
-                      type={"primary"}
+                      variant={"primary"}
                       icon={CloudArrowDownIcon}
                       label="Set up your first Data Source"
                       onClick={() => {
@@ -1326,7 +1326,7 @@ export default function AppChat({
                 {canTakeOwnership && (
                   <div className="mt-16 flex justify-center">
                     <Button
-                      type="primary"
+                      variant="primary"
                       label="Continue Conversation"
                       icon={RobotIcon}
                       onClick={handleTakeOwnership}

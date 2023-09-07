@@ -190,7 +190,7 @@ const BasicEventPropsEditor = ({
       <p className="mt-6 text-sm">{isValid ? "Valid JSON" : "Invalid JSON"}</p>
       <Button
         className="mt-6"
-        type="primary"
+        variant="primary"
         label={isProcessing ? "Submitting..." : "Submit"}
         disabled={!isValid || readOnly}
         onClick={async () => {
@@ -202,7 +202,7 @@ const BasicEventPropsEditor = ({
           router.push(`/w/${owner.sId}/u/extract/templates/${event.schema.sId}`)
         }
         label="Back"
-        type="secondary"
+        variant="secondary"
       />
     </div>
   );

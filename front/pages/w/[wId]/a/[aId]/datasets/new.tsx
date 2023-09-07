@@ -158,7 +158,7 @@ export default function NewDatasetView({
                 <div className="flex-initial">
                   <Button
                     label="Create"
-                    type="primary"
+                    variant="primary"
                     disabled={disable || loading}
                     onClick={() => handleSubmit()}
                   />

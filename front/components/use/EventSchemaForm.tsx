@@ -208,7 +208,7 @@ export function ExtractEventSchemaForm({
           <div className="col-span-6 sm:col-span-2"></div>
           <div className="col-span-6 flex justify-end sm:col-span-4">
             <Button
-              type="primary"
+              variant="primary"
               label={isProcessing ? "Submitting..." : "Submit"}
               disabled={isProcessing || readOnly}
               onClick={async () => {
@@ -218,7 +218,7 @@ export function ExtractEventSchemaForm({
             <Button
               onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
               label="Cancel"
-              type="secondary"
+              variant="secondary"
             />
           </div>
         </div>

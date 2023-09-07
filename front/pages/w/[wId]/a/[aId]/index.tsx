@@ -340,7 +340,7 @@ export default function AppView({
               small={false}
             />
             <Button
-              type="secondary"
+              variant="secondary"
               disabled={
                 !runnable || runRequested || run?.status.run == "running"
               }
@@ -365,7 +365,7 @@ export default function AppView({
             {readOnly && user ? (
               <div className="flex-initial">
                 <Button
-                  type="secondary"
+                  variant="secondary"
                   label="Clone"
                   icon={DocumentDuplicateIcon}
                   onClick={() => {
@@ -378,7 +378,7 @@ export default function AppView({
             {!readOnly ? (
               <div className="hidden flex-initial sm:block">
                 <Button
-                  type="tertiary"
+                  variant="tertiary"
                   icon={DocumentTextIcon}
                   label="Documentation"
                   onClick={() => {
@@ -421,7 +421,7 @@ export default function AppView({
               <p className="mt-4">To get started, add your first block or:</p>
               <p className="mt-4">
                 <Button
-                  type="tertiary"
+                  variant="tertiary"
                   icon={DocumentTextIcon}
                   label="Follow the QuickStart Guide"
                   onClick={() => {
@@ -447,7 +447,7 @@ export default function AppView({
               </div>
               <div className="flex">
                 <Button
-                  type="secondary"
+                  variant="secondary"
                   disabled={
                     !runnable || runRequested || run?.status.run == "running"
                   }

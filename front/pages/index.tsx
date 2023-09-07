@@ -277,7 +277,7 @@ export default function Home({
                   <div className="mt-6">
                     <Link href="https://docs.dust.tt">
                       <Button
-                        type="tertiary"
+                        variant="tertiary"
                         size="sm"
                         label="View Documentation"
                       />

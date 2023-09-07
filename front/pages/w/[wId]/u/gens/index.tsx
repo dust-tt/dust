@@ -832,7 +832,7 @@ export function TemplatesView({
                       <div className="flex flex-initial">
                         <Button
                           onClick={() => setFormExpanded(false)}
-                          type="secondary"
+                          variant="secondary"
                           label={editable ? "Cancel" : "Close"}
                         />
                       </div>
@@ -1402,7 +1402,7 @@ export default function AppGens({
         <div className="">
           <div className="m-auto my-3">
             <Button
-              type="tertiary"
+              variant="tertiary"
               onClick={() => setExplainExpanded(true)}
               label="How does Gens work?"
             />
@@ -1477,7 +1477,7 @@ export default function AppGens({
                         />
                       ) : (
                         <Button
-                          type="secondaryWarning"
+                          variant="secondaryWarning"
                           disabled={!genLoading || genInterruptRef.current}
                           onClick={() => {
                             genInterruptRef.current = true;
@@ -1517,7 +1517,7 @@ export default function AppGens({
                         <div className="flex flex-1"></div>
                         <div className="flex flex-initial">
                           <Button
-                            type="secondary"
+                            variant="secondary"
                             disabled={
                               retrievalLoading || !(selecting || searchQuery)
                             }

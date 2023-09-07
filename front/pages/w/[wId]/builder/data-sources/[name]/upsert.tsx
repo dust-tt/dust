@@ -316,7 +316,7 @@ export default function DataSourceUpsert({
                         size="xs"
                         label="Add tag"
                         icon={PlusIcon}
-                        type="tertiary"
+                        variant="tertiary"
                         onClick={() => handleAddTag()}
                       />
                     </div>
@@ -353,7 +353,7 @@ export default function DataSourceUpsert({
                         }}
                       ></input>
                       <Button
-                        type="tertiary"
+                        variant="tertiary"
                         onClick={() => {
                           if (fileInputRef.current) {
                             fileInputRef.current.click();
@@ -399,7 +399,7 @@ export default function DataSourceUpsert({
           <div className="flex flex-row py-6">
             <div className="flex-1"></div>
             <Button
-              type="tertiary"
+              variant="tertiary"
               disabled={loading || readOnly}
               onClick={async () => {
                 void router.push(
@@ -409,7 +409,7 @@ export default function DataSourceUpsert({
               label="Cancel"
             />
             <Button
-              type="secondary"
+              variant="secondary"
               disabled={disabled || loading || readOnly}
               onClick={async () => {
                 await handleUpsert();

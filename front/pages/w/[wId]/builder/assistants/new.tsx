@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  ChevronUpDownIcon,
   Icon,
   InformationCircleStrokeIcon,
   PageHeader,
@@ -8,7 +9,6 @@ import {
   PlusIcon,
   RobotStrokeIcon,
 } from "@dust-tt/sparkle";
-import { ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -96,7 +96,7 @@ export default function CreateAssistant({
             <Button
               labelVisible={true}
               label="Change"
-              type="tertiary"
+              variant="tertiary"
               size="xs"
               icon={PencilSquareIcon}
             />
@@ -202,7 +202,7 @@ export default function CreateAssistant({
               <Button
                 labelVisible={true}
                 label="Add a data source"
-                type="primary"
+                variant="primary"
                 size="md"
                 icon={PlusIcon}
               />
@@ -224,7 +224,7 @@ export default function CreateAssistant({
               <Button
                 labelVisible={true}
                 label="Auto (default)"
-                type="secondary"
+                variant="secondary"
                 size="sm"
                 icon={ChevronUpDownIcon}
               />
