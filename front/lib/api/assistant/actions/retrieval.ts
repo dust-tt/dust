@@ -14,6 +14,7 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
+import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   DataSourceConfiguration,
@@ -507,7 +508,7 @@ export async function* runRetrieval(
         id: 0, // dummy pending database insertion
         dataSourceId: d.data_source_id,
         documentId: d.document_id,
-        reference: "",
+        reference: new_id().slice(0, 3),
         timestamp: d.timestamp,
         tags: d.tags,
         sourceUrl: d.source_url ?? null,
