@@ -196,7 +196,7 @@ export type AgentMessageSuccessEvent = {
   type: "agent_message_success";
   created: number;
   configurationId: string;
-  generationId: string;
+  messageId: string;
   message: AgentMessageType;
 };
 

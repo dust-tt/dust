@@ -28,6 +28,7 @@ import {
 export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
+  messageId: string;
   message: UserMessageType;
 };
 
@@ -36,6 +37,7 @@ export type AgentMessageNewEvent = {
   type: "agent_message_new";
   created: number;
   configurationId: string;
+  messageId: string;
   message: AgentMessageType;
 };
 
@@ -162,7 +164,7 @@ export async function* postUserMessage(
     }
   });
 
-  if (!userMessage) {
+  if (userMessage === null) {
     throw new Error("Unreachable: userMessage failed be created");
   }
   if (agentMessageRows.length !== agentMessages.length) {
@@ -172,6 +174,7 @@ export async function* postUserMessage(
   yield {
     type: "user_message_new",
     created: Date.now(),
+    messageId: userMessage.sId,
     message: userMessage,
   };
 
@@ -183,6 +186,7 @@ export async function* postUserMessage(
       type: "agent_message_new",
       created: Date.now(),
       configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
       message: agentMessage,
     };
 
