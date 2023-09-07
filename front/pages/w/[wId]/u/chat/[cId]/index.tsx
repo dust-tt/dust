@@ -383,7 +383,7 @@ export function RetrievalsView({
               <div className="flex flex-initial">
                 {expanded ? (
                   <IconButton
-                    type="secondary"
+                    variant="secondary"
                     size="sm"
                     icon={ChevronDownIcon}
                     onClick={() => {
@@ -392,7 +392,7 @@ export function RetrievalsView({
                   />
                 ) : (
                   <IconButton
-                    type="secondary"
+                    variant="secondary"
                     size="sm"
                     icon={ChevronRightIcon}
                     onClick={() => {
@@ -496,7 +496,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div className="invisible float-right hover:cursor-pointer group-hover:visible">
       <IconButton
-        type="tertiary"
+        variant="tertiary"
         icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
         onClick={handleClick}
       />

@@ -388,7 +388,7 @@ function PropertiesFields({
               <IconButton
                 icon={XCircleIcon}
                 tooltip="Remove Property"
-                type="tertiary"
+                variant="tertiary"
                 onClick={async () => {
                   removeProperty(index);
                 }}
