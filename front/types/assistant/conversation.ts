@@ -74,13 +74,7 @@ export type UserFeedbackType = {
 };
 
 export type AgentActionType = RetrievalActionType;
-
-export type AgentMessageStatus =
-  | "created"
-  | "action_running"
-  | "writing"
-  | "succeeded"
-  | "failed";
+export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).

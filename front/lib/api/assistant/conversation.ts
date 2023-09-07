@@ -3,8 +3,8 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
-  AgentMessageNewEvent,
   AgentMessageSuccessEvent,
+  runAgent,
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
@@ -27,7 +27,18 @@ import {
 // Event sent when the user message is created.
 export type UserMessageNewEvent = {
   type: "user_message_new";
+  created: number;
+  messageId: string;
   message: UserMessageType;
+};
+
+// Event sent when a new message is created (empty) and the agent is about to be executed.
+export type AgentMessageNewEvent = {
+  type: "agent_message_new";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
 };
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -57,127 +68,189 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
-  let userMessage: UserMessageType | null = null;
-  const agentMessages: AgentMessageType[] = [];
-
-  await front_sequelize.transaction(async (t) => {
-    let nextMessageRank =
-      ((await Message.max<number | null, Message>("rank", {
-        where: {
-          conversationId: conversation.id,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
-
-    const userMessageRow = await Message.create(
-      {
-        sId: generateModelSId(),
-        rank: nextMessageRank++,
-        conversationId: conversation.id,
-        parentId: null,
-        userMessageId: (
-          await UserMessage.create(
-            {
-              message: message,
-              userContextUsername: context.username,
-              userContextTimezone: context.timezone,
-              userContextFullName: context.fullName,
-              userContextEmail: context.email,
-              userContextProfilePictureUrl: context.profilePictureUrl,
-              userId: user ? user.id : null,
-            },
-            { transaction: t }
-          )
-        ).id,
-      },
-      {
-        transaction: t,
-      }
-    );
-
-    userMessage = {
-      id: userMessageRow.id,
-      sId: userMessageRow.sId,
-      type: "user_message",
-      visibility: "visible",
-      version: 0,
-      user: user,
-      mentions: mentions,
-      message: message,
-      context: context,
-    };
-
-    // for each assistant mention, create an "empty" agent message
-    for (const m of mentions) {
-      if (isAgentMention(m)) {
-        const agentMessageRow = await Message.create(
-          {
-            sId: generateModelSId(),
-            rank: nextMessageRank++,
+  const { userMessage, agentMessages, agentMessageRows } =
+    await front_sequelize.transaction(async (t) => {
+      let nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
             conversationId: conversation.id,
-            parentId: userMessage.id,
-            agentMessageId: (
-              await AgentMessage.create({}, { transaction: t })
-            ).id,
           },
-          {
-            transaction: t,
-          }
-        );
-        agentMessages.push({
-          id: agentMessageRow.id,
-          sId: agentMessageRow.sId,
-          type: "agent_message",
-          visibility: "visible",
-          version: 0,
-          parentMessageId: userMessage.sId,
-          status: "created",
-          action: null,
-          message: null,
-          feedbacks: [],
-          error: null,
-          configuration: {
-            sId: m.configurationId,
-            status: "active",
-            name: "foo", // TODO
-            pictureUrl: null, // TODO
-            action: null, // TODO
-            generation: null, // TODO
-          },
-        });
-      }
-    }
-  });
+          transaction: t,
+        })) ?? -1) + 1;
 
-  if (!userMessage) {
-    throw new Error("Unreachable.");
+      const m = await Message.create(
+        {
+          sId: generateModelSId(),
+          rank: nextMessageRank++,
+          conversationId: conversation.id,
+          parentId: null,
+          userMessageId: (
+            await UserMessage.create(
+              {
+                message: message,
+                userContextUsername: context.username,
+                userContextTimezone: context.timezone,
+                userContextFullName: context.fullName,
+                userContextEmail: context.email,
+                userContextProfilePictureUrl: context.profilePictureUrl,
+                userId: user ? user.id : null,
+              },
+              { transaction: t }
+            )
+          ).id,
+        },
+        {
+          transaction: t,
+        }
+      );
+
+      const userMessage: UserMessageType = {
+        id: m.id,
+        sId: m.sId,
+        type: "user_message",
+        visibility: "visible",
+        version: 0,
+        user: user,
+        mentions: mentions,
+        message: message,
+        context: context,
+      };
+
+      const agentMessages: AgentMessageType[] = [];
+      const agentMessageRows: AgentMessage[] = [];
+
+      // for each assistant mention, create an "empty" agent message
+      for (const mention of mentions) {
+        if (isAgentMention(mention)) {
+          const agentMessageRow = await AgentMessage.create(
+            {},
+            { transaction: t }
+          );
+          const m = await Message.create(
+            {
+              sId: generateModelSId(),
+              rank: nextMessageRank++,
+              conversationId: conversation.id,
+              parentId: userMessage.id,
+              agentMessageId: agentMessageRow.id,
+            },
+            {
+              transaction: t,
+            }
+          );
+          agentMessageRows.push(agentMessageRow);
+          agentMessages.push({
+            id: m.id,
+            sId: m.sId,
+            type: "agent_message",
+            visibility: "visible",
+            version: 0,
+            parentMessageId: userMessage.sId,
+            status: "created",
+            action: null,
+            message: null,
+            feedbacks: [],
+            error: null,
+            configuration: {
+              sId: mention.configurationId,
+              status: "active",
+              name: "foo", // TODO
+              pictureUrl: null, // TODO
+              action: null, // TODO
+              generation: null, // TODO
+            },
+          });
+        }
+      }
+
+      return { userMessage, agentMessages, agentMessageRows };
+    });
+
+  if (agentMessageRows.length !== agentMessages.length) {
+    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
+
   yield {
     type: "user_message_new",
+    created: Date.now(),
+    messageId: userMessage.sId,
     message: userMessage,
   };
 
-  for (const m of agentMessages) {
+  for (let i = 0; i < agentMessages.length; i++) {
+    const agentMessage = agentMessages[i];
+    const agentMessageRow = agentMessageRows[i];
+
     yield {
       type: "agent_message_new",
-      message: m,
       created: Date.now(),
-      configurationId: m.configuration.sId,
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
     };
+
+    const eventStream = runAgent(
+      auth,
+      agentMessage.configuration,
+      conversation,
+      userMessage,
+      agentMessage
+    );
+
+    for await (const event of eventStream) {
+      if (event.type === "agent_error") {
+        // Store error in database.
+        await agentMessageRow.update({
+          status: "failed",
+          errorCode: event.error.code,
+          errorMessage: event.error.message,
+        });
+        yield event;
+      }
+
+      if (event.type === "agent_action_success") {
+        // Store action in database.
+        if (event.action.type === "retrieval_action") {
+          await agentMessageRow.update({
+            agentRetrievalActionId: event.action.id,
+          });
+        } else {
+          throw new Error(
+            `Action type ${event.action.type} agent_action_success handling not implemented`
+          );
+        }
+        yield event;
+      }
+
+      if (event.type === "agent_generation_success") {
+        // Store message in database.
+        await agentMessageRow.update({
+          message: event.text,
+        });
+        yield event;
+      }
+
+      if (event.type === "agent_message_success") {
+        // Update status in database.
+        await agentMessageRow.update({
+          status: "succeeded",
+        });
+        yield event;
+      }
+
+      // All other events that won't impact the database and are related to actions or tokens
+      // generation.
+      if (
+        [
+          "retrieval_params",
+          "retrieval_documents",
+          "generation_tokens",
+        ].includes(event.type)
+      ) {
+        yield event;
+      }
+    }
   }
-
-  // TODO: run agents
-
-  yield {
-    type: "agent_error",
-    created: Date.now(),
-    configurationId: "foo",
-    messageId: "bar",
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
-  };
 }
 
 // This method is in charge of re-running an agent interaction (generating a new

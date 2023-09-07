@@ -271,6 +271,8 @@ export async function generateRetrievalParams(
 export type RetrievalParamsEvent = {
   type: "retrieval_params";
   created: number;
+  configurationId: string;
+  messageId: string;
   dataSources: "all" | DataSourceConfiguration[];
   query: string | null;
   relativeTimeFrame: TimeFrame | null;
@@ -379,6 +381,8 @@ export async function* runRetrieval(
   yield {
     type: "retrieval_params",
     created: Date.now(),
+    configurationId: configuration.sId,
+    messageId: agentMessage.sId,
     dataSources: c.dataSources,
     query: params.query,
     relativeTimeFrame: params.relativeTimeFrame,
