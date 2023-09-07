@@ -251,17 +251,6 @@ export async function* postUserMessage(
       }
     }
   }
-
-  yield {
-    type: "agent_error",
-    created: Date.now(),
-    configurationId: "foo",
-    messageId: "bar",
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
-  };
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
