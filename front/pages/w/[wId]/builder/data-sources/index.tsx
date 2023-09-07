@@ -475,7 +475,7 @@ export default function DataSourcesView({
                         if (!ds || !ds.connector) {
                           return (
                             <Button
-                              type="primary"
+                              variant="primary"
                               icon={CloudArrowDownIcon}
                               disabled={
                                 !ds.isBuilt ||
@@ -512,7 +512,7 @@ export default function DataSourcesView({
                         } else {
                           return (
                             <Button
-                              type="secondary"
+                              variant="secondary"
                               icon={Cog6ToothIcon}
                               disabled={
                                 !ds.isBuilt ||
@@ -549,7 +549,7 @@ export default function DataSourcesView({
             !readOnly
               ? {
                   label: "Add a new Data Source",
-                  type: "secondary",
+                  variant: "secondary",
                   icon: PlusIcon,
                   onClick: () => {
                     // Enforce plan limits: DataSources count.
@@ -599,7 +599,7 @@ export default function DataSourcesView({
 
                     <div>
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         icon={Cog6ToothIcon}
                         onClick={() => {
                           void router.push(

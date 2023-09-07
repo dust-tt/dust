@@ -263,7 +263,7 @@ export default function NewApp({
           <div className="flex flex-1"></div>
           <div className="flex">
             <Button
-              type="tertiary"
+              variant="tertiary"
               disabled={creating}
               onClick={async () => {
                 void router.push(`/w/${owner.sId}/a`);

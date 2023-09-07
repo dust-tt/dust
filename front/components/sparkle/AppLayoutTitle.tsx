@@ -26,7 +26,7 @@ export function AppLayoutSimpleCloseTitle({
         label="Close"
         labelVisible={false}
         tooltipPosition="below"
-        type="tertiary"
+        variant="tertiary"
         onClick={onClose}
         icon={XMarkIcon}
       />

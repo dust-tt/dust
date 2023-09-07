@@ -1,6 +1,12 @@
-import { Button, KeyIcon, PageHeader, SectionHeader } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronUpDownIcon,
+  KeyIcon,
+  PageHeader,
+  SectionHeader,
+} from "@dust-tt/sparkle";
 import { Listbox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useEffect, useState } from "react";
 import { mutate } from "swr";
@@ -289,7 +295,7 @@ export default function WorkspaceAdmin({
             <div className="flex flex-1"></div>
             <div className="flex">
               <Button
-                type="secondary"
+                variant="secondary"
                 disabled={disable || updating}
                 onClick={handleUpdateWorkspace}
                 label={updating ? "Updating..." : "Update"}
@@ -340,7 +346,7 @@ export default function WorkspaceAdmin({
                 <div className="flex flex-1"></div>
                 <div className="mt-0.5 flex">
                   <Button
-                    type="secondary"
+                    variant="secondary"
                     disabled={
                       !inviteEmail || !isEmailValid(inviteEmail) || isSending
                     }
@@ -379,7 +385,7 @@ export default function WorkspaceAdmin({
                     </div>
                     <div className="flex-shrink-0 text-sm text-gray-500">
                       <Button
-                        type="tertiary"
+                        variant="tertiary"
                         onClick={() => handleRevokeInvitation(invitation.id)}
                         label="Revoke"
                         size="xs"

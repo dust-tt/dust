@@ -75,7 +75,7 @@ export default function AssistantsBuilder({
           description="Build your own Assistant, use specific instructions and specific data sources to get better answers."
           action={{
             label: "Create a new Assistant",
-            type: "secondary",
+            variant: "secondary",
             icon: PlusIcon,
             size: "sm",
             onClick: () => {

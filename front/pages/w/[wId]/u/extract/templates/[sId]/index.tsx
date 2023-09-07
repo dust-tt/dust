@@ -234,7 +234,7 @@ export default function AppExtractEventsReadData({
         <Button
           onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
           label="Back"
-          type="secondary"
+          variant="secondary"
         />
       </div>
     </AppLayout>
@@ -389,7 +389,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
                     </div>
                     <div className="justify-center">
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         size="sm"
                         label={
                           copySuccess === "Markdown"
@@ -406,7 +406,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
                     </div>
                     <div className="justify-center">
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         size="sm"
                         label={
                           copySuccess === "JSON" ? "Copied!" : "Copy as JSON"

@@ -101,7 +101,7 @@ export default function AppExtractEvents({
                   <td className="whitespace-nowrap px-3 py-4">
                     <Button
                       label="See extracted data"
-                      type="tertiary"
+                      variant="tertiary"
                       onClick={() =>
                         router.push(
                           `/w/${owner.sId}/u/extract/templates/${schema.sId}`

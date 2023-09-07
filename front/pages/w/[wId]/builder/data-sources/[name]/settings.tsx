@@ -360,7 +360,7 @@ function StandardDataSourceSettings({
       <div className="flex pt-6">
         <div className="flex">
           <Button
-            type="secondaryWarning"
+            variant="secondaryWarning"
             onClick={handleDelete}
             disabled={isDeleting || isUpdating}
             label={isDeleting ? "Deleting..." : "Delete"}
@@ -369,7 +369,7 @@ function StandardDataSourceSettings({
         <div className="flex-1"></div>
         <div className="ml-2 flex">
           <Button
-            type="tertiary"
+            variant="tertiary"
             onClick={() => {
               void router.push(
                 `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
@@ -381,7 +381,7 @@ function StandardDataSourceSettings({
         </div>
         <div className="ml-2 flex">
           <Button
-            type="secondary"
+            variant="secondary"
             onClick={() => {
               void handleUpdate({
                 description: dataSourceDescription,
@@ -451,7 +451,7 @@ function ManagedDataSourceSettings({
           <div className="flex flex-1"></div>
           <div className="ml-2 flex">
             <Button
-              type="tertiary"
+              variant="tertiary"
               onClick={() => {
                 void router.push(
                   `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
@@ -463,7 +463,7 @@ function ManagedDataSourceSettings({
           </div>
           <div className="ml-2 flex">
             <Button
-              type="secondary"
+              variant="secondary"
               onClick={() => {
                 void handleUpdate({
                   assistantDefaultSelected,

@@ -48,7 +48,7 @@ export function AppLayoutChatTitle({
               size="sm"
               labelVisible={false}
               tooltipPosition="below"
-              type="secondaryWarning"
+              variant="secondaryWarning"
               label="Delete"
               icon={TrashIcon}
               onClick={onDelete}
@@ -64,7 +64,7 @@ export function AppLayoutChatTitle({
                   size="sm"
                   label="Share"
                   icon={ArrowUpOnSquareIcon}
-                  type="secondary"
+                  variant="secondary"
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items width={280}>
@@ -95,7 +95,7 @@ export function AppLayoutChatTitle({
                   </div>
                   <div className="flex justify-center">
                     <Button
-                      type="secondary"
+                      variant="secondary"
                       size="sm"
                       label={copyLinkSuccess ? "Copied!" : "Copy the link"}
                       icon={

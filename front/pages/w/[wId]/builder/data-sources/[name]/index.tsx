@@ -191,7 +191,7 @@ function StandardDataSourceView({
             ? undefined
             : {
                 label: "Settings",
-                type: "tertiary",
+                variant: "tertiary",
                 icon: Cog6ToothIcon,
                 onClick: () => {
                   void router.push(
@@ -209,7 +209,7 @@ function StandardDataSourceView({
               <div className="flex flex-initial">
                 <div className="flex">
                   <Button
-                    type="tertiary"
+                    variant="tertiary"
                     disabled={offset < limit}
                     onClick={() => {
                       if (offset >= limit) {
@@ -223,7 +223,7 @@ function StandardDataSourceView({
                 </div>
                 <div className="ml-2 flex">
                   <Button
-                    type="tertiary"
+                    variant="tertiary"
                     label="Next"
                     disabled={offset + limit >= total}
                     onClick={() => {
@@ -249,7 +249,7 @@ function StandardDataSourceView({
           <div className="">
             <div className="mt-0 flex-none">
               <Button
-                type="secondary"
+                variant="secondary"
                 icon={PlusIcon}
                 label="Document"
                 onClick={() => {
@@ -533,7 +533,7 @@ function ManagedDataSourceView({
               ? undefined
               : {
                   label: "Settings",
-                  type: "tertiary",
+                  variant: "tertiary",
                   icon: Cog6ToothIcon,
                   onClick: () => {
                     void router.push(
@@ -548,7 +548,7 @@ function ManagedDataSourceView({
           <div className="flex">
             <Button
               label="Search"
-              type="secondary"
+              variant="secondary"
               onClick={() => {
                 void router.push(
                   `/w/${owner.sId}/builder/data-sources/${dataSource.name}/search`
@@ -559,7 +559,7 @@ function ManagedDataSourceView({
           <div className={classNames(isAdmin ? "flex" : "hidden")}>
             <Button
               label="Edit permissions"
-              type="secondary"
+              variant="secondary"
               onClick={() => {
                 if (["slack", "google_drive"].includes(connectorProvider)) {
                   setShowPermissionModal(true);

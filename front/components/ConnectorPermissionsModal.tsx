@@ -209,7 +209,7 @@ export default function ConnectorPermissionsModal({
                     }}
                     labelVisible={true}
                     label="Re-authorize"
-                    type="tertiary"
+                    variant="tertiary"
                     size="xs"
                     icon={Cog6ToothIcon}
                   />
@@ -220,14 +220,14 @@ export default function ConnectorPermissionsModal({
                         labelVisible={true}
                         onClick={closeModal}
                         label="Cancel"
-                        type="secondary"
+                        variant="secondary"
                         size="xs"
                       />
                       <Button
                         labelVisible={true}
                         onClick={save}
                         label="Save"
-                        type="primary"
+                        variant="primary"
                         size="xs"
                       />
                     </div>
