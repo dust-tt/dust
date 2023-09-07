@@ -3,147 +3,22 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
-  AgentGenerationTokensEvent,
   AgentMessageNewEvent,
+  AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
+import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { front_sequelize } from "@app/lib/databases";
 import { AgentMessage, Message, UserMessage } from "@app/lib/models";
-import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
-import logger from "@app/logger/logger";
-import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import {
   AgentMessageType,
   ConversationType,
   isAgentMention,
-  isAgentMessageType,
-  isUserMessageType,
   Mention,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { renderRetrievalActionForModel } from "./actions/retrieval";
-
-/**
- * Model rendering of conversations.
- */
-
-export type ModelMessageType = {
-  role: "action" | "agent" | "user";
-  name: string;
-  content: string;
-};
-
-export type ModelConversationType = {
-  messages: ModelMessageType[];
-};
-
-// This function transforms a conversation in a simplified format that we feed the model as context.
-// It takes care of truncating the conversation all the way to `allowedTokenCount` tokens.
-export async function renderConversationForModel({
-  conversation,
-  model,
-  allowedTokenCount,
-}: {
-  conversation: ConversationType;
-  model: { providerId: string; modelId: string };
-  allowedTokenCount: number;
-}): Promise<Result<ModelConversationType, Error>> {
-  const messages = [];
-
-  let retrievalFound = false;
-
-  // Render all messages and all actions but only keep the latest retrieval action.
-  for (let i = conversation.content.length - 1; i >= 0; i--) {
-    const versions = conversation.content[i];
-    const m = versions[versions.length - 1];
-
-    if (isAgentMessageType(m)) {
-      if (m.action) {
-        if (isRetrievalActionType(m.action) && !retrievalFound) {
-          messages.unshift(renderRetrievalActionForModel(m.action));
-          retrievalFound = true;
-        } else {
-          return new Err(
-            new Error(
-              "Unsupported action type during conversation model rendering"
-            )
-          );
-        }
-      }
-      if (m.message) {
-        messages.unshift({
-          role: "agent" as const,
-          name: m.configuration.name,
-          content: m.message,
-        });
-      }
-    }
-    if (isUserMessageType(m)) {
-      messages.unshift({
-        role: "user" as const,
-        name: m.context.username,
-        content: m.message,
-      });
-    }
-  }
-
-  async function tokenCountForMessage(
-    message: ModelMessageType,
-    model: { providerId: string; modelId: string }
-  ): Promise<Result<number, Error>> {
-    const res = await CoreAPI.tokenize({
-      text: message.content,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
-
-    if (res.isErr()) {
-      return new Err(new Error(`Error tokenizing model message: ${res.error}`));
-    }
-
-    return new Ok(res.value.tokens.length);
-  }
-
-  const now = Date.now();
-
-  // This is a bit aggressive but fuck it.
-  const tokenCountRes = await Promise.all(
-    messages.map((m) => {
-      return tokenCountForMessage(m, model);
-    })
-  );
-
-  logger.info(
-    {
-      messageCount: messages.length,
-      elapsed: Date.now() - now,
-    },
-    "[ASSISTANT_STATS] message token counts for model conversation rendering"
-  );
-
-  // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected = [];
-  let tokensUsed = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const r = tokenCountRes[i];
-    if (r.isErr()) {
-      return new Err(r.error);
-    }
-    const c = r.value;
-    if (tokensUsed + c <= allowedTokenCount) {
-      tokensUsed += c;
-      selected.unshift(messages[i]);
-    }
-  }
-
-  return new Ok({
-    messages: selected,
-  });
-}
 
 /**
  * Conversation API
@@ -176,8 +51,9 @@ export async function* postUserMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentGenerationTokensEvent
+  | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   const user = auth.user();
 
@@ -320,8 +196,9 @@ export async function* retryAgentMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentGenerationTokensEvent
+  | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   yield {
     type: "agent_error",
@@ -354,8 +231,9 @@ export async function* editUserMessage(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentGenerationTokensEvent
+  | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   yield {
     type: "agent_error",

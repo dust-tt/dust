@@ -4,7 +4,7 @@ import {
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
-import { ModelMessageType } from "@app/lib/api/assistant/conversation";
+import { ModelMessageType } from "@app/lib/api/assistant/generation";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { DustAPI } from "@app/lib/dust_api";
@@ -14,6 +14,7 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
+import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   DataSourceConfiguration,
@@ -507,7 +508,7 @@ export async function* runRetrieval(
         id: 0, // dummy pending database insertion
         dataSourceId: d.data_source_id,
         documentId: d.document_id,
-        reference: "",
+        reference: new_id().slice(0, 3),
         timestamp: d.timestamp,
         tags: d.tags,
         sourceUrl: d.source_url ?? null,
