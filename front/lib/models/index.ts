@@ -1,5 +1,16 @@
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
+  AgentDataSourceConfiguration,
+  AgentRetrievalAction,
+  AgentRetrievalConfiguration,
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
+} from "@app/lib/models/assistant/agent";
+import {
   AgentMessage,
   Conversation,
   Message,
@@ -27,7 +38,12 @@ import {
 import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
+  AgentConfiguration,
+  AgentDataSourceConfiguration,
+  AgentGenerationConfiguration,
   AgentMessage,
+  AgentRetrievalAction,
+  AgentRetrievalConfiguration,
   App,
   ChatMessage,
   ChatRetrievedDocument,
@@ -45,6 +61,8 @@ export {
   MembershipInvitation,
   Message,
   Provider,
+  RetrievalDocument,
+  RetrievalDocumentChunk,
   Run,
   TrackedDocument,
   User,

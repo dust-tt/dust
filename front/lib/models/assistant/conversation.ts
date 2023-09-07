@@ -8,6 +8,7 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
 import {
   AgentMessageStatus,
@@ -155,6 +156,8 @@ export class AgentMessage extends Model<
   declare message: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
+
+  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 }
 
 AgentMessage.init(
@@ -194,9 +197,20 @@ AgentMessage.init(
   },
   {
     modelName: "agent_message",
+    indexes: [
+      {
+        unique: true,
+        fields: ["agentRetrievalActionId"],
+      },
+    ],
     sequelize: front_sequelize,
   }
 );
+
+AgentRetrievalAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
+  onDelete: "CASCADE",
+});
 
 export class Message extends Model<
   InferAttributes<Message>,
