@@ -146,7 +146,7 @@ export async function createAgentConfiguration(
       );
     }
 
-    // Create AgentRetrievalConfiguration
+    // Create AgentRetrievalConfiguration & AgentDataSourceConfiguration
     if (action) {
       const query = action.query;
       const timeframe = action.relativeTimeFrame;
@@ -164,10 +164,6 @@ export async function createAgentConfiguration(
         },
         { transaction: t }
       );
-    }
-
-    // Create AgentDataSourceConfiguration
-    if (agentActionConfigRow && action?.dataSources) {
       agentDataSourcesConfigRows = await _createAgentDataSourcesConfigData(
         t,
         action.dataSources,

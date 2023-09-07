@@ -88,12 +88,14 @@ export async function _buildAgentActionConfigurationType(
     where: {
       id: { [Op.in]: dataSourcesIds },
     },
+    attributes: ["id", "name", "workspaceId"],
   });
   const workspaceIds = dataSources.map((ds) => ds.workspaceId);
   const workspaces = await Workspace.findAll({
     where: {
       id: { [Op.in]: workspaceIds },
     },
+    attributes: ["id", "sId"],
   });
 
   let dataSource: DataSource | undefined;
