@@ -44,6 +44,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "6a27050429",
+      appHash:
+        "356e16f5254284cc1c08512bebf9638bbc3e94eb5b29ac27599ccce7bee7843c",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: null,
+        use_cache: false,
+      },
+    },
+  },
 
   "chat-retrieval": {
     app: {

@@ -2,6 +2,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
+import { runActionStreamed } from "@app/lib/actions/server";
 import { renderRetrievalActionForModel } from "@app/lib/api/assistant/actions/retrieval";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
@@ -139,6 +140,22 @@ function modelToContextSize(model: {
   providerId: string;
   modelId: string;
 }): number | null {
+  switch (model.providerId) {
+    case "openai": {
+      if (model.modelId.startsWith("gpt-3.5-turbo")) {
+        return 4096;
+      }
+      if (model.modelId.startsWith("gpt-4-32k")) {
+        return 32768;
+      }
+      if (model.modelId.startsWith("gpt-4")) {
+        return 8192;
+      }
+      break;
+    }
+    case "anthropic":
+      return 100000;
+  }
   return null;
 }
 
@@ -244,22 +261,84 @@ export async function* runGeneration(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-generator"].config
   );
-  config.MODEL.function_call = specification.name;
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
 
-  const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
+  const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
       conversation: modelConversationRes.value,
-      specification,
+      prompt: c.prompt,
     },
   ]);
 
-  yield {
-    type: "generation_success",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: agentMessage.sId,
-    text: "TODO",
-  };
+  if (res.isErr()) {
+    return yield {
+      type: "generation_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "agent_generation_error",
+        message: `Error generating agent message: ${res.error}`,
+      },
+    };
+  }
+
+  const { eventStream } = res.value;
+
+  for await (const event of eventStream) {
+    if (event.type === "tokens") {
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        text: event.content.tokens.text,
+      };
+    }
+
+    if (event.type === "error") {
+      return yield {
+        type: "generation_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "agent_generation_error",
+          message: `Error generating agent message: ${event.content.message}`,
+        },
+      };
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return yield {
+          type: "generation_error",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "agent_generation_error",
+            message: `Error generating agent message: ${e.error}`,
+          },
+        };
+      }
+
+      if (event.content.block_name === "MODEL" && e.value) {
+        const m = e.value as {
+          message: {
+            content: string;
+          };
+        };
+        yield {
+          type: "generation_success",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          text: m.message.content,
+        };
+      }
+    }
+  }
 }
