@@ -24,7 +24,10 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
-import { getSlackMessagesDocumentId, getSlackThreadDocumentId } from "@connectors/lib/ids";
+import {
+  getSlackMessagesDocumentId,
+  getSlackThreadDocumentId,
+} from "@connectors/lib/ids";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
@@ -379,11 +382,7 @@ export async function syncNonThreaded(
     client
   );
 
-  const documentId = getSlackMessagesDocumentId(
-    channelId,
-    startTsMs,
-    endTsMs
-  );
+  const documentId = getSlackMessagesDocumentId(channelId, startTsMs, endTsMs);
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
 
