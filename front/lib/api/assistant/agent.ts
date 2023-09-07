@@ -25,6 +25,7 @@ import {
   AgentActionType,
   AgentMessageType,
   ConversationType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 /**
@@ -157,14 +158,6 @@ export async function generateActionInputs(
  * Agent execution.
  */
 
-// Event sent when a new message is created (empty) and the agent is about to be executed.
-export type AgentMessageNewEvent = {
-  type: "agent_message_new";
-  created: number;
-  configurationId: string;
-  message: AgentMessageType;
-};
-
 // Generic event sent when an error occured (whether it's during the action or the message generation).
 export type AgentErrorEvent = {
   type: "agent_error";
@@ -207,15 +200,15 @@ export type AgentMessageSuccessEvent = {
   message: AgentMessageType;
 };
 
-// This interface is used to execute an agent. It is in charge of creating the AgentMessage
-// object in database (fully completed or with error set if an error occured). It is called to run
-// an agent or when retrying a previous agent interaction.
+// This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
+// nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: ConversationType
+  conversation: ConversationType,
+  userMessage: UserMessageType,
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
-  | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
