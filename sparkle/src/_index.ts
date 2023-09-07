@@ -46,6 +46,9 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
+import Input from "./components/Input";
+export { Input };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
