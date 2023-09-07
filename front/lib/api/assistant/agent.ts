@@ -3,6 +3,14 @@ import {
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
+import {
+  RetrievalDocumentsEvent,
+  RetrievalParamsEvent,
+} from "@app/lib/api/assistant/actions/retrieval";
+import {
+  GenerationTokensEvent,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
@@ -18,12 +26,6 @@ import {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
-
-import {
-  RetrievalDocumentsEvent,
-  RetrievalParamsEvent,
-} from "./actions/retrieval";
-import { renderConversationForModel } from "./conversation";
 
 /**
  * Agent configuration.
@@ -187,9 +189,9 @@ export type AgentActionSuccessEvent = {
   action: AgentActionType;
 };
 
-// Event sent when tokens are streamed as the the agent is generating a message.
-export type AgentGenerationTokensEvent = {
-  type: "agent_generation_tokens";
+// Event sent once the generation is completed.
+export type AgentGenerationSuccessEvent = {
+  type: "agent_generation_success";
   created: number;
   configurationId: string;
   messageId: string;
@@ -197,8 +199,8 @@ export type AgentGenerationTokensEvent = {
 };
 
 // Event sent once the message is completed and successful.
-export type AgentGenerationSuccessEvent = {
-  type: "agent_generation_success";
+export type AgentSuccessEvent = {
+  type: "agent_success";
   created: number;
   configurationId: string;
   generationId: string;
@@ -217,8 +219,9 @@ export async function* runAgent(
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentGenerationTokensEvent
+  | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentSuccessEvent
 > {
   yield {
     type: "agent_error",
