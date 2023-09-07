@@ -10,13 +10,14 @@ import {
   RetrievalParamsEvent,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { _getAgentConfigurationType } from "@app/lib/api/assistant/agent_utils";
 import {
   GenerationTokensEvent,
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize, ModelId } from "@app/lib/databases";
+import { front_sequelize } from "@app/lib/databases";
 import { DataSource, Workspace } from "@app/lib/models";
 import {
   AgentDataSourceConfiguration,
@@ -31,7 +32,6 @@ import { generateModelSId } from "@app/lib/utils";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
   AgentDataSourceConfigurationType,
-  DataSourceFilter,
   isTemplatedQuery,
   isTimeFrame,
 } from "@app/types/assistant/actions/retrieval";
@@ -42,13 +42,55 @@ import {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
-import { _getAgentConfigurationType } from "@app/types/assistant/agent-utils";
 import {
   AgentActionType,
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+/**
+ * Get an agent configuration from its name
+ */
+export async function getAgentConfiguration(auth: Authenticator, name: string) {
+  const owner = auth.workspace();
+  if (!owner) {
+    return;
+  }
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      name: name,
+      workspaceId: owner.id,
+    },
+  });
+  const agentGeneration = await AgentGenerationConfiguration.findOne({
+    where: {
+      agentId: agent?.id,
+    },
+  });
+  const agentAction = await AgentRetrievalConfiguration.findOne({
+    where: {
+      agentId: agent?.id,
+    },
+  });
+  const agentDataSources = agentAction?.id
+    ? await AgentDataSourceConfiguration.findAll({
+        where: {
+          retrievalConfigurationId: agentAction?.id,
+        },
+      })
+    : [];
+
+  if (!agent) {
+    return;
+  }
+  return await _getAgentConfigurationType({
+    agent: agent,
+    generation: agentGeneration,
+    action: agentAction,
+    dataSources: agentDataSources,
+  });
+}
 
 /**
  * Create a new Agent
