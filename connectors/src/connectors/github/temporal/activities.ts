@@ -16,6 +16,10 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import {
+  getGithubDiscussionDocumentId,
+  getGithubIssueDocumentId,
+} from "@connectors/lib/ids";
+import {
   Connector,
   GithubDiscussion,
   GithubIssue,
@@ -23,10 +27,6 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
-import {
-  getGithubDiscussionDocumentId,
-  getGithubIssueDocumentId,
-} from "@connectors/lib/ids";
 
 const logger = mainLogger.child({
   provider: "github",

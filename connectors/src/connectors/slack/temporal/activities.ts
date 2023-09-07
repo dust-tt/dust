@@ -24,6 +24,7 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
+import { getSlackMessagesDocumentId, getSlackThreadDocumentId } from "@connectors/lib/ids";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
@@ -34,7 +35,6 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
-import { getSlackMessagesDocumentId, getSlackThreadDocumentId } from "@connectors/lib/ids";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });

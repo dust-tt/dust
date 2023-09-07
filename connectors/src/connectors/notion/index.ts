@@ -7,6 +7,10 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  getNotionDatabaseResourceId,
+  getNotionPageDocumentId,
+} from "@connectors/lib/ids";
+import {
   Connector,
   ModelId,
   NotionConnectorState,
@@ -27,10 +31,6 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
-import {
-  getNotionDatabaseResourceId,
-  getNotionPageDocumentId,
-} from "@connectors/lib/ids";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });

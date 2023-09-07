@@ -23,6 +23,7 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { getNotionPageDocumentId } from "@connectors/lib/ids";
 import {
   Connector,
   NotionConnectorState,
@@ -36,7 +37,6 @@ import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
-import { getNotionPageDocumentId } from "@connectors/lib/ids";
 
 const logger = mainLogger.child({ provider: "notion" });
 

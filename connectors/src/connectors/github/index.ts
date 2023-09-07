@@ -5,6 +5,7 @@ import {
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import { getGithubRepoResourceId } from "@connectors/lib/ids";
 import {
   Connector,
   GithubConnectorState,
@@ -20,7 +21,6 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
-import { getGithubRepoResourceId } from "@connectors/lib/ids";
 
 type GithubInstallationId = string;
 

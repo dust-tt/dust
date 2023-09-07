@@ -4,6 +4,10 @@ import { GaxiosResponse } from "googleapis-common";
 import { Transaction } from "sequelize";
 
 import {
+  getGDriveFileDocumentId,
+  getGDriveFolderResourceId,
+} from "@connectors/lib/ids";
+import {
   Connector,
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -34,11 +38,6 @@ import {
   getGoogleDriveObject,
 } from "./temporal/activities";
 import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
-import {
-  getGDriveFileDocumentId,
-  getGDriveFolderResourceId,
-} from "@connectors/lib/ids";
-import { get } from "http";
 export type NangoConnectionId = string;
 
 const {

@@ -7,6 +7,7 @@ import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client.js";
+import { getSlackChannelResourceId } from "@connectors/lib/ids";
 import {
   Connector,
   ModelId,
@@ -30,7 +31,6 @@ import {
 } from "@connectors/types/resources";
 
 import { getAccessToken, getSlackClient } from "./temporal/activities";
-import { getSlackChannelResourceId } from "@connectors/lib/ids";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;

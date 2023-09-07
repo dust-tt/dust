@@ -23,6 +23,7 @@ import { literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
+import { getGDriveFileDocumentId } from "@connectors/lib/ids";
 import {
   Connector,
   GoogleDriveFiles,
@@ -35,7 +36,6 @@ import {
 import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
-import { getGDriveFileDocumentId } from "@connectors/lib/ids";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
