@@ -6,7 +6,7 @@ import { Icon, IconProps } from "./Icon";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
 type IconToggleButtonProps = {
-  type?: "secondary" | "tertiary";
+  variant?: "secondary" | "tertiary";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
@@ -53,7 +53,7 @@ const iconClasses = {
 };
 
 export function IconToggleButton({
-  type = "tertiary",
+  variant = "tertiary",
   onClick,
   disabled = false,
   tooltip,
@@ -64,7 +64,7 @@ export function IconToggleButton({
   selected = false,
   size = "sm",
 }: IconToggleButtonProps) {
-  const iconGroup = iconClasses[type];
+  const iconGroup = iconClasses[variant];
   const finalIconClasses = classNames(
     className,
     baseClasses,

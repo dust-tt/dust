@@ -12,7 +12,7 @@ type Story = StoryObj<typeof meta>;
 
 export const IconButtonPrimary: Story = {
   args: {
-    type: "primary",
+    variant: "primary",
     size: "md",
     icon: Cog6ToothIcon,
   },
@@ -20,7 +20,7 @@ export const IconButtonPrimary: Story = {
 
 export const IconButtonWithTooltip: Story = {
   args: {
-    type: "primary",
+    variant: "primary",
     tooltip: "Your settings",
     tooltipPosition: "below",
     icon: Cog6ToothIcon,
@@ -29,7 +29,7 @@ export const IconButtonWithTooltip: Story = {
 
 export const IconButtonSecondary: Story = {
   args: {
-    type: "secondary",
+    variant: "secondary",
     tooltip: "This a secondary IconButton",
     tooltipPosition: "below",
     icon: Cog6ToothIcon,
@@ -38,7 +38,7 @@ export const IconButtonSecondary: Story = {
 
 export const IconButtonTertiary: Story = {
   args: {
-    type: "tertiary",
+    variant: "tertiary",
     tooltip: "This a tertiary IconButton",
     tooltipPosition: "below",
     icon: Cog6ToothIcon,

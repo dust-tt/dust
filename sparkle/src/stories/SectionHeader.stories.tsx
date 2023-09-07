@@ -20,7 +20,7 @@ export const BasicPageHeader: Story = {
       "This is an optional short description of the section that says stuff about it. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
     action: {
       label: "Add a new Data Source",
-      type: "secondary",
+      variant: "secondary",
       icon: ChatBubbleBottomCenterPlusIcon,
     },
   },
