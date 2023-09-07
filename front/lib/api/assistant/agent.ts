@@ -14,9 +14,24 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
+import { front_sequelize } from "@app/lib/databases";
+import { DataSource } from "@app/lib/models";
+import {
+  AgentDataSourceConfiguration,
+  AgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
+} from "@app/lib/models/assistant/agent";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
+import {
+  isTemplatedQuery,
+  isTimeFrame,
+  RetrievalDataSourcesConfiguration,
+} from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
   AgentActionSpecification,
@@ -24,6 +39,7 @@ import {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
+import { _getAgentConfigurationType } from "@app/types/assistant/agent-utils";
 import {
   AgentActionType,
   AgentMessageType,
@@ -48,15 +64,103 @@ export async function createAgentConfiguration(
     action?: AgentActionConfigurationType;
     generation?: AgentGenerationConfigurationType;
   }
-): Promise<AgentConfigurationType> {
-  return {
-    sId: generateModelSId(),
-    name,
-    pictureUrl: pictureUrl ?? null,
-    status: "active",
-    action: action ?? null,
-    generation: generation ?? null,
-  };
+): Promise<AgentConfigurationType | void> {
+  const owner = auth.workspace();
+
+  if (!owner) {
+    return;
+  }
+
+  return await front_sequelize.transaction(async (t) => {
+    // Create AgentConfiguration
+    const agentConfigRow = await AgentConfiguration.create(
+      {
+        sId: generateModelSId(),
+        status: "active",
+        name: name,
+        pictureUrl: pictureUrl ?? null,
+        scope: "workspace",
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
+
+    let agentGenerationConfigRow: AgentGenerationConfiguration | null = null;
+    let agentActionConfigRow: AgentRetrievalConfiguration | null = null;
+    const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] = [];
+
+    // Create AgentGenerationConfiguration
+    if (generation) {
+      agentGenerationConfigRow = await AgentGenerationConfiguration.create(
+        {
+          prompt: generation.prompt,
+          modelProvider: generation.model.providerId,
+          modelId: generation.model.modelId,
+          agentId: agentConfigRow.id,
+        },
+        { transaction: t }
+      );
+    }
+
+    // Create AgentRetrievalConfiguration & associated AgentDataSourceConfiguration
+    if (action) {
+      const query = action.query;
+      const timeframe = action.relativeTimeFrame;
+
+      agentActionConfigRow = await AgentRetrievalConfiguration.create(
+        {
+          query: isTemplatedQuery(query) ? "templated" : query,
+          queryTemplate: isTemplatedQuery(query) ? query.template : null,
+          relativeTimeFrame: isTimeFrame(timeframe) ? "custom" : timeframe,
+          relativeTimeFrameDuration: isTimeFrame(timeframe)
+            ? timeframe.duration
+            : null,
+          relativeTimeFrameUnit: isTimeFrame(timeframe) ? timeframe.unit : null,
+          topK: action.topK,
+          agentId: agentConfigRow.id,
+        },
+        { transaction: t }
+      );
+
+      if (!agentActionConfigRow) {
+        return;
+      }
+
+      if (action.dataSources) {
+        let dsRow: AgentDataSourceConfiguration | null = null;
+        action.dataSources.map(async (d) => {
+          const ds = await DataSource.findOne({
+            where: {
+              name: d.name,
+              workspaceId: d.workspaceId,
+            },
+          });
+
+          if (ds && agentActionConfigRow) {
+            dsRow = await AgentDataSourceConfiguration.create(
+              {
+                dataSourceId: ds.id,
+                tagsIn: d.filter.tags?.in,
+                tagsNotIn: d.filter.tags?.not,
+                parentsIn: d.filter.parents?.in,
+                parentsNotIn: d.filter.parents?.not,
+                retrievalConfigurationId: agentActionConfigRow.id,
+              },
+              { transaction: t }
+            );
+            agentDataSourcesConfigRows.push(dsRow);
+          }
+        });
+      }
+    }
+
+    return _getAgentConfigurationType({
+      agent: agentConfigRow,
+      action: agentActionConfigRow,
+      generation: agentGenerationConfigRow,
+      dataSources: agentDataSourcesConfigRows,
+    });
+  });
 }
 
 export async function updateAgentConfiguration(

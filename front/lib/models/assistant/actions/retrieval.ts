@@ -117,9 +117,6 @@ export class AgentDataSourceConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timeframeDuration: number | null;
-  declare timeframeUnit: TimeframeUnit | null;
-
   declare tagsIn: string[] | null;
   declare tagsNotIn: string[] | null;
   declare parentsIn: string[] | null;
@@ -147,14 +144,6 @@ AgentDataSourceConfiguration.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    timeframeDuration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    timeframeUnit: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     tagsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
@@ -178,12 +167,16 @@ AgentDataSourceConfiguration.init(
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
         if (
-          (dataSourceConfig.timeframeDuration === null) !==
-          (dataSourceConfig.timeframeUnit === null)
+          (dataSourceConfig.tagsIn === null) !==
+          (dataSourceConfig.tagsNotIn === null)
         ) {
-          throw new Error(
-            "Timeframe duration/unit must be both set or both null"
-          );
+          throw new Error("Tags must be both set or both null");
+        }
+        if (
+          (dataSourceConfig.parentsIn === null) !==
+          (dataSourceConfig.parentsNotIn === null)
+        ) {
+          throw new Error("Parents must be both set or both null");
         }
       },
     },
