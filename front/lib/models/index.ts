@@ -7,6 +7,10 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
+} from "@app/lib/models/assistant/agent";
+import {
   AgentMessage,
   Conversation,
   Message,
@@ -34,7 +38,9 @@ import {
 import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
+  AgentConfiguration,
   AgentDataSourceConfiguration,
+  AgentGenerationConfiguration,
   AgentMessage,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,

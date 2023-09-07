@@ -228,7 +228,7 @@ export class AgentRetrievalAction extends Model<
   InferAttributes<AgentRetrievalAction>,
   InferCreationAttributes<AgentRetrievalAction>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

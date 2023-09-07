@@ -6,7 +6,13 @@ import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/conversation";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { front_sequelize } from "@app/lib/databases";
 import { DustAPI } from "@app/lib/dust_api";
+import {
+  AgentRetrievalAction,
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import {
@@ -298,9 +304,12 @@ export type RetrievalSuccessEvent = {
   action: RetrievalActionType;
 };
 
-// This method is in charge of running the retrieval and creating an AgentRetrievalAction
-// object in the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not create any generic
-// model related to the conversation.
+// This method is in charge of running the retrieval and creating an AgentRetrievalAction object in
+// the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not
+// create any generic model related to the conversation. It is possible for an AgentRetrievalAction
+// to be stored (once the query params are infered) but for the retrieval to fail, in which case an
+// error event will be emitted and the AgentRetrievalAction won't have any documents associated. The
+// error is expected to be stored by the caller on the parent agent message.
 export async function* runRetrieval(
   auth: Authenticator,
   configuration: AgentConfigurationType,
@@ -354,6 +363,18 @@ export async function* runRetrieval(
 
   const params = paramsRes.value;
 
+  // Create the AgentRetrievalAction object in the database and yield an event for the generation of
+  // the params. We store the action here as the params have been generated, if an error occurs
+  // later on, the action won't have retrieved documents but the error will be stored on the parent
+  // agent message.
+  const action = await AgentRetrievalAction.create({
+    query: params.query,
+    relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
+    relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
+    topK: params.topK,
+    retrievalConfigurationId: c.id,
+  });
+
   yield {
     type: "retrieval_params",
     created: Date.now(),
@@ -362,8 +383,6 @@ export async function* runRetrieval(
     relativeTimeFrame: params.relativeTimeFrame,
     topK: params.topK,
   };
-
-  // TODO(spolu): create the AgentRetrievalAction object in the database here.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-retrieval"].config
@@ -455,7 +474,6 @@ export async function* runRetrieval(
   const run = res.value;
   let documents: RetrievalDocumentType[] = [];
 
-  //const output: Record<string, string | boolean | number> = {};
   for (const t of run.traces) {
     if (t[1][0][0].error) {
       return yield {
@@ -503,6 +521,63 @@ export async function* runRetrieval(
     }
   }
 
-  // TODO(spolu): create the RetrievalDocument[Chunk] objects in the database here.
-  // TODO(spolu): emit success event with fully materialized RetrievalActionType.
+  // We are done, store documents and chunks in database and yield the final events.
+
+  await front_sequelize.transaction(async (t) => {
+    for (const d of documents) {
+      const document = await RetrievalDocument.create(
+        {
+          dataSourceId: d.dataSourceId,
+          sourceUrl: d.sourceUrl,
+          documentId: d.documentId,
+          reference: d.reference,
+          timestamp: d.timestamp,
+          tags: d.tags,
+          score: d.score,
+          retrievalActionId: action.id,
+        },
+        { transaction: t }
+      );
+
+      d.id = document.id;
+
+      for (const c of d.chunks) {
+        await RetrievalDocumentChunk.create(
+          {
+            text: c.text,
+            offset: c.offset,
+            score: c.score,
+            retrievalDocumentId: document.id,
+          },
+          { transaction: t }
+        );
+      }
+    }
+  });
+
+  yield {
+    type: "retrieval_documents",
+    created: Date.now(),
+    configurationId: configuration.sId,
+    messageId: agentMessage.sId,
+    documents,
+  };
+
+  yield {
+    type: "retrieval_success",
+    created: Date.now(),
+    configurationId: configuration.sId,
+    messageId: agentMessage.sId,
+    action: {
+      id: action.id,
+      type: "retrieval_action",
+      params: {
+        dataSources: c.dataSources,
+        relativeTimeFrame: params.relativeTimeFrame,
+        query: params.query,
+        topK: params.topK,
+      },
+      documents,
+    },
+  };
 }
