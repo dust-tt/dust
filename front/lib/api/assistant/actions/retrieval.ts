@@ -504,7 +504,7 @@ export async function* runRetrieval(
       }[];
 
       documents = v.map((d) => ({
-        id: 0,
+        id: 0, // dummy pending database insertion
         dataSourceId: d.data_source_id,
         documentId: d.document_id,
         reference: "",

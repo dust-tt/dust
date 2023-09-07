@@ -157,7 +157,7 @@ export class AgentMessage extends Model<
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 }
 
 AgentMessage.init(

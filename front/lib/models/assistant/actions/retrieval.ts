@@ -83,18 +83,18 @@ AgentRetrievalConfiguration.init(
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for templated Query
         if (retrieval.query == "templated") {
-          if (!retrieval.queryTemplate) {
+          if (retrieval.queryTemplate === null) {
             throw new Error("Must set a template for templated query");
           }
-        } else if (retrieval.queryTemplate) {
+        } else if (retrieval.queryTemplate !== null) {
           throw new Error("Can't set a template without templated query");
         }
 
         // Validation for Timeframe
         if (retrieval.relativeTimeFrame == "custom") {
           if (
-            !retrieval.relativeTimeFrameDuration ||
-            !retrieval.relativeTimeFrameUnit
+            retrieval.relativeTimeFrameDuration === null ||
+            retrieval.relativeTimeFrameUnit === null
           ) {
             throw new Error(
               "Custom relative time frame must have a duration and unit set"
@@ -117,8 +117,6 @@ export class AgentDataSourceConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare minTimestamp: number | null;
-  declare maxTimestamp: number | null;
   declare timeframeDuration: number | null;
   declare timeframeUnit: TimeframeUnit | null;
 
@@ -148,14 +146,6 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    minTimestamp: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    maxTimestamp: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
     },
     timeframeDuration: {
       type: DataTypes.INTEGER,
@@ -187,22 +177,13 @@ AgentDataSourceConfiguration.init(
     sequelize: front_sequelize,
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
-        if (!dataSourceConfig.minTimestamp !== !dataSourceConfig.maxTimestamp) {
-          throw new Error("Timestamps must be both set or both null");
-        }
         if (
-          !dataSourceConfig.timeframeDuration !==
-          !dataSourceConfig.timeframeUnit
+          (dataSourceConfig.timeframeDuration === null) !==
+          (dataSourceConfig.timeframeUnit === null)
         ) {
           throw new Error(
             "Timeframe duration/unit must be both set or both null"
           );
-        }
-        if (
-          (dataSourceConfig.minTimestamp || dataSourceConfig.maxTimestamp) &&
-          (dataSourceConfig.timeframeDuration || dataSourceConfig.timeframeUnit)
-        ) {
-          throw new Error("Cannot use both timestamps and timeframe");
         }
       },
     },
@@ -282,16 +263,8 @@ AgentRetrievalAction.init(
       beforeValidate: (retrieval: AgentRetrievalAction) => {
         // Validation for Timeframe
         if (
-          retrieval.relativeTimeFrameDuration === null &&
-          retrieval.relativeTimeFrameUnit !== null
-        ) {
-          throw new Error(
-            "Relative time frame must have a duration and unit set or they should both be null"
-          );
-        }
-        if (
-          retrieval.relativeTimeFrameDuration !== null &&
-          retrieval.relativeTimeFrameUnit === null
+          (retrieval.relativeTimeFrameDuration === null) !==
+          (retrieval.relativeTimeFrameUnit === null)
         ) {
           throw new Error(
             "Relative time frame must have a duration and unit set or they should both be null"
