@@ -40,6 +40,8 @@ export type TemplatedQuery = {
 // in charge of generating the action inputs. The results will be used along with `topK` and
 // `dataSources` to query the data.
 export type RetrievalConfigurationType = {
+  id: ModelId;
+
   type: "retrieval_configuration";
   dataSources: "all" | DataSourceConfiguration[];
   query: "auto" | "none" | TemplatedQuery;
