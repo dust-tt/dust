@@ -68,11 +68,10 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
-  let userMessage: UserMessageType | null = null;
   const agentMessages: AgentMessageType[] = [];
   const agentMessageRows: AgentMessage[] = [];
 
-  await front_sequelize.transaction(async (t) => {
+  const userMessage = await front_sequelize.transaction(async (t) => {
     let nextMessageRank =
       ((await Message.max<number | null, Message>("rank", {
         where: {
@@ -107,7 +106,7 @@ export async function* postUserMessage(
       }
     );
 
-    userMessage = {
+    const userMessage: UserMessageType = {
       id: m.id,
       sId: m.sId,
       type: "user_message",
@@ -162,11 +161,10 @@ export async function* postUserMessage(
         });
       }
     }
+
+    return userMessage;
   });
 
-  if (userMessage === null) {
-    throw new Error("Unreachable: userMessage failed be created");
-  }
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
