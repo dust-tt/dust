@@ -17,10 +17,10 @@ export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;
 };
 
-// DataSources have a unique pair (name, workspaceId)
-export type DataSourceConfiguration = {
-  workspaceId: ModelId;
-  name: string;
+// This is used to talk with Dust Apps and Core, so it store external Ids.
+export type AgentDataSourceConfigurationType = {
+  workspaceSId: string; // = Workspace.sId
+  dataSourceName: string; // = Datasource.name
   filter: DataSourceFilter;
 };
 
@@ -51,7 +51,8 @@ export function isTimeFrame(arg: RetrievalTimeframe): arg is TimeFrame {
 // `dataSources` to query the data.
 export type RetrievalTimeframe = "auto" | "none" | TimeFrame;
 export type RetrievalQuery = "auto" | "none" | TemplatedQuery;
-export type RetrievalDataSourcesConfiguration = DataSourceConfiguration[];
+export type RetrievalDataSourcesConfiguration =
+  AgentDataSourceConfigurationType[];
 
 export type RetrievalConfigurationType = {
   id: ModelId;
@@ -102,7 +103,7 @@ export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
   type: "retrieval_action";
   params: {
-    dataSources: "all" | DataSourceConfiguration[];
+    dataSources: "all" | AgentDataSourceConfigurationType[];
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;

@@ -189,6 +189,12 @@ AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   onDelete: "CASCADE",
 });
 
+// Data source <> Data source config
+DataSource.hasMany(AgentDataSourceConfiguration, {
+  foreignKey: { name: "dataSourceId", allowNull: false },
+  onDelete: "CASCADE",
+});
+
 // Agent config <> Retrieval config
 AgentConfiguration.hasOne(AgentRetrievalConfiguration, {
   foreignKey: { name: "agentId", allowNull: true }, // null = no generation set for this Agent

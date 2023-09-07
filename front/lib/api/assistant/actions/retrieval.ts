@@ -17,7 +17,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
-  DataSourceConfiguration,
+  AgentDataSourceConfigurationType,
   isRetrievalConfiguration,
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -273,7 +273,7 @@ export type RetrievalParamsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  dataSources: "all" | DataSourceConfiguration[];
+  dataSources: AgentDataSourceConfigurationType[];
   query: string | null;
   relativeTimeFrame: TimeFrame | null;
   topK: number;
@@ -388,8 +388,8 @@ export async function* runRetrieval(
 
   // Handle data sources list and parents/tags filtering.
   config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
-    workspace_id: d.workspaceId,
-    data_source_id: d.name,
+    workspace_id: d.workspaceSId,
+    data_source_id: d.dataSourceName,
   }));
 
   for (const ds of c.dataSources) {
@@ -410,6 +410,13 @@ export async function* runRetrieval(
       config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
       config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
     }
+  }
+
+  // Handle timestamp filtering.
+  if (params.relativeTimeFrame) {
+    config.DATASOURCE.filter.timestamp = {
+      gt: timeFrameFromNow(params.relativeTimeFrame),
+    };
   }
 
   // Handle top k.

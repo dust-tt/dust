@@ -1,3 +1,5 @@
+import { Op, Transaction } from "sequelize";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -14,8 +16,8 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
-import { DataSource } from "@app/lib/models";
+import { front_sequelize, ModelId } from "@app/lib/databases";
+import { DataSource, Workspace } from "@app/lib/models";
 import {
   AgentDataSourceConfiguration,
   AgentRetrievalConfiguration,
@@ -28,9 +30,10 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
+  AgentDataSourceConfigurationType,
+  DataSourceFilter,
   isTemplatedQuery,
   isTimeFrame,
-  RetrievalDataSourcesConfiguration,
 } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
@@ -48,9 +51,8 @@ import {
 } from "@app/types/assistant/conversation";
 
 /**
- * Agent configuration.
+ * Create a new Agent
  */
-
 export async function createAgentConfiguration(
   auth: Authenticator,
   {
@@ -66,14 +68,18 @@ export async function createAgentConfiguration(
   }
 ): Promise<AgentConfigurationType | void> {
   const owner = auth.workspace();
-
   if (!owner) {
     return;
   }
 
   return await front_sequelize.transaction(async (t) => {
+    let agentConfigRow: AgentConfiguration | null = null;
+    let agentGenerationConfigRow: AgentGenerationConfiguration | null = null;
+    let agentActionConfigRow: AgentRetrievalConfiguration | null = null;
+    let agentDataSourcesConfigRows: AgentDataSourceConfiguration[] = [];
+
     // Create AgentConfiguration
-    const agentConfigRow = await AgentConfiguration.create(
+    agentConfigRow = await AgentConfiguration.create(
       {
         sId: generateModelSId(),
         status: "active",
@@ -84,10 +90,6 @@ export async function createAgentConfiguration(
       },
       { transaction: t }
     );
-
-    let agentGenerationConfigRow: AgentGenerationConfiguration | null = null;
-    let agentActionConfigRow: AgentRetrievalConfiguration | null = null;
-    const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] = [];
 
     // Create AgentGenerationConfiguration
     if (generation) {
@@ -102,11 +104,10 @@ export async function createAgentConfiguration(
       );
     }
 
-    // Create AgentRetrievalConfiguration & associated AgentDataSourceConfiguration
+    // Create AgentRetrievalConfiguration
     if (action) {
       const query = action.query;
       const timeframe = action.relativeTimeFrame;
-
       agentActionConfigRow = await AgentRetrievalConfiguration.create(
         {
           query: isTemplatedQuery(query) ? "templated" : query,
@@ -121,46 +122,136 @@ export async function createAgentConfiguration(
         },
         { transaction: t }
       );
-
-      if (!agentActionConfigRow) {
-        return;
-      }
-
-      if (action.dataSources) {
-        let dsRow: AgentDataSourceConfiguration | null = null;
-        action.dataSources.map(async (d) => {
-          const ds = await DataSource.findOne({
-            where: {
-              name: d.name,
-              workspaceId: d.workspaceId,
-            },
-          });
-
-          if (ds && agentActionConfigRow) {
-            dsRow = await AgentDataSourceConfiguration.create(
-              {
-                dataSourceId: ds.id,
-                tagsIn: d.filter.tags?.in,
-                tagsNotIn: d.filter.tags?.not,
-                parentsIn: d.filter.parents?.in,
-                parentsNotIn: d.filter.parents?.not,
-                retrievalConfigurationId: agentActionConfigRow.id,
-              },
-              { transaction: t }
-            );
-            agentDataSourcesConfigRows.push(dsRow);
-          }
-        });
-      }
     }
 
-    return _getAgentConfigurationType({
+    // Create AgentDataSourceConfiguration
+    if (agentActionConfigRow && action?.dataSources) {
+      agentDataSourcesConfigRows = await _createAgentDataSourcesConfigData(
+        t,
+        action.dataSources,
+        agentActionConfigRow.id
+      );
+    }
+
+    return await _getAgentConfigurationType({
       agent: agentConfigRow,
       action: agentActionConfigRow,
       generation: agentGenerationConfigRow,
       dataSources: agentDataSourcesConfigRows,
     });
   });
+}
+
+/**
+ * Create the AgentDataSourceConfiguration rows in database.
+ *
+ * Knowing that a datasource is uniquely identified by its name and its workspaceId
+ * We need to fetch the dataSources from the database from that.
+ * We obvisously need to do as few queries as possible.
+ */
+async function _createAgentDataSourcesConfigData(
+  t: Transaction,
+  dataSourcesConfig: AgentDataSourceConfigurationType[],
+  agentActionId: number
+): Promise<AgentDataSourceConfiguration[]> {
+  // dsConfig contains this format:
+  // [
+  //   { workspaceSId: s1o1u1p, dataSourceName: "managed-notion", filter: { tags: null, parents: null } },
+  //   { workspaceSId: s1o1u1p, dataSourceName: "managed-slack", filter: { tags: null, parents: null } },
+  //   { workspaceSId: i2n2o2u, dataSourceName: "managed-notion", filter: { tags: null, parents: null } },
+  // ]
+
+  // First we get the list of workspaces because we need the mapping between workspaceSId and workspaceId
+  const workspaces = await Workspace.findAll({
+    where: {
+      sId: dataSourcesConfig.map((dsConfig) => dsConfig.workspaceSId),
+    },
+    attributes: ["id", "sId"],
+  });
+
+  // Now will want to group the datasource names by workspaceId to do only one query per workspace.
+  // We want this:
+  // [
+  //   { workspaceId: 1, dataSourceNames: [""managed-notion", "managed-slack"] },
+  //   { workspaceId: 2, dataSourceNames: ["managed-notion"] }
+  // ]
+  type _DsNamesPerWorkspaceIdType = {
+    workspaceId: number;
+    dataSourceNames: string[];
+  };
+  const dsNamesPerWorkspaceId = dataSourcesConfig.reduce(
+    (
+      acc: _DsNamesPerWorkspaceIdType[],
+      curr: AgentDataSourceConfigurationType
+    ) => {
+      // First we need to get the workspaceId from the workspaceSId
+      const workspace = workspaces.find((w) => w.sId === curr.workspaceSId);
+      if (!workspace) {
+        throw new Error("Workspace not found");
+      }
+
+      // Find an existing entry for this workspaceId
+      const existingEntry: _DsNamesPerWorkspaceIdType | undefined = acc.find(
+        (entry: _DsNamesPerWorkspaceIdType) =>
+          entry.workspaceId === workspace.id
+      );
+      if (existingEntry) {
+        // Append dataSourceName to existing entry
+        existingEntry.dataSourceNames.push(curr.dataSourceName);
+      } else {
+        // Add a new entry for this workspaceId
+        acc.push({
+          workspaceId: workspace.id,
+          dataSourceNames: [curr.dataSourceName],
+        });
+      }
+      return acc;
+    },
+    []
+  );
+
+  // Then we get do one findAllQuery per workspaceId, in a Promise.all
+  const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
+    ({ workspaceId, dataSourceNames }) => {
+      return DataSource.findAll({
+        where: {
+          workspaceId,
+          name: {
+            [Op.in]: dataSourceNames,
+          },
+        },
+      });
+    }
+  );
+  const results = await Promise.all(getDataSourcesQueries);
+  const dataSources = results.flat();
+
+  const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
+    await Promise.all(
+      dataSourcesConfig.map(async (dsConfig) => {
+        const dataSource = dataSources.find(
+          (ds) =>
+            ds.name === dsConfig.dataSourceName &&
+            ds.workspaceId ===
+              workspaces.find((w) => w.sId === dsConfig.workspaceSId)?.id
+        );
+        if (!dataSource) {
+          throw new Error("DataSource not found");
+        }
+        return AgentDataSourceConfiguration.create(
+          {
+            dataSourceId: dataSource.id,
+            tagsIn: dsConfig.filter.tags?.in,
+            tagsNotIn: dsConfig.filter.tags?.not,
+            parentsIn: dsConfig.filter.parents?.in,
+            parentsNotIn: dsConfig.filter.parents?.not,
+            retrievalConfigurationId: agentActionId,
+          },
+          { transaction: t }
+        );
+      })
+    );
+  return agentDataSourcesConfigRows;
 }
 
 export async function updateAgentConfiguration(

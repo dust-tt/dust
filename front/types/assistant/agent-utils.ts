@@ -1,4 +1,6 @@
-import { DataSource } from "@app/lib/models";
+import { Op } from "sequelize";
+
+import { DataSource, Workspace } from "@app/lib/models";
 import {
   AgentDataSourceConfiguration,
   AgentRetrievalConfiguration,
@@ -21,7 +23,7 @@ import {
 /**
  * Builds the agent configuration type from the model
  */
-export function _getAgentConfigurationType({
+export async function _getAgentConfigurationType({
   agent,
   action,
   generation,
@@ -31,14 +33,14 @@ export function _getAgentConfigurationType({
   action: AgentRetrievalConfiguration | null;
   generation: AgentGenerationConfiguration | null;
   dataSources: AgentDataSourceConfiguration[] | null;
-}): AgentConfigurationType {
+}): Promise<AgentConfigurationType> {
   return {
     sId: agent.sId,
     name: agent.name,
     pictureUrl: agent.pictureUrl,
     status: agent.status,
     action: action
-      ? _buildAgentActionConfigurationType(action, dataSources)
+      ? await _buildAgentActionConfigurationType(action, dataSources || [])
       : null,
     generation: generation
       ? _buildAgentGenerationConfigurationType(generation)
@@ -49,10 +51,10 @@ export function _getAgentConfigurationType({
 /**
  * Builds the agent action configuration type from the model
  */
-export function _buildAgentActionConfigurationType(
+export async function _buildAgentActionConfigurationType(
   action: AgentRetrievalConfiguration,
-  dataSourcesConfig: AgentDataSourceConfiguration[] | null
-): AgentActionConfigurationType {
+  dataSourcesConfig: AgentDataSourceConfiguration[]
+): Promise<AgentActionConfigurationType> {
   // Build Retrieval Timeframe
   let timeframe: RetrievalTimeframe = "auto";
   if (
@@ -80,21 +82,34 @@ export function _buildAgentActionConfigurationType(
 
   // Build Retrieval DataSources
   const retrievalDataSourcesConfig: RetrievalDataSourcesConfiguration = [];
-  let dataSource: DataSource | null = null;
 
-  dataSourcesConfig?.forEach(async (dsConfig) => {
-    dataSource = await DataSource.findOne({
-      where: {
-        id: dsConfig.dataSourceId,
-      },
-    });
+  const dataSourcesIds = dataSourcesConfig?.map((ds) => ds.dataSourceId);
+  const dataSources = await DataSource.findAll({
+    where: {
+      id: { [Op.in]: dataSourcesIds },
+    },
+  });
+  const workspaceIds = dataSources.map((ds) => ds.workspaceId);
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: { [Op.in]: workspaceIds },
+    },
+  });
 
-    if (!dataSource) {
-      return;
+  let dataSource: DataSource | undefined;
+  let workspace: Workspace | undefined;
+
+  dataSourcesConfig.forEach(async (dsConfig) => {
+    dataSource = dataSources.find((ds) => ds.id === dsConfig.dataSourceId);
+    workspace = workspaces.find((w) => w.id === dataSource?.workspaceId);
+
+    if (!dataSource || !workspace) {
+      throw new Error("Could not find dataSource or workspace");
     }
+
     retrievalDataSourcesConfig.push({
-      name: dataSource.name,
-      workspaceId: dataSource.workspaceId,
+      dataSourceName: dataSource.name,
+      workspaceSId: workspace.sId,
       filter: {
         tags:
           dsConfig.tagsIn && dsConfig.tagsNotIn
