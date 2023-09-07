@@ -1,7 +1,7 @@
 import {
   Avatar,
   Button,
-  ChevronUpDownIcon,
+  DropdownMenu,
   Icon,
   InformationCircleIcon,
   PageHeader,
@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -55,12 +56,21 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
+const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
+type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
+const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
+  GENERIC: "Generic model (No data source)",
+  SELECTED: "Selected data sources",
+};
+
 export default function CreateAssistant({
   user,
   owner,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [dataSourceMode, setDataSourceMode] =
+    useState<DataSourceMode>("GENERIC");
 
   return (
     <AppLayout
@@ -195,18 +205,51 @@ export default function CreateAssistant({
                 </li>
               </ul>
             </div>
-            <div className="pt-6 text-base font-semibold">
-              Select the data sources
+            <div className="flex flex-row items-center space-x-2 pt-6">
+              <div className="text-sm font-semibold text-element-900">
+                Data source mode:
+              </div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={DATA_SOURCE_MODE_TO_LABEL[dataSourceMode]}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="topRight">
+                  {Object.entries(DATA_SOURCE_MODE_TO_LABEL).map(
+                    ([key, value]) => (
+                      <DropdownMenu.Item
+                        key={key}
+                        label={value}
+                        onClick={() => {
+                          setDataSourceMode(key as DataSourceMode);
+                        }}
+                      />
+                    )
+                  )}
+                </DropdownMenu.Items>
+              </DropdownMenu>
             </div>
-            <div className="flex h-48 items-center justify-center rounded-lg bg-structure-50">
-              <Button
-                labelVisible={true}
-                label="Add a data source"
-                variant="primary"
-                size="md"
-                icon={PlusIcon}
-              />
-            </div>
+            {dataSourceMode === "SELECTED" ? (
+              <>
+                <div className="text-base font-semibold">
+                  Select the data sources
+                </div>
+                <div className="flex h-48 items-center justify-center rounded-lg bg-structure-50">
+                  <Button
+                    labelVisible={true}
+                    label="Add a data source"
+                    variant="primary"
+                    size="md"
+                    icon={PlusIcon}
+                  />
+                </div>
+              </>
+            ) : null}
             <div className="pt-6 text-base font-semibold text-element-900">
               Timeframe for the data sources
             </div>
@@ -221,13 +264,21 @@ export default function CreateAssistant({
               <div className="text-sm font-semibold text-element-900">
                 Timeframe:
               </div>
-              <Button
-                labelVisible={true}
-                label="Auto (default)"
-                variant="secondary"
-                size="sm"
-                icon={ChevronUpDownIcon}
-              />
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label="Auto (default)"
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomRight">
+                  <DropdownMenu.Item label="item 1" />
+                  <DropdownMenu.Item label="item 2" />
+                </DropdownMenu.Items>
+              </DropdownMenu>
             </div>
           </div>
         </div>
