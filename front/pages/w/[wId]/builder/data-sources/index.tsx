@@ -283,7 +283,6 @@ export default function DataSourcesView({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
-  const [googleDrivePickerOpen, setGoogleDrivePickerOpen] = useState(false);
 
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
