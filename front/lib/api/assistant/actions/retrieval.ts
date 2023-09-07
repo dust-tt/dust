@@ -4,6 +4,7 @@ import {
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
+import { ModelMessageType } from "@app/lib/api/assistant/generation";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { DustAPI } from "@app/lib/dust_api";
@@ -32,8 +33,6 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { ModelMessageType } from "../generation";
 
 /**
  * TimeFrame parsing

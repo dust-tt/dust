@@ -199,8 +199,8 @@ export type AgentGenerationSuccessEvent = {
 };
 
 // Event sent once the message is completed and successful.
-export type AgentSuccessEvent = {
-  type: "agent_success";
+export type AgentMessageSuccessEvent = {
+  type: "agent_message_success";
   created: number;
   configurationId: string;
   generationId: string;
@@ -221,7 +221,7 @@ export async function* runAgent(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   yield {
     type: "agent_error",

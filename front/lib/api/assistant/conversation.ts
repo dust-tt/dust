@@ -4,8 +4,9 @@ import {
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
   AgentMessageNewEvent,
-  AgentSuccessEvent,
+  AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
+import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { AgentMessage, Message, UserMessage } from "@app/lib/models";
@@ -18,8 +19,6 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { GenerationTokensEvent } from "./generation";
 
 /**
  * Conversation API
@@ -54,7 +53,7 @@ export async function* postUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   const user = auth.user();
 
@@ -199,7 +198,7 @@ export async function* retryAgentMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   yield {
     type: "agent_error",
@@ -234,7 +233,7 @@ export async function* editUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentSuccessEvent
+  | AgentMessageSuccessEvent
 > {
   yield {
     type: "agent_error",
