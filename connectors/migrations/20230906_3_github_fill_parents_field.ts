@@ -10,6 +10,10 @@ import {
 } from "@connectors/lib/models";
 
 async function main() {
+  if (!process.argv[2]) {
+    console.error("Missing workspace id or 'all' as first argument");
+    process.exit(1);
+  }
   // if first arg is "all", update all connectors, else update only the
   // connector for the corresponding workspace id
   const connectors =
@@ -42,7 +46,7 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
     },
     attributes: ["repoId", "discussionNumber"],
   });
-  // update all parents fields for all pages and databases by chunks of 128
+  // update all parents fields for discussions by chunks of 128
   const chunkSize = 128;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
@@ -55,7 +59,7 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
           document.discussionNumber
         );
         await updateDocumentParentsField(connector, docId, [
-          document.discussionNumber.toString(),
+          getDiscussionDocumentId(document.repoId, document.discussionNumber),
           document.repoId,
         ]);
       })
@@ -64,15 +68,14 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
 }
 
 async function updateIssuesParentsFieldForConnector(connector: Connector) {
-  // get all distinct documentIds and their channel ids from slack messages in
-  // this connector
+  // get all distinct issues  and their repo ids fro
   const documentData = await GithubIssue.findAll({
     where: {
       connectorId: connector.id,
     },
     attributes: ["repoId", "issueNumber"],
   });
-  // update all parents fields for all pages and databases by chunks of 128
+  // update all parents fields for all issues by chunks of 128
   const chunkSize = 128;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
@@ -82,7 +85,7 @@ async function updateIssuesParentsFieldForConnector(connector: Connector) {
       chunk.map(async (document) => {
         const docId = getIssueDocumentId(document.repoId, document.issueNumber);
         await updateDocumentParentsField(connector, docId, [
-          document.issueNumber.toString(),
+          getIssueDocumentId(document.repoId, document.issueNumber),
           document.repoId,
         ]);
       })

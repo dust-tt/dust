@@ -154,7 +154,14 @@ export async function githubUpsertIssueActivity(
     documentUrl: issue.url,
     timestampMs: lastUpdateTimestamp,
     tags: tags,
-    parents: [issueNumber.toString(), repoId.toString()],
+    // The convention for parents is to use the external id string; it is ok for
+    // repos, but not practical for issues since the external id is the
+    // issue number, which is not guaranteed unique in the workspace.
+    // Therefore as a special case we use getIssueDocumentId() to get a parent string
+    parents: [
+      getIssueDocumentId(repoId.toString(), issue.number),
+      repoId.toString(),
+    ],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
@@ -281,7 +288,14 @@ export async function githubUpsertDiscussionActivity(
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    parents: [discussionNumber.toString(), repoId.toString()],
+    // The convention for parents is to use the external id string; it is ok for
+    // repos, but not practical for discussions since the external id is the
+    // issue number, which is not guaranteed unique in the workspace.
+    // Therefore as a special case we use getDiscussionDocumentId() to get a parent string
+    parents: [
+      getDiscussionDocumentId(repoId.toString(), discussionNumber),
+      repoId.toString(),
+    ],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
