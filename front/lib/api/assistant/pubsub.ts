@@ -3,13 +3,13 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
-  AgentGenerationTokensEvent,
-  AgentMessageNewEvent,
 } from "@app/lib/api/assistant/agent";
 import {
+  AgentMessageNewEvent,
   postUserMessage,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
+import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
@@ -115,7 +115,7 @@ export async function* getMessagesEvents(
     | AgentErrorEvent
     | AgentActionEvent
     | AgentActionSuccessEvent
-    | AgentGenerationTokensEvent
+    | GenerationTokensEvent
     | AgentGenerationSuccessEvent;
 }> {
   const pubsubChannel = getMessageChannelId(messageId);

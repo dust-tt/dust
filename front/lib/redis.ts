@@ -6,7 +6,7 @@ export async function redisClient() {
   if (REDIS_CLIENT) {
     return REDIS_CLIENT;
   }
-  const {REDIS_URI} = process.env;
+  const { REDIS_URI } = process.env;
   if (!REDIS_URI) {
     throw new Error("REDIS_URI is not defined");
   }
