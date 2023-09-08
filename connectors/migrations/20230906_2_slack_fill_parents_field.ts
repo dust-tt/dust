@@ -2,6 +2,10 @@ import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { Connector, SlackMessages } from "@connectors/lib/models";
 
 async function main() {
+  if (!process.argv[2]) {
+    console.error("Missing workspace id or 'all' as first argument");
+    process.exit(1);
+  }
   // if first arg is "all", update all connectors, else update only the
   // connector for the corresponding workspace id
   const connectors =
