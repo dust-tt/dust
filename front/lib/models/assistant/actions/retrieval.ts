@@ -187,7 +187,7 @@ AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
 });
 
 // Retrieval config <> Data source config
-AgentRetrievalConfiguration.hasOne(AgentDataSourceConfiguration, {
+AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
