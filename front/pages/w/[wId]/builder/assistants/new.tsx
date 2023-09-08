@@ -18,9 +18,11 @@ import AssistantBuilderDataSourceModal from "@app/components/AssistantBuilderDat
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
+import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -29,6 +31,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   gaTrackingId: string;
+  dataSources: DataSourceType[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -49,11 +52,14 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const allDataSources = await getDataSources(auth);
+
   return {
     props: {
       user,
       owner,
       gaTrackingId: GA_TRACKING_ID,
+      dataSources: allDataSources,
     },
   };
 };
@@ -69,6 +75,7 @@ export default function CreateAssistant({
   user,
   owner,
   gaTrackingId,
+  dataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [dataSourceMode, setDataSourceMode] =
@@ -98,6 +105,8 @@ export default function CreateAssistant({
       <AssistantBuilderDataSourceModal
         isOpen={showDataSourcesModal}
         setOpen={setShowDataSourcesModal}
+        owner={owner}
+        dataSources={dataSources}
       />
       <div className="mt-8 flex flex-col space-y-8 pb-8">
         <PageHeader
