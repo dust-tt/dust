@@ -64,22 +64,27 @@ export async function* getConversationEvents(
 }> {
   const pubsubChannel = getConversationChannelId(conversationSID);
   const client = await redisClient();
-  const events = await client.xRead(
-    { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-    { COUNT: 1, BLOCK: 10000 }
-  );
-  if (!events) {
-    return;
-  }
-  for (const event of events) {
-    for (const message of event.messages) {
-      const payloadStr = message.message["payload"];
-      const messageId = message.id;
-      const payload = JSON.parse(payloadStr);
-      yield {
-        eventId: messageId,
-        data: payload,
-      };
+
+  while (true) {
+    const events = await client.xRead(
+      { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
+      { COUNT: 1, BLOCK: 10000 }
+    );
+    if (!events) {
+      console.log("Nothing here", conversationSID, lastEventId);
+      return;
+    }
+    for (const event of events) {
+      for (const message of event.messages) {
+        const payloadStr = message.message["payload"];
+        const messageId = message.id;
+        const payload = JSON.parse(payloadStr);
+        lastEventId = messageId;
+        yield {
+          eventId: messageId,
+          data: payload,
+        };
+      }
     }
   }
 }
