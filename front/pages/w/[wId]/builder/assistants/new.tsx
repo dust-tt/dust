@@ -14,6 +14,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/AssistantBuilderDataSourceModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -73,6 +74,8 @@ export default function CreateAssistant({
   const [dataSourceMode, setDataSourceMode] =
     useState<DataSourceMode>("GENERIC");
 
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+
   return (
     <AppLayout
       user={user}
@@ -92,6 +95,10 @@ export default function CreateAssistant({
         />
       }
     >
+      <AssistantBuilderDataSourceModal
+        isOpen={showDataSourcesModal}
+        setOpen={setShowDataSourcesModal}
+      />
       <div className="mt-8 flex flex-col space-y-8 pb-8">
         <PageHeader
           title="Assistant Editor"
@@ -102,7 +109,7 @@ export default function CreateAssistant({
           <div className="flex flex-col items-center space-y-2">
             <Avatar
               size="lg"
-              visual={<img src="/static/droidavatar/Droïd_Violet_2.jpg" />}
+              visual={<img src="/static/droidavatar/Droid_Purple_7.jpg" />}
             />
             <Button
               labelVisible={true}
@@ -267,6 +274,9 @@ export default function CreateAssistant({
                     variant="primary"
                     size="md"
                     icon={PlusIcon}
+                    onClick={() => {
+                      setShowDataSourcesModal(true);
+                    }}
                   />
                 </div>
               </div>
