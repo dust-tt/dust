@@ -259,57 +259,41 @@ export async function getConversation(
     ],
   });
 
-  const maxRank = messages.reduce((acc, m) => Math.max(acc, m.rank), -1);
-  const content: (UserMessageType | AgentMessageType)[][] = Array.from(
-    { length: maxRank + 1 },
+  const render = await Promise.all(
+    messages.map((message) => {
+      return (async () => {
+        if (message.userMessage) {
+          const m = await renderUserMessage(auth, message, message.userMessage);
+          return { m, rank: message.rank, version: message.version };
+        }
+        if (message.agentMessage) {
+          const m = await renderAgentMessage(
+            auth,
+            message,
+            message.agentMessage
+          );
+          return { m, rank: message.rank, version: message.version };
+        }
+        throw new Error("Unreachable: message must be either user or agent");
+      })();
+    })
+  );
+
+  render.sort((a, b) => {
+    if (a.rank !== b.rank) {
+      return a.rank - b.rank;
+    }
+    return a.version - b.version;
+  });
+
+  // We need to escape the type system here to create content.
+  const content: any[] = Array.from(
+    { length: messages.reduce((acc, m) => Math.max(acc, m.rank), -1) + 1 },
     () => []
   );
 
-  for (const message of messages) {
-    if (message.userMessage) {
-      //content[message.rank].push({
-      //  id: message.id,
-      //  sId: message.sId,
-      //  type: "user_message",
-      //  visibility: message.visibility,
-      //  version: message.version,
-      //  user: null,
-      //  mentions: [],
-      //  message: message.userMessage.message,
-      //  context: {
-      //    username: message.userMessage.userContextUsername,
-      //    timezone: message.userMessage.userContextTimezone,
-      //    fullName: message.userMessage.userContextFullName,
-      //    email: message.userMessage.userContextEmail,
-      //    profilePictureUrl: message.userMessage.userContextProfilePictureUrl,
-      //  },
-      //});
-    }
-    if (message.agentMessage) {
-      // if (message.agentMessage.agentRetrievalActionId) {
-      // }
-      // content[message.rank].push({
-      //   id: message.id,
-      //   sId: message.sId,
-      //   type: "agent_message",
-      //   visibility: message.visibility,
-      //   version: message.version,
-      //   parentMessageId: null,
-      //   status: message.agentMessage.status,
-      //   action: null,
-      //   message: message.agentMessage.message,
-      //   feedbacks: [],
-      //   error: null,
-      //   configuration: {
-      //     sId: "foo",
-      //     status: "active",
-      //     name: "foo", // TODO
-      //     pictureUrl: null, // TODO
-      //     action: null, // TODO
-      //     generation: null, // TODO
-      //   },
-      // });
-    }
+  for (const { m, rank } of render) {
+    content[rank] = [...content[rank], m];
   }
 
   return {
@@ -318,7 +302,7 @@ export async function getConversation(
     sId: conversation.sId,
     title: conversation.title,
     visibility: conversation.visibility,
-    content: [],
+    content,
   };
 }
 
