@@ -5,6 +5,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
@@ -28,6 +29,8 @@ export class DataSource extends Model<
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare w: NonAttribute<Workspace>;
 }
 
 DataSource.init(
@@ -88,6 +91,11 @@ DataSource.init(
   }
 );
 Workspace.hasMany(DataSource, {
-  foreignKey: { allowNull: false },
+  as: "w",
+  foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
+});
+DataSource.belongsTo(Workspace, {
+  as: "w",
+  foreignKey: "workspaceId",
 });

@@ -37,37 +37,49 @@ export async function getAgentConfiguration(
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
   const agent = await AgentConfiguration.findOne({
+    //logging: console.log,
     where: {
       sId: agentId,
       workspaceId: owner.id,
     },
+    include: [
+      {
+        model: AgentGenerationConfiguration,
+        as: "generationConfiguration",
+      },
+      {
+        model: AgentRetrievalConfiguration,
+        as: "retrievalConfiguration",
+        include: [
+          {
+            model: AgentDataSourceConfiguration,
+            as: "dataSourceConfigurations",
+            include: [
+              {
+                model: DataSource,
+                as: "ds",
+                attributes: ["id", "name", "workspaceId"],
+                include: [
+                  {
+                    model: Workspace,
+                    as: "w",
+                    attributes: ["id", "sId"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
   });
   if (!agent) {
     throw new Error("Cannot find AgentConfiguration.");
   }
 
-  const generationConfig = agent.generationConfigurationId
-    ? await AgentGenerationConfiguration.findOne({
-        where: {
-          id: agent.generationConfigurationId,
-        },
-      })
-    : null;
-
-  const actionConfig = agent.retrievalConfigurationId
-    ? await AgentRetrievalConfiguration.findOne({
-        where: {
-          id: agent.retrievalConfigurationId,
-        },
-      })
-    : null;
-  const dataSourcesConfig = actionConfig?.id
-    ? await AgentDataSourceConfiguration.findAll({
-        where: {
-          retrievalConfigurationId: actionConfig.id,
-        },
-      })
-    : [];
+  const generationConfig = agent.generationConfiguration;
+  const actionConfig = agent.retrievalConfiguration;
+  const dataSourcesConfig = actionConfig?.dataSourceConfigurations || [];
 
   return {
     id: agent.id,
@@ -76,10 +88,29 @@ export async function getAgentConfiguration(
     pictureUrl: agent.pictureUrl,
     status: agent.status,
     action: actionConfig
-      ? await renderAgentActionConfigurationType(
-          actionConfig,
-          dataSourcesConfig
-        )
+      ? {
+          id: actionConfig.id,
+          type: "retrieval_configuration",
+          query: renderRetrievalQueryType(actionConfig),
+          relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
+          topK: actionConfig.topK,
+          dataSources: dataSourcesConfig.map((dsConfig) => {
+            return {
+              dataSourceId: dsConfig.ds.name,
+              workspaceId: dsConfig.ds.w.sId,
+              filter: {
+                tags:
+                  dsConfig.tagsIn && dsConfig.tagsNotIn
+                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
+                    : null,
+                parents:
+                  dsConfig.parentsIn && dsConfig.parentsNotIn
+                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
+                    : null,
+              },
+            };
+          }),
+        }
       : null,
     generation: generationConfig
       ? {
@@ -166,7 +197,38 @@ export async function updateAgentConfiguration(
   const agentConfig = await AgentConfiguration.findOne({
     where: {
       sId: agentId,
+      workspaceId: owner.id,
     },
+    include: [
+      {
+        model: AgentGenerationConfiguration,
+        as: "generationConfiguration",
+      },
+      {
+        model: AgentRetrievalConfiguration,
+        as: "retrievalConfiguration",
+        include: [
+          {
+            model: AgentDataSourceConfiguration,
+            as: "dataSourceConfigurations",
+            include: [
+              {
+                model: DataSource,
+                as: "ds",
+                attributes: ["id", "name", "workspaceId"],
+                include: [
+                  {
+                    model: Workspace,
+                    as: "w",
+                    attributes: ["id", "sId"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
   });
   if (!agentConfig) {
     throw new Error(
@@ -180,30 +242,9 @@ export async function updateAgentConfiguration(
     status: status,
   });
 
-  // Return the config with Generation and Action if any
-  const existingGeneration = agentConfig.generationConfigurationId
-    ? await AgentGenerationConfiguration.findOne({
-        where: {
-          id: agentConfig.generationConfigurationId,
-        },
-      })
-    : null;
-
-  const existingRetrivalConfig = agentConfig.retrievalConfigurationId
-    ? await AgentRetrievalConfiguration.findOne({
-        where: {
-          id: agentConfig.retrievalConfigurationId,
-        },
-      })
-    : null;
-
-  const existingDataSourcesConfig = existingRetrivalConfig?.id
-    ? await AgentDataSourceConfiguration.findAll({
-        where: {
-          retrievalConfigurationId: existingRetrivalConfig.id,
-        },
-      })
-    : [];
+  const generationConfig = agentConfig.generationConfiguration;
+  const actionConfig = agentConfig.retrievalConfiguration;
+  const dataSourcesConfig = actionConfig?.dataSourceConfigurations || [];
 
   return {
     id: updatedAgentConfig.id,
@@ -211,19 +252,38 @@ export async function updateAgentConfiguration(
     name: updatedAgentConfig.name,
     pictureUrl: updatedAgentConfig.pictureUrl,
     status: updatedAgentConfig.status,
-    action: existingRetrivalConfig
-      ? await renderAgentActionConfigurationType(
-          existingRetrivalConfig,
-          existingDataSourcesConfig
-        )
-      : null,
-    generation: existingGeneration
+    action: actionConfig
       ? {
-          id: existingGeneration.id,
-          prompt: existingGeneration.prompt,
+          id: actionConfig.id,
+          type: "retrieval_configuration",
+          query: renderRetrievalQueryType(actionConfig),
+          relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
+          topK: actionConfig.topK,
+          dataSources: dataSourcesConfig.map((dsConfig) => {
+            return {
+              dataSourceId: dsConfig.ds.name,
+              workspaceId: dsConfig.ds.w.sId,
+              filter: {
+                tags:
+                  dsConfig.tagsIn && dsConfig.tagsNotIn
+                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
+                    : null,
+                parents:
+                  dsConfig.parentsIn && dsConfig.parentsNotIn
+                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
+                    : null,
+              },
+            };
+          }),
+        }
+      : null,
+    generation: generationConfig
+      ? {
+          id: generationConfig.id,
+          prompt: generationConfig.prompt,
           model: {
-            providerId: existingGeneration.providerId,
-            modelId: existingGeneration.modelId,
+            providerId: generationConfig.providerId,
+            modelId: generationConfig.modelId,
           },
         }
       : null,
@@ -377,16 +437,16 @@ export async function createAgentActionConfiguration(
       },
       { transaction: t }
     );
-    const dataSourcesConfig = await _createAgentDataSourcesConfigData(
-      t,
-      dataSources,
-      retrievalConfig.id
-    );
+    await _createAgentDataSourcesConfigData(t, dataSources, retrievalConfig.id);
 
-    return await renderAgentActionConfigurationType(
-      retrievalConfig,
-      dataSourcesConfig
-    );
+    return {
+      id: retrievalConfig.id,
+      type: "retrieval_configuration",
+      query,
+      relativeTimeFrame: timeframe,
+      topK,
+      dataSources,
+    };
   });
 }
 
@@ -469,27 +529,24 @@ export async function updateAgentActionConfiguration(
     });
 
     // Create new dataSources config
-    const dataSourcesConfig = await _createAgentDataSourcesConfigData(
+    await _createAgentDataSourcesConfigData(
       t,
       dataSources,
       updatedRetrievalConfig.id
     );
 
-    return await renderAgentActionConfigurationType(
-      updatedRetrievalConfig,
-      dataSourcesConfig
-    );
+    return {
+      id: updatedRetrievalConfig.id,
+      type: "retrieval_configuration",
+      query,
+      relativeTimeFrame: timeframe,
+      topK,
+      dataSources,
+    };
   });
 }
 
-/**
- * Builds the agent action configuration type from the model
- */
-async function renderAgentActionConfigurationType(
-  action: AgentRetrievalConfiguration,
-  dataSourcesConfig: AgentDataSourceConfiguration[]
-): Promise<AgentActionConfigurationType> {
-  // Build Retrieval Timeframe
+function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
   let timeframe: RetrievalTimeframe = "auto";
   if (
     action.relativeTimeFrame === "custom" &&
@@ -503,8 +560,10 @@ async function renderAgentActionConfigurationType(
   } else if (action.relativeTimeFrame === "none") {
     timeframe = "none";
   }
+  return timeframe;
+}
 
-  // Build Retrieval Query
+function renderRetrievalQueryType(action: AgentRetrievalConfiguration) {
   let query: RetrievalQuery = "auto";
   if (action.query === "templated" && action.queryTemplate) {
     query = {
@@ -513,59 +572,7 @@ async function renderAgentActionConfigurationType(
   } else if (action.query === "none") {
     query = "none";
   }
-
-  // Build Retrieval DataSources
-  const dataSourcesIds = dataSourcesConfig?.map((ds) => ds.dataSourceId);
-  const dataSources = await DataSource.findAll({
-    where: {
-      id: { [Op.in]: dataSourcesIds },
-    },
-    attributes: ["id", "name", "workspaceId"],
-  });
-  const workspaceIds = dataSources.map((ds) => ds.workspaceId);
-  const workspaces = await Workspace.findAll({
-    where: {
-      id: { [Op.in]: workspaceIds },
-    },
-    attributes: ["id", "sId"],
-  });
-
-  let dataSource: DataSource | undefined;
-  let workspace: Workspace | undefined;
-  const dataSourcesConfigType: DataSourceConfiguration[] = [];
-
-  dataSourcesConfig.forEach(async (dsConfig) => {
-    dataSource = dataSources.find((ds) => ds.id === dsConfig.dataSourceId);
-    workspace = workspaces.find((w) => w.id === dataSource?.workspaceId);
-
-    if (!dataSource || !workspace) {
-      throw new Error("Can't render Agent Retrieval dataSources: not found.");
-    }
-
-    dataSourcesConfigType.push({
-      dataSourceId: dataSource.name,
-      workspaceId: workspace.sId,
-      filter: {
-        tags:
-          dsConfig.tagsIn && dsConfig.tagsNotIn
-            ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-            : null,
-        parents:
-          dsConfig.parentsIn && dsConfig.parentsNotIn
-            ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
-            : null,
-      },
-    });
-  });
-
-  return {
-    id: action.id,
-    type: "retrieval_configuration",
-    query: query,
-    relativeTimeFrame: timeframe,
-    topK: action.topK,
-    dataSources: dataSourcesConfigType,
-  };
+  return query;
 }
 
 /**
