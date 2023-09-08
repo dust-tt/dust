@@ -45,10 +45,13 @@ async function updateParentsFieldForConnector(connector: Connector) {
     console.log(`Updating ${chunk.length} documents`);
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
-      chunk.map((documentIdAndChannel) =>
-        updateDocumentParentsField(connector, documentIdAndChannel.documentId, [
-          documentIdAndChannel.channelId,
-        ])
+      chunk.map(
+        async (documentIdAndChannel) =>
+          await updateDocumentParentsField(
+            connector,
+            documentIdAndChannel.documentId,
+            [documentIdAndChannel.channelId]
+          )
       )
     );
   }
