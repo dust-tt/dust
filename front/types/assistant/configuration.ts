@@ -57,8 +57,8 @@ export function isRetrievalConfiguration(
  * Datasources config for Retrieval Action
  */
 export type AgentDataSourceConfigurationType = {
-  workspaceSId: string; // need sId to talk with Core (external id)
-  dataSourceName: string; // need Datasource.name to talk with Core (external id)
+  workspaceId: string; // need sId to talk with Core (external id)
+  dataSourceId: string; // need Datasource.name to talk with Core (external id)
   filter: {
     tags: { in: string[]; not: string[] } | null;
     parents: { in: string[]; not: string[] } | null;

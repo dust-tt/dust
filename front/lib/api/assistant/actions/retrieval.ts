@@ -388,8 +388,8 @@ export async function* runRetrieval(
 
   // Handle data sources list and parents/tags filtering.
   config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
-    workspace_id: d.workspaceSId,
-    data_source_id: d.dataSourceName,
+    workspace_id: d.workspaceId,
+    data_source_id: d.dataSourceId,
   }));
 
   for (const ds of c.dataSources) {

@@ -483,8 +483,8 @@ export async function _agentActionType(
     }
 
     dataSourcesConfigType.push({
-      dataSourceName: dataSource.name,
-      workspaceSId: workspace.sId,
+      dataSourceId: dataSource.name,
+      workspaceId: workspace.sId,
       filter: {
         tags:
           dsConfig.tagsIn && dsConfig.tagsNotIn
@@ -530,7 +530,7 @@ export async function _createAgentDataSourcesConfigData(
   // First we get the list of workspaces because we need the mapping between workspaceSId and workspaceId
   const workspaces = await Workspace.findAll({
     where: {
-      sId: dataSourcesConfig.map((dsConfig) => dsConfig.workspaceSId),
+      sId: dataSourcesConfig.map((dsConfig) => dsConfig.workspaceId),
     },
     attributes: ["id", "sId"],
   });
@@ -551,7 +551,7 @@ export async function _createAgentDataSourcesConfigData(
       curr: AgentDataSourceConfigurationType
     ) => {
       // First we need to get the workspaceId from the workspaceSId
-      const workspace = workspaces.find((w) => w.sId === curr.workspaceSId);
+      const workspace = workspaces.find((w) => w.sId === curr.workspaceId);
       if (!workspace) {
         throw new Error("Workspace not found");
       }
@@ -563,12 +563,12 @@ export async function _createAgentDataSourcesConfigData(
       );
       if (existingEntry) {
         // Append dataSourceName to existing entry
-        existingEntry.dataSourceNames.push(curr.dataSourceName);
+        existingEntry.dataSourceNames.push(curr.dataSourceId);
       } else {
         // Add a new entry for this workspaceId
         acc.push({
           workspaceId: workspace.id,
-          dataSourceNames: [curr.dataSourceName],
+          dataSourceNames: [curr.dataSourceId],
         });
       }
       return acc;
@@ -597,9 +597,9 @@ export async function _createAgentDataSourcesConfigData(
       dataSourcesConfig.map(async (dsConfig) => {
         const dataSource = dataSources.find(
           (ds) =>
-            ds.name === dsConfig.dataSourceName &&
+            ds.name === dsConfig.dataSourceId &&
             ds.workspaceId ===
-              workspaces.find((w) => w.sId === dsConfig.workspaceSId)?.id
+              workspaces.find((w) => w.sId === dsConfig.workspaceId)?.id
         );
         if (!dataSource) {
           throw new Error("DataSource not found");
