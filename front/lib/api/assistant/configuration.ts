@@ -63,7 +63,7 @@ export async function getAgentConfiguration(
   const datasources = action?.id
     ? await AgentDataSourceConfiguration.findAll({
         where: {
-          retrievalConfigurationId: action.id,
+          retrievalId: action.id,
         },
       })
     : [];
@@ -162,16 +162,19 @@ export async function createAgentConfiguration(
     }
 
     // Create Agent config
-    const agentConfig = await AgentConfiguration.create({
-      sId: generateModelSId(),
-      status: status,
-      name: name,
-      pictureUrl: pictureUrl,
-      scope: "workspace",
-      workspaceId: owner.id,
-      generationId: genConfig?.id ?? null,
-      retrievalId: retrievalConfig?.id ?? null,
-    });
+    const agentConfig = await AgentConfiguration.create(
+      {
+        sId: generateModelSId(),
+        status: status,
+        name: name,
+        pictureUrl: pictureUrl,
+        scope: "workspace",
+        workspaceId: owner.id,
+        generationId: genConfig?.id ?? null,
+        retrievalId: retrievalConfig?.id ?? null,
+      },
+      { transaction: t }
+    );
 
     return {
       sId: agentConfig.sId,
@@ -196,9 +199,9 @@ export async function createAgentConfiguration(
 }
 
 /**
- * Update Agent Generation Configuration
+ * Update Agent Configuration
  */
-export async function updateAgentGenerationConfiguration(
+export async function updateAgentConfiguration(
   auth: Authenticator,
   agentId: string,
   {
@@ -254,13 +257,13 @@ export async function updateAgentGenerationConfiguration(
   const existingDataSourcesConfig = existingRetrivalConfig?.id
     ? await AgentDataSourceConfiguration.findAll({
         where: {
-          retrievalConfigurationId: existingRetrivalConfig.id,
+          retrievalId: existingRetrivalConfig.id,
         },
       })
     : [];
 
   return await front_sequelize.transaction(async (t) => {
-    // Upserting Agent Config
+    // Updating Agent Config
     const updatedAgentConfig = await agentConfig.update(
       {
         name: name,
@@ -515,7 +518,7 @@ export async function _agentActionType(
 export async function _createAgentDataSourcesConfigData(
   t: Transaction,
   dataSourcesConfig: AgentDataSourceConfigurationType[],
-  agentActionId: number
+  retrievalConfigId: number
 ): Promise<AgentDataSourceConfiguration[]> {
   // dsConfig contains this format:
   // [
@@ -608,7 +611,7 @@ export async function _createAgentDataSourcesConfigData(
             tagsNotIn: dsConfig.filter.tags?.not,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
-            retrievalConfigurationId: agentActionId,
+            retrievalId: retrievalConfigId,
           },
           { transaction: t }
         );
