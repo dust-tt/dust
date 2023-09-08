@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { Op } from "sequelize";
+
 import {
   getDiscussionDocumentId,
   getIssueDocumentId,
@@ -16,24 +19,46 @@ async function main() {
   }
   // if first arg is "all", update all connectors, else update only the
   // connector for the corresponding workspace id
-  const connectors =
-    process.argv[2] === "all"
-      ? await Connector.findAll({
-          where: {
-            type: "github",
-          },
-        })
-      : await Connector.findAll({
-          where: {
-            type: "github",
-            workspaceId: process.argv[2],
-          },
-        });
+  let connectors = [];
+  // get connectors already done from JSON array in a file called
+  // "done-connector-ids.json"; create it if needed with an empty array
+  if (!existsSync("./done-connector-ids.json")) {
+    writeFileSync("./done-connector-ids.json", JSON.stringify([]));
+  }
+  const doneConnectorIds = JSON.parse(
+    readFileSync("./done-connector-ids.json", "utf-8")
+  );
+  if (process.argv[2] === "all") {
+    // get all connectors that are not done yet
+    connectors = await Connector.findAll({
+      where: {
+        type: "github",
+        id: {
+          [Op.notIn]: doneConnectorIds,
+        },
+      },
+    });
+  } else {
+    connectors = await Connector.findAll({
+      where: {
+        type: "github",
+        workspaceId: process.argv[2],
+      },
+    });
+  }
 
   for (const connector of connectors) {
     console.log(`Updating parents field for connector ${connector.id}`);
     await updateDiscussionsParentsFieldForConnector(connector);
     await updateIssuesParentsFieldForConnector(connector);
+    /// add connector id to JSON array in a file called
+    /// "done-connector-ids.json"
+    doneConnectorIds.push(connector.id);
+    console.log(".");
+    writeFileSync(
+      "./done-connector-ids.json",
+      JSON.stringify(doneConnectorIds)
+    );
   }
 }
 
@@ -50,7 +75,6 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
   const chunkSize = 32;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
-    console.log(`Updating ${chunk.length} documents`);
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
@@ -64,6 +88,7 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
         ]);
       })
     );
+    process.stdout.write(".");
   }
 }
 
@@ -79,7 +104,6 @@ async function updateIssuesParentsFieldForConnector(connector: Connector) {
   const chunkSize = 32;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
-    console.log(`Updating ${chunk.length} documents`);
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
@@ -90,6 +114,7 @@ async function updateIssuesParentsFieldForConnector(connector: Connector) {
         ]);
       })
     );
+    process.stdout.write(".");
   }
 }
 
