@@ -64,7 +64,7 @@ async function handler(
       });
 
       for await (const event of getConversationEvents(conv.sId, null)) {
-        res.write(event);
+        res.write(JSON.stringify(event));
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }
