@@ -43,7 +43,7 @@ export type RetrievalConfigurationType = {
   id: ModelId;
 
   type: "retrieval_configuration";
-  dataSources: "all" | DataSourceConfiguration[];
+  dataSources: DataSourceConfiguration[];
   query: "auto" | "none" | TemplatedQuery;
   relativeTimeFrame: "auto" | "none" | TimeFrame;
   topK: number;

@@ -387,56 +387,28 @@ export async function* runRetrieval(
   );
 
   // Handle data sources list and parents/tags filtering.
-  if (c.dataSources === "all") {
-    const prodCredentials = await prodAPICredentialsForOwner(owner);
-    const api = new DustAPI(prodCredentials);
+  config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
+    workspace_id: d.workspaceId,
+    data_source_id: d.dataSourceId,
+  }));
 
-    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-    if (dsRes.isErr()) {
-      return yield {
-        type: "retrieval_error",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "retrieval_data_sources_error",
-          message: `Error retrieving workspace data sources: ${dsRes.error.message}`,
-        },
-      };
+  for (const ds of c.dataSources) {
+    if (ds.filter.tags) {
+      if (!config.DATASOURCE.filter.tags) {
+        config.DATASOURCE.filter.tags = { in: [], not: [] };
+      }
+
+      config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
+      config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
     }
 
-    const ds = dsRes.value.filter((d) => d.assistantDefaultSelected);
-
-    config.DATASOURCE.data_sources = ds.map((d) => {
-      return {
-        workspace_id: prodCredentials.workspaceId,
-        data_source_id: d.name,
-      };
-    });
-  } else {
-    config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
-      workspace_id: d.workspaceId,
-      data_source_id: d.dataSourceId,
-    }));
-
-    for (const ds of c.dataSources) {
-      if (ds.filter.tags) {
-        if (!config.DATASOURCE.filter.tags) {
-          config.DATASOURCE.filter.tags = { in: [], not: [] };
-        }
-
-        config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
-        config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
+    if (ds.filter.parents) {
+      if (!config.DATASOURCE.filter.parents) {
+        config.DATASOURCE.filter.parents = { in: [], not: [] };
       }
 
-      if (ds.filter.parents) {
-        if (!config.DATASOURCE.filter.parents) {
-          config.DATASOURCE.filter.parents = { in: [], not: [] };
-        }
-
-        config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
-        config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
-      }
+      config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
+      config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
     }
   }
 
