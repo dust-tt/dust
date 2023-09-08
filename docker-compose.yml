@@ -13,7 +13,7 @@ services:
   qdrant:
     image: qdrant/qdrant
     volumes:
-      - dustvolume:/qdrant    
+      - dustvolume:/qdrant
     ports:
       - 6334:6334
       - 6333:6333
