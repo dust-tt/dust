@@ -33,10 +33,10 @@ export class AgentConfiguration extends Model<
   declare scope: AgentConfigurationScope;
 
   declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
-  declare generationConfigId: ForeignKey<
+  declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
-  declare retrievalConfigId: ForeignKey<
+  declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
 }
@@ -164,5 +164,5 @@ Workspace.hasMany(AgentConfiguration, {
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "generationConfigId", allowNull: true }, // null = no generation set for this Agent
+  foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });

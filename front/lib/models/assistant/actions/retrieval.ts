@@ -121,7 +121,9 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare retrievalConfigId: ForeignKey<AgentRetrievalConfiguration["id"]>;
+  declare retrievalConfigurationId: ForeignKey<
+    AgentRetrievalConfiguration["id"]
+  >;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -181,12 +183,12 @@ AgentDataSourceConfiguration.init(
 
 // Agent config <> Retrieval config
 AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "retrievalConfigId", allowNull: true }, // null = no retrieval action set for this Agent
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
 });
 
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasOne(AgentDataSourceConfiguration, {
-  foreignKey: { name: "retrievalConfigId", allowNull: false },
+  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
 
