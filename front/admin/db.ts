@@ -56,11 +56,11 @@ async function main() {
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
-  await AgentConfiguration.sync({ alter: true });
   await AgentGenerationConfiguration.sync({ alter: true });
-
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDataSourceConfiguration.sync({ alter: true });
+  await AgentConfiguration.sync({ alter: true });
+
   await AgentRetrievalAction.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
