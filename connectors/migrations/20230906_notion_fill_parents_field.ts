@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { Op } from "sequelize";
+
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 
@@ -8,23 +11,44 @@ async function main() {
   }
   // if first arg is "all", update all connectors, else update only the
   // connector for the corresponding workspace id
-  const connectors =
-    process.argv[2] === "all"
-      ? await Connector.findAll({
-          where: {
-            type: "notion",
-          },
-        })
-      : await Connector.findAll({
-          where: {
-            type: "notion",
-            workspaceId: process.argv[2],
-          },
-        });
-
+  let connectors = [];
+  // get connectors already done from JSON array in a file called
+  // "done-connector-ids.json"; create it if needed with an empty array
+  if (!existsSync("./done-connector-ids.json")) {
+    writeFileSync("./done-connector-ids.json", JSON.stringify([]));
+  }
+  const doneConnectorIds = JSON.parse(
+    readFileSync("./done-connector-ids.json", "utf-8")
+  );
+  if (process.argv[2] === "all") {
+    // get all connectors that are not done yet
+    connectors = await Connector.findAll({
+      where: {
+        type: "notion",
+        id: {
+          [Op.notIn]: doneConnectorIds,
+        },
+      },
+    });
+  } else {
+    connectors = await Connector.findAll({
+      where: {
+        type: "notion",
+        workspaceId: process.argv[2],
+      },
+    });
+  }
   for (const connector of connectors) {
     console.log(`Updating parents field for connector ${connector.id}`);
     await updateParentsFieldForConnector(connector);
+    /// add connector id to JSON array in a file called
+    /// "done-connector-ids.json"
+    doneConnectorIds.push(connector.id);
+    console.log(".");
+    writeFileSync(
+      "./done-connector-ids.json",
+      JSON.stringify(doneConnectorIds)
+    );
   }
 }
 
