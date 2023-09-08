@@ -356,16 +356,12 @@ export async function createAgentActionConfiguration(
     throw new Error("Cannot create AgentActionConfiguration: no workspace");
   }
 
+  if (type !== "retrieval_configuration") {
+    throw new Error("Cannot create AgentActionConfiguration: unknow type");
+  }
+
   return await front_sequelize.transaction(async (t) => {
-    let retrievalConfig: AgentRetrievalConfiguration | null = null;
-    let dataSourcesConfig: AgentDataSourceConfiguration[] = [];
-
-    if (type !== "retrieval_configuration") {
-      throw new Error("Cannot create AgentActionConfiguration: unknow type");
-    }
-
-    // Create Retrieval & Datasources configs
-    retrievalConfig = await AgentRetrievalConfiguration.create(
+    const retrievalConfig = await AgentRetrievalConfiguration.create(
       {
         query: isTemplatedQuery(query) ? "templated" : query,
         queryTemplate: isTemplatedQuery(query) ? query.template : null,
@@ -378,7 +374,7 @@ export async function createAgentActionConfiguration(
       },
       { transaction: t }
     );
-    dataSourcesConfig = await _createAgentDataSourcesConfigData(
+    const dataSourcesConfig = await _createAgentDataSourcesConfigData(
       t,
       dataSources,
       retrievalConfig.id
@@ -599,7 +595,7 @@ async function _createAgentDataSourcesConfigData(
   // Now will want to group the datasource names by workspaceId to do only one query per workspace.
   // We want this:
   // [
-  //   { workspaceId: 1, dataSourceNames: [""managed-notion", "managed-slack"] },
+  //   { workspaceId: 1, dataSourceNames: ["managed-notion", "managed-slack"] },
   //   { workspaceId: 2, dataSourceNames: ["managed-notion"] }
   // ]
   type _DsNamesPerWorkspaceIdType = {
