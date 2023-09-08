@@ -18,11 +18,8 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
-  AgentActionConfigurationType,
   AgentActionSpecification,
-  AgentConfigurationStatus,
   AgentConfigurationType,
-  AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 import {
   AgentActionType,
@@ -30,61 +27,6 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-/**
- * Agent configuration.
- */
-
-export async function createAgentConfiguration(
-  auth: Authenticator,
-  {
-    name,
-    pictureUrl,
-    action,
-    generation,
-  }: {
-    name: string;
-    pictureUrl?: string;
-    action?: AgentActionConfigurationType;
-    generation?: AgentGenerationConfigurationType;
-  }
-): Promise<AgentConfigurationType> {
-  return {
-    sId: generateModelSId(),
-    name,
-    pictureUrl: pictureUrl ?? null,
-    status: "active",
-    action: action ?? null,
-    generation: generation ?? null,
-  };
-}
-
-export async function updateAgentConfiguration(
-  auth: Authenticator,
-  configurationId: string,
-  {
-    name,
-    pictureUrl,
-    status,
-    action,
-    generation,
-  }: {
-    name: string;
-    pictureUrl?: string;
-    status: AgentConfigurationStatus;
-    action?: AgentActionConfigurationType;
-    generation?: AgentGenerationConfigurationType;
-  }
-): Promise<AgentConfigurationType> {
-  return {
-    sId: generateModelSId(),
-    name,
-    pictureUrl: pictureUrl ?? null,
-    status,
-    action: action ?? null,
-    generation: generation ?? null,
-  };
-}
 
 /**
  * Action Inputs generation.
