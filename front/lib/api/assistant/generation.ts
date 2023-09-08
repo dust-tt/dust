@@ -9,7 +9,7 @@ import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentConfigurationType } from "@app/types/assistant/configuration";
 import {
   AgentMessageType,
   ConversationType,

@@ -34,8 +34,12 @@ export class AgentConfiguration extends Model<
   declare scope: AgentConfigurationScope;
 
   declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
-  declare generationId: ForeignKey<AgentGenerationConfiguration["id"]> | null;
-  declare retrievalId: ForeignKey<AgentRetrievalConfiguration["id"]> | null;
+  declare generationConfigId: ForeignKey<
+    AgentGenerationConfiguration["id"]
+  > | null;
+  declare retrievalConfigId: ForeignKey<
+    AgentRetrievalConfiguration["id"]
+  > | null;
 }
 AgentConfiguration.init(
   {
@@ -262,7 +266,7 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare retrievalId: ForeignKey<AgentRetrievalConfiguration["id"]>;
+  declare retrievalConfigId: ForeignKey<AgentRetrievalConfiguration["id"]>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -328,18 +332,18 @@ Workspace.hasMany(AgentConfiguration, {
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "generationId", allowNull: true }, // null = no generation set for this Agent
+  foreignKey: { name: "generationConfigId", allowNull: true }, // null = no generation set for this Agent
   onDelete: "CASCADE",
 });
 // Agent config <> Retrieval config
 AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "retrievalId", allowNull: true }, // null = no retrieval action set for this Agent
+  foreignKey: { name: "retrievalConfigId", allowNull: true }, // null = no retrieval action set for this Agent
   onDelete: "CASCADE",
 });
 
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasOne(AgentDataSourceConfiguration, {
-  foreignKey: { name: "retrievalId", allowNull: false },
+  foreignKey: { name: "retrievalConfigId", allowNull: false },
   onDelete: "CASCADE",
 });
 

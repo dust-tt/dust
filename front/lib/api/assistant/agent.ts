@@ -16,11 +16,9 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
+import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import { AgentActionSpecification } from "@app/types/assistant/agent";
-import {
-  AgentConfigurationType,
-  isRetrievalConfiguration,
-} from "@app/types/assistant/configuration";
+import { AgentConfigurationType } from "@app/types/assistant/configuration";
 import {
   AgentActionType,
   AgentMessageType,

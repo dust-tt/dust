@@ -21,13 +21,13 @@ import {
   RetrievalDocumentType,
   TimeFrame,
 } from "@app/types/assistant/actions/retrieval";
-import { AgentActionSpecification } from "@app/types/assistant/agent";
 import {
-  AgentConfigurationType,
   AgentDataSourceConfigurationType,
   isRetrievalConfiguration,
   RetrievalConfigurationType,
-} from "@app/types/assistant/configuration";
+} from "@app/types/assistant/actions/retrieval";
+import { AgentActionSpecification } from "@app/types/assistant/agent";
+import { AgentConfigurationType } from "@app/types/assistant/configuration";
 import {
   AgentMessageType,
   ConversationType,
