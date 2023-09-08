@@ -1,11 +1,6 @@
-import {
-  Button,
-  Checkbox,
-  XCircleStrokeIcon as XCircleIcon,
-} from "@dust-tt/sparkle";
-import { Dialog, Transition } from "@headlessui/react";
+import { Checkbox, Modal } from "@dust-tt/sparkle";
 import { Cog6ToothIcon } from "@heroicons/react/20/solid";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { mutate } from "swr";
 
 import {
@@ -176,126 +171,73 @@ export default function ConnectorPermissionsModal({
   }
 
   return (
-    <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={closeModal}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
-        </Transition.Child>
-
-        <div className="h-5/5 fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-            >
-              <Dialog.Panel className="relative max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pb-4 text-left shadow-xl transition-all sm:p-6 lg:w-1/2">
-                <div className="mt-5 flex items-start justify-between sm:mt-0">
-                  <Button
-                    onClick={() => {
-                      onEditPermission();
-                    }}
-                    labelVisible={true}
-                    label="Re-authorize"
-                    variant="tertiary"
-                    size="xs"
-                    icon={Cog6ToothIcon}
-                  />
-                  {Object.keys(updatedPermissionByInternalId).length ||
-                  automaticallyIncludeNewResources !== null ? (
-                    <div className="flex gap-1">
-                      <Button
-                        labelVisible={true}
-                        onClick={closeModal}
-                        label="Cancel"
-                        variant="secondary"
-                        size="xs"
-                      />
-                      <Button
-                        labelVisible={true}
-                        onClick={save}
-                        label="Save"
-                        variant="primary"
-                        size="xs"
-                      />
-                    </div>
-                  ) : (
-                    <div onClick={closeModal} className="cursor-pointer">
-                      <XCircleIcon className="h-6 w-6 text-gray-500" />
-                    </div>
-                  )}
-                </div>
-                {!isDefaultNewResourcePermissionLoading &&
-                defaultNewResourcePermission ? (
-                  <>
-                    {canUpdatePermissions && defaultPermissionTitleText ? (
-                      <div className="ml-2 mt-8 flex flex-row">
-                        <span className="text-sm text-gray-500">
-                          {defaultPermissionTitleText}
-                        </span>
-                        <div className="flex-grow">
-                          <Checkbox
-                            className="ml-auto"
-                            onChange={(checked) => {
-                              setAutomaticallyIncludeNewResources(checked);
-                            }}
-                            checked={
-                              automaticallyIncludeNewResources ??
-                              ["read", "read_write"].includes(
-                                defaultNewResourcePermission
-                              )
-                            }
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    <div>
-                      <div className="ml-2 mt-16">
-                        <div className="text-sm text-gray-500">
-                          {resourceListTitleText}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mb-16 ml-2 mt-8">
-                      <PermissionTree
-                        owner={owner}
-                        dataSource={dataSource}
-                        canUpdatePermissions={canUpdatePermissions}
-                        onPermissionUpdate={({ internalId, permission }) => {
-                          setUpdatedPermissionByInternalId((prev) => ({
-                            ...prev,
-                            [internalId]: permission,
-                          }));
-                        }}
-                        showExpand={
-                          CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]
-                        }
-                      />
-                    </div>
-                  </>
-                ) : null}
-                {isDefaultNewResourcePermissionError && (
-                  <div className="text-red-300">
-                    An unexpected error occurred
-                  </div>
-                )}
-              </Dialog.Panel>
-            </Transition.Child>
+    <Modal
+      isOpen={isOpen}
+      onClose={closeModal}
+      onSave={save}
+      hasChanged={
+        !!Object.keys(updatedPermissionByInternalId).length ||
+        automaticallyIncludeNewResources !== null
+      }
+      action={{
+        onClick: onEditPermission,
+        labelVisible: true,
+        label: "Re-authorize",
+        variant: "tertiary",
+        size: "xs",
+        icon: Cog6ToothIcon,
+      }}
+    >
+      {!isDefaultNewResourcePermissionLoading &&
+      defaultNewResourcePermission ? (
+        <>
+          {canUpdatePermissions && defaultPermissionTitleText ? (
+            <div className="ml-2 mt-8 flex flex-row">
+              <span className="text-sm text-gray-500">
+                {defaultPermissionTitleText}
+              </span>
+              <div className="flex-grow">
+                <Checkbox
+                  className="ml-auto"
+                  onChange={(checked) => {
+                    setAutomaticallyIncludeNewResources(checked);
+                  }}
+                  checked={
+                    automaticallyIncludeNewResources ??
+                    ["read", "read_write"].includes(
+                      defaultNewResourcePermission
+                    )
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+          <div>
+            <div className="ml-2 mt-16">
+              <div className="text-sm text-gray-500">
+                {resourceListTitleText}
+              </div>
+            </div>
           </div>
-        </div>
-      </Dialog>
-    </Transition.Root>
+          <div className="mb-16 ml-2 mt-8">
+            <PermissionTree
+              owner={owner}
+              dataSource={dataSource}
+              canUpdatePermissions={canUpdatePermissions}
+              onPermissionUpdate={({ internalId, permission }) => {
+                setUpdatedPermissionByInternalId((prev) => ({
+                  ...prev,
+                  [internalId]: permission,
+                }));
+              }}
+              showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]}
+            />
+          </div>
+        </>
+      ) : null}
+      {isDefaultNewResourcePermissionError && (
+        <div className="text-red-300">An unexpected error occurred</div>
+      )}
+    </Modal>
   );
 }
