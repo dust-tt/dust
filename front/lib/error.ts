@@ -41,7 +41,8 @@ export type APIErrorType =
   | "extracted_event_not_found"
   | "connector_update_error"
   | "connector_update_unauthorized"
-  | "connector_oauth_target_mismatch";
+  | "connector_oauth_target_mismatch"
+  | "conversation_not_found";
 
 export type APIError = {
   type: APIErrorType;

@@ -115,6 +115,7 @@ pub struct Chunk {
 /// that if the document’s id is selected as a parent filter, the document
 /// itself shows up in the search.
 ///
+///
 /// Note however that the hierarchical system depends on the managed datasource.
 /// For example, in the Slack managed datasource, documents are aggregated
 /// messages from a channel. A channel does not have any parent, and there are
