@@ -29,8 +29,6 @@ export class AgentRetrievalConfiguration extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
-
-  declare agentId: ForeignKey<AgentConfiguration["id"]>;
 }
 AgentRetrievalConfiguration.init(
   {
@@ -117,18 +115,13 @@ export class AgentDataSourceConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timeframeDuration: number | null;
-  declare timeframeUnit: TimeframeUnit | null;
-
   declare tagsIn: string[] | null;
   declare tagsNotIn: string[] | null;
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  >;
+  declare retrievalConfigId: ForeignKey<AgentRetrievalConfiguration["id"]>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -146,14 +139,6 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    timeframeDuration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    timeframeUnit: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     tagsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
@@ -178,27 +163,36 @@ AgentDataSourceConfiguration.init(
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
         if (
-          (dataSourceConfig.timeframeDuration === null) !==
-          (dataSourceConfig.timeframeUnit === null)
+          (dataSourceConfig.tagsIn === null) !==
+          (dataSourceConfig.tagsNotIn === null)
         ) {
-          throw new Error(
-            "Timeframe duration/unit must be both set or both null"
-          );
+          throw new Error("Tags must be both set or both null");
+        }
+        if (
+          (dataSourceConfig.parentsIn === null) !==
+          (dataSourceConfig.parentsNotIn === null)
+        ) {
+          throw new Error("Parents must be both set or both null");
         }
       },
     },
   }
 );
 
-// Retrieval config <> data source config
-AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
-  foreignKey: { name: "retrievalId", allowNull: false },
+// Agent config <> Retrieval config
+AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
+  foreignKey: { name: "retrievalConfigId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+
+// Retrieval config <> Data source config
+AgentRetrievalConfiguration.hasOne(AgentDataSourceConfiguration, {
+  foreignKey: { name: "retrievalConfigId", allowNull: false },
   onDelete: "CASCADE",
 });
 
-// Agent config <> Retrieval config
-AgentConfiguration.hasOne(AgentRetrievalConfiguration, {
-  foreignKey: { name: "agentId", allowNull: true }, // null = no generation set for this Agent
+// Data source config <> Data source
+DataSource.hasMany(AgentDataSourceConfiguration, {
+  foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "CASCADE",
 });
 

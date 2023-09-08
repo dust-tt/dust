@@ -30,11 +30,15 @@ export class AgentConfiguration extends Model<
   declare status: AgentConfigurationStatus;
   declare name: string;
   declare pictureUrl: string | null;
-
   declare scope: AgentConfigurationScope;
-  declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
 
-  declare model: ForeignKey<AgentRetrievalConfiguration["id"]> | null;
+  declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
+  declare generationConfigId: ForeignKey<
+    AgentGenerationConfiguration["id"]
+  > | null;
+  declare retrievalConfigId: ForeignKey<
+    AgentRetrievalConfiguration["id"]
+  > | null;
 }
 AgentConfiguration.init(
   {
@@ -113,10 +117,8 @@ export class AgentGenerationConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare prompt: string;
-  declare modelProvider: string;
+  declare providerId: string;
   declare modelId: string;
-
-  declare agentId: ForeignKey<AgentConfiguration["id"]>;
 }
 AgentGenerationConfiguration.init(
   {
@@ -139,7 +141,7 @@ AgentGenerationConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    modelProvider: {
+    providerId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -154,14 +156,13 @@ AgentGenerationConfiguration.init(
   }
 );
 
-// Workspace <> Agent config
+//  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
   foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
   onDelete: "CASCADE",
 });
 
 // Agent config <> Generation config
-AgentConfiguration.hasOne(AgentGenerationConfiguration, {
-  foreignKey: { name: "agentId", allowNull: false }, // null = no retrieval action set for this Agent
-  onDelete: "CASCADE",
+AgentGenerationConfiguration.hasOne(AgentConfiguration, {
+  foreignKey: { name: "generationConfigId", allowNull: true }, // null = no generation set for this Agent
 });
