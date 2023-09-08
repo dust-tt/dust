@@ -6,14 +6,17 @@ import { runAction } from "@app/lib/actions/server";
 import {
   RetrievalDocumentsEvent,
   RetrievalParamsEvent,
+  runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
   GenerationTokensEvent,
   renderConversationForModel,
+  runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
+import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
   AgentActionSpecification,
@@ -216,6 +219,95 @@ export async function* runAgent(
   | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
+  // First run the action if a configuration is present.
+  if (configuration.action !== null) {
+    if (isRetrievalConfiguration(configuration.action)) {
+      const eventStream = runRetrieval(
+        auth,
+        configuration,
+        conversation,
+        userMessage,
+        agentMessage
+      );
+
+      for await (const event of eventStream) {
+        if (event.type === "retrieval_params") {
+          yield event;
+        }
+        if (event.type === "retrieval_documents") {
+          yield event;
+        }
+        if (event.type === "retrieval_error") {
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+        }
+        if (event.type === "retrieval_success") {
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+        }
+      }
+    } else {
+      throw new Error(
+        "runAgent implementation missing for action configuration"
+      );
+    }
+
+    // Then run the generation if a configuration is present.
+    if (configuration.generation !== null) {
+      const eventStream = runGeneration(
+        auth,
+        configuration,
+        conversation,
+        userMessage,
+        agentMessage
+      );
+
+      for await (const event of eventStream) {
+        if (event.type === "generation_tokens") {
+          yield event;
+        }
+        if (event.type === "generation_error") {
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+        }
+        if (event.type === "generation_success") {
+          yield {
+            type: "agent_generation_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            text: event.text,
+          };
+        }
+      }
+    }
+  }
+
   yield {
     type: "agent_error",
     created: Date.now(),

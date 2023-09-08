@@ -332,16 +332,9 @@ export async function* runRetrieval(
 
   const c = configuration.action;
   if (!isRetrievalConfiguration(c)) {
-    return yield {
-      type: "retrieval_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "internal_server_error",
-        message: "Unexpected action configuration received in `runRetrieval`",
-      },
-    };
+    throw new Error(
+      "Unexpected action configuration received in `runRetrieval`"
+    );
   }
 
   const paramsRes = await generateRetrievalParams(

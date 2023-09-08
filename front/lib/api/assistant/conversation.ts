@@ -177,80 +177,88 @@ export async function* postUserMessage(
     message: userMessage,
   };
 
-  for (let i = 0; i < agentMessages.length; i++) {
-    const agentMessage = agentMessages[i];
-    const agentMessageRow = agentMessageRows[i];
+  await Promise.allSettled(
+    agentMessages.map(async function* (agentMessage, i) {
+      //for (let i = 0; i < agentMessages.length; i++) {
+      //const agentMessage = agentMessages[i];
+      const agentMessageRow = agentMessageRows[i];
 
-    yield {
-      type: "agent_message_new",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-    };
+      yield {
+        type: "agent_message_new",
+        created: Date.now(),
+        configurationId: agentMessage.configuration.sId,
+        messageId: agentMessage.sId,
+        message: agentMessage,
+      };
 
-    const eventStream = runAgent(
-      auth,
-      agentMessage.configuration,
-      conversation,
-      userMessage,
-      agentMessage
-    );
+      // For each agent we stitch the conversation to add the user message and only that agent message
+      // so that it can be used to prompt the agent.
+      const eventStream = runAgent(
+        auth,
+        agentMessage.configuration,
+        {
+          ...conversation,
+          content: [...conversation.content, [userMessage], [agentMessage]],
+        },
+        userMessage,
+        agentMessage
+      );
 
-    for await (const event of eventStream) {
-      if (event.type === "agent_error") {
-        // Store error in database.
-        await agentMessageRow.update({
-          status: "failed",
-          errorCode: event.error.code,
-          errorMessage: event.error.message,
-        });
-        yield event;
-      }
-
-      if (event.type === "agent_action_success") {
-        // Store action in database.
-        if (event.action.type === "retrieval_action") {
+      for await (const event of eventStream) {
+        if (event.type === "agent_error") {
+          // Store error in database.
           await agentMessageRow.update({
-            agentRetrievalActionId: event.action.id,
+            status: "failed",
+            errorCode: event.error.code,
+            errorMessage: event.error.message,
           });
-        } else {
-          throw new Error(
-            `Action type ${event.action.type} agent_action_success handling not implemented`
-          );
+          yield event;
         }
-        yield event;
-      }
 
-      if (event.type === "agent_generation_success") {
-        // Store message in database.
-        await agentMessageRow.update({
-          message: event.text,
-        });
-        yield event;
-      }
+        if (event.type === "agent_action_success") {
+          // Store action in database.
+          if (event.action.type === "retrieval_action") {
+            await agentMessageRow.update({
+              agentRetrievalActionId: event.action.id,
+            });
+          } else {
+            throw new Error(
+              `Action type ${event.action.type} agent_action_success handling not implemented`
+            );
+          }
+          yield event;
+        }
 
-      if (event.type === "agent_message_success") {
-        // Update status in database.
-        await agentMessageRow.update({
-          status: "succeeded",
-        });
-        yield event;
-      }
+        if (event.type === "agent_generation_success") {
+          // Store message in database.
+          await agentMessageRow.update({
+            message: event.text,
+          });
+          yield event;
+        }
 
-      // All other events that won't impact the database and are related to actions or tokens
-      // generation.
-      if (
-        [
-          "retrieval_params",
-          "retrieval_documents",
-          "generation_tokens",
-        ].includes(event.type)
-      ) {
-        yield event;
+        if (event.type === "agent_message_success") {
+          // Update status in database.
+          await agentMessageRow.update({
+            status: "succeeded",
+          });
+          yield event;
+        }
+
+        // All other events that won't impact the database and are related to actions or tokens
+        // generation.
+        if (
+          [
+            "retrieval_params",
+            "retrieval_documents",
+            "generation_tokens",
+          ].includes(event.type)
+        ) {
+          yield event;
+        }
       }
-    }
-  }
+    })
+  );
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
@@ -298,16 +306,7 @@ export async function* editUserMessage(
     message: UserMessageType;
     content: string;
   }
-): AsyncGenerator<
-  | UserMessageNewEvent
-  | AgentMessageNewEvent
-  | AgentErrorEvent
-  | AgentActionEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
-> {
+): AsyncGenerator<UserMessageNewEvent | AgentErrorEvent> {
   yield {
     type: "agent_error",
     created: Date.now(),
