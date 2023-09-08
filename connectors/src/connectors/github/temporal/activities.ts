@@ -154,7 +154,16 @@ export async function githubUpsertIssueActivity(
     documentUrl: issue.url,
     timestampMs: lastUpdateTimestamp,
     tags: tags,
-    parents: [],
+    // The convention for parents is to use the external id string; it is ok for
+    // repos, but not practical for issues since the external id is the
+    // issue number, which is not guaranteed unique in the workspace.
+    // Therefore as a special case we use getIssueDocumentId() to get a parent string
+    // The repo id from github is globally unique so used as-is, as per
+    // convention to use the external id string.
+    parents: [
+      getIssueDocumentId(repoId.toString(), issue.number),
+      repoId.toString(),
+    ],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
@@ -281,7 +290,16 @@ export async function githubUpsertDiscussionActivity(
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    parents: [],
+    // The convention for parents is to use the external id string; it is ok for
+    // repos, but not practical for discussions since the external id is the
+    // issue number, which is not guaranteed unique in the workspace. Therefore
+    // as a special case we use getDiscussionDocumentId() to get a parent string
+    // The repo id from github is globally unique so used as-is, as per
+    // convention to use the external id string.
+    parents: [
+      getDiscussionDocumentId(repoId.toString(), discussionNumber),
+      repoId.toString(),
+    ],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
@@ -585,11 +603,14 @@ function renderGithubUser(user: GithubUser | null): string {
   return `@${user.id}`;
 }
 
-function getIssueDocumentId(repoId: string, issueNumber: number): string {
+export function getIssueDocumentId(
+  repoId: string,
+  issueNumber: number
+): string {
   return `github-issue-${repoId}-${issueNumber}`;
 }
 
-function getDiscussionDocumentId(
+export function getDiscussionDocumentId(
   repoId: string,
   discussionNumber: number
 ): string {
