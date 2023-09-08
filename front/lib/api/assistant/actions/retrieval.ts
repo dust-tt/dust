@@ -17,17 +17,17 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
-  AgentDataSourceConfigurationType,
-  isRetrievalConfiguration,
   RetrievalActionType,
-  RetrievalConfigurationType,
   RetrievalDocumentType,
   TimeFrame,
 } from "@app/types/assistant/actions/retrieval";
+import { AgentActionSpecification } from "@app/types/assistant/agent";
 import {
-  AgentActionSpecification,
-  AgentFullConfigurationType,
-} from "@app/types/assistant/agent";
+  AgentConfigurationType,
+  AgentDataSourceConfigurationType,
+  isRetrievalConfiguration,
+  RetrievalConfigurationType,
+} from "@app/types/assistant/configuration";
 import {
   AgentMessageType,
   ConversationType,
@@ -167,7 +167,6 @@ export async function retrievalActionSpecification(
   }
 
   return {
-    id: configuration.id,
     name: "search_data_sources",
     description:
       "Search the data sources specified by the user for information to answer their request." +
@@ -316,7 +315,7 @@ export type RetrievalSuccessEvent = {
 // error is expected to be stored by the caller on the parent agent message.
 export async function* runRetrieval(
   auth: Authenticator,
-  configuration: AgentFullConfigurationType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -349,7 +348,7 @@ export async function* runRetrieval(
     return yield {
       type: "retrieval_error",
       created: Date.now(),
-      configurationId: configuration.agent.sId,
+      configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
         code: "retrieval_parameters_generation_error",
@@ -433,7 +432,7 @@ export async function* runRetrieval(
     return yield {
       type: "retrieval_error",
       created: Date.now(),
-      configurationId: configuration.agent.sId,
+      configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
         code: "retrieval_search_error",
@@ -450,7 +449,7 @@ export async function* runRetrieval(
       return yield {
         type: "retrieval_error",
         created: Date.now(),
-        configurationId: configuration.agent.sId,
+        configurationId: configuration.sId,
         messageId: agentMessage.sId,
         error: {
           code: "retrieval_search_error",
@@ -529,7 +528,7 @@ export async function* runRetrieval(
   yield {
     type: "retrieval_documents",
     created: Date.now(),
-    configurationId: configuration.agent.sId,
+    configurationId: configuration.sId,
     messageId: agentMessage.sId,
     documents,
   };
@@ -537,7 +536,7 @@ export async function* runRetrieval(
   yield {
     type: "retrieval_success",
     created: Date.now(),
-    configurationId: configuration.agent.sId,
+    configurationId: configuration.sId,
     messageId: agentMessage.sId,
     action: {
       id: action.id,

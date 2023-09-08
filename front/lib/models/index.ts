@@ -1,15 +1,15 @@
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
-  AgentDataSourceConfiguration,
   AgentRetrievalAction,
-  AgentRetrievalConfiguration,
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentConfiguration,
+  AgentDataSourceConfiguration,
   AgentGenerationConfiguration,
-} from "@app/lib/models/assistant/agent";
+  AgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/configuration";
 import {
   AgentMessage,
   Conversation,

@@ -1,9 +1,5 @@
-/**
- * Data Source configuration
- */
-
 import { ModelId } from "@app/lib/databases";
-import { AgentActionConfigurationType } from "@app/types/assistant/agent";
+import { AgentDataSourceConfigurationType } from "@app/types/assistant/configuration";
 import { AgentActionType } from "@app/types/assistant/conversation";
 
 export type TimeframeUnit = "hour" | "day" | "week" | "month" | "year";
@@ -11,22 +7,6 @@ export type TimeFrame = {
   duration: number;
   unit: TimeframeUnit;
 };
-
-export type DataSourceFilter = {
-  tags: { in: string[]; not: string[] } | null;
-  parents: { in: string[]; not: string[] } | null;
-};
-
-// This is used to talk with Dust Apps and Core, so it store external Ids.
-export type AgentDataSourceConfigurationType = {
-  workspaceSId: string; // = Workspace.sId
-  dataSourceName: string; // = Datasource.name
-  filter: DataSourceFilter;
-};
-
-/**
- * Retrieval configuration
- */
 
 export type TemplatedQuery = {
   template: string;
@@ -51,27 +31,6 @@ export function isTimeFrame(arg: RetrievalTimeframe): arg is TimeFrame {
 // `dataSources` to query the data.
 export type RetrievalTimeframe = "auto" | "none" | TimeFrame;
 export type RetrievalQuery = "auto" | "none" | TemplatedQuery;
-export type RetrievalDataSourcesConfiguration =
-  AgentDataSourceConfigurationType[];
-
-export type RetrievalConfigurationType = {
-  id: ModelId;
-
-  type: "retrieval_configuration";
-  dataSources: RetrievalDataSourcesConfiguration;
-  query: RetrievalQuery;
-  relativeTimeFrame: RetrievalTimeframe;
-  topK: number;
-
-  // Dynamically decide to skip, if needed in the future
-  // autoSkip: boolean;
-};
-
-export function isRetrievalConfiguration(
-  arg: AgentActionConfigurationType | null
-): arg is RetrievalConfigurationType {
-  return arg !== null && arg.type && arg.type === "retrieval_configuration";
-}
 
 /**
  * Retrieval action
@@ -103,7 +62,7 @@ export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
   type: "retrieval_action";
   params: {
-    dataSources: "all" | AgentDataSourceConfigurationType[];
+    dataSources: AgentDataSourceConfigurationType[];
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;

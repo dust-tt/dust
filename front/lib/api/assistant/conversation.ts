@@ -75,92 +75,31 @@ export async function* postUserMessage(
           where: {
             conversationId: conversation.id,
           },
-          transaction: t,
-        })) ?? -1) + 1;
-
-      const m = await Message.create(
-        {
-          sId: generateModelSId(),
-          rank: nextMessageRank++,
-          conversationId: conversation.id,
-          parentId: null,
-          userMessageId: (
-            await UserMessage.create(
-              {
-                message: message,
-                userContextUsername: context.username,
-                userContextTimezone: context.timezone,
-                userContextFullName: context.fullName,
-                userContextEmail: context.email,
-                userContextProfilePictureUrl: context.profilePictureUrl,
-                userId: user ? user.id : null,
-              },
-              { transaction: t }
-            )
-          ).id,
-        },
-        {
-          transaction: t,
-        }
-      );
-
-      const userMessage: UserMessageType = {
-        id: m.id,
-        sId: m.sId,
-        type: "user_message",
-        visibility: "visible",
-        version: 0,
-        user: user,
-        mentions: mentions,
-        message: message,
-        context: context,
-      };
-
-      const agentMessages: AgentMessageType[] = [];
-      const agentMessageRows: AgentMessage[] = [];
-
-      // for each assistant mention, create an "empty" agent message
-      for (const mention of mentions) {
-        if (isAgentMention(mention)) {
-          const agentMessageRow = await AgentMessage.create(
-            {},
-            { transaction: t }
-          );
-          const m = await Message.create(
-            {
-              sId: generateModelSId(),
-              rank: nextMessageRank++,
-              conversationId: conversation.id,
-              parentId: userMessage.id,
-              agentMessageId: agentMessageRow.id,
-            },
-            {
-              transaction: t,
-            }
-          );
-          agentMessageRows.push(agentMessageRow);
-          agentMessages.push({
-            id: m.id,
-            sId: m.sId,
-            type: "agent_message",
-            visibility: "visible",
-            version: 0,
-            parentMessageId: userMessage.sId,
-            status: "created",
-            action: null,
-            message: null,
-            feedbacks: [],
-            error: null,
-            configuration: {
-              sId: mention.configurationId,
-              status: "active",
-              name: "foo", // TODO
-              pictureUrl: null, // TODO
-              action: null, // TODO
-              generation: null, // TODO
-            },
-          });
-        }
+          {
+            transaction: t,
+          }
+        );
+        agentMessages.push({
+          id: agentMessageRow.id,
+          sId: agentMessageRow.sId,
+          type: "agent_message",
+          visibility: "visible",
+          version: 0,
+          parentMessageId: userMessage.sId,
+          status: "created",
+          action: null,
+          message: null,
+          feedbacks: [],
+          error: null,
+          configuration: {
+            sId: m.configurationId,
+            status: "active",
+            name: "foo", // TODO
+            pictureUrl: null, // TODO
+            action: null, // TODO
+            generation: null, // TODO
+          },
+        });
       }
 
       return { userMessage, agentMessages, agentMessageRows };
