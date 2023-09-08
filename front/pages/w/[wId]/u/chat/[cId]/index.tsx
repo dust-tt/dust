@@ -121,7 +121,7 @@ export const getServerSideProps: GetServerSideProps<{
   if (user) {
     const stickyDataSourceSelectionRaw = await getUserMetadata(
       user,
-      "chat-data-sources-selection"
+      `chat-data-sources-selection-${owner.sId}`
     );
     if (stickyDataSourceSelectionRaw) {
       try {
@@ -1049,7 +1049,7 @@ export default function AppChat({
     void (async () => {
       let stickySelection: { [key: string]: boolean } = {};
       const currentStickySelectionRaw = await getUserMetadataFromClient(
-        "chat-data-sources-selection"
+        `chat-data-sources-selection-${owner.sId}`
       );
       if (currentStickySelectionRaw) {
         stickySelection = JSON.parse(currentStickySelectionRaw.value);
@@ -1059,7 +1059,7 @@ export default function AppChat({
         ...stickyDataSourceSelectionUpdate,
       };
       await setUserMetadataFromClient({
-        key: "chat-data-sources-selection",
+        key: `chat-data-sources-selection-${owner.sId}`,
         value: JSON.stringify(stickySelection),
       });
     })();
