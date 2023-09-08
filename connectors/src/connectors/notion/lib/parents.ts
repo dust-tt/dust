@@ -38,6 +38,7 @@ async function _getParents(
     return parents;
   }
   switch (pageOrDb.parentType) {
+    case null:
     case "workspace":
       return parents;
     case "block":
