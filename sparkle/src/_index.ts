@@ -46,6 +46,9 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
+import { Modal } from "./components/Modal";
+export { Modal };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
