@@ -9,16 +9,353 @@ import {
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
-import { AgentMessage, Message, UserMessage } from "@app/lib/models";
+import {
+  AgentConfiguration,
+  AgentMessage,
+  AgentRetrievalAction,
+  Conversation,
+  Mention,
+  Message,
+  User,
+  UserMessage,
+} from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import {
   AgentMessageType,
   ConversationType,
+  ConversationVisibility,
   isAgentMention,
-  Mention,
+  isUserMention,
+  MentionType,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+/**
+ * Conversation Creation and Update
+ */
+
+export async function createConversation(
+  auth: Authenticator,
+  {
+    title,
+    visibility,
+  }: {
+    title: string | null;
+    visibility: ConversationVisibility;
+  }
+): Promise<ConversationType> {
+  const conversation = await Conversation.create({
+    sId: generateModelSId(),
+    title: title,
+    visibility: visibility,
+  });
+
+  return {
+    id: conversation.id,
+    created: conversation.createdAt.getTime(),
+    sId: conversation.sId,
+    title: conversation.title,
+    visibility: conversation.visibility,
+    content: [],
+  };
+}
+
+/**
+ * Conversation Rendering
+ */
+
+async function renderUserMessage(
+  auth: Authenticator,
+  message: Message,
+  userMessage: UserMessage
+): Promise<UserMessageType> {
+  const [mentions, user] = await Promise.all([
+    Mention.findAll({
+      where: {
+        messageId: message.id,
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          required: false,
+        },
+        {
+          model: AgentConfiguration,
+          as: "agentConfiguration",
+          required: false,
+        },
+      ],
+    }),
+    (async () => {
+      if (userMessage.userId) {
+        return await User.findOne({
+          where: {
+            id: userMessage.userId,
+          },
+        });
+      }
+      return null;
+    })(),
+  ]);
+
+  return {
+    id: message.id,
+    sId: message.sId,
+    type: "user_message",
+    visibility: message.visibility,
+    version: message.version,
+    user: user
+      ? {
+          id: user.id,
+          provider: user.provider,
+          providerId: user.providerId,
+          username: user.username,
+          email: user.email,
+          name: user.name,
+          image: null,
+          workspaces: [],
+          isDustSuperUser: false,
+        }
+      : null,
+    mentions: mentions.map((m) => {
+      if (m.agentConfiguration) {
+        return {
+          id: m.id,
+          configurationId: m.agentConfiguration.sId,
+        };
+      }
+      if (m.user) {
+        return {
+          id: m.id,
+          provider: m.user.provider,
+          providerId: m.user.providerId,
+        };
+      }
+      throw new Error("Unreachable: mention must be either agent or user");
+    }),
+    message: userMessage.message,
+    context: {
+      username: userMessage.userContextUsername,
+      timezone: userMessage.userContextTimezone,
+      fullName: userMessage.userContextFullName,
+      email: userMessage.userContextEmail,
+      profilePictureUrl: userMessage.userContextProfilePictureUrl,
+    },
+  };
+}
+
+async function renderAgentMessage(
+  auth: Authenticator,
+  message: Message,
+  agentMessage: AgentMessage
+): Promise<AgentMessageType> {
+  const [agentConfiguration, agentRetrievalAction] = await Promise.all([
+    AgentConfiguration.findOne({
+      where: {
+        id: agentMessage.agentConfigurationId,
+      },
+    }),
+    (async () => {
+      if (agentMessage.agentRetrievalActionId) {
+        return await AgentRetrievalAction.findOne({
+          where: {
+            id: agentMessage.agentRetrievalActionId,
+          },
+        });
+      }
+      return null;
+    })(),
+  ]);
+
+  if (!agentConfiguration) {
+    throw new Error(
+      `Agent configuration ${agentMessage.agentConfigurationId} not found`
+    );
+  }
+
+  return {
+    id: message.id,
+    sId: message.sId,
+    type: "agent_message",
+    visibility: message.visibility,
+    version: message.version,
+    parentMessageId: null,
+    status: agentMessage.status,
+    action: agentRetrievalAction
+      ? {
+          id: agentRetrievalAction.id,
+          type: "retrieval_action",
+          params: {
+            dataSources: [], // TODO
+            query: agentRetrievalAction.query,
+            relativeTimeFrame: null, // TODO
+            topK: agentRetrievalAction.topK,
+          },
+          documents: [], // TODO
+        }
+      : null,
+    message: agentMessage.message,
+    feedbacks: [],
+    error: null,
+    configuration: {
+      sId: agentConfiguration.sId,
+      status: "active",
+      name: agentConfiguration.name,
+      pictureUrl: agentConfiguration.pictureUrl,
+      // TODO(spolu)
+      action: null,
+      generation: null,
+    },
+  };
+}
+
+export async function getConversation(
+  auth: Authenticator,
+  conversationId: string
+): Promise<ConversationType | null> {
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+    },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  const messages = await Message.findAll({
+    where: {
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "ASC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+        include: [
+          {
+            model: AgentRetrievalAction,
+            as: "agentRetrievalAction",
+            required: false,
+          },
+          {
+            model: AgentConfiguration,
+            as: "agentConfiguration",
+            required: true,
+          },
+        ],
+      },
+    ],
+  });
+
+  const maxRank = messages.reduce((acc, m) => Math.max(acc, m.rank), -1);
+  const content: (UserMessageType | AgentMessageType)[][] = Array.from(
+    { length: maxRank + 1 },
+    () => []
+  );
+
+  for (const message of messages) {
+    if (message.userMessage) {
+      //content[message.rank].push({
+      //  id: message.id,
+      //  sId: message.sId,
+      //  type: "user_message",
+      //  visibility: message.visibility,
+      //  version: message.version,
+      //  user: null,
+      //  mentions: [],
+      //  message: message.userMessage.message,
+      //  context: {
+      //    username: message.userMessage.userContextUsername,
+      //    timezone: message.userMessage.userContextTimezone,
+      //    fullName: message.userMessage.userContextFullName,
+      //    email: message.userMessage.userContextEmail,
+      //    profilePictureUrl: message.userMessage.userContextProfilePictureUrl,
+      //  },
+      //});
+    }
+    if (message.agentMessage) {
+      // if (message.agentMessage.agentRetrievalActionId) {
+      // }
+      // content[message.rank].push({
+      //   id: message.id,
+      //   sId: message.sId,
+      //   type: "agent_message",
+      //   visibility: message.visibility,
+      //   version: message.version,
+      //   parentMessageId: null,
+      //   status: message.agentMessage.status,
+      //   action: null,
+      //   message: message.agentMessage.message,
+      //   feedbacks: [],
+      //   error: null,
+      //   configuration: {
+      //     sId: "foo",
+      //     status: "active",
+      //     name: "foo", // TODO
+      //     pictureUrl: null, // TODO
+      //     action: null, // TODO
+      //     generation: null, // TODO
+      //   },
+      // });
+    }
+  }
+
+  return {
+    id: conversation.id,
+    created: conversation.createdAt.getTime(),
+    sId: conversation.sId,
+    title: conversation.title,
+    visibility: conversation.visibility,
+    content: [],
+  };
+}
+
+export async function updateConversation(
+  auth: Authenticator,
+  conversationId: string,
+  {
+    title,
+    visibility,
+  }: {
+    title: string | null;
+    visibility: ConversationVisibility;
+  }
+): Promise<ConversationType> {
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+    },
+  });
+
+  if (!conversation) {
+    throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  await conversation.update({
+    title: title,
+    visibility: visibility,
+  });
+
+  const c = await getConversation(auth, conversationId);
+
+  if (!c) {
+    throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  return c;
+}
 
 /**
  * Conversation API
@@ -53,7 +390,7 @@ export async function* postUserMessage(
   }: {
     conversation: ConversationType;
     message: string;
-    mentions: Mention[];
+    mentions: MentionType[];
     context: UserMessageContext;
   }
 ): AsyncGenerator<
@@ -122,8 +459,16 @@ export async function* postUserMessage(
       // for each assistant mention, create an "empty" agent message
       for (const mention of mentions) {
         if (isAgentMention(mention)) {
+          // TODO(spolu): retrieve configuration from mention.
+          // Mention.create({
+          //   messageId: m.id,
+          //   configurationId: mention.configurationId,
+          // });
+
           const agentMessageRow = await AgentMessage.create(
-            {},
+            {
+              // TODO(spolu): add agentConfigurationId
+            },
             { transaction: t }
           );
           const m = await Message.create(
@@ -160,6 +505,22 @@ export async function* postUserMessage(
               generation: null, // TODO
             },
           });
+        }
+
+        if (isUserMention(mention)) {
+          const user = await User.findOne({
+            where: {
+              provider: mention.provider,
+              providerId: mention.providerId,
+            },
+          });
+
+          if (user) {
+            await Mention.create({
+              messageId: m.id,
+              userId: user.id,
+            });
+          }
         }
       }
 

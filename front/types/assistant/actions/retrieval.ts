@@ -99,7 +99,6 @@ export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
   type: "retrieval_action";
   params: {
-    dataSources: "all" | DataSourceConfiguration[];
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;

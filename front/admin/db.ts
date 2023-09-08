@@ -20,6 +20,7 @@ import {
   Key,
   Membership,
   MembershipInvitation,
+  Mention,
   Message,
   Provider,
   RetrievalDocument,
@@ -69,6 +70,7 @@ async function main() {
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
   await Message.sync({ alter: true });
+  await Mention.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
   await XP1Run.sync({ alter: true });

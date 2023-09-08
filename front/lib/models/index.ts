@@ -13,6 +13,7 @@ import {
 import {
   AgentMessage,
   Conversation,
+  Mention,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -59,6 +60,7 @@ export {
   Key,
   Membership,
   MembershipInvitation,
+  Mention,
   Message,
   Provider,
   RetrievalDocument,
