@@ -35,7 +35,7 @@ async function updateParentsFieldForConnector(connector: Connector) {
     group: ["documentId", "channelId"],
   });
   // update all parents fields for all pages and databases by chunks of 128
-  const chunkSize = 128;
+  const chunkSize = 32;
   for (let i = 0; i < documentIdsAndChannels.length; i += chunkSize) {
     const chunk = documentIdsAndChannels.slice(i, i + chunkSize);
     console.log(`Updating ${chunk.length} documents`);
