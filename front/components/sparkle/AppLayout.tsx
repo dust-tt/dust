@@ -94,6 +94,7 @@ function NavigationBar({
                 onWorkspaceUpdate={(workspace) => {
                   if (workspace.id !== owner.id) {
                     void router.push(`/w/${workspace.sId}/u/chat`);
+                    void router.reload();
                   }
                 }}
               />
