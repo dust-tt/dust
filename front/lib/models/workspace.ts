@@ -20,9 +20,9 @@ export class Workspace extends Model<
 
   declare sId: string;
   declare name: string;
-  declare description?: string;
-  declare allowedDomain?: string;
-  declare plan?: string | null;
+  declare description: string | null;
+  declare allowedDomain: string | null;
+  declare plan: string | null;
 }
 Workspace.init(
   {

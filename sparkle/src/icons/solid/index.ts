@@ -14,6 +14,7 @@ export { default as ChevronDown } from "./ChevronDown";
 export { default as ChevronLeft } from "./ChevronLeft";
 export { default as ChevronRight } from "./ChevronRight";
 export { default as ChevronUp } from "./ChevronUp";
+export { default as ChevronUpDown } from "./ChevronUpDown";
 export { default as Clipboard } from "./Clipboard";
 export { default as ClipboardCheck } from "./ClipboardCheck";
 export { default as Clock } from "./Clock";

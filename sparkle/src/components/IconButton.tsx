@@ -6,7 +6,7 @@ import { Icon, IconProps } from "./Icon";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
 type IconButtonProps = {
-  type?: "primary" | "warning" | "secondary" | "tertiary";
+  variant?: "primary" | "warning" | "secondary" | "tertiary";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
@@ -71,7 +71,7 @@ const iconClasses = {
 };
 
 export function IconButton({
-  type = "tertiary",
+  variant = "tertiary",
   onClick,
   disabled = false,
   tooltip,
@@ -81,7 +81,7 @@ export function IconButton({
   size = "sm",
 }: IconButtonProps) {
   // Choose the correct group of classes based on 'type'
-  const iconGroup = iconClasses[type];
+  const iconGroup = iconClasses[variant];
 
   const finalIconClasses = classNames(
     className,

@@ -2,29 +2,42 @@ import { ModelId } from "@app/lib/databases";
 import { UserType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
+import { AgentConfigurationType } from "./agent";
 
 /**
  * Mentions
  */
 
-export type AssistantAgentMention = {
+export type AgentMention = {
   configurationId: string;
 };
 
-export type AssistantUserMention = {
+export type UserMention = {
   provider: string;
   providerId: string;
 };
 
-export type AssistantMention = AssistantAgentMention | AssistantUserMention;
+export type Mention = AgentMention | UserMention;
 
-export type AssistantMessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible" | "deleted";
+
+export function isAgentMention(arg: Mention): arg is AgentMention {
+  return (arg as AgentMention).configurationId !== undefined;
+}
+
+export function isUserMention(arg: Mention): arg is UserMention {
+  const maybeUserMention = arg as UserMention;
+  return (
+    maybeUserMention.provider !== undefined &&
+    maybeUserMention.providerId !== undefined
+  );
+}
 
 /**
  * User messages
  */
 
-export type AssistantUserMessageContext = {
+export type UserMessageContext = {
   username: string;
   timezone: string;
   fullName: string | null;
@@ -32,36 +45,36 @@ export type AssistantUserMessageContext = {
   profilePictureUrl: string | null;
 };
 
-export type AssistantUserMessageType = {
+export type UserMessageType = {
   id: ModelId;
+  type: "user_message";
   sId: string;
-  visibility: AssistantMessageVisibility;
+  visibility: MessageVisibility;
   version: number;
-  parentMessageId: string;
   user: UserType | null;
-  mentions: AssistantMention[];
+  mentions: Mention[];
   message: string;
-  context: AssistantUserMessageContext;
+  context: UserMessageContext;
 };
+
+export function isUserMessageType(
+  arg: UserMessageType | AgentMessageType
+): arg is UserMessageType {
+  return arg.type === "user_message";
+}
 
 /**
  * Agent messages
  */
 
-export type AssistantUserFeedbackType = {
+export type UserFeedbackType = {
   user: UserType;
   value: "positive" | "negative" | null;
   comment: string | null;
 };
 
-export type AssistantAgentActionType = RetrievalActionType;
-
-export type AssistantAgentMessageStatus =
-  | "created"
-  | "action_running"
-  | "writing"
-  | "succeeded"
-  | "failed";
+export type AgentActionType = RetrievalActionType;
+export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
@@ -70,38 +83,46 @@ export type AssistantAgentMessageStatus =
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type AssistantAgentMessageType = {
+export type AgentMessageType = {
   id: ModelId;
+  type: "agent_message";
   sId: string;
-  visibility: AssistantMessageVisibility;
+  visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-  status: AssistantAgentMessageStatus;
-  action: AssistantAgentActionType | null;
+
+  configuration: AgentConfigurationType;
+  status: AgentMessageStatus;
+  action: AgentActionType | null;
   message: string | null;
-  feedbacks: AssistantUserFeedbackType[];
+  feedbacks: UserFeedbackType[];
   error: {
     code: string;
     message: string;
   } | null;
 };
 
+export function isAgentMessageType(
+  arg: UserMessageType | AgentMessageType
+): arg is AgentMessageType {
+  return arg.type === "agent_message";
+}
+
 /**
  * Conversations
  */
 
-export type AssistantConversationVisibility = "private" | "workspace";
+export type ConversationVisibility = "private" | "workspace";
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
  * messages).
  */
-export type AssistantConversationType = {
+export type ConversationType = {
   id: ModelId;
   created: number;
   sId: string;
   title: string | null;
-  participants: UserType[];
-  content: (AssistantUserMessageType[] | AssistantAgentMessageType[])[];
-  visibility: AssistantConversationVisibility;
+  content: (UserMessageType[] | AgentMessageType[])[];
+  visibility: ConversationVisibility;
 };

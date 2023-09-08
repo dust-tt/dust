@@ -1,17 +1,19 @@
 import React, { ComponentType, MouseEvent } from "react";
 
+import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
 export type ButtonProps = {
-  type?:
+  variant?:
     | "primary"
     | "primaryWarning"
     | "secondary"
     | "secondaryWarning"
     | "tertiary";
+  type?: "button" | "menu" | "select";
   size?: "xs" | "sm" | "md";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
@@ -34,7 +36,7 @@ const containerClasses = {
   md: "s-px-1",
 };
 
-const typeClasses = {
+const variantClasses = {
   primary: {
     base: "s-text-white s-bg-action-500 s-border-action-600",
     hover: "hover:s-bg-action-400 hover:s-border-action-500",
@@ -97,8 +99,7 @@ const typeClasses = {
   },
   tertiary: {
     base: "s-text-element-800 s-border-structure-200 s-bg-structure-0",
-    hover:
-      "hover:s-text-element-700 hover:s-bg-action-50 hover:s-border-action-200",
+    hover: "hover:s-bg-action-50 hover:s-border-action-200",
     active: "active:s-bg-action-100 active:s-border-action-500",
     disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
     dark: {
@@ -117,7 +118,8 @@ const transitionClasses =
   "s-transition-all s-ease-out s-duration-400 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none s-cursor-pointer";
 
 export function Button({
-  type = "primary",
+  variant = "primary",
+  type = "button",
   size = "sm",
   onClick,
   disabled = false,
@@ -131,14 +133,14 @@ export function Button({
     "s-inline-flex s-items-center s-border s-scale-95 s-box-border s-rounded-full s-whitespace-nowrap",
     sizeClasses[size],
     !disabled ? transitionClasses : "",
-    !disabled ? typeClasses[type]?.base : "",
-    !disabled ? typeClasses[type]?.hover : "",
-    !disabled ? typeClasses[type]?.active : "",
-    disabled ? typeClasses[type]?.disabled : "",
-    typeClasses[type]?.dark?.base,
-    typeClasses[type]?.dark?.hover,
-    typeClasses[type]?.dark?.active,
-    typeClasses[type]?.dark.disabled,
+    !disabled ? variantClasses[variant]?.base : "",
+    !disabled ? variantClasses[variant]?.hover : "",
+    !disabled ? variantClasses[variant]?.active : "",
+    disabled ? variantClasses[variant]?.disabled : "",
+    variantClasses[variant]?.dark?.base,
+    variantClasses[variant]?.dark?.hover,
+    variantClasses[variant]?.dark?.active,
+    variantClasses[variant]?.dark.disabled,
     disabled ? "s-cursor-default" : "",
     className
   );
@@ -155,6 +157,20 @@ export function Button({
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       <div className={finalContainerClasses}>{label}</div>
+      {type === "menu" && (
+        <Icon
+          className="s-opacity-50"
+          visual={ChevronDown}
+          size={size as IconProps["size"]}
+        />
+      )}
+      {type === "select" && (
+        <Icon
+          className="s-opacity-60"
+          visual={ChevronUpDown}
+          size={size as IconProps["size"]}
+        />
+      )}
     </button>
   ) : (
     <Tooltip label={label} position={tooltipPosition}>

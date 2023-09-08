@@ -1,22 +1,35 @@
-import { Authenticator } from "@app/lib/auth";
-import { generateModelSId } from "@app/lib/utils";
 import {
-  AgentActionConfigurationType,
-  AgentActionInputsSpecification,
-  AgentConfigurationStatus,
-  AgentConfigurationType,
-  AgentMessageConfigurationType,
-} from "@app/types/assistant/agent";
-import {
-  AssistantAgentActionType,
-  AssistantAgentMessageType,
-  AssistantConversationType,
-} from "@app/types/assistant/conversation";
-
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions/registry";
+import { runAction } from "@app/lib/actions/server";
 import {
   RetrievalDocumentsEvent,
   RetrievalParamsEvent,
-} from "./actions/retrieval";
+  runRetrieval,
+} from "@app/lib/api/assistant/actions/retrieval";
+import {
+  GenerationTokensEvent,
+  renderConversationForModel,
+  runGeneration,
+} from "@app/lib/api/assistant/generation";
+import { Authenticator } from "@app/lib/auth";
+import { Err, Ok, Result } from "@app/lib/result";
+import { generateModelSId } from "@app/lib/utils";
+import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
+import {
+  AgentActionConfigurationType,
+  AgentActionSpecification,
+  AgentConfigurationStatus,
+  AgentConfigurationType,
+  AgentGenerationConfigurationType,
+} from "@app/types/assistant/agent";
+import {
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 
 /**
  * Agent configuration.
@@ -28,12 +41,12 @@ export async function createAgentConfiguration(
     name,
     pictureUrl,
     action,
-    message,
+    generation,
   }: {
     name: string;
     pictureUrl?: string;
     action?: AgentActionConfigurationType;
-    message?: AgentMessageConfigurationType;
+    generation?: AgentGenerationConfigurationType;
   }
 ): Promise<AgentConfigurationType> {
   return {
@@ -42,7 +55,7 @@ export async function createAgentConfiguration(
     pictureUrl: pictureUrl ?? null,
     status: "active",
     action: action ?? null,
-    message: message ?? null,
+    generation: generation ?? null,
   };
 }
 
@@ -54,13 +67,13 @@ export async function updateAgentConfiguration(
     pictureUrl,
     status,
     action,
-    message,
+    generation,
   }: {
     name: string;
     pictureUrl?: string;
     status: AgentConfigurationStatus;
     action?: AgentActionConfigurationType;
-    message?: AgentMessageConfigurationType;
+    generation?: AgentGenerationConfigurationType;
   }
 ): Promise<AgentConfigurationType> {
   return {
@@ -69,7 +82,7 @@ export async function updateAgentConfiguration(
     pictureUrl: pictureUrl ?? null,
     status,
     action: action ?? null,
-    message: message ?? null,
+    generation: generation ?? null,
   };
 }
 
@@ -80,22 +93,73 @@ export async function updateAgentConfiguration(
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
-  specification: AgentActionInputsSpecification
-): Promise<Record<string, string | boolean | number>> {
-  return {};
+  specification: AgentActionSpecification,
+  conversation: ConversationType
+): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  const model = {
+    providerId: "openai",
+    modelId: "gpt-3.5-turbo-16k",
+  };
+  const allowedTokenCount = 12288; // for 16k model.
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel({
+    conversation,
+    model,
+    allowedTokenCount,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return modelConversationRes;
+  }
+
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-inputs-generator"].config
+  );
+  config.MODEL.function_call = specification.name;
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
+    {
+      conversation: modelConversationRes.value,
+      specification,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return new Err(new Error(`Error generating action inputs: ${res.error}`));
+  }
+
+  const run = res.value;
+
+  const output: Record<string, string | boolean | number> = {};
+  for (const t of run.traces) {
+    if (t[1][0][0].error) {
+      return new Err(
+        new Error(`Error generating action inputs: ${t[1][0][0].error}`)
+      );
+    }
+    if (t[0][1] === "OUTPUT") {
+      const v = t[1][0][0].value as any;
+      for (const k in v) {
+        if (
+          typeof v[k] === "string" ||
+          typeof v[k] === "boolean" ||
+          typeof v[k] === "number"
+        ) {
+          output[k] = v[k];
+        }
+      }
+    }
+  }
+
+  return new Ok(output);
 }
 
 /**
  * Agent execution.
  */
-
-// Event sent when a new message is created (empty) and the agent is about to be executed.
-export type AgentMessageNewEvent = {
-  type: "agent_message_new";
-  created: number;
-  configurationId: string;
-  message: AssistantAgentMessageType;
-};
 
 // Generic event sent when an error occured (whether it's during the action or the message generation).
 export type AgentErrorEvent = {
@@ -118,12 +182,12 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AssistantAgentActionType;
+  action: AgentActionType;
 };
 
-// Event sent when tokens are streamed as the the agent is generating a message.
-export type AgentMessageTokensEvent = {
-  type: "agent_message_tokens";
+// Event sent once the generation is completed.
+export type AgentGenerationSuccessEvent = {
+  type: "agent_generation_success";
   created: number;
   configurationId: string;
   messageId: string;
@@ -136,24 +200,114 @@ export type AgentMessageSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AssistantAgentMessageType;
+  message: AgentMessageType;
 };
 
-// This interface is used to execute an agent. It is in charge of creating the AssistantAgentMessage
-// object in database (fully completed or with error set if an error occured). It is called to run
-// an agent or when retrying a previous agent interaction.
+// This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
+// nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
-  conversation: AssistantConversationType
+  conversation: ConversationType,
+  userMessage: UserMessageType,
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
-  | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
-  | AgentMessageTokensEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
+  // First run the action if a configuration is present.
+  if (configuration.action !== null) {
+    if (isRetrievalConfiguration(configuration.action)) {
+      const eventStream = runRetrieval(
+        auth,
+        configuration,
+        conversation,
+        userMessage,
+        agentMessage
+      );
+
+      for await (const event of eventStream) {
+        if (event.type === "retrieval_params") {
+          yield event;
+        }
+        if (event.type === "retrieval_documents") {
+          yield event;
+        }
+        if (event.type === "retrieval_error") {
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+        }
+        if (event.type === "retrieval_success") {
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+        }
+      }
+    } else {
+      throw new Error(
+        "runAgent implementation missing for action configuration"
+      );
+    }
+
+    // Then run the generation if a configuration is present.
+    if (configuration.generation !== null) {
+      const eventStream = runGeneration(
+        auth,
+        configuration,
+        conversation,
+        userMessage,
+        agentMessage
+      );
+
+      for await (const event of eventStream) {
+        if (event.type === "generation_tokens") {
+          yield event;
+        }
+        if (event.type === "generation_error") {
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+        }
+        if (event.type === "generation_success") {
+          yield {
+            type: "agent_generation_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            text: event.text,
+          };
+        }
+      }
+    }
+  }
+
   yield {
     type: "agent_error",
     created: Date.now(),

@@ -346,7 +346,7 @@ export default function SettingsView({
               <div className="flex-1"></div>
               <div className="flex">
                 <Button
-                  type="secondary"
+                  variant="secondary"
                   onClick={() => {
                     void router.push(`/w/${owner.sId}/a/${app.sId}/clone`);
                   }}
@@ -355,7 +355,7 @@ export default function SettingsView({
               </div>
               <div className="ml-2 flex">
                 <Button
-                  type="secondaryWarning"
+                  variant="secondaryWarning"
                   onClick={handleDelete}
                   disabled={isDeleting || isUpdating}
                   label={isDeleting ? "Deleting..." : "Delete"}

@@ -10,12 +10,12 @@ import {
 } from "../logo/dust";
 
 export default {
-  title: "Assets/logo",
+  title: "Assets/DustLogo",
 };
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
   gap: "48px 16px",
 };
 const itemStyle = {
@@ -33,13 +33,13 @@ export const DustLogoSet = () => (
       <div className="s-p-6">
         <LogoHorizontalColor className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          LogoHorizontalColor
+          LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
         <LogoHorizontalDark className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          LogoHorizontalDark
+          LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
@@ -48,7 +48,7 @@ export const DustLogoSet = () => (
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
         >
-          LogoHorizontalWhite
+          LogoHorizontalWhiteLogo
         </div>
       </div>
     </div>
@@ -57,13 +57,13 @@ export const DustLogoSet = () => (
       <div className="s-p-6">
         <LogoSquareColor className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          LogoHorizontalColor
+          LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
         <LogoSquareDark className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          LogoHorizontalDark
+          LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
@@ -72,7 +72,7 @@ export const DustLogoSet = () => (
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
         >
-          LogoHorizontalWhite
+          LogoHorizontalWhiteLogo
         </div>
       </div>
     </div>

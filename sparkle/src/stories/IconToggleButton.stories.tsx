@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 
 export const IconToggleButtonSecondary: Story = {
   args: {
-    type: "secondary",
+    variant: "secondary",
     tooltip: "This a secondary IconButton",
     icon: Cog6ToothStrokeIcon,
     iconSelected: Cog6ToothIcon,
@@ -26,7 +26,7 @@ export const IconToggleButtonSecondary: Story = {
 
 export const IconToggleButtonTertiary: Story = {
   args: {
-    type: "tertiary",
+    variant: "tertiary",
     tooltip: "This a tertiary IconButton",
     icon: Cog6ToothIcon,
     selected: false,

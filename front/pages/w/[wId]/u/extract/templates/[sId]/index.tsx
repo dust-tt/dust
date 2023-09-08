@@ -25,7 +25,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
-import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/ds";
+import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/builder/data-sources";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -184,7 +184,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={CheckCircleIcon}
                           tooltip="Accept data"
-                          type={
+                          variant={
                             event.status === "pending" ? "primary" : "tertiary"
                           }
                           onClick={async () => {
@@ -197,7 +197,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={PencilSquareIcon}
                           tooltip="Edit data"
-                          type={
+                          variant={
                             event.status === "pending" ? "primary" : "tertiary"
                           }
                           onClick={() =>
@@ -212,7 +212,7 @@ export default function AppExtractEventsReadData({
                         <IconButton
                           icon={XCircleIcon}
                           tooltip="Reject data"
-                          type={
+                          variant={
                             event.status === "pending" ? "warning" : "tertiary"
                           }
                           onClick={async () => {
@@ -234,7 +234,7 @@ export default function AppExtractEventsReadData({
         <Button
           onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
           label="Back"
-          type="secondary"
+          variant="secondary"
         />
       </div>
     </AppLayout>
@@ -346,7 +346,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
       <IconButton
         size="sm"
         icon={ArrowUpOnSquareIcon}
-        type="primary"
+        variant="primary"
         tooltip="Copy data"
         onClick={() => setIsOpen(true)}
       />
@@ -389,7 +389,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
                     </div>
                     <div className="justify-center">
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         size="sm"
                         label={
                           copySuccess === "Markdown"
@@ -406,7 +406,7 @@ const ExtractButtonAndModal = ({ event }: { event: ExtractedEventType }) => {
                     </div>
                     <div className="justify-center">
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         size="sm"
                         label={
                           copySuccess === "JSON" ? "Copied!" : "Copy as JSON"

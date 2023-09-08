@@ -1,4 +1,11 @@
-import { DropdownMenu, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DropdownMenu,
+  Item,
+  Logo,
+  Tab,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -46,14 +53,16 @@ function NavigationBar({
                 <DropdownMenu>
                   <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
                     <span className="sr-only">Open user menu</span>
-                    <img
-                      className="h-10 w-10 rounded-xl"
-                      src={
+                    <Avatar
+                      size="sm"
+                      visual={
                         user.image
                           ? user.image
                           : "https://gravatar.com/avatar/anonymous?d=mp"
                       }
-                      alt=""
+                      onClick={() => {
+                        "clickable";
+                      }}
                     />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items origin="topRight">
@@ -84,7 +93,9 @@ function NavigationBar({
                 readOnly={false}
                 onWorkspaceUpdate={(workspace) => {
                   if (workspace.id !== owner.id) {
-                    void router.push(`/w/${workspace.sId}/u/chat`);
+                    void router
+                      .push(`/w/${workspace.sId}/u/chat`)
+                      .then(() => router.reload());
                   }
                 }}
               />

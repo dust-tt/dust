@@ -2,12 +2,12 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   ClipboardCheckIcon,
+  DropdownMenu,
   LinkStrokeIcon,
   SliderToggle,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useState } from "react";
+import React, { useState } from "react";
 
 import { ChatSessionVisibility } from "@app/types/chat";
 
@@ -35,8 +35,6 @@ export function AppLayoutChatTitle({
     }, 1000);
   };
 
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
     <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">
       <div className="overflow-hidden truncate">
@@ -50,7 +48,7 @@ export function AppLayoutChatTitle({
               size="sm"
               labelVisible={false}
               tooltipPosition="below"
-              type="secondaryWarning"
+              variant="secondaryWarning"
               label="Delete"
               icon={TrashIcon}
               onClick={onDelete}
@@ -60,74 +58,55 @@ export function AppLayoutChatTitle({
 
         {!readOnly && (
           <>
-            <Button
-              size="sm"
-              label="Share"
-              icon={ArrowUpOnSquareIcon}
-              type="secondary"
-              onClick={() => setIsOpen(true)}
-            />
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  size="sm"
+                  label="Share"
+                  icon={ArrowUpOnSquareIcon}
+                  variant="secondary"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items width={280}>
+                <div className="flex flex-col gap-y-4 py-4">
+                  <div className="flex flex-col gap-y-2">
+                    <div className="flex flex-row">
+                      <div className="grow text-sm font-medium text-element-800">
+                        Share with the Workspace
+                      </div>
+                      <div>
+                        <SliderToggle
+                          selected={visibility === "workspace"}
+                          onClick={() => {
+                            onUpdateVisibility(
+                              visibility === "workspace"
+                                ? "private"
+                                : "workspace"
+                            );
+                          }}
+                        />
+                      </div>
+                    </div>
 
-            <Transition show={isOpen} as={Fragment}>
-              <Dialog onClose={() => setIsOpen(false)}>
-                <div className="fixed inset-0">
-                  <div className="flex w-full flex-col items-end">
-                    <Transition.Child
-                      as={Fragment}
-                      enter="transition ease-out duration-200"
-                      enterFrom="transform -translate-y-4 opacity-0 scale-100"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <Dialog.Panel className="mx-16 mt-16 w-64 rounded-md bg-white py-1 shadow-lg ring-1 ring-slate-100 focus:outline-none">
-                        <div className="flex flex-col gap-y-3 px-3 py-3">
-                          <div className="flex flex-row">
-                            <div className="flex flex-col">
-                              <div className="text-sm font-medium text-element-800">
-                                Share with the Workspace
-                              </div>
-                              <div className="text-xs font-normal text-element-700">
-                                Make visible to all your co-workers in "All
-                                conversations".
-                              </div>
-                            </div>
-                            <div>
-                              <SliderToggle
-                                selected={visibility === "workspace"}
-                                onClick={() => {
-                                  onUpdateVisibility(
-                                    visibility === "workspace"
-                                      ? "private"
-                                      : "workspace"
-                                  );
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex justify-center">
-                            <Button
-                              type="secondary"
-                              size="sm"
-                              label={
-                                copyLinkSuccess ? "Copied!" : "Copy the link"
-                              }
-                              icon={
-                                copyLinkSuccess
-                                  ? ClipboardCheckIcon
-                                  : LinkStrokeIcon
-                              }
-                              onClick={handleClick}
-                            />
-                          </div>
-                        </div>
-                      </Dialog.Panel>
-                    </Transition.Child>
+                    <div className="text-sm font-normal text-element-700">
+                      Make visible to all your co-workers in "All
+                      conversations".
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      label={copyLinkSuccess ? "Copied!" : "Copy the link"}
+                      icon={
+                        copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon
+                      }
+                      onClick={handleClick}
+                    />
                   </div>
                 </div>
-              </Dialog>
-            </Transition>
+              </DropdownMenu.Items>
+            </DropdownMenu>
           </>
         )}
       </div>

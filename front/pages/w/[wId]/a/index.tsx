@@ -117,7 +117,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
         description="Secrets used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
         action={{
           label: "Create Secret API Key",
-          type: "tertiary",
+          variant: "tertiary",
           onClick: async () => {
             await handleGenerate();
           },
@@ -183,7 +183,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                 {key.status === "active" ? (
                   <div>
                     <Button
-                      type="secondaryWarning"
+                      variant="secondaryWarning"
                       disabled={key.status != "active"}
                       onClick={async () => {
                         await handleRevoke(key);
@@ -316,7 +316,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                 </div>
                 <div>
                   <Button
-                    type={
+                    variant={
                       configs[provider.providerId] ? "tertiary" : "secondary"
                     }
                     disabled={!provider.built}
@@ -389,7 +389,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                 <div>
                   <Button
                     disabled={!provider.built}
-                    type={
+                    variant={
                       configs[provider.providerId] ? "tertiary" : "secondary"
                     }
                     onClick={() => {
@@ -451,7 +451,7 @@ export default function Developers({
           description="Your Large Language Model apps."
           action={{
             label: "Create App",
-            type: "tertiary",
+            variant: "tertiary",
             onClick: async () => {
               void router.push(`/w/${owner.sId}/a/new`);
             },
@@ -516,7 +516,7 @@ export default function Developers({
                   </p>
                   <p className="mt-2">
                     <Link href="https://docs.dust.tt" target="_blank">
-                      <Button type="tertiary" label="View Documentation" />
+                      <Button variant="tertiary" label="View Documentation" />
                     </Link>
                   </p>
                 </>

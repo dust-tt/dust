@@ -12,6 +12,56 @@ const createActionRegistry = <K extends string, R extends Record<K, Action>>(
 ) => registry;
 
 export const DustProdActionRegistry = createActionRegistry({
+  "assistant-v2-inputs-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "f4816b1e13",
+      appHash:
+        "67c42a248bd203a7ae3a1cf895e8b83e2f8d771e42d8ec46e4d5dadae2623f9f",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-16k",
+        function_call: "auto",
+        use_cache: false,
+      },
+    },
+  },
+  "assistant-v2-retrieval": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "471b6aa923",
+      appHash:
+        "3b634a84930020a7a18d3b32f4c5f5cd85690bf4958127ba51061fb101edea33",
+    },
+    config: {
+      DATASOURCE: {
+        data_sources: [],
+        top_k: 32,
+        filter: { tags: null, parent: null, timestamp: null },
+        use_cache: false,
+      },
+    },
+  },
+  "assistant-v2-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "6a27050429",
+      appHash:
+        "356e16f5254284cc1c08512bebf9638bbc3e94eb5b29ac27599ccce7bee7843c",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: null,
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+
   "chat-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

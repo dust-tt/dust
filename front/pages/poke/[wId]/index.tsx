@@ -287,14 +287,14 @@ const WorkspacePage = ({
               <div className="mt-4 flex-row">
                 <Button
                   label="Downgrade"
-                  type="secondaryWarning"
+                  variant="secondaryWarning"
                   onClick={onDowngrade}
                   disabled={!isFullyUpgraded || workspaceHasManagedDataSources}
                 />
 
                 <Button
                   label="Upgrade"
-                  type="secondary"
+                  variant="secondary"
                   onClick={onUpgrade}
                   disabled={isFullyUpgraded}
                 />
@@ -319,7 +319,7 @@ const WorkspacePage = ({
                   <h3 className="mb-2 text-lg font-semibold">{ds.name}</h3>
                   <Button
                     label="Delete"
-                    type="secondaryWarning"
+                    variant="secondaryWarning"
                     onClick={() => onDataSourcesDelete(ds.name)}
                   />
                 </div>

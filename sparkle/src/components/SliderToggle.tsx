@@ -3,7 +3,7 @@ import React, { MouseEventHandler } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 type SliderToggleProps = {
-  onClick?: MouseEventHandler<HTMLButtonElement>;
+  onClick?: MouseEventHandler<HTMLElement>;
   className?: string;
   disabled?: boolean;
   selected?: boolean;

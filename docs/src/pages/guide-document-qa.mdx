@@ -36,7 +36,8 @@ We will use a Data Source to automatically chunk, embed and index 4 IPCC reports
 <Note>
   You can review this section without the need to actually create the data
   source, and use the pre-filled public Data Source
-  [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6) in the rest of the guide.
+  [ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6) in the
+  rest of the guide.
 </Note>
 
 You can create your first Data Source from your Dust home page by selecting the **Data Sources** tab
@@ -81,7 +82,7 @@ if it already existed for the provided identifier.
 </Image>
 
 Once the 4 documents are inserted, you should be able to see them in the Data Source interface. You
-can review the public [ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6) Data Source as an
+can review the public [ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6) Data Source as an
 example.
 
 <Image
@@ -94,14 +95,14 @@ example.
 </Image>
 
 Now that your Data Source is ready (or you plan to use
-[ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6)), you can move on to the next section to create
+[ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6)), you can move on to the next section to create
 a Q&A app that will use it.
 
 ## Creating a Q&A app
 
 In this section we'll provide step-by-step instructions to create a Q&A app that will use the data
 source to answer user-provided questions. You can find a finalized version of the app
-[here](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6).
+[here](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6).
 
 ### `input` block
 
@@ -123,7 +124,7 @@ Data Source:
 
 Once the `input` block points to your new dataset you can add a `data_source` block and select your
 Data Source. If you want to use the publicly available Data Source
-[ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6), edit the user name to `spolu` and then select
+[ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6), edit the user name to `spolu` and then select
 `ipcc-ar6`. You should set `top_k` to 12, meaning that we'll consume 3072 tokens of context to
 present chunks to the model.
 
@@ -146,7 +147,7 @@ At this point you can run your app and introspect the outputs of the `data_sourc
 We will use `gpt-3.5-turbo` to process the chunks and generate an answer to the user.
 
 We use the following instruction in the context of
-[ipcc-ar6](https://dust.tt/w/3e26b0e764/ds/ipcc-ar6):
+[ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6):
 
 ```txt
 You are an helpful assistant. For each user question, you'll receive 12 additional system

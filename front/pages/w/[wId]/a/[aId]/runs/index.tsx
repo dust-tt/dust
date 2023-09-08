@@ -172,7 +172,7 @@ export default function RunsView({
           <div className="flex flex-initial">
             <div className="flex">
               <Button
-                type="tertiary"
+                variant="tertiary"
                 disabled={offset < limit}
                 onClick={() => {
                   if (offset >= limit) {
@@ -186,7 +186,7 @@ export default function RunsView({
             </div>
             <div className="ml-2 flex">
               <Button
-                type="tertiary"
+                variant="tertiary"
                 disabled={offset + limit >= total}
                 onClick={() => {
                   if (offset + limit < total) {
