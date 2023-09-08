@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
+import logger from "@app/logger/logger";
 import {
   ConversationType,
   Mention,
@@ -48,19 +49,14 @@ export async function postUserMessageWithPubSub(
         });
         break;
       }
-      // missing retrieval_documents because it does not have a messageId field.
-      case "agent_generation_tokens":
+      case "retrieval_params":
       case "agent_error":
       case "agent_action_success":
-      case "retrieval_documents": {
+      case "retrieval_documents":
+      case "generation_tokens":
+      case "agent_generation_success":
+      case "agent_message_success": {
         const pubsubChannel = getMessageChannelId(event.messageId);
-        await client.xAdd(pubsubChannel, "*", {
-          payload: JSON.stringify(event),
-        });
-        break;
-      }
-      case "agent_generation_success": {
-        const pubsubChannel = getMessageChannelId(event.message.sId);
         await client.xAdd(pubsubChannel, "*", {
           payload: JSON.stringify(event),
         });
@@ -68,26 +64,29 @@ export async function postUserMessageWithPubSub(
       }
 
       default:
-        throw new Error(`Unhandled event. ${event.type}`);
+        ((blockParent: never) => {
+          logger.error("Unknown event type", blockParent);
+        })(event);
+        return null;
     }
   }
 }
 
 export async function* getConversationEvents(
-  conversationSID: string,
+  conversationId: string,
   lastEventId: string | null
 ): AsyncGenerator<{
   eventId: string;
   data: UserMessageNewEvent | AgentMessageNewEvent;
 }> {
-  const pubsubChannel = getConversationChannelId(conversationSID);
+  const pubsubChannel = getConversationChannelId(conversationId);
   const client = await redisClient();
 
   while (true) {
     const events = await client.xRead(
       { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
       // weird, xread does not return on new message when count is = 1. Anything over 1 works.
-      { COUNT: 10, BLOCK: 10000 }
+      { COUNT: 10, BLOCK: 60 * 1000 }
     );
     if (!events) {
       return;
@@ -108,7 +107,7 @@ export async function* getConversationEvents(
 }
 
 export async function* getMessagesEvents(
-  messageSID: string,
+  messageId: string,
   lastEventId: string | null
 ): AsyncGenerator<{
   eventId: string;
@@ -119,11 +118,11 @@ export async function* getMessagesEvents(
     | AgentGenerationTokensEvent
     | AgentGenerationSuccessEvent;
 }> {
-  const pubsubChannel = getMessageChannelId(messageSID);
+  const pubsubChannel = getMessageChannelId(messageId);
   const client = await redisClient();
   const events = await client.xRead(
     { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-    { COUNT: 1, BLOCK: 10000 }
+    { COUNT: 10, BLOCK: 60 * 1000 }
   );
   if (!events) {
     return;

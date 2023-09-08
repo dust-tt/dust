@@ -71,7 +71,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const p = postUserMessageWithPubSub(auth, {
+      // Not awaiting this promise on prupose.
+      // We want to answer "OK" to the client ASAP and process the events in the background.
+      void postUserMessageWithPubSub(auth, {
         conversation: {
           id: conv.id,
           created: conv.created.getTime(),
@@ -92,7 +94,6 @@ async function handler(
         },
       });
       res.status(200).end();
-      await p;
       return;
 
     default:
