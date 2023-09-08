@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { DataSource, Workspace } from "@app/lib/models";
 import {
   AgentDataSourceConfiguration,
@@ -17,41 +18,99 @@ import {
 import {
   AgentActionConfigurationType,
   AgentConfigurationType,
+  AgentFullConfigurationType as AgentFullConfigurationType,
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 
 /**
+ * Get an agent full configuration from its name
+ */
+export async function getAgent(
+  auth: Authenticator,
+  sId: string
+): Promise<AgentFullConfigurationType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find Agent: no workspace");
+  }
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      sId: sId,
+      workspaceId: owner.id,
+    },
+  });
+  if (!agent) {
+    throw new Error("Cannot find Agent: no workspace");
+  }
+  const agentGeneration = await AgentGenerationConfiguration.findOne({
+    where: {
+      agentId: agent.id,
+    },
+  });
+  const agentAction = await AgentRetrievalConfiguration.findOne({
+    where: {
+      agentId: agent.id,
+    },
+  });
+  const agentDataSources = agentAction?.id
+    ? await AgentDataSourceConfiguration.findAll({
+        where: {
+          retrievalConfigurationId: agentAction?.id,
+        },
+      })
+    : [];
+
+  return {
+    agent: await _buildAgentConfigurationTypeFromModel({ agent }),
+    action: agentAction
+      ? await _buildAgentActionConfigurationTypeFromModel(
+          agentAction,
+          agentDataSources || []
+        )
+      : null,
+    generation: agentGeneration
+      ? _buildAgentGenerationConfigurationTypeFromModel(agentGeneration)
+      : null,
+  };
+}
+
+/**
  * Builds the agent configuration type from the model
  */
-export async function _getAgentConfigurationType({
+export async function _buildAgentConfigurationTypeFromModel({
   agent,
-  action,
-  generation,
-  dataSources,
 }: {
   agent: AgentConfiguration;
-  action: AgentRetrievalConfiguration | null;
-  generation: AgentGenerationConfiguration | null;
-  dataSources: AgentDataSourceConfiguration[] | null;
 }): Promise<AgentConfigurationType> {
   return {
+    id: agent.id,
     sId: agent.sId,
     name: agent.name,
     pictureUrl: agent.pictureUrl,
     status: agent.status,
-    action: action
-      ? await _buildAgentActionConfigurationType(action, dataSources || [])
-      : null,
-    generation: generation
-      ? _buildAgentGenerationConfigurationType(generation)
-      : null,
+  };
+}
+
+/**
+ * Builds the agent generation configuration type from the model
+ */
+export function _buildAgentGenerationConfigurationTypeFromModel(
+  generation: AgentGenerationConfiguration
+): AgentGenerationConfigurationType {
+  return {
+    id: generation.id,
+    prompt: generation.prompt,
+    model: {
+      providerId: generation.modelProvider,
+      modelId: generation.modelId,
+    },
   };
 }
 
 /**
  * Builds the agent action configuration type from the model
  */
-export async function _buildAgentActionConfigurationType(
+export async function _buildAgentActionConfigurationTypeFromModel(
   action: AgentRetrievalConfiguration,
   dataSourcesConfig: AgentDataSourceConfiguration[]
 ): Promise<AgentActionConfigurationType> {
@@ -132,20 +191,5 @@ export async function _buildAgentActionConfigurationType(
     topK: action.topK,
     type: "retrieval_configuration",
     dataSources: retrievalDataSourcesConfig,
-  };
-}
-
-/**
- * Builds the agent generation configuration type from the model
- */
-export function _buildAgentGenerationConfigurationType(
-  generation: AgentGenerationConfiguration
-): AgentGenerationConfigurationType {
-  return {
-    prompt: generation.prompt,
-    model: {
-      providerId: generation.modelProvider,
-      modelId: generation.modelId,
-    },
   };
 }

@@ -1,3 +1,4 @@
+import { ModelId } from "@app/lib/databases";
 import { RetrievalConfigurationType } from "@app/types/assistant/actions/retrieval";
 
 /**
@@ -29,7 +30,9 @@ export type AgentActionConfigurationType = RetrievalConfigurationType;
 //   ]
 // }
 // ```
+
 export type AgentActionSpecification = {
+  id: ModelId;
   name: string;
   description: string;
   inputs: {
@@ -44,6 +47,7 @@ export type AgentActionSpecification = {
  */
 
 export type AgentGenerationConfigurationType = {
+  id: ModelId;
   prompt: string;
   model: {
     providerId: string;
@@ -59,16 +63,18 @@ export type AgentConfigurationStatus = "active" | "archived";
 export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {
+  id: ModelId;
   sId: string;
   status: AgentConfigurationStatus;
-
   name: string;
   pictureUrl: string | null;
+};
 
+export type AgentFullConfigurationType = {
+  agent: AgentConfigurationType;
   // If undefined, no action performed, otherwise the action is
   // performed (potentially NoOp eg autoSkip above).
   action: AgentActionConfigurationType | null;
-
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 };

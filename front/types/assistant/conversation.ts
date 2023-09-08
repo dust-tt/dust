@@ -1,8 +1,8 @@
 import { ModelId } from "@app/lib/databases";
+import { AgentFullConfigurationType } from "@app/types/assistant/agent";
 import { UserType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
-import { AgentConfigurationType } from "./agent";
 
 /**
  * Mentions
@@ -91,7 +91,7 @@ export type AgentMessageType = {
   version: number;
   parentMessageId: string | null;
 
-  configuration: AgentConfigurationType;
+  configuration: AgentFullConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
   message: string | null;

@@ -26,7 +26,7 @@ import {
 } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionSpecification,
-  AgentConfigurationType,
+  AgentFullConfigurationType,
 } from "@app/types/assistant/agent";
 import {
   AgentMessageType,
@@ -167,6 +167,7 @@ export async function retrievalActionSpecification(
   }
 
   return {
+    id: configuration.id,
     name: "search_data_sources",
     description:
       "Search the data sources specified by the user for information to answer their request." +
@@ -315,7 +316,7 @@ export type RetrievalSuccessEvent = {
 // error is expected to be stored by the caller on the parent agent message.
 export async function* runRetrieval(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentFullConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -348,7 +349,7 @@ export async function* runRetrieval(
     return yield {
       type: "retrieval_error",
       created: Date.now(),
-      configurationId: configuration.sId,
+      configurationId: configuration.agent.sId,
       messageId: agentMessage.sId,
       error: {
         code: "retrieval_parameters_generation_error",
@@ -432,7 +433,7 @@ export async function* runRetrieval(
     return yield {
       type: "retrieval_error",
       created: Date.now(),
-      configurationId: configuration.sId,
+      configurationId: configuration.agent.sId,
       messageId: agentMessage.sId,
       error: {
         code: "retrieval_search_error",
@@ -449,7 +450,7 @@ export async function* runRetrieval(
       return yield {
         type: "retrieval_error",
         created: Date.now(),
-        configurationId: configuration.sId,
+        configurationId: configuration.agent.sId,
         messageId: agentMessage.sId,
         error: {
           code: "retrieval_search_error",
@@ -528,7 +529,7 @@ export async function* runRetrieval(
   yield {
     type: "retrieval_documents",
     created: Date.now(),
-    configurationId: configuration.sId,
+    configurationId: configuration.agent.sId,
     messageId: agentMessage.sId,
     documents,
   };
@@ -536,7 +537,7 @@ export async function* runRetrieval(
   yield {
     type: "retrieval_success",
     created: Date.now(),
-    configurationId: configuration.sId,
+    configurationId: configuration.agent.sId,
     messageId: agentMessage.sId,
     action: {
       id: action.id,
