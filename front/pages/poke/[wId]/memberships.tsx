@@ -115,7 +115,7 @@ const MembershipsPage = ({
                   <div>role: {m.workspaces[0].role}</div>
                   <Button
                     label="Revoke"
-                    type="secondaryWarning"
+                    variant="secondaryWarning"
                     disabled={m.workspaces[0].role === "none"}
                     onClick={() => onRevoke(m)}
                   />

@@ -385,9 +385,7 @@ export async function syncNonThreaded(
   const documentId = `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
-  const createdAt = firstMessage?.ts
-    ? parseInt(firstMessage.ts, 10) * 1000
-    : undefined;
+
   if (firstMessage && firstMessage.ts) {
     const linkRes = await client.chat.getPermalink({
       channel: channelId,
@@ -397,6 +395,10 @@ export async function syncNonThreaded(
       sourceUrl = linkRes.permalink;
     }
   }
+  const lastMessage = messages[messages.length - 1];
+  const createdAt = lastMessage?.ts
+    ? parseInt(lastMessage.ts, 10) * 1000
+    : undefined;
 
   const tags = getTagsForPage(documentId, channelId, channelName);
   await SlackMessages.upsert({
@@ -531,9 +533,7 @@ export async function syncThread(
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;
-  const createdAt = firstMessage?.ts
-    ? parseInt(firstMessage.ts, 10) * 1000
-    : undefined;
+
   if (firstMessage && firstMessage.ts) {
     const linkRes = await client.chat.getPermalink({
       channel: channelId,
@@ -543,6 +543,10 @@ export async function syncThread(
       sourceUrl = linkRes.permalink;
     }
   }
+  const lastMessage = allMessages[allMessages.length - 1];
+  const createdAt = lastMessage?.ts
+    ? parseInt(lastMessage.ts, 10) * 1000
+    : undefined;
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 

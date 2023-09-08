@@ -4,6 +4,9 @@ import { RetrievalConfigurationType } from "@app/types/assistant/actions/retriev
  * Agent Action configuration
  */
 
+// New AgentActionConfigurationType checklist:
+// - Add the type to the union type below
+// - Add model rendering support in `renderConversationForModel`
 export type AgentActionConfigurationType = RetrievalConfigurationType;
 
 // Each AgentActionConfigurationType is capable of generating this type at runtime to specify which
@@ -26,7 +29,9 @@ export type AgentActionConfigurationType = RetrievalConfigurationType;
 //   ]
 // }
 // ```
-export type AgentActionInputsSpecification = {
+export type AgentActionSpecification = {
+  name: string;
+  description: string;
   inputs: {
     name: string;
     description: string;
@@ -38,10 +43,10 @@ export type AgentActionInputsSpecification = {
  * Agent Message configuration
  */
 
-export type AgentMessageConfigurationType = {
+export type AgentGenerationConfigurationType = {
   prompt: string;
   model: {
-    provider: string;
+    providerId: string;
     modelId: string;
   };
 };
@@ -51,6 +56,7 @@ export type AgentMessageConfigurationType = {
  */
 
 export type AgentConfigurationStatus = "active" | "archived";
+export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {
   sId: string;
@@ -64,5 +70,5 @@ export type AgentConfigurationType = {
   action: AgentActionConfigurationType | null;
 
   // If undefined, no text generation.
-  message: AgentMessageConfigurationType | null;
+  generation: AgentGenerationConfigurationType | null;
 };

@@ -119,7 +119,7 @@ export default function DatasetsView({
               <div className="flex flex-row items-center justify-between">
                 <Button
                   disabled={readOnly}
-                  type="primary"
+                  variant="primary"
                   label="New Dataset"
                   icon={PlusIcon}
                   onClick={() => {

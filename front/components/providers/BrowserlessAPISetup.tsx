@@ -177,7 +177,7 @@ export default function BrowserlessAPISetup({
                     <Button
                       onClick={() => setOpen(false)}
                       label="Cancel"
-                      type="secondary"
+                      variant="secondary"
                     />
                   </div>
                   <div className="flex flex-initial">

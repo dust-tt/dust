@@ -201,7 +201,7 @@ export default function AppRun({
                   disabled={true}
                   icon={CheckCircleIcon}
                   label="Latest version"
-                  type="secondary"
+                  variant="secondary"
                 />
               )}
             </p>

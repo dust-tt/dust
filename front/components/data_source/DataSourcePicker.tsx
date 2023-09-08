@@ -70,7 +70,7 @@ export default function DataSourcePicker({
       <div className="flex items-center">
         {readOnly ? (
           name ? (
-            <Link href={`/${owner.sId}/ds/${name}`}>
+            <Link href={`/${owner.sId}/builder/data-sources/${name}`}>
               <div className="text-sm font-bold text-action-500">{name}</div>
             </Link>
           ) : (
@@ -91,7 +91,7 @@ export default function DataSourcePicker({
               >
                 {name && name.length > 0 ? (
                   <>
-                    <Link href={`/w/${owner.sId}/ds/${name}`}>
+                    <Link href={`/w/${owner.sId}/builder/data-sources/${name}`}>
                       <div className="mr-1 text-sm font-bold text-action-500">
                         {name}
                       </div>
@@ -102,7 +102,7 @@ export default function DataSourcePicker({
                   "Select DataSource"
                 ) : (
                   <Link
-                    href={`/w/${owner.sId}/ds`}
+                    href={`/w/${owner.sId}/builder/data-sources`}
                     className={classNames(
                       readOnly
                         ? "border-white text-gray-300"

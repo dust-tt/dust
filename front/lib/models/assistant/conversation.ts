@@ -8,30 +8,44 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
 import {
-  AssistantAgentMessageStatus,
-  AssistantConversationVisibility,
-  AssistantMessageVisibility,
+  AgentMessageStatus,
+  ConversationVisibility,
+  MessageVisibility,
 } from "@app/types/assistant/conversation";
 
-export class AssistantConversation extends Model<
-  InferAttributes<AssistantConversation>,
-  InferCreationAttributes<AssistantConversation>
+export class Conversation extends Model<
+  InferAttributes<Conversation>,
+  InferCreationAttributes<Conversation>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare sId: string;
   declare title: string | null;
   declare created: Date;
-  declare visibility: AssistantConversationVisibility;
+  declare visibility: CreationOptional<ConversationVisibility>;
 }
 
-AssistantConversation.init(
+Conversation.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     sId: {
       type: DataTypes.STRING,
@@ -53,16 +67,19 @@ AssistantConversation.init(
     },
   },
   {
-    modelName: "assistant_conversation",
+    modelName: "conversation",
     sequelize: front_sequelize,
   }
 );
 
-export class AssistantUserMessage extends Model<
-  InferAttributes<AssistantUserMessage>,
-  InferCreationAttributes<AssistantUserMessage>
+export class UserMessage extends Model<
+  InferAttributes<UserMessage>,
+  InferCreationAttributes<UserMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare message: string;
 
   declare userContextUsername: string;
@@ -71,15 +88,25 @@ export class AssistantUserMessage extends Model<
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
 }
 
-AssistantUserMessage.init(
+UserMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     message: {
       type: DataTypes.TEXT,
@@ -107,32 +134,48 @@ AssistantUserMessage.init(
     },
   },
   {
-    modelName: "assistant_user_message",
+    modelName: "user_message",
     sequelize: front_sequelize,
   }
 );
 
-User.hasMany(AssistantUserMessage, { foreignKey: "userId" });
+User.hasMany(UserMessage, {
+  foreignKey: { name: "userId" },
+});
 
-export class AssistantAgentMessage extends Model<
-  InferAttributes<AssistantAgentMessage>,
-  InferCreationAttributes<AssistantAgentMessage>
+export class AgentMessage extends Model<
+  InferAttributes<AgentMessage>,
+  InferCreationAttributes<AgentMessage>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-  declare status: CreationOptional<AssistantAgentMessageStatus>;
+  declare status: CreationOptional<AgentMessageStatus>;
 
   declare message: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
+
+  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 }
 
-AssistantAgentMessage.init(
+AgentMessage.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     status: {
       type: DataTypes.STRING,
@@ -153,36 +196,59 @@ AssistantAgentMessage.init(
     },
   },
   {
-    modelName: "assistant_agent_message",
+    modelName: "agent_message",
+    indexes: [
+      {
+        unique: true,
+        fields: ["agentRetrievalActionId"],
+      },
+    ],
     sequelize: front_sequelize,
   }
 );
 
-export class AssistantMessage extends Model<
-  InferAttributes<AssistantMessage>,
-  InferCreationAttributes<AssistantMessage>
+AgentRetrievalAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
+  onDelete: "CASCADE",
+});
+
+export class Message extends Model<
+  InferAttributes<Message>,
+  InferCreationAttributes<Message>
 > {
-  declare id: number;
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare sId: string;
 
-  declare version: number;
+  declare version: CreationOptional<number>;
   declare rank: number;
-  declare visibility: CreationOptional<AssistantMessageVisibility>;
+  declare visibility: CreationOptional<MessageVisibility>;
 
-  declare assistantConversationId: ForeignKey<AssistantConversation["id"]>;
-  declare parentId: ForeignKey<AssistantMessage["id"]> | null;
-  declare assistantUserMessageId: ForeignKey<AssistantUserMessage["id"]> | null;
-  declare assistantAgentMessageId: ForeignKey<
-    AssistantAgentMessage["id"]
-  > | null;
+  declare conversationId: ForeignKey<Conversation["id"]>;
+
+  declare parentId: ForeignKey<Message["id"]> | null;
+  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 
-AssistantMessage.init(
+Message.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     sId: {
       type: DataTypes.STRING,
@@ -205,38 +271,37 @@ AssistantMessage.init(
     },
   },
   {
-    modelName: "assistant_message",
+    modelName: "message",
     sequelize: front_sequelize,
     indexes: [
       {
         unique: true,
-        fields: ["version", "assistantConversationId", "rank"],
+        fields: ["version", "conversationId", "rank"],
       },
     ],
     hooks: {
-      // TODO @fontanierh: check if we want to add a Check Constraint (from db.ts ?)
       beforeValidate: (message) => {
-        if (
-          (message.assistantUserMessageId === null) ===
-          (message.assistantAgentMessageId === null)
-        ) {
+        if (!message.userMessageId === !message.agentMessageId) {
           throw new Error(
-            "Exactly one of assistantUserMessageId, assistantAgentMessageId must be non-null"
+            "Exactly one of userMessageId, agentMessageId must be non-null"
           );
         }
       },
     },
   }
 );
-AssistantConversation.hasMany(AssistantMessage, {
-  foreignKey: "assistantConversationId",
+Conversation.hasMany(Message, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "CASCADE",
 });
-AssistantUserMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantUserMessageId",
+UserMessage.hasOne(Message, {
+  foreignKey: "userMessageId",
+  as: "_message",
 });
-AssistantAgentMessage.hasOne(AssistantMessage, {
-  foreignKey: "assistantAgentMessageId",
+AgentMessage.hasOne(Message, {
+  foreignKey: "agentMessageId",
+  as: "_message",
 });
-AssistantMessage.belongsTo(AssistantMessage, {
+Message.belongsTo(Message, {
   foreignKey: "parentId",
 });

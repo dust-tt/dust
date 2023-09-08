@@ -23,5 +23,5 @@ export type GensTemplateType = {
   color: string;
   sId: string;
   visibility: GensTemplateVisibilityType;
-  userId?: number;
+  userId: number | null;
 };

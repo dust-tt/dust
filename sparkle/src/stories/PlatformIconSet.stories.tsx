@@ -4,7 +4,7 @@ import { Icon } from "../index_with_tw_base";
 import * as PlatformIcons from "../logo/platforms";
 
 export default {
-  title: "Assets/Platform_Icons",
+  title: "Assets/PlatformLogos",
 };
 
 const gridStyle = {
@@ -21,7 +21,7 @@ const itemStyle = {
   width: "100%",
 };
 
-export const PlatformIconSet = () => (
+export const PlatformLogoSet = () => (
   <div style={gridStyle}>
     {Object.entries(PlatformIcons).map(([iconName, IconComponent]) => {
       const CurrentIcon = (
@@ -31,7 +31,7 @@ export const PlatformIconSet = () => (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="lg" />
           <div style={itemStyle as React.CSSProperties} className="s-text-base">
-            {iconName + "Icon"}
+            {iconName + "Logo"}
           </div>
         </div>
       );

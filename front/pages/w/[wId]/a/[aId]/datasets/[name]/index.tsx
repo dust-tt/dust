@@ -197,7 +197,7 @@ export default function ViewDatasetView({
                         disabled={disable || loading}
                         onClick={() => handleSubmit()}
                         label="Update"
-                        type="primary"
+                        variant="primary"
                       />
                     </div>
                   </div>

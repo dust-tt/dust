@@ -1,12 +1,23 @@
 import { Menu, Transition } from "@headlessui/react";
-import React, { ComponentType, Fragment } from "react";
+import React, {
+  ComponentType,
+  Fragment,
+  MutableRefObject,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { ChevronDown } from "@sparkle/icons/solid";
+import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem } from "./Item";
 import { Tooltip, TooltipProps } from "./Tooltip";
+
+const ButtonRefContext =
+  React.createContext<MutableRefObject<HTMLButtonElement | null> | null>(null);
 
 const labelClasses = {
   base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
@@ -50,18 +61,22 @@ export interface DropdownMenuProps {
 }
 
 export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
+  const buttonRef = useRef(null);
   return (
-    <Menu
-      as="div"
-      className={classNames(className, "s-relative s-inline-block")}
-    >
-      {children}
-    </Menu>
+    <ButtonRefContext.Provider value={buttonRef}>
+      <Menu
+        as="div"
+        className={classNames(className, "s-relative s-inline-block")}
+      >
+        {children}
+      </Menu>
+    </ButtonRefContext.Provider>
   );
 }
 
 export interface DropdownButtonProps {
   label?: string;
+  type?: "menu" | "select";
   tooltip?: string;
   tooltipPosition?: TooltipProps["position"];
   icon?: ComponentType;
@@ -72,6 +87,7 @@ export interface DropdownButtonProps {
 
 DropdownMenu.Button = function ({
   label,
+  type = "menu",
   tooltip,
   icon,
   children,
@@ -105,10 +121,13 @@ DropdownMenu.Button = function ({
     disabled ? chevronClasses.disabled : ""
   );
 
+  const buttonRef = useContext(ButtonRefContext);
+
   if (children) {
     return (
       <Menu.Button
         disabled={disabled}
+        ref={buttonRef}
         className={classNames(
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className,
@@ -133,6 +152,7 @@ DropdownMenu.Button = function ({
         <Tooltip label={tooltip} position={tooltipPosition}>
           <Menu.Button
             disabled={disabled}
+            ref={buttonRef}
             className={classNames(
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
@@ -142,7 +162,7 @@ DropdownMenu.Button = function ({
           >
             <Icon visual={icon} size="sm" className={finalIconClasses} />
             <Icon
-              visual={ChevronDown}
+              visual={type === "select" ? ChevronUpDown : ChevronDown}
               size="xs"
               className={finalChevronClasses}
             />
@@ -151,6 +171,7 @@ DropdownMenu.Button = function ({
       ) : (
         <Menu.Button
           disabled={disabled}
+          ref={buttonRef}
           className={classNames(
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
@@ -161,7 +182,7 @@ DropdownMenu.Button = function ({
           <Icon visual={icon} size="sm" className={finalIconClasses} />
           <span className={finalLabelClasses}>{label}</span>
           <Icon
-            visual={ChevronDown}
+            visual={type === "select" ? ChevronUpDown : ChevronDown}
             size="xs"
             className={finalChevronClasses}
           />
@@ -210,12 +231,20 @@ DropdownMenu.Items = function ({
   width = 160,
   children,
 }: DropdownItemsProps) {
+  const buttonRef = useContext(ButtonRefContext);
+  const [buttonHeight, setButtonHeight] = useState(0);
+
+  useEffect(() => {
+    if (buttonRef && buttonRef.current) {
+      setButtonHeight(buttonRef.current.offsetHeight);
+    }
+  }, []);
   const getOriginClass = (origin: string) => {
     switch (origin) {
       case "topLeft":
-        return "s-origin-top-left s-left-0 s-top-6";
+        return `s-origin-top-left s-left-0`;
       case "topRight":
-        return "s-origin-top-right s-right-0 s-top-6";
+        return `s-origin-top-right s-right-0`;
       case "bottomLeft":
         return "s-origin-bottom-left s-left-0 s-bottom-6";
       case "bottomRight":
@@ -240,6 +269,17 @@ DropdownMenu.Items = function ({
     }
   };
 
+  const styleInsert = (origin: string) => {
+    switch (origin) {
+      case "topLeft":
+        return { width: `${width}px`, top: `${buttonHeight + 8}px` };
+      case "topRight":
+        return { width: `${width}px`, top: `${buttonHeight + 8}px` };
+      default:
+        return { width: `${width}px` };
+    }
+  };
+
   return (
     <Transition
       as={Fragment}
@@ -254,7 +294,7 @@ DropdownMenu.Items = function ({
         className={`s-absolute s-z-10 ${getOriginClass(
           origin
         )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-px-4 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
-        style={{ width: `${width}px` }}
+        style={styleInsert(origin)}
       >
         <StandardItem.List>{children}</StandardItem.List>
       </Menu.Items>

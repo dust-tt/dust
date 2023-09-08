@@ -132,11 +132,22 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
   {
     id: string;
     name: string;
+    sharedDrive: boolean;
   }[]
 > {
   const drive = await getDriveClient(nangoConnectionId);
   let nextPageToken = undefined;
-  const ids = [];
+  const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
+  const myDriveRes = await drive.files.get({ fileId: "root" });
+  if (myDriveRes.status !== 200) {
+    throw new Error(
+      `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
+    );
+  }
+  if (!myDriveRes.data.id) {
+    throw new Error("My drive id is undefined");
+  }
+  ids.push({ id: myDriveRes.data.id, name: "My Drive", sharedDrive: false });
   do {
     const res = await drive.drives.list({
       pageSize: 100,
@@ -152,7 +163,7 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
     }
     for (const drive of res.data.drives) {
       if (drive.id && drive.name) {
-        ids.push({ id: drive.id, name: drive.name });
+        ids.push({ id: drive.id, name: drive.name, sharedDrive: true });
       }
     }
     nextPageToken = res.data.nextPageToken;
@@ -241,6 +252,7 @@ export async function syncFiles(
             authCredentials,
             dataSourceConfig,
             file,
+            startSyncTs,
             true // isBatchSync
           );
         } else {
@@ -261,6 +273,7 @@ async function syncOneFile(
   oauth2client: OAuth2Client,
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
+  startSyncTs: number,
   isBatchSync = false
 ): Promise<boolean> {
   const documentId = getDocumentId(file.id);
@@ -389,6 +402,12 @@ async function syncOneFile(
   });
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+    const parents = (
+      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
+    ).map((f) => f.id);
+    parents.push(file.id);
+    parents.reverse();
+
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
@@ -396,7 +415,7 @@ async function syncOneFile(
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
-      parents: [],
+      parents: parents,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
@@ -482,6 +501,7 @@ export async function incrementalSync(
   nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveId: string,
+  sharedDrive: boolean,
   startSyncTs: number,
   nextPageToken?: string
 ): Promise<string | undefined> {
@@ -498,7 +518,8 @@ export async function incrementalSync(
       nextPageToken = await getSyncPageToken(
         connectorId,
         nangoConnectionId,
-        driveId
+        driveId,
+        sharedDrive
       );
     }
 
@@ -507,15 +528,21 @@ export async function incrementalSync(
     const authCredentials = await getAuthObject(nangoConnectionId);
     const driveClient = await getDriveClient(authCredentials);
 
-    const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
-      await driveClient.changes.list({
+    let opts: drive_v3.Params$Resource$Changes$List = {
+      pageToken: nextPageToken,
+      pageSize: 100,
+      fields: "*",
+    };
+    if (sharedDrive) {
+      opts = {
+        ...opts,
         driveId: driveId,
-        pageToken: nextPageToken,
-        pageSize: 100,
-        fields: "*",
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
-      });
+      };
+    }
+    const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
+      await driveClient.changes.list(opts);
 
     if (changesRes.status !== 200) {
       throw new Error(
@@ -600,7 +627,8 @@ export async function incrementalSync(
         connectorId,
         authCredentials,
         dataSourceConfig,
-        driveFile
+        driveFile,
+        startSyncTs
       );
       logger.info({ file_id: change.file.id }, "done syncing file");
     }
@@ -635,7 +663,8 @@ export async function incrementalSync(
 async function getSyncPageToken(
   connectorId: ModelId,
   nangoConnectionId: string,
-  driveId: string
+  driveId: string,
+  sharedDrive: boolean
 ) {
   const last = await GoogleDriveSyncToken.findOne({
     where: {
@@ -649,10 +678,14 @@ async function getSyncPageToken(
   const driveClient = await getDriveClient(nangoConnectionId);
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
-    const startTokenRes = await driveClient.changes.getStartPageToken({
-      driveId: driveId,
-      supportsAllDrives: true,
-    });
+    let opts = {};
+    if (sharedDrive) {
+      opts = {
+        driveId: driveId,
+        supportsAllDrives: true,
+      };
+    }
+    const startTokenRes = await driveClient.changes.getStartPageToken(opts);
     if (startTokenRes.status !== 200) {
       throw new Error(
         `Error getting start page token. status_code: ${startTokenRes.status}. status_text: ${startTokenRes.statusText}`
@@ -833,7 +866,8 @@ export async function populateSyncTokens(connectorId: ModelId) {
     const lastSyncToken = await getSyncPageToken(
       connectorId,
       connector.connectionId,
-      drive.id
+      drive.id,
+      drive.sharedDrive
     );
     await GoogleDriveSyncToken.upsert({
       connectorId: connectorId,
@@ -915,7 +949,7 @@ export async function getGoogleDriveObject(
   return await driveObjectToDustType(file, authCredentials);
 }
 
-async function driveObjectToDustType(
+export async function driveObjectToDustType(
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
 ): Promise<GoogleDriveObjectType> {
@@ -984,4 +1018,30 @@ export async function markFolderAsVisited(
     parentId: file.parent,
     lastSeenTs: new Date(),
   });
+}
+
+export async function folderHasChildren(
+  connectorId: ModelId,
+  folderId: string
+): Promise<boolean> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const drive = await getDriveClient(connector.connectionId);
+  const res = await drive.files.list({
+    corpora: "allDrives",
+    pageSize: 1,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    fields:
+      "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+    q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+  });
+  if (!res.data.files) {
+    return false;
+  }
+
+  return res.data.files?.length > 0;
 }

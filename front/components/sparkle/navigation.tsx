@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   KeyIcon,
   PaperAirplaneIcon,
+  RobotIcon,
   Square3Stack3DIcon,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
@@ -23,7 +24,11 @@ import { WorkspaceType } from "@app/types/user";
  */
 export type TopNavigationId = "assistant" | "lab" | "settings";
 
-export type SubNavigationAdminId = "data_sources" | "workspace" | "developers";
+export type SubNavigationAdminId =
+  | "data_sources"
+  | "workspace"
+  | "developers"
+  | "assistants";
 export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
@@ -86,7 +91,7 @@ export const topNavigation = ({
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/ds`,
+      href: `/w/${owner.sId}/builder/data-sources`,
       current: current === "settings",
     });
   }
@@ -110,7 +115,7 @@ export const subNavigationAdmin = ({
       id: "data_sources",
       label: "Data Sources",
       icon: CloudArrowDownIcon,
-      href: `/w/${owner.sId}/ds`,
+      href: `/w/${owner.sId}/builder/data-sources`,
       current: current === "data_sources",
       subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
       subMenu: current === "data_sources" ? subMenu : undefined,
@@ -139,6 +144,17 @@ export const subNavigationAdmin = ({
       subMenuLabel: current === "developers" ? subMenuLabel : undefined,
       subMenu: current === "developers" ? subMenu : undefined,
     });
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      nav.push({
+        id: "assistants",
+        label: "Assistants Manager",
+        icon: RobotIcon,
+        href: `/w/${owner.sId}/builder/assistants`,
+        current: current === "assistants",
+        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
+        subMenu: current === "assistants" ? subMenu : undefined,
+      });
+    }
   }
 
   return nav;

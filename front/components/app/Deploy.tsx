@@ -87,7 +87,7 @@ export default function Deploy({
     <div>
       <Button
         label="deploy"
-        type="primary"
+        variant="primary"
         onClick={() => {
           setOpen(!open);
         }}
@@ -184,7 +184,7 @@ export default function Deploy({
                         <div className="flex-1"></div>
                         <div className="mt-1">
                           <Button
-                            type="primary"
+                            variant="primary"
                             onClick={handleCopyClick}
                             label={copyButtonText}
                             icon={ClipboardIcon}
@@ -199,7 +199,7 @@ export default function Deploy({
                         <Button
                           icon={DocumentTextIcon}
                           label="Visit API Reference"
-                          type="secondary"
+                          variant="secondary"
                           onClick={() => {
                             window.open(
                               "https://docs.dust.tt/runs",
@@ -215,7 +215,7 @@ export default function Deploy({
                     <div className="flex-1"></div>
                     <div className="flex flex-initial">
                       <Button
-                        type="secondary"
+                        variant="secondary"
                         onClick={() => setOpen(false)}
                         label="Close"
                       />

@@ -607,7 +607,7 @@ export default function ExecuteView({
               <div className="flex flex-initial">
                 <div className="">
                   <Button
-                    type="primary"
+                    variant="primary"
                     disabled={!canRun()}
                     onClick={() => handleRun()}
                     icon={PlayCircleIcon}

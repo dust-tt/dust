@@ -167,7 +167,7 @@ export default function AI21Setup({
                   <div className="flex-1"></div>
                   <div className="flex flex-initial">
                     <Button
-                      type="secondary"
+                      variant="secondary"
                       onClick={() => setOpen(false)}
                       label="Cancel"
                     />

@@ -8,6 +8,9 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      minHeight: (theme) => ({
+        ...theme("spacing"),
+      }),
       keyframes: {
         "move-square": {
           "0%": {

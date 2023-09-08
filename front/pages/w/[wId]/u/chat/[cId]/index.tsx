@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChevronDownIcon,
@@ -13,7 +14,6 @@ import {
   PaperAirplaneIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -121,7 +121,7 @@ export const getServerSideProps: GetServerSideProps<{
   if (user) {
     const stickyDataSourceSelectionRaw = await getUserMetadata(
       user,
-      "chat-data-sources-selection"
+      `chat-data-sources-selection-${owner.sId}`
     );
     if (stickyDataSourceSelectionRaw) {
       try {
@@ -383,7 +383,7 @@ export function RetrievalsView({
               <div className="flex flex-initial">
                 {expanded ? (
                   <IconButton
-                    type="secondary"
+                    variant="secondary"
                     size="sm"
                     icon={ChevronDownIcon}
                     onClick={() => {
@@ -392,7 +392,7 @@ export function RetrievalsView({
                   />
                 ) : (
                   <IconButton
-                    type="secondary"
+                    variant="secondary"
                     size="sm"
                     icon={ChevronRightIcon}
                     onClick={() => {
@@ -496,7 +496,7 @@ function CopyToClipboardElement({ message }: { message: ChatMessageType }) {
   return (
     <div className="invisible float-right hover:cursor-pointer group-hover:visible">
       <IconButton
-        type="tertiary"
+        variant="tertiary"
         icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
         onClick={handleClick}
       />
@@ -509,7 +509,6 @@ export function MessageView({
   message,
   loading,
   isLatestRetrieval,
-  readOnly,
   feedback,
 }: {
   user: UserType | null;
@@ -539,26 +538,13 @@ export function MessageView({
             )}
           >
             {message.role === "assistant" ? (
-              <Logo
-                shape="square"
-                type="colored-grey"
-                className={classNames(
-                  "mx-2 my-2 h-6 w-6",
-                  loading ? "animate-pulse" : ""
-                )}
-              ></Logo>
+              <Avatar
+                visual="/static/systemavatar/dust_avatar_full.png"
+                size="sm"
+                busy={loading}
+              />
             ) : (
-              <div className="flex">
-                {!readOnly && user?.image ? (
-                  <img
-                    className="h-10 w-10 rounded-xl"
-                    src={user?.image}
-                    alt=""
-                  />
-                ) : (
-                  <UserCircleIcon className="mx-2 my-2 h-6 w-6 text-slate-500"></UserCircleIcon>
-                )}
-              </div>
+              <Avatar visual={user?.image} size="sm" />
             )}
           </div>
           <div
@@ -1063,7 +1049,7 @@ export default function AppChat({
     void (async () => {
       let stickySelection: { [key: string]: boolean } = {};
       const currentStickySelectionRaw = await getUserMetadataFromClient(
-        "chat-data-sources-selection"
+        `chat-data-sources-selection-${owner.sId}`
       );
       if (currentStickySelectionRaw) {
         stickySelection = JSON.parse(currentStickySelectionRaw.value);
@@ -1073,7 +1059,7 @@ export default function AppChat({
         ...stickyDataSourceSelectionUpdate,
       };
       await setUserMetadataFromClient({
-        key: "chat-data-sources-selection",
+        key: `chat-data-sources-selection-${owner.sId}`,
         value: JSON.stringify(stickySelection),
       });
     })();
@@ -1229,11 +1215,13 @@ export default function AppChat({
                   </p>
                   <div className="pt-4 text-center">
                     <Button
-                      type={"primary"}
+                      variant={"primary"}
                       icon={CloudArrowDownIcon}
                       label="Set up your first Data Source"
                       onClick={() => {
-                        void router.push(`/w/${owner.sId}/ds`);
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources`
+                        );
                       }}
                     />
                   </div>
@@ -1338,7 +1326,7 @@ export default function AppChat({
                 {canTakeOwnership && (
                   <div className="mt-16 flex justify-center">
                     <Button
-                      type="primary"
+                      variant="primary"
                       label="Continue Conversation"
                       icon={RobotIcon}
                       onClick={handleTakeOwnership}

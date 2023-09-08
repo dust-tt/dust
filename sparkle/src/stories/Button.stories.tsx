@@ -14,25 +14,40 @@ type Story = StoryObj<typeof meta>;
 export const ButtonExamples = () => (
   <div className="s-flex s-flex-col s-gap-4">
     <div className="s-flex s-items-center s-gap-4">
-      <Button type="primary" size="md" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="primary"
+        variant="primary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="primary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled={true}
       />
-      <Button type="primary" size="sm" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="primary"
+        variant="primary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="primary"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled
       />
-      <Button type="primary" size="xs" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="primary"
+        variant="primary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="primary"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -41,39 +56,39 @@ export const ButtonExamples = () => (
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled={true}
       />
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled
       />
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="primaryWarning"
+        variant="primaryWarning"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -82,39 +97,39 @@ export const ButtonExamples = () => (
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button
-        type="secondary"
+        variant="secondary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondary"
+        variant="secondary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled={true}
       />
       <Button
-        type="secondary"
+        variant="secondary"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondary"
+        variant="secondary"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled
       />
       <Button
-        type="secondary"
+        variant="secondary"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondary"
+        variant="secondary"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -123,39 +138,39 @@ export const ButtonExamples = () => (
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled={true}
       />
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled
       />
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
       />
       <Button
-        type="secondaryWarning"
+        variant="secondaryWarning"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -163,25 +178,40 @@ export const ButtonExamples = () => (
       />
     </div>
     <div className="s-flex s-items-center s-gap-4">
-      <Button type="tertiary" size="md" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="tertiary"
+        variant="tertiary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="tertiary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled={true}
       />
-      <Button type="tertiary" size="sm" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="tertiary"
+        variant="tertiary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="tertiary"
         size="sm"
         label="Settings"
         icon={Cog6ToothIcon}
         disabled
       />
-      <Button type="tertiary" size="xs" label="Settings" icon={Cog6ToothIcon} />
       <Button
-        type="tertiary"
+        variant="tertiary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        variant="tertiary"
         size="xs"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -191,9 +221,249 @@ export const ButtonExamples = () => (
   </div>
 );
 
+export const ButtonMenuExamples = () => (
+  <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="menu"
+        variant="primary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="primary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="primary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="menu"
+        variant="primaryWarning"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="primaryWarning"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="primaryWarning"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="menu"
+        variant="secondary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="secondary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="secondary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="menu"
+        variant="secondaryWarning"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="secondaryWarning"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="secondaryWarning"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="menu"
+        variant="tertiary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="tertiary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="menu"
+        variant="tertiary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+  </div>
+);
+
+export const ButtonSelectExamples = () => (
+  <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="select"
+        variant="primary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="primary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="primary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="select"
+        variant="primaryWarning"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="primaryWarning"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="primaryWarning"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="select"
+        variant="secondary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="secondary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="secondary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="select"
+        variant="secondaryWarning"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="secondaryWarning"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="secondaryWarning"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        type="select"
+        variant="tertiary"
+        size="md"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="tertiary"
+        size="sm"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+      <Button
+        type="select"
+        variant="tertiary"
+        size="xs"
+        label="Settings"
+        icon={Cog6ToothIcon}
+      />
+    </div>
+  </div>
+);
+
 export const Primary: Story = {
   args: {
-    type: "primary",
+    variant: "primary",
     size: "xs",
     label: "Settings",
     icon: Cog6ToothIcon,
@@ -203,7 +473,7 @@ export const Primary: Story = {
 
 export const PrimaryWarning: Story = {
   args: {
-    type: "primaryWarning",
+    variant: "primaryWarning",
     size: "xs",
     label: "Settings",
     icon: Cog6ToothIcon,
@@ -213,7 +483,7 @@ export const PrimaryWarning: Story = {
 
 export const Secondary: Story = {
   args: {
-    type: "secondary",
+    variant: "secondary",
     size: "sm",
     label: "Settings",
     icon: Cog6ToothIcon,
@@ -223,7 +493,7 @@ export const Secondary: Story = {
 
 export const SecondaryWarning: Story = {
   args: {
-    type: "secondaryWarning",
+    variant: "secondaryWarning",
     size: "sm",
     label: "Settings",
     icon: Cog6ToothIcon,
@@ -233,7 +503,7 @@ export const SecondaryWarning: Story = {
 
 export const Tertiary: Story = {
   args: {
-    type: "tertiary",
+    variant: "tertiary",
     size: "md",
     label: "Settings",
     icon: Cog6ToothIcon,
@@ -243,7 +513,7 @@ export const Tertiary: Story = {
 
 export const IconOnlyPlusTooltip: Story = {
   args: {
-    type: "primary",
+    variant: "primary",
     size: "xs",
     label: "Settings",
     labelVisible: false,
