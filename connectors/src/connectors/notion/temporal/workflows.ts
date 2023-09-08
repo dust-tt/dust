@@ -10,6 +10,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
+import { UpsertActivityResult } from "@connectors/connectors/notion/temporal/activities";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
@@ -23,10 +24,13 @@ const { notionUpsertPageActivity, notionUpsertDatabaseActivity } =
     startToCloseTimeout: "60 minute",
   });
 
-const { notionGetToSyncActivity, syncGarbageCollectorActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minute",
-  });
+const {
+  notionGetToSyncActivity,
+  syncGarbageCollectorActivity,
+  updateParentsFieldsActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minute",
+});
 
 const {
   saveSuccessSyncActivity,
@@ -89,7 +93,7 @@ export async function notionSyncWorkflow(
     const childWorkflowQueue = new PQueue({
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
-    const promises: Promise<void>[] = [];
+    const promises: Promise<(UpsertActivityResult | void)[] | void>[] = [];
 
     do {
       const { pageIds, databaseIds, nextCursor } =
@@ -211,7 +215,14 @@ export async function notionSyncWorkflow(
     } while (cursor);
 
     // wait for all child workflows to finish
-    await Promise.all(promises);
+    const syncWorkflowResults = await Promise.all(promises);
+
+    // remove potential void results indicating execution timeouts
+    await updateParentsFieldsActivity(
+      dataSourceConfig,
+      syncWorkflowResults.flat().filter((r) => r) as UpsertActivityResult[],
+      new Date().getTime()
+    );
 
     if (!isGargageCollectionRun) {
       await saveSuccessSyncActivity(dataSourceConfig);
@@ -252,12 +263,12 @@ export async function notionSyncResultPageWorkflow(
   pageIds: string[],
   runTimestamp: number,
   isBatchSync = false
-) {
+): Promise<(UpsertActivityResult | void)[]> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<void>[] = [];
+  const promises: Promise<UpsertActivityResult | void>[] = [];
 
   for (const [pageIndex, pageId] of pageIds.entries()) {
     const loggerArgs = {
@@ -279,7 +290,7 @@ export async function notionSyncResultPageWorkflow(
     );
   }
 
-  await Promise.all(promises);
+  return await Promise.all(promises);
 }
 
 export async function notionSyncResultPageDatabaseWorkflow(
@@ -287,12 +298,12 @@ export async function notionSyncResultPageDatabaseWorkflow(
   notionAccessToken: string,
   databaseIds: string[],
   runTimestamp: number
-) {
+): Promise<(UpsertActivityResult | void)[]> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<void>[] = [];
+  const promises: Promise<UpsertActivityResult | void>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
@@ -312,6 +323,5 @@ export async function notionSyncResultPageDatabaseWorkflow(
       )
     );
   }
-
-  await Promise.all(promises);
+  return await Promise.all(promises);
 }

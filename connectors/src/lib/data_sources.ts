@@ -195,3 +195,48 @@ export async function deleteFromDataSource(
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
 }
+
+export async function updateDocumentParentsField(
+  dataSourceConfig: DataSourceConfig,
+  documentId: string,
+  parents: string[],
+  loggerArgs: Record<string, string | number> = {}
+) {
+  const localLogger = logger.child({ ...loggerArgs, documentId });
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.post(
+      endpoint,
+      {
+        parents: parents,
+      },
+      dustRequestConfig
+    );
+  } catch (e) {
+    localLogger.error({ error: e }, "Error updating document parents field.");
+    throw e;
+  }
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    return;
+  } else {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        data: dustRequestResult.data,
+      },
+      "Error updating document parents field."
+    );
+    throw new Error(
+      `Error updating document parents field: ${dustRequestResult}`
+    );
+  }
+}
