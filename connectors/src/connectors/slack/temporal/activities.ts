@@ -702,7 +702,7 @@ export async function getUserName(
 
   const info = await slackClient.users.info({ user: slackUserId });
 
-  if (info.user?.name) {
+  if (info && info.user?.name) {
     await cacheSet(getUserCacheKey(slackUserId, connectorId), info.user.name);
     return info.user.name;
   }
