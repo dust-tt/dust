@@ -121,14 +121,21 @@ const itemStyle = {
 };
 
 export const DroidAvatarSet = () => (
-  <div style={gridStyle}>
-    {Object.entries(avatarUrlList).map(([filename, url]) => {
-      return (
-        <div key={filename} style={itemStyle as React.CSSProperties}>
-          <Avatar visual={url} size="md" />
-          <div className="s-text-xs">{url}</div>
-        </div>
-      );
-    })}
-  </div>
+  <>
+    <div className="s-py-4 s-text-base">
+      url is <span className="s-font-bold">"/static/droidavatar/filename"</span>
+    </div>
+    <div style={gridStyle}>
+      {Object.entries(avatarUrlList).map(([filename, url]) => {
+        return (
+          <div key={filename} style={itemStyle as React.CSSProperties}>
+            <Avatar visual={url} size="md" />
+            <div className="s-overflow-hidden s-text-ellipsis s-text-xs">
+              {filename}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </>
 );
