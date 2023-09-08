@@ -333,12 +333,10 @@ Workspace.hasMany(AgentConfiguration, {
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
   foreignKey: { name: "generationConfigId", allowNull: true }, // null = no generation set for this Agent
-  onDelete: "CASCADE",
 });
 // Agent config <> Retrieval config
 AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
   foreignKey: { name: "retrievalConfigId", allowNull: true }, // null = no retrieval action set for this Agent
-  onDelete: "CASCADE",
 });
 
 // Retrieval config <> Data source config
