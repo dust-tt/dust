@@ -9,6 +9,7 @@ import {
   PlusIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -234,12 +235,32 @@ export default function CreateAssistant({
                 </DropdownMenu.Items>
               </DropdownMenu>
             </div>
-            {dataSourceMode === "SELECTED" ? (
-              <>
+            <Transition
+              show={dataSourceMode === "SELECTED"}
+              enterFrom="opacity-0 -mt-72"
+              enterTo="opacity-100 mt-0"
+              leave="transition-all duration-1000"
+              enter="transition-all duration-1000"
+              leaveFrom="opacity-100 mt-0"
+              leaveTo="opacity-0 -mt-72"
+              className="overflow-hidden"
+              afterEnter={() => {
+                window.scrollBy({
+                  left: 0,
+                  top: 140,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <div>
                 <div className="text-base font-semibold">
                   Select the data sources
                 </div>
-                <div className="flex h-48 items-center justify-center rounded-lg bg-structure-50">
+                <div
+                  className={classNames(
+                    "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+                  )}
+                >
                   <Button
                     labelVisible={true}
                     label="Add a data source"
@@ -248,8 +269,9 @@ export default function CreateAssistant({
                     icon={PlusIcon}
                   />
                 </div>
-              </>
-            ) : null}
+              </div>
+            </Transition>
+
             <div className="pt-6 text-base font-semibold text-element-900">
               Timeframe for the data sources
             </div>
