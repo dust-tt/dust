@@ -158,6 +158,8 @@ export async function githubUpsertIssueActivity(
     // repos, but not practical for issues since the external id is the
     // issue number, which is not guaranteed unique in the workspace.
     // Therefore as a special case we use getIssueDocumentId() to get a parent string
+    // The repo id from github is globally unique so used as-is, as per
+    // convention to use the external id string.
     parents: [
       getIssueDocumentId(repoId.toString(), issue.number),
       repoId.toString(),
@@ -290,8 +292,10 @@ export async function githubUpsertDiscussionActivity(
     tags,
     // The convention for parents is to use the external id string; it is ok for
     // repos, but not practical for discussions since the external id is the
-    // issue number, which is not guaranteed unique in the workspace.
-    // Therefore as a special case we use getDiscussionDocumentId() to get a parent string
+    // issue number, which is not guaranteed unique in the workspace. Therefore
+    // as a special case we use getDiscussionDocumentId() to get a parent string
+    // The repo id from github is globally unique so used as-is, as per
+    // convention to use the external id string.
     parents: [
       getDiscussionDocumentId(repoId.toString(), discussionNumber),
       repoId.toString(),

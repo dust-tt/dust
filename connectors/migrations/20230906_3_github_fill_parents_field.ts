@@ -47,7 +47,7 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
     attributes: ["repoId", "discussionNumber"],
   });
   // update all parents fields for discussions by chunks of 128
-  const chunkSize = 128;
+  const chunkSize = 32;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
     console.log(`Updating ${chunk.length} documents`);
@@ -76,7 +76,7 @@ async function updateIssuesParentsFieldForConnector(connector: Connector) {
     attributes: ["repoId", "issueNumber"],
   });
   // update all parents fields for all issues by chunks of 128
-  const chunkSize = 128;
+  const chunkSize = 32;
   for (let i = 0; i < documentData.length; i += chunkSize) {
     const chunk = documentData.slice(i, i + chunkSize);
     console.log(`Updating ${chunk.length} documents`);
