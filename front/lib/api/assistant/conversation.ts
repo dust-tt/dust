@@ -13,7 +13,6 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentMessage,
-  AgentRetrievalAction,
   Conversation,
   Mention,
   Message,
@@ -229,18 +228,6 @@ export async function getConversation(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
-        include: [
-          {
-            model: AgentRetrievalAction,
-            as: "agentRetrievalAction",
-            required: false,
-          },
-          {
-            model: AgentConfiguration,
-            as: "agentConfiguration",
-            required: true,
-          },
-        ],
       },
     ],
   });
