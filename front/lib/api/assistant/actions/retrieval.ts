@@ -5,9 +5,8 @@ import {
 import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/generation";
-import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
-import { DustAPI } from "@app/lib/dust_api";
+import { Authenticator } from "@app/lib/auth";
+import { front_sequelize, ModelId } from "@app/lib/databases";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
@@ -261,6 +260,78 @@ export async function generateRetrievalParams(
     relativeTimeFrame,
     topK: configuration.topK,
   });
+}
+
+/**
+ * Action rendering.
+ */
+
+// Internal interface for the retrieval and rendering of a retrieval action. This should no be
+// outside of api/assistant. We allow a ModelId interface here to save a round trip to the database.
+export async function renderRetrievalActionByModelId(
+  id: ModelId
+): Promise<RetrievalActionType> {
+  const action = await AgentRetrievalAction.findByPk(id);
+  if (!action) {
+    throw new Error(`No retrieval action found with id ${id}`);
+  }
+
+  const documentRows = await RetrievalDocument.findAll({
+    where: {
+      retrievalActionId: action.id,
+    },
+  });
+
+  const chunkRows = await RetrievalDocumentChunk.findAll({
+    where: {
+      retrievalDocumentId: documentRows.map((d) => d.id),
+    },
+  });
+
+  let relativeTimeFrame: TimeFrame | null = null;
+  if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
+    relativeTimeFrame = {
+      duration: action.relativeTimeFrameDuration,
+      unit: action.relativeTimeFrameUnit,
+    };
+  }
+
+  const documents: RetrievalDocumentType[] = documentRows.map((d) => {
+    const chunks = chunkRows
+      .filter((c) => c.retrievalDocumentId === d.id)
+      .map((c) => ({
+        text: c.text,
+        offset: c.offset,
+        score: c.score,
+      }));
+
+    chunks.sort((a, b) => b.score - a.score);
+
+    return {
+      id: d.id,
+      dataSourceId: d.dataSourceId,
+      sourceUrl: d.sourceUrl,
+      documentId: d.documentId,
+      reference: d.reference,
+      timestamp: d.timestamp,
+      tags: d.tags,
+      score: d.score,
+      chunks,
+    };
+  });
+
+  documents.sort((a, b) => b.score - a.score);
+
+  return {
+    id: action.id,
+    type: "retrieval_action",
+    params: {
+      query: action.query,
+      relativeTimeFrame,
+      topK: action.topK,
+    },
+    documents,
+  };
 }
 
 /**
@@ -542,7 +613,6 @@ export async function* runRetrieval(
       id: action.id,
       type: "retrieval_action",
       params: {
-        dataSources: c.dataSources,
         relativeTimeFrame: params.relativeTimeFrame,
         query: params.query,
         topK: params.topK,

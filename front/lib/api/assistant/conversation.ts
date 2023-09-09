@@ -6,6 +6,7 @@ import {
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -30,6 +31,8 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+import { renderRetrievalActionByModelId } from "./actions/retrieval";
 
 /**
  * Conversation Creation and Update
@@ -159,11 +162,9 @@ async function renderAgentMessage(
     }),
     (async () => {
       if (agentMessage.agentRetrievalActionId) {
-        return await AgentRetrievalAction.findOne({
-          where: {
-            id: agentMessage.agentRetrievalActionId,
-          },
-        });
+        return await renderRetrievalActionByModelId(
+          agentMessage.agentRetrievalActionId
+        );
       }
       return null;
     })(),
@@ -175,6 +176,11 @@ async function renderAgentMessage(
     );
   }
 
+  const configuration = await getAgentConfiguration(
+    auth,
+    agentConfiguration.sId
+  );
+
   return {
     id: message.id,
     sId: message.sId,
@@ -183,31 +189,11 @@ async function renderAgentMessage(
     version: message.version,
     parentMessageId: null,
     status: agentMessage.status,
-    action: agentRetrievalAction
-      ? {
-          id: agentRetrievalAction.id,
-          type: "retrieval_action",
-          params: {
-            dataSources: [], // TODO
-            query: agentRetrievalAction.query,
-            relativeTimeFrame: null, // TODO
-            topK: agentRetrievalAction.topK,
-          },
-          documents: [], // TODO
-        }
-      : null,
+    action: agentRetrievalAction,
     message: agentMessage.message,
     feedbacks: [],
     error: null,
-    configuration: {
-      sId: agentConfiguration.sId,
-      status: "active",
-      name: agentConfiguration.name,
-      pictureUrl: agentConfiguration.pictureUrl,
-      // TODO(spolu)
-      action: null,
-      generation: null,
-    },
+    configuration,
   };
 }
 
@@ -443,19 +429,24 @@ export async function* postUserMessage(
       // for each assistant mention, create an "empty" agent message
       for (const mention of mentions) {
         if (isAgentMention(mention)) {
-          // TODO(spolu): retrieve configuration from mention.
-          // Mention.create({
-          //   messageId: m.id,
-          //   configurationId: mention.configurationId,
-          // });
+          const configuration = await getAgentConfiguration(
+            auth,
+            mention.configurationId
+          );
+
+          await Mention.create({
+            messageId: m.id,
+            agentConfigurationId: configuration.id,
+          });
 
           const agentMessageRow = await AgentMessage.create(
             {
-              // TODO(spolu): add agentConfigurationId
+              status: "created",
+              agentConfigurationId: configuration.id,
             },
             { transaction: t }
           );
-          const m = await Message.create(
+          const messageRow = await Message.create(
             {
               sId: generateModelSId(),
               rank: nextMessageRank++,
@@ -467,10 +458,11 @@ export async function* postUserMessage(
               transaction: t,
             }
           );
+
           agentMessageRows.push(agentMessageRow);
           agentMessages.push({
-            id: m.id,
-            sId: m.sId,
+            id: messageRow.id,
+            sId: messageRow.sId,
             type: "agent_message",
             visibility: "visible",
             version: 0,
@@ -480,14 +472,7 @@ export async function* postUserMessage(
             message: null,
             feedbacks: [],
             error: null,
-            configuration: {
-              sId: mention.configurationId,
-              status: "active",
-              name: "foo", // TODO
-              pictureUrl: null, // TODO
-              action: null, // TODO
-              generation: null, // TODO
-            },
+            configuration,
           });
         }
 
@@ -524,8 +509,6 @@ export async function* postUserMessage(
 
   await Promise.allSettled(
     agentMessages.map(async function* (agentMessage, i) {
-      //for (let i = 0; i < agentMessages.length; i++) {
-      //const agentMessage = agentMessages[i];
       const agentMessageRow = agentMessageRows[i];
 
       yield {
