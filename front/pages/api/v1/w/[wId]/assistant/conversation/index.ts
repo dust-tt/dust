@@ -47,12 +47,11 @@ async function handler(
       const conv = await Conversation.create({
         sId: generateModelSId(),
         title: req.body.title,
-        created: new Date(),
         visibility: req.body.visibility,
       });
       return res.status(200).json({
         id: conv.id,
-        created: conv.created.getTime(),
+        created: conv.createdAt.getTime(),
         sId: conv.sId,
         title: conv.title,
         visibility: conv.visibility,

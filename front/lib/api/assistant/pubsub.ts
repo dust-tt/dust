@@ -15,7 +15,7 @@ import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 import {
   ConversationType,
-  Mention,
+  MentionType,
   UserMessageContext,
 } from "@app/types/assistant/conversation";
 
@@ -29,7 +29,7 @@ export async function postUserMessageWithPubSub(
   }: {
     conversation: ConversationType;
     message: string;
-    mentions: Mention[];
+    mentions: MentionType[];
     context: UserMessageContext;
   }
 ) {

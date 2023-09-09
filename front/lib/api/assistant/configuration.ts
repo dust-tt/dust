@@ -70,6 +70,7 @@ export async function getAgentConfiguration(
     : [];
 
   return {
+    id: agent.id,
     sId: agent.sId,
     name: agent.name,
     pictureUrl: agent.pictureUrl,
@@ -130,6 +131,7 @@ export async function createAgentConfiguration(
   });
 
   return {
+    id: agentConfig.id,
     sId: agentConfig.sId,
     name: agentConfig.name,
     pictureUrl: agentConfig.pictureUrl,
@@ -204,6 +206,7 @@ export async function updateAgentConfiguration(
     : [];
 
   return {
+    id: updatedAgentConfig.id,
     sId: updatedAgentConfig.sId,
     name: updatedAgentConfig.name,
     pictureUrl: updatedAgentConfig.pictureUrl,

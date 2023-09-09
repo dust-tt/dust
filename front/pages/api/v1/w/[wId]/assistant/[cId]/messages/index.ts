@@ -76,7 +76,7 @@ async function handler(
       void postUserMessageWithPubSub(auth, {
         conversation: {
           id: conv.id,
-          created: conv.created.getTime(),
+          created: conv.createdAt.getTime(),
           sId: conv.sId,
           title: conv.title,
           // not sure how to provide the content here for now.
