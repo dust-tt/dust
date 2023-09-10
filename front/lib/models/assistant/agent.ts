@@ -105,6 +105,12 @@ AgentConfiguration.init(
   }
 );
 
+//  Agent config <> Workspace
+Workspace.hasMany(AgentConfiguration, {
+  foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
+  onDelete: "CASCADE",
+});
+
 /**
  * Configuration of Agent generation.
  */
@@ -155,12 +161,6 @@ AgentGenerationConfiguration.init(
     sequelize: front_sequelize,
   }
 );
-
-//  Agent config <> Workspace
-Workspace.hasMany(AgentConfiguration, {
-  foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
-  onDelete: "CASCADE",
-});
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
