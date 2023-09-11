@@ -28,6 +28,7 @@ const {
   notionGetToSyncActivity,
   syncGarbageCollectorActivity,
   updateParentsFieldsActivity,
+  getDatabaseChildPagesActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -53,7 +54,7 @@ const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
-const MAX_PENDING_UPSERT_ACTIVITIES = 5;
+const MAX_PENDING_UPSERT_ACTIVITIES = 1;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -93,9 +94,17 @@ export async function notionSyncWorkflow(
     const childWorkflowQueue = new PQueue({
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
-    const promises: Promise<(UpsertActivityResult | void)[] | void>[] = [];
+    const pageUpsertPromises: Promise<
+      (UpsertActivityResult | void)[] | void
+    >[] = [];
+    const databaseUpsertPromises: Promise<UpsertActivityResult | void>[] = [];
 
+    // we go through each result page of the notion  search API
     do {
+      // We only want to fetch pages that were updated since the last sync unless it's a garbage
+      // collection run or a force resync.
+      const skipUpToDatePages = !isGargageCollectionRun && !forceResync;
+
       const { pageIds, databaseIds, nextCursor } =
         await notionGetToSyncActivity(
           dataSourceConfig,
@@ -104,9 +113,7 @@ export async function notionSyncWorkflow(
           // want to fetch pages that were updated since the last sync.
           !isGargageCollectionRun ? lastSyncedPeriodTs : null,
           cursor,
-          // We only want to fetch pages that were updated since the last sync unless it's a garbage
-          // collection run or a force resync.
-          !isGargageCollectionRun && !forceResync,
+          skipUpToDatePages,
           // Logger args:
           {
             pageIndex,
@@ -120,107 +127,47 @@ export async function notionSyncWorkflow(
       cursor = nextCursor;
       pageIndex += 1;
 
-      let pagesToSync: string[] = [];
-      let databasesToSync: string[] = [];
+      // this function creates a promise for every page to upsert and every database to upsert
+      // for each database to upsert, it will also fetch all children pages and add those to the list of
+      // pages to upsert.
+      const { upsertDatabasePromises, upsertPagePromises } =
+        await getUpsertPromises(
+          dataSourceConfig,
+          notionAccessToken,
+          pageIds,
+          databaseIds,
+          isGargageCollectionRun,
+          runTimestamp,
+          pageIndex,
+          isInitialSync,
+          skipUpToDatePages,
+          childWorkflowQueue
+        );
 
-      if (isGargageCollectionRun) {
-        // Mark pages and databases as visited to avoid deleting them and return pages and databases
-        // that are new.
-        const { newPageIds, newDatabaseIds } =
-          await syncGarbageCollectorActivity(
-            dataSourceConfig,
-            pageIds,
-            databaseIds,
-            runTimestamp
-          );
-        pagesToSync = newPageIds;
-        databasesToSync = newDatabaseIds;
-      } else {
-        pagesToSync = pageIds;
-        databasesToSync = databaseIds;
-      }
-
-      if (!pagesToSync.length && !databasesToSync.length) {
-        continue;
-      }
-
-      if (pagesToSync.length) {
-        for (
-          let i = 0;
-          i < pagesToSync.length;
-          i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-        ) {
-          const batch = pagesToSync.slice(
-            i,
-            i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-          );
-          const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-          const workflowId = `${getWorkflowId(
-            dataSourceConfig
-          )}-result-page-${pageIndex}-pages-${batchIndex}${
-            isGargageCollectionRun ? "-gc" : ""
-          }`;
-          promises.push(
-            childWorkflowQueue.add(() =>
-              executeChild(notionSyncResultPageWorkflow, {
-                workflowId,
-                args: [
-                  dataSourceConfig,
-                  notionAccessToken,
-                  batch,
-                  runTimestamp,
-                  isInitialSync || forceResync || isGargageCollectionRun,
-                ],
-                parentClosePolicy:
-                  ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-              })
-            )
-          );
-        }
-      }
-
-      if (databasesToSync.length) {
-        for (
-          let i = 0;
-          i < databasesToSync.length;
-          i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-        ) {
-          const batch = databasesToSync.slice(
-            i,
-            i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-          );
-          const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-          const workflowId = `${getWorkflowId(
-            dataSourceConfig
-          )}-result-page-${pageIndex}-databases-${batchIndex}${
-            isGargageCollectionRun ? "-gc" : ""
-          }`;
-          promises.push(
-            childWorkflowQueue.add(() =>
-              executeChild(notionSyncResultPageDatabaseWorkflow, {
-                workflowId,
-                args: [
-                  dataSourceConfig,
-                  notionAccessToken,
-                  batch,
-                  runTimestamp,
-                ],
-                parentClosePolicy:
-                  ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-              })
-            )
-          );
-        }
-      }
+      pageUpsertPromises.push(...upsertPagePromises);
+      databaseUpsertPromises.push(...upsertDatabasePromises);
     } while (cursor);
 
     // wait for all child workflows to finish
-    const syncWorkflowResults = await Promise.all(promises);
+    const pageUpsertResults = await Promise.all(pageUpsertPromises);
+    const databaseUpsertResults = await Promise.all(databaseUpsertPromises);
 
     // remove potential void results indicating execution timeouts
+    // we could do this with a `[...x, ...y].filter(Boolean)`, but we'd have to
+    // cast the result as `UpsertActivityResult[]` so we loose type safety
+    const allActivityUpsertResults: UpsertActivityResult[] = [];
+    for (const result of [
+      ...pageUpsertResults.flat(),
+      ...databaseUpsertResults,
+    ]) {
+      if (result) {
+        allActivityUpsertResults.push(result);
+      }
+    }
+
     await updateParentsFieldsActivity(
       dataSourceConfig,
-      syncWorkflowResults.flat().filter((r) => r) as UpsertActivityResult[],
+      allActivityUpsertResults,
       new Date().getTime()
     );
 
@@ -297,13 +244,20 @@ export async function notionSyncResultPageDatabaseWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   databaseIds: string[],
-  runTimestamp: number
-): Promise<(UpsertActivityResult | void)[]> {
+  runTimestamp: number,
+  isGarbageCollectionRun = false,
+  isBatchSync = false
+): Promise<{
+  upsertPagePromises: Promise<(UpsertActivityResult | void)[] | void>[];
+  upsertDatabasePromises: Promise<UpsertActivityResult | void>[];
+}> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<UpsertActivityResult | void>[] = [];
+  const upsertPagePromises: Promise<(UpsertActivityResult | void)[] | void>[] =
+    [];
+  const upsertDatabasePromises: Promise<UpsertActivityResult | void>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
@@ -311,7 +265,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
       workspaceId: dataSourceConfig.workspaceId,
       databaseIndex,
     };
-    promises.push(
+    upsertDatabasePromises.push(
       upsertQueue.add(() =>
         notionUpsertDatabaseActivity(
           notionAccessToken,
@@ -323,5 +277,184 @@ export async function notionSyncResultPageDatabaseWorkflow(
       )
     );
   }
-  return await Promise.all(promises);
+
+  for (const databaseId of databaseIds) {
+    let cursor: string | null = null;
+    let pageIndex = 0;
+    const loggerArgs = {
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
+    };
+    do {
+      const { pageIds, nextCursor } = await getDatabaseChildPagesActivity({
+        dataSourceInfo: dataSourceConfig,
+        databaseId,
+        accessToken: notionAccessToken,
+        cursor,
+        loggerArgs: {
+          ...loggerArgs,
+          pageIndex,
+        },
+        // Note: we don't want to optimize this step due to Notion not always returning all the
+        // dbs (so if we miss it at initial sync and it gets touched we will miss all its old
+        // pages here again. It's a lot of additional work but it helps catching as much as we
+        // can from Notion). The caller of this function filters the edited page based on our
+        // knowledge of it in DB so this won't create extraneous upserts.
+        excludeUpToDatePages: false,
+      });
+      cursor = nextCursor;
+      pageIndex += 1;
+      const newPromises = await getUpsertPromises(
+        dataSourceConfig,
+        notionAccessToken,
+        pageIds,
+        [], // we don't upsert any databases in this workflow
+        isGarbageCollectionRun,
+        runTimestamp,
+        pageIndex,
+        isBatchSync,
+        false,
+        upsertQueue,
+        `database-children-${databaseId}`
+      );
+      upsertPagePromises.push(...newPromises.upsertPagePromises);
+      upsertDatabasePromises.push(...newPromises.upsertDatabasePromises);
+    } while (cursor);
+  }
+
+  return {
+    upsertPagePromises,
+    upsertDatabasePromises,
+  };
+}
+
+async function getUpsertPromises(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  pageIds: string[],
+  databaseIds: string[],
+  isGarbageCollectionRun: boolean,
+  runTimestamp: number,
+  pageIndex: number,
+  isBatchSync: boolean,
+  skipUpToDatePages: boolean,
+  queue: PQueue,
+  childWorkflowsNameSuffix = ""
+): Promise<{
+  upsertPagePromises: Promise<(UpsertActivityResult | void)[] | void>[];
+  upsertDatabasePromises: Promise<UpsertActivityResult | void>[];
+}> {
+  let pagesToSync: string[] = [];
+  let databasesToSync: string[] = [];
+
+  const upsertPagePromises: Promise<(UpsertActivityResult | void)[] | void>[] =
+    [];
+  const upsertDatabasePromises: Promise<UpsertActivityResult | void>[] = [];
+
+  if (isGarbageCollectionRun) {
+    // Mark pages and databases as visited to avoid deleting them and return pages and databases
+    // that are new.
+    const { newPageIds, newDatabaseIds } = await syncGarbageCollectorActivity(
+      dataSourceConfig,
+      pageIds,
+      databaseIds,
+      runTimestamp
+    );
+    pagesToSync = newPageIds;
+    databasesToSync = newDatabaseIds;
+  } else {
+    pagesToSync = pageIds;
+    databasesToSync = databaseIds;
+  }
+
+  if (!pagesToSync.length && !databasesToSync.length) {
+    return {
+      upsertPagePromises: [],
+      upsertDatabasePromises: [],
+    };
+  }
+
+  if (pagesToSync.length) {
+    for (
+      let i = 0;
+      i < pagesToSync.length;
+      i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+    ) {
+      const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+      const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+      let workflowId = `${getWorkflowId(
+        dataSourceConfig
+      )}-result-page-${pageIndex}-pages-${batchIndex}`;
+      if (isGarbageCollectionRun) {
+        workflowId += "-gc";
+      }
+      if (childWorkflowsNameSuffix) {
+        workflowId += `-${childWorkflowsNameSuffix}`;
+      }
+      upsertPagePromises.push(
+        queue.add(() =>
+          executeChild(notionSyncResultPageWorkflow, {
+            workflowId,
+            args: [
+              dataSourceConfig,
+              notionAccessToken,
+              batch,
+              runTimestamp,
+              isBatchSync,
+            ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          })
+        )
+      );
+    }
+  }
+
+  if (databasesToSync.length) {
+    for (
+      let i = 0;
+      i < databasesToSync.length;
+      i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+    ) {
+      const batch = databasesToSync.slice(
+        i,
+        i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
+      );
+      const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+      let workflowId = `${getWorkflowId(
+        dataSourceConfig
+      )}-result-page-${pageIndex}-databases-${batchIndex}`;
+      if (isGarbageCollectionRun) {
+        workflowId += "-gc";
+      }
+      if (childWorkflowsNameSuffix) {
+        workflowId += `-${childWorkflowsNameSuffix}`;
+      }
+      const queueAddRes = await queue.add(() =>
+        executeChild(notionSyncResultPageDatabaseWorkflow, {
+          workflowId,
+          args: [
+            dataSourceConfig,
+            notionAccessToken,
+            batch,
+            runTimestamp,
+            skipUpToDatePages,
+          ],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        })
+      );
+      if (queueAddRes) {
+        const {
+          upsertPagePromises: newUpsertPagePromises,
+          upsertDatabasePromises: newUpsertDatabasePromises,
+        } = queueAddRes;
+        upsertPagePromises.push(...newUpsertPagePromises);
+        upsertDatabasePromises.push(...newUpsertDatabasePromises);
+      }
+    }
+  }
+
+  return {
+    upsertPagePromises,
+    upsertDatabasePromises,
+  };
 }
