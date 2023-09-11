@@ -8,6 +8,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { getUserMetadata } from "@app/lib/api/user";
 
 const PostMessagesRequestBodySchema = t.type({
   content: t.string,
@@ -97,6 +98,8 @@ async function handler(
       }
 
       const { content, context } = bodyValidation.right;
+      const profilePictureUrl =
+        (await getUserMetadata(user, "profilePictureUrl"))?.value || "";
       // Not awaiting this promise on prupose.
       // We want to answer "OK" to the client ASAP and process the events in the background.
       void postUserMessageWithPubSub(auth, {
@@ -108,7 +111,7 @@ async function handler(
           username: user.username,
           fullName: user.name,
           email: user.email,
-          profilePictureUrl: "TODO",
+          profilePictureUrl,
         },
       });
       res.status(200).end();
