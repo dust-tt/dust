@@ -35,6 +35,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
+import user from "@app/pages/api/xp1/v0.3.x/user";
 
 /**
  * Conversation Creation and Update
