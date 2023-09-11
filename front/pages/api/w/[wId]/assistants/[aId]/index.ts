@@ -31,12 +31,13 @@ async function handler(
     });
   }
 
-  if (!auth.user()) {
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_user_not_found",
-        message: "Could not find the user of the current session.",
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can access an Assistant.",
       },
     });
   }
