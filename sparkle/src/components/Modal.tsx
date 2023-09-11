@@ -1,7 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
-import { XCircleIcon } from "..";
+import XCircleIcon from "../icons/solid/XCircle";
 import { Button, ButtonProps } from "./Button";
 
 interface ModalProps {
