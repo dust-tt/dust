@@ -9,7 +9,10 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { AgentMessage, Conversation, Message } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ConversationType } from "@app/types/assistant/conversation";
+import {
+  ConversationType,
+  isAgentMessageType,
+} from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
@@ -62,13 +65,7 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  // just checking if the conversation exists, no need to actually construct the
-  // conversation object
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-    },
-  });
+  const conversation = await getConversation(auth, conversationId);
 
   if (!conversation) {
     return apiError(req, res, {
@@ -89,20 +86,12 @@ async function handler(
       },
     });
   }
-  const messageId = req.query.cId;
 
-  const message = await Message.findOne({
-    where: {
-      sId: messageId,
-    },
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: false,
-      },
-    ],
-  });
+  const messageId = req.query.mId;
+
+  const message = conversation.content
+    .flat()
+    .find((message) => message.sId === messageId);
 
   if (!message) {
     return apiError(req, res, {
@@ -113,7 +102,7 @@ async function handler(
       },
     });
   }
-  if (!message.agentMessage) {
+  if (!isAgentMessageType(message)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -123,7 +112,7 @@ async function handler(
     });
   }
 
-  if (message.agentMessage.status === "succeeded") {
+  if (message.status === "succeeded") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
