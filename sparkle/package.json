@@ -1,10 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-<<<<<<< HEAD
   "version": "0.1.53",
-=======
-  "version": "0.1.51",
->>>>>>> f582828a (fine tuning Item and Tab styles)
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
