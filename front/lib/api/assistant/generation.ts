@@ -65,11 +65,11 @@ export async function renderConversationForModel({
           );
         }
       }
-      if (m.message) {
+      if (m.content) {
         messages.unshift({
           role: "agent" as const,
           name: m.configuration.name,
-          content: m.message,
+          content: m.content,
         });
       }
     }
@@ -77,7 +77,7 @@ export async function renderConversationForModel({
       messages.unshift({
         role: "user" as const,
         name: m.context.username,
-        content: m.message,
+        content: m.content,
       });
     }
   }

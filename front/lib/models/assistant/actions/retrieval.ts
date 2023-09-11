@@ -5,10 +5,10 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
@@ -124,6 +124,8 @@ export class AgentDataSourceConfiguration extends Model<
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   >;
+
+  declare dataSource: NonAttribute<DataSource>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -181,21 +183,24 @@ AgentDataSourceConfiguration.init(
   }
 );
 
-// Agent config <> Retrieval config
-AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
+AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
+});
 
 // Data source config <> Data source
 DataSource.hasMany(AgentDataSourceConfiguration, {
+  as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "CASCADE",
+});
+AgentDataSourceConfiguration.belongsTo(DataSource, {
+  as: "dataSource",
+  foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 /**
@@ -276,6 +281,9 @@ AgentRetrievalConfiguration.hasMany(AgentRetrievalAction, {
   // We don't want to delete the action when the configuration is deleted
   // But really we don't want to delete configurations ever.
 });
+AgentRetrievalAction.belongsTo(AgentRetrievalConfiguration, {
+  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
+});
 
 export class RetrievalDocument extends Model<
   InferAttributes<RetrievalDocument>,
@@ -353,6 +361,9 @@ AgentRetrievalAction.hasMany(RetrievalDocument, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
   onDelete: "CASCADE",
 });
+RetrievalDocument.belongsTo(AgentRetrievalAction, {
+  foreignKey: { name: "retrievalActionId", allowNull: false },
+});
 
 export class RetrievalDocumentChunk extends Model<
   InferAttributes<RetrievalDocumentChunk>,
@@ -409,4 +420,7 @@ RetrievalDocumentChunk.init(
 RetrievalDocument.hasMany(RetrievalDocumentChunk, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
   onDelete: "CASCADE",
+});
+RetrievalDocumentChunk.belongsTo(RetrievalDocument, {
+  foreignKey: { name: "retrievalDocumentId", allowNull: false },
 });

@@ -9,23 +9,25 @@ import { AgentConfigurationType } from "./agent";
  */
 
 export type AgentMention = {
+  id: ModelId;
   configurationId: string;
 };
 
 export type UserMention = {
+  id: ModelId;
   provider: string;
   providerId: string;
 };
 
-export type Mention = AgentMention | UserMention;
+export type MentionType = AgentMention | UserMention;
 
 export type MessageVisibility = "visible" | "deleted";
 
-export function isAgentMention(arg: Mention): arg is AgentMention {
+export function isAgentMention(arg: MentionType): arg is AgentMention {
   return (arg as AgentMention).configurationId !== undefined;
 }
 
-export function isUserMention(arg: Mention): arg is UserMention {
+export function isUserMention(arg: MentionType): arg is UserMention {
   const maybeUserMention = arg as UserMention;
   return (
     maybeUserMention.provider !== undefined &&
@@ -52,8 +54,8 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   user: UserType | null;
-  mentions: Mention[];
-  message: string;
+  mentions: MentionType[];
+  content: string;
   context: UserMessageContext;
 };
 
@@ -94,7 +96,7 @@ export type AgentMessageType = {
   configuration: AgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
-  message: string | null;
+  content: string | null;
   feedbacks: UserFeedbackType[];
   error: {
     code: string;
@@ -112,7 +114,7 @@ export function isAgentMessageType(
  * Conversations
  */
 
-export type ConversationVisibility = "private" | "workspace";
+export type ConversationVisibility = "unlisted" | "workspace";
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
@@ -123,6 +125,6 @@ export type ConversationType = {
   created: number;
   sId: string;
   title: string | null;
-  content: (UserMessageType[] | AgentMessageType[])[];
   visibility: ConversationVisibility;
+  content: (UserMessageType[] | AgentMessageType[])[];
 };

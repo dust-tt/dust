@@ -15,7 +15,7 @@ import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 import {
   ConversationType,
-  Mention,
+  MentionType,
   UserMessageContext,
 } from "@app/types/assistant/conversation";
 
@@ -23,13 +23,13 @@ export async function postUserMessageWithPubSub(
   auth: Authenticator,
   {
     conversation,
-    message,
+    content,
     mentions,
     context,
   }: {
     conversation: ConversationType;
-    message: string;
-    mentions: Mention[];
+    content: string;
+    mentions: MentionType[];
     context: UserMessageContext;
   }
 ) {
@@ -37,7 +37,7 @@ export async function postUserMessageWithPubSub(
   try {
     for await (const event of postUserMessage(auth, {
       conversation,
-      message,
+      content,
       mentions,
       context,
     })) {
@@ -74,7 +74,7 @@ export async function postUserMessageWithPubSub(
   } finally {
     await redis.quit();
   }
-  console.log("exiting postUserMessageWithPubSub", message, conversation.sId);
+  // console.log("exiting postUserMessageWithPubSub", conversation.sId);
 }
 
 export async function* getConversationEvents(

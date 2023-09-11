@@ -5,11 +5,14 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import {
   AgentMessageStatus,
   ConversationVisibility,
@@ -26,8 +29,9 @@ export class Conversation extends Model<
 
   declare sId: string;
   declare title: string | null;
-  declare created: Date;
   declare visibility: CreationOptional<ConversationVisibility>;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 Conversation.init(
@@ -56,21 +60,32 @@ Conversation.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    created: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "private",
+      defaultValue: "unlisted",
     },
   },
   {
     modelName: "conversation",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+      },
+    ],
     sequelize: front_sequelize,
   }
 );
+
+Workspace.hasMany(Conversation, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "CASCADE",
+});
+
+Conversation.belongsTo(Workspace, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+});
 
 export class UserMessage extends Model<
   InferAttributes<UserMessage>,
@@ -80,7 +95,7 @@ export class UserMessage extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare message: string;
+  declare content: string;
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -108,7 +123,7 @@ UserMessage.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    message: {
+    content: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
@@ -140,7 +155,10 @@ UserMessage.init(
 );
 
 User.hasMany(UserMessage, {
-  foreignKey: { name: "userId" },
+  foreignKey: { name: "userId", allowNull: true }, // null = message is not associated with a user
+});
+UserMessage.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true },
 });
 
 export class AgentMessage extends Model<
@@ -153,11 +171,12 @@ export class AgentMessage extends Model<
 
   declare status: CreationOptional<AgentMessageStatus>;
 
-  declare message: string | null;
+  declare content: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
   declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 }
 
 AgentMessage.init(
@@ -182,7 +201,7 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: "created",
     },
-    message: {
+    content: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -211,6 +230,16 @@ AgentRetrievalAction.hasOne(AgentMessage, {
   foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
   onDelete: "CASCADE",
 });
+AgentMessage.belongsTo(AgentRetrievalAction, {
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+
+AgentConfiguration.hasMany(AgentMessage, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentMessage.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 export class Message extends Model<
   InferAttributes<Message>,
@@ -231,6 +260,9 @@ export class Message extends Model<
   declare parentId: ForeignKey<Message["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
   declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+
+  declare userMessage?: NonAttribute<UserMessage>;
+  declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
 Message.init(
@@ -276,7 +308,11 @@ Message.init(
     indexes: [
       {
         unique: true,
-        fields: ["version", "conversationId", "rank"],
+        fields: ["conversationId", "rank", "version"],
+      },
+      {
+        unique: true,
+        fields: ["sId"],
       },
     ],
     hooks: {
@@ -290,18 +326,91 @@ Message.init(
     },
   }
 );
+
 Conversation.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "CASCADE",
 });
+Message.belongsTo(Conversation, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+
 UserMessage.hasOne(Message, {
-  foreignKey: "userMessageId",
-  as: "_message",
+  foreignKey: { name: "userMessageId", allowNull: true },
 });
+Message.belongsTo(UserMessage, {
+  foreignKey: { name: "userMessageId", allowNull: true },
+});
+
 AgentMessage.hasOne(Message, {
-  foreignKey: "agentMessageId",
-  as: "_message",
+  foreignKey: { name: "agentMessageId", allowNull: true },
 });
+Message.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
 Message.belongsTo(Message, {
-  foreignKey: "parentId",
+  foreignKey: { name: "parentId", allowNull: true },
+});
+
+export class Mention extends Model<
+  InferAttributes<Mention>,
+  InferCreationAttributes<Mention>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare messageId: ForeignKey<Message["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
+
+  declare user?: NonAttribute<User>;
+  declare agentConfiguration?: NonAttribute<AgentConfiguration>;
+}
+
+Mention.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    modelName: "mention",
+    sequelize: front_sequelize,
+  }
+);
+
+Message.hasMany(Mention, {
+  foreignKey: { name: "messageId", allowNull: false },
+  onDelete: "CASCADE",
+});
+Mention.belongsTo(Message, {
+  foreignKey: { name: "messageId", allowNull: false },
+});
+
+User.hasMany(Mention, {
+  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
+});
+Mention.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
+});
+
+AgentConfiguration.hasMany(Mention, {
+  foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
+});
+Mention.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
 });

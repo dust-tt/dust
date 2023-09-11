@@ -61,7 +61,9 @@ export type AgentConfigurationStatus = "active" | "archived";
 export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {
+  id: ModelId;
   sId: string;
+  scope: AgentConfigurationScope;
   status: AgentConfigurationStatus;
 
   name: string;
