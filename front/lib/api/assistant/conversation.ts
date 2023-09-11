@@ -47,8 +47,14 @@ export async function createConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<ConversationType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
   const conversation = await Conversation.create({
     sId: generateModelSId(),
+    workspaceId: owner.id,
     title: title,
     visibility: visibility,
   });
@@ -68,7 +74,6 @@ export async function createConversation(
  */
 
 async function renderUserMessage(
-  auth: Authenticator,
   message: Message,
   userMessage: UserMessage
 ): Promise<UserMessageType> {
@@ -236,7 +241,7 @@ export async function getConversation(
     messages.map((message) => {
       return (async () => {
         if (message.userMessage) {
-          const m = await renderUserMessage(auth, message, message.userMessage);
+          const m = await renderUserMessage(message, message.userMessage);
           return { m, rank: message.rank, version: message.version };
         }
         if (message.agentMessage) {
