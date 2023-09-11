@@ -162,9 +162,7 @@ export async function getAgentConfigurations(
   }
   const agents = await AgentConfiguration.findAll({
     where: {
-      workspaceId: {
-        [Op.or]: [owner.id, null],
-      },
+      [Op.or]: [{ workspaceId: owner.id }, { scope: "global" }],
     },
   });
 
