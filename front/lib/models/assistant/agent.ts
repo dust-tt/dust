@@ -84,7 +84,7 @@ export class AgentConfiguration extends Model<
   declare pictureUrl: string | null;
   declare scope: AgentConfigurationScope;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null; // null = it's a global agent
+  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
@@ -162,11 +162,11 @@ AgentConfiguration.init(
 
 //  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
-  foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
+  foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
 });
 AgentConfiguration.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
+  foreignKey: { name: "workspaceId", allowNull: false },
 });
 
 // Agent config <> Generation config
