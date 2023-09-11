@@ -30,7 +30,7 @@ export class DataSource extends Model<
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare w: NonAttribute<Workspace>;
+  declare workspace: NonAttribute<Workspace>;
 }
 
 DataSource.init(
@@ -91,11 +91,11 @@ DataSource.init(
   }
 );
 Workspace.hasMany(DataSource, {
-  as: "w",
+  as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
 });
 DataSource.belongsTo(Workspace, {
-  as: "w",
+  as: "workspace",
   foreignKey: "workspaceId",
 });

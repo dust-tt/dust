@@ -130,7 +130,7 @@ export class AgentDataSourceConfiguration extends Model<
     AgentRetrievalConfiguration["id"]
   >;
 
-  declare ds: NonAttribute<DataSource>;
+  declare dataSource: NonAttribute<DataSource>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -210,9 +210,13 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
 
 // Data source config <> Data source
 DataSource.hasMany(AgentDataSourceConfiguration, {
-  as: "ds",
+  as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "CASCADE",
+});
+AgentDataSourceConfiguration.belongsTo(DataSource, {
+  as: "dataSource",
+  foreignKey: "dataSourceId",
 });
 
 /**

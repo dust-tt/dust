@@ -37,7 +37,6 @@ export async function getAgentConfiguration(
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
   const agent = await AgentConfiguration.findOne({
-    //logging: console.log,
     where: {
       sId: agentId,
       workspaceId: owner.id,
@@ -50,26 +49,6 @@ export async function getAgentConfiguration(
       {
         model: AgentRetrievalConfiguration,
         as: "retrievalConfiguration",
-        include: [
-          {
-            model: AgentDataSourceConfiguration,
-            as: "dataSourceConfigurations",
-            include: [
-              {
-                model: DataSource,
-                as: "ds",
-                attributes: ["id", "name", "workspaceId"],
-                include: [
-                  {
-                    model: Workspace,
-                    as: "w",
-                    attributes: ["id", "sId"],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
       },
     ],
   });
@@ -77,9 +56,26 @@ export async function getAgentConfiguration(
     throw new Error("Cannot find AgentConfiguration.");
   }
 
+  const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
+    where: {
+      retrievalConfigurationId: agent.retrievalConfiguration?.id,
+    },
+    include: [
+      {
+        model: DataSource,
+        as: "dataSource",
+        include: [
+          {
+            model: Workspace,
+            as: "workspace",
+          },
+        ],
+      },
+    ],
+  });
+
   const generationConfig = agent.generationConfiguration;
   const actionConfig = agent.retrievalConfiguration;
-  const dataSourcesConfig = actionConfig?.dataSourceConfigurations || [];
 
   return {
     id: agent.id,
@@ -96,8 +92,8 @@ export async function getAgentConfiguration(
           topK: actionConfig.topK,
           dataSources: dataSourcesConfig.map((dsConfig) => {
             return {
-              dataSourceId: dsConfig.ds.name,
-              workspaceId: dsConfig.ds.w.sId,
+              dataSourceId: dsConfig.dataSource.name,
+              workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
                 tags:
                   dsConfig.tagsIn && dsConfig.tagsNotIn
