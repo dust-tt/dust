@@ -25,6 +25,9 @@ import {
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 
+// Internal interface for the retrieval and rendering of a retrieval action.
+// This should not be used outside of api/assistant.
+// It helps us be smarter in the code to render AgentMessages
 export async function renderAgentConfigurationByModelId(
   auth: Authenticator,
   id: ModelId
