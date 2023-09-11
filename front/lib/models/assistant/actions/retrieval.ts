@@ -9,7 +9,6 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
@@ -30,10 +29,6 @@ export class AgentRetrievalConfiguration extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
-
-  declare dataSourceConfigurations: NonAttribute<
-    AgentDataSourceConfiguration[]
-  >;
 }
 AgentRetrievalConfiguration.init(
   {
@@ -190,12 +185,10 @@ AgentDataSourceConfiguration.init(
 
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
-  as: "dataSourceConfigurations",
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
 AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  as: "dataSourceConfigurations",
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
 });
 
