@@ -127,7 +127,7 @@ export async function renderAgentConfigurationByModelId(
 export async function getAgentConfiguration(
   auth: Authenticator,
   agentId: string
-): Promise<AgentConfigurationType> {
+): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find AgentConfiguration: no workspace.");
@@ -139,7 +139,7 @@ export async function getAgentConfiguration(
     },
   });
   if (!agent) {
-    throw new Error("Cannot find AgentConfiguration.");
+    return null;
   }
 
   return await renderAgentConfigurationByModelId(auth, agent.id);
@@ -230,7 +230,12 @@ export async function updateAgentConfiguration(
     }
   );
 
-  return await getAgentConfiguration(auth, agentId);
+  const configuration = await getAgentConfiguration(auth, agentId);
+
+  if (!configuration) {
+    throw new Error("Updated AgentConfiguration not foud");
+  }
+  return configuration;
 }
 
 /**
