@@ -5,10 +5,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { getUserMetadata } from "@app/lib/api/user";
 
 const PostMessagesRequestBodySchema = t.type({
   content: t.string,
