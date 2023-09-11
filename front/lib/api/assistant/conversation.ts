@@ -362,6 +362,7 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
 
+  // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await front_sequelize.transaction(async (t) => {
       let nextMessageRank =
