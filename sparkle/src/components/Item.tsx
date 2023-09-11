@@ -200,17 +200,15 @@ export function Item({
   );
 }
 
-export const ItemSectionHeader: React.FC<{ label: string }> = ({ label }) => (
-  <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
-);
-
 interface ItemSectionHeaderProps {
   label: string;
 }
 
 Item.SectionHeader = function ({ label }: ItemSectionHeaderProps) {
   return (
-    <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
+    <div className="s-py-2 s-text-xs s-font-medium s-uppercase s-text-element-800">
+      {label}
+    </div>
   );
 };
 
