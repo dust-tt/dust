@@ -34,7 +34,7 @@ const iconBaseClasses = "s-transition-colors s-ease-out s-duration-400";
 
 const iconClasses = {
   default: {
-    base: "s-text-element-700",
+    base: "s-text-element-600",
     hover: "group-hover:s-text-action-400",
     dark: {
       base: "dark:s-text-element-700-dark",
