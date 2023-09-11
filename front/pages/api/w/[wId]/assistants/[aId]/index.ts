@@ -52,8 +52,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message:
-              "The agent configuration you're trying to access was not found.",
+            message: "The Assistant you're trying to access was not found.",
           },
         });
       }
