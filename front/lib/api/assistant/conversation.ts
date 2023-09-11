@@ -6,7 +6,10 @@ import {
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfiguration,
+  renderAgentConfigurationByModelId,
+} from "@app/lib/api/assistant/configuration";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -159,11 +162,7 @@ async function renderAgentMessage(
   agentMessage: AgentMessage
 ): Promise<AgentMessageType> {
   const [agentConfiguration, agentRetrievalAction] = await Promise.all([
-    AgentConfiguration.findOne({
-      where: {
-        id: agentMessage.agentConfigurationId,
-      },
-    }),
+    renderAgentConfigurationByModelId(auth, agentMessage.agentConfigurationId),
     (async () => {
       if (agentMessage.agentRetrievalActionId) {
         return await renderRetrievalActionByModelId(
@@ -173,17 +172,6 @@ async function renderAgentMessage(
       return null;
     })(),
   ]);
-
-  if (!agentConfiguration) {
-    throw new Error(
-      `Agent configuration ${agentMessage.agentConfigurationId} not found`
-    );
-  }
-
-  const configuration = await getAgentConfiguration(
-    auth,
-    agentConfiguration.sId
-  );
 
   return {
     id: message.id,
@@ -197,7 +185,7 @@ async function renderAgentMessage(
     content: agentMessage.content,
     feedbacks: [],
     error: null,
-    configuration,
+    configuration: agentConfiguration,
   };
 }
 
