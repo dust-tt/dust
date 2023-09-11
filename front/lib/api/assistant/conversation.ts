@@ -23,7 +23,6 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
-import user from "@app/pages/api/xp1/v0.3.x/user";
 import {
   AgentMessageType,
   ConversationType,
