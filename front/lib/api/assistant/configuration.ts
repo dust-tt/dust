@@ -196,7 +196,7 @@ export async function createAgentConfiguration(
     action,
   }: {
     name: string;
-    pictureUrl: string | null;
+    pictureUrl: string;
     status: AgentConfigurationStatus;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;

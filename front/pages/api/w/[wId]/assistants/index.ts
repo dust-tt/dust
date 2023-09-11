@@ -24,7 +24,7 @@ export type PostAssistantResponseBody = {
 const PostAssistantResponseBodySchema = t.type({
   assistant: t.type({
     name: t.string,
-    pictureUrl: t.union([t.string, t.null]),
+    pictureUrl: t.string,
     action: t.type({
       type: t.literal("retrieval_configuration"),
       query: t.union([
@@ -126,7 +126,6 @@ async function handler(
       });
     case "POST":
       const bodyValidation = PostAssistantResponseBodySchema.decode(req.body);
-
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
