@@ -241,7 +241,7 @@ export async function getDatabaseChildPages({
   databaseId,
   loggerArgs,
   cursor,
-  retry = { retries: 5, backoffFactor: 2 },
+  retry = { retries: 3, backoffFactor: 2 },
 }: {
   notionAccessToken: string;
   databaseId: string;
@@ -287,6 +287,17 @@ export async function getDatabaseChildPages({
         nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
       };
     } catch (e) {
+      if (
+        NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(
+          (e as { code: string }).code
+        )
+      ) {
+        tryLogger.info("Database not accessible.");
+        return {
+          pages: [],
+          nextCursor: null,
+        };
+      }
       tryLogger.error(
         { error: e },
         "Error fetching result page from Notion API."
