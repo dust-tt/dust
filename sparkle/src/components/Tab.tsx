@@ -1,4 +1,4 @@
-import React, { ComponentType, MouseEvent } from "react";
+import React, { ComponentType, MouseEvent, ReactNode } from "react";
 
 import {
   noHrefLink,
@@ -8,15 +8,17 @@ import {
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { Tooltip } from "./Tooltip";
 
 type TabProps = {
   tabs: Array<{
-    label: string;
+    label?: string;
     hideLabel?: boolean;
-    current: boolean;
+    current?: boolean;
     sizing?: "hug" | "expand";
     icon?: ComponentType<{ className?: string }>;
     href?: string;
+    type?: "separator" | "expander";
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
@@ -51,7 +53,7 @@ const iconClasses = {
     },
   },
   selected: {
-    base: "s-text-action-500",
+    base: "s-text-action-400",
     hover: "",
     dark: {
       base: "dark:s-text-action-500-dark",
@@ -70,6 +72,14 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
 
   const renderTabs = () =>
     tabs.map((tab) => {
+      if (tab.type === "separator") {
+        return (
+          <div className="s-flex s-h-full s-w-px s-bg-structure-200"></div>
+        );
+      }
+      if (tab.type === "expander") {
+        return <div className="s-flex s-h-full s-grow"></div>;
+      }
       const tabStateClasses = tab.current
         ? tabClasses.selected
         : tabClasses.default;
@@ -78,7 +88,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
+        tab.icon ? " s-pr-4 s-pl-3" : " s-px-4",
         tabStateClasses.base,
         tabStateClasses.hover,
         tabStateClasses.dark.base,
@@ -100,19 +111,19 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         ? components.link
         : noHrefLink;
 
-      return (
+      const content: ReactNode = (
         <Link
           key={tab.label}
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
-          onClick={(event) => onTabClick?.(tab.label, event)}
+          onClick={(event) => onTabClick?.(tab.label ? tab.label : "", event)}
           href={tab.href || "#"}
         >
           <div
             className={
               tab.current
                 ? "s-flex s-gap-x-2"
-                : "s-duration-400 s-flex s-translate-y-0 s-transform s-gap-x-2 s-transition-transform s-ease-out group-hover:-s-translate-y-0.5"
+                : "s-flex s-gap-x-2 s-transition s-duration-300 s-ease-out"
             }
           >
             {tab.icon && (
@@ -121,6 +132,15 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             {tab.hideLabel ?? tab.label}
           </div>
         </Link>
+      );
+      return tab.hideLabel ? (
+        tab.label ? (
+          <Tooltip label={tab.label}>{content}</Tooltip>
+        ) : (
+          content
+        )
+      ) : (
+        content
       );
     });
 
