@@ -3,7 +3,7 @@ import { Op, Transaction } from "sequelize";
 import {
   getGlobalAgent,
   getGlobalAgents,
-  isGlobalAgent,
+  isGlobalAgentId,
 } from "@app/lib/api/assistant/globalAgents";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize, ModelId } from "@app/lib/databases";
@@ -139,7 +139,7 @@ export async function getAgentConfiguration(
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
 
-  if (isGlobalAgent(agentId)) {
+  if (isGlobalAgentId(agentId)) {
     return await getGlobalAgent(auth, agentId);
   }
 

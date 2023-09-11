@@ -12,8 +12,8 @@ import { AgentConfigurationType } from "@app/types/assistant/agent";
  */
 
 enum GLOBAL_AGENTS_SID {
-  GPT4 = "6b5203c158",
-  Slack = "4c974a7ac9",
+  GPT4 = "gpt-4",
+  Slack = "slack",
 }
 enum GLOBAL_AGENTS_ID {
   GPT4 = -1,
@@ -30,7 +30,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
     scope: "global",
     generation: {
       id: 0,
-      prompt: "Answer the following question:",
+      prompt: "",
       model: {
         providerId: "openai",
         modelId: "gpt-4-0613",
@@ -42,7 +42,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
 
 async function _getSlackGlobalAgent(
   auth: Authenticator
-): Promise<AgentConfigurationType> {
+): Promise<AgentConfigurationType | null> {
   const workspace = auth.workspace();
   const workspaceId = auth.workspace()?.id;
   if (!workspace || !workspaceId) {
@@ -55,6 +55,10 @@ async function _getSlackGlobalAgent(
       workspaceId: workspaceId,
     },
   });
+
+  if (!slackDataSources) {
+    return null;
+  }
 
   return {
     id: GLOBAL_AGENTS_ID.Slack,
@@ -91,7 +95,7 @@ async function _getSlackGlobalAgent(
  * EXPORTED FUNCTIONS
  */
 
-export function isGlobalAgent(sId: string): boolean {
+export function isGlobalAgentId(sId: string): boolean {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
@@ -124,5 +128,10 @@ export async function getGlobalAgents(
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  return [await _getGPT4GlobalAgent(), await _getSlackGlobalAgent(auth)];
+  const globalAgents = [await _getGPT4GlobalAgent()];
+  const slackAgent = await _getSlackGlobalAgent(auth);
+  if (slackAgent) {
+    globalAgents.push(slackAgent);
+  }
+  return globalAgents;
 }
