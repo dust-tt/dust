@@ -1,7 +1,7 @@
 import { Op, Transaction } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
+import { front_sequelize, ModelId } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -25,12 +25,9 @@ import {
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 
-/**
- * Get an agent configuration
- */
-export async function getAgentConfiguration(
+export async function renderAgentConfigurationByModelId(
   auth: Authenticator,
-  agentId: string
+  id: ModelId
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -38,7 +35,7 @@ export async function getAgentConfiguration(
   }
   const agent = await AgentConfiguration.findOne({
     where: {
-      sId: agentId,
+      id: id,
       workspaceId: owner.id,
     },
     include: [
@@ -119,6 +116,30 @@ export async function getAgentConfiguration(
         }
       : null,
   };
+}
+
+/**
+ * Get an agent configuration
+ */
+export async function getAgentConfiguration(
+  auth: Authenticator,
+  agentId: string
+): Promise<AgentConfigurationType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find AgentConfiguration: no workspace.");
+  }
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+    },
+  });
+  if (!agent) {
+    throw new Error("Cannot find AgentConfiguration.");
+  }
+
+  return await renderAgentConfigurationByModelId(auth, agent.id);
 }
 
 /**
