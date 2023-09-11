@@ -22,18 +22,19 @@ export const TabNavigation: Story = {
         label: "Assistant",
         current: true,
         icon: ChatBubbleBottomCenterTextIcon,
-        sizing: "expand",
+        sizing: "hug",
       },
       {
         label: "Lab",
         current: false,
         icon: TestTubeIcon,
-        sizing: "expand",
+        sizing: "hug",
       },
       {
-        label: "No Icon",
-        current: false,
-        sizing: "expand",
+        type: "separator",
+      },
+      {
+        type: "expander",
       },
       {
         label: "Settings",
