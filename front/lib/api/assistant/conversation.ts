@@ -193,9 +193,15 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string
 ): Promise<ConversationType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
+      workspaceId: owner.id,
     },
   });
 
@@ -332,7 +338,8 @@ export type AgentMessageNewEvent = {
 };
 
 // This method is in charge of creating a new user message in database, running the necessary agents
-// in response and updating accordingly the conversation.
+// in response and updating accordingly the conversation. AgentMentions must point to valid agent
+// configurations from the same workspace or whose scope is global.
 export async function* postUserMessage(
   auth: Authenticator,
   {
@@ -412,10 +419,15 @@ export async function* postUserMessage(
           mentions.filter(isAgentMention).map((mention) => {
             // For each assistant/agent mention, create an "empty" agent message.
             return (async () => {
+              // `getAgentConfiguration` checks that we're only pulling a configuration from the
+              // same workspace or a global one.
               const configuration = await getAgentConfiguration(
                 auth,
                 mention.configurationId
               );
+              if (!configuration) {
+                throw new Error(`Configuration not found`);
+              }
 
               await Mention.create({
                 messageId: m.id,
