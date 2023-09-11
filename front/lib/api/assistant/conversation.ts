@@ -650,6 +650,17 @@ export async function* editUserMessage(
     content: string;
   }
 ): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+  if (auth.user()?.id !== message.user?.id) {
+    return {
+      type: "user_message_error",
+      created: Date.now(),
+      messageId: message.sId,
+      error: {
+        code: "not_allowed",
+        message: "Only the author of the message can edit it",
+      },
+    };
+  }
   const messageModel = await Message.findOne({
     where: {
       sId: message.sId,
