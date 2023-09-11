@@ -54,7 +54,7 @@ const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
 const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
-const MAX_PENDING_UPSERT_ACTIVITIES = 1;
+const MAX_PENDING_UPSERT_ACTIVITIES = 5;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
