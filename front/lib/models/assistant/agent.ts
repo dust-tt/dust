@@ -171,6 +171,7 @@ AgentConfiguration.belongsTo(Workspace, {
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
+  as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });
 AgentConfiguration.belongsTo(AgentGenerationConfiguration, {

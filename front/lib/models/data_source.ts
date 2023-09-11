@@ -97,5 +97,5 @@ Workspace.hasMany(DataSource, {
 });
 DataSource.belongsTo(Workspace, {
   as: "workspace",
-  foreignKey: "workspaceId",
+  foreignKey: { name: "workspaceId", allowNull: false },
 });
