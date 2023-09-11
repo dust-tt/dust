@@ -59,7 +59,8 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-
+  // just checking if the conversation exists, no need to actually construct the
+  // conversation object
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,

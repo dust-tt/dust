@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation, Message } from "@app/lib/models";
+import { AgentMessage, Conversation, Message } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
 
@@ -62,7 +62,8 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-
+  // just checking if the conversation exists, no need to actually construct the
+  // conversation object
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
@@ -94,6 +95,13 @@ async function handler(
     where: {
       sId: messageId,
     },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+    ],
   });
 
   if (!message) {
@@ -102,6 +110,25 @@ async function handler(
       api_error: {
         type: "message_not_found",
         message: "The message you're trying to access was not found.",
+      },
+    });
+  }
+  if (!message.agentMessage) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Events are only available for agent messages.",
+      },
+    });
+  }
+
+  if (message.agentMessage.status === "succeeded") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Agent message already succeeded.",
       },
     });
   }
