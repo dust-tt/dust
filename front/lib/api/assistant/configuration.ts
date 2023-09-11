@@ -1,5 +1,10 @@
 import { Op, Transaction } from "sequelize";
 
+import {
+  getGlobalAgent,
+  getGlobalAgents,
+  isGlobalAgentId,
+} from "@app/lib/api/assistant/globalAgents";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize, ModelId } from "@app/lib/databases";
 import {
@@ -133,6 +138,11 @@ export async function getAgentConfiguration(
   if (!owner) {
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
+
+  if (isGlobalAgentId(agentId)) {
+    return await getGlobalAgent(auth, agentId);
+  }
+
   const agent = await AgentConfiguration.findOne({
     where: {
       sId: agentId,
@@ -157,17 +167,20 @@ export async function getAgentConfigurations(
   if (!owner) {
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
-  const agents = await AgentConfiguration.findAll({
+
+  const rawAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
     },
   });
-
-  return Promise.all(
-    agents.map(async (agent) => {
-      return await renderAgentConfigurationByModelId(auth, agent.id);
+  const agents = await Promise.all(
+    rawAgents.map(async (a) => {
+      return await renderAgentConfigurationByModelId(auth, a.id);
     })
   );
+  const globalAgents = await getGlobalAgents(auth);
+
+  return [...globalAgents, ...agents];
 }
 
 /**
