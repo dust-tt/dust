@@ -69,8 +69,8 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conv = await getConversation(auth, conversationId);
-  if (!conv) {
+  const conversation = await getConversation(auth, conversationId);
+  if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -100,15 +100,7 @@ async function handler(
       // Not awaiting this promise on prupose.
       // We want to answer "OK" to the client ASAP and process the events in the background.
       void postUserMessageWithPubSub(auth, {
-        conversation: {
-          id: conv.id,
-          created: conv.created,
-          sId: conv.sId,
-          title: conv.title,
-          // not sure how to provide the content here for now.
-          content: [],
-          visibility: conv.visibility,
-        },
+        conversation,
         content,
         mentions: [],
         context: {
