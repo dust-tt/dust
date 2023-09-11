@@ -5,10 +5,10 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
@@ -124,6 +124,8 @@ export class AgentDataSourceConfiguration extends Model<
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   >;
+
+  declare dataSource: NonAttribute<DataSource>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -181,14 +183,6 @@ AgentDataSourceConfiguration.init(
   }
 );
 
-// Agent config <> Retrieval config
-AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
@@ -200,10 +194,12 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
 
 // Data source config <> Data source
 DataSource.hasMany(AgentDataSourceConfiguration, {
+  as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "CASCADE",
 });
 AgentDataSourceConfiguration.belongsTo(DataSource, {
+  as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
 

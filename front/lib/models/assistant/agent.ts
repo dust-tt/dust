@@ -5,6 +5,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
@@ -90,6 +91,9 @@ export class AgentConfiguration extends Model<
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
+
+  declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
+  declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
 }
 AgentConfiguration.init(
   {
@@ -167,8 +171,20 @@ AgentConfiguration.belongsTo(Workspace, {
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
+  as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });
 AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
+  as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
+});
+
+// Agent config <> Retrieval config
+AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
 });
