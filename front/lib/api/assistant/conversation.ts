@@ -410,77 +410,87 @@ export async function* postUserMessage(
         context: context,
       };
 
-      const agentMessages: AgentMessageType[] = [];
-      const agentMessageRows: AgentMessage[] = [];
+      const results: { row: AgentMessage; m: AgentMessageType }[] =
+        await Promise.all(
+          mentions.filter(isAgentMention).map((mention) => {
+            // For each assistant/agent mention, create an "empty" agent message.
+            return (async () => {
+              const configuration = await getAgentConfiguration(
+                auth,
+                mention.configurationId
+              );
 
-      // for each assistant mention, create an "empty" agent message
-      for (const mention of mentions) {
-        if (isAgentMention(mention)) {
-          const configuration = await getAgentConfiguration(
-            auth,
-            mention.configurationId
-          );
+              await Mention.create({
+                messageId: m.id,
+                agentConfigurationId: configuration.id,
+              });
 
-          await Mention.create({
-            messageId: m.id,
-            agentConfigurationId: configuration.id,
-          });
+              const agentMessageRow = await AgentMessage.create(
+                {
+                  status: "created",
+                  agentConfigurationId: configuration.id,
+                },
+                { transaction: t }
+              );
+              const messageRow = await Message.create(
+                {
+                  sId: generateModelSId(),
+                  rank: nextMessageRank++,
+                  conversationId: conversation.id,
+                  parentId: userMessage.id,
+                  agentMessageId: agentMessageRow.id,
+                },
+                {
+                  transaction: t,
+                }
+              );
 
-          const agentMessageRow = await AgentMessage.create(
-            {
-              status: "created",
-              agentConfigurationId: configuration.id,
-            },
-            { transaction: t }
-          );
-          const messageRow = await Message.create(
-            {
-              sId: generateModelSId(),
-              rank: nextMessageRank++,
-              conversationId: conversation.id,
-              parentId: userMessage.id,
-              agentMessageId: agentMessageRow.id,
-            },
-            {
-              transaction: t,
-            }
-          );
+              return {
+                row: agentMessageRow,
+                m: {
+                  id: messageRow.id,
+                  sId: messageRow.sId,
+                  type: "agent_message",
+                  visibility: "visible",
+                  version: 0,
+                  parentMessageId: userMessage.sId,
+                  status: "created",
+                  action: null,
+                  message: null,
+                  feedbacks: [],
+                  error: null,
+                  configuration,
+                },
+              };
+            })();
+          })
+        );
 
-          agentMessageRows.push(agentMessageRow);
-          agentMessages.push({
-            id: messageRow.id,
-            sId: messageRow.sId,
-            type: "agent_message",
-            visibility: "visible",
-            version: 0,
-            parentMessageId: userMessage.sId,
-            status: "created",
-            action: null,
-            message: null,
-            feedbacks: [],
-            error: null,
-            configuration,
-          });
-        }
-
-        if (isUserMention(mention)) {
-          const user = await User.findOne({
-            where: {
-              provider: mention.provider,
-              providerId: mention.providerId,
-            },
-          });
-
-          if (user) {
-            await Mention.create({
-              messageId: m.id,
-              userId: user.id,
+      await Promise.all(
+        mentions.filter(isUserMention).map((mention) => {
+          return (async () => {
+            const user = await User.findOne({
+              where: {
+                provider: mention.provider,
+                providerId: mention.providerId,
+              },
             });
-          }
-        }
-      }
 
-      return { userMessage, agentMessages, agentMessageRows };
+            if (user) {
+              await Mention.create({
+                messageId: m.id,
+                userId: user.id,
+              });
+            }
+          })();
+        })
+      );
+
+      return {
+        userMessage,
+        agentMessages: results.map(({ m }) => m),
+        agentMessageRows: results.map(({ row }) => row),
+      };
     });
 
   if (agentMessageRows.length !== agentMessages.length) {
