@@ -41,7 +41,7 @@ function NavigationBar({
 
   return (
     <div className="flex grow flex-col border-r border-structure-200 bg-structure-50">
-      <div className="mt-4 flex flex-col space-y-4">
+      <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-row">
           <div className="flex flex-initial items-center">
             <Logo className="-ml-4 h-4 w-32" />
@@ -81,7 +81,6 @@ function NavigationBar({
             )}
           </div>
         </div>
-
         {user && user.workspaces.length > 1 ? (
           <div className="flex flex-row items-center px-4">
             <div className="text-sm text-slate-500">Workspace:</div>
@@ -146,9 +145,8 @@ function NavigationBar({
             })}
           </div>
         )}
-        <div />
       </div>
-      <div className="mt-1 flex grow flex-col">{children}</div>
+      <div className="flex grow flex-col">{children}</div>
     </div>
   );
 }
