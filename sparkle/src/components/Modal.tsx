@@ -47,7 +47,7 @@ export function Modal({
               leaveFrom="s-opacity-100 s-translate-y-0 sm:s-scale-100"
               leaveTo="s-opacity-0 s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
             >
-              <Dialog.Panel className="s-relative s-max-w-2xl s-transform s-overflow-hidden s-rounded-lg s-bg-white s-px-4 s-pb-4 s-text-left s-shadow-xl s-transition-all sm:s-p-6 lg:s-w-1/2">
+              <Dialog.Panel className="s-relative s-max-w-2xl s-transform s-overflow-hidden s-rounded-lg s-bg-white s-px-4 s-pb-4 s-shadow-xl s-transition-all sm:s-p-6 lg:s-w-1/2">
                 <div className="s-flex s-items-start s-justify-between sm:s-mt-0">
                   <div>{action && <Button {...action} />}</div>
                   {hasChanged ? (
