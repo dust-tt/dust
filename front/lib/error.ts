@@ -33,7 +33,6 @@ export type APIErrorType =
   | "invitation_not_found"
   | "plan_limit_error"
   | "chat_session_not_found"
-  | "chat_message_not_found"
   | "chat_session_auth_error"
   | "template_not_found"
   | "chat_message_not_found"
@@ -43,7 +42,8 @@ export type APIErrorType =
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
   | "conversation_not_found"
-  | "agent_configuration_not_found";
+  | "agent_configuration_not_found"
+  | "message_not_found";
 
 export type APIError = {
   type: APIErrorType;
