@@ -63,7 +63,7 @@ async function handler(
         sId: generateModelSId(),
         title: req.body.title,
         visibility: req.body.visibility,
-        workspaceId:w.id
+        workspaceId: w.id,
       });
       return res.status(200).json({
         id: conv.id,

@@ -9,7 +9,7 @@ import { UserMessageType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<UserMessageType|ReturnedAPIErrorType>
+  res: NextApiResponse<UserMessageType | ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
