@@ -27,7 +27,7 @@ const itemStyle = {
   width: "100%",
 };
 
-export const DustLogoSet = () => (
+export const DustLogo = () => (
   <>
     <div style={gridStyle}>
       <div className="s-p-6">

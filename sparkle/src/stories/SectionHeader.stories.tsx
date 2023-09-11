@@ -6,7 +6,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "PageLayout/SectionHeader",
+  title: "Molecule/SectionHeader",
   component: SectionHeader,
 } satisfies Meta<typeof SectionHeader>;
 
