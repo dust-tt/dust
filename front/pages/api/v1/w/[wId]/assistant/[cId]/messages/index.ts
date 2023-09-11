@@ -5,10 +5,11 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Conversation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { UserMessageType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<UserMessageType|ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -73,7 +74,7 @@ async function handler(
     case "POST":
       // Not awaiting this promise on prupose.
       // We want to answer "OK" to the client ASAP and process the events in the background.
-      void postUserMessageWithPubSub(auth, {
+      const message = await postUserMessageWithPubSub(auth, {
         conversation: {
           id: conv.id,
           created: conv.createdAt.getTime(),
@@ -93,7 +94,7 @@ async function handler(
           profilePictureUrl: payload.context.profilePictureUrl,
         },
       });
-      res.status(200).end();
+      res.status(200).json(message);
       return;
 
     default:

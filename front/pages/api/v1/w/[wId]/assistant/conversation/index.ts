@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation } from "@app/lib/models";
+import { Conversation, Workspace } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
@@ -42,12 +42,28 @@ async function handler(
     });
   }
 
+  const w = await Workspace.findOne({
+    where: {
+      sId: keyWorkspaceId,
+    },
+  });
+  if (!w) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Workspace not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const conv = await Conversation.create({
         sId: generateModelSId(),
         title: req.body.title,
         visibility: req.body.visibility,
+        workspaceId:w.id
       });
       return res.status(200).json({
         id: conv.id,
