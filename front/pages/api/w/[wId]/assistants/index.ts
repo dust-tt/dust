@@ -37,7 +37,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can access an Assistant.",
+          "Only the users that are `builders` for the current workspace can access Assistants.",
       },
     });
   }
