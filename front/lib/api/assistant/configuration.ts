@@ -233,7 +233,7 @@ export async function updateAgentConfiguration(
   const configuration = await getAgentConfiguration(auth, agentId);
 
   if (!configuration) {
-    throw new Error("Updated AgentConfiguration not foud");
+    throw new Error("Updated AgentConfiguration not found");
   }
   return configuration;
 }
