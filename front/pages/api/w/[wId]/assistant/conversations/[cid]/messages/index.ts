@@ -11,6 +11,16 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 const PostMessagesRequestBodySchema = t.type({
   content: t.string,
+  mentions: t.array(
+    t.union([
+      t.type({ id: t.number, configurationId: t.string }),
+      t.type({
+        id: t.number,
+        provider: t.string,
+        providerId: t.string,
+      }),
+    ])
+  ),
   context: t.type({
     timezone: t.string,
     profilePictureUrl: t.string,
@@ -97,14 +107,14 @@ async function handler(
         });
       }
 
-      const { content, context } = bodyValidation.right;
+      const { content, context, mentions } = bodyValidation.right;
 
       // Not awaiting this promise on prupose.
       // We want to answer "OK" to the client ASAP and process the events in the background.
       void postUserMessageWithPubSub(auth, {
         conversation,
         content,
-        mentions: [],
+        mentions,
         context: {
           timezone: context.timezone,
           username: user.username,
