@@ -10,6 +10,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -66,7 +67,8 @@ export default function AssistantNew({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant"
+      topNavigationCurrent="lab"
+      subNavigation={subNavigationLab({ owner, current: "assistant" })}
     >
       <PageHeader
         title="Welcome to Assistant"

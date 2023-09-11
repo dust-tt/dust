@@ -36,7 +36,7 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "gens" | "extract";
+export type SubNavigationLabId = "gens" | "extract" | "assistant";
 
 export type SparkleAppLayoutNavigation = {
   id:
@@ -245,6 +245,13 @@ export const subNavigationLab = ({
       icon: Square3Stack3DIcon,
       href: `/w/${owner.sId}/u/gens`,
       current: current === "gens",
+    },
+    {
+      id: "assistant",
+      label: "Assistant v2",
+      icon: RobotIcon,
+      href: `/w/${owner.sId}/assistant/new`,
+      current: current === "assistant",
     },
   ];
 
