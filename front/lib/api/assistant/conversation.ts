@@ -35,6 +35,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
+import user from "@app/pages/api/xp1/v0.3.x/user";
 
 /**
  * Conversation Creation and Update
@@ -324,6 +325,17 @@ export type UserMessageNewEvent = {
   created: number;
   messageId: string;
   message: UserMessageType;
+};
+
+// Event sent when the user message is created.
+export type UserMessageErrorEvent = {
+  type: "user_message_error";
+  created: number;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
 };
 
 // Event sent when a new message is created (empty) and the agent is about to be executed.
@@ -638,15 +650,106 @@ export async function* editUserMessage(
     message: UserMessageType;
     content: string;
   }
-): AsyncGenerator<UserMessageNewEvent | AgentErrorEvent> {
-  yield {
-    type: "agent_error",
-    created: Date.now(),
-    configurationId: "foo",
-    messageId: "bar",
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
+): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+  const messageModel = await Message.findOne({
+    where: {
+      sId: message.sId,
+      conversationId: conversation.id,
     },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+  if (!messageModel) {
+    return {
+      type: "user_message_error",
+      created: Date.now(),
+      messageId: message.sId,
+      error: {
+        code: "not_found",
+        message: "Message not found",
+      },
+    };
+  }
+  const userMessageModel = messageModel.userMessage;
+  if (!userMessageModel) {
+    return {
+      type: "user_message_error",
+      created: Date.now(),
+      messageId: message.sId,
+      error: {
+        code: "not_found",
+        message: "UserMessage not found",
+      },
+    };
+  }
+
+  const userMessage: UserMessageType = await front_sequelize.transaction(
+    async (t) => {
+      const m = await Message.create(
+        {
+          sId: messageModel.sId,
+          rank: messageModel.rank,
+          conversationId: conversation.id,
+          parentId: messageModel.parentId,
+          version: messageModel.version + 1,
+          userMessageId: (
+            await UserMessage.create(
+              {
+                content,
+                userContextUsername: userMessageModel.userContextUsername,
+                userContextTimezone: userMessageModel.userContextTimezone,
+                userContextFullName: userMessageModel.userContextFullName,
+                userContextEmail: userMessageModel.userContextEmail,
+                userContextProfilePictureUrl:
+                  userMessageModel.userContextProfilePictureUrl,
+                userId: userMessageModel.userId,
+              },
+              { transaction: t }
+            )
+          ).id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      // update mentions to refer to the newly created message
+      const mentionsRes = await Mention.update(
+        { messageId: m.id },
+        {
+          where: {
+            messageId: messageModel.id,
+          },
+          transaction: t,
+        }
+      );
+      if (mentionsRes[0] !== message.mentions.length) {
+        throw new Error(
+          `Expected ${message.mentions.length} mentions to be updated, got ${mentionsRes[0]}`
+        );
+      }
+
+      return {
+        id: m.id,
+        sId: m.sId,
+        type: "user_message",
+        visibility: message.visibility,
+        version: m.version,
+        user: message.user,
+        mentions: message.mentions,
+        content,
+        context: message.context,
+      };
+    }
+  );
+  yield {
+    type: "user_message_new",
+    created: Date.now(),
+    messageId: userMessage.sId,
+    message: userMessage,
   };
 }
