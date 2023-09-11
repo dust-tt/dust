@@ -29,7 +29,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
     status: "active",
     scope: "global",
     generation: {
-      id: 0,
+      id: GLOBAL_AGENTS_ID.GPT4,
       prompt: "",
       model: {
         providerId: "openai",
@@ -68,7 +68,7 @@ async function _getSlackGlobalAgent(
     status: "active",
     scope: "global",
     generation: {
-      id: 0,
+      id: GLOBAL_AGENTS_ID.Slack,
       prompt:
         "Answer the following question using all the data available in your Slack workspace.",
       model: {
@@ -77,7 +77,7 @@ async function _getSlackGlobalAgent(
       },
     },
     action: {
-      id: 0,
+      id: GLOBAL_AGENTS_ID.Slack,
       type: "retrieval_configuration",
       query: "auto",
       relativeTimeFrame: "auto",
