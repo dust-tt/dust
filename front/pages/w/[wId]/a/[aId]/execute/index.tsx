@@ -431,6 +431,7 @@ export default function ExecuteView({
 
       setFinalOutputBlockTypeName(`${lastBlock.type}-${lastBlock.name}`);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDoneRunning]);
 
   const handleValueChange = (k: string, value: string) => {
@@ -545,6 +546,7 @@ export default function ExecuteView({
     }, 0);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleKeyPress = (event: KeyboardEvent | React.KeyboardEvent) => {
     if (event.metaKey === true && event.key === "Enter" && canRun()) {
       handleRun();

@@ -20,7 +20,6 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": 0,
     "no-case-declarations": 0,
     "react-hooks/rules-of-hooks": 0,
-    "react-hooks/exhaustive-deps": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",
     "jsx-a11y/alt-text": 0,

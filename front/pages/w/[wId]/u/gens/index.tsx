@@ -321,6 +321,7 @@ export function DocumentView({
       console.log("Trying to unmount");
       interruptRef.current = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [document.documentId]);
 
   useEffect(() => {
@@ -406,6 +407,7 @@ export function DocumentView({
     return () => {
       interruptRef.current = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [document.documentId]);
 
   return (
@@ -630,6 +632,7 @@ export function TemplatesView({
       templates[editingTemplate].visibility != "default" &&
       (isBuilder || templates[editingTemplate].visibility == "user")
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingTemplate]);
 
   const colorOptions = [
@@ -644,10 +647,12 @@ export function TemplatesView({
     if (selectedTemplate != -1) {
       onTemplateSelect(templates[selectedTemplate]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplate]);
 
   useEffect(() => {
     onTemplateSelect(templates[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTemplateDelete = (index: number) => {

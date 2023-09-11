@@ -76,7 +76,6 @@ export default function AppExtractEventsCreate({
   user,
   owner,
   event,
-  schema,
   readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {

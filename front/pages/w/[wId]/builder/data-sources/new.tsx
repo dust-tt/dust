@@ -2,7 +2,7 @@ import { Button, Checkbox, SectionHeader } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -69,7 +69,7 @@ export default function DataSourceNew({
 
   const [dataSourceDescription, setDataSourceDescription] = useState("");
 
-  const formValidation = () => {
+  const formValidation = useCallback(() => {
     let exists = false;
     dataSources.forEach((d) => {
       if (d.name == dataSourceName) {
@@ -97,11 +97,11 @@ export default function DataSourceNew({
       setDataSourceNameError("");
       return true;
     }
-  };
+  }, [dataSourceName, dataSources]);
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [dataSourceName]);
+  }, [dataSourceName, formValidation]);
 
   const router = useRouter();
 

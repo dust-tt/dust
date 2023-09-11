@@ -99,6 +99,7 @@ export default function CloneView({
 
   useEffect(() => {
     setDisabled(!formValidation());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appName]);
 
   const router = useRouter();

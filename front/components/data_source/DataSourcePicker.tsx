@@ -49,6 +49,7 @@ export default function DataSourcePicker({
         onDataSourcesUpdate([]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly, isDataSourcesLoading, isDataSourcesError, dataSources, name]);
 
   useEffect(() => {

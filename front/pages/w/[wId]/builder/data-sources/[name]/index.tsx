@@ -416,12 +416,12 @@ function ManagedDataSourceView({
         })
         .catch(console.error);
     }
-  }, []);
+  }, [dataSource.name, owner.sId, router]);
 
   useEffect(() => {
     if (connector.lastSyncSuccessfulTime)
       setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
-  }, []);
+  }, [connector.lastSyncSuccessfulTime]);
 
   const handleUpdatePermissions = async () => {
     if (!connector) {

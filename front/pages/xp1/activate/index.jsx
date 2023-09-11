@@ -27,6 +27,7 @@ export default function Activate({ ga_tracking_id }) {
 
   useEffect(() => {
     setDisabled(!formValidation());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, name]);
 
   return (

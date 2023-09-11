@@ -361,6 +361,7 @@ export default function DatasetView({
         data: exportDataset(),
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetName, datasetDescription, datasetData, datasetKeys, datasetTypes]);
 
   return (

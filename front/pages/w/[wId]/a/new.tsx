@@ -2,7 +2,7 @@ import { Button, SectionHeader } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -56,7 +56,7 @@ export default function NewApp({
 
   const [creating, setCreating] = useState(false);
 
-  const formValidation = () => {
+  const formValidation = useCallback(() => {
     if (appName.length == 0) {
       setAppNameError("");
       return false;
@@ -70,11 +70,11 @@ export default function NewApp({
       setAppNameError("");
       return true;
     }
-  };
+  }, [appName]);
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [appName]);
+  }, [appName, formValidation]);
 
   const router = useRouter();
 

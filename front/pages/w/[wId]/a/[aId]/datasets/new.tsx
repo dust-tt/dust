@@ -88,6 +88,7 @@ export default function NewDatasetView({
     if (isFinishedEditing) {
       void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinishedEditing]);
 
   const onUpdate = (
