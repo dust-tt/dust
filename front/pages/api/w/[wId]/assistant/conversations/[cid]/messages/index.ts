@@ -5,7 +5,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -14,6 +13,7 @@ const PostMessagesRequestBodySchema = t.type({
   content: t.string,
   context: t.type({
     timezone: t.string,
+    profilePictureUrl: t.string,
   }),
 });
 
@@ -98,8 +98,7 @@ async function handler(
       }
 
       const { content, context } = bodyValidation.right;
-      const profilePictureUrl =
-        (await getUserMetadata(user, "profilePictureUrl"))?.value || "";
+
       // Not awaiting this promise on prupose.
       // We want to answer "OK" to the client ASAP and process the events in the background.
       void postUserMessageWithPubSub(auth, {
@@ -111,7 +110,7 @@ async function handler(
           username: user.username,
           fullName: user.name,
           email: user.email,
-          profilePictureUrl,
+          profilePictureUrl: context.profilePictureUrl,
         },
       });
       res.status(200).end();
