@@ -21,7 +21,7 @@ const itemStyle = {
   width: "100%",
 };
 
-export const PlatformLogoSet = () => (
+export const PlatformLogos = () => (
   <div style={gridStyle}>
     {Object.entries(PlatformIcons).map(([iconName, IconComponent]) => {
       const CurrentIcon = (
