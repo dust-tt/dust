@@ -7,9 +7,13 @@ import { Conversation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { UserMessageType } from "@app/types/assistant/conversation";
 
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<UserMessageType | ReturnedAPIErrorType>
+  res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -94,7 +98,7 @@ async function handler(
           profilePictureUrl: payload.context.profilePictureUrl,
         },
       });
-      res.status(200).json(message);
+      res.status(200).json({ message: message });
       return;
 
     default:

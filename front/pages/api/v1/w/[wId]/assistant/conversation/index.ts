@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation, Workspace } from "@app/lib/models";
+import { Conversation } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
