@@ -267,7 +267,8 @@ export async function generateRetrievalParams(
  */
 
 // Internal interface for the retrieval and rendering of a retrieval action. This should no be
-// outside of api/assistant. We allow a ModelId interface here to save a round trip to the database.
+// outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
+// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function renderRetrievalActionByModelId(
   id: ModelId
 ): Promise<RetrievalActionType> {
