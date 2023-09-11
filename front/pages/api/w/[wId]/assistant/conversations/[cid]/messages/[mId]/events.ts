@@ -1,14 +1,15 @@
 import { NextApiRequest, NextApiResponse } from "next";
+
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { ConversationType } from "@app/types/assistant/conversation";
 import {
   getConversationEvents,
   getMessagesEvents,
 } from "@app/lib/api/assistant/pubsub";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Conversation, Message } from "@app/lib/models";
+import { apiError, withLogging } from "@app/logger/withlogging";
+import { ConversationType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
