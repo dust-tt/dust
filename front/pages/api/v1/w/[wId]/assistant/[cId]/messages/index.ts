@@ -1,15 +1,38 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getConversation } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { UserMessageType } from "@app/types/assistant/conversation";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
 };
+
+const PostMessagesRequestBodySchema = t.type({
+  content: t.string,
+  mentions: t.array(
+    t.union([
+      t.type({ configurationId: t.string }),
+      t.type({
+        provider: t.string,
+        providerId: t.string,
+      }),
+    ])
+  ),
+  context: t.type({
+    timezone: t.string,
+    username: t.string,
+    fullName: t.union([t.string, t.null]),
+    email: t.union([t.string, t.null]),
+    profilePictureUrl: t.union([t.string, t.null]),
+  }),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -46,12 +69,8 @@ async function handler(
     });
   }
 
-  const conv = await Conversation.findOne({
-    where: {
-      sId: req.query.cId as string,
-    },
-  });
-  if (!conv) {
+  const conversation = await getConversation(auth, req.query.cId as string);
+  if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -61,42 +80,25 @@ async function handler(
     });
   }
 
-  // no time for actual io-ts parsing right now, so here is the expected structure.
-  // Will handle proper parsing later.
-  const payload = req.body as {
-    content: string;
-    context: {
-      timezone: string;
-      username: string;
-      fullName: string;
-      email: string;
-      profilePictureUrl: string;
-    };
-  };
-
   switch (req.method) {
     case "POST":
-      // Not awaiting this promise on prupose.
-      // We want to answer "OK" to the client ASAP and process the events in the background.
+      const bodyValidation = PostMessagesRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+      const { content, context, mentions } = bodyValidation.right;
       const message = await postUserMessageWithPubSub(auth, {
-        conversation: {
-          id: conv.id,
-          created: conv.createdAt.getTime(),
-          sId: conv.sId,
-          title: conv.title,
-          // not sure how to provide the content here for now.
-          content: [],
-          visibility: conv.visibility,
-        },
-        content: payload.content,
-        mentions: [],
-        context: {
-          timezone: payload.context.timezone,
-          username: payload.context.username,
-          fullName: payload.context.fullName,
-          email: payload.context.email,
-          profilePictureUrl: payload.context.profilePictureUrl,
-        },
+        conversation,
+        content,
+        mentions,
+        context,
       });
       res.status(200).json({ message: message });
       return;
