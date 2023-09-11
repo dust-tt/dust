@@ -14,11 +14,17 @@ type Story = StoryObj<typeof meta>;
 
 export const ListItemExample = () => (
   <div>
-    <Item.List className="s-w-40">
+    <Item.List className="s-w-60">
       <Item.SectionHeader label="Section Header" />
-      <Item size="sm" label="Item 1" />
+      <Item
+        size="sm"
+        label="Deploying a new Sparkle Icon set and GitHub action"
+      />
       <Item size="sm" label="Item 2" />
-      <Item size="sm" label="Item 3" />
+      <Item
+        size="sm"
+        label="Adding custom colors and color schemes to Tailwind"
+      />
     </Item.List>
     <div className="s-h-8" />
     <Item.List className="s-w-40">

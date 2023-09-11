@@ -74,6 +74,31 @@ const chevronClasses = {
 
 const stateClasses = {
   default: {
+    base: "s-text-element-700 s-cursor-pointer",
+    hover: "hover:s-text-element-800",
+    active: "active:s-text-element-900",
+    dark: {
+      base: "dark:s-text-element-700-dark",
+      hover: "dark:hover:s-text-element-800-dark",
+      active: "dark:active:s-text-element-900-dark",
+    },
+    disabled: "s-opacity-50",
+  },
+  selected: {
+    base: "s-text-action-500",
+    hover: "",
+    active: "",
+    dark: {
+      base: "dark:s-text-action-500-dark",
+      hover: "",
+      active: "",
+    },
+    disabled: "",
+  },
+};
+
+const stateClassesMD = {
+  default: {
     base: "s-text-element-900 s-cursor-pointer",
     hover: "hover:s-text-action-500",
     active: "active:s-text-action-700",
@@ -110,10 +135,14 @@ export function Item({
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
-  const currentStateClasses = selected
-    ? stateClasses.selected
-    : stateClasses.default;
-
+  const currentStateClasses =
+    size === "md"
+      ? selected
+        ? stateClassesMD.selected
+        : stateClassesMD.default
+      : selected
+      ? stateClasses.selected
+      : stateClasses.default;
   const currentIconClasses = selected
     ? iconClasses.selected
     : iconClasses.default;
@@ -145,6 +174,7 @@ export function Item({
 
   const finalCevronClasses = classNames(
     iconBaseClasses,
+    "s-flex-shrink-0",
     size === "sm" ? "s-text-transparent" : currentChevronClasses.base,
     !disabled ? currentChevronClasses.hover : "", // Add condition here
     currentChevronClasses.dark.base,
@@ -161,7 +191,7 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
-      <span className="s-grow">{label}</span>
+      <span className="s-grow s-truncate">{label}</span>
 
       {variant === "default" && (
         <Icon visual={ChevronRight} className={finalCevronClasses} size="sm" />
