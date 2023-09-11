@@ -1,15 +1,26 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation } from "@app/lib/models";
-import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
 
+const PostConversationsRequestBodySchema = t.type({
+  title: t.union([t.string, t.null]),
+  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+});
+
+export type PostConversationsResponseBody = {
+  conversation: ConversationType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ConversationType | ReturnedAPIErrorType>
+  res: NextApiResponse<PostConversationsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -56,20 +67,30 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const conv = await Conversation.create({
-        sId: generateModelSId(),
-        title: req.body.title,
-        visibility: req.body.visibility,
-        workspaceId: owner.id,
+      const bodyValidation = PostConversationsRequestBodySchema.decode(
+        req.body
+      );
+
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { title, visibility } = bodyValidation.right;
+
+      const conversation = await createConversation(auth, {
+        title,
+        visibility,
       });
-      return res.status(200).json({
-        id: conv.id,
-        created: conv.createdAt.getTime(),
-        sId: conv.sId,
-        title: conv.title,
-        visibility: conv.visibility,
-        content: [],
-      });
+      res.status(200).json({ conversation });
+      return;
 
     default:
       return apiError(req, res, {
