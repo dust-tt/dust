@@ -132,11 +132,7 @@ AgentConfiguration.init(
     sequelize: front_sequelize,
     indexes: [
       { fields: ["workspaceId"] },
-      // Unique name per workspace.
-      // Note that on PostgreSQL a unique constraint on multiple columns will treat NULL
-      // as distinct from any other value, so we can create twice the same name if at least
-      // one of the workspaceId is null. We're okay with it.
-      { fields: ["workspaceId", "name", "scope"], unique: true },
+      { fields: ["workspaceId", "name"], unique: true },
       { fields: ["sId"], unique: true },
     ],
   }
