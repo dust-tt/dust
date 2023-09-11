@@ -216,7 +216,7 @@ DataSource.hasMany(AgentDataSourceConfiguration, {
 });
 AgentDataSourceConfiguration.belongsTo(DataSource, {
   as: "dataSource",
-  foreignKey: "dataSourceId",
+  foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 /**
