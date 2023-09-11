@@ -14,7 +14,6 @@ export async function runNotionWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 3,
     connection,
     namespace,
     interceptors: {

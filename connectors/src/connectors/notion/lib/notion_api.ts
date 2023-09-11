@@ -12,6 +12,7 @@ import {
   GetPageResponse,
   PageObjectResponse,
   PartialBlockObjectResponse,
+  QueryDatabaseResponse,
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
@@ -209,23 +210,6 @@ export async function getPagesAndDatabasesEditedSince(
         // through its pages.
         try {
           editedDbs[pageOrDb.id] = lastEditedTime;
-
-          // Note: we don't want to optimize this step due to Notion not always returning all the
-          // dbs (so if we miss it at initial sync and it gets touched we will miss all its old
-          // pages here again. It's a lot of additional work but it helps catching as much as we
-          // can from Notion). The caller of this function filters the edited page based on our
-          // knowledge of it in DB so this won't create extraneous upserts.
-          for await (const child of iteratePaginatedAPIWithRetries(
-            notionClient.databases.query,
-            {
-              database_id: pageOrDb.id,
-            },
-            localLogger.child({ databaseId: pageOrDb.id })
-          )) {
-            if (isFullPage(child)) {
-              editedPages[child.id] = lastEditedTime;
-            }
-          }
         } catch (e) {
           if (
             APIResponseError.isAPIResponseError(e) &&
@@ -250,6 +234,73 @@ export async function getPagesAndDatabasesEditedSince(
     })),
     nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
   };
+}
+
+export async function getDatabaseChildPages({
+  notionAccessToken,
+  databaseId,
+  loggerArgs,
+  cursor,
+  retry = { retries: 5, backoffFactor: 2 },
+}: {
+  notionAccessToken: string;
+  databaseId: string;
+  loggerArgs: Record<string, string | number>;
+  cursor: string | null;
+  retry?: { retries: number; backoffFactor: number };
+}): Promise<{
+  pages: { id: string; lastEditedTs: number }[];
+  nextCursor: string | null;
+}> {
+  const localLogger = logger.child(loggerArgs);
+
+  const notionClient = new Client({ auth: notionAccessToken });
+  let resultsPage: QueryDatabaseResponse | null = null;
+  const pages: Record<string, number> = {};
+
+  const tries = 0;
+  while (tries < retry.retries) {
+    const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
+    tryLogger.info("Fetching result page from Notion API.");
+    try {
+      resultsPage = await notionClient.databases.query({
+        database_id: databaseId,
+        start_cursor: cursor || undefined,
+      });
+      for (const r of resultsPage.results) {
+        if (isFullPage(r)) {
+          const lastEditedTime = new Date(r.last_edited_time).getTime();
+          pages[r.id] = lastEditedTime;
+        }
+      }
+
+      tryLogger.info(
+        { count: resultsPage.results.length },
+        "Received result page from Notion API."
+      );
+
+      return {
+        pages: Object.entries(pages).map(([id, lastEditedTs]) => ({
+          id,
+          lastEditedTs,
+        })),
+        nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
+      };
+    } catch (e) {
+      tryLogger.error(
+        { error: e },
+        "Error fetching result page from Notion API."
+      );
+      if (tries >= retry.retries) {
+        throw e;
+      }
+      const sleepTime = 500 * retry.backoffFactor ** tries;
+      tryLogger.info({ sleepTime }, "Sleeping before retrying.");
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
+    }
+  }
+
+  throw new Error("Unreachable.");
 }
 
 const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [

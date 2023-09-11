@@ -12,6 +12,7 @@ import {
   isDuringGarbageCollectStartWindow,
 } from "@connectors/connectors/notion/lib/garbage_collect";
 import {
+  getDatabaseChildPages,
   getPagesAndDatabasesEditedSince,
   getParsedDatabase,
   getParsedPage,
@@ -44,6 +45,129 @@ import {
 const logger = mainLogger.child({ provider: "notion" });
 
 const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
+
+export async function getDatabaseChildPagesActivity({
+  databaseId,
+  dataSourceInfo,
+  accessToken,
+  cursor,
+  loggerArgs,
+  excludeUpToDatePages,
+}: {
+  databaseId: string;
+  dataSourceInfo: DataSourceInfo;
+  accessToken: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+  excludeUpToDatePages: boolean;
+}): Promise<{
+  pageIds: string[];
+  nextCursor: string | null;
+}> {
+  const localLoggerArgs = {
+    ...loggerArgs,
+    databaseId,
+    dataSourceName: dataSourceInfo.dataSourceName,
+    workspaceId: dataSourceInfo.workspaceId,
+  };
+  const localLogger = logger.child(localLoggerArgs);
+
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceInfo.workspaceId,
+      dataSourceName: dataSourceInfo.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  let res;
+  try {
+    res = await getDatabaseChildPages({
+      notionAccessToken: accessToken,
+      databaseId,
+      loggerArgs: localLoggerArgs,
+      cursor,
+    });
+  } catch (e) {
+    // Sometimes a cursor will consistently fail with 500.
+    // In this case, there is not much we can do, so we just give up and move on.
+    // Notion workspaces are resynced daily so nothing is lost forever.
+    const potentialNotionError = e as {
+      body: unknown;
+      code: string;
+      status: number;
+    };
+    if (
+      potentialNotionError.code === "internal_server_error" &&
+      potentialNotionError.status === 500
+    ) {
+      if (Context.current().info.attempt > 20) {
+        localLogger.error(
+          {
+            error: potentialNotionError,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to get Notion database children result page with cursor. Giving up and moving on"
+        );
+        return {
+          pageIds: [],
+          nextCursor: null,
+        };
+      }
+    }
+
+    throw e;
+  }
+
+  const { pages, nextCursor } = res;
+
+  if (!excludeUpToDatePages) {
+    return {
+      pageIds: pages.map((p) => p.id),
+      nextCursor,
+    };
+  }
+
+  // We exclude pages that we have already seen since their lastEditedTs we recieved from
+  // getPagesEditedSince.
+  const existingPages = await NotionPage.findAll({
+    where: {
+      notionPageId: pages.map((p) => p.id),
+      connectorId: connector.id,
+    },
+    attributes: ["notionPageId", "lastSeenTs"],
+  });
+  if (existingPages.length > 0) {
+    localLogger.info({ count: existingPages.length }, "Found existing pages");
+  }
+
+  const lastSeenTsByPageId = new Map<string, number>();
+  for (const page of existingPages) {
+    lastSeenTsByPageId.set(page.notionPageId, page.lastSeenTs.getTime());
+  }
+  const filteredPageIds = pages
+    .filter(({ id, lastEditedTs }) => {
+      const ts = lastSeenTsByPageId.get(id);
+      return !ts || ts < lastEditedTs;
+    })
+    .map((p) => p.id);
+
+  localLogger.info(
+    {
+      initial_count: filteredPageIds.length,
+      filtered_count: filteredPageIds.length - filteredPageIds.length,
+    },
+    "Filtered out databases already up to date."
+  );
+
+  return {
+    pageIds: filteredPageIds,
+    nextCursor,
+  };
+}
 
 export async function notionGetToSyncActivity(
   dataSourceInfo: DataSourceInfo,
@@ -150,7 +274,11 @@ export async function notionGetToSyncActivity(
     },
     attributes: ["notionPageId", "lastSeenTs"],
   });
-  localLogger.info({ count: existingPages.length }, "Found existing pages");
+
+  if (existingPages.length > 0) {
+    localLogger.info({ count: existingPages.length }, "Found existing pages");
+  }
+
   const lastSeenTsByPageId = new Map<string, number>();
   for (const page of existingPages) {
     lastSeenTsByPageId.set(page.notionPageId, page.lastSeenTs.getTime());
