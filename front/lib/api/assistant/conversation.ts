@@ -259,7 +259,10 @@ export async function getConversation(
     return a.version - b.version;
   });
 
-  // We need to escape the type system here to create content.
+  // We need to escape the type system here to create content. We pre-create an array that will hold
+  // the versions of each User/Assistant message. The lenght of that array is by definition the
+  // maximal rank of the conversation messages we just retrieved. In the case there is no message
+  // the rank is -1 and the array length is 0 as expected.
   const content: any[] = Array.from(
     { length: messages.reduce((acc, m) => Math.max(acc, m.rank), -1) + 1 },
     () => []
