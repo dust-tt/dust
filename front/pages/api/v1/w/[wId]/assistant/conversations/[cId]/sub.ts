@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getConversation } from "@app/lib/api/assistant/conversation";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
@@ -25,7 +25,9 @@ async function handler(
       },
     });
   }
-  const { keyWorkspaceId } = await Authenticator.fromKey(
+
+
+  const {auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -40,11 +42,7 @@ async function handler(
     });
   }
 
-  const conv = await Conversation.findOne({
-    where: {
-      sId: req.query.cId as string,
-    },
-  });
+  const conv = await getConversation(auth, req.query.cId as string);
   if (!conv) {
     return apiError(req, res, {
       status_code: 404,
