@@ -16,7 +16,7 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { keyWorkspaceId } = await Authenticator.fromKey(
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -42,17 +42,14 @@ async function handler(
     });
   }
 
-  const w = await Workspace.findOne({
-    where: {
-      sId: keyWorkspaceId,
-    },
-  });
-  if (!w) {
+  const owner = await auth.workspace();
+
+  if (!owner) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "Workspace not found.",
+        message: "The workspace you're trying to access was not found",
       },
     });
   }
@@ -63,7 +60,7 @@ async function handler(
         sId: generateModelSId(),
         title: req.body.title,
         visibility: req.body.visibility,
-        workspaceId: w.id,
+        workspaceId: owner.id,
       });
       return res.status(200).json({
         id: conv.id,
