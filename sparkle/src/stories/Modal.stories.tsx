@@ -26,7 +26,9 @@ export const ModalExample = () => {
         onClose={() => setIsOpenNoActionNoChange(false)}
         hasChanged={false}
       >
-        <div className="s-mt-4 s-h-72 " />
+        <div className="s-mt-4 s-h-72">
+          I'm the modal content and I am centered by default
+        </div>
       </Modal>
       <Modal
         isOpen={isOpenWithActionAndChange}
@@ -40,7 +42,7 @@ export const ModalExample = () => {
           size: "xs",
         }}
       >
-        <div className="s-mt-4 s-h-72 " />
+        <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
       </Modal>
       <Button
         label="Modal without action and without changes"
