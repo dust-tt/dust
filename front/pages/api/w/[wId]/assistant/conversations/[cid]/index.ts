@@ -3,25 +3,23 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  getConversation,
+} from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
 
-const PostConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
-});
-
-export type PostConversationsResponseBody = {
+export type GetConversationsResponseBody = {
   conversation: ConversationType;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    PostConversationsResponseBody | ReturnedAPIErrorType | void
+    GetConversationsResponseBody | ReturnedAPIErrorType | void
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -57,35 +55,37 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users of the current workspace can update chat sessions.",
+          "Only users of the current workspace can access chat sessions.",
       },
     });
   }
+  if (!(typeof req.query.cId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `cId` (string) is required.",
+      },
+    });
+  }
+  const conversationId = req.query.cid;
 
   switch (req.method) {
-    case "POST":
-      const bodyValidation = PostConversationsRequestBodySchema.decode(
-        req.body
+    case "GET":
+      const conversation = await getConversation(
+        auth,
+        conversationId as string
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!conversation) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 404,
           api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            type: "conversation_not_found",
+            message: "The conversation you're trying to access was not found.",
           },
         });
       }
-
-      const { title, visibility } = bodyValidation.right;
-
-      const conversation = await createConversation(auth, {
-        title,
-        visibility,
-      });
 
       res.status(200).json({ conversation });
       return;
@@ -95,7 +95,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
   }
