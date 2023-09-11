@@ -68,14 +68,11 @@ async function handler(
       },
     });
   }
-  const conversationId = req.query.cid;
+  const conversationId = req.query.cId;
 
   switch (req.method) {
     case "GET":
-      const conversation = await getConversation(
-        auth,
-        conversationId as string
-      );
+      const conversation = await getConversation(auth, conversationId);
 
       if (!conversation) {
         return apiError(req, res, {
