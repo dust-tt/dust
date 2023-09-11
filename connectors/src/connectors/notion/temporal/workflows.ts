@@ -131,18 +131,18 @@ export async function notionSyncWorkflow(
       // for each database to upsert, it will also fetch all children pages and add those to the list of
       // pages to upsert.
       const { upsertDatabasePromises, upsertPagePromises } =
-        await getUpsertPromises(
+        await getUpsertPromises({
           dataSourceConfig,
           notionAccessToken,
           pageIds,
           databaseIds,
-          isGargageCollectionRun,
+          isGarbageCollectionRun: isGargageCollectionRun,
           runTimestamp,
           pageIndex,
-          isInitialSync,
+          isBatchSync: isInitialSync,
           skipUpToDatePages,
-          childWorkflowQueue
-        );
+          queue: childWorkflowQueue,
+        });
 
       pageUpsertPromises.push(...upsertPagePromises);
       databaseUpsertPromises.push(...upsertDatabasePromises);
@@ -304,19 +304,19 @@ export async function notionSyncResultPageDatabaseWorkflow(
       });
       cursor = nextCursor;
       pageIndex += 1;
-      const newPromises = await getUpsertPromises(
+      const newPromises = await getUpsertPromises({
         dataSourceConfig,
         notionAccessToken,
         pageIds,
-        [], // we don't upsert any databases in this workflow
+        databaseIds: [], // we don't upsert any databases in this workflow
         isGarbageCollectionRun,
         runTimestamp,
         pageIndex,
         isBatchSync,
-        false,
-        upsertQueue,
-        `database-children-${databaseId}`
-      );
+        skipUpToDatePages: false,
+        queue: upsertQueue,
+        childWorkflowsNameSuffix: `database-children-${databaseId}`,
+      });
       upsertPagePromises.push(...newPromises.upsertPagePromises);
       upsertDatabasePromises.push(...newPromises.upsertDatabasePromises);
     } while (cursor);
@@ -328,19 +328,31 @@ export async function notionSyncResultPageDatabaseWorkflow(
   };
 }
 
-async function getUpsertPromises(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  pageIds: string[],
-  databaseIds: string[],
-  isGarbageCollectionRun: boolean,
-  runTimestamp: number,
-  pageIndex: number,
-  isBatchSync: boolean,
-  skipUpToDatePages: boolean,
-  queue: PQueue,
-  childWorkflowsNameSuffix = ""
-): Promise<{
+async function getUpsertPromises({
+  dataSourceConfig,
+  notionAccessToken,
+  pageIds,
+  databaseIds,
+  isGarbageCollectionRun,
+  runTimestamp,
+  pageIndex,
+  isBatchSync,
+  skipUpToDatePages,
+  queue,
+  childWorkflowsNameSuffix = "",
+}: {
+  dataSourceConfig: DataSourceConfig;
+  notionAccessToken: string;
+  pageIds: string[];
+  databaseIds: string[];
+  isGarbageCollectionRun: boolean;
+  runTimestamp: number;
+  pageIndex: number;
+  isBatchSync: boolean;
+  skipUpToDatePages: boolean;
+  queue: PQueue;
+  childWorkflowsNameSuffix?: string;
+}): Promise<{
   upsertPagePromises: Promise<(UpsertActivityResult | void)[] | void>[];
   upsertDatabasePromises: Promise<UpsertActivityResult | void>[];
 }> {
