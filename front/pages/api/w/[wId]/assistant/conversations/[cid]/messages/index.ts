@@ -13,9 +13,8 @@ const PostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(
     t.union([
-      t.type({ id: t.number, configurationId: t.string }),
+      t.type({ configurationId: t.string }),
       t.type({
-        id: t.number,
         provider: t.string,
         providerId: t.string,
       }),

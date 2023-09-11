@@ -9,12 +9,10 @@ import { AgentConfigurationType } from "./agent";
  */
 
 export type AgentMention = {
-  id: ModelId;
   configurationId: string;
 };
 
 export type UserMention = {
-  id: ModelId;
   provider: string;
   providerId: string;
 };
