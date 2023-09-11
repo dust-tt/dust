@@ -132,13 +132,11 @@ async function renderUserMessage(
     mentions: mentions.map((m) => {
       if (m.agentConfiguration) {
         return {
-          id: m.id,
           configurationId: m.agentConfiguration.sId,
         };
       }
       if (m.user) {
         return {
-          id: m.id,
           provider: m.user.provider,
           providerId: m.user.providerId,
         };
