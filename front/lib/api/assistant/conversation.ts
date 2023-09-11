@@ -137,7 +137,7 @@ async function renderUserMessage(
       }
       throw new Error("Unreachable: mention must be either agent or user");
     }),
-    message: userMessage.message,
+    content: userMessage.content,
     context: {
       username: userMessage.userContextUsername,
       timezone: userMessage.userContextTimezone,
@@ -189,7 +189,7 @@ async function renderAgentMessage(
     parentMessageId: null,
     status: agentMessage.status,
     action: agentRetrievalAction,
-    message: agentMessage.message,
+    content: agentMessage.content,
     feedbacks: [],
     error: null,
     configuration,
@@ -344,12 +344,12 @@ export async function* postUserMessage(
   auth: Authenticator,
   {
     conversation,
-    message,
+    content,
     mentions,
     context,
   }: {
     conversation: ConversationType;
-    message: string;
+    content: string;
     mentions: MentionType[];
     context: UserMessageContext;
   }
@@ -385,7 +385,7 @@ export async function* postUserMessage(
           userMessageId: (
             await UserMessage.create(
               {
-                message: message,
+                content,
                 userContextUsername: context.username,
                 userContextTimezone: context.timezone,
                 userContextFullName: context.fullName,
@@ -410,7 +410,7 @@ export async function* postUserMessage(
         version: 0,
         user: user,
         mentions: mentions,
-        message: message,
+        content,
         context: context,
       };
 
@@ -460,7 +460,7 @@ export async function* postUserMessage(
                   parentMessageId: userMessage.sId,
                   status: "created",
                   action: null,
-                  message: null,
+                  content: null,
                   feedbacks: [],
                   error: null,
                   configuration,
@@ -561,7 +561,7 @@ export async function* postUserMessage(
         if (event.type === "agent_generation_success") {
           // Store message in database.
           await agentMessageRow.update({
-            message: event.text,
+            content: event.text,
           });
           yield event;
         }

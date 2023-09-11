@@ -200,7 +200,7 @@ export async function generateRetrievalParams(
   if (configuration.query !== "none" && configuration.query !== "auto") {
     query = configuration.query.template.replace(
       "_USER_MESSAGE_",
-      userMessage.message
+      userMessage.content
     );
   }
 

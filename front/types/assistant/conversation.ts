@@ -55,7 +55,7 @@ export type UserMessageType = {
   version: number;
   user: UserType | null;
   mentions: MentionType[];
-  message: string;
+  content: string;
   context: UserMessageContext;
 };
 
@@ -96,7 +96,7 @@ export type AgentMessageType = {
   configuration: AgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
-  message: string | null;
+  content: string | null;
   feedbacks: UserFeedbackType[];
   error: {
     code: string;

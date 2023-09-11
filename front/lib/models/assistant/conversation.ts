@@ -95,7 +95,7 @@ export class UserMessage extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare message: string;
+  declare content: string;
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -123,7 +123,7 @@ UserMessage.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    message: {
+    content: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
@@ -171,7 +171,7 @@ export class AgentMessage extends Model<
 
   declare status: CreationOptional<AgentMessageStatus>;
 
-  declare message: string | null;
+  declare content: string | null;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
@@ -201,7 +201,7 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: "created",
     },
-    message: {
+    content: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -336,21 +336,21 @@ Message.belongsTo(Conversation, {
 });
 
 UserMessage.hasOne(Message, {
-  foreignKey: "userMessageId",
+  foreignKey: { name: "userMessageId", allowNull: true },
 });
 Message.belongsTo(UserMessage, {
-  foreignKey: "userMessageId",
+  foreignKey: { name: "userMessageId", allowNull: true },
 });
 
 AgentMessage.hasOne(Message, {
-  foreignKey: "agentMessageId",
+  foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
-  foreignKey: "agentMessageId",
+  foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
 Message.belongsTo(Message, {
-  foreignKey: "parentId",
+  foreignKey: { name: "parentId", allowNull: true },
 });
 
 export class Mention extends Model<
