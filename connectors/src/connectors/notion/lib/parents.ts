@@ -38,17 +38,28 @@ async function _getParents(
     return parents;
   }
   switch (pageOrDb.parentType) {
+    // First 3 cases are exceptions that we ignore, and just return the page id
+    // as parent
+    // 1. null - sometimes the notion api fails to get the page correctly (see
+    //    getParsedPage), in which case parentType is null
+    // 2. unknown - when parsing the page, rare cases when the parentType isn't
+    //    known => "unknown" is stored (see getParsedPage again)
+    // 3. block - since we don't store blocks, parentType block is skipped in
+    //    the code; should mostly not happen, but can happen in isolated cases
+    //    (see https://dust4ai.slack.com/archives/C050SM8NSPK/p1693241129921369)
     case null:
-    case "workspace":
-      return parents;
+    case "unknown":
     case "block":
-      // rare cases in which doing something here is useful
-      // are ignored for now, see the design doc for details
+    case "workspace":
+      // workspace -> root level pages, with no parents other than themselves
+      // (not an exception)
       return parents;
     case "page":
     case "database": {
       return parents.concat(
-        // parentId cannot be undefined here
+        // parentId cannot be undefined if parentType is page or database as per
+        // Notion API
+        //
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         await getParents(dataSourceInfo, pageOrDb.parentId!, memoizationKey)
       );
@@ -77,18 +88,22 @@ export async function updateAllParentsFields(
   // Update everybody's parents field. Use of a memoization key to control
   // sharing memoization across updateAllParentsFields calls, which
   // can be desired or not depending on the use case
-  for (const page of pagesToUpdate) {
-    const parents = await getParents(
-      dataSourceConfig,
-      page.notionPageId,
-      memoizationKey
-    );
-
-    await updateDocumentParentsField(
-      dataSourceConfig,
-      `notion-${page.notionPageId}`,
-      parents
-    );
+  for (let i = 0; i < pagesToUpdate.length; i += 16) {
+    const chunk = pagesToUpdate.slice(i, i + 16);
+    // updates are done in batches of 16
+    const promises = chunk.map(async (page) => {
+      const parents = await getParents(
+        dataSourceConfig,
+        page.notionPageId,
+        memoizationKey
+      );
+      await updateDocumentParentsField(
+        dataSourceConfig,
+        `notion-${page.notionPageId}`,
+        parents
+      );
+    });
+    await Promise.all(promises);
   }
   return pagesToUpdate.length;
 }
