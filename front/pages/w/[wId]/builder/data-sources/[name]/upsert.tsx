@@ -112,7 +112,7 @@ export default function DataSourceUpsert({
         })
         .catch((e) => console.error(e));
     }
-  }, [loadDocumentId]);
+  }, [dataSource.name, loadDocumentId, owner.sId]);
 
   const handleFileLoadedText = (e: any) => {
     const content = e.target.result;

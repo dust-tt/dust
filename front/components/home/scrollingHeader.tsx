@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useCallback, useEffect, useState } from "react";
 
 // Define your scroll limit here
 const SCROLL_LIMIT_1 = 12;
@@ -16,15 +16,15 @@ const ScrollingHeader = ({
   const [isScrolled1, setIsScrolled1] = useState(false);
   const [isScrolled2, setIsScrolled2] = useState(false);
 
-  const checkScroll = () => {
+  const checkScroll = useCallback(() => {
     setIsScrolled1(window.scrollY > SCROLL_LIMIT_1);
     setIsScrolled2(window.scrollY > showItemY); // use here
-  };
+  }, [showItemY]);
 
   useEffect(() => {
     window.addEventListener("scroll", checkScroll);
     return () => window.removeEventListener("scroll", checkScroll);
-  }, [showItemY]); // add here
+  }, [checkScroll, showItemY]); // add here
 
   useEffect(() => {
     const invisibleFirstElements = document.querySelectorAll(".invisibleFirst");

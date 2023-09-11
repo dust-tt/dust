@@ -88,7 +88,7 @@ export default function NewDatasetView({
     if (isFinishedEditing) {
       void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
-  }, [isFinishedEditing]);
+  }, [app.sId, isFinishedEditing, owner.sId]);
 
   const onUpdate = (
     initializing: boolean,

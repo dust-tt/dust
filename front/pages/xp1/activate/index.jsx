@@ -1,6 +1,6 @@
 import Head from "next/head";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { HighlightButton } from "@app/components/Button";
 import { Logo } from "@app/components/Logo";
@@ -12,7 +12,7 @@ export default function Activate({ ga_tracking_id }) {
   const [name, setName] = useState("");
   const [disable, setDisabled] = useState(true);
 
-  const formValidation = () => {
+  const formValidation = useCallback(() => {
     if (!email || email.length === 0) return false;
     if (!name || name.length === 0) return false;
 
@@ -23,11 +23,11 @@ export default function Activate({ ga_tracking_id }) {
     }
 
     return true;
-  };
+  }, [email, name]);
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [email, name]);
+  }, [email, name, formValidation]);
 
   return (
     <>

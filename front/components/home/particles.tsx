@@ -337,7 +337,7 @@ export default function Particules({
       //window.removeEventListener("scroll", onScroll, false);
       renderer.dispose();
     };
-  }, []);
+  }, [scrollRef1, scrollRef2, scrollRef3]);
 
   return (
     <div id="canvas-container">

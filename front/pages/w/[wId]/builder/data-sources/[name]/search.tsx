@@ -139,7 +139,7 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-  }, [dataSource.name, searchQuery]);
+  }, [dataSource.name, owner.sId, searchQuery]);
 
   return (
     <AppLayout

@@ -8,7 +8,7 @@ import {
 import { Listbox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -75,7 +75,7 @@ export default function WorkspaceAdmin({
   const { members, isMembersLoading } = useMembers(owner);
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
 
-  const formValidation = () => {
+  const formValidation = useCallback(() => {
     if (workspaceName === owner.name && allowedDomain === owner.allowedDomain) {
       return false;
     }
@@ -105,11 +105,11 @@ export default function WorkspaceAdmin({
       setWorkspaceNameError("");
     }
     return valid;
-  };
+  }, [allowedDomain, owner.allowedDomain, owner.name, workspaceName]);
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [workspaceName, allowedDomain]);
+  }, [workspaceName, allowedDomain, formValidation]);
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);

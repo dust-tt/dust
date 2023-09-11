@@ -49,7 +49,14 @@ export default function DataSourcePicker({
         onDataSourcesUpdate([]);
       }
     }
-  }, [readOnly, isDataSourcesLoading, isDataSourcesError, dataSources, name]);
+  }, [
+    readOnly,
+    isDataSourcesLoading,
+    isDataSourcesError,
+    dataSources,
+    name,
+    onDataSourcesUpdate,
+  ]);
 
   useEffect(() => {
     if (

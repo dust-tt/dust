@@ -321,7 +321,7 @@ export function DocumentView({
       console.log("Trying to unmount");
       interruptRef.current = true;
     };
-  }, [document.documentId]);
+  }, [document, document.documentId, onExtractUpdate, owner, query]);
 
   useEffect(() => {
     const extractInput = [
@@ -406,7 +406,15 @@ export function DocumentView({
     return () => {
       interruptRef.current = true;
     };
-  }, [document.documentId]);
+  }, [
+    document,
+    document.documentId,
+    onScoreReady,
+    owner,
+    pinned,
+    query,
+    template?.instructions,
+  ]);
 
   return (
     <div className="flex flex-col">
@@ -630,7 +638,7 @@ export function TemplatesView({
       templates[editingTemplate].visibility != "default" &&
       (isBuilder || templates[editingTemplate].visibility == "user")
     );
-  }, [editingTemplate]);
+  }, [editingTemplate, isBuilder, templates]);
 
   const colorOptions = [
     "bg-red-500",
@@ -644,11 +652,11 @@ export function TemplatesView({
     if (selectedTemplate != -1) {
       onTemplateSelect(templates[selectedTemplate]);
     }
-  }, [selectedTemplate]);
+  }, [onTemplateSelect, selectedTemplate, templates]);
 
   useEffect(() => {
     onTemplateSelect(templates[0]);
-  }, []);
+  }, [onTemplateSelect, templates]);
 
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {
