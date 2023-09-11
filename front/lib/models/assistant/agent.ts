@@ -11,10 +11,7 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  AgentConfigurationScope,
-  AgentConfigurationStatus,
-} from "@app/types/assistant/agent";
+import { AgentConfigurationStatus } from "@app/types/assistant/agent";
 
 /**
  * Configuration of Agent generation.
@@ -82,7 +79,6 @@ export class AgentConfiguration extends Model<
   declare status: AgentConfigurationStatus;
   declare name: string;
   declare pictureUrl: string | null;
-  declare scope: AgentConfigurationScope;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare generationConfigurationId: ForeignKey<
@@ -130,11 +126,6 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    scope: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "workspace",
-    },
   },
   {
     modelName: "agent_configuration",
@@ -148,15 +139,6 @@ AgentConfiguration.init(
       { fields: ["workspaceId", "name", "scope"], unique: true },
       { fields: ["sId"], unique: true },
     ],
-    hooks: {
-      beforeValidate: (agent: AgentConfiguration) => {
-        if (agent.scope !== "workspace" && agent.workspaceId) {
-          throw new Error("Workspace id must be null for global agent");
-        } else if (agent.scope === "workspace" && !agent.workspaceId) {
-          throw new Error("Workspace id must be set for non-global agent");
-        }
-      },
-    },
   }
 );
 
