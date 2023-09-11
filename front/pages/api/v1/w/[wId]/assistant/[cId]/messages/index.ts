@@ -59,7 +59,7 @@ async function handler(
   // no time for actual io-ts parsing right now, so here is the expected structure.
   // Will handle proper parsing later.
   const payload = req.body as {
-    message: string;
+    content: string;
     context: {
       timezone: string;
       username: string;
@@ -76,14 +76,14 @@ async function handler(
       void postUserMessageWithPubSub(auth, {
         conversation: {
           id: conv.id,
-          created: conv.created.getTime(),
+          created: conv.createdAt.getTime(),
           sId: conv.sId,
           title: conv.title,
           // not sure how to provide the content here for now.
           content: [],
           visibility: conv.visibility,
         },
-        message: payload.message,
+        content: payload.content,
         mentions: [],
         context: {
           timezone: payload.context.timezone,

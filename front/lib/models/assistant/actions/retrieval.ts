@@ -185,17 +185,26 @@ AgentDataSourceConfiguration.init(
 AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
 });
+AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
 
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
+AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
+});
 
 // Data source config <> Data source
 DataSource.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "CASCADE",
+});
+AgentDataSourceConfiguration.belongsTo(DataSource, {
+  foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 /**
@@ -276,6 +285,9 @@ AgentRetrievalConfiguration.hasMany(AgentRetrievalAction, {
   // We don't want to delete the action when the configuration is deleted
   // But really we don't want to delete configurations ever.
 });
+AgentRetrievalAction.belongsTo(AgentRetrievalConfiguration, {
+  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
+});
 
 export class RetrievalDocument extends Model<
   InferAttributes<RetrievalDocument>,
@@ -353,6 +365,9 @@ AgentRetrievalAction.hasMany(RetrievalDocument, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
   onDelete: "CASCADE",
 });
+RetrievalDocument.belongsTo(AgentRetrievalAction, {
+  foreignKey: { name: "retrievalActionId", allowNull: false },
+});
 
 export class RetrievalDocumentChunk extends Model<
   InferAttributes<RetrievalDocumentChunk>,
@@ -409,4 +424,7 @@ RetrievalDocumentChunk.init(
 RetrievalDocument.hasMany(RetrievalDocumentChunk, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
   onDelete: "CASCADE",
+});
+RetrievalDocumentChunk.belongsTo(RetrievalDocument, {
+  foreignKey: { name: "retrievalDocumentId", allowNull: false },
 });
