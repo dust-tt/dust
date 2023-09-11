@@ -317,8 +317,11 @@ export async function notionSyncResultPageDatabaseWorkflow(
         queue: upsertQueue,
         childWorkflowsNameSuffix: `database-children-${databaseId}`,
       });
-      upsertPagePromises.push(...newPromises.upsertPagePromises);
-      upsertDatabasePromises.push(...newPromises.upsertDatabasePromises);
+
+      upsertPagePromises.push(...(await newPromises.upsertPagePromises));
+      upsertDatabasePromises.push(
+        ...(await newPromises.upsertDatabasePromises)
+      );
     } while (cursor);
   }
 
