@@ -151,6 +151,31 @@ export async function getAgentConfiguration(
 }
 
 /**
+ * Get the list agent configuration for the workspace.
+ */
+export async function getAgentConfigurations(
+  auth: Authenticator
+): Promise<AgentConfigurationType[] | []> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find AgentConfiguration: no workspace.");
+  }
+  const agents = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: {
+        [Op.or]: [owner.id, null],
+      },
+    },
+  });
+
+  return Promise.all(
+    agents.map(async (agent) => {
+      return await renderAgentConfigurationByModelId(auth, agent.id);
+    })
+  );
+}
+
+/**
  * Create Agent Configuration
  */
 export async function createAgentConfiguration(
