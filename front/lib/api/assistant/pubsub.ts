@@ -17,6 +17,7 @@ import {
   ConversationType,
   MentionType,
   UserMessageContext,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 export async function postUserMessageWithPubSub(
@@ -32,49 +33,66 @@ export async function postUserMessageWithPubSub(
     mentions: MentionType[];
     context: UserMessageContext;
   }
-) {
-  const redis = await redisClient();
-  try {
-    for await (const event of postUserMessage(auth, {
-      conversation,
-      content,
-      mentions,
-      context,
-    })) {
-      switch (event.type) {
-        case "user_message_new":
-        case "agent_message_new": {
-          const pubsubChannel = getConversationChannelId(conversation.sId);
-          await redis.xAdd(pubsubChannel, "*", {
-            payload: JSON.stringify(event),
-          });
-          break;
-        }
-        case "retrieval_params":
-        case "agent_error":
-        case "agent_action_success":
-        case "retrieval_documents":
-        case "generation_tokens":
-        case "agent_generation_success":
-        case "agent_message_success": {
-          const pubsubChannel = getMessageChannelId(event.messageId);
-          await redis.xAdd(pubsubChannel, "*", {
-            payload: JSON.stringify(event),
-          });
-          break;
-        }
+): Promise<UserMessageType> {
+  const promise: Promise<UserMessageType> = new Promise((resolve, reject) => {
+    void (async () => {
+      const redis = await redisClient();
+      let didResolve = false;
+      try {
+        for await (const event of postUserMessage(auth, {
+          conversation,
+          content,
+          mentions,
+          context,
+        })) {
+          switch (event.type) {
+            case "user_message_new":
+            case "agent_message_new": {
+              const pubsubChannel = getConversationChannelId(conversation.sId);
+              await redis.xAdd(pubsubChannel, "*", {
+                payload: JSON.stringify(event),
+              });
+              if (event.type === "user_message_new") {
+                didResolve = true;
+                resolve(event.message);
+              }
+              break;
+            }
+            case "retrieval_params":
+            case "agent_error":
+            case "agent_action_success":
+            case "retrieval_documents":
+            case "generation_tokens":
+            case "agent_generation_success":
+            case "agent_message_success": {
+              const pubsubChannel = getMessageChannelId(event.messageId);
+              await redis.xAdd(pubsubChannel, "*", {
+                payload: JSON.stringify(event),
+              });
+              break;
+            }
 
-        default:
-          ((blockParent: never) => {
-            logger.error("Unknown event type", blockParent);
-          })(event);
-          return null;
+            default:
+              ((blockParent: never) => {
+                logger.error("Unknown event type", blockParent);
+              })(event);
+              return null;
+          }
+        }
+      } finally {
+        await redis.quit();
+        if (!didResolve) {
+          reject(
+            new Error(
+              `Never got the user_message_new event for ${conversation.sId}`
+            )
+          );
+        }
       }
-    }
-  } finally {
-    await redis.quit();
-  }
-  // console.log("exiting postUserMessageWithPubSub", conversation.sId);
+    })();
+  });
+
+  return promise;
 }
 
 export async function* getConversationEvents(
