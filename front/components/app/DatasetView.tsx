@@ -9,7 +9,7 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { checkDatasetData } from "@app/lib/datasets";
@@ -118,7 +118,7 @@ export default function DatasetView({
   const [datasetTypes, setDatasetTypes] = useState([] as string[]);
   const [datasetInitializing, setDatasetInitializing] = useState(true);
 
-  const datasetNameValidation = useCallback(() => {
+  const datasetNameValidation = () => {
     let valid = true;
 
     let exists = false;
@@ -144,20 +144,9 @@ export default function DatasetView({
     }
 
     return valid;
-  }, [dataset?.name, datasetName, datasets]);
+  };
 
-  const inferDatasetTypes = useCallback(() => {
-    if (datasetData.length > 0) {
-      setDatasetTypes(getDatasetTypes(datasetKeys, datasetData[0]));
-      if (datasetInitializing) {
-        setTimeout(() => {
-          setDatasetInitializing(false);
-        }, 10);
-      }
-    }
-  }, [datasetData, datasetInitializing, datasetKeys]);
-
-  const datasetTypesValidation = useCallback(() => {
+  const datasetTypesValidation = () => {
     // Initial inference of types
     if (datasetTypes.length == 0) {
       inferDatasetTypes();
@@ -174,10 +163,10 @@ export default function DatasetView({
     });
 
     return valid;
-  }, [datasetData, datasetKeys, datasetTypes, inferDatasetTypes]);
+  };
 
   // Export the dataset with correct types (post-editing and validation)
-  const exportDataset = useCallback(() => {
+  const exportDataset = () => {
     const finalDataset = [] as any[];
 
     datasetData.map((d, i) => {
@@ -198,7 +187,18 @@ export default function DatasetView({
     });
 
     return finalDataset;
-  }, [datasetData, datasetKeys, datasetTypes]);
+  };
+
+  const inferDatasetTypes = () => {
+    if (datasetData.length > 0) {
+      setDatasetTypes(getDatasetTypes(datasetKeys, datasetData[0]));
+      if (datasetInitializing) {
+        setTimeout(() => {
+          setDatasetInitializing(false);
+        }, 10);
+      }
+    }
+  };
 
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
@@ -361,18 +361,8 @@ export default function DatasetView({
         data: exportDataset(),
       });
     }
-  }, [
-    datasetName,
-    datasetDescription,
-    datasetData,
-    datasetKeys,
-    datasetTypes,
-    datasetTypesValidation,
-    datasetNameValidation,
-    onUpdate,
-    datasetInitializing,
-    exportDataset,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetName, datasetDescription, datasetData, datasetKeys, datasetTypes]);
 
   return (
     <div>

@@ -32,5 +32,5 @@ export function useRegisterUnloadHandlers(
     return () => {
       router.events.off("routeChangeStart", confirmBrowseAway);
     };
-  }, [editorDirty, router]);
+  }, [editorDirty, router, unloadWarning]);
 }

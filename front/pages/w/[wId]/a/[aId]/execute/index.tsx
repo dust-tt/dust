@@ -8,7 +8,7 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 // TODO: type sse.js or use something else
 // @ts-expect-error there are no types for sse.js.
@@ -380,15 +380,12 @@ export default function ExecuteView({
   );
 
   const [inputData, setInputData] = useState({} as { [key: string]: any });
-  const isInputDataValid = useCallback(
-    () =>
-      inputDatasetKeys.every(
-        (k) =>
-          (inputData[k] || "").length > 0 &&
-          getValueType(inputData[k]) === datasetTypes[k]
-      ),
-    [datasetTypes, inputData, inputDatasetKeys]
-  );
+  const isInputDataValid = () =>
+    inputDatasetKeys.every(
+      (k) =>
+        (inputData[k] || "").length > 0 &&
+        getValueType(inputData[k]) === datasetTypes[k]
+    );
 
   const [isRunning, setIsRunning] = useState(false);
   const [isDoneRunning, setIsDoneRunning] = useState(false);
@@ -421,10 +418,7 @@ export default function ExecuteView({
     return 0;
   });
 
-  const canRun = useCallback(
-    () => !isRunning && isInputDataValid() && savedRun?.app_hash,
-    [isInputDataValid, isRunning, savedRun?.app_hash]
-  );
+  const canRun = () => !isRunning && isInputDataValid() && savedRun?.app_hash;
 
   useEffect(() => {
     if (isDoneRunning) {
@@ -437,14 +431,15 @@ export default function ExecuteView({
 
       setFinalOutputBlockTypeName(`${lastBlock.type}-${lastBlock.name}`);
     }
-  }, [executionLogs.blockOrder, isDoneRunning]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDoneRunning]);
 
   const handleValueChange = (k: string, value: string) => {
     const newInputData = { [k]: value };
     setInputData({ ...inputData, ...newInputData });
   };
 
-  const handleRun = useCallback(() => {
+  const handleRun = () => {
     setExecutionLogs({
       blockOrder: [],
       lastStatusEventByBlockTypeName: {},
@@ -549,17 +544,15 @@ export default function ExecuteView({
 
       source.stream();
     }, 0);
-  }, [app.sId, config, datasetTypes, inputData, owner.sId, savedRun?.app_hash]);
+  };
 
-  const handleKeyPress = useCallback(
-    (event: KeyboardEvent | React.KeyboardEvent) => {
-      if (event.metaKey === true && event.key === "Enter" && canRun()) {
-        handleRun();
-        return false;
-      }
-    },
-    [canRun, handleRun]
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleKeyPress = (event: KeyboardEvent | React.KeyboardEvent) => {
+    if (event.metaKey === true && event.key === "Enter" && canRun()) {
+      handleRun();
+      return false;
+    }
+  };
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);

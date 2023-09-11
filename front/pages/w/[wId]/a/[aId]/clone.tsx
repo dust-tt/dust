@@ -3,7 +3,7 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -81,7 +81,7 @@ export default function CloneView({
   const [targetWorkspace, setTargetWorkspace] = useState(user.workspaces[0]);
   const [cloning, setCloning] = useState(false);
 
-  const formValidation = useCallback(() => {
+  const formValidation = () => {
     if (appName.length == 0) {
       setAppNameError("");
       return false;
@@ -95,11 +95,12 @@ export default function CloneView({
       setAppNameError("");
       return true;
     }
-  }, [appName]);
+  };
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [appName, formValidation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appName]);
 
   const router = useRouter();
 

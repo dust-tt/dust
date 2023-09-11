@@ -49,14 +49,8 @@ export default function DataSourcePicker({
         onDataSourcesUpdate([]);
       }
     }
-  }, [
-    readOnly,
-    isDataSourcesLoading,
-    isDataSourcesError,
-    dataSources,
-    name,
-    onDataSourcesUpdate,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly, isDataSourcesLoading, isDataSourcesError, dataSources, name]);
 
   useEffect(() => {
     if (

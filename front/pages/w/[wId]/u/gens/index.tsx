@@ -321,7 +321,8 @@ export function DocumentView({
       console.log("Trying to unmount");
       interruptRef.current = true;
     };
-  }, [document, document.documentId, onExtractUpdate, owner, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document.documentId]);
 
   useEffect(() => {
     const extractInput = [
@@ -406,15 +407,8 @@ export function DocumentView({
     return () => {
       interruptRef.current = true;
     };
-  }, [
-    document,
-    document.documentId,
-    onScoreReady,
-    owner,
-    pinned,
-    query,
-    template?.instructions,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document.documentId]);
 
   return (
     <div className="flex flex-col">
@@ -638,7 +632,8 @@ export function TemplatesView({
       templates[editingTemplate].visibility != "default" &&
       (isBuilder || templates[editingTemplate].visibility == "user")
     );
-  }, [editingTemplate, isBuilder, templates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingTemplate]);
 
   const colorOptions = [
     "bg-red-500",
@@ -652,11 +647,13 @@ export function TemplatesView({
     if (selectedTemplate != -1) {
       onTemplateSelect(templates[selectedTemplate]);
     }
-  }, [onTemplateSelect, selectedTemplate, templates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplate]);
 
   useEffect(() => {
     onTemplateSelect(templates[0]);
-  }, [onTemplateSelect, templates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleTemplateDelete = (index: number) => {
     setTemplates((prevTemplates) => {

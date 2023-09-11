@@ -2,7 +2,7 @@ import { Button, Tab } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useEffect } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -84,7 +84,7 @@ export default function SettingsView({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const formValidation = useCallback(() => {
+  const formValidation = () => {
     if (appName.length == 0) {
       setAppNameError("");
       return false;
@@ -98,7 +98,7 @@ export default function SettingsView({
       setAppNameError("");
       return true;
     }
-  }, [appName]);
+  };
 
   const router = useRouter();
 
@@ -149,7 +149,9 @@ export default function SettingsView({
 
   useEffect(() => {
     setDisabled(!formValidation());
-  }, [appName, formValidation]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appName]);
 
   return (
     <AppLayout
