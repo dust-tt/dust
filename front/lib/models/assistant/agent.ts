@@ -178,3 +178,13 @@ AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
   as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });
+
+// Agent config <> Retrieval config
+AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
