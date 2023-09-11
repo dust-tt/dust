@@ -112,7 +112,7 @@ function NavigationBar({
                   <Item
                     size="md"
                     selected={nav.current}
-                    label={nav.label}
+                    label={nav.label as string}
                     icon={nav.icon}
                     className="grow px-4"
                     href={nav.href}
@@ -130,7 +130,7 @@ function NavigationBar({
                             <Item
                               size="sm"
                               selected={nav.current}
-                              label={nav.label}
+                              label={nav.label as string}
                               icon={nav.icon}
                               className="grow pl-14 pr-4"
                               href={nav.href}

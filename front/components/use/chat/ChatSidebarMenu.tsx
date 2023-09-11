@@ -23,8 +23,8 @@ export function ChatSidebarMenu({
   };
 
   return (
-    <div className="flex grow flex-col px-2">
-      <div className="flex border-b border-structure-200 py-2 pl-2">
+    <div className="flex grow flex-col">
+      <div className="flex border-b border-structure-200 py-2 pl-4 pr-2">
         <Item
           size="md"
           selected={readOnly}
@@ -35,7 +35,7 @@ export function ChatSidebarMenu({
         ></Item>
       </div>
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
-        <div className="flex w-full flex-col pl-2">
+        <div className="flex w-full flex-col pl-4 pr-2">
           <div className="pr py-4 text-right">
             <Button
               disabled={!canStartConversation}

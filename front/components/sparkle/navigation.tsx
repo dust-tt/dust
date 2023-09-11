@@ -39,18 +39,19 @@ export type SubNavigationAppId =
 export type SubNavigationLabId = "gens" | "extract" | "assistant";
 
 export type SparkleAppLayoutNavigation = {
-  id:
+  id?:
     | TopNavigationId
     | SubNavigationAdminId
     | SubNavigationDataSourceId
     | SubNavigationAppId
     | SubNavigationLabId;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   href?: string;
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
-  current: boolean;
+  type?: "expander";
+  current?: boolean;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
 };
@@ -68,7 +69,7 @@ export const topNavigation = ({
       label: "Assistant",
       href: `/w/${owner.sId}/u/chat`,
       icon: ChatBubbleBottomCenterTextIcon,
-      sizing: "expand",
+      sizing: "hug",
       current: current === "assistant",
     },
   ];
@@ -80,11 +81,15 @@ export const topNavigation = ({
       label: "Lab",
       icon: TestTubeIcon,
       href: `/w/${owner.sId}/u/gens`,
-      sizing: "expand",
+      sizing: "hug",
       current: current === "lab",
     });
   }
-
+  {
+    nav.push({
+      type: "expander",
+    });
+  }
   if (owner.role === "admin" || owner.role === "builder") {
     nav.push({
       id: "settings",
