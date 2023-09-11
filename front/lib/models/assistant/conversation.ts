@@ -30,6 +30,8 @@ export class Conversation extends Model<
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
 Conversation.init(
@@ -77,8 +79,12 @@ Conversation.init(
 );
 
 Workspace.hasMany(Conversation, {
-  foreignKey: { allowNull: false },
+  foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
+});
+
+Conversation.belongsTo(Workspace, {
+  foreignKey: { name: "workspaceId", allowNull: false },
 });
 
 export class UserMessage extends Model<
@@ -151,6 +157,9 @@ UserMessage.init(
 User.hasMany(UserMessage, {
   foreignKey: { name: "userId", allowNull: true }, // null = message is not associated with a user
 });
+UserMessage.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true },
+});
 
 export class AgentMessage extends Model<
   InferAttributes<AgentMessage>,
@@ -220,12 +229,16 @@ AgentMessage.init(
 AgentRetrievalAction.hasOne(AgentMessage, {
   foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
   onDelete: "CASCADE",
-  as: "agentRetrievalAction",
+});
+AgentMessage.belongsTo(AgentRetrievalAction, {
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
 });
 
 AgentConfiguration.hasMany(AgentMessage, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-  as: "agentConfiguration",
+});
+AgentMessage.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
 export class Message extends Model<
@@ -313,18 +326,29 @@ Message.init(
     },
   }
 );
+
 Conversation.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "CASCADE",
 });
+Message.belongsTo(Conversation, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+
 UserMessage.hasOne(Message, {
   foreignKey: "userMessageId",
-  as: "userMessage",
 });
+Message.belongsTo(UserMessage, {
+  foreignKey: "userMessageId",
+});
+
 AgentMessage.hasOne(Message, {
   foreignKey: "agentMessageId",
-  as: "agentMessage",
 });
+Message.belongsTo(AgentMessage, {
+  foreignKey: "agentMessageId",
+});
+
 Message.belongsTo(Message, {
   foreignKey: "parentId",
 });
@@ -373,11 +397,20 @@ Message.hasMany(Mention, {
   foreignKey: { name: "messageId", allowNull: false },
   onDelete: "CASCADE",
 });
+Mention.belongsTo(Message, {
+  foreignKey: { name: "messageId", allowNull: false },
+});
+
 User.hasMany(Mention, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
-  as: "user",
 });
+Mention.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
+});
+
 AgentConfiguration.hasMany(Mention, {
   foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
-  as: "agentConfiguration",
+});
+Mention.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
 });

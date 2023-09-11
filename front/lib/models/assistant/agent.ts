@@ -16,6 +16,57 @@ import {
 } from "@app/types/assistant/agent";
 
 /**
+ * Configuration of Agent generation.
+ */
+export class AgentGenerationConfiguration extends Model<
+  InferAttributes<AgentGenerationConfiguration>,
+  InferCreationAttributes<AgentGenerationConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare prompt: string;
+  declare providerId: string;
+  declare modelId: string;
+}
+AgentGenerationConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    prompt: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    modelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_generation_configuration",
+    sequelize: front_sequelize,
+  }
+);
+
+/**
  * Agent configuration
  */
 export class AgentConfiguration extends Model<
@@ -110,59 +161,14 @@ Workspace.hasMany(AgentConfiguration, {
   foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
   onDelete: "CASCADE",
 });
-
-/**
- * Configuration of Agent generation.
- */
-export class AgentGenerationConfiguration extends Model<
-  InferAttributes<AgentGenerationConfiguration>,
-  InferCreationAttributes<AgentGenerationConfiguration>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare prompt: string;
-  declare providerId: string;
-  declare modelId: string;
-}
-AgentGenerationConfiguration.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    prompt: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    providerId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    modelId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "agent_generation_configuration",
-    sequelize: front_sequelize,
-  }
-);
+AgentConfiguration.belongsTo(Workspace, {
+  foreignKey: { name: "workspaceId", allowNull: true }, // null = global Agent
+});
 
 // Agent config <> Generation config
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
+  foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
+});
+AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });
