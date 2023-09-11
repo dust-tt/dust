@@ -449,7 +449,8 @@ async function getUpsertPromises({
             notionAccessToken,
             batch,
             runTimestamp,
-            skipUpToDatePages,
+            isGarbageCollectionRun,
+            isBatchSync,
           ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         })
