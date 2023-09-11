@@ -80,7 +80,7 @@ export async function renderAgentConfigurationByModelId(
   return {
     id: agent.id,
     sId: agent.sId,
-    scope: agent.scope,
+    scope: "workspace",
     name: agent.name,
     pictureUrl: agent.pictureUrl,
     status: agent.status,
@@ -140,10 +140,7 @@ export async function getAgentConfiguration(
   });
 
   // If not found or found but non-global and not on the current workspace, return null.
-  if (
-    !agent ||
-    (agent.workspaceId !== owner.id && agent.scope === "workspace")
-  ) {
+  if (!agent || agent.workspaceId !== owner.id) {
     return null;
   }
 
@@ -162,7 +159,7 @@ export async function getAgentConfigurations(
   }
   const agents = await AgentConfiguration.findAll({
     where: {
-      [Op.or]: [{ workspaceId: owner.id }, { scope: "global" }],
+      workspaceId: owner.id,
     },
   });
 
@@ -203,7 +200,6 @@ export async function createAgentConfiguration(
     status: status,
     name: name,
     pictureUrl: pictureUrl,
-    scope: "workspace",
     workspaceId: owner.id,
     generationConfigurationId: generation?.id || null,
     retrievalConfigurationId: action?.id || null,
@@ -212,7 +208,7 @@ export async function createAgentConfiguration(
   return {
     id: agentConfig.id,
     sId: agentConfig.sId,
-    scope: agentConfig.scope,
+    scope: "workspace",
     name: agentConfig.name,
     pictureUrl: agentConfig.pictureUrl,
     status: agentConfig.status,
