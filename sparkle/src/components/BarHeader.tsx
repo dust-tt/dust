@@ -33,12 +33,36 @@ export function BarHeader({
   );
 }
 
-interface ListItemProps {
-  variant: "close" | "back" | "validate" | "conversation";
-}
+type BarHeaderButtonBarCloseProps = {
+  variant: "close";
+  onClose?: () => void;
+};
 
-BarHeader.ButtonBar = function ({ variant }: ListItemProps) {
-  switch (variant) {
+type BarHeaderButtonBarBackProps = {
+  variant: "back";
+  onBack?: () => void;
+};
+
+type BarHeaderButtonBarValidateProps = {
+  variant: "validate";
+  onCancel?: () => void;
+  onSave?: () => void;
+};
+
+type BarHeaderButtonBarConversationProps = {
+  variant: "conversation";
+  onDelete?: () => void;
+  onShare?: () => void;
+};
+
+export type BarHeaderButtonBarProps =
+  | BarHeaderButtonBarCloseProps
+  | BarHeaderButtonBarBackProps
+  | BarHeaderButtonBarValidateProps
+  | BarHeaderButtonBarConversationProps;
+
+BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
+  switch (props.variant) {
     case "back":
       return (
         <Button
@@ -48,6 +72,7 @@ BarHeader.ButtonBar = function ({ variant }: ListItemProps) {
           label="Back"
           tooltipPosition="below"
           labelVisible={false}
+          onClick={props.onBack}
         />
       );
     case "close":
@@ -59,13 +84,24 @@ BarHeader.ButtonBar = function ({ variant }: ListItemProps) {
           label="Close"
           tooltipPosition="below"
           labelVisible={false}
+          onClick={props.onClose}
         />
       );
     case "validate":
       return (
         <>
-          <Button size="sm" label="Cancel" variant="secondaryWarning" />
-          <Button size="sm" label="Save" variant="primary" />
+          <Button
+            size="sm"
+            label="Cancel"
+            variant="secondaryWarning"
+            onClick={props.onCancel}
+          />
+          <Button
+            size="sm"
+            label="Save"
+            variant="primary"
+            onClick={props.onSave}
+          />
         </>
       );
     case "conversation":
@@ -78,12 +114,14 @@ BarHeader.ButtonBar = function ({ variant }: ListItemProps) {
             variant="secondaryWarning"
             labelVisible={false}
             tooltipPosition="below"
+            onClick={props.onDelete}
           />
           <Button
             size="sm"
             label="Share"
             icon={ArrowUpOnSquare}
             variant="secondary"
+            onClick={props.onShare}
           />
         </>
       );

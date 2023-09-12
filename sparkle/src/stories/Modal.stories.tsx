@@ -25,6 +25,7 @@ export const ModalExample = () => {
         isOpen={isOpenNoActionNoChange}
         onClose={() => setIsOpenNoActionNoChange(false)}
         hasChanged={false}
+        title="Modal title"
       >
         <div className="s-mt-4 s-h-72">
           I'm the modal content and I am centered by default
