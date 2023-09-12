@@ -50,7 +50,7 @@ export type SparkleAppLayoutNavigation = {
   href?: string;
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
-  type?: "expander";
+  hasSeparator?: true;
   current?: boolean;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
