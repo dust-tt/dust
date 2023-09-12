@@ -91,11 +91,6 @@ async function renderUserMessage(
           as: "user",
           required: false,
         },
-        {
-          model: AgentConfiguration,
-          as: "agentConfiguration",
-          required: false,
-        },
       ],
     }),
     (async () => {
