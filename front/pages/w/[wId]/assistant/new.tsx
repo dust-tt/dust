@@ -18,7 +18,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
+  user: UserType;
   owner: WorkspaceType;
   gaTrackingId: string;
 }> = async (context) => {
@@ -30,7 +30,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
+  if (!owner || !auth.isUser() || !user) {
     return {
       redirect: {
         destination: "/",
@@ -96,8 +96,8 @@ export default function AssistantNew({
         body: JSON.stringify({
           content: input,
           context: {
-            timezone: "foo",
-            profilePictureUrl: "bar",
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            profilePictureUrl: user.image,
           },
           mentions: [],
         }),
