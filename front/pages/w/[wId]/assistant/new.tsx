@@ -13,6 +13,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import { MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -63,7 +64,7 @@ export default function AssistantNew({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
-  const handleSubmit = async (input: string) => {
+  const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create new conversation.
     const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
       method: "POST",
@@ -99,13 +100,13 @@ export default function AssistantNew({
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             profilePictureUrl: user.image,
           },
-          mentions: [],
+          mentions,
         }),
       }
     );
 
     if (!mRes.ok) {
-      const data = await cRes.json();
+      const data = await mRes.json();
       window.alert(`Error creating message: ${data.error.message}`);
       return;
     }
