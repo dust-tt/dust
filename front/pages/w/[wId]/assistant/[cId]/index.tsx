@@ -63,10 +63,7 @@ export default function AssistantConversation({
       />
       <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
         <div className="mx-auto max-w-4xl pb-8">
-          <Conversation
-            workspaceId={owner.sId}
-            conversationId={conversationId}
-          />
+          <Conversation owner={owner} conversationId={conversationId} />
           <AssistantInputBar onSubmit={() => console.log("Handle Submit")} />
         </div>
       </div>

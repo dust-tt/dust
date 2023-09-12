@@ -1,16 +1,17 @@
 import { useConversation } from "@app/lib/swr";
+import { WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
   conversationId,
-  workspaceId,
+  owner,
 }: {
   conversationId: string;
-  workspaceId: string;
+  owner: WorkspaceType;
 }) {
   const { conversation, isConversationError, isConversationLoading } =
     useConversation({
       conversationId,
-      workspaceId,
+      workspaceId: owner.sId,
     });
 
   if (isConversationLoading) {

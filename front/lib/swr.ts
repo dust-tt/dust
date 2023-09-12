@@ -407,7 +407,7 @@ export function useConversation({
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
     conversationFetcher
   );
@@ -416,5 +416,6 @@ export function useConversation({
     conversation: data ? data.conversation : null,
     isConversationLoading: !error && !data,
     isConversationError: error,
+    mutateConversation: mutate,
   };
 }
