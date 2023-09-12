@@ -71,6 +71,14 @@ export async function postUserMessageWithPubSub(
               });
               break;
             }
+            case "user_message_error": {
+              // We reject the promise here which means we'll get a 500 in the route calling
+              // postUserMessageWithPubSub. This is fine since `user_message_error` can only happen
+              // if we're trying to send a message to a conversation that we don't have access to,
+              // or this has already been checked if getConversation has been called.
+              reject(new Error(event.error.message));
+              break;
+            }
 
             default:
               ((blockParent: never) => {
