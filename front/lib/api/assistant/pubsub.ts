@@ -87,6 +87,8 @@ export async function postUserMessageWithPubSub(
               return null;
           }
         }
+      } catch (e) {
+        logger.error({ error: e }, "Error Posting message");
       } finally {
         await redis.quit();
         if (!didResolve) {
