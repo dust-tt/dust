@@ -650,74 +650,74 @@ export async function* editUserMessage(
     content: string;
   }
 ): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
-  if (auth.user()?.id !== message.user?.id) {
-    return {
-      type: "user_message_error",
-      created: Date.now(),
-      messageId: message.sId,
-      error: {
-        code: "not_allowed",
-        message: "Only the author of the message can edit it",
-      },
-    };
-  }
-  const messageModel = await Message.findOne({
-    where: {
-      sId: message.sId,
-      conversationId: conversation.id,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-  if (!messageModel) {
-    return {
-      type: "user_message_error",
-      created: Date.now(),
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "Message not found",
-      },
-    };
-  }
-  const userMessageModel = messageModel.userMessage;
-  if (!userMessageModel) {
-    return {
-      type: "user_message_error",
-      created: Date.now(),
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "UserMessage not found",
-      },
-    };
-  }
+  const event: UserMessageNewEvent | UserMessageErrorEvent =
+    await front_sequelize.transaction(async (t) => {
+      if (auth.user()?.id !== message.user?.id) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_allowed",
+            message: "Only the author of the message can edit it",
+          },
+        };
+      }
+      const messageRow = await Message.findOne({
+        where: {
+          sId: message.sId,
+          conversationId: conversation.id,
+        },
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+      if (!messageRow) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "Message not found",
+          },
+        };
+      }
+      const userMessageRow = messageRow.userMessage;
+      if (!userMessageRow) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "UserMessage not found",
+          },
+        };
+      }
 
-  const userMessage: UserMessageType = await front_sequelize.transaction(
-    async (t) => {
       const m = await Message.create(
         {
-          sId: messageModel.sId,
-          rank: messageModel.rank,
+          sId: messageRow.sId,
+          rank: messageRow.rank,
           conversationId: conversation.id,
-          parentId: messageModel.parentId,
-          version: messageModel.version + 1,
+          parentId: messageRow.parentId,
+          version: messageRow.version + 1,
           userMessageId: (
             await UserMessage.create(
               {
                 content,
-                userContextUsername: userMessageModel.userContextUsername,
-                userContextTimezone: userMessageModel.userContextTimezone,
-                userContextFullName: userMessageModel.userContextFullName,
-                userContextEmail: userMessageModel.userContextEmail,
+                userContextUsername: userMessageRow.userContextUsername,
+                userContextTimezone: userMessageRow.userContextTimezone,
+                userContextFullName: userMessageRow.userContextFullName,
+                userContextEmail: userMessageRow.userContextEmail,
                 userContextProfilePictureUrl:
-                  userMessageModel.userContextProfilePictureUrl,
-                userId: userMessageModel.userId,
+                  userMessageRow.userContextProfilePictureUrl,
+                userId: userMessageRow.userId,
               },
               { transaction: t }
             )
@@ -727,23 +727,30 @@ export async function* editUserMessage(
           transaction: t,
         }
       );
-      // update mentions to refer to the newly created message
-      const mentionsRes = await Mention.update(
-        { messageId: m.id },
-        {
-          where: {
-            messageId: messageModel.id,
-          },
-          transaction: t,
-        }
+      const mentions = await Mention.findAll({
+        where: {
+          messageId: messageRow.id,
+        },
+      });
+      const createdMentions = await Promise.all(
+        mentions.map(async (mention) => {
+          return await Mention.create(
+            {
+              messageId: m.id,
+              agentConfigurationId: mention.agentConfigurationId,
+              userId: mention.userId,
+            },
+            { transaction: t }
+          );
+        })
       );
-      if (mentionsRes[0] !== message.mentions.length) {
+      if (createdMentions.length !== message.mentions.length) {
         throw new Error(
-          `Expected ${message.mentions.length} mentions to be updated, got ${mentionsRes[0]}`
+          `Expected ${message.mentions.length} mentions to be created, got ${mentions.length}`
         );
       }
 
-      return {
+      const userMessage: UserMessageType = {
         id: m.id,
         sId: m.sId,
         type: "user_message",
@@ -754,12 +761,12 @@ export async function* editUserMessage(
         content,
         context: message.context,
       };
-    }
-  );
-  yield {
-    type: "user_message_new",
-    created: Date.now(),
-    messageId: userMessage.sId,
-    message: userMessage,
-  };
+      return {
+        type: "user_message_new",
+        created: Date.now(),
+        messageId: userMessage.sId,
+        message: userMessage,
+      };
+    });
+  yield event;
 }
