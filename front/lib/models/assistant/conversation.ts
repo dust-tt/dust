@@ -363,7 +363,7 @@ export class Mention extends Model<
 
   declare messageId: ForeignKey<Message["id"]>;
   declare userId: ForeignKey<User["id"]> | null;
-  declare agentId: string | null; // Not a relation as global agents are not in the DB
+  declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
 
   declare user?: NonAttribute<User>;
 }
@@ -385,7 +385,7 @@ Mention.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentId: {
+    agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
     },

@@ -128,9 +128,9 @@ async function renderUserMessage(
         }
       : null,
     mentions: mentions.map((m) => {
-      if (m.agentId) {
+      if (m.agentConfigurationId) {
         return {
-          configurationId: m.agentId,
+          configurationId: m.agentConfigurationId,
         };
       }
       if (m.user) {
@@ -456,7 +456,7 @@ export async function* postUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentId: configuration.sId,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -766,7 +766,7 @@ export async function* editUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentId: configuration.sId,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
