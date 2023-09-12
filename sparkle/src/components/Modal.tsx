@@ -52,7 +52,7 @@ export function Modal({
 
         <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
           <div
-            className={`s-flex s-items-center s-justify-center s-p-4 s-text-center sm:s-items-center sm:s-p-0 ${
+            className={`s-flex s-items-center s-justify-center s-p-4 sm:s-p-0 ${
               isFullScreen ? "s-h-full" : "s-min-h-full"
             }`}
           >

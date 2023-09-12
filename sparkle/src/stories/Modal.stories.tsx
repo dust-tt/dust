@@ -26,9 +26,7 @@ export const ModalExample = () => {
         hasChanged={false}
         title="Modal title"
       >
-        <div className="s-mt-4 s-h-72">
-          I'm the modal content and I am centered by default
-        </div>
+        <div className="s-mt-4 s-h-72">I'm the modal content</div>
       </Modal>
       <Modal
         isOpen={isOpenWithActionAndChange}
