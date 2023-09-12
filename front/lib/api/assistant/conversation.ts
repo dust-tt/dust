@@ -274,7 +274,7 @@ export async function getConversation(
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
-    owner: owner,
+    owner,
     title: conversation.title,
     visibility: conversation.visibility,
     content,
