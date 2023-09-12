@@ -1,7 +1,6 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  CloudArrowDownIcon,
   Logo,
   PageHeader,
   RobotIcon,
@@ -9,9 +8,11 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
+import AssistantInputBar from "@app/components/assistant/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -62,6 +63,55 @@ export default function AssistantNew({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
+  const handleSubmit = async (input: string) => {
+    // Create new conversation.
+    const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: null,
+        visibility: "unlisted",
+      }),
+    });
+
+    if (!cRes.ok) {
+      const data = await cRes.json();
+      window.alert(`Error creating conversation: ${data.error.message}`);
+      return;
+    }
+
+    const conversation = ((await cRes.json()) as PostConversationsResponseBody)
+      .conversation;
+
+    // Create a new user message.
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: input,
+          context: {
+            timezone: "foo",
+            profilePictureUrl: "bar",
+          },
+        }),
+      }
+    );
+
+    if (!mRes.ok) {
+      const data = await cRes.json();
+      window.alert(`Error creating message: ${data.error.message}`);
+      return;
+    }
+
+    // TODO(spolu): route to the conversation page
+  };
+
   return (
     <AppLayout
       user={user}
@@ -102,6 +152,12 @@ export default function AssistantNew({
           </div>
         )}
       </AssistantHelper>
+
+      <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
+        <div className="mx-auto max-w-4xl pb-8">
+          <AssistantInputBar onSubmit={handleSubmit} />
+        </div>
+      </div>
     </AppLayout>
   );
 }

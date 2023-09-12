@@ -1,17 +1,21 @@
-name: Publish Sparkle
+name: Publish Sparkle Alpha
 
 on:
   workflow_dispatch:
+    inputs:
+      preid:
+        description: "NPM Tag Identifier"
+        required: false
+        default: "rc"
 
 concurrency:
-  group: publish_sparkle
+  group: publish_sparkle_alpha
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # This ensures the workflow only runs on main branch
-    if: github.ref == 'refs/heads/main'
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -22,6 +26,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - working-directory: sparkle
-        run: npm ci && npm run build && npm publish
+        run: npm ci && npm run build && npm publish --preid=${{ github.event.inputs.preid }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

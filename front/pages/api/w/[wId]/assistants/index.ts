@@ -21,10 +21,11 @@ export type PostAssistantResponseBody = {
   assistant: AgentConfigurationType;
 };
 
-const PostAssistantResponseBodySchema = t.type({
+export const PostOrPatchAssistantResponseBodySchema = t.type({
   assistant: t.type({
     name: t.string,
     pictureUrl: t.string,
+    status: t.union([t.literal("active"), t.literal("archived")]),
     action: t.type({
       type: t.literal("retrieval_configuration"),
       query: t.union([
@@ -125,7 +126,9 @@ async function handler(
         assistants,
       });
     case "POST":
-      const bodyValidation = PostAssistantResponseBodySchema.decode(req.body);
+      const bodyValidation = PostOrPatchAssistantResponseBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -137,7 +140,7 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, action, generation } =
+      const { name, pictureUrl, status, action, generation } =
         bodyValidation.right.assistant;
 
       const generationConfig = await createAgentGenerationConfiguration(auth, {
@@ -157,7 +160,7 @@ async function handler(
       const assistant = await createAgentConfiguration(auth, {
         name,
         pictureUrl,
-        status: "active",
+        status,
         generation: generationConfig,
         action: actionConfig,
       });
@@ -171,7 +174,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET OR POST is expected.",
         },
       });
   }
