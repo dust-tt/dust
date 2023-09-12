@@ -540,72 +540,12 @@ export async function* postUserMessage(
         message: agentMessage,
       };
 
-      // For each agent we stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const eventStream = runAgent(
-        auth,
-        agentMessage.configuration,
-        {
-          ...conversation,
-          content: [...conversation.content, [userMessage], [agentMessage]],
-        },
+      yield* streamRunAgentEvents(auth, {
+        conversation,
         userMessage,
-        agentMessage
-      );
-
-      for await (const event of eventStream) {
-        if (event.type === "agent_error") {
-          // Store error in database.
-          await agentMessageRow.update({
-            status: "failed",
-            errorCode: event.error.code,
-            errorMessage: event.error.message,
-          });
-          yield event;
-        }
-
-        if (event.type === "agent_action_success") {
-          // Store action in database.
-          if (event.action.type === "retrieval_action") {
-            await agentMessageRow.update({
-              agentRetrievalActionId: event.action.id,
-            });
-          } else {
-            throw new Error(
-              `Action type ${event.action.type} agent_action_success handling not implemented`
-            );
-          }
-          yield event;
-        }
-
-        if (event.type === "agent_generation_success") {
-          // Store message in database.
-          await agentMessageRow.update({
-            content: event.text,
-          });
-          yield event;
-        }
-
-        if (event.type === "agent_message_success") {
-          // Update status in database.
-          await agentMessageRow.update({
-            status: "succeeded",
-          });
-          yield event;
-        }
-
-        // All other events that won't impact the database and are related to actions or tokens
-        // generation.
-        if (
-          [
-            "retrieval_params",
-            "retrieval_documents",
-            "generation_tokens",
-          ].includes(event.type)
-        ) {
-          yield event;
-        }
-      }
+        agentMessage,
+        agentMessageRow,
+      });
     })
   );
 }
@@ -630,91 +570,113 @@ export async function* retryAgentMessage(
   | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
-  const messageRow = await Message.findOne({
-    where: {
-      conversationId: conversation.id,
-      id: message.id,
-    },
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
+  const {
+    event,
+    agentMessageRow,
+  }: {
+    event: AgentMessageNewEvent | AgentErrorEvent;
+    agentMessageRow?: AgentMessage;
+  } = await front_sequelize.transaction(async (t) => {
+    const messageRow = await Message.findOne({
+      where: {
+        conversationId: conversation.id,
+        id: message.id,
       },
-    ],
-  });
-
-  if (!messageRow) {
-    return {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "Message row not found",
-      },
-    };
-  }
-  const agentMessageRow = messageRow.agentMessage;
-  if (!agentMessageRow) {
-    return {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "AgentMessage row not found",
-      },
-    };
-  }
-  const agentMessage: AgentMessageType = await front_sequelize.transaction(
-    async (t) => {
-      const m = await Message.create(
+      include: [
         {
-          sId: messageRow.sId,
-          rank: messageRow.rank,
-          conversationId: conversation.id,
-          parentId: messageRow.parentId,
-          version: messageRow.version + 1,
-          agentMessageId: (
-            await AgentMessage.create(
-              {
-                status: "created",
-                agentConfigurationId: agentMessageRow.agentConfigurationId,
-              },
-              { transaction: t }
-            )
-          ).id,
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
         },
-        {
-          transaction: t,
-        }
-      );
+      ],
+      transaction: t,
+    });
+
+    if (!messageRow) {
       return {
-        id: m.id,
-        sId: m.sId,
-        type: "agent_message",
-        visibility: m.visibility,
-        version: m.version,
-        parentMessageId: message.parentMessageId,
-        status: "created",
-        action: null,
-        content: null,
-        feedbacks: [],
-        error: null,
-        configuration: message.configuration,
+        event: {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: message.configuration.sId,
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "Message row not found",
+          },
+        },
       };
     }
-  );
-  yield {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: agentMessage.configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
+    const agentMessageRow = messageRow.agentMessage;
+    if (!agentMessageRow) {
+      return {
+        event: {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: message.configuration.sId,
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "AgentMessage row not found",
+          },
+        },
+      };
+    }
+    const m = await Message.create(
+      {
+        sId: messageRow.sId,
+        rank: messageRow.rank,
+        conversationId: conversation.id,
+        parentId: messageRow.parentId,
+        version: messageRow.version + 1,
+        agentMessageId: (
+          await AgentMessage.create(
+            {
+              status: "created",
+              agentConfigurationId: agentMessageRow.agentConfigurationId,
+            },
+            { transaction: t }
+          )
+        ).id,
+      },
+      {
+        transaction: t,
+      }
+    );
+    const agentMessage: AgentMessageType = {
+      id: m.id,
+      sId: m.sId,
+      type: "agent_message",
+      visibility: m.visibility,
+      version: m.version,
+      parentMessageId: message.parentMessageId,
+      status: "created",
+      action: null,
+      content: null,
+      feedbacks: [],
+      error: null,
+      configuration: message.configuration,
+    };
+    return {
+      event: {
+        type: "agent_message_new",
+        created: Date.now(),
+        configurationId: agentMessage.configuration.sId,
+        messageId: agentMessage.sId,
+        message: agentMessage,
+      },
+      agentMessageRow,
+    };
+  });
+
+  if (event.type === "agent_error") {
+    return event;
+  }
+  // so that typescript is fine with streamRunAgentEvents using agentMessageRow
+  if (!agentMessageRow) {
+    throw new Error("Unreachable: agentMessageRow must be defined");
+  }
+
+  yield event;
 
   if (!message.parentMessageId) {
     throw new Error("Unreachable: agent message must have a parent");
@@ -747,7 +709,7 @@ export async function* retryAgentMessage(
       },
     };
   }
-  const userMessageRow = messageRow.userMessage;
+  const userMessageRow = parentMessageRow.userMessage;
   if (!userMessageRow) {
     return {
       type: "agent_error",
@@ -763,68 +725,12 @@ export async function* retryAgentMessage(
 
   const userMessage = await renderUserMessage(parentMessageRow, userMessageRow);
 
-  const eventStream = runAgent(
-    auth,
-    agentMessage.configuration,
-    {
-      ...conversation,
-      content: [...conversation.content, [userMessage], [agentMessage]],
-    },
+  yield* streamRunAgentEvents(auth, {
+    conversation,
     userMessage,
-    agentMessage
-  );
-
-  for await (const event of eventStream) {
-    if (event.type === "agent_error") {
-      // Store error in database.
-      await agentMessageRow.update({
-        status: "failed",
-        errorCode: event.error.code,
-        errorMessage: event.error.message,
-      });
-      yield event;
-    }
-
-    if (event.type === "agent_action_success") {
-      // Store action in database.
-      if (event.action.type === "retrieval_action") {
-        await agentMessageRow.update({
-          agentRetrievalActionId: event.action.id,
-        });
-      } else {
-        throw new Error(
-          `Action type ${event.action.type} agent_action_success handling not implemented`
-        );
-      }
-      yield event;
-    }
-
-    if (event.type === "agent_generation_success") {
-      // Store message in database.
-      await agentMessageRow.update({
-        content: event.text,
-      });
-      yield event;
-    }
-
-    if (event.type === "agent_message_success") {
-      // Update status in database.
-      await agentMessageRow.update({
-        status: "succeeded",
-      });
-      yield event;
-    }
-
-    // All other events that won't impact the database and are related to actions or tokens
-    // generation.
-    if (
-      ["retrieval_params", "retrieval_documents", "generation_tokens"].includes(
-        event.type
-      )
-    ) {
-      yield event;
-    }
-  }
+    agentMessage: event.message,
+    agentMessageRow,
+  });
 }
 
 // This method creates a new user message version (without re-running subsequent actions for now, in
@@ -960,4 +866,91 @@ export async function* editUserMessage(
       };
     });
   yield event;
+}
+
+async function* streamRunAgentEvents(
+  auth: Authenticator,
+  {
+    conversation,
+    userMessage,
+    agentMessage,
+    agentMessageRow,
+  }: {
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+    agentMessageRow: AgentMessage;
+  }
+): AsyncGenerator<
+  | AgentErrorEvent
+  | AgentActionEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent
+> {
+  // We stitch the conversation to add the user message and only that agent message
+  // so that it can be used to prompt the agent.
+  const eventStream = runAgent(
+    auth,
+    agentMessage.configuration,
+    {
+      ...conversation,
+      content: [...conversation.content, [userMessage], [agentMessage]],
+    },
+    userMessage,
+    agentMessage
+  );
+
+  for await (const event of eventStream) {
+    if (event.type === "agent_error") {
+      // Store error in database.
+      await agentMessageRow.update({
+        status: "failed",
+        errorCode: event.error.code,
+        errorMessage: event.error.message,
+      });
+      yield event;
+    }
+
+    if (event.type === "agent_action_success") {
+      // Store action in database.
+      if (event.action.type === "retrieval_action") {
+        await agentMessageRow.update({
+          agentRetrievalActionId: event.action.id,
+        });
+      } else {
+        throw new Error(
+          `Action type ${event.action.type} agent_action_success handling not implemented`
+        );
+      }
+      yield event;
+    }
+
+    if (event.type === "agent_generation_success") {
+      // Store message in database.
+      await agentMessageRow.update({
+        content: event.text,
+      });
+      yield event;
+    }
+
+    if (event.type === "agent_message_success") {
+      // Update status in database.
+      await agentMessageRow.update({
+        status: "succeeded",
+      });
+      yield event;
+    }
+
+    // All other events that won't impact the database and are related to actions or tokens
+    // generation.
+    if (
+      ["retrieval_params", "retrieval_documents", "generation_tokens"].includes(
+        event.type
+      )
+    ) {
+      yield event;
+    }
+  }
 }
