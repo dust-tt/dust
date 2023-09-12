@@ -10,7 +10,6 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import {
