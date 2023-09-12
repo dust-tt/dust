@@ -188,56 +188,58 @@ export default function ConnectorPermissionsModal({
         icon: Cog6ToothIcon,
       }}
     >
-      {!isDefaultNewResourcePermissionLoading &&
-      defaultNewResourcePermission ? (
-        <>
-          {canUpdatePermissions && defaultPermissionTitleText ? (
-            <div className="ml-2 mt-8 flex flex-row">
-              <span className="text-sm text-gray-500">
-                {defaultPermissionTitleText}
-              </span>
-              <div className="flex-grow">
-                <Checkbox
-                  className="ml-auto"
-                  onChange={(checked) => {
-                    setAutomaticallyIncludeNewResources(checked);
-                  }}
-                  checked={
-                    automaticallyIncludeNewResources ??
-                    ["read", "read_write"].includes(
-                      defaultNewResourcePermission
-                    )
-                  }
-                />
+      <div className="text-left">
+        {!isDefaultNewResourcePermissionLoading &&
+        defaultNewResourcePermission ? (
+          <>
+            {canUpdatePermissions && defaultPermissionTitleText ? (
+              <div className="ml-2 mt-8 flex flex-row">
+                <span className="text-sm text-gray-500">
+                  {defaultPermissionTitleText}
+                </span>
+                <div className="flex-grow">
+                  <Checkbox
+                    className="ml-auto"
+                    onChange={(checked) => {
+                      setAutomaticallyIncludeNewResources(checked);
+                    }}
+                    checked={
+                      automaticallyIncludeNewResources ??
+                      ["read", "read_write"].includes(
+                        defaultNewResourcePermission
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <div className="ml-2 mt-16">
+                <div className="text-sm text-gray-500">
+                  {resourceListTitleText}
+                </div>
               </div>
             </div>
-          ) : null}
-          <div>
-            <div className="ml-2 mt-16">
-              <div className="text-sm text-gray-500">
-                {resourceListTitleText}
-              </div>
+            <div className="mb-16 ml-2 mt-8">
+              <PermissionTree
+                owner={owner}
+                dataSource={dataSource}
+                canUpdatePermissions={canUpdatePermissions}
+                onPermissionUpdate={({ internalId, permission }) => {
+                  setUpdatedPermissionByInternalId((prev) => ({
+                    ...prev,
+                    [internalId]: permission,
+                  }));
+                }}
+                showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]}
+              />
             </div>
-          </div>
-          <div className="mb-16 ml-2 mt-8">
-            <PermissionTree
-              owner={owner}
-              dataSource={dataSource}
-              canUpdatePermissions={canUpdatePermissions}
-              onPermissionUpdate={({ internalId, permission }) => {
-                setUpdatedPermissionByInternalId((prev) => ({
-                  ...prev,
-                  [internalId]: permission,
-                }));
-              }}
-              showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]}
-            />
-          </div>
-        </>
-      ) : null}
-      {isDefaultNewResourcePermissionError && (
-        <div className="text-red-300">An unexpected error occurred</div>
-      )}
+          </>
+        ) : null}
+        {isDefaultNewResourcePermissionError && (
+          <div className="text-red-300">An unexpected error occurred</div>
+        )}
+      </div>
     </Modal>
   );
 }
