@@ -25,6 +25,7 @@ export function ConversationTitle({
   onUpdateVisibility: (visibility: ConversationVisibility) => void;
 }) {
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
+
   const handleClick = async () => {
     await navigator.clipboard.writeText(shareLink || "");
     setCopyLinkSuccess(true);
