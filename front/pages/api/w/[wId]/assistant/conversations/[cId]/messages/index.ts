@@ -22,7 +22,7 @@ const PostMessagesRequestBodySchema = t.type({
   ),
   context: t.type({
     timezone: t.string,
-    profilePictureUrl: t.string,
+    profilePictureUrl: t.union([t.string, t.null]),
   }),
 });
 

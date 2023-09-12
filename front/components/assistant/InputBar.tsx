@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { classNames } from "@app/lib/utils";
+import { MentionType } from "@app/types/assistant/conversation";
 
 export default function AssistantInputBar({
   onSubmit,
 }: {
-  onSubmit: (input: string) => void;
+  onSubmit: (input: string, mentions: MentionType[]) => void;
 }) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -37,8 +38,9 @@ export default function AssistantInputBar({
             ref={inputRef}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
-                void onSubmit(input);
+                void onSubmit(input, []);
                 e.preventDefault();
+                setInput("");
               }
             }}
             autoFocus={true}
@@ -47,7 +49,8 @@ export default function AssistantInputBar({
             <PaperAirplaneIcon
               className="my-auto h-5 w-5 cursor-pointer text-action-500"
               onClick={() => {
-                void onSubmit(input);
+                void onSubmit(input, []);
+                setInput("");
               }}
             />
           </div>
