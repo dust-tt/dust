@@ -86,6 +86,8 @@ export default function Home({
         <link rel="shortcut icon" href="/static/favicon.png" />
         <link rel="apple-touch-icon" sizes="60x60" href="static/AppIcon.png" />
 
+        <link rel="manifest" href="static/manifest.json" />
+
         <meta name="apple-mobile-web-app-title" content="Dust" />
         <link
           rel="apple-touch-icon"
@@ -116,6 +118,11 @@ export default function Home({
           rel="apple-touch-icon"
           sizes="180x180"
           href="static/AppIcon_180.png"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="static/AppIcon_192.png"
         />
         <link
           rel="apple-touch-icon"
