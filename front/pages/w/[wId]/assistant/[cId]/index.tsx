@@ -1,13 +1,7 @@
-import {
-  Button,
-  ChatBubbleBottomCenterTextIcon,
-  Logo,
-  PageHeader,
-  RobotIcon,
-} from "@dust-tt/sparkle";
+import { ChatBubbleBottomCenterTextIcon, PageHeader } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 
+import Conversation from "@app/components/assistant/conversation/Conversation";
 import AssistantInputBar from "@app/components/assistant/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
@@ -20,6 +14,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   gaTrackingId: string;
+  conversationId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -43,6 +38,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       gaTrackingId: GA_TRACKING_ID,
+      conversationId: context.params?.cId as string,
     },
   };
 };
@@ -51,11 +47,8 @@ export default function AssistantConversation({
   user,
   owner,
   gaTrackingId,
+  conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
-  // TODO FETCH CONVO
-
   return (
     <AppLayout
       user={user}
@@ -70,8 +63,7 @@ export default function AssistantConversation({
       />
       <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
         <div className="mx-auto max-w-4xl pb-8">
-          {/* TODO DISPLAY CONVO */}
-
+          <Conversation owner={owner} conversationId={conversationId} />
           <AssistantInputBar onSubmit={() => console.log("Handle Submit")} />
         </div>
       </div>
