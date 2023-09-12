@@ -32,7 +32,7 @@ export function ChatSidebarMenu({
           icon={PlanetIcon}
           href={`/w/${owner.sId}/u/chats`}
           className="flex-grow"
-        ></Item>
+        />
       </div>
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
@@ -62,7 +62,7 @@ export function ChatSidebarMenu({
                       selected={router.query.cId === s.sId}
                       label={s.title || ""}
                       href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                    ></Item>
+                    />
                   );
                 })}
           </Item.List>

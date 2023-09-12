@@ -112,11 +112,11 @@ function NavigationBar({
                   <Item
                     size="md"
                     selected={nav.current}
-                    label={nav.label as string}
+                    label={nav.label}
                     icon={nav.icon}
                     className="grow px-4"
                     href={nav.href}
-                  ></Item>
+                  />
                   {nav.subMenuLabel && (
                     <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
                       {nav.subMenuLabel}
@@ -130,11 +130,11 @@ function NavigationBar({
                             <Item
                               size="sm"
                               selected={nav.current}
-                              label={nav.label as string}
+                              label={nav.label}
                               icon={nav.icon}
                               className="grow pl-14 pr-4"
                               href={nav.href}
-                            ></Item>
+                            />
                           </div>
                         );
                       })}
