@@ -175,7 +175,7 @@ export class AgentMessage extends Model<
   declare errorMessage: string | null;
 
   declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
-  declare agentId: string; // Not a relation as global agents are not in the DB
+  declare agentConfigurationId: string; // Not a relation as global agents are not in the DB
 }
 
 AgentMessage.init(
@@ -212,7 +212,7 @@ AgentMessage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    agentId: {
+    agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
