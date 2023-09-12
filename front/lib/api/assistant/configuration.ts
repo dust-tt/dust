@@ -166,7 +166,11 @@ export async function getAgentConfigurations(
       return agentConfig;
     })
   );
-  const globalAgents = await getGlobalAgents(auth);
+
+  const globalAgents = (await getGlobalAgents(auth)).filter(
+    (a) =>
+      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+  );
 
   return [...globalAgents, ...agents];
 }

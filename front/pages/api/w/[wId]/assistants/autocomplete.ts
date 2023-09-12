@@ -51,7 +51,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const assistants = await getAgentConfigurations(auth);
+      const assistants = await getAgentConfigurations(auth, agentPrefix);
       return res.status(200).json({
         assistants,
       });
