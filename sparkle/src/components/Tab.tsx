@@ -26,18 +26,18 @@ type TabProps = {
 
 const tabClasses = {
   default: {
-    base: "s-text-element-800 s-border-transparent s-cursor-pointer",
-    hover: "hover:s-text-action-500 hover:s-border-action-300",
+    base: "s-text-element-800 s-cursor-pointer",
+    hover: "hover:s-text-action-500",
     dark: {
       base: "dark:s-text-element-700-dark",
       hover: "dark:hover:s-text-action-600-dark",
     },
   },
   selected: {
-    base: "s-border-action-500 s-text-action-500 s-cursor-default",
+    base: "s-text-action-500 s-cursor-default",
     hover: "",
     dark: {
-      base: "dark:s-border-action-500-dark dark:s-text-action-500-dark",
+      base: "dark:s-text-action-500-dark",
       hover: "",
     },
   },
@@ -70,6 +70,23 @@ const tabSizingClasses = {
 export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
   const { components } = React.useContext(SparkleContext);
 
+  const rectangleRef = React.useRef<HTMLDivElement | null>(null);
+  const tabRefs = tabs.map(() => React.useRef<HTMLElement | null>(null));
+
+  React.useEffect(() => {
+    const selectedTabIndex = tabs.findIndex((tab) => tab.current);
+    if (selectedTabIndex !== -1) {
+      const selectedTabRef = tabRefs[selectedTabIndex].current;
+      if (selectedTabRef) {
+        const rect = selectedTabRef.getBoundingClientRect();
+        if (rectangleRef.current) {
+          rectangleRef.current.style.left = `${rect.left}px`;
+          rectangleRef.current.style.width = `${rect.width}px`;
+        }
+      }
+    }
+  }, [tabs]);
+
   const renderTabs = () =>
     tabs.map((tab, i) => {
       const tabStateClasses = tab.current
@@ -80,8 +97,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none",
         tab.icon ? " s-pr-5 s-pl-4" : " s-px-5",
         tabStateClasses.base,
         tabStateClasses.hover,
@@ -148,7 +165,11 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
 
   return (
     <div className="s-border-b s-border-structure-200 dark:s-border-structure-200-dark">
-      <nav className="-s-mb-px s-flex s-space-x-0" aria-label="Tabs">
+      <nav className="s-relative -s-mb-px s-flex s-space-x-0" aria-label="Tabs">
+        <div
+          className="ease-out s-duration-400 s-absolute s-bottom-0 s-h-0.5 s-bg-action-500 s-transition-all"
+          ref={rectangleRef}
+        ></div>
         {renderTabs()}
       </nav>
     </div>
