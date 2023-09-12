@@ -50,7 +50,7 @@ export type SparkleAppLayoutNavigation = {
   href?: string;
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
-  hasSeparator?: true;
+  hasSeparator?: boolean;
   current?: boolean;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
@@ -63,6 +63,7 @@ export const topNavigation = ({
   owner: WorkspaceType;
   current: TopNavigationId;
 }) => {
+  const displayLabs = isDevelopmentOrDustWorkspace(owner);
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "assistant",
@@ -71,10 +72,9 @@ export const topNavigation = ({
       icon: ChatBubbleBottomCenterTextIcon,
       sizing: "hug",
       current: current === "assistant",
+      hasSeparator: displayLabs ? false : true,
     },
   ];
-
-  const displayLabs = isDevelopmentOrDustWorkspace(owner);
   if (displayLabs) {
     nav.push({
       id: "lab",
@@ -83,11 +83,7 @@ export const topNavigation = ({
       href: `/w/${owner.sId}/u/gens`,
       sizing: "hug",
       current: current === "lab",
-    });
-  }
-  {
-    nav.push({
-      type: "expander",
+      hasSeparator: true,
     });
   }
   if (owner.role === "admin" || owner.role === "builder") {
