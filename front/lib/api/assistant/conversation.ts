@@ -64,6 +64,7 @@ export async function createConversation(
 
   return {
     id: conversation.id,
+    owner,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
     title: conversation.title,
@@ -273,6 +274,7 @@ export async function getConversation(
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
+    owner,
     title: conversation.title,
     visibility: conversation.visibility,
     content,
@@ -330,7 +332,6 @@ export type UserMessageNewEvent = {
 export type UserMessageErrorEvent = {
   type: "user_message_error";
   created: number;
-  messageId: string;
   error: {
     code: string;
     message: string;
@@ -363,6 +364,7 @@ export async function* postUserMessage(
     context: UserMessageContext;
   }
 ): AsyncGenerator<
+  | UserMessageErrorEvent
   | UserMessageNewEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
@@ -373,6 +375,18 @@ export async function* postUserMessage(
   | AgentMessageSuccessEvent
 > {
   const user = auth.user();
+  const owner = auth.workspace();
+
+  if (!owner || owner.id !== conversation.owner.id) {
+    return yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_not_found",
+        message: "The conversation does not exist.",
+      },
+    };
+  }
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
@@ -650,25 +664,27 @@ export async function* editUserMessage(
     conversation,
     message,
     content,
+    mentions,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
+    mentions: MentionType[];
   }
 ): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+  if (auth.user()?.id !== message.user?.id) {
+    return yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message: "Only the author of the message can edit it",
+      },
+    };
+  }
+
   const event: UserMessageNewEvent | UserMessageErrorEvent =
     await front_sequelize.transaction(async (t) => {
-      if (auth.user()?.id !== message.user?.id) {
-        return {
-          type: "user_message_error",
-          created: Date.now(),
-          messageId: message.sId,
-          error: {
-            code: "not_allowed",
-            message: "Only the author of the message can edit it",
-          },
-        };
-      }
       const messageRow = await Message.findOne({
         where: {
           sId: message.sId,
@@ -733,28 +749,50 @@ export async function* editUserMessage(
           transaction: t,
         }
       );
-      const mentions = await Mention.findAll({
-        where: {
-          messageId: messageRow.id,
-        },
-      });
-      const createdMentions = await Promise.all(
-        mentions.map(async (mention) => {
-          return await Mention.create(
-            {
-              messageId: m.id,
-              agentConfigurationId: mention.agentConfigurationId,
-              userId: mention.userId,
-            },
-            { transaction: t }
-          );
+
+      await Promise.all(
+        mentions.map((mention) => {
+          return (async () => {
+            if (isAgentMention(mention)) {
+              const configuration = await getAgentConfiguration(
+                auth,
+                mention.configurationId
+              );
+              if (!configuration) {
+                throw new Error(`Configuration not found`);
+              }
+
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  agentConfigurationId: configuration.id,
+                },
+                { transaction: t }
+              );
+            }
+            if (isUserMention(mention)) {
+              const user = await User.findOne({
+                where: {
+                  provider: mention.provider,
+                  providerId: mention.providerId,
+                },
+              });
+
+              if (user) {
+                await Mention.create(
+                  {
+                    messageId: m.id,
+                    userId: user.id,
+                  },
+                  { transaction: t }
+                );
+              }
+            }
+          })();
         })
       );
-      if (createdMentions.length !== message.mentions.length) {
-        throw new Error(
-          `Expected ${message.mentions.length} mentions to be created, got ${mentions.length}`
-        );
-      }
+
+      // TODO: handle (new) user and agent mentions. For now editing a message has no action.
 
       const userMessage: UserMessageType = {
         id: m.id,
@@ -767,6 +805,7 @@ export async function* editUserMessage(
         content,
         context: message.context,
       };
+
       return {
         type: "user_message_new",
         created: Date.now(),
@@ -774,5 +813,6 @@ export async function* editUserMessage(
         message: userMessage,
       };
     });
+
   yield event;
 }

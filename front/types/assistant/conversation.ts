@@ -1,5 +1,5 @@
 import { ModelId } from "@app/lib/databases";
-import { UserType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
 import { AgentConfigurationType } from "./agent";
@@ -122,6 +122,7 @@ export type ConversationType = {
   id: ModelId;
   created: number;
   sId: string;
+  owner: WorkspaceType;
   title: string | null;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
