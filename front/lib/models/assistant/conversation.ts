@@ -10,7 +10,6 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import {
@@ -176,7 +175,7 @@ export class AgentMessage extends Model<
   declare errorMessage: string | null;
 
   declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentId: string; // Not a relation as global agents are not in the DB
 }
 
 AgentMessage.init(
@@ -213,6 +212,10 @@ AgentMessage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    agentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_message",
@@ -232,13 +235,6 @@ AgentRetrievalAction.hasOne(AgentMessage, {
 });
 AgentMessage.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-
-AgentConfiguration.hasMany(AgentMessage, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
-AgentMessage.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
 export class Message extends Model<
@@ -367,10 +363,9 @@ export class Mention extends Model<
 
   declare messageId: ForeignKey<Message["id"]>;
   declare userId: ForeignKey<User["id"]> | null;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
+  declare agentId: string | null; // Not a relation as global agents are not in the DB
 
   declare user?: NonAttribute<User>;
-  declare agentConfiguration?: NonAttribute<AgentConfiguration>;
 }
 
 Mention.init(
@@ -389,6 +384,10 @@ Mention.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    agentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -410,13 +409,4 @@ User.hasMany(Mention, {
 });
 Mention.belongsTo(User, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
-});
-
-AgentConfiguration.hasMany(Mention, {
-  as: "agentConfiguration",
-  foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
-});
-Mention.belongsTo(AgentConfiguration, {
-  as: "agentConfiguration",
-  foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
 });

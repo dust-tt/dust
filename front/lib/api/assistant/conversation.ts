@@ -6,10 +6,7 @@ import {
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
-import {
-  getAgentConfiguration,
-  renderAgentConfigurationByModelId,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -131,9 +128,9 @@ async function renderUserMessage(
         }
       : null,
     mentions: mentions.map((m) => {
-      if (m.agentConfiguration) {
+      if (m.agentId) {
         return {
-          configurationId: m.agentConfiguration.sId,
+          configurationId: m.agentId,
         };
       }
       if (m.user) {
@@ -161,7 +158,7 @@ async function renderAgentMessage(
   agentMessage: AgentMessage
 ): Promise<AgentMessageType> {
   const [agentConfiguration, agentRetrievalAction] = await Promise.all([
-    renderAgentConfigurationByModelId(auth, agentMessage.agentConfigurationId),
+    getAgentConfiguration(auth, agentMessage.agentId),
     (async () => {
       if (agentMessage.agentRetrievalActionId) {
         return await renderRetrievalActionByModelId(
@@ -171,6 +168,10 @@ async function renderAgentMessage(
       return null;
     })(),
   ]);
+
+  if (!agentConfiguration) {
+    throw new Error(`Configuration ${agentMessage.agentId} not found`);
+  }
 
   return {
     id: message.id,
@@ -455,7 +456,7 @@ export async function* postUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentConfigurationId: configuration.id,
+                  agentId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -463,7 +464,7 @@ export async function* postUserMessage(
               const agentMessageRow = await AgentMessage.create(
                 {
                   status: "created",
-                  agentConfigurationId: configuration.id,
+                  agentId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -765,7 +766,7 @@ export async function* editUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentConfigurationId: configuration.id,
+                  agentId: configuration.sId,
                 },
                 { transaction: t }
               );
