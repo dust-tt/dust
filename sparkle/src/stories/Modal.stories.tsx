@@ -8,7 +8,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Modal",
+  title: "Molecule/Modal",
   component: Modal,
 } satisfies Meta<typeof Modal>;
 

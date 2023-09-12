@@ -22,6 +22,9 @@ export { PageHeader };
 import { SectionHeader } from "./components/SectionHeader";
 export { SectionHeader };
 
+import { BarHeader } from "./components/BarHeader";
+export { BarHeader };
+
 import { Icon } from "./components/Icon";
 export { Icon };
 

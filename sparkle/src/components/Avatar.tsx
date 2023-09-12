@@ -109,7 +109,7 @@ export function Avatar({
         <img
           src={visual}
           alt={name}
-          className="s-h-full s-w-full s-object-cover"
+          className={classNames(sizeClasses[size], "s-object-cover")}
         />
       ) : visual ? (
         visual

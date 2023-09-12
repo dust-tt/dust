@@ -34,7 +34,7 @@ const iconBaseClasses = "s-transition-colors s-ease-out s-duration-400";
 
 const iconClasses = {
   default: {
-    base: "s-text-element-700",
+    base: "s-text-element-600",
     hover: "group-hover:s-text-action-400",
     dark: {
       base: "dark:s-text-element-700-dark",
@@ -74,6 +74,31 @@ const chevronClasses = {
 
 const stateClasses = {
   default: {
+    base: "s-text-element-700 s-cursor-pointer",
+    hover: "hover:s-text-element-800",
+    active: "active:s-text-element-900",
+    dark: {
+      base: "dark:s-text-element-700-dark",
+      hover: "dark:hover:s-text-element-800-dark",
+      active: "dark:active:s-text-element-900-dark",
+    },
+    disabled: "s-opacity-50",
+  },
+  selected: {
+    base: "s-text-action-500",
+    hover: "",
+    active: "",
+    dark: {
+      base: "dark:s-text-action-500-dark",
+      hover: "",
+      active: "",
+    },
+    disabled: "",
+  },
+};
+
+const stateClassesMD = {
+  default: {
     base: "s-text-element-900 s-cursor-pointer",
     hover: "hover:s-text-action-500",
     active: "active:s-text-action-700",
@@ -110,10 +135,14 @@ export function Item({
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
-  const currentStateClasses = selected
-    ? stateClasses.selected
-    : stateClasses.default;
-
+  const currentStateClasses =
+    size === "md"
+      ? selected
+        ? stateClassesMD.selected
+        : stateClassesMD.default
+      : selected
+      ? stateClasses.selected
+      : stateClasses.default;
   const currentIconClasses = selected
     ? iconClasses.selected
     : iconClasses.default;
@@ -145,6 +174,7 @@ export function Item({
 
   const finalCevronClasses = classNames(
     iconBaseClasses,
+    "s-flex-shrink-0",
     size === "sm" ? "s-text-transparent" : currentChevronClasses.base,
     !disabled ? currentChevronClasses.hover : "", // Add condition here
     currentChevronClasses.dark.base,
@@ -161,7 +191,7 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
-      <span className="s-grow">{label}</span>
+      <span className="s-grow s-truncate">{label}</span>
 
       {variant === "default" && (
         <Icon visual={ChevronRight} className={finalCevronClasses} size="sm" />
@@ -170,17 +200,15 @@ export function Item({
   );
 }
 
-export const ItemSectionHeader: React.FC<{ label: string }> = ({ label }) => (
-  <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
-);
-
 interface ItemSectionHeaderProps {
   label: string;
 }
 
 Item.SectionHeader = function ({ label }: ItemSectionHeaderProps) {
   return (
-    <div className="s-py-2 s-text-xs s-uppercase s-text-slate-400">{label}</div>
+    <div className="s-py-2 s-text-xs s-font-medium s-uppercase s-text-element-800">
+      {label}
+    </div>
   );
 };
 

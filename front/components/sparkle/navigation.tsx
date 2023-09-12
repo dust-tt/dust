@@ -50,6 +50,7 @@ export type SparkleAppLayoutNavigation = {
   href?: string;
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
+  hasSeparator?: boolean;
   current: boolean;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
@@ -62,26 +63,27 @@ export const topNavigation = ({
   owner: WorkspaceType;
   current: TopNavigationId;
 }) => {
+  const displayLabs = isDevelopmentOrDustWorkspace(owner);
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "assistant",
       label: "Assistant",
       href: `/w/${owner.sId}/u/chat`,
       icon: ChatBubbleBottomCenterTextIcon,
-      sizing: "expand",
+      sizing: "hug",
       current: current === "assistant",
+      hasSeparator: displayLabs ? false : true,
     },
   ];
-
-  const displayLabs = isDevelopmentOrDustWorkspace(owner);
   if (displayLabs) {
     nav.push({
       id: "lab",
       label: "Lab",
       icon: TestTubeIcon,
       href: `/w/${owner.sId}/u/gens`,
-      sizing: "expand",
+      sizing: "hug",
       current: current === "lab",
+      hasSeparator: true,
     });
   }
 

@@ -23,33 +23,31 @@ export function ChatSidebarMenu({
   };
 
   return (
-    <div className="flex grow flex-col pl-4 pr-2">
-      <div className="flex flex-row">
-        <div className="flex grow"></div>
-        <Button
-          disabled={!canStartConversation}
-          labelVisible={true}
-          label="New Conversation"
-          icon={ChatBubbleBottomCenterPlusIcon}
-          onClick={onNewConversation}
-          className="flex flex-initial"
+    <div className="flex grow flex-col">
+      <div className="flex border-b border-structure-200 py-2 pl-4 pr-2">
+        <Item
+          size="md"
+          selected={readOnly}
+          label="Workspace Conversations"
+          icon={PlanetIcon}
+          href={`/w/${owner.sId}/u/chats`}
+          className="flex-grow"
         />
       </div>
-      <div className="mt-4 flex">
-        <div className="flex w-full flex-col">
-          <Item
-            size="md"
-            selected={readOnly}
-            label="Workspace Conversations"
-            icon={PlanetIcon}
-            href={`/w/${owner.sId}/u/chats`}
-          ></Item>
-        </div>
-      </div>
-      <div className="mt-4 flex h-0 min-h-full grow overflow-y-auto">
-        <div className="flex grow flex-col">
+      <div className="flex h-0 min-h-full w-full overflow-y-auto">
+        <div className="flex w-full flex-col pl-4 pr-2">
+          <div className="pr py-4 text-right">
+            <Button
+              disabled={!canStartConversation}
+              labelVisible={true}
+              label="New Conversation"
+              icon={ChatBubbleBottomCenterPlusIcon}
+              onClick={onNewConversation}
+              className="flex-none shrink"
+            />
+          </div>
           {sessions.length > 0 && (
-            <div className="py-2 text-xs uppercase text-slate-400">
+            <div className="py-1 text-xs uppercase text-slate-400">
               <Item.SectionHeader label="Past Conversations" />
             </div>
           )}
@@ -64,7 +62,7 @@ export function ChatSidebarMenu({
                       selected={router.query.cId === s.sId}
                       label={s.title || ""}
                       href={`/w/${owner.sId}/u/chat/${s.sId}`}
-                    ></Item>
+                    />
                   );
                 })}
           </Item.List>
