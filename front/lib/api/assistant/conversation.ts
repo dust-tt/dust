@@ -570,13 +570,10 @@ export async function* retryAgentMessage(
   | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
-  const {
-    event,
-    agentMessageRow,
-  }: {
-    event: AgentMessageNewEvent | AgentErrorEvent;
-    agentMessageRow?: AgentMessage;
-  } = await front_sequelize.transaction(async (t) => {
+  const agentMessageResult: {
+    agentMessage: AgentMessageType;
+    agentMessageRow: AgentMessage;
+  } | null = await front_sequelize.transaction(async (t) => {
     const messageRow = await Message.findOne({
       where: {
         conversationId: conversation.id,
@@ -592,35 +589,10 @@ export async function* retryAgentMessage(
       transaction: t,
     });
 
-    if (!messageRow) {
-      return {
-        event: {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: message.configuration.sId,
-          messageId: message.sId,
-          error: {
-            code: "not_found",
-            message: "Message row not found",
-          },
-        },
-      };
+    if (!messageRow || !messageRow.agentMessage) {
+      return null;
     }
     const agentMessageRow = messageRow.agentMessage;
-    if (!agentMessageRow) {
-      return {
-        event: {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: message.configuration.sId,
-          messageId: message.sId,
-          error: {
-            code: "not_found",
-            message: "AgentMessage row not found",
-          },
-        },
-      };
-    }
     const m = await Message.create(
       {
         sId: messageRow.sId,
@@ -657,26 +629,33 @@ export async function* retryAgentMessage(
       configuration: message.configuration,
     };
     return {
-      event: {
-        type: "agent_message_new",
-        created: Date.now(),
-        configurationId: agentMessage.configuration.sId,
-        messageId: agentMessage.sId,
-        message: agentMessage,
-      },
+      agentMessage,
       agentMessageRow,
     };
   });
 
-  if (event.type === "agent_error") {
-    return event;
-  }
-  // so that typescript is fine with streamRunAgentEvents using agentMessageRow
-  if (!agentMessageRow) {
-    throw new Error("Unreachable: agentMessageRow must be defined");
+  if (!agentMessageResult) {
+    return {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_not_found",
+        message: "The message to retry was not found",
+      },
+    };
   }
 
-  yield event;
+  const { agentMessage, agentMessageRow } = agentMessageResult;
+
+  yield {
+    type: "agent_message_new",
+    created: Date.now(),
+    configurationId: agentMessage.configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
+  };
 
   if (!message.parentMessageId) {
     throw new Error("Unreachable: agent message must have a parent");
@@ -728,7 +707,7 @@ export async function* retryAgentMessage(
   yield* streamRunAgentEvents(auth, {
     conversation,
     userMessage,
-    agentMessage: event.message,
+    agentMessage,
     agentMessageRow,
   });
 }
