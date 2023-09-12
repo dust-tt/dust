@@ -29,12 +29,7 @@ export const TabNavigation: Story = {
         current: false,
         icon: TestTubeIcon,
         sizing: "hug",
-      },
-      {
-        type: "separator",
-      },
-      {
-        type: "expander",
+        hasSeparator: true,
       },
       {
         label: "Settings",

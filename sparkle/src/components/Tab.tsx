@@ -18,7 +18,7 @@ type TabProps = {
     sizing?: "hug" | "expand";
     icon?: ComponentType<{ className?: string }>;
     href?: string;
-    type?: "separator" | "expander";
+    hasSeparator?: boolean;
   }>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
@@ -72,14 +72,6 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
 
   const renderTabs = () =>
     tabs.map((tab) => {
-      if (tab.type === "separator") {
-        return (
-          <div className="s-flex s-h-full s-w-px s-bg-structure-200"></div>
-        );
-      }
-      if (tab.type === "expander") {
-        return <div className="s-flex s-h-full s-grow"></div>;
-      }
       const tabStateClasses = tab.current
         ? tabClasses.selected
         : tabClasses.default;
@@ -135,12 +127,21 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
       return tab.hideLabel ? (
         tab.label ? (
-          <Tooltip label={tab.label}>{content}</Tooltip>
+          <>
+            <Tooltip label={tab.label}>{content}</Tooltip>
+            {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+          </>
         ) : (
-          content
+          <>
+            {content}
+            {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+          </>
         )
       ) : (
-        content
+        <>
+          {content}
+          {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+        </>
       );
     });
 
