@@ -71,7 +71,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
   const { components } = React.useContext(SparkleContext);
 
   const renderTabs = () =>
-    tabs.map((tab) => {
+    tabs.map((tab, i) => {
       const tabStateClasses = tab.current
         ? tabClasses.selected
         : tabClasses.default;
@@ -128,21 +128,21 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
       return tab.hideLabel ? (
         tab.label ? (
-          <>
+          <div key={`tab-${i}`}>
             <Tooltip label={tab.label}>{content}</Tooltip>
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </>
+          </div>
         ) : (
-          <>
+          <div key={`tab-${i}`}>
             {content}
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </>
+          </div>
         )
       ) : (
-        <>
+        <div key={`tab-${i}`}>
           {content}
           {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-        </>
+        </div>
       );
     });
 
