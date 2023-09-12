@@ -1,24 +1,6 @@
-import { Avatar } from "@dust-tt/sparkle";
-
+import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useConversation } from "@app/lib/swr";
-import { UserMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-
-function UserMessage({ message }: { message: UserMessageType }) {
-  return (
-    <div className="flex gap-4">
-      <div className="flex-shrink-0">
-        {message.user && <Avatar visual={message?.user.image} size="sm" />}
-      </div>
-      <div className="flex-grow">
-        <div className="flex flex-col gap-4">
-          <div className="text-sm font-medium">{message.context.fullName}</div>
-          <div className="text-base font-normal">{message.content}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function Conversation({
   conversationId,
@@ -43,7 +25,7 @@ export default function Conversation({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex-col gap-6 ">
       {conversation.content.map((message) =>
         message.map((m) => {
           switch (m.type) {
