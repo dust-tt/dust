@@ -133,10 +133,12 @@ export async function getAgentConfiguration(
 }
 
 /**
- * Get the list agent configuration for the workspace.
+ * Get the list agent configuration for the workspace, optionally whose names
+ * match a prefix
  */
 export async function getAgentConfigurations(
-  auth: Authenticator
+  auth: Authenticator,
+  agentPrefix?: string
 ): Promise<AgentConfigurationType[] | []> {
   const owner = auth.workspace();
   if (!owner) {
@@ -146,6 +148,13 @@ export async function getAgentConfigurations(
   const rawAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
+      ...(agentPrefix
+        ? {
+            name: {
+              [Op.iLike]: `${agentPrefix}%`,
+            },
+          }
+        : {}),
     },
   });
   const agents = await Promise.all(
