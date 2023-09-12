@@ -18,7 +18,13 @@ export default function AssistantBuilderDataSourceModal({
 }) {
   console.log({ dataSources, owner });
   return (
-    <Modal isOpen={isOpen} onClose={() => setOpen(false)} hasChanged={false}>
+    <Modal
+      isOpen={isOpen}
+      onClose={() => setOpen(false)}
+      hasChanged={false}
+      isFullScreen={true}
+      title="Add a data source"
+    >
       <PageHeader
         title="Select a new data source"
         icon={CloudArrowDownIcon}
