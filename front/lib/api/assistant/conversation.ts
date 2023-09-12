@@ -326,6 +326,17 @@ export type UserMessageNewEvent = {
   message: UserMessageType;
 };
 
+// Event sent when the user message is created.
+export type UserMessageErrorEvent = {
+  type: "user_message_error";
+  created: number;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
 // Event sent when a new message is created (empty) and the agent is about to be executed.
 export type AgentMessageNewEvent = {
   type: "agent_message_new";
@@ -644,15 +655,124 @@ export async function* editUserMessage(
     message: UserMessageType;
     content: string;
   }
-): AsyncGenerator<UserMessageNewEvent | AgentErrorEvent> {
-  yield {
-    type: "agent_error",
-    created: Date.now(),
-    configurationId: "foo",
-    messageId: "bar",
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
-  };
+): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+  const event: UserMessageNewEvent | UserMessageErrorEvent =
+    await front_sequelize.transaction(async (t) => {
+      if (auth.user()?.id !== message.user?.id) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_allowed",
+            message: "Only the author of the message can edit it",
+          },
+        };
+      }
+      const messageRow = await Message.findOne({
+        where: {
+          sId: message.sId,
+          conversationId: conversation.id,
+        },
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+      if (!messageRow) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "Message not found",
+          },
+        };
+      }
+      const userMessageRow = messageRow.userMessage;
+      if (!userMessageRow) {
+        return {
+          type: "user_message_error",
+          created: Date.now(),
+          messageId: message.sId,
+          error: {
+            code: "not_found",
+            message: "UserMessage not found",
+          },
+        };
+      }
+
+      const m = await Message.create(
+        {
+          sId: messageRow.sId,
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          parentId: messageRow.parentId,
+          version: messageRow.version + 1,
+          userMessageId: (
+            await UserMessage.create(
+              {
+                content,
+                userContextUsername: userMessageRow.userContextUsername,
+                userContextTimezone: userMessageRow.userContextTimezone,
+                userContextFullName: userMessageRow.userContextFullName,
+                userContextEmail: userMessageRow.userContextEmail,
+                userContextProfilePictureUrl:
+                  userMessageRow.userContextProfilePictureUrl,
+                userId: userMessageRow.userId,
+              },
+              { transaction: t }
+            )
+          ).id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      const mentions = await Mention.findAll({
+        where: {
+          messageId: messageRow.id,
+        },
+      });
+      const createdMentions = await Promise.all(
+        mentions.map(async (mention) => {
+          return await Mention.create(
+            {
+              messageId: m.id,
+              agentConfigurationId: mention.agentConfigurationId,
+              userId: mention.userId,
+            },
+            { transaction: t }
+          );
+        })
+      );
+      if (createdMentions.length !== message.mentions.length) {
+        throw new Error(
+          `Expected ${message.mentions.length} mentions to be created, got ${mentions.length}`
+        );
+      }
+
+      const userMessage: UserMessageType = {
+        id: m.id,
+        sId: m.sId,
+        type: "user_message",
+        visibility: message.visibility,
+        version: m.version,
+        user: message.user,
+        mentions: message.mentions,
+        content,
+        context: message.context,
+      };
+      return {
+        type: "user_message_new",
+        created: Date.now(),
+        messageId: userMessage.sId,
+        message: userMessage,
+      };
+    });
+  yield event;
 }
