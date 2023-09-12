@@ -110,7 +110,7 @@ export default function AssistantNew({
       return;
     }
 
-    // TODO(spolu): route to the conversation page
+    await router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
   };
 
   return (
