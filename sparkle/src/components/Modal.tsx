@@ -12,6 +12,7 @@ interface ModalProps {
   hasChanged: boolean;
   onSave?: () => void;
   title?: string;
+  isFullScreen?: boolean;
 }
 
 export function Modal({
@@ -21,6 +22,7 @@ export function Modal({
   hasChanged,
   onSave,
   title,
+  isFullScreen = false,
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
@@ -48,8 +50,12 @@ export function Modal({
           <div className="s-fixed s-inset-0 s-bg-gray-500 s-bg-opacity-75 s-transition-opacity" />
         </Transition.Child>
 
-        <div className="s-h-5/5 s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
-          <div className="s-flex s-min-h-full s-items-end s-justify-center s-p-4 s-text-center sm:s-items-center sm:s-p-0">
+        <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
+          <div
+            className={`s-flex s-items-center s-justify-center s-p-4 s-text-center sm:s-items-center sm:s-p-0 ${
+              isFullScreen ? "s-h-full" : "s-min-h-full"
+            }`}
+          >
             <Transition.Child
               as={Fragment}
               enter="s-ease-out s-duration-300"
@@ -59,12 +65,28 @@ export function Modal({
               leaveFrom="s-opacity-100 s-translate-y-0 sm:s-scale-100"
               leaveTo="s-opacity-0 s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
             >
-              <Dialog.Panel className="s-relative s-max-w-2xl s-transform s-overflow-hidden s-rounded-lg s-bg-white s-px-4 s-pb-4 s-shadow-xl s-transition-all sm:s-p-6 lg:s-w-1/2">
-                <div className="s-mt-16">
+              <Dialog.Panel
+                className={`s-relative s-transform s-overflow-hidden s-rounded-lg s-bg-white s-px-4 s-pb-4 s-shadow-xl s-transition-all sm:s-p-6 ${
+                  isFullScreen
+                    ? "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full"
+                    : "s-max-w-2xl lg:s-w-1/2"
+                }`}
+              >
+                <div
+                  className={`s-mt-16 ${
+                    isFullScreen ? "s-sticky s-top-0" : ""
+                  }`}
+                >
                   <BarHeader
                     title={title || ""}
                     rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
                   />
+                </div>
+                <div
+                  className={`${
+                    isFullScreen ? "s-h-full s-overflow-y-auto" : ""
+                  }`}
+                >
                   {children}
                 </div>
               </Dialog.Panel>
