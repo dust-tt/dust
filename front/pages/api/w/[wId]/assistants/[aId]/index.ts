@@ -14,77 +14,11 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
+import { PostOrPatchAssistantResponseBodySchema } from "..";
+
 export type GetAssistantResponseBody = {
   assistant: AgentConfigurationType;
 };
-
-const PatchAssistantResponseBodySchema = t.type({
-  assistant: t.type({
-    name: t.string,
-    pictureUrl: t.string,
-    status: t.union([t.literal("active"), t.literal("archived")]),
-    action: t.union([
-      t.null,
-      t.type({
-        type: t.literal("retrieval_configuration"),
-        query: t.union([
-          t.type({
-            template: t.string,
-          }),
-          t.literal("auto"),
-          t.literal("none"),
-        ]),
-        timeframe: t.union([
-          t.literal("auto"),
-          t.literal("none"),
-          t.type({
-            duration: t.number,
-            unit: t.union([
-              t.literal("hour"),
-              t.literal("day"),
-              t.literal("week"),
-              t.literal("month"),
-              t.literal("year"),
-            ]),
-          }),
-        ]),
-        topK: t.number,
-        dataSources: t.array(
-          t.type({
-            dataSourceId: t.string,
-            workspaceId: t.string,
-            filter: t.type({
-              tags: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-              parents: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-            }),
-          })
-        ),
-      }),
-    ]),
-    generation: t.union([
-      t.null,
-      t.type({
-        prompt: t.string,
-        model: t.type({
-          providerId: t.string,
-          modelId: t.string,
-        }),
-      }),
-    ]),
-  }),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -136,7 +70,9 @@ async function handler(
         assistant,
       });
     case "PATCH":
-      const bodyValidation = PatchAssistantResponseBodySchema.decode(req.body);
+      const bodyValidation = PostOrPatchAssistantResponseBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
