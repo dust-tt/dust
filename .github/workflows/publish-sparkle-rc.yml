@@ -3,7 +3,7 @@ name: Publish Sparkle Alpha
 on:
   workflow_dispatch:
     inputs:
-      preid:
+      tag:
         description: "NPM Tag Identifier"
         required: false
         default: "rc"
@@ -26,6 +26,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - working-directory: sparkle
-        run: npm ci && npm run build && npm publish --preid=${{ github.event.inputs.preid }}
+        run: npm ci && npm run build && npm publish --tag=${{ github.event.inputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
