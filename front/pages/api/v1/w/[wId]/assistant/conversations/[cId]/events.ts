@@ -26,8 +26,7 @@ async function handler(
     });
   }
 
-
-  const {auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );

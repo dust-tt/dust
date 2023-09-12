@@ -53,7 +53,6 @@ async function handler(
     });
   }
 
-
   const conversation = await getConversation(auth, req.query.cId as string);
 
   if (!conversation) {
