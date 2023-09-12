@@ -130,9 +130,9 @@ async function renderUserMessage(
         }
       : null,
     mentions: mentions.map((m) => {
-      if (m.agentId) {
+      if (m.agentConfigurationId) {
         return {
-          configurationId: m.agentId,
+          configurationId: m.agentConfigurationId,
         };
       }
       if (m.user) {
@@ -160,7 +160,7 @@ async function renderAgentMessage(
   agentMessage: AgentMessage
 ): Promise<AgentMessageType> {
   const [agentConfiguration, agentRetrievalAction] = await Promise.all([
-    getAgentConfiguration(auth, agentMessage.agentId),
+    getAgentConfiguration(auth, agentMessage.agentConfigurationId),
     (async () => {
       if (agentMessage.agentRetrievalActionId) {
         return await renderRetrievalActionByModelId(
@@ -172,7 +172,9 @@ async function renderAgentMessage(
   ]);
 
   if (!agentConfiguration) {
-    throw new Error(`Configuration ${agentMessage.agentId} not found`);
+    throw new Error(
+      `Configuration ${agentMessage.agentConfigurationId} not found`
+    );
   }
 
   return {
@@ -458,7 +460,7 @@ export async function* postUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentId: configuration.sId,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -466,7 +468,7 @@ export async function* postUserMessage(
               const agentMessageRow = await AgentMessage.create(
                 {
                   status: "created",
-                  agentId: configuration.sId,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -834,7 +836,7 @@ export async function* editUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentId: configuration.sId,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
