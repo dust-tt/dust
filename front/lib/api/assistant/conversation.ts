@@ -28,7 +28,9 @@ import {
   ConversationType,
   ConversationVisibility,
   isAgentMention,
+  isAgentMessageType,
   isUserMention,
+  isUserMessageType,
   MentionType,
   UserMessageContext,
   UserMessageType,
@@ -540,12 +542,20 @@ export async function* postUserMessage(
         message: agentMessage,
       };
 
-      yield* streamRunAgentEvents(auth, {
-        conversation,
+      // We stitch the conversation to add the user message and only that agent message
+      // so that it can be used to prompt the agent.
+      const eventStream = runAgent(
+        auth,
+        agentMessage.configuration,
+        {
+          ...conversation,
+          content: [...conversation.content, [userMessage], [agentMessage]],
+        },
         userMessage,
-        agentMessage,
-        agentMessageRow,
-      });
+        agentMessage
+      );
+
+      yield* streamRunAgentEvents(eventStream, agentMessageRow);
     })
   );
 }
@@ -657,59 +667,47 @@ export async function* retryAgentMessage(
     message: agentMessage,
   };
 
-  if (!message.parentMessageId) {
-    throw new Error("Unreachable: agent message must have a parent");
+  // We stitch the conversation to retry the agent message correctly: no other
+  // messages than this agent's past its parent message.
+
+  // First, find the array of the parent message in conversation.content.
+  const parentMessageIndex = conversation.content.findIndex((messages) => {
+    return messages.some((m) => m.sId === message.parentMessageId);
+  });
+
+  // Then, find this agentmessage's array in conversation.content and add the
+  // new agent message to it.
+  const agentMessageArray = conversation.content.find((messages) => {
+    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
+  }) as AgentMessageType[];
+  agentMessageArray.push(agentMessage);
+
+  // Finally, stitch the conversation.
+  const newContent = [
+    ...conversation.content.slice(0, parentMessageIndex + 1),
+    [...agentMessageArray, agentMessage],
+  ];
+
+  const userMessage =
+    conversation.content[parentMessageIndex][
+      conversation.content[parentMessageIndex].length - 1
+    ];
+  if (!isUserMessageType(userMessage)) {
+    throw new Error("Unreachable: parent message must be a user message");
   }
 
-  const parentMessageRow = await Message.findOne({
-    where: {
-      conversationId: conversation.id,
-      sId: message.parentMessageId,
+  const eventStream = runAgent(
+    auth,
+    agentMessage.configuration,
+    {
+      ...conversation,
+      content: newContent,
     },
-    order: [["version", "DESC"]],
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!parentMessageRow) {
-    return {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "Parent Message row not found",
-      },
-    };
-  }
-  const userMessageRow = parentMessageRow.userMessage;
-  if (!userMessageRow) {
-    return {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "not_found",
-        message: "Parent UserMessage row not found",
-      },
-    };
-  }
-
-  const userMessage = await renderUserMessage(parentMessageRow, userMessageRow);
-
-  yield* streamRunAgentEvents(auth, {
-    conversation,
     userMessage,
-    agentMessage,
-    agentMessageRow,
-  });
+    agentMessage
+  );
+
+  yield* streamRunAgentEvents(eventStream, agentMessageRow);
 }
 
 // This method creates a new user message version (without re-running subsequent actions for now, in
@@ -848,18 +846,15 @@ export async function* editUserMessage(
 }
 
 async function* streamRunAgentEvents(
-  auth: Authenticator,
-  {
-    conversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow,
-  }: {
-    conversation: ConversationType;
-    userMessage: UserMessageType;
-    agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
-  }
+  eventStream: AsyncGenerator<
+    | AgentErrorEvent
+    | AgentActionEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationSuccessEvent
+    | AgentMessageSuccessEvent
+  >,
+  agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionEvent
@@ -868,19 +863,6 @@ async function* streamRunAgentEvents(
   | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
-  // We stitch the conversation to add the user message and only that agent message
-  // so that it can be used to prompt the agent.
-  const eventStream = runAgent(
-    auth,
-    agentMessage.configuration,
-    {
-      ...conversation,
-      content: [...conversation.content, [userMessage], [agentMessage]],
-    },
-    userMessage,
-    agentMessage
-  );
-
   for await (const event of eventStream) {
     if (event.type === "agent_error") {
       // Store error in database.
