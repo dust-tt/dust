@@ -336,16 +336,20 @@ Message.belongsTo(Conversation, {
 });
 
 UserMessage.hasOne(Message, {
+  as: "userMessage",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
 Message.belongsTo(UserMessage, {
+  as: "userMessage",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
 
 AgentMessage.hasOne(Message, {
+  as: "agentMessage",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
+  as: "agentMessage",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
@@ -409,8 +413,10 @@ Mention.belongsTo(User, {
 });
 
 AgentConfiguration.hasMany(Mention, {
+  as: "agentConfiguration",
   foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
 });
 Mention.belongsTo(AgentConfiguration, {
+  as: "agentConfiguration",
   foreignKey: { name: "agentConfigurationId", allowNull: true }, // null = mention is not an agent mention
 });

@@ -1,25 +1,19 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Conversation } from "@app/lib/models";
-import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ConversationType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ConversationType | ReturnedAPIErrorType>
+  res: NextApiResponse<ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
 
   if (!keyRes.value.isSystem) {
     return apiError(req, res, {
@@ -32,6 +26,11 @@ async function handler(
     });
   }
 
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
+
   if (keyWorkspaceId !== req.query.wId) {
     return apiError(req, res, {
       status_code: 400,
@@ -42,34 +41,34 @@ async function handler(
     });
   }
 
-  const owner = await auth.workspace();
-
-  if (!owner) {
+  const conv = await getConversation(auth, req.query.cId as string);
+  if (!conv) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found",
+        type: "conversation_not_found",
+        message: "Conversation not found.",
       },
     });
   }
 
   switch (req.method) {
-    case "POST":
-      const conv = await Conversation.create({
-        sId: generateModelSId(),
-        title: req.body.title,
-        visibility: req.body.visibility,
-        workspaceId: owner.id,
+    case "GET": {
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       });
-      return res.status(200).json({
-        id: conv.id,
-        created: conv.createdAt.getTime(),
-        sId: conv.sId,
-        title: conv.title,
-        visibility: conv.visibility,
-        content: [],
-      });
+
+      for await (const event of getConversationEvents(conv.sId, null)) {
+        res.write(JSON.stringify(event));
+        // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
+        res.flush();
+      }
+
+      res.end();
+      return;
+    }
 
     default:
       return apiError(req, res, {

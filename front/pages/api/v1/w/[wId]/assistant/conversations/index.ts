@@ -3,40 +3,24 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { UserMessageType } from "@app/types/assistant/conversation";
+import { ConversationType } from "@app/types/assistant/conversation";
 
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-};
-
-const PostMessagesRequestBodySchema = t.type({
-  content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
-  context: t.type({
-    timezone: t.string,
-    username: t.string,
-    fullName: t.union([t.string, t.null]),
-    email: t.union([t.string, t.null]),
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
+const PostConversationsRequestBodySchema = t.type({
+  title: t.union([t.string, t.null]),
+  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
 });
+
+export type PostConversationsResponseBody = {
+  conversation: ConversationType;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
+  res: NextApiResponse<PostConversationsResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -69,22 +53,27 @@ async function handler(
     });
   }
 
-  const conversation = await getConversation(auth, req.query.cId as string);
-  if (!conversation) {
+  const owner = await auth.workspace();
+
+  if (!owner) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to access was not found",
       },
     });
   }
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMessagesRequestBodySchema.decode(req.body);
+      const bodyValidation = PostConversationsRequestBodySchema.decode(
+        req.body
+      );
+
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -93,14 +82,14 @@ async function handler(
           },
         });
       }
-      const { content, context, mentions } = bodyValidation.right;
-      const message = await postUserMessageWithPubSub(auth, {
-        conversation,
-        content,
-        mentions,
-        context,
+
+      const { title, visibility } = bodyValidation.right;
+
+      const conversation = await createConversation(auth, {
+        title,
+        visibility,
       });
-      res.status(200).json({ message: message });
+      res.status(200).json({ conversation });
       return;
 
     default:
