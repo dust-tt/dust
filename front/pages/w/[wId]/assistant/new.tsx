@@ -99,6 +99,7 @@ export default function AssistantNew({
             timezone: "foo",
             profilePictureUrl: "bar",
           },
+          mentions: [],
         }),
       }
     );

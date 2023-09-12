@@ -427,10 +427,13 @@ export async function* postUserMessage(
                 throw new Error(`Configuration not found`);
               }
 
-              await Mention.create({
-                messageId: m.id,
-                agentConfigurationId: configuration.id,
-              });
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  agentConfigurationId: configuration.id,
+                },
+                { transaction: t }
+              );
 
               const agentMessageRow = await AgentMessage.create(
                 {
@@ -484,10 +487,13 @@ export async function* postUserMessage(
             });
 
             if (user) {
-              await Mention.create({
-                messageId: m.id,
-                userId: user.id,
-              });
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  userId: user.id,
+                },
+                { transaction: t }
+              );
             }
           })();
         })
