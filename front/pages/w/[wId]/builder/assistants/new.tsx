@@ -80,7 +80,6 @@ export default function CreateAssistant({
   const router = useRouter();
   const [dataSourceMode, setDataSourceMode] =
     useState<DataSourceMode>("GENERIC");
-
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
   return (
@@ -236,7 +235,7 @@ export default function CreateAssistant({
                     size="sm"
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items origin="topRight">
+                <DropdownMenu.Items origin="topRight" width={260}>
                   {Object.entries(DATA_SOURCE_MODE_TO_LABEL).map(
                     ([key, value]) => (
                       <DropdownMenu.Item
@@ -253,12 +252,12 @@ export default function CreateAssistant({
             </div>
             <Transition
               show={dataSourceMode === "SELECTED"}
-              enterFrom="opacity-0 -mt-72"
-              enterTo="opacity-100 mt-0"
-              leave="transition-all duration-1000"
-              enter="transition-all duration-1000"
-              leaveFrom="opacity-100 mt-0"
-              leaveTo="opacity-0 -mt-72"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-all duration-300"
+              enter="transition-all duration-300"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
               className="overflow-hidden"
               afterEnter={() => {
                 window.scrollBy({
