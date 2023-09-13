@@ -1,15 +1,14 @@
+import { classNames } from "@app/lib/utils";
+import {
+  RetrievalActionType,
+  RetrievalDocumentType,
+} from "@app/types/assistant/actions/retrieval";
 import {
   Chip,
   DocumentDuplicateIcon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-
-import { classNames } from "@app/lib/utils";
-import {
-  RetrievalActionType,
-  RetrievalDocumentType,
-} from "@app/types/assistant/actions/retrieval";
 
 const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
@@ -26,7 +25,7 @@ export default function RetrievalAction({
   status: "loading" | "retrieving" | "success" | "error";
 }) {
   const { query, relativeTimeFrame } = retrievalAction.params;
-  function shortText(text: string, maxLength = 20) {
+  function shortText(text: string, maxLength: number = 20) {
     return text.length > maxLength
       ? text.substring(0, maxLength) + "..."
       : text;

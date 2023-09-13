@@ -7,6 +7,9 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { useConversation } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
+import RetrievalAction from "./RetrievalAction";
+import { RetrievalActionType } from "@app/types/assistant/actions/retrieval";
+import { UserMessageType } from "@app/types/assistant/conversation";
 
 export default function Conversation({
   conversationId,
@@ -27,7 +30,6 @@ export default function Conversation({
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
   const [reconnectCounter, setReconnectCounter] = useState(0);
-
   useEffect(() => {
     if (!conversation) {
       return;
@@ -74,7 +76,53 @@ export default function Conversation({
   if (!conversation) {
     return <div>No conversation here</div>;
   }
-
+  const retrievalAction: RetrievalActionType = {
+    type: "retrieval_action",
+    id: 0,
+    params: {
+      query: "test query boys",
+      topK: 1,
+      relativeTimeFrame: null,
+    },
+    documents: [
+      {
+        // mock slack document following RetrievalDocumentType
+        dataSourceId: "managed-slack",
+        documentId: "toto",
+      },
+      {
+        dataSourceId: "managed-notion",
+        documentId: "tata",
+      },
+      {
+        dataSourceId: "choupi",
+        documentId: "titi",
+      },
+    ],
+  };
+  const userMessage: UserMessageType = {
+    id: 0,
+    type: "user_message",
+    content: "test",
+    context: {
+      fullName: "Mock Agent",
+      email: "toto@titi.com",
+      username: "Yo",
+      timezone: "Europe/Paris",
+      profilePictureUrl: "https://picsum.photos/200",
+    },
+    user: {
+      id: 0,
+      providerId: "google",
+      name: "Filou",
+      email: "toto",
+      image: "https://picsum.photos/200",
+    },
+    sId: "test",
+    visibility: "visible",
+    version: 1,
+    mentions: [],
+  };
   return (
     <div className="flex-col gap-6 ">
       {conversation.content.map((message) =>
@@ -107,6 +155,23 @@ export default function Conversation({
           }
         })
       )}
+
+      <div
+        key={`message-id-${userMessage.sId}`}
+        className="bg-structure-50 py-6"
+      >
+        <div className="mx-auto flex max-w-4xl gap-4 px-6">
+          <UserMessage
+            message={{ ...userMessage, content: "" }}
+            children={
+              <RetrievalAction
+                retrievalAction={retrievalAction}
+                status="error"
+              />
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
