@@ -128,21 +128,23 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
       return tab.hideLabel ? (
         tab.label ? (
-          <div key={`tab-${i}`}>
-            <Tooltip label={tab.label}>{content}</Tooltip>
+          <>
+            <div key={`tab-${i}`}>
+              <Tooltip label={tab.label}>{content}</Tooltip>
+            </div>
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </div>
+          </>
         ) : (
-          <div key={`tab-${i}`}>
-            {content}
+          <>
+            <div key={`tab-${i}`}>{content}</div>
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </div>
+          </>
         )
       ) : (
-        <div key={`tab-${i}`}>
-          {content}
+        <>
+          <div key={`tab-${i}`}>{content}</div>
           {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-        </div>
+        </>
       );
     });
 
