@@ -101,7 +101,7 @@ export default function AssistantConversation({
       }
     >
       <Conversation owner={owner} conversationId={conversationId} />
-      <FixedAssistantInputBar onSubmit={handleSubmit} />
+      <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
   );
 }
