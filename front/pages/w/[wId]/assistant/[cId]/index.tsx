@@ -84,6 +84,7 @@ export default function AssistantConversation({
     <AppLayout
       user={user}
       owner={owner}
+      isWideMode={true}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
       subNavigation={subNavigationLab({ owner, current: "assistant" })}
