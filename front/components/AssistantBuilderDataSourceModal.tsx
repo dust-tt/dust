@@ -137,6 +137,9 @@ function DataSourceResourceSelector({
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
 }) {
+  const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(
+    new Set()
+  );
   return (
     <Transition show={!!dataSource} className={"pb-8"}>
       <div className="mb-6">
@@ -163,6 +166,15 @@ function DataSourceResourceSelector({
               dataSource.connectorProvider as ConnectorProvider
             ]
           }
+          selectedParentIds={selectedParentIds}
+          onSelectChange={(parentId, selected) => {
+            if (selected) {
+              selectedParentIds.add(parentId);
+            } else {
+              selectedParentIds.delete(parentId);
+            }
+            setSelectedParentIds(new Set(selectedParentIds));
+          }}
         />
       )}
     </Transition>

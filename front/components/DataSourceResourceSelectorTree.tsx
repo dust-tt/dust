@@ -19,10 +19,14 @@ export default function DataSourceResourceSelectorTree({
   owner,
   dataSource,
   expandable, //if not, it's flat
+  selectedParentIds,
+  onSelectChange,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   expandable: boolean;
+  selectedParentIds: Set<string>;
+  onSelectChange: (parentId: string, selected: boolean) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -31,6 +35,9 @@ export default function DataSourceResourceSelectorTree({
         dataSource={dataSource}
         parentId={null}
         expandable={expandable}
+        selectedParentIds={selectedParentIds}
+        onSelectChange={onSelectChange}
+        isChecked={false}
       />
     </div>
   );
@@ -64,18 +71,20 @@ function DataSourceResourceSelectorChildren({
   dataSource,
   parentId,
   expandable,
+  isChecked,
+  selectedParentIds,
+  onSelectChange,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   expandable: boolean;
+  isChecked: boolean;
+  selectedParentIds: Set<string>;
+  onSelectChange: (parentId: string, selected: boolean) => void;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions(owner, dataSource, parentId, null);
-
-  const [localStateByInternalId, setLocalStateByInternalId] = useState<
-    Record<string, boolean>
-  >({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (isResourcesError) {
@@ -135,17 +144,11 @@ function DataSourceResourceSelectorChildren({
                   <div className="flex-grow">
                     <Checkbox
                       className="ml-auto"
-                      checked={
-                        localStateByInternalId[r.internalId] ??
-                        ["read", "read_write"].includes(r.permission)
+                      checked={isChecked || selectedParentIds.has(r.internalId)}
+                      onChange={(checked) =>
+                        onSelectChange(r.internalId, checked)
                       }
-                      onChange={(checked) => {
-                        setLocalStateByInternalId((prev) => ({
-                          ...prev,
-                          [r.internalId]: checked,
-                        }));
-                        // callback
-                      }}
+                      disabled={isChecked}
                     />
                   </div>
                 </div>
@@ -157,6 +160,11 @@ function DataSourceResourceSelectorChildren({
                       dataSource={dataSource}
                       parentId={r.internalId}
                       expandable={expandable}
+                      isChecked={
+                        isChecked || selectedParentIds.has(r.internalId)
+                      }
+                      selectedParentIds={selectedParentIds}
+                      onSelectChange={onSelectChange}
                     />
                   </div>
                 )}
