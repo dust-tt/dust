@@ -10,16 +10,11 @@ import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 
-import {
-  DISPLAY_NAME_BY_CONNECTOR_PROVIDER,
-  LOGO_COMPONENT_BY_CONNECTOR_PROVIDER,
-} from "@app/lib/connector_providers";
+import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
-
-import { CONNECTOR_TYPE_TO_SHOW_EXPAND } from "./ConnectorPermissionsModal";
-import DataSourceResourceSelectorTree from "./DataSourceResourceSelectorTree";
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
@@ -137,17 +132,15 @@ function PickDataSource({
           .filter((ds) => ds.connectorProvider)
           .map((ds) => (
             <Item
-              // "as" is fine here because we're filtering
-              // right above
               label={
-                DISPLAY_NAME_BY_CONNECTOR_PROVIDER[
+                CONNECTOR_CONFIGURATIONS[
                   ds.connectorProvider as ConnectorProvider
-                ]
+                ].name
               }
               icon={
-                LOGO_COMPONENT_BY_CONNECTOR_PROVIDER[
+                CONNECTOR_CONFIGURATIONS[
                   ds.connectorProvider as ConnectorProvider
-                ]
+                ].logoComponent
               }
               key={ds.name}
               size="md"
@@ -180,14 +173,14 @@ function DataSourceResourceSelector({
         <div>
           <PageHeader
             title={`Select Data sources in ${
-              DISPLAY_NAME_BY_CONNECTOR_PROVIDER[
+              CONNECTOR_CONFIGURATIONS[
                 dataSource?.connectorProvider as ConnectorProvider
-              ]
+              ]?.name
             }`}
             icon={
-              LOGO_COMPONENT_BY_CONNECTOR_PROVIDER[
+              CONNECTOR_CONFIGURATIONS[
                 dataSource?.connectorProvider as ConnectorProvider
-              ]
+              ]?.logoComponent
             }
             description="Select the files and folders that will be used by the assistant as a source for its answers."
           />
@@ -204,9 +197,9 @@ function DataSourceResourceSelector({
           owner={owner}
           dataSource={dataSource}
           expandable={
-            CONNECTOR_TYPE_TO_SHOW_EXPAND[
+            CONNECTOR_CONFIGURATIONS[
               dataSource.connectorProvider as ConnectorProvider
-            ]
+            ]?.isNested
           }
           selectedParentIds={selectedParentIds}
           onSelectChange={onSelectChange}

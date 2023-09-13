@@ -11,6 +11,7 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
+import { PropsOf } from "@headlessui/react/dist/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -21,13 +22,12 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
-
-import { DATA_SOURCE_INTEGRATIONS } from "../data-sources";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -296,122 +296,18 @@ export default function CreateAssistant({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-              <Transition
+              <DataSourceSelectionSection
                 show={dataSourceMode === "SELECTED"}
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="transition-all duration-300"
-                enter="transition-all duration-300"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-                className="overflow-hidden pt-6"
-                afterEnter={() => {
-                  window.scrollBy({
-                    left: 0,
-                    top: 140,
-                    behavior: "smooth",
-                  });
+                dataSourceConfigs={dataSourceConfigs}
+                openDataSourceModal={() => {
+                  setShowDataSourcesModal(true);
                 }}
-              >
-                <div>
-                  <div className="flex flex-row items-start">
-                    <div className="text-base font-semibold">
-                      Select the data sources
-                    </div>
-                    <div className="flex-grow" />
-                    {Object.keys(dataSourceConfigs).length > 0 && (
-                      <Button
-                        labelVisible={true}
-                        label="Add a data source"
-                        variant="primary"
-                        size="sm"
-                        icon={PlusIcon}
-                        onClick={() => {
-                          setShowDataSourcesModal(true);
-                        }}
-                        disabled={configurableDataSources.length === 0}
-                      />
-                    )}
-                  </div>
-                  {!Object.keys(dataSourceConfigs).length ? (
-                    <div
-                      className={classNames(
-                        "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-                      )}
-                    >
-                      <Button
-                        labelVisible={true}
-                        label="Add a data source"
-                        variant="primary"
-                        size="md"
-                        icon={PlusIcon}
-                        onClick={() => {
-                          setShowDataSourcesModal(true);
-                        }}
-                        disabled={configurableDataSources.length === 0}
-                      />
-                    </div>
-                  ) : (
-                    <ul className="mt-6">
-                      {Object.entries(dataSourceConfigs).map(
-                        ([key, { dataSource, selectedParentIds }]) => (
-                          <li key={key} className="px-2 py-4">
-                            <div className="flex items-start">
-                              <div className="min-w-5 flex">
-                                <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                                  <img
-                                    src={
-                                      DATA_SOURCE_INTEGRATIONS[
-                                        dataSource.connectorProvider as ConnectorProvider
-                                      ].logoPath
-                                    }
-                                  ></img>
-                                </div>
-                                <div className="flex flex-col">
-                                  <div className="flex flex-col sm:flex-row sm:items-center">
-                                    <span
-                                      className={classNames(
-                                        "text-sm font-bold text-element-900"
-                                      )}
-                                    >
-                                      {
-                                        DATA_SOURCE_INTEGRATIONS[
-                                          dataSource.connectorProvider as ConnectorProvider
-                                        ].name
-                                      }
-                                    </span>
-                                  </div>
-                                  <div className="mt-2 text-sm text-element-700">
-                                    Assistant has access to{" "}
-                                    {selectedParentIds.size} resource
-                                    {selectedParentIds.size > 1 ? "s" : ""}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex flex-1" />
-                              <div>
-                                <Button
-                                  variant="secondary"
-                                  icon={Cog6ToothIcon}
-                                  label="Manage"
-                                  onClick={() => {
-                                    setDataSourceToManage({
-                                      dataSource,
-                                      selectedParentIds,
-                                    });
-                                    setShowDataSourcesModal(true);
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  )}
-                </div>
-              </Transition>
-
+                canAddDataSource={configurableDataSources.length > 0}
+                onManageDataSource={(name) => {
+                  setDataSourceToManage(dataSourceConfigs[name]);
+                  setShowDataSourcesModal(true);
+                }}
+              />
               <div className="pt-6 text-base font-semibold text-element-900">
                 Timeframe for the data sources
               </div>
@@ -448,5 +344,143 @@ export default function CreateAssistant({
         </div>
       </AppLayout>
     </>
+  );
+}
+
+function DataSourceSelectionSection({
+  show,
+  dataSourceConfigs,
+  openDataSourceModal,
+  canAddDataSource,
+  onManageDataSource,
+}: {
+  show: boolean;
+  dataSourceConfigs: Record<
+    string,
+    { dataSource: DataSourceType; selectedParentIds: Set<string> }
+  >;
+  openDataSourceModal: () => void;
+  canAddDataSource: boolean;
+  onManageDataSource: (name: string) => void;
+}) {
+  return (
+    <Transition
+      show={show}
+      enterFrom="opacity-0"
+      enterTo="opacity-100"
+      leave="transition-all duration-300"
+      enter="transition-all duration-300"
+      leaveFrom="opacity-100"
+      leaveTo="opacity-0"
+      className="overflow-hidden pt-6"
+      afterEnter={() => {
+        window.scrollBy({
+          left: 0,
+          top: 140,
+          behavior: "smooth",
+        });
+      }}
+    >
+      <div>
+        <div className="flex flex-row items-start">
+          <div className="text-base font-semibold">Select the data sources</div>
+          <div className="flex-grow" />
+          {Object.keys(dataSourceConfigs).length > 0 && (
+            <Button
+              labelVisible={true}
+              label="Add a data source"
+              variant="primary"
+              size="sm"
+              icon={PlusIcon}
+              onClick={openDataSourceModal}
+              disabled={!canAddDataSource}
+            />
+          )}
+        </div>
+        {!Object.keys(dataSourceConfigs).length ? (
+          <div
+            className={classNames(
+              "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+            )}
+          >
+            <Button
+              labelVisible={true}
+              label="Add a data source"
+              variant="primary"
+              size="md"
+              icon={PlusIcon}
+              onClick={openDataSourceModal}
+              disabled={!canAddDataSource}
+            />
+          </div>
+        ) : (
+          <ul className="mt-6">
+            {Object.entries(dataSourceConfigs).map(
+              ([key, { dataSource, selectedParentIds }]) => (
+                <li key={key} className="px-2 py-4">
+                  <SelectedDataSourcesListItem
+                    imagePath={
+                      CONNECTOR_CONFIGURATIONS[
+                        dataSource.connectorProvider as ConnectorProvider
+                      ].logoPath
+                    }
+                    name={
+                      CONNECTOR_CONFIGURATIONS[
+                        dataSource.connectorProvider as ConnectorProvider
+                      ].name
+                    }
+                    description={`Assistant has access to ${
+                      selectedParentIds.size
+                    } resource${selectedParentIds.size > 1 ? "s" : ""}`}
+                    buttonProps={{
+                      variant: "secondary",
+                      icon: Cog6ToothIcon,
+                      label: "Manage",
+                      onClick: () => {
+                        onManageDataSource(key);
+                      },
+                    }}
+                  />
+                </li>
+              )
+            )}
+          </ul>
+        )}
+      </div>
+    </Transition>
+  );
+}
+
+function SelectedDataSourcesListItem({
+  imagePath,
+  name,
+  description,
+  buttonProps,
+}: {
+  imagePath: string;
+  name: string;
+  description: string;
+  buttonProps: PropsOf<typeof Button>;
+}) {
+  return (
+    <div className="flex items-start">
+      <div className="min-w-5 flex">
+        <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
+          <img src={imagePath}></img>
+        </div>
+        <div className="flex flex-col">
+          <div className="flex flex-col sm:flex-row sm:items-center">
+            <span className={classNames("text-sm font-bold text-element-900")}>
+              {name}
+            </span>
+          </div>
+          <div className="mt-2 text-sm text-element-700">{description}</div>
+        </div>
+      </div>
+      <div className="flex flex-1" />
+      <div>
+        <Button {...buttonProps} />
+      </div>
+    </div>
   );
 }

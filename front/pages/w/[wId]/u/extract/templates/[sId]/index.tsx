@@ -22,10 +22,10 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
-import { DATA_SOURCE_INTEGRATIONS } from "@app/pages/w/[wId]/builder/data-sources";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -284,13 +284,13 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   let providerLogo = null;
   if (event.dataSourceName.includes("notion")) {
-    providerLogo = DATA_SOURCE_INTEGRATIONS.notion.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.notion.logoPath;
   } else if (event.dataSourceName.includes("google_drive")) {
-    providerLogo = DATA_SOURCE_INTEGRATIONS.google_drive.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.google_drive.logoPath;
   } else if (event.dataSourceName.includes("github")) {
-    providerLogo = DATA_SOURCE_INTEGRATIONS.github.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.github.logoPath;
   } else if (event.dataSourceName.includes("slack")) {
-    providerLogo = DATA_SOURCE_INTEGRATIONS.slack.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.slack.logoPath;
   }
 
   return (
