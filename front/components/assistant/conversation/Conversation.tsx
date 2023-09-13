@@ -24,8 +24,8 @@ export default function Conversation({
     conversationId,
     workspaceId: owner.sId,
   });
-  // state use to re-connect to the events stream.
-  // this is a hack to re-trigger the useEffect below
+  // State used to re-connect to the events stream; this is a hack to re-trigger
+  // the useEffect that set-up the EventSource to the streaming endpoint.
   const [reconnectCounter, setReconnectCounter] = useState(0);
 
   useEffect(() => {
