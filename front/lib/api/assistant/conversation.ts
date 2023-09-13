@@ -11,7 +11,6 @@ import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
-  AgentConfiguration,
   AgentMessage,
   Conversation,
   Mention,
