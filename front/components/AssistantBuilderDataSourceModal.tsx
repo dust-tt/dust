@@ -1,42 +1,25 @@
 import {
   CloudArrowDownIcon,
-  DriveLogo,
-  GithubLogo,
   IconButton,
   Item,
   Modal,
-  NotionLogo,
   PageHeader,
-  SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 
+import {
+  DISPLAY_NAME_BY_CONNECTOR_PROVIDER,
+  LOGO_COMPONENT_BY_CONNECTOR_PROVIDER,
+} from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 import { CONNECTOR_TYPE_TO_SHOW_EXPAND } from "./ConnectorPermissionsModal";
 import DataSourceResourceSelectorTree from "./DataSourceResourceSelectorTree";
-
-const DISPLAY_NAME_BY_CONNECTOR_PROVIDER: Record<ConnectorProvider, string> = {
-  notion: "Notion",
-  slack: "Slack",
-  github: "GitHub",
-  google_drive: "Google Drive",
-};
-
-const LOGO_BY_CONNECTOR_PROVIDER: Record<
-  ConnectorProvider,
-  (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element
-> = {
-  notion: NotionLogo,
-  slack: SlackLogo,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-};
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
@@ -162,7 +145,7 @@ function PickDataSource({
                 ]
               }
               icon={
-                LOGO_BY_CONNECTOR_PROVIDER[
+                LOGO_COMPONENT_BY_CONNECTOR_PROVIDER[
                   ds.connectorProvider as ConnectorProvider
                 ]
               }
@@ -202,7 +185,7 @@ function DataSourceResourceSelector({
               ]
             }`}
             icon={
-              LOGO_BY_CONNECTOR_PROVIDER[
+              LOGO_COMPONENT_BY_CONNECTOR_PROVIDER[
                 dataSource?.connectorProvider as ConnectorProvider
               ]
             }
