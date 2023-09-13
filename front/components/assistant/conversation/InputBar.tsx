@@ -15,6 +15,8 @@ import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
+// AGENT MENTION
+
 function AgentMention({
   agentConfiguration,
 }: {
@@ -22,19 +24,17 @@ function AgentMention({
 }) {
   return (
     <div
-      className={classNames(
-        "inline-block rounded-sm px-1 py-0.5 text-xs font-bold",
-        "bg-gray-200"
-      )}
+      className={classNames("inline-block font-medium text-brand")}
       contentEditable={false}
-      data-agent-configuration={agentConfiguration?.sId}
+      data-agent-configuration-id={agentConfiguration?.sId}
+      data-agent-name={agentConfiguration?.name}
     >
-      {agentConfiguration.name}
+      @{agentConfiguration.name}
     </div>
   );
 }
 
-// COMMAND LIST
+// AGENT LIST
 
 function AgentListImpl(
   {
@@ -97,11 +97,15 @@ function AgentListImpl(
 
   useEffect(() => {
     if (focus > filtered.length - 1) {
-      setFocus(filtered.length - 1);
+      if (filtered.length === 0) {
+        setFocus(0);
+      } else {
+        setFocus(filtered.length - 1);
+      }
     }
     if (focusRef.current) {
       focusRef.current.scrollIntoView({
-        // behavior: 'smooth',
+        // behavior: "smooth",
         block: "nearest",
         inline: "start",
       });
@@ -112,7 +116,7 @@ function AgentListImpl(
     <>
       {visible ? (
         <div
-          className="fixed z-30 w-64 rounded-xl bg-red-100 shadow-xl"
+          className="max-h-128 fixed z-30 w-48 overflow-auto rounded-xl bg-red-100 shadow-xl"
           style={{
             bottom: position.bottom,
             left: position.left,
@@ -131,9 +135,6 @@ function AgentListImpl(
                     className={classNames(
                       "flex w-full cursor-pointer flex-col"
                     )}
-                    onClick={() => {
-                      setFocus(i);
-                    }}
                     onMouseEnter={() => {
                       setFocus(i);
                     }}
@@ -152,13 +153,6 @@ function AgentListImpl(
                   </div>
                 </div>
               ))}
-              {filtered.length === 0 ? (
-                <div className="flex items-center justify-center">
-                  <div className="flex-col">
-                    <p className="text-gray-500">No match</p>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>
@@ -187,7 +181,7 @@ export function AssistantInputBar({
     left: 0,
   });
 
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
   const agentListRef = useRef<{
     prev: () => void;
     next: () => void;
@@ -198,7 +192,7 @@ export function AssistantInputBar({
 
   useEffect(() => {
     inputRef.current?.focus();
-  });
+  }, []);
 
   return (
     <>
@@ -219,8 +213,10 @@ export function AssistantInputBar({
             )}
           >
             <div
-              className="inline-block w-full resize-none overflow-auto whitespace-pre-wrap px-3 py-3 font-normal outline-0 focus:outline-0"
+              className="inline-block w-full whitespace-pre-wrap border-0 px-3 py-3 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0"
               contentEditable={true}
+              ref={inputRef}
+              id={"dust-input-bar"}
               onPaste={(e) => {
                 e.preventDefault();
                 const text = e.clipboardData.getData("text/plain");
@@ -231,13 +227,14 @@ export function AssistantInputBar({
                   if (e.key === "u" || e.key === "b" || e.key === "i") {
                     e.preventDefault();
                   }
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    //onSubmit();
-                  }
+                }
+                if (!e.shiftKey && e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // onSubmit();
                 }
               }}
-              onInput={(e) => {
+              onInput={() => {
                 const selection = window.getSelection();
                 if (
                   selection &&
@@ -261,15 +258,11 @@ export function AssistantInputBar({
                     lastOne === "@" &&
                     (preLastOne === " " || preLastOne === "") &&
                     node.textContent &&
-                    node.parentNode
+                    node.parentNode &&
+                    node.parentNode.getAttribute("id") === "dust-input-bar"
                   ) {
-                    console.log("create textNode");
-                    const textNode = document.createTextNode(
-                      node.textContent.slice(0, offset - 1)
-                    );
-
-                    console.log("create mentionNode");
                     const mentionSelectNode = document.createElement("div");
+
                     mentionSelectNode.style.display = "inline-block";
                     mentionSelectNode.setAttribute("key", "mentionSelect");
                     mentionSelectNode.className = "text-brand font-medium";
@@ -277,29 +270,30 @@ export function AssistantInputBar({
                     mentionSelectNode.contentEditable = "false";
 
                     const inputNode = document.createElement("span");
-                    //inputNode.setAttribute("type", "text");
-                    //inputNode.setAttribute("placeholder", "");
+                    inputNode.setAttribute("ignore", "false");
                     inputNode.className =
                       "min-w-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium px-0 py-0";
                     inputNode.contentEditable = "true";
 
                     mentionSelectNode.appendChild(inputNode);
 
-                    const textNode2 = document.createTextNode(
+                    const beforeTextNode = document.createTextNode(
+                      node.textContent.slice(0, offset - 1)
+                    );
+                    const afterTextNode = document.createTextNode(
                       node.textContent.slice(offset)
                     );
 
-                    node.parentNode.replaceChild(textNode, node);
-                    textNode.parentNode?.insertBefore(
-                      textNode2,
-                      textNode.nextSibling
-                    );
-                    textNode.parentNode?.insertBefore(
-                      mentionSelectNode,
-                      textNode2
-                    );
+                    node.parentNode.replaceChild(beforeTextNode, node);
 
-                    console.log("inserted  + setAgentListVisible(true)");
+                    beforeTextNode.parentNode?.insertBefore(
+                      afterTextNode,
+                      beforeTextNode.nextSibling
+                    );
+                    beforeTextNode.parentNode?.insertBefore(
+                      mentionSelectNode,
+                      afterTextNode
+                    );
 
                     const rect = mentionSelectNode.getBoundingClientRect();
                     const position = {
@@ -314,49 +308,50 @@ export function AssistantInputBar({
                     inputNode.focus();
 
                     inputNode.onblur = () => {
-                      const selected =
-                        agentListRef.current?.selected() as AgentConfigurationType | null;
+                      let selected = agentListRef.current?.selected();
                       setAgentListVisible(false);
                       setAgentListFilter("");
                       agentListRef.current?.reset();
 
-                      console.log("SELECTED", selected);
+                      if (inputNode.getAttribute("ignore") === "true") {
+                        selected = null;
+                      }
+
+                      // console.log("SELECTED", selected);
 
                       if (selected) {
                         const htmlString = ReactDOMServer.renderToStaticMarkup(
                           <AgentMention agentConfiguration={selected} />
                         );
-                        // const htmlString = ReactDOMServer.renderToStaticMarkup(
-                        //   <span className="text-red-900 font-bold">
-                        //     /{selected.name}
-                        //   </span>
-                        // );
                         const wrapper = document.createElement("div");
                         wrapper.innerHTML = htmlString.trim();
                         const mentionNode = wrapper.firstChild;
 
-                        if (!mentionNode || !mentionNode.parentNode) {
+                        if (!mentionNode || !mentionSelectNode.parentNode) {
                           return;
                         }
 
-                        // Replace tabSelectNode with mentionSelectNode.
+                        // Replace mentionSelectNode with mentionNode.
                         mentionSelectNode.parentNode.replaceChild(
                           mentionNode,
                           mentionSelectNode
                         );
 
-                        // Prepend a space to textNode2 (this will be the space that comes after the
-                        // mention).
-                        textNode2.textContent = ` ${textNode2.textContent}`;
+                        // Prepend a space to afterTextNode (this will be the space that comes after
+                        // the mention).
+                        afterTextNode.textContent = ` ${afterTextNode.textContent}`;
 
-                        // If textNode2 is the last node add a `\n` just because ¯\_(ツ)_/¯
-                        if (textNode2.nextSibling === null) {
-                          textNode2.textContent = `${textNode2.textContent}\n`;
+                        // If afterTextNode is the last node add an invisible character to prevent a
+                        // Chrome bugish behaviour  ¯\_(ツ)_/¯
+                        if (afterTextNode.nextSibling === null) {
+                          // add an invisible character
+                          afterTextNode.textContent = `${afterTextNode.textContent}\u200B`;
+                          //afterTextNode.textContent = `${afterTextNode.textContent}\n`;
                         }
 
                         // Restore the cursor, taking into account the added space.
-                        range.setStart(textNode2, 1);
-                        range.setEnd(textNode2, 1);
+                        range.setStart(afterTextNode, 1);
+                        range.setEnd(afterTextNode, 1);
                         selection.removeAllRanges();
                         selection.addRange(range);
                       } else if (mentionSelectNode.parentNode) {
@@ -365,28 +360,27 @@ export function AssistantInputBar({
                           mentionSelectNode
                         );
 
-                        range.setStart(textNode2, 0);
-                        range.setEnd(textNode2, 0);
+                        range.setStart(afterTextNode, 0);
+                        range.setEnd(afterTextNode, 0);
                         selection.removeAllRanges();
                         selection.addRange(range);
 
-                        // insert the content of mentionSelectNode before textNode2
-                        const textNode3 = document.createTextNode(
-                          mentionSelectNode.textContent || ""
-                        );
-                        textNode.parentNode?.insertBefore(
-                          textNode3,
-                          textNode.nextSibling
-                        );
+                        // Insert the content of mentionSelectNode before textNode2 only if we're
+                        // not in ignore mode.
+                        if (inputNode.getAttribute("ignore") !== "true") {
+                          const textNode3 = document.createTextNode(
+                            mentionSelectNode.textContent || ""
+                          );
+                          beforeTextNode.parentNode?.insertBefore(
+                            textNode3,
+                            beforeTextNode.nextSibling
+                          );
+                        }
                       }
-                      // const s = new CmdState().updatedFromChildNodes(
-                      //   e.target.childNodes
-                      // );
-                      // onStateUpdate(s);
                     };
 
                     inputNode.onkeydown = (e) => {
-                      console.log("KEYDOWN", e.key);
+                      // console.log("KEYDOWN", e.key);
                       if (e.key === "Escape") {
                         inputNode.blur();
                         e.preventDefault();
@@ -402,68 +396,36 @@ export function AssistantInputBar({
                       if (e.key === "Backspace") {
                         if (inputNode.textContent === "") {
                           agentListRef.current?.reset();
+                          inputNode.setAttribute("ignore", "true");
                           inputNode.blur();
                           e.preventDefault();
                         }
                       }
                       if (e.key === "Enter" || e.key === " ") {
+                        // agentListRef.current?.commit();
                         inputNode.blur();
                         e.preventDefault();
                       }
                     };
 
                     inputNode.oninput = (e) => {
-                      if (
-                        e.target &&
-                        typeof e.target.textContent === "string"
-                      ) {
-                        console.log("INPUT", e.target.textContent);
-                        setAgentListFilter(e.target.textContent);
-                        e.stopPropagation();
-                        setTimeout(() => {
-                          if (agentListRef.current?.noMatch()) {
-                            agentListRef.current?.reset();
-                            inputNode.blur();
-                          }
-                        });
-                      }
+                      const target = e.target as HTMLInputElement;
+                      // console.log("INPUT", target.textContent);
+                      setAgentListFilter(target.textContent || "");
+                      e.stopPropagation();
+                      setTimeout(() => {
+                        if (agentListRef.current?.noMatch()) {
+                          agentListRef.current?.reset();
+                          inputNode.blur();
+                        }
+                      });
                     };
                   }
                 }
-
-                // const s = new CmdState().updatedFromChildNodes(
-                //   e.target.childNodes
-                // );
-                // onStateUpdate(s);
               }}
               suppressContentEditableWarning={true}
             ></div>
 
-            {/**
-            <TextareaAutosize
-              minRows={1}
-              placeholder={"Ask a question"}
-              className={classNames(
-                "flex w-full resize-none border-0 bg-white text-base ring-0 focus:ring-0",
-                "text-element-800",
-                "placeholder-gray-400",
-                "px-3 py-3"
-              )}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-              }}
-              ref={inputRef}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && input.length > 0) {
-                  void onSubmit(input, []);
-                  e.preventDefault();
-                  setInput("");
-                }
-              }}
-              autoFocus={true}
-            />
- */}
             <div className={classNames("z-10 flex flex-row space-x-3 pr-2")}>
               <div className="flex flex-col justify-center">
                 <DropdownMenu>
