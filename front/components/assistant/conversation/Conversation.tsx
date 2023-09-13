@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useConversation } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
@@ -9,11 +11,28 @@ export default function Conversation({
   conversationId: string;
   owner: WorkspaceType;
 }) {
-  const { conversation, isConversationError, isConversationLoading } =
-    useConversation({
-      conversationId,
-      workspaceId: owner.sId,
-    });
+  const {
+    conversation,
+    isConversationError,
+    isConversationLoading,
+    mutateConversation,
+  } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  useEffect(() => {
+    const es = new EventSource(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`
+    );
+    es.onmessage = () => {
+      void mutateConversation();
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [conversationId, mutateConversation, owner.sId]);
 
   if (isConversationLoading) {
     return <div>Loading conversation...</div>;
