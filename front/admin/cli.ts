@@ -13,7 +13,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { generateModelSId, new_id } from "@app/lib/utils";
+import { generateModelSId } from "@app/lib/utils";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
