@@ -133,21 +133,43 @@ async function getPagesToUpdate(
     ...createdOrMovedNotionPageIds,
   ]);
 
-  const toUpdate = [
+  // we need to look at all descendants of these objects, and add
+  // those that are pages to pageIdsToUpdate
+  const toProcess = new Set([
     ...createdOrMovedNotionPageIds,
     ...createdOrMovedNotionDatabaseIds,
-  ];
+  ]);
 
-  for (const pageOrDbId of toUpdate) {
-    const pageChildren = await getPageChildrenOf(dataSourceConfig, pageOrDbId);
-    const databaseChildren = await getDatabaseChildrenOf(
+  const shift = () => {
+    for (const pageOrDbId of toProcess) {
+      toProcess.delete(pageOrDbId);
+      return pageOrDbId;
+    }
+  };
+
+  while (toProcess.size > 0) {
+    const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
+
+    const pageChildren = await getPageChildrenOf(
       dataSourceConfig,
-      pageOrDbId
+      pageOrDbIdToProcess
     );
 
-    for (const child of [...pageChildren, ...databaseChildren]) {
+    // add page children to pageIdsToUpdate
+    for (const child of pageChildren) {
       const childId = notionPageOrDbId(child);
       pageIdsToUpdate.add(childId);
+    }
+
+    const databaseChildren = await getDatabaseChildrenOf(
+      dataSourceConfig,
+      pageOrDbIdToProcess
+    );
+
+    // add all page and DB children to toProcess
+    for (const child of [...pageChildren, ...databaseChildren]) {
+      const childId = notionPageOrDbId(child);
+      toProcess.add(childId);
     }
   }
 
