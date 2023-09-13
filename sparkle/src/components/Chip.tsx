@@ -47,7 +47,11 @@ export function Chip({
 
   return (
     <div className={ChipClasses} aria-label={label}>
-      {label && <span className="s-grow s-truncate">{label}</span>}
+      {label && (
+        <span className="s-pointer s-grow s-cursor-default s-truncate">
+          {label}
+        </span>
+      )}
       {children}
     </div>
   );
