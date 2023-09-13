@@ -436,7 +436,7 @@ export class NotionPage extends Model<
   declare notionPageId: string;
   declare lastSeenTs: Date;
   declare lastUpsertedTs?: Date;
-  declare lastCreatedOrMovedRunTs: CreationOptional<number | null>;
+  declare lastCreatedOrMovedRunTs: CreationOptional<Date | null>;
 
   declare skipReason?: string | null;
 
@@ -479,7 +479,7 @@ NotionPage.init(
       allowNull: true,
     },
     lastCreatedOrMovedRunTs: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DATE,
       allowNull: true,
     },
     skipReason: {
@@ -536,7 +536,7 @@ export class NotionDatabase extends Model<
 
   declare notionDatabaseId: string;
   declare lastSeenTs: Date;
-  declare lastCreatedOrMovedRunTs: CreationOptional<number | null>;
+  declare lastCreatedOrMovedRunTs: CreationOptional<Date | null>;
 
   declare skipReason?: string | null;
 
@@ -575,7 +575,7 @@ NotionDatabase.init(
       allowNull: false,
     },
     lastCreatedOrMovedRunTs: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DATE,
       allowNull: true,
     },
     skipReason: {

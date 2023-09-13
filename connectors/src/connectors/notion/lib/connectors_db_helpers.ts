@@ -50,7 +50,7 @@ export async function upsertNotionPageInConnectorsDb({
     notionUrl?: string;
     lastUpsertedTs?: Date;
     skipReason?: string;
-    lastCreatedOrMovedRunTs?: number;
+    lastCreatedOrMovedRunTs?: Date;
   } = {
     lastSeenTs: new Date(lastSeenTs),
   };
@@ -73,7 +73,7 @@ export async function upsertNotionPageInConnectorsDb({
     updateParams.notionUrl = notionUrl;
   }
   if (lastCreatedOrMovedRunTs) {
-    updateParams.lastCreatedOrMovedRunTs = lastCreatedOrMovedRunTs;
+    updateParams.lastCreatedOrMovedRunTs = new Date(lastCreatedOrMovedRunTs);
   }
 
   if (page) {
@@ -165,7 +165,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
     title?: string;
     notionUrl?: string;
     skipReason?: string;
-    lastCreatedOrMovedRunTs?: number;
+    lastCreatedOrMovedRunTs?: Date;
   } = {
     lastSeenTs: new Date(lastSeenTs),
   };
@@ -185,7 +185,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
     updateParams.notionUrl = notionUrl;
   }
   if (lastCreatedOrMovedRunTs) {
-    updateParams.lastCreatedOrMovedRunTs = lastCreatedOrMovedRunTs;
+    updateParams.lastCreatedOrMovedRunTs = new Date(lastCreatedOrMovedRunTs);
   }
 
   if (database) {
