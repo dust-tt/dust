@@ -40,7 +40,7 @@ function NavigationBar({
   const router = useRouter();
 
   return (
-    <div className="flex grow flex-col border-r border-structure-200 bg-structure-50">
+    <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
       <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-row">
           <div className="flex flex-initial items-center">
