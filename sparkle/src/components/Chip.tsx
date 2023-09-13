@@ -1,16 +1,13 @@
 import React, { MouseEvent, ReactNode } from "react";
 
-import { SparkleContext } from "@sparkle/context";
 import { classNames } from "@sparkle/lib/utils";
 
 type ChipProps = {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   size?: "sm" | "md";
   color?: "emerald" | "amber" | "slate" | "violet";
   label?: string;
   children?: ReactNode;
   className?: string;
-  href?: string;
 };
 
 const sizeClasses = {
