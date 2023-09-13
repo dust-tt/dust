@@ -146,9 +146,11 @@ async function getPagesToUpdate(
       return pageOrDbId;
     }
   };
+  const visited = new Set<string>();
 
   while (toProcess.size > 0) {
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
+    visited.add(pageOrDbIdToProcess);
 
     const pageChildren = await getPageChildrenOf(
       dataSourceConfig,
@@ -168,6 +170,9 @@ async function getPagesToUpdate(
 
     // add all page and DB children to toProcess
     for (const child of [...pageChildren, ...databaseChildren]) {
+      if (visited.has(notionPageOrDbId(child))) {
+        continue;
+      }
       const childId = notionPageOrDbId(child);
       toProcess.add(childId);
     }
