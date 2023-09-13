@@ -8,7 +8,7 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import AssistantInputBar from "@app/components/assistant/InputBar";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -155,11 +155,7 @@ export default function AssistantNew({
         )}
       </AssistantHelper>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
-        <div className="mx-auto max-w-4xl pb-12">
-          <AssistantInputBar onSubmit={handleSubmit} />
-        </div>
-      </div>
+      <FixedAssistantInputBar onSubmit={handleSubmit} />
     </AppLayout>
   );
 }

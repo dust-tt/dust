@@ -5,7 +5,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { classNames } from "@app/lib/utils";
 import { MentionType } from "@app/types/assistant/conversation";
 
-export default function AssistantInputBar({
+export function AssistantInputBar({
   onSubmit,
 }: {
   onSubmit: (input: string, mentions: MentionType[]) => void;
@@ -55,6 +55,20 @@ export default function AssistantInputBar({
             />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function FixedAssistantInputBar({
+  onSubmit,
+}: {
+  onSubmit: (input: string, mentions: MentionType[]) => void;
+}) {
+  return (
+    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
+      <div className="mx-auto max-w-4xl pb-12">
+        <AssistantInputBar onSubmit={onSubmit} />
       </div>
     </div>
   );

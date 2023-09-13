@@ -6,6 +6,7 @@ import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datas
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
+import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -417,5 +418,26 @@ export function useConversation({
     isConversationLoading: !error && !data,
     isConversationError: error,
     mutateConversation: mutate,
+  };
+}
+
+export function useAgentConfigurations({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/agent_configurations`,
+    agentConfigurationsFetcher
+  );
+
+  return {
+    agentConfigurations: data ? data.agentConfigurations : [],
+    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsError: error,
+    mutateAgentConfigurations: mutate,
   };
 }

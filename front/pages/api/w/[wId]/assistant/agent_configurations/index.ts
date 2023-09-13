@@ -14,14 +14,14 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
-export type GetAssistantResponseBody = {
-  assistants: AgentConfigurationType[];
+export type GetAgentConfigurationsResponseBody = {
+  agentConfigurations: AgentConfigurationType[];
 };
-export type PostAssistantResponseBody = {
-  assistant: AgentConfigurationType;
+export type PostAgentConfigurationResponseBody = {
+  agentConfiguration: AgentConfigurationType;
 };
 
-export const PostOrPatchAssistantResponseBodySchema = t.type({
+export const PostOrPatchAgentConfigurationResponseBodySchema = t.type({
   assistant: t.type({
     name: t.string,
     pictureUrl: t.string,
@@ -86,8 +86,8 @@ export const PostOrPatchAssistantResponseBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetAssistantResponseBody
-    | PostAssistantResponseBody
+    | GetAgentConfigurationsResponseBody
+    | PostAgentConfigurationResponseBody
     | ReturnedAPIErrorType
     | void
   >
@@ -121,14 +121,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const assistants = await getAgentConfigurations(auth);
+      const agentConfigurations = await getAgentConfigurations(auth);
       return res.status(200).json({
-        assistants,
+        agentConfigurations,
       });
     case "POST":
-      const bodyValidation = PostOrPatchAssistantResponseBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        PostOrPatchAgentConfigurationResponseBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -157,7 +156,7 @@ async function handler(
         topK: action.topK,
         dataSources: action.dataSources,
       });
-      const assistant = await createAgentConfiguration(auth, {
+      const agentConfiguration = await createAgentConfiguration(auth, {
         name,
         pictureUrl,
         status,
@@ -166,7 +165,7 @@ async function handler(
       });
 
       return res.status(200).json({
-        assistant,
+        agentConfiguration,
       });
 
     default:

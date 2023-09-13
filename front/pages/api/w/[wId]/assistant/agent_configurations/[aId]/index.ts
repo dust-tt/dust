@@ -13,15 +13,17 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
-import { PostOrPatchAssistantResponseBodySchema } from "..";
+import { PostOrPatchAgentConfigurationResponseBodySchema } from "..";
 
-export type GetAssistantResponseBody = {
-  assistant: AgentConfigurationType;
+export type GetAgentConfigurationResponseBody = {
+  agentConfiguration: AgentConfigurationType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetAssistantResponseBody | ReturnedAPIErrorType | void>
+  res: NextApiResponse<
+    GetAgentConfigurationResponseBody | ReturnedAPIErrorType | void
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -66,12 +68,11 @@ async function handler(
         });
       }
       return res.status(200).json({
-        assistant,
+        agentConfiguration: assistant,
       });
     case "PATCH":
-      const bodyValidation = PostOrPatchAssistantResponseBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        PostOrPatchAgentConfigurationResponseBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -120,7 +121,7 @@ async function handler(
       );
 
       return res.status(200).json({
-        assistant: updatedAgentConfig,
+        agentConfiguration: updatedAgentConfig,
       });
 
     default:
