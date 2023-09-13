@@ -346,9 +346,7 @@ export type RetrievalParamsEvent = {
   configurationId: string;
   messageId: string;
   dataSources: "all" | DataSourceConfiguration[];
-  query: string | null;
-  relativeTimeFrame: TimeFrame | null;
-  topK: number;
+  action: RetrievalActionType;
 };
 
 // Event sent during retrieval once the retrieved documents have been generated.
@@ -357,7 +355,7 @@ export type RetrievalDocumentsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  documents: RetrievalDocumentType[];
+  action: RetrievalActionType;
 };
 
 export type RetrievalErrorEvent = {
@@ -449,9 +447,16 @@ export async function* runRetrieval(
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     dataSources: c.dataSources,
-    query: params.query,
-    relativeTimeFrame: params.relativeTimeFrame,
-    topK: params.topK,
+    action: {
+      id: action.id,
+      type: "retrieval_action",
+      params: {
+        relativeTimeFrame: params.relativeTimeFrame,
+        query: params.query,
+        topK: params.topK,
+      },
+      documents: [],
+    },
   };
 
   const config = cloneBaseConfig(
@@ -602,7 +607,16 @@ export async function* runRetrieval(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    documents,
+    action: {
+      id: action.id,
+      type: "retrieval_action",
+      params: {
+        relativeTimeFrame: params.relativeTimeFrame,
+        query: params.query,
+        topK: params.topK,
+      },
+      documents,
+    },
   };
 
   yield {
