@@ -1,4 +1,4 @@
-import React, { MouseEvent, ReactNode } from "react";
+import React, { ReactNode } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
