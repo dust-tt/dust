@@ -1,7 +1,4 @@
-import {
-  AgentMessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import { AgentMessageType } from "@app/types/assistant/conversation";
 import React from "react";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 
