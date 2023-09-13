@@ -973,8 +973,6 @@ export async function updateParentsFieldsActivity(
     workspaceId: dataSourceConfig.workspaceId,
     dataSourceName: dataSourceConfig.dataSourceName,
   });
-  // Get documents whose path changed (created or moved) If there is
-  // createdOrMoved, then the document cannot be null thus the cast is safe
 
   const connector = await Connector.findOne({
     where: {
