@@ -223,6 +223,7 @@ export function AssistantInputBar({
                 document.execCommand("insertText", false, text);
               }}
               onKeyDown={(e) => {
+                // We prevent the content editable from creating italics, bold and underline.
                 if (e.ctrlKey || e.metaKey) {
                   if (e.key === "u" || e.key === "b" || e.key === "i") {
                     e.preventDefault();
@@ -259,6 +260,9 @@ export function AssistantInputBar({
                     (preLastOne === " " || preLastOne === "") &&
                     node.textContent &&
                     node.parentNode &&
+                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                    node.parentNode.getAttribute &&
+                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
                     node.parentNode.getAttribute("id") === "dust-input-bar"
                   ) {
                     const mentionSelectNode = document.createElement("div");
@@ -319,7 +323,10 @@ export function AssistantInputBar({
 
                       // console.log("SELECTED", selected);
 
+                      // We received a selected agent configration, recover the state of the
+                      // contenteditable and inject an AgentMention component.
                       if (selected) {
+                        // Construct an AgentMention component and inject it as HTML.
                         const htmlString = ReactDOMServer.renderToStaticMarkup(
                           <AgentMention agentConfiguration={selected} />
                         );
@@ -327,6 +334,7 @@ export function AssistantInputBar({
                         wrapper.innerHTML = htmlString.trim();
                         const mentionNode = wrapper.firstChild;
 
+                        // This is mainly to please TypeScript.
                         if (!mentionNode || !mentionSelectNode.parentNode) {
                           return;
                         }
@@ -344,9 +352,7 @@ export function AssistantInputBar({
                         // If afterTextNode is the last node add an invisible character to prevent a
                         // Chrome bugish behaviour  ¯\_(ツ)_/¯
                         if (afterTextNode.nextSibling === null) {
-                          // add an invisible character
                           afterTextNode.textContent = `${afterTextNode.textContent}\u200B`;
-                          //afterTextNode.textContent = `${afterTextNode.textContent}\n`;
                         }
 
                         // Restore the cursor, taking into account the added space.
@@ -354,8 +360,12 @@ export function AssistantInputBar({
                         range.setEnd(afterTextNode, 1);
                         selection.removeAllRanges();
                         selection.addRange(range);
-                      } else if (mentionSelectNode.parentNode) {
-                        // Remove mentionSelectNode restore cursor and re-add @
+                      }
+
+                      // We didn't receive a selected agent configuration, restore the state of the
+                      // contenteditable and re-inject the content that was created during the
+                      // selection process into the contenteditable.
+                      if (!selected && mentionSelectNode.parentNode) {
                         mentionSelectNode.parentNode.removeChild(
                           mentionSelectNode
                         );
@@ -365,20 +375,23 @@ export function AssistantInputBar({
                         selection.removeAllRanges();
                         selection.addRange(range);
 
-                        // Insert the content of mentionSelectNode before textNode2 only if we're
-                        // not in ignore mode.
+                        // Insert the content of mentionSelectNode after beforeTextNode only if
+                        // we're not in ignore mode unless we are in ingnore mode (the user
+                        // backspaced into the @)
                         if (inputNode.getAttribute("ignore") !== "true") {
-                          const textNode3 = document.createTextNode(
+                          const newTextNode = document.createTextNode(
                             mentionSelectNode.textContent || ""
                           );
                           beforeTextNode.parentNode?.insertBefore(
-                            textNode3,
+                            newTextNode,
                             beforeTextNode.nextSibling
                           );
                         }
                       }
                     };
 
+                    // These are events on the small contentEditable that receives the user input
+                    // and drives the agent list selection.
                     inputNode.onkeydown = (e) => {
                       // console.log("KEYDOWN", e.key);
                       if (e.key === "Escape") {
@@ -408,6 +421,8 @@ export function AssistantInputBar({
                       }
                     };
 
+                    // These are the event that drive the selection of the the agent list, if we
+                    // have no more match we just blur to exit the selection process.
                     inputNode.oninput = (e) => {
                       const target = e.target as HTMLInputElement;
                       // console.log("INPUT", target.textContent);
