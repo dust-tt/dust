@@ -436,6 +436,7 @@ export class NotionPage extends Model<
   declare notionPageId: string;
   declare lastSeenTs: Date;
   declare lastUpsertedTs?: Date;
+  declare lastCreatedOrMovedRunTs: CreationOptional<number | null>;
 
   declare skipReason?: string | null;
 
@@ -477,6 +478,10 @@ NotionPage.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    lastCreatedOrMovedRunTs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     skipReason: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -509,6 +514,7 @@ NotionPage.init(
       { fields: ["connectorId"] },
       { fields: ["lastSeenTs"] },
       { fields: ["parentId"] },
+      { fields: ["lastCreatedOrMovedRunTs"] },
       {
         fields: ["titleSearchVector"],
         using: "gist",
@@ -530,6 +536,7 @@ export class NotionDatabase extends Model<
 
   declare notionDatabaseId: string;
   declare lastSeenTs: Date;
+  declare lastCreatedOrMovedRunTs: CreationOptional<number | null>;
 
   declare skipReason?: string | null;
 
@@ -567,6 +574,10 @@ NotionDatabase.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    lastCreatedOrMovedRunTs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     skipReason: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -598,6 +609,7 @@ NotionDatabase.init(
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
       { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },
+      { fields: ["lastCreatedOrMovedRunTs"] },
       { fields: ["parentId"] },
       {
         fields: ["titleSearchVector"],

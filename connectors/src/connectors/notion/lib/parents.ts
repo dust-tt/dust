@@ -1,4 +1,5 @@
 import memoize from "lodash.memoize";
+import PQueue from "p-queue";
 
 import {
   getDatabaseChildrenOf,
@@ -78,34 +79,42 @@ export const getParents = memoize(
 
 export async function updateAllParentsFields(
   dataSourceConfig: DataSourceConfig,
-  pageOrDbs: (NotionPage | NotionDatabase)[],
+  createdOrMovedNotionPageIds: string[],
+  createdOrMovedNotionDatabaseIds: string[],
   memoizationKey?: string
 ): Promise<number> {
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
-  const pagesToUpdate = await getPagesToUpdate(pageOrDbs, dataSourceConfig);
+  const pageIdsToUpdate = await getPagesToUpdate(
+    createdOrMovedNotionPageIds,
+    createdOrMovedNotionDatabaseIds,
+    dataSourceConfig
+  );
 
   // Update everybody's parents field. Use of a memoization key to control
   // sharing memoization across updateAllParentsFields calls, which
   // can be desired or not depending on the use case
-  for (let i = 0; i < pagesToUpdate.length; i += 16) {
-    const chunk = pagesToUpdate.slice(i, i + 16);
-    // updates are done in batches of 16
-    const promises = chunk.map(async (page) => {
-      const parents = await getParents(
-        dataSourceConfig,
-        page.notionPageId,
-        memoizationKey
-      );
-      await updateDocumentParentsField(
-        dataSourceConfig,
-        `notion-${page.notionPageId}`,
-        parents
-      );
-    });
-    await Promise.all(promises);
+  const q = new PQueue({ concurrency: 16 });
+  const promises: Promise<void>[] = [];
+  for (const pageId of pageIdsToUpdate) {
+    promises.push(
+      q.add(async () => {
+        const parents = await getParents(
+          dataSourceConfig,
+          pageId,
+          memoizationKey
+        );
+        await updateDocumentParentsField(
+          dataSourceConfig,
+          `notion-${pageId}`,
+          parents
+        );
+      })
+    );
   }
-  return pagesToUpdate.length;
+
+  await Promise.all(promises);
+  return pageIdsToUpdate.size;
 }
 
 /**  Get ids of all pages whose parents field should be updated: initial pages in
@@ -116,39 +125,33 @@ export async function updateAllParentsFields(
  * updated
  */
 async function getPagesToUpdate(
-  pageOrDbs: (NotionPage | NotionDatabase)[],
+  createdOrMovedNotionPageIds: string[],
+  createdOrMovedNotionDatabaseIds: string[],
   dataSourceConfig: DataSourceConfig
-): Promise<NotionPage[]> {
-  const pagesToUpdate: NotionPage[] = [];
+): Promise<Set<string>> {
+  const pageIdsToUpdate: Set<string> = new Set([
+    ...createdOrMovedNotionPageIds,
+  ]);
 
-  let i = 0;
-  while (i < pageOrDbs.length) {
-    // Visit next document and if it's a page add it to update list
-    const pageOrDb = pageOrDbs[i++] as NotionPage | NotionDatabase;
-    const pageOrDbId = notionPageOrDbId(pageOrDb);
-    if ((pageOrDb as NotionPage).notionPageId) {
-      pagesToUpdate.push(pageOrDb as NotionPage);
-    }
+  const toUpdate = [
+    ...createdOrMovedNotionPageIds,
+    ...createdOrMovedNotionDatabaseIds,
+  ];
 
-    // Get children of the document
+  for (const pageOrDbId of toUpdate) {
     const pageChildren = await getPageChildrenOf(dataSourceConfig, pageOrDbId);
     const databaseChildren = await getDatabaseChildrenOf(
       dataSourceConfig,
       pageOrDbId
     );
 
-    // If they haven't yet been visited, add them to documents visited
-    // and to the list of documents whose children should be fetched
     for (const child of [...pageChildren, ...databaseChildren]) {
-      if (
-        !pageOrDbs.some((d) => notionPageOrDbId(d) === notionPageOrDbId(child))
-      ) {
-        pageOrDbs.push(child);
-      }
+      const childId = notionPageOrDbId(child);
+      pageIdsToUpdate.add(childId);
     }
   }
 
-  return pagesToUpdate;
+  return pageIdsToUpdate;
 }
 
 function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
