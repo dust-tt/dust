@@ -28,8 +28,6 @@ export function Chip({
   children,
   className = "",
 }: ChipProps) {
-  const { components } = React.useContext(SparkleContext);
-
   const backgroundColor = (() => {
     switch (color) {
       case "emerald":
@@ -52,7 +50,7 @@ export function Chip({
 
   return (
     <div className={ChipClasses} aria-label={label}>
-      <span className="s-grow s-truncate">{label}</span>
+      {label && <span className="s-grow s-truncate">{label}</span>}
       {children}
     </div>
   );
