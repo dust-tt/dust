@@ -10,7 +10,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { UpsertActivityResult } from "@connectors/connectors/notion/temporal/activities";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
