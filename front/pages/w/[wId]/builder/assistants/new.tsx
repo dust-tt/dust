@@ -122,6 +122,17 @@ export default function CreateAssistant({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
+        onDelete={
+          dataSourceToManage
+            ? () => {
+                setDataSourceConfigs((configs) => {
+                  const newConfigs = { ...configs };
+                  delete newConfigs[dataSourceToManage.dataSource.name];
+                  return newConfigs;
+                });
+              }
+            : undefined
+        }
       />
       <AppLayout
         user={user}

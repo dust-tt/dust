@@ -2,11 +2,13 @@ import {
   CloudArrowDownIcon,
   DriveLogo,
   GithubLogo,
+  IconButton,
   Item,
   Modal,
   NotionLogo,
   PageHeader,
   SlackLogo,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
@@ -43,6 +45,7 @@ export default function AssistantBuilderDataSourceModal({
   dataSources,
   onSave,
   dataSourceToManage,
+  onDelete,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -53,6 +56,7 @@ export default function AssistantBuilderDataSourceModal({
     dataSource: DataSourceType;
     selectedParentIds: Set<string>;
   } | null;
+  onDelete?: () => void;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
@@ -91,7 +95,7 @@ export default function AssistantBuilderDataSourceModal({
       title="Add a data source"
     >
       <div className="mb-16 flex justify-center">
-        <div className="flex w-3/4 flex-col pt-6 sm:w-1/2">
+        <div className="flex w-3/4 flex-col pt-16 sm:w-1/2">
           <PickDataSource
             dataSources={dataSources}
             show={!selectedDataSource && !dataSourceToManage}
@@ -111,6 +115,14 @@ export default function AssistantBuilderDataSourceModal({
               }
               setSelectedParentIds(new Set(selectedParentIds));
             }}
+            onDelete={
+              onDelete
+                ? () => {
+                    onDelete();
+                    onClose();
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
@@ -171,28 +183,38 @@ function DataSourceResourceSelector({
   owner,
   selectedParentIds,
   onSelectChange,
+  onDelete,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
   selectedParentIds: Set<string>;
   onSelectChange: (parentId: string, selected: boolean) => void;
+  onDelete?: () => void;
 }) {
   return (
     <Transition show={!!dataSource} className={"pb-8"}>
-      <div className="mb-6">
-        <PageHeader
-          title={`Select Data sources in ${
-            DISPLAY_NAME_BY_CONNECTOR_PROVIDER[
-              dataSource?.connectorProvider as ConnectorProvider
-            ]
-          }`}
-          icon={
-            LOGO_BY_CONNECTOR_PROVIDER[
-              dataSource?.connectorProvider as ConnectorProvider
-            ]
-          }
-          description="Select the files and folders that will be used by the assistant as a source for its answers."
-        />
+      <div className="mb-6 mr-2 flex flex-row">
+        <div>
+          <PageHeader
+            title={`Select Data sources in ${
+              DISPLAY_NAME_BY_CONNECTOR_PROVIDER[
+                dataSource?.connectorProvider as ConnectorProvider
+              ]
+            }`}
+            icon={
+              LOGO_BY_CONNECTOR_PROVIDER[
+                dataSource?.connectorProvider as ConnectorProvider
+              ]
+            }
+            description="Select the files and folders that will be used by the assistant as a source for its answers."
+          />
+        </div>
+        {onDelete && (
+          <>
+            <div className="flex-grow" />
+            <IconButton icon={TrashIcon} variant="warning" onClick={onDelete} />
+          </>
+        )}
       </div>
       {dataSource && (
         <DataSourceResourceSelectorTree
