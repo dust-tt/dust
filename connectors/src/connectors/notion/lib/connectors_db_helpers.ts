@@ -12,6 +12,7 @@ export async function upsertNotionPageInConnectorsDb({
   notionUrl,
   lastUpsertedTs,
   skipReason,
+  lastCreatedOrMovedRunTs,
 }: {
   dataSourceInfo: DataSourceInfo;
   notionPageId: string;
@@ -22,6 +23,7 @@ export async function upsertNotionPageInConnectorsDb({
   notionUrl?: string | null;
   lastUpsertedTs?: number;
   skipReason?: string;
+  lastCreatedOrMovedRunTs?: number;
 }): Promise<NotionPage> {
   const connector = await Connector.findOne({
     where: {
@@ -48,6 +50,7 @@ export async function upsertNotionPageInConnectorsDb({
     notionUrl?: string;
     lastUpsertedTs?: Date;
     skipReason?: string;
+    lastCreatedOrMovedRunTs?: Date;
   } = {
     lastSeenTs: new Date(lastSeenTs),
   };
@@ -68,6 +71,9 @@ export async function upsertNotionPageInConnectorsDb({
   }
   if (notionUrl) {
     updateParams.notionUrl = notionUrl;
+  }
+  if (lastCreatedOrMovedRunTs) {
+    updateParams.lastCreatedOrMovedRunTs = new Date(lastCreatedOrMovedRunTs);
   }
 
   if (page) {
@@ -123,6 +129,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   title,
   notionUrl,
   skipReason,
+  lastCreatedOrMovedRunTs,
 }: {
   dataSourceInfo: DataSourceInfo;
   notionDatabaseId: string;
@@ -132,6 +139,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   title?: string | null;
   notionUrl?: string | null;
   skipReason?: string;
+  lastCreatedOrMovedRunTs?: number;
 }): Promise<NotionDatabase> {
   const connector = await Connector.findOne({
     where: {
@@ -157,6 +165,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
     title?: string;
     notionUrl?: string;
     skipReason?: string;
+    lastCreatedOrMovedRunTs?: Date;
   } = {
     lastSeenTs: new Date(lastSeenTs),
   };
@@ -174,6 +183,9 @@ export async function upsertNotionDatabaseInConnectorsDb({
   }
   if (notionUrl) {
     updateParams.notionUrl = notionUrl;
+  }
+  if (lastCreatedOrMovedRunTs) {
+    updateParams.lastCreatedOrMovedRunTs = new Date(lastCreatedOrMovedRunTs);
   }
 
   if (database) {

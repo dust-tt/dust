@@ -10,7 +10,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { UpsertActivityResult } from "@connectors/connectors/notion/temporal/activities";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWorkflowId } from "./utils";
@@ -95,12 +94,7 @@ export async function notionSyncWorkflow(
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
     });
 
-    const promises: Promise<
-      {
-        upsertPageResults: UpsertActivityResult[];
-        upsertDatabaseResults: UpsertActivityResult[];
-      }[]
-    >[] = [];
+    const promises: Promise<void>[] = [];
 
     // we go through each result page of the notion  search API
     do {
@@ -134,7 +128,7 @@ export async function notionSyncWorkflow(
       // the worflow that processes databases will itself trigger child workflows to process
       // batches of child pages.
       promises.push(
-        getUpsertResults({
+        performUpserts({
           dataSourceConfig,
           notionAccessToken,
           pageIds,
@@ -150,18 +144,11 @@ export async function notionSyncWorkflow(
     } while (cursor);
 
     // wait for all child workflows to finish
-    const results = (await Promise.all(promises)).flat();
-
-    const pageUpsertResults = results.flatMap((r) => r.upsertPageResults);
-    const databaseUpsertResults = results.flatMap(
-      (r) => r.upsertDatabaseResults
-    );
-
-    const allResults = [...pageUpsertResults, ...databaseUpsertResults];
+    await Promise.all(promises);
 
     await updateParentsFieldsActivity(
       dataSourceConfig,
-      allResults,
+      runTimestamp,
       new Date().getTime()
     );
 
@@ -204,12 +191,12 @@ export async function notionSyncResultPageWorkflow(
   pageIds: string[],
   runTimestamp: number,
   isBatchSync = false
-): Promise<(UpsertActivityResult | void)[]> {
+): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<UpsertActivityResult | void>[] = [];
+  const promises: Promise<void>[] = [];
 
   for (const [pageIndex, pageId] of pageIds.entries()) {
     const loggerArgs = {
@@ -231,7 +218,7 @@ export async function notionSyncResultPageWorkflow(
     );
   }
 
-  return await Promise.all(promises);
+  await Promise.all(promises);
 }
 
 export async function notionSyncResultPageDatabaseWorkflow(
@@ -241,10 +228,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
   runTimestamp: number,
   isGarbageCollectionRun = false,
   isBatchSync = false
-): Promise<{
-  upsertPageResults: UpsertActivityResult[];
-  upsertDatabaseResults: UpsertActivityResult[];
-}> {
+): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
@@ -252,13 +236,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
   });
 
-  const databaseUpsertPromises: Promise<UpsertActivityResult | void>[] = [];
-  const resultsPromises: Promise<
-    {
-      upsertPageResults: UpsertActivityResult[];
-      upsertDatabaseResults: UpsertActivityResult[];
-    }[]
-  >[] = [];
+  let promises: Promise<void>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
@@ -267,7 +245,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
       databaseIndex,
     };
 
-    databaseUpsertPromises.push(
+    promises.push(
       upsertQueue.add(() =>
         notionUpsertDatabaseActivity(
           notionAccessToken,
@@ -282,12 +260,8 @@ export async function notionSyncResultPageDatabaseWorkflow(
 
   // wait for all db upserts before moving on to the children pages
   // otherwise we don't have control over concurrency
-  const dbUpsertResults: UpsertActivityResult[] = [];
-  for (const result of await Promise.all(databaseUpsertPromises)) {
-    if (result) {
-      dbUpsertResults.push(result);
-    }
-  }
+  await Promise.all(promises);
+  promises = [];
 
   for (const databaseId of databaseIds) {
     let cursor: string | null = null;
@@ -315,7 +289,7 @@ export async function notionSyncResultPageDatabaseWorkflow(
       });
       cursor = nextCursor;
       pageIndex += 1;
-      const upsertResultsPromise = getUpsertResults({
+      const upsertsPromise = performUpserts({
         dataSourceConfig,
         notionAccessToken,
         pageIds,
@@ -329,19 +303,14 @@ export async function notionSyncResultPageDatabaseWorkflow(
         childWorkflowsNameSuffix: `database-children-${databaseId}`,
       });
 
-      resultsPromises.push(upsertResultsPromise);
+      promises.push(upsertsPromise);
     } while (cursor);
   }
 
-  const upsertResults = (await Promise.all(resultsPromises)).flat();
-
-  return {
-    upsertPageResults: upsertResults.flatMap((r) => r.upsertPageResults),
-    upsertDatabaseResults: dbUpsertResults,
-  };
+  await Promise.all(promises);
 }
 
-async function getUpsertResults({
+async function performUpserts({
   dataSourceConfig,
   notionAccessToken,
   pageIds,
@@ -365,19 +334,11 @@ async function getUpsertResults({
   skipUpToDatePages: boolean;
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
-}): Promise<
-  {
-    upsertPageResults: UpsertActivityResult[];
-    upsertDatabaseResults: UpsertActivityResult[];
-  }[]
-> {
+}): Promise<void> {
   let pagesToSync: string[] = [];
   let databasesToSync: string[] = [];
 
-  const promises: Promise<{
-    upsertPageResults: UpsertActivityResult[];
-    upsertDatabaseResults: UpsertActivityResult[];
-  }>[] = [];
+  const promises: Promise<void>[] = [];
 
   if (isGarbageCollectionRun) {
     // Mark pages and databases as visited to avoid deleting them and return pages and databases
@@ -396,7 +357,7 @@ async function getUpsertResults({
   }
 
   if (!pagesToSync.length && !databasesToSync.length) {
-    return [];
+    return;
   }
 
   if (pagesToSync.length) {
@@ -418,40 +379,19 @@ async function getUpsertResults({
       }
 
       promises.push(
-        queue
-          .add(() =>
-            executeChild(notionSyncResultPageWorkflow, {
-              workflowId,
-              args: [
-                dataSourceConfig,
-                notionAccessToken,
-                batch,
-                runTimestamp,
-                isBatchSync,
-              ],
-              parentClosePolicy:
-                ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-            })
-          )
-          .then((r) => {
-            if (!r) {
-              return {
-                upsertPageResults: [],
-                upsertDatabaseResults: [],
-              };
-            }
-            const pageResults: UpsertActivityResult[] = [];
-            for (const result of r) {
-              if (result) {
-                pageResults.push(result);
-              }
-            }
-
-            return {
-              upsertPageResults: pageResults,
-              upsertDatabaseResults: [],
-            };
+        queue.add(() =>
+          executeChild(notionSyncResultPageWorkflow, {
+            workflowId,
+            args: [
+              dataSourceConfig,
+              notionAccessToken,
+              batch,
+              runTimestamp,
+              isBatchSync,
+            ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           })
+        )
       );
     }
   }
@@ -478,36 +418,23 @@ async function getUpsertResults({
       }
 
       promises.push(
-        queue
-          .add(() =>
-            executeChild(notionSyncResultPageDatabaseWorkflow, {
-              workflowId,
-              args: [
-                dataSourceConfig,
-                notionAccessToken,
-                batch,
-                runTimestamp,
-                isGarbageCollectionRun,
-                isBatchSync,
-              ],
-              parentClosePolicy:
-                ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-            })
-          )
-          .then((r) => {
-            if (!r) {
-              return {
-                upsertPageResults: [],
-                upsertDatabaseResults: [],
-              };
-            }
-            return r;
+        queue.add(() =>
+          executeChild(notionSyncResultPageDatabaseWorkflow, {
+            workflowId,
+            args: [
+              dataSourceConfig,
+              notionAccessToken,
+              batch,
+              runTimestamp,
+              isGarbageCollectionRun,
+              isBatchSync,
+            ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           })
+        )
       );
     }
   }
 
-  const results = await Promise.all(promises);
-
-  return results;
+  await Promise.all(promises);
 }
