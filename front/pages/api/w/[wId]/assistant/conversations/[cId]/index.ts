@@ -1,12 +1,6 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  createConversation,
-  getConversation,
-} from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";

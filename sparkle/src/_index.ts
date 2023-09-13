@@ -13,6 +13,9 @@ export { Tab };
 import { Item } from "./components/Item";
 export { Item };
 
+import { Chip } from "./components/Chip";
+export { Chip };
+
 import { DropdownMenu } from "./components/DropdownMenu";
 export { DropdownMenu };
 

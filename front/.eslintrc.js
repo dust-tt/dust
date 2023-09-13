@@ -17,6 +17,7 @@ module.exports = {
     ],
     */
     "react/no-unescaped-entities": 0,
+    "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/no-explicit-any": 0,
     "no-case-declarations": 0,
     "react-hooks/rules-of-hooks": 0,

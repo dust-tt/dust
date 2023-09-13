@@ -36,7 +36,8 @@ export function Checkbox({
     baseStyleClasses.hover,
     baseStyleClasses.dark.base,
     baseStyleClasses.dark.hover,
-    className
+    className,
+    disabled ? "s-opacity-50" : ""
   );
 
   const combinedCheckedIndicatorClasses = classNames(

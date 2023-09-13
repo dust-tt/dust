@@ -336,11 +336,6 @@ export async function notionGetToSyncActivity(
   };
 }
 
-export type UpsertActivityResult = {
-  pageOrDb: NotionPage | NotionDatabase | null;
-  createdOrMoved: boolean;
-};
-
 export async function notionUpsertPageActivity(
   accessToken: string,
   pageId: string,
@@ -348,7 +343,7 @@ export async function notionUpsertPageActivity(
   runTimestamp: number,
   loggerArgs: Record<string, string | number>,
   isFullSync: boolean
-): Promise<UpsertActivityResult> {
+): Promise<void> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
   const notionPage = await getNotionPageFromConnectorsDb(
@@ -360,7 +355,7 @@ export async function notionUpsertPageActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping page already seen in this run");
-    return { pageOrDb: notionPage, createdOrMoved: false };
+    return;
   }
 
   const isSkipped = !!notionPage?.skipReason;
@@ -370,7 +365,7 @@ export async function notionUpsertPageActivity(
       { skipReason: notionPage.skipReason },
       "Skipping page with skip reason"
     );
-    return { pageOrDb: notionPage, createdOrMoved: false };
+    return;
   }
 
   let upsertTs: number | undefined = undefined;
@@ -383,7 +378,7 @@ export async function notionUpsertPageActivity(
 
   if (parsedPage && parsedPage.rendered.length > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info("Skipping page with too large body");
-    const newNotionPage = await upsertNotionPageInConnectorsDb({
+    await upsertNotionPageInConnectorsDb({
       dataSourceInfo: dataSourceConfig,
       notionPageId: pageId,
       lastSeenTs: runTimestamp,
@@ -393,8 +388,9 @@ export async function notionUpsertPageActivity(
       notionUrl: parsedPage ? parsedPage.url : null,
       lastUpsertedTs: upsertTs,
       skipReason: "body_too_large",
+      lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
     });
-    return { pageOrDb: newNotionPage, createdOrMoved };
+    return;
   }
 
   if (parsedPage && parsedPage.hasBody) {
@@ -425,7 +421,7 @@ export async function notionUpsertPageActivity(
   }
 
   localLogger.info("notionUpsertPageActivity: Upserting notion page in DB.");
-  const newNotionPage = await upsertNotionPageInConnectorsDb({
+  await upsertNotionPageInConnectorsDb({
     dataSourceInfo: dataSourceConfig,
     notionPageId: pageId,
     lastSeenTs: runTimestamp,
@@ -434,8 +430,9 @@ export async function notionUpsertPageActivity(
     title: parsedPage ? parsedPage.title : null,
     notionUrl: parsedPage ? parsedPage.url : null,
     lastUpsertedTs: upsertTs,
+    lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
-  return { pageOrDb: newNotionPage, createdOrMoved };
+  return;
 }
 
 export async function notionUpsertDatabaseActivity(
@@ -444,7 +441,7 @@ export async function notionUpsertDatabaseActivity(
   dataSourceConfig: DataSourceConfig,
   runTimestamp: number,
   loggerArgs: Record<string, string | number>
-): Promise<UpsertActivityResult> {
+): Promise<void> {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
   const notionDatabase = await getNotionDatabaseFromConnectorsDb(
@@ -457,7 +454,7 @@ export async function notionUpsertDatabaseActivity(
 
   if (alreadySeenInRun) {
     localLogger.info("Skipping database already seen in this run");
-    return { pageOrDb: notionDatabase, createdOrMoved: false };
+    return;
   }
 
   const isSkipped = !!notionDatabase?.skipReason;
@@ -467,7 +464,7 @@ export async function notionUpsertDatabaseActivity(
       { skipReason: notionDatabase.skipReason },
       "Skipping database with skip reason"
     );
-    return { pageOrDb: notionDatabase, createdOrMoved: false };
+    return;
   }
 
   localLogger.info(
@@ -480,7 +477,7 @@ export async function notionUpsertDatabaseActivity(
     parsedDb?.parentType !== notionDatabase?.parentType ||
     parsedDb?.parentId !== notionDatabase?.parentId;
 
-  const newNotionDb = await upsertNotionDatabaseInConnectorsDb({
+  await upsertNotionDatabaseInConnectorsDb({
     dataSourceInfo: dataSourceConfig,
     notionDatabaseId: databaseId,
     lastSeenTs: runTimestamp,
@@ -488,8 +485,8 @@ export async function notionUpsertDatabaseActivity(
     parentId: parsedDb ? parsedDb.parentId : null,
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
+    lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
-  return { pageOrDb: newNotionDb, createdOrMoved: createdOrMoved };
 }
 
 export async function saveSuccessSyncActivity(
@@ -964,22 +961,51 @@ export async function garbageCollectActivity(
 
 export async function updateParentsFieldsActivity(
   dataSourceConfig: DataSourceConfig,
-  activitiesResults: UpsertActivityResult[],
+  runTimestamp: number,
   activityExecutionTimestamp: number
 ) {
   const localLogger = logger.child({
     workspaceId: dataSourceConfig.workspaceId,
     dataSourceName: dataSourceConfig.dataSourceName,
   });
-  // Get documents whose path changed (created or moved) If there is
-  // createdOrMoved, then the document cannot be null thus the cast is safe
-  const documents = activitiesResults
-    .filter((aRes) => aRes.createdOrMoved)
-    .map((aRes) => aRes.pageOrDb) as (NotionPage | NotionDatabase)[];
+
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const notionPageIds = (
+    await NotionPage.findAll({
+      where: {
+        connectorId: connector.id,
+        lastCreatedOrMovedRunTs: runTimestamp,
+      },
+      attributes: ["notionPageId"],
+    })
+  ).map((page) => page.notionPageId);
+
+  const notionDatabaseIds = (
+    await NotionDatabase.findAll({
+      where: {
+        connectorId: connector.id,
+        lastCreatedOrMovedRunTs: runTimestamp,
+      },
+      attributes: ["notionDatabaseId"],
+    })
+  ).map((db) => db.notionDatabaseId);
+
   const nbUpdated = await updateAllParentsFields(
     dataSourceConfig,
-    documents,
+    notionPageIds,
+    notionDatabaseIds,
     activityExecutionTimestamp.toString()
   );
+
   localLogger.info({ nbUpdated }, "Updated parents fields.");
 }
