@@ -40,7 +40,7 @@ function NavigationBar({
   const router = useRouter();
 
   return (
-    <div className="flex grow flex-col border-r border-structure-200 bg-structure-50">
+    <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
       <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-row">
           <div className="flex flex-initial items-center">
@@ -154,6 +154,7 @@ function NavigationBar({
 export default function AppLayout({
   user,
   owner,
+  isWideMode = false,
   topNavigationCurrent,
   subNavigation,
   gaTrackingId,
@@ -163,6 +164,7 @@ export default function AppLayout({
 }: {
   user: UserType | null;
   owner: WorkspaceType;
+  isWideMode?: boolean;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
@@ -293,7 +295,14 @@ export default function AppLayout({
               titleChildren ? "pt-16" : "lg:pt-8"
             )}
           >
-            <div className="mx-auto h-full max-w-4xl px-6">{children}</div>
+            <div
+              className={classNames(
+                "mx-auto h-full",
+                isWideMode ? "w-full" : "max-w-4xl px-6"
+              )}
+            >
+              {children}
+            </div>
           </main>
         </div>
       </div>

@@ -6,10 +6,7 @@ import {
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
-import {
-  getAgentConfiguration,
-  renderAgentConfigurationByModelId,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -28,7 +25,9 @@ import {
   ConversationType,
   ConversationVisibility,
   isAgentMention,
+  isAgentMessageType,
   isUserMention,
+  isUserMessageType,
   MentionType,
   UserMessageContext,
   UserMessageType,
@@ -64,6 +63,7 @@ export async function createConversation(
 
   return {
     id: conversation.id,
+    owner,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
     title: conversation.title,
@@ -89,11 +89,6 @@ async function renderUserMessage(
         {
           model: User,
           as: "user",
-          required: false,
-        },
-        {
-          model: AgentConfiguration,
-          as: "agentConfiguration",
           required: false,
         },
       ],
@@ -130,9 +125,9 @@ async function renderUserMessage(
         }
       : null,
     mentions: mentions.map((m) => {
-      if (m.agentConfiguration) {
+      if (m.agentConfigurationId) {
         return {
-          configurationId: m.agentConfiguration.sId,
+          configurationId: m.agentConfigurationId,
         };
       }
       if (m.user) {
@@ -160,7 +155,7 @@ async function renderAgentMessage(
   agentMessage: AgentMessage
 ): Promise<AgentMessageType> {
   const [agentConfiguration, agentRetrievalAction] = await Promise.all([
-    renderAgentConfigurationByModelId(auth, agentMessage.agentConfigurationId),
+    getAgentConfiguration(auth, agentMessage.agentConfigurationId),
     (async () => {
       if (agentMessage.agentRetrievalActionId) {
         return await renderRetrievalActionByModelId(
@@ -170,6 +165,12 @@ async function renderAgentMessage(
       return null;
     })(),
   ]);
+
+  if (!agentConfiguration) {
+    throw new Error(
+      `Configuration ${agentMessage.agentConfigurationId} not found`
+    );
+  }
 
   return {
     id: message.id,
@@ -273,6 +274,7 @@ export async function getConversation(
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
+    owner,
     title: conversation.title,
     visibility: conversation.visibility,
     content,
@@ -330,7 +332,6 @@ export type UserMessageNewEvent = {
 export type UserMessageErrorEvent = {
   type: "user_message_error";
   created: number;
-  messageId: string;
   error: {
     code: string;
     message: string;
@@ -363,6 +364,7 @@ export async function* postUserMessage(
     context: UserMessageContext;
   }
 ): AsyncGenerator<
+  | UserMessageErrorEvent
   | UserMessageNewEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
@@ -373,6 +375,18 @@ export async function* postUserMessage(
   | AgentMessageSuccessEvent
 > {
   const user = auth.user();
+  const owner = auth.workspace();
+
+  if (!owner || owner.id !== conversation.owner.id) {
+    return yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_not_found",
+        message: "The conversation does not exist.",
+      },
+    };
+  }
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
@@ -441,7 +455,7 @@ export async function* postUserMessage(
               await Mention.create(
                 {
                   messageId: m.id,
-                  agentConfigurationId: configuration.id,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -449,7 +463,7 @@ export async function* postUserMessage(
               const agentMessageRow = await AgentMessage.create(
                 {
                   status: "created",
-                  agentConfigurationId: configuration.id,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
@@ -540,7 +554,7 @@ export async function* postUserMessage(
         message: agentMessage,
       };
 
-      // For each agent we stitch the conversation to add the user message and only that agent message
+      // We stitch the conversation to add the user message and only that agent message
       // so that it can be used to prompt the agent.
       const eventStream = runAgent(
         auth,
@@ -553,59 +567,7 @@ export async function* postUserMessage(
         agentMessage
       );
 
-      for await (const event of eventStream) {
-        if (event.type === "agent_error") {
-          // Store error in database.
-          await agentMessageRow.update({
-            status: "failed",
-            errorCode: event.error.code,
-            errorMessage: event.error.message,
-          });
-          yield event;
-        }
-
-        if (event.type === "agent_action_success") {
-          // Store action in database.
-          if (event.action.type === "retrieval_action") {
-            await agentMessageRow.update({
-              agentRetrievalActionId: event.action.id,
-            });
-          } else {
-            throw new Error(
-              `Action type ${event.action.type} agent_action_success handling not implemented`
-            );
-          }
-          yield event;
-        }
-
-        if (event.type === "agent_generation_success") {
-          // Store message in database.
-          await agentMessageRow.update({
-            content: event.text,
-          });
-          yield event;
-        }
-
-        if (event.type === "agent_message_success") {
-          // Update status in database.
-          await agentMessageRow.update({
-            status: "succeeded",
-          });
-          yield event;
-        }
-
-        // All other events that won't impact the database and are related to actions or tokens
-        // generation.
-        if (
-          [
-            "retrieval_params",
-            "retrieval_documents",
-            "generation_tokens",
-          ].includes(event.type)
-        ) {
-          yield event;
-        }
-      }
+      yield* streamRunAgentEvents(eventStream, agentMessageRow);
     })
   );
 }
@@ -630,16 +592,134 @@ export async function* retryAgentMessage(
   | AgentGenerationSuccessEvent
   | AgentMessageSuccessEvent
 > {
+  const agentMessageResult: {
+    agentMessage: AgentMessageType;
+    agentMessageRow: AgentMessage;
+  } | null = await front_sequelize.transaction(async (t) => {
+    const messageRow = await Message.findOne({
+      where: {
+        conversationId: conversation.id,
+        id: message.id,
+      },
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!messageRow || !messageRow.agentMessage) {
+      return null;
+    }
+    const agentMessageRow = messageRow.agentMessage;
+    const m = await Message.create(
+      {
+        sId: messageRow.sId,
+        rank: messageRow.rank,
+        conversationId: conversation.id,
+        parentId: messageRow.parentId,
+        version: messageRow.version + 1,
+        agentMessageId: (
+          await AgentMessage.create(
+            {
+              status: "created",
+              agentConfigurationId: agentMessageRow.agentConfigurationId,
+            },
+            { transaction: t }
+          )
+        ).id,
+      },
+      {
+        transaction: t,
+      }
+    );
+    const agentMessage: AgentMessageType = {
+      id: m.id,
+      sId: m.sId,
+      type: "agent_message",
+      visibility: m.visibility,
+      version: m.version,
+      parentMessageId: message.parentMessageId,
+      status: "created",
+      action: null,
+      content: null,
+      feedbacks: [],
+      error: null,
+      configuration: message.configuration,
+    };
+    return {
+      agentMessage,
+      agentMessageRow,
+    };
+  });
+
+  if (!agentMessageResult) {
+    return {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_not_found",
+        message: "The message to retry was not found",
+      },
+    };
+  }
+
+  const { agentMessage, agentMessageRow } = agentMessageResult;
+
   yield {
-    type: "agent_error",
+    type: "agent_message_new",
     created: Date.now(),
-    configurationId: "foo",
-    messageId: "bar",
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
+    configurationId: agentMessage.configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
   };
+
+  // We stitch the conversation to retry the agent message correctly: no other
+  // messages than this agent's past its parent message.
+
+  // First, find the array of the parent message in conversation.content.
+  const parentMessageIndex = conversation.content.findIndex((messages) => {
+    return messages.some((m) => m.sId === message.parentMessageId);
+  });
+
+  // Then, find this agentmessage's array in conversation.content and add the
+  // new agent message to it.
+  const agentMessageArray = conversation.content.find((messages) => {
+    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
+  }) as AgentMessageType[];
+  agentMessageArray.push(agentMessage);
+
+  // Finally, stitch the conversation.
+  const newContent = [
+    ...conversation.content.slice(0, parentMessageIndex + 1),
+    [...agentMessageArray, agentMessage],
+  ];
+
+  const userMessage =
+    conversation.content[parentMessageIndex][
+      conversation.content[parentMessageIndex].length - 1
+    ];
+  if (!isUserMessageType(userMessage)) {
+    throw new Error("Unreachable: parent message must be a user message");
+  }
+
+  const eventStream = runAgent(
+    auth,
+    agentMessage.configuration,
+    {
+      ...conversation,
+      content: newContent,
+    },
+    userMessage,
+    agentMessage
+  );
+
+  yield* streamRunAgentEvents(eventStream, agentMessageRow);
 }
 
 // This method creates a new user message version (without re-running subsequent actions for now, in
@@ -650,25 +730,27 @@ export async function* editUserMessage(
     conversation,
     message,
     content,
+    mentions,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
+    mentions: MentionType[];
   }
 ): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+  if (auth.user()?.id !== message.user?.id) {
+    return yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message: "Only the author of the message can edit it",
+      },
+    };
+  }
+
   const event: UserMessageNewEvent | UserMessageErrorEvent =
     await front_sequelize.transaction(async (t) => {
-      if (auth.user()?.id !== message.user?.id) {
-        return {
-          type: "user_message_error",
-          created: Date.now(),
-          messageId: message.sId,
-          error: {
-            code: "not_allowed",
-            message: "Only the author of the message can edit it",
-          },
-        };
-      }
       const messageRow = await Message.findOne({
         where: {
           sId: message.sId,
@@ -733,28 +815,50 @@ export async function* editUserMessage(
           transaction: t,
         }
       );
-      const mentions = await Mention.findAll({
-        where: {
-          messageId: messageRow.id,
-        },
-      });
-      const createdMentions = await Promise.all(
-        mentions.map(async (mention) => {
-          return await Mention.create(
-            {
-              messageId: m.id,
-              agentConfigurationId: mention.agentConfigurationId,
-              userId: mention.userId,
-            },
-            { transaction: t }
-          );
+
+      await Promise.all(
+        mentions.map((mention) => {
+          return (async () => {
+            if (isAgentMention(mention)) {
+              const configuration = await getAgentConfiguration(
+                auth,
+                mention.configurationId
+              );
+              if (!configuration) {
+                throw new Error(`Configuration not found`);
+              }
+
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  agentConfigurationId: configuration.sId,
+                },
+                { transaction: t }
+              );
+            }
+            if (isUserMention(mention)) {
+              const user = await User.findOne({
+                where: {
+                  provider: mention.provider,
+                  providerId: mention.providerId,
+                },
+              });
+
+              if (user) {
+                await Mention.create(
+                  {
+                    messageId: m.id,
+                    userId: user.id,
+                  },
+                  { transaction: t }
+                );
+              }
+            }
+          })();
         })
       );
-      if (createdMentions.length !== message.mentions.length) {
-        throw new Error(
-          `Expected ${message.mentions.length} mentions to be created, got ${mentions.length}`
-        );
-      }
+
+      // TODO: handle (new) user and agent mentions. For now editing a message has no action.
 
       const userMessage: UserMessageType = {
         id: m.id,
@@ -767,6 +871,7 @@ export async function* editUserMessage(
         content,
         context: message.context,
       };
+
       return {
         type: "user_message_new",
         created: Date.now(),
@@ -774,5 +879,77 @@ export async function* editUserMessage(
         message: userMessage,
       };
     });
+
   yield event;
+}
+
+async function* streamRunAgentEvents(
+  eventStream: AsyncGenerator<
+    | AgentErrorEvent
+    | AgentActionEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationSuccessEvent
+    | AgentMessageSuccessEvent
+  >,
+  agentMessageRow: AgentMessage
+): AsyncGenerator<
+  | AgentErrorEvent
+  | AgentActionEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent
+> {
+  for await (const event of eventStream) {
+    if (event.type === "agent_error") {
+      // Store error in database.
+      await agentMessageRow.update({
+        status: "failed",
+        errorCode: event.error.code,
+        errorMessage: event.error.message,
+      });
+      yield event;
+    }
+
+    if (event.type === "agent_action_success") {
+      // Store action in database.
+      if (event.action.type === "retrieval_action") {
+        await agentMessageRow.update({
+          agentRetrievalActionId: event.action.id,
+        });
+      } else {
+        throw new Error(
+          `Action type ${event.action.type} agent_action_success handling not implemented`
+        );
+      }
+      yield event;
+    }
+
+    if (event.type === "agent_generation_success") {
+      // Store message in database.
+      await agentMessageRow.update({
+        content: event.text,
+      });
+      yield event;
+    }
+
+    if (event.type === "agent_message_success") {
+      // Update status in database.
+      await agentMessageRow.update({
+        status: "succeeded",
+      });
+      yield event;
+    }
+
+    // All other events that won't impact the database and are related to actions or tokens
+    // generation.
+    if (
+      ["retrieval_params", "retrieval_documents", "generation_tokens"].includes(
+        event.type
+      )
+    ) {
+      yield event;
+    }
+  }
 }

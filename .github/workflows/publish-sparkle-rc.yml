@@ -27,7 +27,7 @@ jobs:
       - name: Update package.json version with suffix
         working-directory: sparkle
         run: |
-          CURRENT_VERSION=$(npm view . version)
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
           SUFFIX_VERSION="${CURRENT_VERSION}-${{ github.event.inputs.versionSuffix }}"
           npm version $SUFFIX_VERSION --no-git-tag-version
 

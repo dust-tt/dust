@@ -126,6 +126,7 @@ DropdownMenu.Button = function ({
   if (children) {
     return (
       <Menu.Button
+        as="div"
         disabled={disabled}
         ref={buttonRef}
         className={classNames(

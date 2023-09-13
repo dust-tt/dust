@@ -13,12 +13,13 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import { MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
+  user: UserType;
   owner: WorkspaceType;
   gaTrackingId: string;
 }> = async (context) => {
@@ -30,7 +31,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
+  if (!owner || !auth.isUser() || !user) {
     return {
       redirect: {
         destination: "/",
@@ -63,7 +64,7 @@ export default function AssistantNew({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
-  const handleSubmit = async (input: string) => {
+  const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create new conversation.
     const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
       method: "POST",
@@ -96,16 +97,16 @@ export default function AssistantNew({
         body: JSON.stringify({
           content: input,
           context: {
-            timezone: "foo",
-            profilePictureUrl: "bar",
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            profilePictureUrl: user.image,
           },
-          mentions: [],
+          mentions,
         }),
       }
     );
 
     if (!mRes.ok) {
-      const data = await cRes.json();
+      const data = await mRes.json();
       window.alert(`Error creating message: ${data.error.message}`);
       return;
     }
@@ -155,7 +156,7 @@ export default function AssistantNew({
       </AssistantHelper>
 
       <div className="fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
-        <div className="mx-auto max-w-4xl pb-8">
+        <div className="mx-auto max-w-4xl pb-12">
           <AssistantInputBar onSubmit={handleSubmit} />
         </div>
       </div>

@@ -6,7 +6,7 @@ import {
   isGlobalAgentId,
 } from "@app/lib/api/assistant/globalAgents";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize, ModelId } from "@app/lib/databases";
+import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -30,20 +30,25 @@ import {
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 
-// Internal interface for the retrieval and rendering of a retrieval action.
-// This should not be used outside of api/assistant.
-// It helps us be smarter in the code to render AgentMessages
-export async function renderAgentConfigurationByModelId(
+/**
+ * Get an agent configuration
+ */
+export async function getAgentConfiguration(
   auth: Authenticator,
-  id: ModelId
-): Promise<AgentConfigurationType> {
+  agentId: string
+): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find AgentConfiguration: no workspace.");
   }
+
+  if (isGlobalAgentId(agentId)) {
+    return await getGlobalAgent(auth, agentId);
+  }
+
   const agent = await AgentConfiguration.findOne({
     where: {
-      id: id,
+      sId: agentId,
       workspaceId: owner.id,
     },
     include: [
@@ -58,7 +63,7 @@ export async function renderAgentConfigurationByModelId(
     ],
   });
   if (!agent) {
-    throw new Error("Cannot find AgentConfiguration.");
+    return null;
   }
 
   const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
@@ -128,40 +133,12 @@ export async function renderAgentConfigurationByModelId(
 }
 
 /**
- * Get an agent configuration
- */
-export async function getAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Cannot find AgentConfiguration: no workspace.");
-  }
-
-  if (isGlobalAgentId(agentId)) {
-    return await getGlobalAgent(auth, agentId);
-  }
-
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      sId: agentId,
-    },
-  });
-
-  // If not found or found but non-global and not on the current workspace, return null.
-  if (!agent || agent.workspaceId !== owner.id) {
-    return null;
-  }
-
-  return await renderAgentConfigurationByModelId(auth, agent.id);
-}
-
-/**
- * Get the list agent configuration for the workspace.
+ * Get the list agent configuration for the workspace, optionally whose names
+ * match a prefix
  */
 export async function getAgentConfigurations(
-  auth: Authenticator
+  auth: Authenticator,
+  agentPrefix?: string
 ): Promise<AgentConfigurationType[] | []> {
   const owner = auth.workspace();
   if (!owner) {
@@ -171,14 +148,29 @@ export async function getAgentConfigurations(
   const rawAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
+      ...(agentPrefix
+        ? {
+            name: {
+              [Op.iLike]: `${agentPrefix}%`,
+            },
+          }
+        : {}),
     },
   });
   const agents = await Promise.all(
     rawAgents.map(async (a) => {
-      return await renderAgentConfigurationByModelId(auth, a.id);
+      const agentConfig = await getAgentConfiguration(auth, a.sId);
+      if (!agentConfig) {
+        throw new Error("AgentConfiguration not found");
+      }
+      return agentConfig;
     })
   );
-  const globalAgents = await getGlobalAgents(auth);
+
+  const globalAgents = (await getGlobalAgents(auth)).filter(
+    (a) =>
+      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+  );
 
   return [...globalAgents, ...agents];
 }

@@ -21,6 +21,7 @@ import {
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import { AppType } from "@app/types/app";
+import { ConversationType } from "@app/types/assistant/conversation";
 import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
@@ -393,5 +394,28 @@ export function usePokeWorkspaces({
     workspaces: data ? data.workspaces : [],
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
+  };
+}
+
+export function useConversation({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+    conversationFetcher
+  );
+
+  return {
+    conversation: data ? data.conversation : null,
+    isConversationLoading: !error && !data,
+    isConversationError: error,
+    mutateConversation: mutate,
   };
 }
