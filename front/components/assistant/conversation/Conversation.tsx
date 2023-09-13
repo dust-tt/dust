@@ -87,7 +87,7 @@ export default function Conversation({
                   className="bg-structure-50 py-6"
                 >
                   <div className="mx-auto flex max-w-4xl gap-4 px-6">
-                    <UserMessage message={m} />;
+                    <UserMessage message={m} />
                   </div>
                 </div>
               );
