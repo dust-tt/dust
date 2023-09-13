@@ -51,10 +51,18 @@ export const ModalExample = () => {
         isFullScreen={true}
         title="Modal title"
       >
-        <div className="s-mt-4 s-h-96 s-text-left">I'm the modal content</div>
-        <div className="s-mt-4 s-h-96 s-text-left">I'm the modal content</div>
-        <div className="s-mt-4 s-h-96 s-text-left">I'm the modal content</div>
-        <div className="s-mt-4 s-h-96 s-text-left">I'm the modal content</div>
+        <div className="s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
       </Modal>
       <Button
         label="Modal without action and without changes"

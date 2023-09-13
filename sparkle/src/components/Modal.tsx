@@ -72,18 +72,12 @@ export function Modal({
                     : "s-max-w-2xl lg:s-w-1/2"
                 }`}
               >
+                <BarHeader
+                  title={title || ""}
+                  rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
+                />
                 <div
-                  className={`s-mt-16 ${
-                    isFullScreen ? "s-sticky s-top-0" : ""
-                  }`}
-                >
-                  <BarHeader
-                    title={title || ""}
-                    rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
-                  />
-                </div>
-                <div
-                  className={`${
+                  className={`s-pt-8 ${
                     isFullScreen ? "s-h-full s-overflow-y-auto" : ""
                   }`}
                 >
