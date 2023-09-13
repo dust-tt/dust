@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React, { useState } from "react";
 
-import { Tab } from "../index_with_tw_base";
+import { Tab, TabProps } from "../components/Tab";
 import {
   ChatBubbleBottomCenterTextIcon,
   Cog6ToothIcon,
@@ -14,6 +15,47 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const TabTest = () => {
+  const [selectedTab, setSelectedTab] = useState("Assistant");
+  const tabsData: TabProps[] = [
+    {
+      label: "Assistant",
+      icon: ChatBubbleBottomCenterTextIcon,
+      sizing: "hug",
+      current: false, // You'll need to add a 'current' property as it's required in TabType
+    },
+    {
+      label: "Lab",
+      icon: TestTubeIcon,
+      sizing: "hug",
+      hasSeparator: true,
+      current: false,
+    },
+    {
+      label: "Settings",
+      hideLabel: true,
+      icon: Cog6ToothIcon,
+      current: false,
+    },
+  ];
+
+  // Dynamically set the 'current' property based on the selected tab
+  const tabs = tabsData.map((tab) => ({
+    ...tab,
+    current: tab.label === selectedTab,
+  }));
+
+  return (
+    <Tab
+      tabs={tabs}
+      onTabClick={(tabName, event) => {
+        event.preventDefault();
+        setSelectedTab(tabName);
+      }}
+    />
+  );
+};
 
 export const TabNavigation: Story = {
   args: {

@@ -10,16 +10,18 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
-type TabProps = {
-  tabs: Array<{
-    label: string;
-    hideLabel?: boolean;
-    current: boolean;
-    sizing?: "hug" | "expand";
-    icon?: ComponentType<{ className?: string }>;
-    href?: string;
-    hasSeparator?: boolean;
-  }>;
+export type TabProps = {
+  label: string;
+  hideLabel?: boolean;
+  current: boolean;
+  sizing?: "hug" | "expand";
+  icon?: ComponentType<{ className?: string }>;
+  href?: string;
+  hasSeparator?: boolean;
+};
+
+export type TabsProps = {
+  tabs: Array<TabProps>;
   onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
 };
@@ -67,7 +69,7 @@ const tabSizingClasses = {
   expand: "s-flex-1",
 };
 
-export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
+export function Tab({ tabs, onTabClick, className = "" }: TabsProps) {
   const { components } = React.useContext(SparkleContext);
 
   const rectangleRef = React.useRef<HTMLDivElement | null>(null);
@@ -80,6 +82,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       if (selectedTabRef) {
         const rect = selectedTabRef.getBoundingClientRect();
         if (rectangleRef.current) {
+          console.log(rect);
           rectangleRef.current.style.left = `${rect.left}px`;
           rectangleRef.current.style.width = `${rect.width}px`;
         }
@@ -145,21 +148,23 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
       return tab.hideLabel ? (
         tab.label ? (
-          <div key={`tab-${i}`}>
-            <Tooltip label={tab.label}>{content}</Tooltip>
+          <>
+            <div key={`tab-${i}`}>
+              <Tooltip label={tab.label}>{content}</Tooltip>
+            </div>
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </div>
+          </>
         ) : (
-          <div key={`tab-${i}`}>
-            {content}
+          <>
+            <div key={`tab-${i}`}>{content}</div>
             {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-          </div>
+          </>
         )
       ) : (
-        <div key={`tab-${i}`}>
-          {content}
+        <>
+          <div key={`tab-${i}`}>{content}</div>
           {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
-        </div>
+        </>
       );
     });
 
