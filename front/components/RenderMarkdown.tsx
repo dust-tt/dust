@@ -13,7 +13,7 @@ export function RenderMarkdown({ content }: { content: string }) {
     <ReactMarkdown
       linkTarget="_blank"
       components={{
-        pre: PreBlock,
+        p: React.Fragment,
         code: CodeBlock,
       }}
     >
@@ -22,14 +22,19 @@ export function RenderMarkdown({ content }: { content: string }) {
   );
 }
 
-function PreBlock({ children }: { children: React.ReactNode }) {
+function CodeBlock({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}): JSX.Element {
+  const match = /language-(\w+)/.exec(className || "");
+  const language = match ? match[1] : "text";
   const [confirmed, setConfirmed] = useState<boolean>(false);
 
   const handleClick = async () => {
-    if (!children || !Array.isArray(children)) return;
-    const text = children[0].props.children[0];
-
-    await navigator.clipboard.writeText(text || "");
+    await navigator.clipboard.writeText(children as string);
     setConfirmed(true);
     void setTimeout(() => {
       setConfirmed(false);
@@ -37,41 +42,22 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <pre>
-      <div className="relative">
-        <div className="absolute right-2 top-2 text-white">
-          <IconButton
-            variant="tertiary"
-            icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={handleClick}
-          />
-        </div>
-        {children}
+    <div className="relative">
+      <div className="absolute right-2 top-2 text-white">
+        <IconButton
+          variant="tertiary"
+          icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
+          onClick={handleClick}
+        />
       </div>
-    </pre>
-  );
-}
-
-function CodeBlock({
-  inline,
-  className,
-  children,
-}: {
-  inline?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-}): JSX.Element {
-  const match = /language-(\w+)/.exec(className || "");
-  return !inline && match ? (
-    <SyntaxHighlighter
-      className="rounded-md"
-      style={a11yDark}
-      language={match[1]}
-      PreTag="div"
-    >
-      {String(children).replace(/\n$/, "")}
-    </SyntaxHighlighter>
-  ) : (
-    <code className="bg-action-50">{children}</code>
+      <SyntaxHighlighter
+        className="rounded-md"
+        style={a11yDark}
+        language={language}
+        PreTag="div"
+      >
+        {String(children).replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    </div>
   );
 }
