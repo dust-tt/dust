@@ -336,11 +336,6 @@ export async function notionGetToSyncActivity(
   };
 }
 
-export type UpsertActivityResult = {
-  pageOrDb: NotionPage | NotionDatabase | null;
-  createdOrMoved: boolean;
-};
-
 export async function notionUpsertPageActivity(
   accessToken: string,
   pageId: string,
