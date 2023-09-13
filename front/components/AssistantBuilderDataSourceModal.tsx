@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DataSourceType } from "@app/types/data_source";
@@ -41,25 +41,52 @@ export default function AssistantBuilderDataSourceModal({
   setOpen,
   owner,
   dataSources,
+  onSave,
+  dataSourceToManage,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
+  onSave: (dataSource: DataSourceType, selectedParentIds: Set<string>) => void;
+  dataSourceToManage: {
+    dataSource: DataSourceType;
+    selectedParentIds: Set<string>;
+  } | null;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
+  const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  useEffect(() => {
+    if (dataSourceToManage) {
+      setSelectedDataSource(dataSourceToManage.dataSource);
+      setSelectedParentIds(new Set(dataSourceToManage.selectedParentIds));
+    }
+  }, [dataSourceToManage]);
+
+  const onClose = () => {
+    setOpen(false);
+    setTimeout(() => {
+      setSelectedDataSource(null);
+      setSelectedParentIds(new Set());
+    }, 200);
+  };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-        setTimeout(() => {
-          setSelectedDataSource(null);
-        }, 200);
+      onClose={onClose}
+      onSave={() => {
+        if (!selectedDataSource || selectedParentIds.size === 0) {
+          throw new Error("Cannot save an incomplete configuration");
+        }
+        onSave(selectedDataSource, selectedParentIds);
+        onClose();
       }}
-      hasChanged={false}
+      hasChanged={!!selectedDataSource && selectedParentIds.size > 0}
       isFullScreen={true}
       title="Add a data source"
     >
@@ -67,14 +94,23 @@ export default function AssistantBuilderDataSourceModal({
         <div className="flex w-3/4 flex-col pt-6 sm:w-1/2">
           <PickDataSource
             dataSources={dataSources}
-            show={!selectedDataSource}
+            show={!selectedDataSource && !dataSourceToManage}
             onPick={(ds) => {
               setSelectedDataSource(ds);
             }}
           />
           <DataSourceResourceSelector
-            dataSource={selectedDataSource}
+            dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
+            selectedParentIds={selectedParentIds}
+            onSelectChange={(parentId, selected) => {
+              if (selected) {
+                selectedParentIds.add(parentId);
+              } else {
+                selectedParentIds.delete(parentId);
+              }
+              setSelectedParentIds(new Set(selectedParentIds));
+            }}
           />
         </div>
       </div>
@@ -133,13 +169,14 @@ function PickDataSource({
 function DataSourceResourceSelector({
   dataSource,
   owner,
+  selectedParentIds,
+  onSelectChange,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
+  selectedParentIds: Set<string>;
+  onSelectChange: (parentId: string, selected: boolean) => void;
 }) {
-  const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(
-    new Set()
-  );
   return (
     <Transition show={!!dataSource} className={"pb-8"}>
       <div className="mb-6">
@@ -167,14 +204,7 @@ function DataSourceResourceSelector({
             ]
           }
           selectedParentIds={selectedParentIds}
-          onSelectChange={(parentId, selected) => {
-            if (selected) {
-              selectedParentIds.add(parentId);
-            } else {
-              selectedParentIds.delete(parentId);
-            }
-            setSelectedParentIds(new Set(selectedParentIds));
-          }}
+          onSelectChange={onSelectChange}
         />
       )}
     </Transition>
