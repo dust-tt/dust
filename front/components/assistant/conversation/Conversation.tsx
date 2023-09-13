@@ -30,12 +30,23 @@ export default function Conversation({
         message.map((m) => {
           switch (m.type) {
             case "user_message":
-              return <UserMessage message={m} key={`message-id-${m.sId}`} />;
+              return (
+                <div
+                  key={`message-id-${m.sId}`}
+                  className="bg-structure-50 py-6"
+                >
+                  <div className="mx-auto flex max-w-4xl gap-4 px-6">
+                    <UserMessage message={m} />;
+                  </div>
+                </div>
+              );
             case "agent_message":
               return (
-                <div key={`message-id-${m.sId}`}>
-                  agentMessage:
-                  {m.configuration.name} {m.content}
+                <div key={`message-id-${m.sId}`} className="py-6">
+                  <div className="mx-auto flex max-w-4xl gap-4 px-6">
+                    agentMessage:
+                    {m.configuration.name} {m.content}
+                  </div>
                 </div>
               );
             default:
