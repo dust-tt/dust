@@ -543,8 +543,8 @@ export default function DataSourcesView({
 
       <div className="flex flex-col">
         <SectionHeader
-          title="Custom Data Sources"
-          description="Lets you expose custom data to Dust."
+          title="Static Data Sources"
+          description="Lets you expose static data to Dust."
           action={
             !readOnly
               ? {
