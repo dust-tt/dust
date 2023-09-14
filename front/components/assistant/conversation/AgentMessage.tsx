@@ -68,7 +68,6 @@ export function AgentMessage({
           break;
         case "agent_error":
           setStreamedAgentMessage((m) => {
-            // Question: Are we supposed to set the status to failed on error? Assuming yes for now, TBD at PR review time.
             return { ...m, status: "failed", error: event.error };
           });
           break;
