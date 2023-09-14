@@ -93,7 +93,9 @@ export async function renderConversationForModel({
     });
 
     if (res.isErr()) {
-      return new Err(new Error(`Error tokenizing model message: ${res.error}`));
+      return new Err(
+        new Error(`Error tokenizing model message: ${res.error.message}`)
+      );
     }
 
     return new Ok(res.value.tokens.length);
@@ -255,7 +257,16 @@ export async function* runGeneration(
   });
 
   if (modelConversationRes.isErr()) {
-    return modelConversationRes;
+    return yield {
+      type: "generation_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "internal_server_error",
+        message: `Failed tokenization for ${model.providerId} ${model.modelId}: ${modelConversationRes.error.message}`,
+      },
+    };
   }
 
   const config = cloneBaseConfig(

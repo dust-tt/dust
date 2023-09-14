@@ -938,9 +938,12 @@ async function* streamRunAgentEvents(
         errorMessage: event.error.message,
       });
 
-      logger.error("Agent error", {
-        error: event.error,
-      });
+      logger.error(
+        {
+          error: event.error,
+        },
+        "Agent error"
+      );
 
       yield event;
     }
