@@ -134,7 +134,7 @@ function PickDataSource({
   onPick: (dataSource: DataSourceType) => void;
 }) {
   return (
-    <Transition show={show} className="mx-auto max-w-5xl">
+    <Transition show={show} className="mx-auto max-w-6xl">
       <div className="flex flex-col">
         <div className="mb-6">
           <PageHeader
@@ -190,7 +190,7 @@ function DataSourceResourceSelector({
   onDelete?: () => void;
 }) {
   return (
-    <Transition show={!!dataSource} className="mx-auto max-w-5xl pb-8">
+    <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <div className="mb-6">
         <div>
           <PageHeader
@@ -209,8 +209,8 @@ function DataSourceResourceSelector({
         </div>
       </div>
       {dataSource && (
-        <div className="flex flex-row space-x-32">
-          <div className="flex flex-col">
+        <div className="flex flex-row gap-32">
+          <div className="flex-1">
             <div className="pb-4 text-lg font-semibold text-element-900">
               All available{" "}
               {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
@@ -230,7 +230,7 @@ function DataSourceResourceSelector({
               onSelectChange={onSelectChange}
             />
           </div>
-          <div className="sticky top-16 hidden h-full flex-col md:flex">
+          <div className="sticky top-16 hidden h-full flex-1 md:block">
             <div className="flex flex-row">
               {onDelete && (
                 <IconButton

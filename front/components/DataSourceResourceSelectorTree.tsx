@@ -145,8 +145,10 @@ function DataSourceResourceSelectorChildren({
                       )}
                     </div>
                   )}
-                  <IconComponent className="h-5 w-5 text-slate-300" />
-                  <span className="ml-2 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
+                  <div>
+                    <IconComponent className="h-5 w-5 text-slate-300" />
+                  </div>
+                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
                   <div className="ml-32 flex-grow">
                     <Checkbox
                       className="ml-auto"
