@@ -119,8 +119,7 @@ export async function* getConversationEvents(
     while (true) {
       const events = await redis.xRead(
         { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        // weird, xread does not return on new message when count is = 1. Anything over 1 works.
-        { COUNT: 1, BLOCK: 60 * 1000 }
+        { COUNT: 32, BLOCK: 60 * 1000 }
       );
       if (!events) {
         return;
@@ -156,24 +155,32 @@ export async function* getMessagesEvents(
     | AgentGenerationSuccessEvent;
 }> {
   const pubsubChannel = getMessageChannelId(messageId);
-  const client = await redisClient();
-  const events = await client.xRead(
-    { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-    { COUNT: 1, BLOCK: 60 * 1000 }
-  );
-  if (!events) {
-    return;
-  }
-  for (const event of events) {
-    for (const message of event.messages) {
-      const payloadStr = message.message["payload"];
-      const messageId = message.id;
-      const payload = JSON.parse(payloadStr);
-      yield {
-        eventId: messageId,
-        data: payload,
-      };
+  const redis = await redisClient();
+
+  try {
+    while (true) {
+      const events = await redis.xRead(
+        { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
+        { COUNT: 32, BLOCK: 60 * 1000 }
+      );
+      if (!events) {
+        return;
+      }
+      for (const event of events) {
+        for (const message of event.messages) {
+          const payloadStr = message.message["payload"];
+          const messageId = message.id;
+          const payload = JSON.parse(payloadStr);
+          lastEventId = messageId;
+          yield {
+            eventId: messageId,
+            data: payload,
+          };
+        }
+      }
     }
+  } finally {
+    await redis.quit();
   }
 }
 

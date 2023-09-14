@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { AgentMessage } from "@app/components/assistant/conversation/NewAgentMessage";
+import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import {
   AgentMessageNewEvent,
@@ -96,7 +96,11 @@ export default function Conversation({
               return (
                 <div key={`message-id-${m.sId}`} className="py-6">
                   <div className="mx-auto flex max-w-4xl gap-4 px-6">
-                    <AgentMessage message={m} />
+                    <AgentMessage
+                      message={m}
+                      owner={owner}
+                      conversationId={conversationId}
+                    />
                   </div>
                 </div>
               );
