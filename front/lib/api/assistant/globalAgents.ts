@@ -133,9 +133,9 @@ export async function getGlobalAgent(
   switch (sId) {
     case GLOBAL_AGENTS_SID.GPT4:
       return _getGPT4GlobalAgent();
-    case GLOBAL_AGENTS_ID.Slack:
+    case GLOBAL_AGENTS_SID.Slack:
       return _getSlackGlobalAgent(auth);
-    case GLOBAL_AGENTS_ID.Claude:
+    case GLOBAL_AGENTS_SID.Claude:
       return _getClaude2GlobalAgent();
     default:
       return null;

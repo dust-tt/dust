@@ -237,6 +237,7 @@ export function AssistantInputBar({
       });
 
       onSubmit(content, mentions);
+      contentEditable.innerHTML = "";
     }
   };
 
