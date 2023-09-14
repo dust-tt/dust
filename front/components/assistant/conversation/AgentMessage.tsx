@@ -12,6 +12,8 @@ import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { AgentMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
+import { ConversationMessage } from "./ConversationMessage";
+
 export function AgentMessage({
   message,
   owner,
