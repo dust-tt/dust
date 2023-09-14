@@ -103,5 +103,5 @@ export type RetrievalActionType = {
     query: string | null;
     topK: number;
   };
-  documents: RetrievalDocumentType[];
+  documents: RetrievalDocumentType[] | null;
 };
