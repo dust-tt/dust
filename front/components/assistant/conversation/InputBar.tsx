@@ -516,7 +516,7 @@ export function AssistantInputBar({
                       <DropdownMenu.Item
                         key={c.sId}
                         label={"@" + c.name}
-                        imageUrl={c.pictureUrl}
+                        visual={c.pictureUrl}
                         onClick={() => {
                           const htmlString =
                             ReactDOMServer.renderToStaticMarkup(
