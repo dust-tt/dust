@@ -45,6 +45,7 @@ export async function postUserMessageWithPubSub(
           mentions,
           context,
         })) {
+          console.log('postUSerMessageNewevent', event);
           switch (event.type) {
             case "user_message_new":
             case "agent_message_new": {

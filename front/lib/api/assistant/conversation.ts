@@ -541,8 +541,8 @@ export async function* postUserMessage(
     message: userMessage,
   };
 
-  await Promise.allSettled(
-    agentMessages.map(async function* (agentMessage, i) {
+    console.log('found agent message types:', agentMessages)
+    const agentGenerators = agentMessages.map(async function* (agentMessage, i) {
       const agentMessageRow = agentMessageRows[i];
 
       yield {
@@ -551,7 +551,7 @@ export async function* postUserMessage(
         configurationId: agentMessage.configuration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-      };
+      } as AgentMessageNewEvent;
 
       // We stitch the conversation to add the user message and only that agent message
       // so that it can be used to prompt the agent.
@@ -566,9 +566,15 @@ export async function* postUserMessage(
         agentMessage
       );
 
-      yield* streamRunAgentEvents(eventStream, agentMessageRow);
+      return streamRunAgentEvents(eventStream, agentMessageRow);
     })
-  );
+    console.log('will iterate on agents', agentGenerators)
+    for (const gen of agentGenerators) {
+      for await (const event of gen) {
+        console.log('super yielding!!!', event)
+        yield event;
+      }
+    }
 }
 
 // This method is in charge of re-running an agent interaction (generating a new

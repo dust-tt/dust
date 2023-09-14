@@ -32,6 +32,7 @@ export default function Conversation({
     if (!conversation) {
       return;
     }
+    console.log("got convo", conversation);
     const messageIds = new Set(
       conversation?.content.flatMap((m) => m.map((mm) => mm.sId))
     );

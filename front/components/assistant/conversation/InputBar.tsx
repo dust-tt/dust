@@ -23,7 +23,7 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-end items-stretch">
           <TextareaAutosize
             minRows={1}
-            placeholder={"Ask a question"}
+            placeholder={"Ask a question 1"}
             className={classNames(
               "flex w-full resize-none bg-white text-base ring-0 focus:ring-0",
               "rounded-sm rounded-xl border-2",
@@ -49,7 +49,7 @@ export function AssistantInputBar({
             <PaperAirplaneIcon
               className="my-auto h-5 w-5 cursor-pointer text-action-500"
               onClick={() => {
-                void onSubmit(input, []);
+                void onSubmit(input, [{ configurationId: "gpt-4" }]);
                 setInput("");
               }}
             />

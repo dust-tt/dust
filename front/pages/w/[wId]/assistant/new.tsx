@@ -100,7 +100,7 @@ export default function AssistantNew({
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             profilePictureUrl: user.image,
           },
-          mentions,
+          mentions: [{ configurationId: "gpt-4" }],
         }),
       }
     );
