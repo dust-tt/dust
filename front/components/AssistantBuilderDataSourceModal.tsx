@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/pages/w/[wId]/builder/assistants/new";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -232,7 +233,11 @@ function DataSourceResourceSelector({
                 />
               )}
               <div className="text-lg font-semibold text-element-900">
-                Selected resources:
+                Selected{" "}
+                {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                  dataSource.connectorProvider as ConnectorProvider
+                ]?.plural ?? "resources"}
+                :
               </div>
             </div>
             <ul className="pl-5 pt-2">

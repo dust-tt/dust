@@ -76,7 +76,7 @@ const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
   SELECTED: "Selected data sources",
 };
-const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
+export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
   {
     singular: string;
