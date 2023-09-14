@@ -119,8 +119,7 @@ export async function* getConversationEvents(
     while (true) {
       const events = await redis.xRead(
         { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        // weird, xread does not return on new message when count is = 1. Anything over 1 works.
-        { COUNT: 100, BLOCK: 60 * 1000 }
+        { COUNT: 32, BLOCK: 60 * 1000 }
       );
       if (!events) {
         return;
@@ -162,8 +161,7 @@ export async function* getMessagesEvents(
     while (true) {
       const events = await redis.xRead(
         { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        // weird, xread does not return on new message when count is = 1. Anything over 1 works.
-        { COUNT: 100, BLOCK: 60 * 1000 }
+        { COUNT: 32, BLOCK: 60 * 1000 }
       );
       if (!events) {
         return;
