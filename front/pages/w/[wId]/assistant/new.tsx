@@ -155,7 +155,7 @@ export default function AssistantNew({
         )}
       </AssistantHelper>
 
-      <FixedAssistantInputBar onSubmit={handleSubmit} />
+      <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
   );
 }

@@ -67,7 +67,7 @@ export type AgentConfigurationType = {
   status: AgentConfigurationStatus;
 
   name: string;
-  pictureUrl: string | null;
+  pictureUrl: string;
 
   // If undefined, no action performed, otherwise the action is
   // performed (potentially NoOp eg autoSkip above).

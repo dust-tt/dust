@@ -1,74 +1,575 @@
-import { PaperAirplaneIcon } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
-import TextareaAutosize from "react-textarea-autosize";
+import {
+  Avatar,
+  DropdownMenu,
+  IconButton,
+  PaperAirplaneIcon,
+  RobotIcon,
+} from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
+import {
+  ForwardedRef,
+  forwardRef,
+  Fragment,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import * as ReactDOMServer from "react-dom/server";
 
+import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
+import { WorkspaceType } from "@app/types/user";
 
-export function AssistantInputBar({
-  onSubmit,
+// AGENT MENTION
+
+function AgentMention({
+  agentConfiguration,
 }: {
-  onSubmit: (input: string, mentions: MentionType[]) => void;
+  agentConfiguration: AgentConfigurationType;
 }) {
-  const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  });
-
   return (
-    <div className="flex flex-1">
-      <div className="flex flex-1 flex-row items-center">
-        <div className="flex flex-1 flex-row items-end items-stretch">
-          <TextareaAutosize
-            minRows={1}
-            placeholder={"Ask a question"}
-            className={classNames(
-              "flex w-full resize-none bg-white text-base ring-0 focus:ring-0",
-              "rounded-sm rounded-xl border-2",
-              "border-action-200 text-element-800 drop-shadow-2xl focus:border-action-300 focus:ring-0",
-              "placeholder-gray-400",
-              "px-3 py-3 pr-8"
-            )}
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-            }}
-            ref={inputRef}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                void onSubmit(input, []);
-                e.preventDefault();
-                setInput("");
-              }
-            }}
-            autoFocus={true}
-          />
-          <div className={classNames("z-10 -ml-8 flex flex-col")}>
-            <PaperAirplaneIcon
-              className="my-auto h-5 w-5 cursor-pointer text-action-500"
-              onClick={() => {
-                void onSubmit(input, []);
-                setInput("");
-              }}
-            />
-          </div>
-        </div>
-      </div>
+    <div
+      className={classNames("inline-block font-medium text-brand")}
+      contentEditable={false}
+      data-agent-configuration-id={agentConfiguration?.sId}
+      data-agent-name={agentConfiguration?.name}
+    >
+      @{agentConfiguration.name}
     </div>
   );
 }
 
-export function FixedAssistantInputBar({
+// AGENT LIST
+
+function AgentListImpl(
+  {
+    owner,
+    visible,
+    filter,
+    position,
+  }: {
+    owner: WorkspaceType;
+    visible: boolean;
+    filter: string;
+    position: {
+      bottom: number;
+      left: number;
+    };
+  },
+  ref: ForwardedRef<{
+    prev: () => void;
+    next: () => void;
+    reset: () => void;
+    selected: () => AgentConfigurationType | null;
+    noMatch: () => boolean;
+  }>
+) {
+  const [focus, setFocus] = useState<number>(0);
+
+  const focusRef = useRef<HTMLDivElement>(null);
+
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+
+  const filtered = agentConfigurations.filter((a) => {
+    return (
+      filter.length === 0 ||
+      a.name.toLowerCase().startsWith(filter.toLowerCase())
+    );
+  });
+
+  useImperativeHandle(ref, () => ({
+    prev: () => {
+      setFocus((f) => (f > 0 ? f - 1 : 0));
+    },
+    next: () => {
+      setFocus((f) => (f < filtered.length - 1 ? f + 1 : filtered.length - 1));
+    },
+    reset: () => {
+      setFocus(0);
+    },
+    selected: () => {
+      if (focus < filtered.length) {
+        return filtered[focus];
+      }
+      return null;
+    },
+    noMatch: () => {
+      return filtered.length === 0;
+    },
+  }));
+
+  useEffect(() => {
+    if (focus > filtered.length - 1) {
+      if (filtered.length === 0) {
+        setFocus(0);
+      } else {
+        setFocus(filtered.length - 1);
+      }
+    }
+    if (focusRef.current) {
+      focusRef.current.scrollIntoView({
+        // behavior: "smooth",
+        block: "nearest",
+        inline: "start",
+      });
+    }
+  }, [focus, visible, filter, filtered]);
+
+  return (
+    <Transition
+      show={visible}
+      as={Fragment}
+      enter="transition ease-out duration-200"
+      enterFrom="transform opacity-0 scale-95 translate-y-5"
+      enterTo="transform opacity-100 scale-100 translate-y-0"
+      leave="transition ease-in duration-0"
+      leaveFrom="transform opacity-100 scale-100 translate-y-0"
+      leaveTo="transform opacity-0 scale-100 translate-y-0"
+    >
+      <div
+        className="max-h-128 fixed z-10 w-44 rounded-xl border border-structure-100 bg-white shadow-xl"
+        style={{
+          bottom: position.bottom,
+          left: position.left,
+        }}
+      >
+        <div className="flex flex-col gap-y-4 overflow-y-auto px-3 py-2">
+          {filtered.map((c, i) => (
+            <div
+              className="flex w-full px-1"
+              key={c.name}
+              ref={focus === i ? focusRef : null}
+            >
+              <div
+                className="flex w-full cursor-pointer flex-col"
+                onMouseEnter={() => {
+                  setFocus(i);
+                }}
+              >
+                <div className="flex flex-initial items-center gap-x-2 py-1">
+                  <Avatar size="xs" visual={c.pictureUrl} />
+                  <div
+                    className={classNames(
+                      "flex-initial text-sm font-semibold",
+                      focus === i ? "text-action-500" : "text-element-900"
+                    )}
+                  >
+                    {"@"}
+                    {c.name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Transition>
+  );
+}
+
+const AgentList = forwardRef(AgentListImpl);
+
+export function AssistantInputBar({
+  owner,
   onSubmit,
 }: {
+  owner: WorkspaceType;
+  onSubmit: (input: string, mentions: MentionType[]) => void;
+}) {
+  const [agentListVisible, setAgentListVisible] = useState(false);
+  const [agentListFilter, setAgentListFilter] = useState("");
+  const [agentListPosition, setAgentListPosition] = useState<{
+    bottom: number;
+    left: number;
+  }>({
+    bottom: 0,
+    left: 0,
+  });
+
+  const inputRef = useRef<HTMLDivElement>(null);
+  const agentListRef = useRef<{
+    prev: () => void;
+    next: () => void;
+    reset: () => void;
+    selected: () => AgentConfigurationType | null;
+    noMatch: () => boolean;
+  }>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+
+  const handleSubmit = async () => {
+    const contentEditable = document.getElementById("dust-input-bar");
+    if (contentEditable) {
+      const mentions: MentionType[] = [];
+      let content = "";
+      Array.from(contentEditable.childNodes).forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+          const agentConfigurationId = node.getAttribute(
+            "data-agent-configuration-id"
+          );
+          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+          const agentName = node.getAttribute("data-agent-name");
+
+          if (agentConfigurationId && agentName) {
+            mentions.push({
+              configurationId: agentConfigurationId,
+            });
+            // Internal format for mentions is `@[agentName]{agentConfigurationId}`.
+            content += `@[${agentName}]{${agentConfigurationId}}`;
+          }
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+          content += node.textContent;
+        }
+      });
+
+      content = content.trim();
+      content = content.replace(/\u200B/g, "");
+
+      onSubmit(content, mentions);
+      contentEditable.innerHTML = "";
+    }
+  };
+
+  return (
+    <>
+      <AgentList
+        owner={owner}
+        visible={agentListVisible}
+        filter={agentListFilter}
+        ref={agentListRef}
+        position={agentListPosition}
+      />
+      <div className="flex flex-1">
+        <div className="flex flex-1 flex-row items-center">
+          <div
+            className={classNames(
+              "flex flex-1 flex-row items-end items-stretch px-2",
+              "border-2 border-action-200 bg-white focus-within:border-action-300",
+              "rounded-sm rounded-xl drop-shadow-2xl  "
+            )}
+          >
+            <div
+              className={classNames(
+                "inline-block w-full",
+                "border-0 px-3 py-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+                "whitespace-pre-wrap font-normal "
+              )}
+              contentEditable={true}
+              ref={inputRef}
+              id={"dust-input-bar"}
+              suppressContentEditableWarning={true}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData("text/plain");
+                document.execCommand("insertText", false, text);
+              }}
+              onKeyDown={(e) => {
+                // We prevent the content editable from creating italics, bold and underline.
+                if (e.ctrlKey || e.metaKey) {
+                  if (e.key === "u" || e.key === "b" || e.key === "i") {
+                    e.preventDefault();
+                  }
+                }
+                if (!e.shiftKey && e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void handleSubmit();
+                }
+              }}
+              onInput={() => {
+                const selection = window.getSelection();
+                if (
+                  selection &&
+                  selection.rangeCount !== 0 &&
+                  selection.isCollapsed
+                ) {
+                  const range = selection.getRangeAt(0);
+                  const node = range.endContainer;
+                  const offset = range.endOffset;
+
+                  const lastOne = node.textContent
+                    ? node.textContent.slice(offset - 1, offset)
+                    : null;
+                  const preLastOne = node.textContent
+                    ? node.textContent.slice(offset - 2, offset - 1)
+                    : null;
+
+                  // Mention selection logic.
+
+                  if (
+                    lastOne === "@" &&
+                    (preLastOne === " " || preLastOne === "") &&
+                    node.textContent &&
+                    node.parentNode &&
+                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                    node.parentNode.getAttribute &&
+                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                    node.parentNode.getAttribute("id") === "dust-input-bar"
+                  ) {
+                    const mentionSelectNode = document.createElement("div");
+
+                    mentionSelectNode.style.display = "inline-block";
+                    mentionSelectNode.setAttribute("key", "mentionSelect");
+                    mentionSelectNode.className = "text-brand font-medium";
+                    mentionSelectNode.textContent = "@";
+                    mentionSelectNode.contentEditable = "false";
+
+                    const inputNode = document.createElement("span");
+                    inputNode.setAttribute("ignore", "none");
+                    inputNode.className = classNames(
+                      "min-w-0 px-0 py-0",
+                      "border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0",
+                      "text-brand font-medium"
+                    );
+                    inputNode.contentEditable = "true";
+
+                    mentionSelectNode.appendChild(inputNode);
+
+                    const beforeTextNode = document.createTextNode(
+                      node.textContent.slice(0, offset - 1)
+                    );
+                    const afterTextNode = document.createTextNode(
+                      node.textContent.slice(offset)
+                    );
+
+                    node.parentNode.replaceChild(beforeTextNode, node);
+
+                    beforeTextNode.parentNode?.insertBefore(
+                      afterTextNode,
+                      beforeTextNode.nextSibling
+                    );
+                    beforeTextNode.parentNode?.insertBefore(
+                      mentionSelectNode,
+                      afterTextNode
+                    );
+
+                    const rect = mentionSelectNode.getBoundingClientRect();
+                    const position = {
+                      left: Math.floor(rect.left) - 24,
+                      bottom: Math.floor(window.innerHeight - rect.bottom) + 32,
+                    };
+                    if (!isNaN(position.left) && !isNaN(position.bottom)) {
+                      setAgentListPosition(position);
+                    }
+
+                    setAgentListVisible(true);
+                    inputNode.focus();
+
+                    inputNode.onblur = () => {
+                      let selected = agentListRef.current?.selected();
+                      setAgentListVisible(false);
+                      setAgentListFilter("");
+                      agentListRef.current?.reset();
+
+                      if (inputNode.getAttribute("ignore") !== "none") {
+                        selected = null;
+                      }
+
+                      // console.log("SELECTED", selected);
+
+                      // We received a selected agent configration, recover the state of the
+                      // contenteditable and inject an AgentMention component.
+                      if (selected) {
+                        // Construct an AgentMention component and inject it as HTML.
+                        const htmlString = ReactDOMServer.renderToStaticMarkup(
+                          <AgentMention agentConfiguration={selected} />
+                        );
+                        const wrapper = document.createElement("div");
+                        wrapper.innerHTML = htmlString.trim();
+                        const mentionNode = wrapper.firstChild;
+
+                        // This is mainly to please TypeScript.
+                        if (!mentionNode || !mentionSelectNode.parentNode) {
+                          return;
+                        }
+
+                        // Replace mentionSelectNode with mentionNode.
+                        mentionSelectNode.parentNode.replaceChild(
+                          mentionNode,
+                          mentionSelectNode
+                        );
+
+                        // Prepend a space to afterTextNode (this will be the space that comes after
+                        // the mention).
+                        afterTextNode.textContent = ` ${afterTextNode.textContent}`;
+
+                        // If afterTextNode is the last node add an invisible character to prevent a
+                        // Chrome bugish behaviour  ¯\_(ツ)_/¯
+                        if (afterTextNode.nextSibling === null) {
+                          afterTextNode.textContent = `${afterTextNode.textContent}\u200B`;
+                        }
+
+                        // Restore the cursor, taking into account the added space.
+                        range.setStart(afterTextNode, 1);
+                        range.setEnd(afterTextNode, 1);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                      }
+
+                      // We didn't receive a selected agent configuration, restore the state of the
+                      // contenteditable and re-inject the content that was created during the
+                      // selection process into the contenteditable.
+                      if (!selected && mentionSelectNode.parentNode) {
+                        mentionSelectNode.parentNode.removeChild(
+                          mentionSelectNode
+                        );
+
+                        range.setStart(afterTextNode, 0);
+                        range.setEnd(afterTextNode, 0);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        // Insert the content of mentionSelectNode after beforeTextNode only if
+                        // we're not in ignore mode unless we are in ingnore mode (the user
+                        // backspaced into the @)
+                        if (
+                          inputNode.getAttribute("ignore") === "none" ||
+                          inputNode.getAttribute("ignore") === "space"
+                        ) {
+                          const newTextNode = document.createTextNode(
+                            (mentionSelectNode.textContent || "") +
+                              (inputNode.getAttribute("ignore") === "space"
+                                ? " "
+                                : "")
+                          );
+                          beforeTextNode.parentNode?.insertBefore(
+                            newTextNode,
+                            beforeTextNode.nextSibling
+                          );
+                        }
+                      }
+                    };
+
+                    // These are events on the small contentEditable that receives the user input
+                    // and drives the agent list selection.
+                    inputNode.onkeydown = (e) => {
+                      // console.log("KEYDOWN", e.key);
+                      if (e.key === "Escape") {
+                        agentListRef.current?.reset();
+                        inputNode.setAttribute("ignore", "escape");
+                        inputNode.blur();
+                        e.preventDefault();
+                      }
+                      if (e.key === "ArrowDown") {
+                        agentListRef.current?.next();
+                        e.preventDefault();
+                      }
+                      if (e.key === "ArrowUp") {
+                        agentListRef.current?.prev();
+                        e.preventDefault();
+                      }
+                      if (e.key === "Backspace") {
+                        if (inputNode.textContent === "") {
+                          agentListRef.current?.reset();
+                          inputNode.setAttribute("ignore", "backspace");
+                          inputNode.blur();
+                          e.preventDefault();
+                        }
+                      }
+                      if (e.key === " ") {
+                        agentListRef.current?.reset();
+                        inputNode.setAttribute("ignore", "space");
+                        inputNode.blur();
+                        e.preventDefault();
+                      }
+                      if (e.key === "Enter" || e.key === " ") {
+                        inputNode.blur();
+                        e.preventDefault();
+                      }
+                    };
+
+                    // These are the event that drive the selection of the the agent list, if we
+                    // have no more match we just blur to exit the selection process.
+                    inputNode.oninput = (e) => {
+                      const target = e.target as HTMLInputElement;
+                      // console.log("INPUT", target.textContent);
+                      setAgentListFilter(target.textContent || "");
+                      e.stopPropagation();
+                      setTimeout(() => {
+                        if (agentListRef.current?.noMatch()) {
+                          agentListRef.current?.reset();
+                          inputNode.blur();
+                        }
+                      });
+                    };
+                  }
+                }
+              }}
+            ></div>
+
+            <div className={classNames("z-10 flex flex-row space-x-4 pr-2")}>
+              <div className="flex flex-col justify-center">
+                <DropdownMenu>
+                  <DropdownMenu.Button icon={RobotIcon} />
+                  <DropdownMenu.Items origin="bottomRight">
+                    {agentConfigurations.map((c) => (
+                      <DropdownMenu.Item
+                        key={c.sId}
+                        label={"@" + c.name}
+                        visual={c.pictureUrl}
+                        onClick={() => {
+                          // We construct the HTML for an AgentMention and inject it in the content
+                          // editable with an extra space after it.
+                          const htmlString =
+                            ReactDOMServer.renderToStaticMarkup(
+                              <AgentMention agentConfiguration={c} />
+                            );
+                          const wrapper = document.createElement("div");
+                          wrapper.innerHTML = htmlString.trim();
+                          const mentionNode = wrapper.firstChild;
+                          const contentEditable =
+                            document.getElementById("dust-input-bar");
+                          if (contentEditable && mentionNode) {
+                            // Add mentionNode as last childe of contentEditable.
+                            contentEditable.appendChild(mentionNode);
+                            const afterTextNode = document.createTextNode(" ");
+                            contentEditable.appendChild(afterTextNode);
+                          }
+                        }}
+                      />
+                    ))}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+              <IconButton
+                variant="primary"
+                icon={PaperAirplaneIcon}
+                onClick={() => {
+                  void handleSubmit();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function FixedAssistantInputBar({
+  owner,
+  onSubmit,
+}: {
+  owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
       <div className="mx-auto max-w-4xl pb-12">
-        <AssistantInputBar onSubmit={onSubmit} />
+        <AssistantInputBar owner={owner} onSubmit={onSubmit} />
       </div>
     </div>
   );
