@@ -20,35 +20,14 @@ const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
 
 export default function RetrievalAction({
   retrievalAction,
-  status,
 }: {
   retrievalAction: RetrievalActionType;
-  status: "loading" | "retrieving" | "success" | "error";
 }) {
   const { query, relativeTimeFrame } = retrievalAction.params;
   function shortText(text: string, maxLength = 20) {
     return text.length > maxLength
       ? text.substring(0, maxLength) + "..."
       : text;
-  }
-  if (status === "loading") {
-    return (
-      <div>
-        <div className="mb-2 text-xs font-bold text-element-600">
-          I'm thinking...
-        </div>
-        <Spinner size="sm" />
-      </div>
-    );
-  }
-  if (status === "error") {
-    return (
-      <div>
-        <div className="mb-2 text-xs font-bold text-element-600">
-          Something went wrong when searching for documents...
-        </div>
-      </div>
-    );
   }
   return (
     <div>
@@ -73,7 +52,7 @@ export default function RetrievalAction({
           <Chip color="slate" label={query ? shortText(query) : "No query"} />
         </Tooltip>
       </Chip.List>
-      {status === "retrieving" ? (
+      {!retrievalAction.documents ? (
         <div>
           <div className="my-2 text-xs font-bold text-element-600">
             Retrieving...
