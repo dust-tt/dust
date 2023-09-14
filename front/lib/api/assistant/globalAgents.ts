@@ -14,10 +14,12 @@ import { AgentConfigurationType } from "@app/types/assistant/agent";
 enum GLOBAL_AGENTS_SID {
   GPT4 = "gpt-4",
   Slack = "slack",
+  Claude = "claude-2",
 }
 enum GLOBAL_AGENTS_ID {
   GPT4 = -1,
   Slack = -2,
+  Claude = -3,
 }
 
 async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
@@ -34,6 +36,26 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
       model: {
         providerId: "openai",
         modelId: "gpt-4-0613",
+      },
+    },
+    action: null,
+  };
+}
+
+async function _getClaude2GlobalAgent(): Promise<AgentConfigurationType> {
+  return {
+    id: GLOBAL_AGENTS_ID.Claude,
+    sId: GLOBAL_AGENTS_SID.Claude,
+    name: "claude",
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status: "active",
+    scope: "global",
+    generation: {
+      id: GLOBAL_AGENTS_ID.Claude,
+      prompt: "",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-2",
       },
     },
     action: null,
@@ -113,6 +135,8 @@ export async function getGlobalAgent(
       return _getGPT4GlobalAgent();
     case GLOBAL_AGENTS_ID.Slack:
       return _getSlackGlobalAgent(auth);
+    case GLOBAL_AGENTS_ID.Claude:
+      return _getClaude2GlobalAgent();
     default:
       return null;
   }
@@ -128,7 +152,10 @@ export async function getGlobalAgents(
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  const globalAgents = [await _getGPT4GlobalAgent()];
+  const globalAgents = [
+    await _getGPT4GlobalAgent(),
+    await _getClaude2GlobalAgent(),
+  ];
   const slackAgent = await _getSlackGlobalAgent(auth);
   if (slackAgent) {
     globalAgents.push(slackAgent);

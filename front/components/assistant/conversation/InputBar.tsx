@@ -132,13 +132,13 @@ function AgentListImpl(
       leaveTo="transform opacity-0 scale-100 translate-y-0"
     >
       <div
-        className="max-h-128 fixed z-10 rounded-xl border border-structure-200 bg-white shadow-xl"
+        className="max-h-128 fixed z-10 w-44 rounded-xl border border-structure-100 bg-white shadow-xl"
         style={{
           bottom: position.bottom,
           left: position.left,
         }}
       >
-        <div className="flex flex-col gap-y-2 overflow-y-auto px-3 py-3">
+        <div className="flex flex-col gap-y-4 overflow-y-auto px-3 py-2">
           {filtered.map((c, i) => (
             <div
               className="flex w-full px-1"
@@ -151,14 +151,14 @@ function AgentListImpl(
                   setFocus(i);
                 }}
               >
-                <div className="flex flex-initial items-center gap-x-2 ">
-                  <div className="flex pt-1">
+                <div className="flex flex-initial items-center gap-x-2 py-1">
+                  <div className="flex">
                     <img src={c.pictureUrl} className="h-5 w-5 rounded-full" />
                   </div>
                   <div
                     className={classNames(
-                      "flex-initial font-medium",
-                      focus === i ? "text-action-500" : "text-element-800"
+                      "flex-initial text-sm font-semibold",
+                      focus === i ? "text-action-500" : "text-element-900"
                     )}
                   >
                     {"@"}
@@ -484,7 +484,11 @@ export function AssistantInputBar({
                   <DropdownMenu.Button icon={RobotIcon} />
                   <DropdownMenu.Items origin="bottomRight">
                     {agentConfigurations.map((c) => (
-                      <DropdownMenu.Item key={c.sId} label={"@" + c.name} />
+                      <DropdownMenu.Item
+                        key={c.sId}
+                        label={"@" + c.name}
+                        imageUrl={c.pictureUrl}
+                      />
                     ))}
                   </DropdownMenu.Items>
                 </DropdownMenu>
