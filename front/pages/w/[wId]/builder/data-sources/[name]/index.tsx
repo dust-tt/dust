@@ -12,15 +12,14 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import ConnectorPermissionsModal, {
-  CONNECTOR_TYPE_TO_SHOW_EXPAND,
-} from "@app/components/ConnectorPermissionsModal";
+import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   connectorIsUsingNango,
   ConnectorProvider,
@@ -36,8 +35,6 @@ import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
-
-import { DATA_SOURCE_INTEGRATIONS } from "..";
 
 const {
   GA_TRACKING_ID = "",
@@ -518,7 +515,7 @@ function ManagedDataSourceView({
       />
       <div className="flex flex-col gap-8">
         <SectionHeader
-          title={`Managed ${DATA_SOURCE_INTEGRATIONS[connectorProvider].name} Data Source`}
+          title={`Managed ${CONNECTOR_CONFIGURATIONS[connectorProvider].name} Data Source`}
           description={
             synchronizedTimeAgo
               ? `Last Sync ~ ${synchronizedTimeAgo}`
@@ -579,7 +576,7 @@ function ManagedDataSourceView({
             owner={owner}
             dataSource={dataSource}
             permissionFilter="read"
-            showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connectorProvider]}
+            showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
           />
         </div>
       </div>

@@ -18,6 +18,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   connectorIsUsingNango,
   ConnectorProvider,
@@ -50,49 +51,6 @@ type DataSourceIntegration = {
   description: string;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
-};
-
-export const DATA_SOURCE_INTEGRATIONS: {
-  [key in ConnectorProvider]: {
-    name: string;
-    connectorProvider: ConnectorProvider;
-    isBuilt: boolean;
-    logoPath: string;
-    description: string;
-  };
-} = {
-  notion: {
-    name: "Notion",
-    connectorProvider: "notion",
-    isBuilt: true,
-    logoPath: "/static/notion_32x32.png",
-    description:
-      "Grant Dust access to authorized sections of your company's Notion workspace, organized by top-level pages. Dust doesn't synchronize external files shared within a Notion page.",
-  },
-  slack: {
-    name: "Slack",
-    connectorProvider: "slack",
-    isBuilt: true,
-    logoPath: "/static/slack_32x32.png",
-    description:
-      "Grant Dust access to authorized channels in your company's Slack on a channel-by-channel basis. Dust doesn't synchronize external files shared within a Slack channel.",
-  },
-  github: {
-    name: "GitHub",
-    connectorProvider: "github",
-    isBuilt: true,
-    logoPath: "/static/github_black_32x32.png",
-    description:
-      "Grant Dust access to authorized sections of your company's GitHub, on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Dust does not access code.",
-  },
-  google_drive: {
-    name: "Google Drive™",
-    connectorProvider: "google_drive",
-    isBuilt: true,
-    logoPath: "/static/google_drive_32x32.png",
-    description:
-      "Grant Dust access to authorized sections of your company's Google Drive, selected by shared drives and folders. Supported files include GDocs, GSlides, and .txt files, each with a limit of <750KB of extracted text.",
-  },
 };
 
 export const getServerSideProps: GetServerSideProps<{
@@ -195,9 +153,13 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const integrations: DataSourceIntegration[] = managedConnector.map((mc) => {
-    const integration = DATA_SOURCE_INTEGRATIONS[mc.provider];
+    const integration = CONNECTOR_CONFIGURATIONS[mc.provider];
     return {
-      ...integration,
+      name: integration.name,
+      connectorProvider: integration.connectorProvider,
+      isBuilt: integration.isBuilt,
+      logoPath: integration.logoPath,
+      description: integration.description,
       dataSourceName: mc.dataSourceName,
       connector: mc.connector,
       fetchConnectorError: mc.fetchConnectorError,
@@ -214,7 +176,7 @@ export const getServerSideProps: GetServerSideProps<{
   } | null = null;
   if (
     context.query.setupWithSuffixConnector &&
-    Object.keys(DATA_SOURCE_INTEGRATIONS).includes(
+    Object.keys(CONNECTOR_CONFIGURATIONS).includes(
       context.query.setupWithSuffixConnector as string
     ) &&
     context.query.setupWithSuffixSuffix &&
@@ -226,15 +188,20 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  for (const key in DATA_SOURCE_INTEGRATIONS) {
+  for (const key in CONNECTOR_CONFIGURATIONS) {
     if (
       !integrations.find(
         (i) => i.connectorProvider === (key as ConnectorProvider)
       ) ||
       setupWithSuffix?.connector === key
     ) {
+      const integration = CONNECTOR_CONFIGURATIONS[key as ConnectorProvider];
       integrations.push({
-        ...DATA_SOURCE_INTEGRATIONS[key as ConnectorProvider],
+        name: integration.name,
+        connectorProvider: integration.connectorProvider,
+        isBuilt: integration.isBuilt,
+        logoPath: integration.logoPath,
+        description: integration.description,
         dataSourceName: null,
         connector: null,
         fetchConnectorError: false,

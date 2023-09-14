@@ -3,6 +3,7 @@ import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { mutate } from "swr";
 
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   ConnectorPermission,
   ConnectorProvider,
@@ -46,13 +47,6 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
   "google_drive",
 ]);
-export const CONNECTOR_TYPE_TO_SHOW_EXPAND: Record<ConnectorProvider, boolean> =
-  {
-    notion: true,
-    slack: false,
-    github: false,
-    google_drive: true,
-  };
 
 export default function ConnectorPermissionsModal({
   owner,
@@ -231,7 +225,7 @@ export default function ConnectorPermissionsModal({
                     [internalId]: permission,
                   }));
                 }}
-                showExpand={CONNECTOR_TYPE_TO_SHOW_EXPAND[connector.type]}
+                showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
               />
             </div>
           </>
