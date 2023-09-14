@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { AgentMessage } from "@app/components/assistant/conversation/NewAgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import {
   AgentMessageNewEvent,
@@ -67,7 +68,7 @@ export default function Conversation({
   ]);
 
   if (isConversationLoading) {
-    return <div>Loading conversation...</div>;
+    return null;
   } else if (isConversationError) {
     return <div>Error loading conversation</div>;
   }
@@ -87,7 +88,7 @@ export default function Conversation({
                   className="bg-structure-50 py-6"
                 >
                   <div className="mx-auto flex max-w-4xl gap-4 px-6">
-                    <UserMessage message={m} />;
+                    <UserMessage message={m} />
                   </div>
                 </div>
               );
@@ -95,8 +96,7 @@ export default function Conversation({
               return (
                 <div key={`message-id-${m.sId}`} className="py-6">
                   <div className="mx-auto flex max-w-4xl gap-4 px-6">
-                    agentMessage:
-                    {m.configuration.name} {m.content}
+                    <AgentMessage message={m} />
                   </div>
                 </div>
               );
