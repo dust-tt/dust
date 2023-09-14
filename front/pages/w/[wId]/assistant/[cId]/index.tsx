@@ -68,7 +68,7 @@ export default function AssistantConversation({
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             profilePictureUrl: user.image,
           },
-          mentions,
+          mentions: [{ configurationId: "gpt-4" }],
         }),
       }
     );

@@ -1,5 +1,4 @@
-import { Avatar } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AgentActionEvent,
@@ -11,6 +10,8 @@ import {
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { AgentMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+
+import { ConversationMessage } from "./ConversationMessage";
 
 export function AgentMessage({
   message,
@@ -24,6 +25,7 @@ export function AgentMessage({
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
   const [reconnectCounter, setReconnectCounter] = useState(0);
+  const lastEventId = useRef<string | null>(null);
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -43,7 +45,11 @@ export function AgentMessage({
         })(message.status);
     }
 
-    const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+    const esURL = `/api/w/${
+      owner.sId
+    }/assistant/conversations/${conversationId}/messages/${
+      message.sId
+    }/events?lastEventId=${lastEventId.current ? lastEventId.current : ""}`;
     const es = new EventSource(esURL);
     es.onmessage = (messageEvent: MessageEvent<string>) => {
       const eventPayload: {
@@ -58,6 +64,7 @@ export function AgentMessage({
       } = JSON.parse(messageEvent.data);
 
       const event = eventPayload.data;
+      lastEventId.current = eventPayload.eventId;
       switch (event.type) {
         case "agent_action_success":
         case "retrieval_params":
@@ -83,7 +90,8 @@ export function AgentMessage({
         }
         case "generation_tokens": {
           setStreamedAgentMessage((m) => {
-            return { ...m, content: m.content + event.text };
+            const previousContent = m.content || "";
+            return { ...m, content: previousContent + event.text };
           });
           break;
         }
@@ -114,25 +122,13 @@ export function AgentMessage({
     message.status === "succeeded" ? message : streamedAgentMessage;
 
   return (
-    <>
-      <div className="flex-shrink-0">
-        {agentMessageToRender.configuration.pictureUrl && (
-          <Avatar
-            visual={agentMessageToRender.configuration.pictureUrl}
-            size="sm"
-          />
-        )}
+    <ConversationMessage
+      pictureUrl={agentMessageToRender.configuration.pictureUrl}
+      name={agentMessageToRender.configuration.name}
+    >
+      <div className="text-base font-normal">
+        {agentMessageToRender.content}
       </div>
-      <div className="flex-grow">
-        <div className="flex flex-col gap-4">
-          <div className="text-sm font-medium">
-            {agentMessageToRender.configuration.name}
-          </div>
-          <div className="text-base font-normal">
-            {agentMessageToRender.content}
-          </div>
-        </div>
-      </div>
-    </>
+    </ConversationMessage>
   );
 }
