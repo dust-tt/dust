@@ -25,6 +25,7 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -74,6 +75,18 @@ type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
 const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
   SELECTED: "Selected data sources",
+};
+const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
+  ConnectorProvider,
+  {
+    singular: string;
+    plural: string;
+  }
+> = {
+  notion: { singular: "page", plural: "pages" },
+  google_drive: { singular: "folder", plural: "folders" },
+  slack: { singular: "channel", plural: "channels" },
+  github: { singular: "repository", plural: "repositories" },
 };
 
 export default function CreateAssistant({
@@ -441,9 +454,21 @@ function DataSourceSelectionSection({
                             ].name
                           : dataSource.name
                       }
-                      description={`Assistant has access to ${
-                        selectedParentIds.length
-                      } resource${selectedParentIds.length > 1 ? "s" : ""}`}
+                      description={
+                        dataSource.connectorProvider
+                          ? `Assistant has access to ${
+                              selectedParentIds.length
+                            } ${
+                              selectedParentIds.length === 1
+                                ? CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                                    dataSource.connectorProvider
+                                  ].singular
+                                : CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                                    dataSource.connectorProvider
+                                  ].plural
+                            }`
+                          : "Assistant has access to all documents"
+                      }
                       buttonProps={
                         dataSource.connectorProvider
                           ? {
