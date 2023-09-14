@@ -5,6 +5,7 @@ import {
   Modal,
   PageHeader,
   TrashIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
@@ -29,23 +30,26 @@ export default function AssistantBuilderDataSourceModal({
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
-  onSave: (dataSource: DataSourceType, selectedParentIds: Set<string>) => void;
+  onSave: (
+    dataSource: DataSourceType,
+    selectedResources: Record<string, string>
+  ) => void;
   dataSourceToManage: {
     dataSource: DataSourceType;
-    selectedParentIds: Set<string>;
+    selectedResources: Record<string, string>;
   } | null;
   onDelete?: () => void;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
-  const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedResources, setSelectedResources] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     if (dataSourceToManage) {
       setSelectedDataSource(dataSourceToManage.dataSource);
-      setSelectedParentIds(new Set(dataSourceToManage.selectedParentIds));
+      setSelectedResources(dataSourceToManage.selectedResources);
     }
   }, [dataSourceToManage]);
 
@@ -53,7 +57,7 @@ export default function AssistantBuilderDataSourceModal({
     setOpen(false);
     setTimeout(() => {
       setSelectedDataSource(null);
-      setSelectedParentIds(new Set());
+      setSelectedResources({});
     }, 200);
   };
 
@@ -62,36 +66,43 @@ export default function AssistantBuilderDataSourceModal({
       isOpen={isOpen}
       onClose={onClose}
       onSave={() => {
-        if (!selectedDataSource || selectedParentIds.size === 0) {
+        if (
+          !selectedDataSource ||
+          Object.keys(selectedResources).length === 0
+        ) {
           throw new Error("Cannot save an incomplete configuration");
         }
-        onSave(selectedDataSource, selectedParentIds);
+        onSave(selectedDataSource, selectedResources);
         onClose();
       }}
-      hasChanged={!!selectedDataSource && selectedParentIds.size > 0}
+      hasChanged={
+        !!selectedDataSource && Object.keys(selectedResources).length > 0
+      }
       isFullScreen={true}
       title="Add a data source"
     >
-      <div className="mb-16 flex justify-center">
-        <div className="flex w-3/4 flex-col pt-16 sm:w-1/2">
+      <div className="w-full pt-12">
+        {!selectedDataSource ? (
           <PickDataSource
             dataSources={dataSources}
-            show={!selectedDataSource && !dataSourceToManage}
+            show={!dataSourceToManage}
             onPick={(ds) => {
               setSelectedDataSource(ds);
             }}
           />
+        ) : (
           <DataSourceResourceSelector
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
-            selectedParentIds={selectedParentIds}
-            onSelectChange={(parentId, selected) => {
+            selectedResources={selectedResources}
+            onSelectChange={({ resourceId, resourceName }, selected) => {
+              const newSelectedResources = { ...selectedResources };
               if (selected) {
-                selectedParentIds.add(parentId);
+                newSelectedResources[resourceId] = resourceName;
               } else {
-                selectedParentIds.delete(parentId);
+                delete newSelectedResources[resourceId];
               }
-              setSelectedParentIds(new Set(selectedParentIds));
+              setSelectedResources(newSelectedResources);
             }}
             onDelete={
               onDelete
@@ -102,7 +113,7 @@ export default function AssistantBuilderDataSourceModal({
                 : undefined
             }
           />
-        </div>
+        )}
       </div>
     </Modal>
   );
@@ -118,7 +129,7 @@ function PickDataSource({
   onPick: (dataSource: DataSourceType) => void;
 }) {
   return (
-    <Transition show={show}>
+    <Transition show={show} className="mx-auto w-full max-w-4xl">
       <div className="flex flex-col">
         <div className="mb-6">
           <PageHeader
@@ -157,19 +168,22 @@ function PickDataSource({
 function DataSourceResourceSelector({
   dataSource,
   owner,
-  selectedParentIds,
+  selectedResources,
   onSelectChange,
   onDelete,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
-  selectedParentIds: Set<string>;
-  onSelectChange: (parentId: string, selected: boolean) => void;
+  selectedResources: Record<string, string>;
+  onSelectChange: (
+    resource: { resourceId: string; resourceName: string },
+    selected: boolean
+  ) => void;
   onDelete?: () => void;
 }) {
   return (
-    <Transition show={!!dataSource} className={"pb-8"}>
-      <div className="mb-6 mr-2 flex flex-row">
+    <Transition show={!!dataSource} className="mx-auto w-full max-w-4xl pb-8">
+      <div className="mb-6 flex flex-row">
         <div>
           <PageHeader
             title={`Select Data sources in ${
@@ -185,25 +199,57 @@ function DataSourceResourceSelector({
             description="Select the files and folders that will be used by the assistant as a source for its answers."
           />
         </div>
-        {onDelete && (
-          <>
-            <div className="flex-grow" />
-            <IconButton icon={TrashIcon} variant="warning" onClick={onDelete} />
-          </>
-        )}
       </div>
       {dataSource && (
-        <DataSourceResourceSelectorTree
-          owner={owner}
-          dataSource={dataSource}
-          expandable={
-            CONNECTOR_CONFIGURATIONS[
-              dataSource.connectorProvider as ConnectorProvider
-            ]?.isNested
-          }
-          selectedParentIds={selectedParentIds}
-          onSelectChange={onSelectChange}
-        />
+        <div className="flex flex-row space-x-6">
+          <DataSourceResourceSelectorTree
+            owner={owner}
+            dataSource={dataSource}
+            expandable={
+              CONNECTOR_CONFIGURATIONS[
+                dataSource.connectorProvider as ConnectorProvider
+              ]?.isNested
+            }
+            selectedParentIds={new Set(Object.keys(selectedResources))}
+            onSelectChange={onSelectChange}
+          />
+          <div className="sticky top-16 hidden h-full flex-col md:flex">
+            <div className="flex flex-row">
+              {onDelete && (
+                <IconButton
+                  icon={TrashIcon}
+                  variant="warning"
+                  onClick={onDelete}
+                  className="mr-2"
+                  size="sm"
+                />
+              )}
+              <div className="text-lg font-semibold text-element-900">
+                Selected resources:
+              </div>
+            </div>
+            <ul className="pl-5 pt-2">
+              {Object.entries(selectedResources).map(([id, name]) => (
+                <li key={id}>
+                  <div className="flex flex-row space-x-2">
+                    <IconButton
+                      icon={XCircleIcon}
+                      variant="warning"
+                      size="xs"
+                      onClick={() => {
+                        onSelectChange(
+                          { resourceId: id, resourceName: name },
+                          false
+                        );
+                      }}
+                    />
+                    <div className="font-normal text-element-700">{name}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
     </Transition>
   );

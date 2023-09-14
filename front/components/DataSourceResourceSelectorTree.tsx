@@ -26,7 +26,10 @@ export default function DataSourceResourceSelectorTree({
   dataSource: DataSourceType;
   expandable: boolean;
   selectedParentIds: Set<string>;
-  onSelectChange: (parentId: string, selected: boolean) => void;
+  onSelectChange: (
+    resource: { resourceId: string; resourceName: string },
+    selected: boolean
+  ) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -81,7 +84,10 @@ function DataSourceResourceSelectorChildren({
   expandable: boolean;
   isChecked: boolean;
   selectedParentIds: Set<string>;
-  onSelectChange: (parentId: string, selected: boolean) => void;
+  onSelectChange: (
+    resource: { resourceId: string; resourceName: string },
+    selected: boolean
+  ) => void;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions(owner, dataSource, parentId, null);
@@ -141,12 +147,15 @@ function DataSourceResourceSelectorChildren({
                   )}
                   <IconComponent className="h-5 w-5 text-slate-300" />
                   <span className="ml-2 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
-                  <div className="flex-grow">
+                  <div className="ml-32 flex-grow">
                     <Checkbox
                       className="ml-auto"
                       checked={isChecked || selectedParentIds.has(r.internalId)}
                       onChange={(checked) =>
-                        onSelectChange(r.internalId, checked)
+                        onSelectChange(
+                          { resourceId: r.internalId, resourceName: r.title },
+                          checked
+                        )
                       }
                       disabled={isChecked}
                     />

@@ -88,12 +88,12 @@ export default function CreateAssistant({
   const [dataSourceConfigs, setDataSourceConfigs] = useState<
     Record<
       string,
-      { dataSource: DataSourceType; selectedParentIds: Set<string> }
+      { dataSource: DataSourceType; selectedResources: Record<string, string> }
     >
   >({});
   const [dataSourceToManage, setDataSourceToManage] = useState<{
     dataSource: DataSourceType;
-    selectedParentIds: Set<string>;
+    selectedResources: Record<string, string>;
   } | null>(null);
 
   const configurableDataSources = dataSources.filter(
@@ -112,12 +112,12 @@ export default function CreateAssistant({
         }}
         owner={owner}
         dataSources={configurableDataSources}
-        onSave={(dataSource, selectedParentIds) => {
+        onSave={(dataSource, selectedResources) => {
           setDataSourceConfigs((configs) => ({
             ...configs,
             [dataSource.name]: {
               dataSource,
-              selectedParentIds,
+              selectedResources,
             },
           }));
         }}
@@ -357,7 +357,7 @@ function DataSourceSelectionSection({
   show: boolean;
   dataSourceConfigs: Record<
     string,
-    { dataSource: DataSourceType; selectedParentIds: Set<string> }
+    { dataSource: DataSourceType; selectedResources: Record<string, string> }
   >;
   openDataSourceModal: () => void;
   canAddDataSource: boolean;
@@ -416,33 +416,36 @@ function DataSourceSelectionSection({
         ) : (
           <ul className="mt-6">
             {Object.entries(dataSourceConfigs).map(
-              ([key, { dataSource, selectedParentIds }]) => (
-                <li key={key} className="px-2 py-4">
-                  <SelectedDataSourcesListItem
-                    imagePath={
-                      CONNECTOR_CONFIGURATIONS[
-                        dataSource.connectorProvider as ConnectorProvider
-                      ].logoPath
-                    }
-                    name={
-                      CONNECTOR_CONFIGURATIONS[
-                        dataSource.connectorProvider as ConnectorProvider
-                      ].name
-                    }
-                    description={`Assistant has access to ${
-                      selectedParentIds.size
-                    } resource${selectedParentIds.size > 1 ? "s" : ""}`}
-                    buttonProps={{
-                      variant: "secondary",
-                      icon: Cog6ToothIcon,
-                      label: "Manage",
-                      onClick: () => {
-                        onManageDataSource(key);
-                      },
-                    }}
-                  />
-                </li>
-              )
+              ([key, { dataSource, selectedResources }]) => {
+                const selectedParentIds = Object.keys(selectedResources);
+                return (
+                  <li key={key} className="px-2 py-4">
+                    <SelectedDataSourcesListItem
+                      imagePath={
+                        CONNECTOR_CONFIGURATIONS[
+                          dataSource.connectorProvider as ConnectorProvider
+                        ].logoPath
+                      }
+                      name={
+                        CONNECTOR_CONFIGURATIONS[
+                          dataSource.connectorProvider as ConnectorProvider
+                        ].name
+                      }
+                      description={`Assistant has access to ${
+                        selectedParentIds.length
+                      } resource${selectedParentIds.length > 1 ? "s" : ""}`}
+                      buttonProps={{
+                        variant: "secondary",
+                        icon: Cog6ToothIcon,
+                        label: "Manage",
+                        onClick: () => {
+                          onManageDataSource(key);
+                        },
+                      }}
+                    />
+                  </li>
+                );
+              }
             )}
           </ul>
         )}
