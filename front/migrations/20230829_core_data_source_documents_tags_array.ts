@@ -16,6 +16,7 @@ async function main() {
 
   for (;;) {
     // Run update query on a batch of records
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     const [_, metaData] = (await coreSequelize.query(`
       UPDATE data_sources_documents
       SET tags_array = ARRAY(SELECT json_array_elements_text(tags_json::json))

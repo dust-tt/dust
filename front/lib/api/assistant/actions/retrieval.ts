@@ -105,6 +105,11 @@ export function renderRetrievalActionForModel(
   action: RetrievalActionType
 ): ModelMessageType {
   let content = "";
+  if (!action.documents) {
+    throw new Error(
+      "Documents not set on retrieval action; this usually means the retrieval action is not finished."
+    );
+  }
   for (const d of action.documents) {
     let title = d.documentId;
     for (const t of d.tags) {
