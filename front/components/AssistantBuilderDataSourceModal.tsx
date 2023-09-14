@@ -134,7 +134,7 @@ function PickDataSource({
   onPick: (dataSource: DataSourceType) => void;
 }) {
   return (
-    <Transition show={show} className="mx-auto w-full max-w-4xl">
+    <Transition show={show} className="mx-auto max-w-5xl">
       <div className="flex flex-col">
         <div className="mb-6">
           <PageHeader
@@ -190,7 +190,7 @@ function DataSourceResourceSelector({
   onDelete?: () => void;
 }) {
   return (
-    <Transition show={!!dataSource} className="mx-auto w-full max-w-4xl pb-8">
+    <Transition show={!!dataSource} className="mx-auto max-w-5xl pb-8">
       <div className="mb-6 flex flex-row">
         <div>
           <PageHeader
@@ -209,19 +209,29 @@ function DataSourceResourceSelector({
         </div>
       </div>
       {dataSource && (
-        <div className="flex flex-row space-x-6">
-          <DataSourceResourceSelectorTree
-            owner={owner}
-            dataSource={dataSource}
-            expandable={
-              CONNECTOR_CONFIGURATIONS[
+        <div className="flex flex-row space-x-32">
+          <div className="flex flex-col">
+            <div className="pb-4 text-lg font-semibold text-element-900">
+              All available{" "}
+              {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
                 dataSource.connectorProvider as ConnectorProvider
-              ]?.isNested
-            }
-            selectedParentIds={new Set(Object.keys(selectedResources))}
-            onSelectChange={onSelectChange}
-          />
-          <div className="sticky top-16 hidden h-full flex-col md:flex">
+              ]?.plural ?? "resources"}
+              :
+            </div>
+            <DataSourceResourceSelectorTree
+              owner={owner}
+              dataSource={dataSource}
+              expandable={
+                CONNECTOR_CONFIGURATIONS[
+                  dataSource.connectorProvider as ConnectorProvider
+                ]?.isNested
+              }
+              selectedParentIds={new Set(Object.keys(selectedResources))}
+              onSelectChange={onSelectChange}
+            />
+          </div>
+          {/* <div className="flex-grow" /> */}
+          <div className="sticky top-16 hidden h-full  flex-col md:flex">
             <div className="flex flex-row">
               {onDelete && (
                 <IconButton
@@ -240,10 +250,11 @@ function DataSourceResourceSelector({
                 :
               </div>
             </div>
-            <ul className="pl-5 pt-2">
+            <ul className="pt-4">
               {Object.entries(selectedResources).map(([id, name]) => (
                 <li key={id}>
                   <div className="flex flex-row space-x-2">
+                    <div className="font-normal text-element-700">{name}</div>
                     <IconButton
                       icon={XCircleIcon}
                       variant="warning"
@@ -255,7 +266,6 @@ function DataSourceResourceSelector({
                         );
                       }}
                     />
-                    <div className="font-normal text-element-700">{name}</div>
                   </div>
                 </li>
               ))}
