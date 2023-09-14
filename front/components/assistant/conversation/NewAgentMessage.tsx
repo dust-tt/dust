@@ -1,13 +1,13 @@
 import React from "react";
 
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { UserMessageType } from "@app/types/assistant/conversation";
+import { AgentMessageType } from "@app/types/assistant/conversation";
 
-export function UserMessage({ message }: { message: UserMessageType }) {
+export function AgentMessage({ message }: { message: AgentMessageType }) {
   return (
     <ConversationMessage
-      pictureUrl={message.user?.image}
-      name={message.context.fullName}
+      pictureUrl={message.configuration.pictureUrl}
+      name={message.configuration.name}
     >
       <div className="text-base font-normal">{message.content}</div>
     </ConversationMessage>
