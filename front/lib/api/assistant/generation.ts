@@ -269,8 +269,6 @@ export async function* runGeneration(
     };
   }
 
-  console.log("modelConversationRes", modelConversationRes.value);
-
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-generator"].config
   );
