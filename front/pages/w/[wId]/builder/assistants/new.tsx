@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  CloudArrowDownIcon,
   Cog6ToothIcon,
   DropdownMenu,
   Icon,
@@ -9,12 +10,13 @@ import {
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import { PropsOf } from "@headlessui/react/dist/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { ComponentType, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/AssistantBuilderDataSourceModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -23,7 +25,6 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -100,6 +101,14 @@ export default function CreateAssistant({
     (dataSource) => !dataSourceConfigs[dataSource.name]
   );
 
+  const deleteDataSource = (name: string) => {
+    setDataSourceConfigs((configs) => {
+      const newConfigs = { ...configs };
+      delete newConfigs[name];
+      return newConfigs;
+    });
+  };
+
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -124,13 +133,7 @@ export default function CreateAssistant({
         dataSourceToManage={dataSourceToManage}
         onDelete={
           dataSourceToManage
-            ? () => {
-                setDataSourceConfigs((configs) => {
-                  const newConfigs = { ...configs };
-                  delete newConfigs[dataSourceToManage.dataSource.name];
-                  return newConfigs;
-                });
-              }
+            ? () => deleteDataSource(dataSourceToManage.dataSource.name)
             : undefined
         }
       />
@@ -307,6 +310,7 @@ export default function CreateAssistant({
                   setDataSourceToManage(dataSourceConfigs[name]);
                   setShowDataSourcesModal(true);
                 }}
+                onDelete={deleteDataSource}
               />
               <div className="pt-6 text-base font-semibold text-element-900">
                 Timeframe for the data sources
@@ -353,6 +357,7 @@ function DataSourceSelectionSection({
   openDataSourceModal,
   canAddDataSource,
   onManageDataSource,
+  onDelete,
 }: {
   show: boolean;
   dataSourceConfigs: Record<
@@ -362,6 +367,7 @@ function DataSourceSelectionSection({
   openDataSourceModal: () => void;
   canAddDataSource: boolean;
   onManageDataSource: (name: string) => void;
+  onDelete?: (name: string) => void;
 }) {
   return (
     <Transition
@@ -421,27 +427,40 @@ function DataSourceSelectionSection({
                 return (
                   <li key={key} className="px-2 py-4">
                     <SelectedDataSourcesListItem
-                      imagePath={
-                        CONNECTOR_CONFIGURATIONS[
-                          dataSource.connectorProvider as ConnectorProvider
-                        ].logoPath
+                      IconComponent={
+                        dataSource.connectorProvider
+                          ? CONNECTOR_CONFIGURATIONS[
+                              dataSource.connectorProvider
+                            ].logoComponent
+                          : CloudArrowDownIcon
                       }
                       name={
-                        CONNECTOR_CONFIGURATIONS[
-                          dataSource.connectorProvider as ConnectorProvider
-                        ].name
+                        dataSource.connectorProvider
+                          ? CONNECTOR_CONFIGURATIONS[
+                              dataSource.connectorProvider
+                            ].name
+                          : dataSource.name
                       }
                       description={`Assistant has access to ${
                         selectedParentIds.length
                       } resource${selectedParentIds.length > 1 ? "s" : ""}`}
-                      buttonProps={{
-                        variant: "secondary",
-                        icon: Cog6ToothIcon,
-                        label: "Manage",
-                        onClick: () => {
-                          onManageDataSource(key);
-                        },
-                      }}
+                      buttonProps={
+                        dataSource.connectorProvider
+                          ? {
+                              variant: "secondary",
+                              icon: Cog6ToothIcon,
+                              label: "Manage",
+                              onClick: () => {
+                                onManageDataSource(key);
+                              },
+                            }
+                          : {
+                              variant: "secondaryWarning",
+                              icon: TrashIcon,
+                              label: "Remove",
+                              onClick: () => onDelete?.(key),
+                            }
+                      }
                     />
                   </li>
                 );
@@ -455,12 +474,12 @@ function DataSourceSelectionSection({
 }
 
 function SelectedDataSourcesListItem({
-  imagePath,
+  IconComponent,
   name,
   description,
   buttonProps,
 }: {
-  imagePath: string;
+  IconComponent: ComponentType<{ className?: string }>;
   name: string;
   description: string;
   buttonProps: PropsOf<typeof Button>;
@@ -469,7 +488,7 @@ function SelectedDataSourcesListItem({
     <div className="flex items-start">
       <div className="min-w-5 flex">
         <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-          <img src={imagePath}></img>
+          <Icon visual={IconComponent} className="text-slate-400" />
         </div>
         <div className="flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center">

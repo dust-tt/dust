@@ -88,6 +88,10 @@ export default function AssistantBuilderDataSourceModal({
             show={!dataSourceToManage}
             onPick={(ds) => {
               setSelectedDataSource(ds);
+              if (!ds.connectorProvider) {
+                onSave(ds, {});
+                onClose();
+              }
             }}
           />
         ) : (
@@ -140,18 +144,21 @@ function PickDataSource({
         </div>
 
         {dataSources
-          .filter((ds) => ds.connectorProvider)
+          .sort(
+            (a, b) =>
+              (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
+          )
           .map((ds) => (
             <Item
               label={
-                CONNECTOR_CONFIGURATIONS[
-                  ds.connectorProvider as ConnectorProvider
-                ].name
+                ds.connectorProvider
+                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name
+                  : ds.name
               }
               icon={
-                CONNECTOR_CONFIGURATIONS[
-                  ds.connectorProvider as ConnectorProvider
-                ].logoComponent
+                ds.connectorProvider
+                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+                  : CloudArrowDownIcon
               }
               key={ds.name}
               size="md"
