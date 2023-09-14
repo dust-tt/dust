@@ -25,7 +25,13 @@ function addClosingBackticks(str: string): string {
   }
   // Append closing backticks if needed
   if (tripleBackticks % 2 !== 0) {
-    str += str.includes("\n") ? "\n```" : "```";
+    if (str.endsWith("`")) {
+      str += "``";
+    } else if (str.endsWith("``")) {
+      str += "`";
+    } else {
+      str += str.includes("\n") ? "\n```" : "```";
+    }
   } else if (singleBackticks % 2 !== 0) {
     str += "`";
   }
@@ -70,43 +76,45 @@ function LinkBlock({
 function PreBlock({ children }: { children: React.ReactNode }) {
   const [confirmed, setConfirmed] = useState<boolean>(false);
 
-  const handleClick = async () => {
-    if (!children || !Array.isArray(children)) return;
-    const text = children[0].props.children[0];
+  const validChildrenContent =
+    Array.isArray(children) && children[0]
+      ? children[0].props.children[0]
+      : null;
 
-    await navigator.clipboard.writeText(text || "");
+  // Sometimes the children are not valid, but the meta data is
+  let fallbackData: string | null = null;
+  if (!validChildrenContent) {
+    fallbackData =
+      Array.isArray(children) && children[0]
+        ? children[0].props?.node.data?.meta
+        : null;
+  }
+
+  const handleClick = async () => {
+    await navigator.clipboard.writeText(
+      validChildrenContent || fallbackData || ""
+    );
     setConfirmed(true);
     void setTimeout(() => {
       setConfirmed(false);
     }, 1000);
   };
 
-  const validContent =
-    Array.isArray(children) && children[0]
-      ? children[0].props.children[0]
-      : null;
-  let data = null;
-
-  if (!validContent) {
-    data =
-      Array.isArray(children) && children[0]
-        ? children[0].props?.node.data?.meta
-        : null;
-  }
-
   return (
     <pre className="max-w-3xl break-all rounded-md bg-slate-900 p-2 text-white">
       {/** should not need class max-w-3xl */}
       <div className="relative">
         <div className="absolute right-1 top-1 text-white">
-          <IconButton
-            variant="tertiary"
-            icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={handleClick}
-          />
+          {(validChildrenContent || fallbackData) && (
+            <IconButton
+              variant="tertiary"
+              icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
+              onClick={handleClick}
+            />
+          )}
         </div>
         <div className="overflow-auto pt-8">
-          {validContent ? children : data || children}
+          {validChildrenContent ? children : fallbackData || children}
         </div>
       </div>
     </pre>

@@ -14,13 +14,15 @@ export function ConversationMessage({
   pictureUrl?: string | null;
 }) {
   return (
-    <div className="flex flex-row gap-4">
+    <div className="flex w-full flex-row gap-4">
       <div className="flex-shrink-0">
         <Avatar visual={pictureUrl} name={name || undefined} size="sm" />
       </div>
       <div className="flex-grow">
-        <div className="mb-2 text-sm font-medium">{name}</div>
-        <div className="flex flex-col">{children}</div>
+        <div className="flex flex-col gap-4">
+          <div className="mb-2 text-sm font-medium">{name}</div>
+          <div>{children}</div>
+        </div>
       </div>
     </div>
   );
