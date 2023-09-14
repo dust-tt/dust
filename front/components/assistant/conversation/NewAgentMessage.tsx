@@ -4,6 +4,11 @@ import { ConversationMessage } from "@app/components/assistant/conversation/Conv
 import { AgentMessageType } from "@app/types/assistant/conversation";
 
 export function AgentMessage({ message }: { message: AgentMessageType }) {
+  // TODO what are the semantics of message.visibility? should we make this
+  // check here?
+  if (message.visibility === "deleted") {
+    return null;
+  }
   return (
     <ConversationMessage
       pictureUrl={message.configuration.pictureUrl}
