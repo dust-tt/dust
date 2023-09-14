@@ -11,8 +11,8 @@ type ChipProps = {
 };
 
 const sizeClasses = {
-  sm: "s-py-1.5 s-text-xs s-font-medium s-px-3",
-  md: "s-py-2 s-text-sm s-font-semibold s-px-3",
+  xs: "s-py-1.5 s-text-xs s-font-medium s-px-3",
+  sm: "s-py-2 s-text-sm s-font-semibold s-px-4",
 };
 
 const baseClasses =
