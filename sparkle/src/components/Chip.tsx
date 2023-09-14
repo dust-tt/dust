@@ -3,7 +3,7 @@ import React, { ReactNode } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 type ChipProps = {
-  size?: "sm" | "md";
+  size?: "xs" | "sm";
   color?: "emerald" | "amber" | "slate" | "violet";
   label?: string;
   children?: ReactNode;
@@ -19,7 +19,7 @@ const baseClasses =
   "s-rounded-lg s-inline-flex s-box-border s-border s-text-element-800";
 
 export function Chip({
-  size = "sm",
+  size = "xs",
   color = "slate",
   label,
   children,
