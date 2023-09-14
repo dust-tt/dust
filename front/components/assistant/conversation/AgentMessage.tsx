@@ -1,3 +1,4 @@
+import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -12,7 +13,7 @@ import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { AgentMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
-import { ConversationMessage } from "./ConversationMessage";
+import { AgentAction } from "./AgentAction";
 
 export function AgentMessage({
   message,
@@ -122,14 +123,78 @@ export function AgentMessage({
   const agentMessageToRender =
     message.status === "succeeded" ? message : streamedAgentMessage;
 
+  if (agentMessageToRender.visibility === "deleted") {
+    return null;
+  }
   return (
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={agentMessageToRender.configuration.name}
     >
-      <div className="text-base font-normal">
-        {agentMessageToRender.content}
-      </div>
+      {renderMessage(agentMessageToRender)}
     </ConversationMessage>
   );
+}
+
+function renderMessage(agentMessage: AgentMessageType) {
+  // Display the error to the user so they can report it to us (or some can be
+  // understandable directly to them)
+  if (agentMessage.status === "failed") {
+    return (
+      <div>
+        <div className="mb-2 text-base font-normal">
+          Something went wrong...
+        </div>
+        <div className="mb-2 text-xs font-bold text-element-600">
+          <p>Error Code: {agentMessage.error?.code}</p>
+          <p>Error Message: {agentMessage.error?.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state (no action nor text yet)
+  if (
+    agentMessage.status === "created" &&
+    !agentMessage.action &&
+    (!agentMessage.content || agentMessage.content === "")
+  ) {
+    return (
+      <div>
+        <div className="mb-2 text-xs font-bold text-element-600">
+          I'm thinking...
+        </div>
+        <Spinner size="sm" />
+      </div>
+    );
+  }
+
+  // Messages with no action and text
+  if (agentMessage.action === null && agentMessage.content) {
+    return (
+      <>
+        <div className="mb-2 text-xs font-bold text-element-600">Answer:</div>
+        <div className="mb-2 text-base font-normal">{agentMessage.content}</div>
+      </>
+    );
+  }
+
+  // Messages with action
+  if (agentMessage.action) {
+    return (
+      <>
+        <AgentAction action={agentMessage.action} />
+        {agentMessage.content && agentMessage.content !== "" && (
+          <>
+            <div className="mb-2 text-xs font-bold text-element-600">
+              Answer:
+            </div>
+            <div className="mb-2 text-base font-normal">
+              {agentMessage.content}
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
 }
