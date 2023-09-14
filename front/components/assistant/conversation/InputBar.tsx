@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   DropdownMenu,
   IconButton,
@@ -152,9 +153,7 @@ function AgentListImpl(
                 }}
               >
                 <div className="flex flex-initial items-center gap-x-2 py-1">
-                  <div className="flex">
-                    <img src={c.pictureUrl} className="h-5 w-5 rounded-full" />
-                  </div>
+                  <Avatar size="xs" visual={c.pictureUrl} />
                   <div
                     className={classNames(
                       "flex-initial text-sm font-semibold",
@@ -183,7 +182,6 @@ export function AssistantInputBar({
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
 }) {
-  const [input, setInput] = useState("");
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
   const [agentListPosition, setAgentListPosition] = useState<{
@@ -210,6 +208,37 @@ export function AssistantInputBar({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
+
+  const handleSubmit = async () => {
+    const contentEditable = document.getElementById("dust-input-bar");
+    if (contentEditable) {
+      const mentions: MentionType[] = [];
+      let content = "";
+      Array.from(contentEditable.childNodes).forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+          const agentConfigurationId = node.getAttribute(
+            "data-agent-configuration-id"
+          );
+          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+          const agentName = node.getAttribute("data-agent-name");
+
+          if (agentConfigurationId && agentName) {
+            mentions.push({
+              configurationId: agentConfigurationId,
+            });
+            // Internal format for mentions is `@[agentName]{agentConfigurationId}`.
+            content += `@[${agentName}]{${agentConfigurationId}}`;
+          }
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+          content += node.textContent;
+        }
+      });
+
+      onSubmit(content, mentions);
+    }
+  };
 
   return (
     <>
@@ -254,7 +283,7 @@ export function AssistantInputBar({
                 if (!e.shiftKey && e.key === "Enter") {
                   e.preventDefault();
                   e.stopPropagation();
-                  // onSubmit();
+                  void handleSubmit();
                 }
               }}
               onInput={() => {
@@ -488,6 +517,23 @@ export function AssistantInputBar({
                         key={c.sId}
                         label={"@" + c.name}
                         imageUrl={c.pictureUrl}
+                        onClick={() => {
+                          const htmlString =
+                            ReactDOMServer.renderToStaticMarkup(
+                              <AgentMention agentConfiguration={c} />
+                            );
+                          const wrapper = document.createElement("div");
+                          wrapper.innerHTML = htmlString.trim();
+                          const mentionNode = wrapper.firstChild;
+                          const contentEditable =
+                            document.getElementById("dust-input-bar");
+                          if (contentEditable && mentionNode) {
+                            // add mentionNode as last childe of contentEditable
+                            contentEditable.appendChild(mentionNode);
+                            const afterTextNode = document.createTextNode(" ");
+                            contentEditable.appendChild(afterTextNode);
+                          }
+                        }}
                       />
                     ))}
                   </DropdownMenu.Items>
@@ -497,11 +543,7 @@ export function AssistantInputBar({
                 variant="primary"
                 icon={PaperAirplaneIcon}
                 onClick={() => {
-                  if (input.length === 0) {
-                    return;
-                  }
-                  void onSubmit(input, []);
-                  setInput("");
+                  void handleSubmit();
                 }}
               />
             </div>
