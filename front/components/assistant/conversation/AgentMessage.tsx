@@ -1,6 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
+import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import {
   AgentActionEvent,
@@ -12,8 +13,6 @@ import {
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { AgentMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-
-import { AgentAction } from "./AgentAction";
 
 export function AgentMessage({
   message,
