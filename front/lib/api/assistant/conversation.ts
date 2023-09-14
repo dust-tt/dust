@@ -19,6 +19,7 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import {
   AgentMessageType,
   ConversationType,
@@ -541,34 +542,62 @@ export async function* postUserMessage(
     message: userMessage,
   };
 
-  await Promise.allSettled(
-    agentMessages.map(async function* (agentMessage, i) {
-      const agentMessageRow = agentMessageRows[i];
+  for (let i = 0; i < agentMessages.length; i++) {
+    const agentMessage = agentMessages[i];
+    const agentMessageRow = agentMessageRows[i];
 
-      yield {
-        type: "agent_message_new",
-        created: Date.now(),
-        configurationId: agentMessage.configuration.sId,
-        messageId: agentMessage.sId,
-        message: agentMessage,
-      };
+    yield {
+      type: "agent_message_new",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+    };
 
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const eventStream = runAgent(
-        auth,
-        agentMessage.configuration,
-        {
-          ...conversation,
-          content: [...conversation.content, [userMessage], [agentMessage]],
-        },
-        userMessage,
-        agentMessage
-      );
+    // We stitch the conversation to add the user message and only that agent message
+    // so that it can be used to prompt the agent.
+    const eventStream = runAgent(
+      auth,
+      agentMessage.configuration,
+      {
+        ...conversation,
+        content: [...conversation.content, [userMessage], [agentMessage]],
+      },
+      userMessage,
+      agentMessage
+    );
 
-      yield* streamRunAgentEvents(eventStream, agentMessageRow);
-    })
-  );
+    yield* streamRunAgentEvents(eventStream, agentMessageRow);
+  }
+
+  // await Promise.allSettled(
+  //   agentMessages.map(async function* (agentMessage, i) {
+  //     const agentMessageRow = agentMessageRows[i];
+
+  //     yield {
+  //       type: "agent_message_new",
+  //       created: Date.now(),
+  //       configurationId: agentMessage.configuration.sId,
+  //       messageId: agentMessage.sId,
+  //       message: agentMessage,
+  //     };
+
+  //     // We stitch the conversation to add the user message and only that agent message
+  //     // so that it can be used to prompt the agent.
+  //     const eventStream = runAgent(
+  //       auth,
+  //       agentMessage.configuration,
+  //       {
+  //         ...conversation,
+  //         content: [...conversation.content, [userMessage], [agentMessage]],
+  //       },
+  //       userMessage,
+  //       agentMessage
+  //     );
+
+  //     yield* streamRunAgentEvents(eventStream, agentMessageRow);
+  //   })
+  // );
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
@@ -908,6 +937,11 @@ async function* streamRunAgentEvents(
         errorCode: event.error.code,
         errorMessage: event.error.message,
       });
+
+      logger.error("Agent error", {
+        error: event.error,
+      });
+
       yield event;
     }
 

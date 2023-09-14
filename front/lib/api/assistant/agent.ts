@@ -15,7 +15,6 @@ import {
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
-import { generateModelSId } from "@app/lib/utils";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionSpecification,
@@ -210,54 +209,43 @@ export async function* runAgent(
         "runAgent implementation missing for action configuration"
       );
     }
+  }
 
-    // Then run the generation if a configuration is present.
-    if (configuration.generation !== null) {
-      const eventStream = runGeneration(
-        auth,
-        configuration,
-        conversation,
-        userMessage,
-        agentMessage
-      );
+  // Then run the generation if a configuration is present.
+  if (configuration.generation !== null) {
+    const eventStream = runGeneration(
+      auth,
+      configuration,
+      conversation,
+      userMessage,
+      agentMessage
+    );
 
-      for await (const event of eventStream) {
-        if (event.type === "generation_tokens") {
-          yield event;
-        }
-        if (event.type === "generation_error") {
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-        }
-        if (event.type === "generation_success") {
-          yield {
-            type: "agent_generation_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: event.text,
-          };
-        }
+    for await (const event of eventStream) {
+      if (event.type === "generation_tokens") {
+        yield event;
+      }
+      if (event.type === "generation_error") {
+        yield {
+          type: "agent_error",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: event.error.code,
+            message: event.error.message,
+          },
+        };
+      }
+      if (event.type === "generation_success") {
+        yield {
+          type: "agent_generation_success",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          text: event.text,
+        };
       }
     }
   }
-
-  yield {
-    type: "agent_error",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: generateModelSId(),
-    error: {
-      code: "not_implemented",
-      message: "Not implemented",
-    },
-  };
 }
