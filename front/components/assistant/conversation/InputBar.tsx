@@ -277,6 +277,12 @@ export function AssistantInputBar({
                 // Get the plain text.
                 const text = e.clipboardData.getData("text/plain");
 
+                // If the text is single line.
+                if (text.indexOf("\n") === -1 && text.indexOf("\r") === -1) {
+                  document.execCommand("insertText", false, text);
+                  return;
+                }
+
                 const selection = window.getSelection();
                 if (!selection) {
                   return;
