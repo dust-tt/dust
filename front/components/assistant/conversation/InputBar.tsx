@@ -273,8 +273,50 @@ export function AssistantInputBar({
               suppressContentEditableWarning={true}
               onPaste={(e) => {
                 e.preventDefault();
+
+                // Get the plain text.
                 const text = e.clipboardData.getData("text/plain");
-                document.execCommand("insertText", false, text);
+
+                const selection = window.getSelection();
+                if (!selection) {
+                  return;
+                }
+                const range = selection.getRangeAt(0);
+                let node = range.endContainer;
+                let offset = range.endOffset;
+
+                if (
+                  // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                  node.getAttribute &&
+                  // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                  node.getAttribute("id") === "dust-input-bar"
+                ) {
+                  const textNode = document.createTextNode("");
+                  node.appendChild(textNode);
+                  node = textNode;
+                  offset = 0;
+                }
+
+                if (
+                  node.parentNode &&
+                  // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                  node.parentNode.getAttribute &&
+                  // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+                  node.parentNode.getAttribute("id") === "dust-input-bar"
+                ) {
+                  // Inject the text at the cursor position.
+                  node.textContent =
+                    node.textContent?.slice(0, offset) +
+                    text +
+                    node.textContent?.slice(offset);
+
+                  // Move the cursor to the end of the past.
+                  const newRange = document.createRange();
+                  newRange.setStart(node, offset + text.length);
+                  newRange.setEnd(node, offset + text.length);
+                  selection.removeAllRanges();
+                  selection.addRange(newRange);
+                }
               }}
               onKeyDown={(e) => {
                 // We prevent the content editable from creating italics, bold and underline.
