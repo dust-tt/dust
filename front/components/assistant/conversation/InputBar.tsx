@@ -235,6 +235,9 @@ export function AssistantInputBar({
         }
       });
 
+      content = content.trim();
+      content = content.replace(/\u200B/g, "");
+
       onSubmit(content, mentions);
       contentEditable.innerHTML = "";
     }
@@ -518,6 +521,8 @@ export function AssistantInputBar({
                         label={"@" + c.name}
                         visual={c.pictureUrl}
                         onClick={() => {
+                          // We construct the HTML for an AgentMention and inject it in the content
+                          // editable with an extra space after it.
                           const htmlString =
                             ReactDOMServer.renderToStaticMarkup(
                               <AgentMention agentConfiguration={c} />
