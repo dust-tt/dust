@@ -1,6 +1,6 @@
 import {
   Chip,
-  DocumentDuplicateIcon,
+  DocumentDuplicateStrokeIcon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -85,7 +85,7 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
               {summary[k].provider !== "none" ? (
                 <img src={PROVIDER_LOGO_PATH[summary[k].provider]}></img>
               ) : (
-                <DocumentDuplicateIcon className="h-4 w-4 text-slate-500" />
+                <DocumentDuplicateStrokeIcon className="h-4 w-4 text-slate-500" />
               )}
             </div>
             <div className="flex-initial text-gray-700">{summary[k].count}</div>
