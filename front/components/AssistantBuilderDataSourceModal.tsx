@@ -191,7 +191,7 @@ function DataSourceResourceSelector({
 }) {
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-5xl pb-8">
-      <div className="mb-6 flex flex-row">
+      <div className="mb-6">
         <div>
           <PageHeader
             title={`Select Data sources in ${
@@ -230,8 +230,7 @@ function DataSourceResourceSelector({
               onSelectChange={onSelectChange}
             />
           </div>
-          {/* <div className="flex-grow" /> */}
-          <div className="sticky top-16 hidden h-full  flex-col md:flex">
+          <div className="sticky top-16 hidden h-full flex-col md:flex">
             <div className="flex flex-row">
               {onDelete && (
                 <IconButton
