@@ -54,7 +54,7 @@ const iconClasses = {
 
 const imageClasses = {
   default: {
-    base: "s-h-6 s-w-6 s-rounded-full",
+    base: "s-h-5 s-w-5 s-rounded-full",
   },
 };
 
