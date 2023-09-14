@@ -132,18 +132,24 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
             <div key={`tab-${i}`}>
               <Tooltip label={tab.label}>{content}</Tooltip>
             </div>
-            {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+            {tab.hasSeparator && (
+              <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
+            )}
           </>
         ) : (
           <>
             <div key={`tab-${i}`}>{content}</div>
-            {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+            {tab.hasSeparator && (
+              <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
+            )}
           </>
         )
       ) : (
         <>
           <div key={`tab-${i}`}>{content}</div>
-          {tab.hasSeparator && <div className="s-flex s-h-full s-grow" />}
+          {tab.hasSeparator && (
+            <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
+          )}
         </>
       );
     });
