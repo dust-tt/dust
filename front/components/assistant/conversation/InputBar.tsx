@@ -528,7 +528,7 @@ export function AssistantInputBar({
                           const contentEditable =
                             document.getElementById("dust-input-bar");
                           if (contentEditable && mentionNode) {
-                            // add mentionNode as last childe of contentEditable
+                            // Add mentionNode as last childe of contentEditable.
                             contentEditable.appendChild(mentionNode);
                             const afterTextNode = document.createTextNode(" ");
                             contentEditable.appendChild(afterTextNode);
