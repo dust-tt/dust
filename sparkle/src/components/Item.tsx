@@ -8,6 +8,7 @@ import {
 import { ChevronRight } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
+import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
 type ItemProps = {
@@ -18,7 +19,7 @@ type ItemProps = {
   disabled?: boolean;
   label: string;
   icon?: ComponentType;
-  imageUrl?: string;
+  visual?: string | React.ReactNode;
   className?: string;
   href?: string;
 };
@@ -49,12 +50,6 @@ const iconClasses = {
       base: "dark:s-text-action-400-dark",
       hover: "",
     },
-  },
-};
-
-const imageClasses = {
-  default: {
-    base: "s-h-5 s-w-5 s-rounded-full",
   },
 };
 
@@ -137,7 +132,7 @@ export function Item({
   variant = "default",
   label,
   icon,
-  imageUrl,
+  visual,
   className = "",
   href,
 }: ItemProps) {
@@ -180,8 +175,6 @@ export function Item({
     !disabled ? currentIconClasses.dark.hover : "" // Add condition here
   );
 
-  const finalImageClasses = classNames(imageClasses.default.base);
-
   const finalCevronClasses = classNames(
     iconBaseClasses,
     "s-flex-shrink-0",
@@ -201,9 +194,7 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
-      {imageUrl && (
-        <img src={imageUrl} className={classNames(finalImageClasses)} />
-      )}
+      {visual && <Avatar size="xs" visual={visual} />}
       <span className="s-grow s-truncate">{label}</span>
 
       {variant === "default" && (

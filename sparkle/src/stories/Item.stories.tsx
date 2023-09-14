@@ -65,11 +65,11 @@ export const ItemWithoutIcon: Story = {
   },
 };
 
-export const ItemWithImage: Story = {
+export const ItemWithVisual: Story = {
   args: {
     label: "gpt4",
     size: "md",
     variant: "dropdown",
-    imageUrl: "https://dust.tt/static/droidavatar/Droid_Black_1.jpg",
+    visual: "https://dust.tt/static/droidavatar/Droid_Black_1.jpg",
   },
 };
