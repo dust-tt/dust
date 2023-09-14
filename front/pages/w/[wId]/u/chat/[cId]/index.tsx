@@ -509,6 +509,7 @@ export function MessageView({
   message,
   loading,
   isLatestRetrieval,
+  readOnly,
   feedback,
 }: {
   user: UserType | null;
@@ -544,7 +545,7 @@ export function MessageView({
                 busy={loading}
               />
             ) : (
-              <Avatar visual={user?.image} size="sm" />
+              <Avatar visual={readOnly ? null : user?.image} size="sm" />
             )}
           </div>
           <div
