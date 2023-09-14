@@ -1,7 +1,8 @@
-import { AgentMessageType } from "@app/types/assistant/conversation";
-import React from "react";
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { Avatar } from "@dust-tt/sparkle";
+import React from "react";
+
+import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { AgentMessageType } from "@app/types/assistant/conversation";
 
 export function AgentMessage({ message }: { message: AgentMessageType }) {
   return (
