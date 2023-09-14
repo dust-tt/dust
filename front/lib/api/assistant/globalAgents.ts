@@ -24,8 +24,8 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: GLOBAL_AGENTS_ID.GPT4,
     sId: GLOBAL_AGENTS_SID.GPT4,
-    name: "GPT4",
-    pictureUrl: null,
+    name: "gpt4",
+    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status: "active",
     scope: "global",
     generation: {
@@ -63,8 +63,8 @@ async function _getSlackGlobalAgent(
   return {
     id: GLOBAL_AGENTS_ID.Slack,
     sId: GLOBAL_AGENTS_SID.Slack,
-    name: "Slack",
-    pictureUrl: null,
+    name: "slack",
+    pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     status: "active",
     scope: "global",
     generation: {

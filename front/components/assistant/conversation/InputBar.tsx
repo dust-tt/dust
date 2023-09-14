@@ -1,7 +1,15 @@
-import { DropdownMenu, PaperAirplaneIcon, RobotIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  IconButton,
+  PaperAirplaneIcon,
+  RobotIcon,
+} from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
 import {
   ForwardedRef,
   forwardRef,
+  Fragment,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -113,51 +121,56 @@ function AgentListImpl(
   }, [focus, visible, filter, filtered]);
 
   return (
-    <>
-      {visible ? (
-        <div
-          className="max-h-128 fixed z-30 w-48 overflow-auto rounded-xl bg-red-100 shadow-xl"
-          style={{
-            bottom: position.bottom,
-            left: position.left,
-          }}
-        >
-          <div className="flex flex-col">
-            <div className="flex-1"></div>
-            <div className="z-10 flex flex-col overflow-auto rounded-xl border bg-white">
-              {filtered.map((c, i) => (
-                <div
-                  className="flex w-full px-1"
-                  key={c.name}
-                  ref={focus === i ? focusRef : null}
-                >
+    <Transition
+      show={visible}
+      as={Fragment}
+      enter="transition ease-out duration-200"
+      enterFrom="transform opacity-0 scale-95 translate-y-5"
+      enterTo="transform opacity-100 scale-100 translate-y-0"
+      leave="transition ease-in duration-0"
+      leaveFrom="transform opacity-100 scale-100 translate-y-0"
+      leaveTo="transform opacity-0 scale-100 translate-y-0"
+    >
+      <div
+        className="max-h-128 fixed z-10 rounded-xl border border-structure-200 bg-white shadow-xl"
+        style={{
+          bottom: position.bottom,
+          left: position.left,
+        }}
+      >
+        <div className="flex flex-col gap-y-2 overflow-y-auto px-3 py-3">
+          {filtered.map((c, i) => (
+            <div
+              className="flex w-full px-1"
+              key={c.name}
+              ref={focus === i ? focusRef : null}
+            >
+              <div
+                className="flex w-full cursor-pointer flex-col"
+                onMouseEnter={() => {
+                  setFocus(i);
+                }}
+              >
+                <div className="flex flex-initial items-center gap-x-2 ">
+                  <div className="flex pt-1">
+                    <img src={c.pictureUrl} className="h-5 w-5 rounded-full" />
+                  </div>
                   <div
                     className={classNames(
-                      "flex w-full cursor-pointer flex-col"
+                      "flex-initial font-medium",
+                      focus === i ? "text-action-500" : "text-element-800"
                     )}
-                    onMouseEnter={() => {
-                      setFocus(i);
-                    }}
                   >
-                    <div className={classNames("flex flex-initial py-1")}>
-                      <div
-                        className={classNames(
-                          "flex-initial py-1 pl-2 pr-2 font-medium",
-                          focus === i ? "text-action-500" : "text-element-800"
-                        )}
-                      >
-                        {"@"}
-                        {c.name}
-                      </div>
-                    </div>
+                    {"@"}
+                    {c.name}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-      ) : null}
-    </>
+      </div>
+    </Transition>
   );
 }
 
@@ -194,6 +207,10 @@ export function AssistantInputBar({
     inputRef.current?.focus();
   }, []);
 
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+
   return (
     <>
       <AgentList
@@ -213,10 +230,15 @@ export function AssistantInputBar({
             )}
           >
             <div
-              className="inline-block w-full whitespace-pre-wrap border-0 px-3 py-3 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0"
+              className={classNames(
+                "inline-block w-full",
+                "border-0 px-3 py-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+                "whitespace-pre-wrap font-normal "
+              )}
               contentEditable={true}
               ref={inputRef}
               id={"dust-input-bar"}
+              suppressContentEditableWarning={true}
               onPaste={(e) => {
                 e.preventDefault();
                 const text = e.clipboardData.getData("text/plain");
@@ -253,7 +275,7 @@ export function AssistantInputBar({
                     ? node.textContent.slice(offset - 2, offset - 1)
                     : null;
 
-                  // MENTION WIDGET
+                  // Mention selection logic.
 
                   if (
                     lastOne === "@" &&
@@ -274,9 +296,12 @@ export function AssistantInputBar({
                     mentionSelectNode.contentEditable = "false";
 
                     const inputNode = document.createElement("span");
-                    inputNode.setAttribute("ignore", "false");
-                    inputNode.className =
-                      "min-w-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium px-0 py-0";
+                    inputNode.setAttribute("ignore", "none");
+                    inputNode.className = classNames(
+                      "min-w-0 px-0 py-0",
+                      "border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0",
+                      "text-brand font-medium"
+                    );
                     inputNode.contentEditable = "true";
 
                     mentionSelectNode.appendChild(inputNode);
@@ -317,7 +342,7 @@ export function AssistantInputBar({
                       setAgentListFilter("");
                       agentListRef.current?.reset();
 
-                      if (inputNode.getAttribute("ignore") === "true") {
+                      if (inputNode.getAttribute("ignore") !== "none") {
                         selected = null;
                       }
 
@@ -378,9 +403,15 @@ export function AssistantInputBar({
                         // Insert the content of mentionSelectNode after beforeTextNode only if
                         // we're not in ignore mode unless we are in ingnore mode (the user
                         // backspaced into the @)
-                        if (inputNode.getAttribute("ignore") !== "true") {
+                        if (
+                          inputNode.getAttribute("ignore") === "none" ||
+                          inputNode.getAttribute("ignore") === "space"
+                        ) {
                           const newTextNode = document.createTextNode(
-                            mentionSelectNode.textContent || ""
+                            (mentionSelectNode.textContent || "") +
+                              (inputNode.getAttribute("ignore") === "space"
+                                ? " "
+                                : "")
                           );
                           beforeTextNode.parentNode?.insertBefore(
                             newTextNode,
@@ -395,6 +426,8 @@ export function AssistantInputBar({
                     inputNode.onkeydown = (e) => {
                       // console.log("KEYDOWN", e.key);
                       if (e.key === "Escape") {
+                        agentListRef.current?.reset();
+                        inputNode.setAttribute("ignore", "escape");
                         inputNode.blur();
                         e.preventDefault();
                       }
@@ -409,13 +442,18 @@ export function AssistantInputBar({
                       if (e.key === "Backspace") {
                         if (inputNode.textContent === "") {
                           agentListRef.current?.reset();
-                          inputNode.setAttribute("ignore", "true");
+                          inputNode.setAttribute("ignore", "backspace");
                           inputNode.blur();
                           e.preventDefault();
                         }
                       }
+                      if (e.key === " ") {
+                        agentListRef.current?.reset();
+                        inputNode.setAttribute("ignore", "space");
+                        inputNode.blur();
+                        e.preventDefault();
+                      }
                       if (e.key === "Enter" || e.key === " ") {
-                        // agentListRef.current?.commit();
                         inputNode.blur();
                         e.preventDefault();
                       }
@@ -438,27 +476,22 @@ export function AssistantInputBar({
                   }
                 }
               }}
-              suppressContentEditableWarning={true}
             ></div>
 
-            <div className={classNames("z-10 flex flex-row space-x-3 pr-2")}>
+            <div className={classNames("z-10 flex flex-row space-x-4 pr-2")}>
               <div className="flex flex-col justify-center">
                 <DropdownMenu>
                   <DropdownMenu.Button icon={RobotIcon} />
                   <DropdownMenu.Items origin="bottomRight">
-                    <DropdownMenu.Item label="item 1" href="#" />
-                    <DropdownMenu.Item label="item 2" href="#" />
+                    {agentConfigurations.map((c) => (
+                      <DropdownMenu.Item key={c.sId} label={"@" + c.name} />
+                    ))}
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-
-              <PaperAirplaneIcon
-                className={classNames(
-                  "my-auto h-5 w-5",
-                  input.length === 0
-                    ? "text-gray-400"
-                    : "cursor-pointer text-action-500"
-                )}
+              <IconButton
+                variant="primary"
+                icon={PaperAirplaneIcon}
                 onClick={() => {
                   if (input.length === 0) {
                     return;
