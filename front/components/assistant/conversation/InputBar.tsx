@@ -1,6 +1,5 @@
 import {
   Avatar,
-  Button,
   DropdownMenu,
   IconButton,
   PaperAirplaneIcon,
