@@ -139,6 +139,23 @@ export const DropdownExample = () => {
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">With images in items</div>
+        <DropdownMenu>
+          <DropdownMenu.Button icon={Robot} />
+          <DropdownMenu.Items origin="topRight">
+            <DropdownMenu.Item
+              label="@gpt4"
+              imageUrl="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              imageUrl="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
     </>
   );
 };

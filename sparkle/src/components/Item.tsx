@@ -18,6 +18,7 @@ type ItemProps = {
   disabled?: boolean;
   label: string;
   icon?: ComponentType;
+  imageUrl?: string;
   className?: string;
   href?: string;
 };
@@ -48,6 +49,12 @@ const iconClasses = {
       base: "dark:s-text-action-400-dark",
       hover: "",
     },
+  },
+};
+
+const imageClasses = {
+  default: {
+    base: "s-h-6 s-w-6 s-rounded-full",
   },
 };
 
@@ -130,6 +137,7 @@ export function Item({
   variant = "default",
   label,
   icon,
+  imageUrl,
   className = "",
   href,
 }: ItemProps) {
@@ -172,6 +180,8 @@ export function Item({
     !disabled ? currentIconClasses.dark.hover : "" // Add condition here
   );
 
+  const finalImageClasses = classNames(imageClasses.default.base);
+
   const finalCevronClasses = classNames(
     iconBaseClasses,
     "s-flex-shrink-0",
@@ -191,6 +201,9 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
+      {imageUrl && (
+        <img src={imageUrl} className={classNames(finalImageClasses)} />
+      )}
       <span className="s-grow s-truncate">{label}</span>
 
       {variant === "default" && (
