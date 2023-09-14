@@ -544,7 +544,6 @@ export async function* postUserMessage(
 
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];
-    const agentMessageRow = agentMessageRows[i];
 
     yield {
       type: "agent_message_new",
@@ -553,7 +552,9 @@ export async function* postUserMessage(
       messageId: agentMessage.sId,
       message: agentMessage,
     };
+  }
 
+  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
     const eventStream = runAgent(
@@ -567,7 +568,23 @@ export async function* postUserMessage(
       agentMessage
     );
 
-    yield* streamRunAgentEvents(eventStream, agentMessageRow);
+    return streamRunAgentEvents(eventStream, agentMessageRows[i]);
+  });
+  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
+  while (eventStreamsPromises.length > 0) {
+    const winner = await Promise.race(
+      eventStreamsPromises.map(async (p, i) => {
+        return { v: await p, offset: i };
+      })
+    );
+    if (winner.v.done) {
+      eventStreamGenerators.splice(winner.offset, 1);
+      eventStreamsPromises.splice(winner.offset, 1);
+    } else {
+      eventStreamsPromises[winner.offset] =
+        eventStreamGenerators[winner.offset].next();
+      yield winner.v.value;
+    }
   }
 
   // await Promise.allSettled(
