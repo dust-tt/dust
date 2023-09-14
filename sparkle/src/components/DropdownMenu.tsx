@@ -198,6 +198,7 @@ interface DropdownItemProps {
   href?: string;
   disabled?: boolean;
   key?: string;
+  visual?: string | React.ReactNode;
   onClick?: () => void;
 }
 
@@ -206,6 +207,7 @@ DropdownMenu.Item = function ({
   href,
   disabled,
   key = "",
+  visual,
   onClick,
 }: DropdownItemProps) {
   return (
@@ -216,6 +218,7 @@ DropdownMenu.Item = function ({
         href={href}
         onClick={onClick}
         label={label}
+        visual={visual}
       />
     </Menu.Item>
   );

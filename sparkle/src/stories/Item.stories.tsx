@@ -64,3 +64,12 @@ export const ItemWithoutIcon: Story = {
     selected: false,
   },
 };
+
+export const ItemWithVisual: Story = {
+  args: {
+    label: "gpt4",
+    size: "md",
+    variant: "dropdown",
+    visual: "https://dust.tt/static/droidavatar/Droid_Black_1.jpg",
+  },
+};

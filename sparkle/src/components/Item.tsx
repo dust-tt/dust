@@ -8,6 +8,7 @@ import {
 import { ChevronRight } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
+import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
 type ItemProps = {
@@ -18,6 +19,7 @@ type ItemProps = {
   disabled?: boolean;
   label: string;
   icon?: ComponentType;
+  visual?: string | React.ReactNode;
   className?: string;
   href?: string;
 };
@@ -130,6 +132,7 @@ export function Item({
   variant = "default",
   label,
   icon,
+  visual,
   className = "",
   href,
 }: ItemProps) {
@@ -191,6 +194,7 @@ export function Item({
       href={href || "#"}
     >
       {icon && <Icon visual={icon} className={finalIconClasses} />}
+      {visual && <Avatar size="xs" visual={visual} />}
       <span className="s-grow s-truncate">{label}</span>
 
       {variant === "default" && (
