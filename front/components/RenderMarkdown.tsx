@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import { a11yDark } from "react-syntax-highlighter/dist/cjs/styles/hljs";
+import remarkGfm from "remark-gfm";
 
 function addClosingBackticks(str: string): string {
   // Regular expression to find either a single backtick or triple backticks
@@ -48,6 +49,7 @@ export function RenderMarkdown({ content }: { content: string }) {
         a: LinkBlock,
         p: React.Fragment,
       }}
+      remarkPlugins={[remarkGfm]}
     >
       {addClosingBackticks(content)}
     </ReactMarkdown>
