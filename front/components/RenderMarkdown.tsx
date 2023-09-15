@@ -58,7 +58,7 @@ export function RenderMarkdown({ content }: { content: string }) {
         ul: UlBlock,
         ol: OlBlock,
         li: LiBlock,
-        p: React.Fragment,
+        p: ParagraphBlock,
       }}
       remarkPlugins={[remarkGfm]}
     >
@@ -150,6 +150,9 @@ function OlBlock({ children }: { children: React.ReactNode }) {
 }
 function LiBlock({ children }: { children: React.ReactNode }) {
   return <li className="py-2">{children}</li>;
+}
+function ParagraphBlock({ children }: { children: React.ReactNode }) {
+  return <p className="py-2">{children}</p>;
 }
 
 function CodeBlock({
