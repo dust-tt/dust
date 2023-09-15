@@ -241,7 +241,17 @@ export async function* runAgent(
           messageId: agentMessage.sId,
           text: event.text,
         };
+
+        agentMessage.content = event.text;
       }
     }
   }
+
+  yield {
+    type: "agent_message_success",
+    created: Date.now(),
+    configurationId: configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
+  };
 }
