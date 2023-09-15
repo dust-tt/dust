@@ -32,7 +32,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
-import type { PostOrPatchAgentConfigurationResponseBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -215,7 +215,7 @@ export default function CreateAssistant({
     }
 
     const body: t.TypeOf<
-      typeof PostOrPatchAgentConfigurationResponseBodySchema
+      typeof PostOrPatchAgentConfigurationRequestBodySchema
     > = {
       assistant: {
         name: assistantHandle,
