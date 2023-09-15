@@ -52,6 +52,7 @@ export type RetrievalQuery = "auto" | "none" | TemplatedQuery;
 export type RetrievalTimeframe = "auto" | "none" | TimeFrame;
 export type RetrievalConfigurationType = {
   id: ModelId;
+  sId: string;
 
   type: "retrieval_configuration";
   dataSources: DataSourceConfiguration[];

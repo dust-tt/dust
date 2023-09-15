@@ -1,5 +1,5 @@
-import { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { DustAPI } from "@app/lib/dust_api";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 /**
@@ -35,7 +35,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
       prompt: "",
       model: {
         providerId: "openai",
-        modelId: "gpt-4-0613",
+        modelId: "gpt-4",
       },
     },
     action: null,
@@ -65,20 +65,24 @@ async function _getClaude2GlobalAgent(): Promise<AgentConfigurationType> {
 async function _getSlackGlobalAgent(
   auth: Authenticator
 ): Promise<AgentConfigurationType | null> {
-  const workspace = auth.workspace();
-  const workspaceId = auth.workspace()?.id;
-  if (!workspace || !workspaceId) {
-    throw new Error("Cannot find Global Agent Configuration: no workspace.");
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const slackDataSources = await DataSource.findAll({
-    where: {
-      connectorProvider: "slack",
-      workspaceId: workspaceId,
-    },
-  });
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const api = new DustAPI(prodCredentials);
 
-  if (!slackDataSources) {
+  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+  if (dsRes.isErr()) {
+    return null;
+  }
+
+  const slackDataSources = dsRes.value.filter(
+    (d) => d.connectorProvider === "slack"
+  );
+
+  if (slackDataSources.length === 0) {
     return null;
   }
 
@@ -100,13 +104,14 @@ async function _getSlackGlobalAgent(
     },
     action: {
       id: GLOBAL_AGENTS_ID.Slack,
+      sId: GLOBAL_AGENTS_SID.Slack + "-action",
       type: "retrieval_configuration",
       query: "auto",
       relativeTimeFrame: "auto",
       topK: 32,
       dataSources: slackDataSources.map((ds) => ({
         dataSourceId: ds.name,
-        workspaceId: workspace.sId,
+        workspaceId: prodCredentials.workspaceId,
         filter: { tags: null, parents: null },
       })),
     },

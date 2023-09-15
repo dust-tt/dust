@@ -23,6 +23,8 @@ export class AgentRetrievalConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
+
   declare query: "auto" | "none" | "templated";
   declare queryTemplate: string | null;
   declare relativeTimeFrame: "auto" | "none" | "custom";
@@ -46,6 +48,10 @@ AgentRetrievalConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     query: {
       type: DataTypes.STRING,
@@ -214,14 +220,12 @@ export class AgentRetrievalAction extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare retrievalConfigurationId: string;
+
   declare query: string | null;
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
-
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  >;
 }
 AgentRetrievalAction.init(
   {
@@ -239,6 +243,10 @@ AgentRetrievalAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    retrievalConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     query: {
       type: DataTypes.TEXT,
@@ -275,15 +283,6 @@ AgentRetrievalAction.init(
     },
   }
 );
-
-AgentRetrievalConfiguration.hasMany(AgentRetrievalAction, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
-  // We don't want to delete the action when the configuration is deleted
-  // But really we don't want to delete configurations ever.
-});
-AgentRetrievalAction.belongsTo(AgentRetrievalConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
-});
 
 export class RetrievalDocument extends Model<
   InferAttributes<RetrievalDocument>,
