@@ -7,20 +7,27 @@ import {
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
+import Conversation from "@app/components/assistant/conversation/Conversation";
+import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import { MentionType } from "@app/types/assistant/conversation";
+import {
+  ConversationType,
+  MentionType,
+} from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { GA_TRACKING_ID = "" } = process.env;
+const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  baseUrl: string;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -44,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -60,9 +68,14 @@ export function AssistantHelper({ children }: { children: React.ReactNode }) {
 export default function AssistantNew({
   user,
   owner,
+  baseUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
+  const [conversation, setConversation] = useState<ConversationType | null>(
+    null
+  );
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create new conversation.
@@ -85,6 +98,13 @@ export default function AssistantNew({
 
     const conversation = ((await cRes.json()) as PostConversationsResponseBody)
       .conversation;
+
+    // We use this to clear the UI start rendering the conversation immediately to give an
+    // impression of instantaneity.
+    setConversation(conversation);
+
+    // We start the push before creating the message to optimize for instantaneity as well.
+    void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
 
     // Create a new user message.
     const mRes = await fetch(
@@ -110,50 +130,68 @@ export default function AssistantNew({
       window.alert(`Error creating message: ${data.error.message}`);
       return;
     }
-
-    await router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
   };
 
   return (
     <AppLayout
       user={user}
       owner={owner}
+      isWideMode={conversation ? true : false}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
       subNavigation={subNavigationLab({ owner, current: "assistant" })}
+      titleChildren={
+        conversation && (
+          <ConversationTitle
+            title={conversation.title || ""}
+            shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
+            // onDelete={() => {}}
+            onUpdateVisibility={() => {
+              return;
+            }}
+            visibility={"unlisted"}
+          />
+        )
+      }
     >
-      <PageHeader
-        title="Welcome to Assistant"
-        icon={ChatBubbleBottomCenterTextIcon}
-      />
-      <AssistantHelper>
-        <div className="mb-8 text-lg font-bold">
-          Get started with{" "}
-          <Logo className="inline-block w-14 pb-0.5 pl-1"></Logo>
-        </div>
-        <p className="my-4 text-sm text-element-800">
-          Lorem ispum dolor sit amet, consectetur adipiscing elit. You have
-          access to multiple assistants, each with their own set of skills.
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-        </p>
-        <p className="my-4 text-sm text-element-800">
-          Assistants you have access to:{" "}
-          <span className="font-bold italic">@gpt3.5-turbo</span>, and{" "}
-          <span className="font-bold italic">@claude-instant</span>.
-        </p>
-        {["admin", "builder"].includes(owner.role) && (
-          <div className="pt-4 text-center">
-            <Button
-              variant={"primary"}
-              icon={RobotIcon}
-              label="Configure new Custom Assistants"
-              onClick={() => {
-                void router.push(`/w/${owner.sId}/builder/assistants`);
-              }}
-            />
-          </div>
-        )}
-      </AssistantHelper>
+      {!conversation ? (
+        <>
+          <PageHeader
+            title="Welcome to Assistant"
+            icon={ChatBubbleBottomCenterTextIcon}
+          />
+          <AssistantHelper>
+            <div className="mb-8 text-lg font-bold">
+              Get started with{" "}
+              <Logo className="inline-block w-14 pb-0.5 pl-1"></Logo>
+            </div>
+            <p className="my-4 text-sm text-element-800">
+              Lorem ispum dolor sit amet, consectetur adipiscing elit. You have
+              access to multiple assistants, each with their own set of skills.
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            </p>
+            <p className="my-4 text-sm text-element-800">
+              Assistants you have access to:{" "}
+              <span className="font-bold italic">@gpt3.5-turbo</span>, and{" "}
+              <span className="font-bold italic">@claude-instant</span>.
+            </p>
+            {["admin", "builder"].includes(owner.role) && (
+              <div className="pt-4 text-center">
+                <Button
+                  variant={"primary"}
+                  icon={RobotIcon}
+                  label="Configure new Custom Assistants"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/builder/assistants`);
+                  }}
+                />
+              </div>
+            )}
+          </AssistantHelper>
+        </>
+      ) : (
+        <Conversation owner={owner} conversationId={conversation.sId} />
+      )}
 
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
