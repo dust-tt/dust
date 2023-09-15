@@ -55,6 +55,9 @@ export function RenderMarkdown({ content }: { content: string }) {
         pre: PreBlock,
         code: CodeBlock,
         a: LinkBlock,
+        ul: UlBlock,
+        ol: OlBlock,
+        li: LiBlock,
         p: React.Fragment,
       }}
       remarkPlugins={[remarkGfm]}
@@ -139,6 +142,16 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+function UlBlock({ children }: { children: React.ReactNode }) {
+  return <ul className="list-disc py-2">{children}</ul>;
+}
+function OlBlock({ children }: { children: React.ReactNode }) {
+  return <ol className="list-decimal py-3">{children}</ol>;
+}
+function LiBlock({ children }: { children: React.ReactNode }) {
+  return <li className="py-2">{children}</li>;
+}
+
 function CodeBlock({
   inline,
   className,
@@ -149,17 +162,11 @@ function CodeBlock({
   children?: React.ReactNode;
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
-  let language = match ? match[1] : "text";
-
-  const supportedLanguages = ["js", "ts", "tsx", "json", "text", "python"];
-  if (!supportedLanguages.includes(language)) {
-    language = "text";
-  }
-
+  const language = match ? match[1] : "text";
   const slate900 = slate["900"];
   const slate50 = slate["50"];
   const emerald500 = emerald["500"];
-  const amber500 = amber["500"];
+  const amber400 = amber["400"];
   const amber200 = amber["200"];
   const pink400 = pink["400"];
   const yellow300 = yellow["300"];
@@ -201,28 +208,28 @@ function CodeBlock({
           color: pink400,
         },
         "hljs-number": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-built_in": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-builtin-name": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-literal": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-type": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-params": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-meta": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-link": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-attribute": {
           color: yellow300,
@@ -256,7 +263,7 @@ function CodeBlock({
           overflowX: "auto",
           background: slate900,
           color: slate50,
-          padding: "0.5em",
+          padding: "1em",
         },
         "hljs-emphasis": {
           fontStyle: "italic",
@@ -271,6 +278,8 @@ function CodeBlock({
       {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
-    <code className="rounded-md p-1">{children}</code>
+    <code className="rounded-md border-structure-100 bg-slate-200 p-1">
+      {children}
+    </code>
   );
 }

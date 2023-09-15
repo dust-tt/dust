@@ -10,9 +10,7 @@ export function UserMessage({ message }: { message: UserMessageType }) {
       pictureUrl={message.user?.image}
       name={message.context.fullName}
     >
-      <div className="break-all text-base font-normal">
-        <RenderMarkdown content={message.content} />
-      </div>
+      <RenderMarkdown content={message.content} />
     </ConversationMessage>
   );
 }
