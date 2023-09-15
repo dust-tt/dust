@@ -229,7 +229,7 @@ export async function generateRetrievalParams(
       if (configuration.query === "auto") {
         if (!rawInputs.query || typeof rawInputs.query !== "string") {
           return new Err(
-            new Error("Failed to genreate a valid retrieval query.")
+            new Error("Failed to generate a valid retrieval query.")
           );
         }
         query = rawInputs.query as string;
@@ -443,7 +443,7 @@ export async function* runRetrieval(
     relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
     relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
     topK: params.topK,
-    retrievalConfigurationId: c.id,
+    retrievalConfigurationId: c.sId,
   });
 
   yield {

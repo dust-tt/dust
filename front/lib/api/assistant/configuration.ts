@@ -4,7 +4,7 @@ import {
   getGlobalAgent,
   getGlobalAgents,
   isGlobalAgentId,
-} from "@app/lib/api/assistant/globalAgents";
+} from "@app/lib/api/assistant/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -39,7 +39,7 @@ export async function getAgentConfiguration(
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Cannot find AgentConfiguration: no workspace.");
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   if (isGlobalAgentId(agentId)) {
@@ -97,6 +97,7 @@ export async function getAgentConfiguration(
     action: actionConfig
       ? {
           id: actionConfig.id,
+          sId: actionConfig.sId,
           type: "retrieval_configuration",
           query: renderRetrievalQueryType(actionConfig),
           relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
@@ -142,7 +143,7 @@ export async function getAgentConfigurations(
 ): Promise<AgentConfigurationType[] | []> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Cannot find AgentConfiguration: no workspace.");
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   const rawAgents = await AgentConfiguration.findAll({
@@ -196,7 +197,7 @@ export async function createAgentConfiguration(
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Cannot create AgentConfiguration: Workspace not found.");
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   // Create Agent config
@@ -207,6 +208,8 @@ export async function createAgentConfiguration(
     pictureUrl: pictureUrl,
     workspaceId: owner.id,
     generationConfigurationId: generation?.id || null,
+    // We know here that the retrievalConfiguration is one that we created and not a "global
+    // virtual" one so we're good to set the foreign key.
     retrievalConfigurationId: action?.id || null,
   });
 
@@ -240,9 +243,7 @@ export async function updateAgentConfiguration(
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error(
-      "Cannot create AgentGenerationConfiguration: Workspace not found."
-    );
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   await AgentConfiguration.update(
@@ -286,9 +287,7 @@ export async function createAgentGenerationConfiguration(
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error(
-      "Cannot create AgentGenerationConfiguration: Workspace not found."
-    );
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   const genConfig = await AgentGenerationConfiguration.create({
@@ -326,10 +325,9 @@ export async function updateAgentGenerationConfiguration(
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error(
-      "Cannot update AgentGenerationConfiguration: Workspace not found."
-    );
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
+
   const agentConfig = await AgentConfiguration.findOne({
     where: {
       sId: agentId,
@@ -394,7 +392,7 @@ export async function createAgentActionConfiguration(
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Cannot create AgentActionConfiguration: no workspace");
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   if (type !== "retrieval_configuration") {
@@ -404,6 +402,7 @@ export async function createAgentActionConfiguration(
   return await front_sequelize.transaction(async (t) => {
     const retrievalConfig = await AgentRetrievalConfiguration.create(
       {
+        sId: generateModelSId(),
         query: isTemplatedQuery(query) ? "templated" : query,
         queryTemplate: isTemplatedQuery(query) ? query.template : null,
         relativeTimeFrame: isTimeFrame(timeframe) ? "custom" : timeframe,
@@ -419,6 +418,7 @@ export async function createAgentActionConfiguration(
 
     return {
       id: retrievalConfig.id,
+      sId: retrievalConfig.sId,
       type: "retrieval_configuration",
       query,
       relativeTimeFrame: timeframe,
@@ -451,10 +451,9 @@ export async function updateAgentActionConfiguration(
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error(
-      "Cannot update AgentActionConfiguration: Workspace not found."
-    );
+    throw new Error("Unexpected `auth` without `workspace`.");
   }
+
   if (type !== "retrieval_configuration") {
     throw new Error("Unkown Agent action type");
   }
@@ -515,6 +514,7 @@ export async function updateAgentActionConfiguration(
 
     return {
       id: updatedRetrievalConfig.id,
+      sId: updatedRetrievalConfig.sId,
       type: "retrieval_configuration",
       query,
       relativeTimeFrame: timeframe,
