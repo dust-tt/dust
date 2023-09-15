@@ -33,6 +33,7 @@ import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -81,6 +82,22 @@ const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
   SELECTED: "Selected data sources",
 };
+
+const TIME_FRAME_MODES = ["AUTO", "FORCED"] as const;
+type TimeFrameMode = (typeof TIME_FRAME_MODES)[number];
+const TIME_FRAME_MODE_TO_LABEL: Record<TimeFrameMode, string> = {
+  AUTO: "Auto (default)",
+  FORCED: "Forced",
+};
+
+const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
+  hour: "hours",
+  day: "days",
+  week: "weeks",
+  month: "months",
+  year: "years",
+};
+
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
   {
@@ -101,6 +118,7 @@ export default function CreateAssistant({
   dataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   const [dataSourceMode, setDataSourceMode] =
     useState<DataSourceMode>("GENERIC");
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -114,6 +132,16 @@ export default function CreateAssistant({
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
   } | null>(null);
+
+  const [timeFrameMode, setTimeFrameMode] = useState<TimeFrameMode>("AUTO");
+  const [timeFrame, setTimeFrame] = useState<{
+    value: number | null;
+    unit: TimeframeUnit;
+  }>({
+    value: 1,
+    unit: "month",
+  });
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   const [assistantHandle, setAssistantHandle] = useState<string | null>(null);
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -182,6 +210,17 @@ export default function CreateAssistant({
       }
     }
 
+    if (timeFrameMode === "FORCED") {
+      edited = true;
+
+      if (!timeFrame.value) {
+        valid = false;
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
+      }
+    }
+
     setSubmitEnabled(valid);
     setEdited(edited);
   }, [
@@ -190,6 +229,8 @@ export default function CreateAssistant({
     assistantInstructions,
     dataSourceMode,
     configuredDataSourceCount,
+    timeFrameMode,
+    timeFrame.value,
   ]);
 
   useEffect(() => {
@@ -211,7 +252,24 @@ export default function CreateAssistant({
   const submitForm = async () => {
     if (!assistantHandle || !assistantDescription || !assistantInstructions) {
       // should be unreachable
+      // we keep this for TS
       throw new Error("Form not valid");
+    }
+
+    let tfParam: t.TypeOf<
+      typeof PostOrPatchAgentConfigurationRequestBodySchema
+    >["assistant"]["action"]["timeframe"] = "auto";
+
+    if (timeFrameMode === "FORCED") {
+      if (!timeFrame.value) {
+        // unreachable
+        // we keep this for TS
+        throw new Error("Form not valid");
+      }
+      tfParam = {
+        duration: timeFrame.value,
+        unit: timeFrame.unit,
+      };
     }
 
     const body: t.TypeOf<
@@ -225,7 +283,7 @@ export default function CreateAssistant({
         action: {
           type: "retrieval_configuration",
           query: "auto", // TODO ?
-          timeframe: "auto", // TODO
+          timeframe: tfParam,
           topK: 16, // TODO ?
           dataSources:
             dataSourceMode === "GENERIC"
@@ -405,10 +463,9 @@ export default function CreateAssistant({
               <AssistantBuilderTextInput
                 placeholder="Achieve a particular task, follow a template, use a certain formating..."
                 onChange={setAssistantInstructions}
-                error={null} // TODO ?
+                error={null}
                 name="assistantInstructions"
               />
-              {/* TODO */}
               <div className="flex flex-row items-center space-x-2">
                 <div className="text-sm font-semibold text-action-500">
                   Select a specific LLM model
@@ -486,7 +543,6 @@ export default function CreateAssistant({
                 }}
                 onDelete={deleteDataSource}
               />
-              {/* TODO */}
               <div className="pt-6 text-base font-semibold text-element-900">
                 Timeframe for the data sources
               </div>
@@ -498,25 +554,108 @@ export default function CreateAssistant({
                 will define itself, from the question, what the timeframe should
                 be.
               </div>
-              <div className="flex flex-row items-center space-x-2 pt-2">
-                <div className="text-sm font-semibold text-element-900">
-                  Timeframe:
+              <div>
+                <div className="flex flex-row items-center space-x-2 pt-2">
+                  <div className="text-sm font-semibold text-element-900">
+                    Timeframe:
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenu.Button>
+                      <Button
+                        type="select"
+                        labelVisible={true}
+                        label={TIME_FRAME_MODE_TO_LABEL[timeFrameMode]}
+                        variant="secondary"
+                        size="sm"
+                      />
+                    </DropdownMenu.Button>
+                    <DropdownMenu.Items origin="bottomRight">
+                      {Object.entries(TIME_FRAME_MODE_TO_LABEL).map(
+                        ([key, value]) => (
+                          <DropdownMenu.Item
+                            key={key}
+                            label={value}
+                            onClick={() => {
+                              setTimeFrameMode(key as TimeFrameMode);
+                            }}
+                          />
+                        )
+                      )}
+                    </DropdownMenu.Items>
+                  </DropdownMenu>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label="Auto (default)"
-                      variant="secondary"
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="bottomRight">
-                    <DropdownMenu.Item label="item 1" />
-                    <DropdownMenu.Item label="item 2" />
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                <div className="mt-4">
+                  <Transition
+                    show={timeFrameMode === "FORCED"}
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="transition-all duration-300"
+                    enter="transition-all duration-300"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                    className=""
+                    afterEnter={() => {
+                      window.scrollBy({
+                        left: 0,
+                        top: 70,
+                        behavior: "smooth",
+                      });
+                    }}
+                  >
+                    <div className={"flex flex-row items-center gap-4"}>
+                      <div className="font-normal text-element-900">
+                        Focus on the last
+                      </div>
+                      <input
+                        type="text"
+                        className={classNames(
+                          "text-smborder-gray-300 h-8 w-16 rounded-md text-center",
+                          !timeFrameError
+                            ? "focus:border-action-500 focus:ring-action-500"
+                            : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                          "bg-structure-50 stroke-structure-50"
+                        )}
+                        value={timeFrame.value || ""}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value, 10);
+                          if (!isNaN(value) || !e.target.value) {
+                            setTimeFrame((tf) => ({
+                              value: value || null,
+                              unit: tf.unit,
+                            }));
+                          }
+                        }}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenu.Button tooltipPosition="above">
+                          <Button
+                            type="select"
+                            labelVisible={true}
+                            label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.unit]}
+                            variant="secondary"
+                            size="sm"
+                          />
+                        </DropdownMenu.Button>
+                        <DropdownMenu.Items origin="bottomLeft">
+                          {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                            ([key, value]) => (
+                              <DropdownMenu.Item
+                                key={key}
+                                label={value}
+                                onClick={() => {
+                                  setTimeFrame((tf) => ({
+                                    value: tf.value,
+                                    unit: key as TimeframeUnit,
+                                  }));
+                                }}
+                              />
+                            )
+                          )}
+                        </DropdownMenu.Items>
+                      </DropdownMenu>
+                    </div>
+                  </Transition>
+                </div>
               </div>
             </div>
           </div>

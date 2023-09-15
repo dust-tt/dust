@@ -12,6 +12,7 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -41,13 +42,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         t.literal("none"),
         t.type({
           duration: t.number,
-          unit: t.union([
-            t.literal("hour"),
-            t.literal("day"),
-            t.literal("week"),
-            t.literal("month"),
-            t.literal("year"),
-          ]),
+          unit: TimeframeUnitCodec,
         }),
       ]),
       topK: t.number,
