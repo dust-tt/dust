@@ -378,7 +378,7 @@ export async function* postUserMessage(
   const owner = auth.workspace();
 
   if (!owner || owner.id !== conversation.owner.id) {
-    return yield {
+    return {
       type: "user_message_error",
       created: Date.now(),
       error: {
@@ -784,7 +784,7 @@ export async function* editUserMessage(
   }
 ): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
   if (auth.user()?.id !== message.user?.id) {
-    return yield {
+    return {
       type: "user_message_error",
       created: Date.now(),
       error: {

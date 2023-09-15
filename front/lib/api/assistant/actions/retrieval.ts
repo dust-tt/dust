@@ -411,7 +411,7 @@ export async function* runRetrieval(
   );
 
   if (paramsRes.isErr()) {
-    return yield {
+    return {
       type: "retrieval_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -502,7 +502,7 @@ export async function* runRetrieval(
   ]);
 
   if (res.isErr()) {
-    return yield {
+    return {
       type: "retrieval_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -519,7 +519,7 @@ export async function* runRetrieval(
 
   for (const t of run.traces) {
     if (t[1][0][0].error) {
-      return yield {
+      return {
         type: "retrieval_error",
         created: Date.now(),
         configurationId: configuration.sId,

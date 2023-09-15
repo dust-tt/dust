@@ -175,7 +175,7 @@ export async function* runAgent(
           yield event;
         }
         if (event.type === "retrieval_error") {
-          yield {
+          return {
             type: "agent_error",
             created: event.created,
             configurationId: configuration.sId,
@@ -222,7 +222,7 @@ export async function* runAgent(
         yield event;
       }
       if (event.type === "generation_error") {
-        yield {
+        return {
           type: "agent_error",
           created: event.created,
           configurationId: configuration.sId,
