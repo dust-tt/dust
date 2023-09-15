@@ -166,7 +166,7 @@ function CodeBlock({
   const slate900 = slate["900"];
   const slate50 = slate["50"];
   const emerald500 = emerald["500"];
-  const amber500 = amber["400"];
+  const amber400 = amber["400"];
   const amber200 = amber["200"];
   const pink400 = pink["400"];
   const yellow300 = yellow["300"];
@@ -208,28 +208,28 @@ function CodeBlock({
           color: pink400,
         },
         "hljs-number": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-built_in": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-builtin-name": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-literal": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-type": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-params": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-meta": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-link": {
-          color: amber500,
+          color: amber400,
         },
         "hljs-attribute": {
           color: yellow300,
