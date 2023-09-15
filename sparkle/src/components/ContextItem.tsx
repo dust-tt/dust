@@ -28,12 +28,12 @@ export function ContextItem({
       aria-label={title}
     >
       <div className="s-flex s-flex-row s-gap-3 s-pb-5 s-pt-4">
-        <div className="s-flex">{visual}</div>
+        <div className="s-flex s-pt-1.5">{visual}</div>
         <div className="s-flex s-grow s-flex-col">
           <div className="s-text-normal s-flex s-h-9 s-flex-col s-justify-center s-font-semibold">
             {title}
           </div>
-          {children}
+          <div className="-s-mt-1">{children}</div>
         </div>
         <div>{action}</div>
       </div>
@@ -104,9 +104,5 @@ interface ContextItemVisualProps {
 }
 
 ContextItem.Visual = function ({ visual }: ContextItemVisualProps) {
-  return (
-    <div className="s-flex s-h-9 s-flex-col s-justify-center">
-      <Icon size="md" visual={visual} />
-    </div>
-  );
+  return <Icon size="md" visual={visual} />;
 };

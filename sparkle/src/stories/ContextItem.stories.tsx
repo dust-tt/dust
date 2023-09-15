@@ -81,7 +81,7 @@ export const ListItemExample = () => (
         visual={<ContextItem.Visual visual={Github} />}
       >
         <>
-          <div className="s-pb-2">
+          <div className="s-py-2">
             <Chip label="Syncing…" color="amber" size="sm" isBusy />
           </div>
           <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
@@ -93,7 +93,7 @@ export const ListItemExample = () => (
         visual={
           <Avatar
             visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
-            size="md"
+            size="sm"
           />
         }
       >
@@ -112,7 +112,7 @@ export const ListItemExample = () => (
         visual={
           <Avatar
             visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
-            size="md"
+            size="sm"
           />
         }
       >
@@ -131,7 +131,7 @@ export const ListItemExample = () => (
         visual={
           <Avatar
             visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
-            size="md"
+            size="sm"
           />
         }
       >
