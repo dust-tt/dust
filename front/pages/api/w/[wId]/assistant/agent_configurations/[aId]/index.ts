@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, status, action, generation } =
+      const { name, pictureUrl, status, action, generation, description } =
         bodyValidation.right.assistant;
 
       if (action) {
@@ -116,6 +116,7 @@ async function handler(
         {
           name,
           pictureUrl,
+          description,
           status,
         }
       );

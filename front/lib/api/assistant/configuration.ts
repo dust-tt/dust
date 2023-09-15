@@ -93,6 +93,7 @@ export async function getAgentConfiguration(
     scope: "workspace",
     name: agent.name,
     pictureUrl: agent.pictureUrl,
+    description: agent.description,
     status: agent.status,
     action: actionConfig
       ? {
@@ -183,12 +184,14 @@ export async function createAgentConfiguration(
   auth: Authenticator,
   {
     name,
+    description,
     pictureUrl,
     status,
     generation,
     action,
   }: {
     name: string;
+    description: string;
     pictureUrl: string;
     status: AgentConfigurationStatus;
     generation: AgentGenerationConfigurationType | null;
@@ -205,6 +208,7 @@ export async function createAgentConfiguration(
     sId: generateModelSId(),
     status: status,
     name: name,
+    description: description,
     pictureUrl: pictureUrl,
     workspaceId: owner.id,
     generationConfigurationId: generation?.id || null,
@@ -218,6 +222,7 @@ export async function createAgentConfiguration(
     sId: agentConfig.sId,
     scope: "workspace",
     name: agentConfig.name,
+    description: agentConfig.description,
     pictureUrl: agentConfig.pictureUrl,
     status: agentConfig.status,
     action: action,
@@ -233,10 +238,12 @@ export async function updateAgentConfiguration(
   agentId: string,
   {
     name,
+    description,
     pictureUrl,
     status,
   }: {
     name: string;
+    description: string;
     pictureUrl: string;
     status: AgentConfigurationStatus;
   }
@@ -249,6 +256,7 @@ export async function updateAgentConfiguration(
   await AgentConfiguration.update(
     {
       name: name,
+      description: description,
       pictureUrl: pictureUrl,
       status: status,
       workspaceId: owner.id,

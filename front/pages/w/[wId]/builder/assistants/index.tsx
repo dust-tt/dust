@@ -99,7 +99,9 @@ export default function AssistantsBuilder({
               key={agent.sId}
               imageUrl={agent.pictureUrl}
               name={`@${agent.name}`}
-              description={"lorem ipsum dolor sit amet"}
+              description={
+                agent.description || `The "${agent.name}" assistant.`
+              }
               action={{
                 type: "slider-toggle",
                 props: {
@@ -133,7 +135,9 @@ export default function AssistantsBuilder({
               key={agent.sId}
               imageUrl={agent.pictureUrl}
               name={`@${agent.name}`}
-              description={"lorem ipsum dolor sit amet"}
+              description={
+                agent.description || `The "${agent.name}" assistant.`
+              }
               action={{
                 type: "button",
                 props: {
