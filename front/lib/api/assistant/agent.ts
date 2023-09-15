@@ -4,7 +4,6 @@ import {
 } from "@app/lib/actions/registry";
 import { runAction } from "@app/lib/actions/server";
 import {
-  RetrievalDocumentsEvent,
   RetrievalParamsEvent,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -115,7 +114,7 @@ export type AgentErrorEvent = {
 };
 
 // Event sent durint the execution of an action. These are action specific.
-export type AgentActionEvent = RetrievalParamsEvent | RetrievalDocumentsEvent;
+export type AgentActionEvent = RetrievalParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
@@ -173,9 +172,6 @@ export async function* runAgent(
 
       for await (const event of eventStream) {
         if (event.type === "retrieval_params") {
-          yield event;
-        }
-        if (event.type === "retrieval_documents") {
           yield event;
         }
         if (event.type === "retrieval_error") {

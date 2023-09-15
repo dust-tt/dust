@@ -997,11 +997,7 @@ async function* streamRunAgentEvents(
 
     // All other events that won't impact the database and are related to actions or tokens
     // generation.
-    if (
-      ["retrieval_params", "retrieval_documents", "generation_tokens"].includes(
-        event.type
-      )
-    ) {
+    if (["retrieval_params", "generation_tokens"].includes(event.type)) {
       yield event;
     }
   }

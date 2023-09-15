@@ -61,7 +61,6 @@ export async function postUserMessageWithPubSub(
             case "retrieval_params":
             case "agent_error":
             case "agent_action_success":
-            case "retrieval_documents":
             case "generation_tokens":
             case "agent_generation_success":
             case "agent_message_success": {

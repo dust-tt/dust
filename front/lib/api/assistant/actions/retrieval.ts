@@ -354,15 +354,6 @@ export type RetrievalParamsEvent = {
   action: RetrievalActionType;
 };
 
-// Event sent during retrieval once the retrieved documents have been generated.
-export type RetrievalDocumentsEvent = {
-  type: "retrieval_documents";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: RetrievalActionType;
-};
-
 export type RetrievalErrorEvent = {
   type: "retrieval_error";
   created: number;
@@ -395,10 +386,7 @@ export async function* runRetrieval(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
-  | RetrievalParamsEvent
-  | RetrievalDocumentsEvent
-  | RetrievalSuccessEvent
-  | RetrievalErrorEvent
+  RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent
 > {
   const owner = auth.workspace();
   if (!owner) {
@@ -460,7 +448,7 @@ export async function* runRetrieval(
         query: params.query,
         topK: params.topK,
       },
-      documents: [],
+      documents: null,
     },
   };
 
@@ -606,23 +594,6 @@ export async function* runRetrieval(
       }
     }
   });
-
-  yield {
-    type: "retrieval_documents",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      id: action.id,
-      type: "retrieval_action",
-      params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
-        topK: params.topK,
-      },
-      documents,
-    },
-  };
 
   yield {
     type: "retrieval_success",
