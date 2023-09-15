@@ -164,7 +164,6 @@ export async function* getMessagesEvents(
         { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
         { COUNT: 32, BLOCK: 60 * 1000 }
       );
-      await redis.setEx(pubsubChannel, 60 * 60 * 24, "1");
       if (!events) {
         return;
       }
