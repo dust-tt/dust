@@ -6,8 +6,16 @@ import {
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import { a11yDark } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 import remarkGfm from "remark-gfm";
+import {
+  amber,
+  blue,
+  emerald,
+  pink,
+  slate,
+  violet,
+  yellow,
+} from "tailwindcss/colors";
 
 function addClosingBackticks(str: string): string {
   // Regular expression to find either a single backtick or triple backticks
@@ -103,16 +111,24 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <pre className="max-w-3xl break-all rounded-md bg-slate-900 p-2 text-white">
+    <pre className="mt-2 max-w-3xl break-all rounded-md bg-slate-800">
       {/** should not need class max-w-3xl */}
       <div className="relative">
-        <div className="absolute right-1 top-1 text-white">
+        <div className="absolute right-2 top-2">
           {(validChildrenContent || fallbackData) && (
-            <IconButton
-              variant="tertiary"
-              icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
-              onClick={handleClick}
-            />
+            <div className="flex gap-2 align-bottom">
+              <div className="text-xs text-slate-300">
+                <a onClick={handleClick} className="cursor-pointer">
+                  {confirmed ? "Copied!" : "Copy"}
+                </a>
+              </div>
+              <IconButton
+                variant="tertiary"
+                size="xs"
+                icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
+                onClick={handleClick}
+              />
+            </div>
           )}
         </div>
         <div className="overflow-auto pt-8">
@@ -134,21 +150,127 @@ function CodeBlock({
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   let language = match ? match[1] : "text";
+
   const supportedLanguages = ["js", "ts", "tsx", "json", "text", "python"];
   if (!supportedLanguages.includes(language)) {
     language = "text";
   }
 
+  const slate900 = slate["900"];
+  const slate50 = slate["50"];
+  const emerald500 = emerald["500"];
+  const amber500 = amber["500"];
+  const amber200 = amber["200"];
+  const pink400 = pink["400"];
+  const yellow300 = yellow["300"];
+  const blue400 = blue["400"];
+  const violet400 = violet["400"];
+
   return !inline && language ? (
     <SyntaxHighlighter
       className="rounded-md"
-      style={a11yDark}
+      style={{
+        "hljs-comment": {
+          color: amber200,
+        },
+        "hljs-quote": {
+          color: amber200,
+        },
+        "hljs-variable": {
+          color: emerald500,
+        },
+        "hljs-template-variable": {
+          color: pink400,
+        },
+        "hljs-tag": {
+          color: pink400,
+        },
+        "hljs-name": {
+          color: pink400,
+        },
+        "hljs-selector-id": {
+          color: pink400,
+        },
+        "hljs-selector-class": {
+          color: pink400,
+        },
+        "hljs-regexp": {
+          color: pink400,
+        },
+        "hljs-deletion": {
+          color: pink400,
+        },
+        "hljs-number": {
+          color: amber500,
+        },
+        "hljs-built_in": {
+          color: amber500,
+        },
+        "hljs-builtin-name": {
+          color: amber500,
+        },
+        "hljs-literal": {
+          color: amber500,
+        },
+        "hljs-type": {
+          color: amber500,
+        },
+        "hljs-params": {
+          color: amber500,
+        },
+        "hljs-meta": {
+          color: amber500,
+        },
+        "hljs-link": {
+          color: amber500,
+        },
+        "hljs-attribute": {
+          color: yellow300,
+        },
+        "hljs-string": {
+          color: emerald500,
+        },
+        "hljs-symbol": {
+          color: emerald500,
+        },
+        "hljs-bullet": {
+          color: emerald500,
+        },
+        "hljs-addition": {
+          color: emerald500,
+        },
+        "hljs-title": {
+          color: blue400,
+        },
+        "hljs-section": {
+          color: blue400,
+        },
+        "hljs-keyword": {
+          color: violet400,
+        },
+        "hljs-selector-tag": {
+          color: violet400,
+        },
+        hljs: {
+          display: "block",
+          overflowX: "auto",
+          background: slate900,
+          color: slate50,
+          padding: "0.5em",
+        },
+        "hljs-emphasis": {
+          fontStyle: "italic",
+        },
+        "hljs-strong": {
+          fontWeight: "bold",
+        },
+      }}
       language={language}
       PreTag="div"
     >
       {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
-    <code className="rounded-md bg-action-50 p-1">{children}</code>
+    <code className="rounded-md p-1">{children}</code>
   );
 }
