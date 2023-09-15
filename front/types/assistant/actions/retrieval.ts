@@ -6,7 +6,15 @@ import { ModelId } from "@app/lib/databases";
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
 import { AgentActionType } from "@app/types/assistant/conversation";
 
-export type TimeframeUnit = "hour" | "day" | "week" | "month" | "year";
+export const TIME_FRAME_UNITS = [
+  "hour",
+  "day",
+  "week",
+  "month",
+  "year",
+] as const;
+export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
+
 export type TimeFrame = {
   duration: number;
   unit: TimeframeUnit;

@@ -97,6 +97,10 @@ export function timeFrameFromNow(timeFrame: TimeFrame): number {
       return now - timeFrame.duration * 30 * 24 * 60 * 60 * 1000;
     case "year":
       return now - timeFrame.duration * 365 * 24 * 60 * 60 * 1000;
+    default:
+      ((x: never) => {
+        throw new Error(`Unexpected time frame unit ${x}`);
+      })(timeFrame.unit);
   }
 }
 
