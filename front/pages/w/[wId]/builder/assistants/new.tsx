@@ -14,13 +14,17 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import { PropsOf } from "@headlessui/react/dist/types";
+import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { ComponentType, useState } from "react";
+import { ComponentType, useCallback, useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/AssistantBuilderDataSourceModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import {
+  AppLayoutSimpleCloseTitle,
+  AppLayoutSimpleSaveCancelTitle,
+} from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -28,6 +32,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
+import type { PostOrPatchAgentConfigurationResponseBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -110,6 +115,86 @@ export default function CreateAssistant({
     selectedResources: Record<string, string>;
   } | null>(null);
 
+  const [assistantHandle, setAssistantHandle] = useState<string | null>(null);
+  const [assistantHandleError, setAssistantHandleError] = useState<
+    string | null
+  >(null);
+  const [assistantDescription, setAssistantDescription] = useState<
+    string | null
+  >(null);
+  const [assistantInstructions, setAssistantInstructions] = useState<
+    string | null
+  >(null);
+  const [edited, setEdited] = useState(false);
+
+  const [submitEnabled, setSubmitEnabled] = useState(false);
+
+  const assistantHandleIsValid = (handle: string) => {
+    return /^[a-zA-Z0-9-]+$/.test(handle) && handle.length <= 20;
+  };
+  const assistantHandleIsAvailable = async (handle: string) => {
+    // TODO: check if handle is available
+    void handle;
+    return true;
+  };
+
+  const configuredDataSourceCount = Object.keys(dataSourceConfigs).length;
+
+  const formValidation = useCallback(async () => {
+    let valid = true;
+    let edited = false;
+
+    if (!assistantHandle) {
+      setAssistantHandleError(null);
+      valid = false;
+    } else {
+      edited = true;
+      if (!assistantHandleIsValid(assistantHandle)) {
+        setAssistantHandleError(
+          "Assistant handle must be alphanumeric and less than 20 characters"
+        );
+        valid = false;
+      }
+      if (!(await assistantHandleIsAvailable(assistantHandle))) {
+        setAssistantHandleError("Assistant handle is already taken");
+        valid = false;
+      }
+    }
+
+    if (!assistantDescription) {
+      valid = false;
+    } else {
+      edited = true;
+    }
+
+    if (!assistantInstructions) {
+      valid = false;
+    } else {
+      edited = true;
+    }
+
+    if (dataSourceMode === "SELECTED") {
+      edited = true;
+
+      if (!configuredDataSourceCount) {
+        valid = false;
+      }
+    }
+
+    setSubmitEnabled(valid);
+    setEdited(edited);
+  }, [
+    assistantHandle,
+    assistantDescription,
+    assistantInstructions,
+    dataSourceMode,
+    configuredDataSourceCount,
+  ]);
+
+  useEffect(() => {
+    void formValidation();
+  }, [formValidation]);
+
   const configurableDataSources = dataSources.filter(
     (dataSource) => !dataSourceConfigs[dataSource.name]
   );
@@ -120,6 +205,70 @@ export default function CreateAssistant({
       delete newConfigs[name];
       return newConfigs;
     });
+  };
+
+  const submitForm = async () => {
+    if (!assistantHandle || !assistantDescription || !assistantInstructions) {
+      // should be unreachable
+      throw new Error("Form not valid");
+    }
+
+    const body: t.TypeOf<
+      typeof PostOrPatchAgentConfigurationResponseBodySchema
+    > = {
+      assistant: {
+        name: assistantHandle,
+        pictureUrl: "https://dust.tt/static/droidavatar/Droid_Purple_7.jpg", // TODO
+        // description: assistantDescription as string, TODO seems ignored by backend
+        status: "active",
+        action: {
+          type: "retrieval_configuration",
+          query: "auto", // TODO ?
+          timeframe: "auto", // TODO
+          topK: 32, // TODO ?
+          dataSources:
+            dataSourceMode === "GENERIC"
+              ? []
+              : Object.values(dataSourceConfigs).map(
+                  ({ dataSource, selectedResources }) => ({
+                    dataSourceId: dataSource.name,
+                    workspaceId: owner.sId,
+                    filter: {
+                      parents: Object.keys(selectedResources).length
+                        ? { in: Object.keys(selectedResources), not: [] }
+                        : null,
+                      tags: null,
+                    },
+                  })
+                ),
+        },
+        generation: {
+          prompt: assistantInstructions,
+          model: {
+            // TODO: make this configurable
+            providerId: "openai",
+            modelId: "gpt4",
+          },
+        },
+      },
+    };
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("An error occured");
+    }
+
+    return res.json();
   };
 
   return (
@@ -160,12 +309,37 @@ export default function CreateAssistant({
           current: "assistants",
         })}
         titleChildren={
-          <AppLayoutSimpleCloseTitle
-            title="Design your custom Assistant"
-            onClose={() => {
-              void router.push(`/w/${owner.sId}/builder/assistants`);
-            }}
-          />
+          !edited ? (
+            <AppLayoutSimpleCloseTitle
+              title="Design your custom Assistant"
+              onClose={() => {
+                void router.push(`/w/${owner.sId}/builder/assistants`);
+              }}
+            />
+          ) : (
+            <AppLayoutSimpleSaveCancelTitle
+              title="Design your custom Assistant"
+              onCancel={() => {
+                void router.push(`/w/${owner.sId}/builder/assistants`);
+              }}
+              onSave={
+                submitEnabled
+                  ? () => {
+                      submitForm()
+                        .then(() => {
+                          void router.push(
+                            `/w/${owner.sId}/builder/assistants`
+                          );
+                        })
+                        .catch((e) => {
+                          console.error(e);
+                          alert("An error occured");
+                        });
+                    }
+                  : undefined
+              }
+            />
+          )
         }
       >
         <div className="mt-8 flex flex-col space-y-8 pb-8">
@@ -197,16 +371,11 @@ export default function CreateAssistant({
                 with an “@” handle (for instance @myAssistant). It must be
                 unique.
               </div>
-              <input
-                type="text"
-                name="name"
-                id="assistantName"
-                className={classNames(
-                  "block w-full min-w-0 rounded-md text-sm",
-                  "border-gray-300 focus:border-action-500 focus:ring-action-500",
-                  "bg-structure-50 stroke-structure-50"
-                )}
+              <AssistantBuilderTextInput
                 placeholder="SalesAssistantFrance"
+                onChange={setAssistantHandle}
+                error={assistantHandleError}
+                name="assistantName"
               />
               <div className="block text-sm font-medium text-element-900">
                 Description
@@ -215,16 +384,11 @@ export default function CreateAssistant({
                 The description helps your collaborators and Dust to understand
                 the purpose of the Assistant.
               </div>
-              <input
-                type="text"
-                name="description"
-                id="assistantDescription"
-                className={classNames(
-                  "block w-full min-w-0 rounded-md text-sm",
-                  "border-gray-300 focus:border-action-500 focus:ring-action-500",
-                  "bg-structure-50 stroke-structure-50"
-                )}
+              <AssistantBuilderTextInput
                 placeholder="Assistant designed to answer sales questions"
+                onChange={setAssistantDescription}
+                error={null} // TODO ?
+                name="assistantDescription"
               />
             </div>
           </div>
@@ -237,17 +401,13 @@ export default function CreateAssistant({
                 lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
                 diam et dolor aliquet.
               </div>
-              <input
-                type="text"
-                name="instructions"
-                id="assistantInstructions"
-                className={classNames(
-                  "block w-full min-w-0 rounded-md text-sm",
-                  "border-gray-300 focus:border-action-500 focus:ring-action-500",
-                  "bg-structure-50 stroke-structure-50"
-                )}
+              <AssistantBuilderTextInput
                 placeholder="Achieve a particular task, follow a template, use a certain formating..."
+                onChange={setAssistantInstructions}
+                error={null} // TODO ?
+                name="assistantInstructions"
               />
+              {/* TODO */}
               <div className="flex flex-row items-center space-x-2">
                 <div className="text-sm font-semibold text-action-500">
                   Select a specific LLM model
@@ -325,6 +485,7 @@ export default function CreateAssistant({
                 }}
                 onDelete={deleteDataSource}
               />
+              {/* TODO */}
               <div className="pt-6 text-base font-semibold text-element-900">
                 Timeframe for the data sources
               </div>
@@ -361,6 +522,37 @@ export default function CreateAssistant({
         </div>
       </AppLayout>
     </>
+  );
+}
+
+function AssistantBuilderTextInput({
+  placeholder,
+  onChange,
+  error,
+  name,
+}: {
+  placeholder: string;
+  onChange: (value: string) => void;
+  error?: string | null;
+  name: string;
+}) {
+  return (
+    <input
+      type="text"
+      name="name"
+      id={name}
+      className={classNames(
+        "block w-full min-w-0 rounded-md text-sm",
+        !error
+          ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
+          : "border-red-500 focus:border-red-500 focus:ring-red-500",
+        "bg-structure-50 stroke-structure-50"
+      )}
+      placeholder={placeholder}
+      onChange={(e) => {
+        onChange(e.target.value);
+      }}
+    />
   );
 }
 
