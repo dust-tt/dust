@@ -4,7 +4,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-type PlatformItemProps = {
+type ContextItemProps = {
   title: string;
   visual: ReactNode;
   action?: ReactNode;
@@ -12,13 +12,13 @@ type PlatformItemProps = {
   hasSeparator?: boolean;
 };
 
-export function PlatformItem({
+export function ContextItem({
   title,
   visual,
   action,
   children,
   hasSeparator = true,
-}: PlatformItemProps) {
+}: ContextItemProps) {
   return (
     <div
       className={classNames(
@@ -41,17 +41,17 @@ export function PlatformItem({
   );
 }
 
-interface PlatformItemListProps {
+interface ContextItemListProps {
   children: ReactNode;
   className?: string;
 }
 
-PlatformItem.List = function ({ children, className }: PlatformItemListProps) {
-  // Ensure all children are of type PlatformItem
+ContextItem.List = function ({ children, className }: ContextItemListProps) {
+  // Ensure all children are of type ContextItem
   React.Children.forEach(children, (child) => {
-    if (!React.isValidElement(child) || child.type !== PlatformItem) {
+    if (!React.isValidElement(child) || child.type !== ContextItem) {
       throw new Error(
-        "All children of PlatformItem.List must be of type PlatformItem"
+        "All children of ContextItem.List must be of type ContextItem"
       );
     }
   });
@@ -78,15 +78,15 @@ PlatformItem.List = function ({ children, className }: PlatformItemListProps) {
   );
 };
 
-interface PlatformItemDescriptionProps {
+interface ContextItemDescriptionProps {
   children?: ReactNode;
   description?: string;
 }
 
-PlatformItem.Description = function ({
+ContextItem.Description = function ({
   children,
   description,
-}: PlatformItemDescriptionProps) {
+}: ContextItemDescriptionProps) {
   return (
     <>
       {description && (
@@ -99,11 +99,11 @@ PlatformItem.Description = function ({
   );
 };
 
-interface PlatformItemVisualProps {
+interface ContextItemVisualProps {
   visual?: ComponentType<{ className?: string }>;
 }
 
-PlatformItem.Visual = function ({ visual }: PlatformItemVisualProps) {
+ContextItem.Visual = function ({ visual }: ContextItemVisualProps) {
   return (
     <div className="s-flex s-h-9 s-flex-col s-justify-center">
       <Icon size="md" visual={visual} />

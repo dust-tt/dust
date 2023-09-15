@@ -9,26 +9,26 @@ import {
   Chip,
   CloudArrowDownIcon,
   Cog6ToothIcon,
+  ContextItem,
   PencilSquareIcon,
-  PlatformItem,
   SliderToggle,
   TrashIcon,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/PlatformItem",
-  component: PlatformItem,
-} satisfies Meta<typeof PlatformItem>;
+  title: "Molecule/ContextItem",
+  component: ContextItem,
+} satisfies Meta<typeof ContextItem>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ListItemExample = () => (
   <div>
-    <PlatformItem.List>
-      <PlatformItem
+    <ContextItem.List>
+      <ContextItem
         title="Notion"
-        visual={<PlatformItem.Visual visual={Notion} />}
+        visual={<ContextItem.Visual visual={Notion} />}
         action={
           <Button
             variant="primary"
@@ -38,11 +38,11 @@ export const ListItemExample = () => (
           />
         }
       >
-        <PlatformItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
-      </PlatformItem>
-      <PlatformItem
+        <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
+      </ContextItem>
+      <ContextItem
         title="Drive"
-        visual={<PlatformItem.Visual visual={Drive} />}
+        visual={<ContextItem.Visual visual={Drive} />}
         action={
           <Button
             variant="secondary"
@@ -52,11 +52,11 @@ export const ListItemExample = () => (
           />
         }
       >
-        <PlatformItem.Description description="Hello you" />
-      </PlatformItem>
-      <PlatformItem
+        <ContextItem.Description description="Hello you" />
+      </ContextItem>
+      <ContextItem
         title="Slack"
-        visual={<PlatformItem.Visual visual={Slack} />}
+        visual={<ContextItem.Visual visual={Slack} />}
         action={
           <Button.List>
             <Button
@@ -74,20 +74,20 @@ export const ListItemExample = () => (
           </Button.List>
         }
       >
-        <PlatformItem.Description description="Hello you" />
-      </PlatformItem>
-      <PlatformItem
+        <ContextItem.Description description="Hello you" />
+      </ContextItem>
+      <ContextItem
         title="Github"
-        visual={<PlatformItem.Visual visual={Github} />}
+        visual={<ContextItem.Visual visual={Github} />}
       >
         <>
           <div className="s-pb-2">
             <Chip label="Syncing…" color="amber" size="sm" isBusy />
           </div>
-          <PlatformItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
+          <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
         </>
-      </PlatformItem>
-      <PlatformItem
+      </ContextItem>
+      <ContextItem
         title="@Gpt4"
         action={<SliderToggle size="md" />}
         visual={
@@ -97,9 +97,9 @@ export const ListItemExample = () => (
           />
         }
       >
-        <PlatformItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </PlatformItem>
-      <PlatformItem
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
+      <ContextItem
         title="@SalesFr"
         action={
           <Button
@@ -116,9 +116,9 @@ export const ListItemExample = () => (
           />
         }
       >
-        <PlatformItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </PlatformItem>
-      <PlatformItem
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
+      <ContextItem
         title="@SupportFr"
         action={
           <Button
@@ -135,8 +135,8 @@ export const ListItemExample = () => (
           />
         }
       >
-        <PlatformItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </PlatformItem>
-    </PlatformItem.List>
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
+    </ContextItem.List>
   </div>
 );

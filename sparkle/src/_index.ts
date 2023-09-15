@@ -13,8 +13,8 @@ export { Tab };
 import { Item } from "./components/Item";
 export { Item };
 
-import { PlatformItem } from "./components/PlatformItem";
-export { PlatformItem };
+import { ContextItem } from "./components/ContextItem";
+export { ContextItem };
 
 import { Chip } from "./components/Chip";
 export { Chip };
