@@ -1,5 +1,7 @@
 const fs = require("fs");
 
+// for https://github.com/anthropics/anthropic-tokenizer-typescript/blob/main/claude.json
+
 // Read the JSON file
 fs.readFile("anthropic_base.tiktoken.json", "utf8", (err, data) => {
   if (err) {
