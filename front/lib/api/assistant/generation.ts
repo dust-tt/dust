@@ -214,7 +214,7 @@ export async function* runGeneration(
   const c = configuration.generation;
 
   if (!c) {
-    return yield {
+    return {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -231,7 +231,7 @@ export async function* runGeneration(
 
   const contextSize = modelToContextSize(model);
   if (contextSize === null) {
-    return yield {
+    return {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -259,7 +259,7 @@ export async function* runGeneration(
   });
 
   if (modelConversationRes.isErr()) {
-    return yield {
+    return {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -285,7 +285,7 @@ export async function* runGeneration(
   ]);
 
   if (res.isErr()) {
-    return yield {
+    return {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -311,7 +311,7 @@ export async function* runGeneration(
     }
 
     if (event.type === "error") {
-      return yield {
+      return {
         type: "generation_error",
         created: Date.now(),
         configurationId: configuration.sId,
@@ -326,7 +326,7 @@ export async function* runGeneration(
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
-        return yield {
+        return {
           type: "generation_error",
           created: Date.now(),
           configurationId: configuration.sId,
