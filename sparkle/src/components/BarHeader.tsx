@@ -101,6 +101,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             label="Save"
             variant="primary"
             onClick={props.onSave}
+            disabled={!props.onSave}
           />
         </>
       );

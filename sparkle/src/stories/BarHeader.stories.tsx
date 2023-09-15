@@ -23,6 +23,27 @@ export const BasicBarHeaderValidate = () => (
   <div className="s-mt-16 s-h-full s-w-full">
     <BarHeader
       title="Knowledge Base"
+      rightActions={
+        <BarHeader.ButtonBar
+          variant="validate"
+          onSave={() => alert("Save !")}
+        />
+      }
+    />
+    <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
+      <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
+      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <Avatar visual="https://source.unsplash.com/random" size="full" />
+    </div>
+  </div>
+);
+
+export const BasicBarHeaderValidateSaveDisabled = () => (
+  <div className="s-mt-16 s-h-full s-w-full">
+    <BarHeader
+      title="Knowledge Base"
       rightActions={<BarHeader.ButtonBar variant="validate" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
