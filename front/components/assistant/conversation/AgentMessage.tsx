@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { RenderMarkdown } from "@app/components/RenderMarkdown";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
@@ -167,11 +168,12 @@ function renderMessage(agentMessage: AgentMessageType) {
     return (
       <>
         <div className="mb-2 text-xs font-bold text-element-600">Answer:</div>
-        <div className="mb-2 text-base font-normal">{agentMessage.content}</div>
+        <div className="mb-2 break-all text-base font-normal">
+          <RenderMarkdown content={agentMessage.content} />
+        </div>
       </>
     );
   }
-
   // Messages with action
   if (agentMessage.action) {
     return (
@@ -182,8 +184,8 @@ function renderMessage(agentMessage: AgentMessageType) {
             <div className="mb-2 text-xs font-bold text-element-600">
               Answer:
             </div>
-            <div className="mb-2 text-base font-normal">
-              {agentMessage.content}
+            <div className="mb-2 break-all text-base font-normal">
+              <RenderMarkdown content={agentMessage.content} />
             </div>
           </>
         )}
