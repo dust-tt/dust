@@ -1,6 +1,7 @@
 import { CredentialsType, ProviderType } from "@app/types/provider";
 
-const { DUST_MANAGED_OPENAI_API_KEY = "" } = process.env;
+const { DUST_MANAGED_OPENAI_API_KEY = "", DUST_MANAGED_ANTHROPIC_API_KEY } =
+  process.env;
 
 export const credentialsFromProviders = (
   providers: ProviderType[]
@@ -47,5 +48,6 @@ export const credentialsFromProviders = (
 export const dustManagedCredentials = (): CredentialsType => {
   return {
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
   };
 };
