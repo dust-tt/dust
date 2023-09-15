@@ -13,6 +13,9 @@ export { Tab };
 import { Item } from "./components/Item";
 export { Item };
 
+import { PlatformItem } from "./components/PlatformItem";
+export { PlatformItem };
+
 import { Chip } from "./components/Chip";
 export { Chip };
 
