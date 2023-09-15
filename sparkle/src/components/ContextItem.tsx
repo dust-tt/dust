@@ -27,7 +27,7 @@ export function ContextItem({
       )}
       aria-label={title}
     >
-      <div className="s-flex s-flex-row s-gap-3 s-pb-5 s-pt-4">
+      <div className="s-flex s-flex-row s-gap-3 s-pb-5 s-pt-3">
         <div className="s-flex s-pt-1.5">{visual}</div>
         <div className="s-flex s-grow s-flex-col">
           <div className="s-text-normal s-flex s-h-9 s-flex-col s-justify-center s-font-semibold">
