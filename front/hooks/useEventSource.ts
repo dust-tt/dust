@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 export function useEventSource(
   buildURL: (lastMessage: string | null) => string | null
@@ -24,7 +25,9 @@ export function useEventSource(
     };
 
     es.onmessage = (event: MessageEvent<string>) => {
-      setLastMessage(event.data);
+      flushSync(() => {
+        setLastMessage(event.data);
+      });
     };
 
     es.onerror = () => {
