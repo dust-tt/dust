@@ -4,14 +4,17 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import { ConversationType } from "@app/types/assistant/conversation";
 
-const PostConversationsRequestBodySchema = t.type({
+export const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+  message: t.union([PostMessagesRequestBodySchema, t.null]),
 });
 
 export type PostConversationsResponseBody = {
@@ -51,6 +54,17 @@ async function handler(
     });
   }
 
+  const user = auth.user();
+  if (!user) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_user_not_found",
+        message: "Could not find the user of the current session.",
+      },
+    });
+  }
+
   if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
@@ -80,12 +94,29 @@ async function handler(
         });
       }
 
-      const { title, visibility } = bodyValidation.right;
+      const { title, visibility, message } = bodyValidation.right;
 
       const conversation = await createConversation(auth, {
         title,
         visibility,
       });
+
+      if (message) {
+        // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
+        // the events in the background.
+        void postUserMessageWithPubSub(auth, {
+          conversation,
+          content: message.content,
+          mentions: message.mentions,
+          context: {
+            timezone: message.context.timezone,
+            username: user.username,
+            fullName: user.name,
+            email: user.email,
+            profilePictureUrl: message.context.profilePictureUrl,
+          },
+        });
+      }
 
       res.status(200).json({ conversation });
       return;

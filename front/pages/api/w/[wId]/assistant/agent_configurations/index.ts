@@ -21,9 +21,10 @@ export type PostAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
 
-export const PostOrPatchAgentConfigurationResponseBodySchema = t.type({
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
+    description: t.string,
     pictureUrl: t.string,
     status: t.union([t.literal("active"), t.literal("archived")]),
     action: t.type({
@@ -127,7 +128,7 @@ async function handler(
       });
     case "POST":
       const bodyValidation =
-        PostOrPatchAgentConfigurationResponseBodySchema.decode(req.body);
+        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -139,7 +140,7 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, status, action, generation } =
+      const { name, description, pictureUrl, status, action, generation } =
         bodyValidation.right.assistant;
 
       const generationConfig = await createAgentGenerationConfiguration(auth, {
@@ -158,6 +159,7 @@ async function handler(
       });
       const agentConfiguration = await createAgentConfiguration(auth, {
         name,
+        description,
         pictureUrl,
         status,
         generation: generationConfig,

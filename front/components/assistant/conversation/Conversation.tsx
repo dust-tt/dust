@@ -27,6 +27,16 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
+  // State used to re-connect to the events stream; this is a hack to re-trigger
+  // the useEffect that set-up the EventSource to the streaming endpoint.
+  const [reconnectCounter, setReconnectCounter] = useState(0);
+  useEffect(() => {
+    if (window && window.scrollTo) {
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+  }, [conversation?.content.length]);
+
+
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
@@ -70,7 +80,7 @@ export default function Conversation({
   }
 
   return (
-    <div className="flex-col gap-6 ">
+    <div className="pb-24">
       {conversation.content.map((message) =>
         message.map((m) => {
           if (m.visibility === "deleted") {

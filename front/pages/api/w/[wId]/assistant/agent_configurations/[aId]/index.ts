@@ -13,7 +13,7 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
-import { PostOrPatchAgentConfigurationResponseBodySchema } from "..";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "..";
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
@@ -72,7 +72,7 @@ async function handler(
       });
     case "PATCH":
       const bodyValidation =
-        PostOrPatchAgentConfigurationResponseBodySchema.decode(req.body);
+        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, status, action, generation } =
+      const { name, pictureUrl, status, action, generation, description } =
         bodyValidation.right.assistant;
 
       if (action) {
@@ -116,6 +116,7 @@ async function handler(
         {
           name,
           pictureUrl,
+          description,
           status,
         }
       );

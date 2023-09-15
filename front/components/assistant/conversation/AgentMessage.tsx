@@ -179,7 +179,7 @@ function renderMessage(agentMessage: AgentMessageType) {
     return (
       <>
         <div className="mb-2 text-xs font-bold text-element-600">Answer:</div>
-        <div className="mb-2 break-all text-base font-normal">
+        <div className="mb-2">
           <RenderMarkdown content={agentMessage.content} />
         </div>
       </>
@@ -195,7 +195,7 @@ function renderMessage(agentMessage: AgentMessageType) {
             <div className="mb-2 text-xs font-bold text-element-600">
               Answer:
             </div>
-            <div className="mb-2 break-all text-base font-normal">
+            <div className="mb-2">
               <RenderMarkdown content={agentMessage.content} />
             </div>
           </>
