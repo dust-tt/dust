@@ -37,7 +37,7 @@ export default function Conversation({
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      const url = lastEventId ? esURL + "?lastEventId=" + lastEventId : esURL;
+      const url = esURL + "?lastEventId=" + lastEventId;
 
       return url;
     },
