@@ -221,6 +221,32 @@ export const ButtonExamples = () => (
   </div>
 );
 
+export const ButtonBarExamples = () => (
+  <Button.List>
+    <Button
+      type="menu"
+      variant="secondary"
+      size="xs"
+      label="Settings"
+      icon={Cog6ToothIcon}
+    />
+    <Button
+      type="menu"
+      variant="primary"
+      size="xs"
+      label="Settings"
+      icon={Cog6ToothIcon}
+    />
+    <Button
+      type="menu"
+      variant="primary"
+      size="xs"
+      label="Settings"
+      icon={Cog6ToothIcon}
+    />
+  </Button.List>
+);
+
 export const ButtonMenuExamples = () => (
   <div className="s-flex s-flex-col s-gap-4">
     <div className="s-flex s-items-center s-gap-4">
