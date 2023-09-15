@@ -20,7 +20,7 @@ export function ConversationMessage({
       </div>
       <div className="flex-grow">
         <div className="flex flex-col gap-4">
-          <div className="mb-2 text-sm font-medium">{name}</div>
+          <div className="text-sm font-medium">{name}</div>
           <div>{children}</div>
         </div>
       </div>

@@ -80,6 +80,9 @@ export default function Conversation({
     <div className="flex-col gap-6 ">
       {conversation.content.map((message) =>
         message.map((m) => {
+          if (m.visibility === "deleted") {
+            return null;
+          }
           switch (m.type) {
             case "user_message":
               return (
