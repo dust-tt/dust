@@ -1,4 +1,4 @@
-import React, { ComponentType, MouseEvent } from "react";
+import React, { ComponentType, MouseEvent, ReactNode } from "react";
 
 import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -186,3 +186,16 @@ export function Button({
     </Tooltip>
   );
 }
+
+interface ButtonBarProps {
+  children: ReactNode;
+  className?: string;
+}
+
+Button.List = function ({ children, className }: ButtonBarProps) {
+  return (
+    <div className={classNames(className ? className : "", "s-flex")}>
+      <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
+    </div>
+  );
+};
