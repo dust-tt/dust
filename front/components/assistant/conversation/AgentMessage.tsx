@@ -63,7 +63,7 @@ export function AgentMessage({
     },
     [conversationId, message.sId, owner.sId, shouldStream]
   );
-  useEventSource(buildEventSourceURL, (mesasge) => {
+  const onEventCallback = useCallback((eventStr: string) => {
     const eventPayload: {
       eventId: string;
       data:
@@ -73,7 +73,7 @@ export function AgentMessage({
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
         | AgentMessageSuccessEvent;
-    } = JSON.parse(mesasge);
+    } = JSON.parse(eventStr);
 
     const event = eventPayload.data;
     switch (event.type) {
@@ -111,7 +111,8 @@ export function AgentMessage({
           console.error("Unknown event type", t);
         })(event);
     }
-  });
+  }, []);
+  useEventSource(buildEventSourceURL, onEventCallback);
 
   const agentMessageToRender = (() => {
     switch (message.status) {
