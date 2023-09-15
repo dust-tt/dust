@@ -130,7 +130,7 @@ export default function CreateAssistant({
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
   const assistantHandleIsValid = (handle: string) => {
-    return /^[a-zA-Z0-9-]+$/.test(handle) && handle.length <= 20;
+    return /^[a-zA-Z0-9_-]{1,20}$/.test(handle);
   };
   const assistantHandleIsAvailable = async (handle: string) => {
     // TODO: check if handle is available
@@ -151,13 +151,14 @@ export default function CreateAssistant({
       edited = true;
       if (!assistantHandleIsValid(assistantHandle)) {
         setAssistantHandleError(
-          "Assistant handle must be alphanumeric and less than 20 characters"
+          "Assistant handle must be between 1 and 20 characters long and can only contain letters, numbers, underscores and dashes"
         );
         valid = false;
-      }
-      if (!(await assistantHandleIsAvailable(assistantHandle))) {
+      } else if (!(await assistantHandleIsAvailable(assistantHandle))) {
         setAssistantHandleError("Assistant handle is already taken");
         valid = false;
+      } else {
+        setAssistantHandleError(null);
       }
     }
 
