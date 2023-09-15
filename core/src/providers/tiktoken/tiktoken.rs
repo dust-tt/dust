@@ -12,6 +12,31 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::task;
 
+pub fn anthropic_base() -> Result<CoreBPE> {
+    let anthropic_base = include_str!("anthropic_base.tiktoken");
+
+    let mut encoder = HashMap::default();
+    for line in anthropic_base.lines() {
+        let mut parts = line.split(' ');
+        let token = &general_purpose::STANDARD.decode(parts.next().unwrap())?;
+        let rank: usize = parts.next().unwrap().parse().unwrap();
+        encoder.insert(token.clone(), rank);
+    }
+
+    let mut special_tokens = HashMap::default();
+    special_tokens.insert(String::from("<|EOT|>"), 0);
+    special_tokens.insert(String::from("<|META|>"), 1);
+    special_tokens.insert(String::from("<|META_START|>"), 2);
+    special_tokens.insert(String::from("<|META_END|>"), 3);
+    special_tokens.insert(String::from("<|SOS|>"), 4);
+
+    CoreBPE::new(
+        encoder,
+        special_tokens,
+        "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
+    )
+}
+
 pub fn r50k_base() -> Result<CoreBPE> {
     let r50k_base = include_str!("r50k_base.tiktoken");
 
@@ -79,6 +104,14 @@ pub fn cl100k_base() -> Result<CoreBPE> {
         special_tokens,
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
     )
+}
+
+pub fn anthropic_base_singleton() -> Arc<Mutex<CoreBPE>> {
+    lazy_static! {
+        static ref ANTHROPIC_BASE: Arc<Mutex<CoreBPE>> =
+            Arc::new(Mutex::new(anthropic_base().unwrap()));
+    }
+    ANTHROPIC_BASE.clone()
 }
 
 pub fn r50k_base_singleton() -> Arc<Mutex<CoreBPE>> {

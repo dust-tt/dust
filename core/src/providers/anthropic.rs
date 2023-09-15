@@ -3,6 +3,7 @@ use crate::providers::llm::{
     ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
 };
 use crate::providers::provider::{ModelError, Provider, ProviderID};
+use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -20,6 +21,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::llm::ChatFunction;
+use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -522,16 +524,12 @@ impl LLM for AnthropicLLM {
         Ok(llm_generation)
     }
 
-    async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
-        Err(anyhow!(
-            "Encode/Decode not implemented for provider `anthropic`"
-        ))
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        encode_async(anthropic_base_singleton(), text).await
     }
 
-    async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
-        Err(anyhow!(
-            "Encode/Decode not implemented for provider `anthropic`"
-        ))
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        decode_async(anthropic_base_singleton(), tokens).await
     }
 
     async fn chat(
@@ -619,20 +617,16 @@ impl Embedder for AnthropicEmbedder {
         0
     }
 
-    async fn encode(&self, _text: &str) -> Result<Vec<usize>> {
-        Err(anyhow!(
-            "Encode/Decode not implemented for provider `anthropic`"
-        ))
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        encode_async(anthropic_base_singleton(), text).await
     }
 
-    async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
-        Err(anyhow!(
-            "Encode/Decode not implemented for provider `anthropic`"
-        ))
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        decode_async(anthropic_base_singleton(), tokens).await
     }
 
-    async fn tokenize(&self, _text: String) -> Result<Vec<(usize, String)>> {
-        Err(anyhow!("Tokenize not implemented for provider `anthropic`"))
+    async fn tokenize(&self, text: String) -> Result<Vec<(usize, String)>> {
+        tokenize_async(anthropic_base_singleton(), text).await
     }
 
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
