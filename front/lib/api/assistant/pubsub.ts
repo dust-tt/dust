@@ -52,6 +52,7 @@ export async function postUserMessageWithPubSub(
               await redis.xAdd(pubsubChannel, "*", {
                 payload: JSON.stringify(event),
               });
+              await redis.expire(pubsubChannel, 60 * 10);
               if (event.type === "user_message_new") {
                 didResolve = true;
                 resolve(event.message);
@@ -68,6 +69,7 @@ export async function postUserMessageWithPubSub(
               await redis.xAdd(pubsubChannel, "*", {
                 payload: JSON.stringify(event),
               });
+              await redis.expire(pubsubChannel, 60 * 10);
               break;
             }
             case "user_message_error": {
