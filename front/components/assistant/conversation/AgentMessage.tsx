@@ -122,9 +122,6 @@ export function AgentMessage({
   const agentMessageToRender =
     message.status === "succeeded" ? message : streamedAgentMessage;
 
-  if (agentMessageToRender.visibility === "deleted") {
-    return null;
-  }
   return (
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
