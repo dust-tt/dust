@@ -49,22 +49,23 @@ export default function Conversation({
     },
     [conversationId, owner.sId]
   );
-  const { lastMessage } = useEventSource(buildEventSourceURL);
-  const eventIds = useRef<string[]>([]);
 
-  useEffect(() => {
-    if (!lastMessage) {
-      return;
-    }
-    const eventPayload: {
-      eventId: string;
-      data: UserMessageNewEvent | AgentMessageNewEvent;
-    } = JSON.parse(lastMessage);
-    if (!eventIds.current.includes(eventPayload.eventId)) {
-      eventIds.current.push(eventPayload.eventId);
-      void mutateConversation();
-    }
-  }, [lastMessage, mutateConversation]);
+  const onEventCallback = useCallback(
+    (event: string) => {
+      const eventPayload: {
+        eventId: string;
+        data: UserMessageNewEvent | AgentMessageNewEvent;
+      } = JSON.parse(event);
+      if (!eventIds.current.includes(eventPayload.eventId)) {
+        eventIds.current.push(eventPayload.eventId);
+        void mutateConversation();
+      }
+    },
+    [mutateConversation]
+  );
+
+  useEventSource(buildEventSourceURL, onEventCallback);
+  const eventIds = useRef<string[]>([]);
 
   if (isConversationLoading) {
     return null;
