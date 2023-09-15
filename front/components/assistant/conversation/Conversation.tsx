@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useEventSource } from "@app/hooks/useEventSource";
 import {
   AgentMessageNewEvent,
   UserMessageNewEvent,
@@ -25,52 +26,45 @@ export default function Conversation({
     conversationId,
     workspaceId: owner.sId,
   });
-  // State used to re-connect to the events stream; this is a hack to re-trigger
-  // the useEffect that set-up the EventSource to the streaming endpoint.
-  const [reconnectCounter, setReconnectCounter] = useState(0);
+
   useEffect(() => {
     if (window && window.scrollTo) {
       window.scrollTo(0, document.body.scrollHeight);
     }
   }, [conversation?.content.length]);
 
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: {
+          eventId: string;
+        } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
+      }
+      const url = esURL + "?lastEventId=" + lastEventId;
+
+      return url;
+    },
+    [conversationId, owner.sId]
+  );
+  const { lastMessage } = useEventSource(buildEventSourceURL);
+  const eventIds = useRef<string[]>([]);
+
   useEffect(() => {
-    if (!conversation) {
+    if (!lastMessage) {
       return;
     }
-    const messageIds = new Set(
-      conversation?.content.flatMap((m) => m.map((mm) => mm.sId))
-    );
-    let mutateTimeout: NodeJS.Timeout | null = null;
-    const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-    const es = new EventSource(esURL);
-    es.onmessage = (event: MessageEvent<string>) => {
-      const eventPayload: {
-        eventId: string;
-        data: UserMessageNewEvent | AgentMessageNewEvent;
-      } = JSON.parse(event.data);
-      if (conversation && !messageIds.has(eventPayload.data.message.sId)) {
-        mutateTimeout && clearTimeout(mutateTimeout);
-        mutateTimeout = setTimeout(() => {
-          void mutateConversation();
-        }, 300);
-      }
-    };
-
-    es.onerror = () => {
-      setReconnectCounter((c) => c + 1);
-    };
-
-    return () => {
-      es.close();
-    };
-  }, [
-    conversation,
-    conversationId,
-    mutateConversation,
-    owner.sId,
-    reconnectCounter,
-  ]);
+    const eventPayload: {
+      eventId: string;
+      data: UserMessageNewEvent | AgentMessageNewEvent;
+    } = JSON.parse(lastMessage);
+    if (!eventIds.current.includes(eventPayload.eventId)) {
+      eventIds.current.push(eventPayload.eventId);
+      void mutateConversation();
+    }
+  }, [lastMessage, mutateConversation]);
 
   if (isConversationLoading) {
     return null;

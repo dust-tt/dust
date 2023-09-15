@@ -1,9 +1,10 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMarkdown } from "@app/components/RenderMarkdown";
+import { useEventSource } from "@app/hooks/useEventSource";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
@@ -24,103 +25,113 @@ export function AgentMessage({
   owner: WorkspaceType;
   conversationId: string;
 }) {
-  // State used to re-connect to the events stream; this is a hack to re-trigger
-  // the useEffect that set-up the EventSource to the streaming endpoint.
-  const [reconnectCounter, setReconnectCounter] = useState(0);
-  const lastEventId = useRef<string | null>(null);
-
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
+  const shouldStream = (() => {
+    switch (streamedAgentMessage.status) {
+      case "succeeded":
+      case "failed":
+        return false;
+      case "created":
+        return true;
+        break;
+
+      default:
+        ((status: never) => {
+          throw new Error(`Unknown status: ${status}`);
+        })(streamedAgentMessage.status);
+    }
+  })();
+
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      if (!shouldStream) {
+        return null;
+      }
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: {
+          eventId: string;
+        } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
+      }
+      const url = esURL + "?lastEventId=" + lastEventId;
+
+      return url;
+    },
+    [conversationId, message.sId, owner.sId, shouldStream]
+  );
+  const { lastMessage } = useEventSource(buildEventSourceURL);
+
   useEffect(() => {
-    // Using a Switch to make sure we handle all the possible status.
+    if (!lastMessage) {
+      return;
+    }
+    const eventPayload: {
+      eventId: string;
+      data:
+        | AgentErrorEvent
+        | AgentActionEvent
+        | AgentActionSuccessEvent
+        | GenerationTokensEvent
+        | AgentGenerationSuccessEvent
+        | AgentMessageSuccessEvent;
+    } = JSON.parse(lastMessage);
+
+    const event = eventPayload.data;
+    switch (event.type) {
+      case "agent_action_success":
+      case "retrieval_params":
+        setStreamedAgentMessage((m) => {
+          return { ...m, action: event.action };
+        });
+        break;
+      case "agent_error":
+        setStreamedAgentMessage((m) => {
+          return { ...m, status: "failed", error: event.error };
+        });
+        break;
+
+      case "agent_generation_success":
+        setStreamedAgentMessage((m) => {
+          return { ...m, content: event.text };
+        });
+        break;
+      case "agent_message_success": {
+        setStreamedAgentMessage(event.message);
+        break;
+      }
+      case "generation_tokens": {
+        setStreamedAgentMessage((m) => {
+          const previousContent = m.content || "";
+          return { ...m, content: previousContent + event.text };
+        });
+        break;
+      }
+
+      default:
+        ((t: never) => {
+          console.error("Unknown event type", t);
+        })(event);
+    }
+  }, [lastMessage]);
+
+  const agentMessageToRender = (() => {
     switch (message.status) {
       case "succeeded":
       case "failed":
-        return;
+        return message;
       case "created":
-        break;
+        return streamedAgentMessage;
 
       default:
         ((status: never) => {
           throw new Error(`Unknown status: ${status}`);
         })(message.status);
     }
-
-    const esURL = `/api/w/${
-      owner.sId
-    }/assistant/conversations/${conversationId}/messages/${
-      message.sId
-    }/events?lastEventId=${lastEventId.current ? lastEventId.current : ""}`;
-    const es = new EventSource(esURL);
-    es.onmessage = (messageEvent: MessageEvent<string>) => {
-      const eventPayload: {
-        eventId: string;
-        data:
-          | AgentErrorEvent
-          | AgentActionEvent
-          | AgentActionSuccessEvent
-          | GenerationTokensEvent
-          | AgentGenerationSuccessEvent
-          | AgentMessageSuccessEvent;
-      } = JSON.parse(messageEvent.data);
-
-      const event = eventPayload.data;
-      lastEventId.current = eventPayload.eventId;
-      switch (event.type) {
-        case "agent_action_success":
-        case "retrieval_params":
-          setStreamedAgentMessage((m) => {
-            return { ...m, action: event.action };
-          });
-          break;
-        case "agent_error":
-          setStreamedAgentMessage((m) => {
-            return { ...m, status: "failed", error: event.error };
-          });
-          break;
-
-        case "agent_generation_success":
-          setStreamedAgentMessage((m) => {
-            return { ...m, content: event.text };
-          });
-          break;
-        case "agent_message_success": {
-          setStreamedAgentMessage(event.message);
-          break;
-        }
-        case "generation_tokens": {
-          setStreamedAgentMessage((m) => {
-            const previousContent = m.content || "";
-            return { ...m, content: previousContent + event.text };
-          });
-          break;
-        }
-
-        default:
-          ((t: never) => {
-            console.error("Unknown event type", t);
-          })(event);
-      }
-    };
-
-    es.onerror = () => {
-      setReconnectCounter((c) => c + 1);
-    };
-
-    return () => {
-      es.close();
-    };
-  }, [
-    conversationId,
-    message.sId,
-    message.status,
-    owner.sId,
-    reconnectCounter,
-  ]);
-
-  const agentMessageToRender =
-    message.status === "succeeded" ? message : streamedAgentMessage;
+  })();
 
   return (
     <ConversationMessage
