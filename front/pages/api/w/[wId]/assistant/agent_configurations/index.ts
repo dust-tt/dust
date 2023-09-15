@@ -21,7 +21,7 @@ export type PostAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
 
-export const PostOrPatchAgentConfigurationResponseBodySchema = t.type({
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
     pictureUrl: t.string,
@@ -127,7 +127,7 @@ async function handler(
       });
     case "POST":
       const bodyValidation =
-        PostOrPatchAgentConfigurationResponseBodySchema.decode(req.body);
+        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
