@@ -128,29 +128,29 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       );
       return tab.hideLabel ? (
         tab.label ? (
-          <>
-            <div key={`tab-${i}`}>
+          <React.Fragment key={`tab-${i}`}>
+            <div>
               <Tooltip label={tab.label}>{content}</Tooltip>
             </div>
             {tab.hasSeparator && (
               <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
             )}
-          </>
+          </React.Fragment>
         ) : (
-          <>
-            <div key={`tab-${i}`}>{content}</div>
+          <React.Fragment key={`tab-${i}`}>
+            <div>{content}</div>
             {tab.hasSeparator && (
               <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
             )}
-          </>
+          </React.Fragment>
         )
       ) : (
-        <>
-          <div key={`tab-${i}`}>{content}</div>
+        <React.Fragment key={`tab-${i}`}>
+          <div>{content}</div>
           {tab.hasSeparator && (
             <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
           )}
-        </>
+        </React.Fragment>
       );
     });
 
