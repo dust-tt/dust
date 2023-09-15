@@ -45,7 +45,7 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
     return null;
   }
 
-  const m = r.match(/^(\d+)([dwmy])$/);
+  const m = r.match(/^(\d+)([hdwmy])$/);
   if (!m) {
     return null;
   }
@@ -57,6 +57,9 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
 
   let unit: TimeFrame["unit"];
   switch (m[2]) {
+    case "h":
+      unit = "hour";
+      break;
     case "d":
       unit = "day";
       break;
@@ -165,7 +168,7 @@ export async function retrievalActionSpecification(
       name: "relativeTimeFrame",
       description:
         "The time frame (relative to now) to restrict the search based on the user request and past conversation context." +
-        " Possible values are: `all`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number.",
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number.",
       type: "string" as const,
     });
   }

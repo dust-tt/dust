@@ -226,7 +226,7 @@ export default function CreateAssistant({
           type: "retrieval_configuration",
           query: "auto", // TODO ?
           timeframe: "auto", // TODO
-          topK: 32, // TODO ?
+          topK: 16, // TODO ?
           dataSources:
             dataSourceMode === "GENERIC"
               ? []
