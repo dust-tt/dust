@@ -31,10 +31,10 @@ export default function AssistantBuilderDataSourceModal({
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
-  onSave: (
-    dataSource: DataSourceType,
-    selectedResources: Record<string, string>
-  ) => void;
+  onSave: (params: {
+    dataSource: DataSourceType;
+    selectedResources: Record<string, string>;
+  }) => void;
   dataSourceToManage: {
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
@@ -73,7 +73,7 @@ export default function AssistantBuilderDataSourceModal({
         ) {
           throw new Error("Cannot save an incomplete configuration");
         }
-        onSave(selectedDataSource, selectedResources);
+        onSave({ dataSource: selectedDataSource, selectedResources });
         onClose();
       }}
       hasChanged={
@@ -90,7 +90,10 @@ export default function AssistantBuilderDataSourceModal({
             onPick={(ds) => {
               setSelectedDataSource(ds);
               if (!ds.connectorProvider) {
-                onSave(ds, {});
+                onSave({
+                  dataSource: ds,
+                  selectedResources: {},
+                });
                 onClose();
               }
             }}
