@@ -138,9 +138,6 @@ function renderMessage(agentMessage: AgentMessageType) {
   if (agentMessage.status === "failed") {
     return (
       <div>
-        <div className="mb-2 text-base font-normal">
-          Something went wrong...
-        </div>
         <div className="mb-2 text-xs font-bold text-element-600">
           <p>Error Code: {agentMessage.error?.code}</p>
           <p>Error Message: {agentMessage.error?.message}</p>
