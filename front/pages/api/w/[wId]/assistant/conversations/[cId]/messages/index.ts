@@ -9,7 +9,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const PostMessagesRequestBodySchema = t.type({
+export const PostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(
     t.union([
@@ -108,8 +108,8 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      // Not awaiting this promise on prupose.
-      // We want to answer "OK" to the client ASAP and process the events in the background.
+      // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
+      // the events in the background.
       void postUserMessageWithPubSub(auth, {
         conversation,
         content,
@@ -122,6 +122,7 @@ async function handler(
           profilePictureUrl: context.profilePictureUrl,
         },
       });
+
       res.status(200).end();
       return;
 

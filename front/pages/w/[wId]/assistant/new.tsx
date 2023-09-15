@@ -5,6 +5,7 @@ import {
   PageHeader,
   RobotIcon,
 } from "@dust-tt/sparkle";
+import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -15,7 +16,10 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/I
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type {
+  PostConversationsRequestBodySchema,
+  PostConversationsResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/conversations";
 import {
   ConversationType,
   MentionType,
@@ -78,16 +82,26 @@ export default function AssistantNew({
   );
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
-    // Create new conversation.
+    const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
+      title: null,
+      visibility: "unlisted",
+      message: {
+        content: input,
+        context: {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          profilePictureUrl: user.image,
+        },
+        mentions,
+      },
+    };
+
+    // Create new conversation and post the initial message at the same time.
     const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        title: null,
-        visibility: "unlisted",
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!cRes.ok) {
@@ -105,31 +119,6 @@ export default function AssistantNew({
 
     // We start the push before creating the message to optimize for instantaneity as well.
     void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
-
-    // Create a new user message.
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: input,
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            profilePictureUrl: user.image,
-          },
-          mentions,
-        }),
-      }
-    );
-
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      window.alert(`Error creating message: ${data.error.message}`);
-      return;
-    }
   };
 
   return (
