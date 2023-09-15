@@ -14,15 +14,15 @@ type Story = StoryObj<typeof meta>;
 export const ListChipsExample = () => (
   <div>
     <Chip.List className="s-w-60">
-      <Chip size="sm" label="From here to there" />
-      <Chip size="sm" label="Chip 2" color="emerald" />
-      <Chip size="sm" label="Adding custom stuff" color="violet" />
+      <Chip size="xs" label="From here to there" />
+      <Chip size="xs" label="Chip 2" color="emerald" />
+      <Chip size="xs" label="Adding custom stuff" color="violet" />
     </Chip.List>
     <div className="s-h-8" />
     <Chip.List className="s-w-40">
-      <Chip size="md" label="Chip 1" color="amber" />
-      <Chip size="md" label="Chip 2" />
-      <Chip size="md" label="Chip 3" />
+      <Chip size="sm" label="Chip 1" color="amber" />
+      <Chip size="sm" label="Chip 2" />
+      <Chip size="sm" label="Chip 3" />
     </Chip.List>
   </div>
 );
@@ -45,7 +45,7 @@ export const ChipMD: Story = {
   args: {
     label: "Settings",
     color: "emerald",
-    size: "md",
+    size: "xs",
   },
 };
 
