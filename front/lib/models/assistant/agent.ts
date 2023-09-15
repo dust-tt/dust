@@ -78,6 +78,7 @@ export class AgentConfiguration extends Model<
   declare sId: string;
   declare status: AgentConfigurationStatus;
   declare name: string;
+  declare description: string;
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -119,6 +120,10 @@ AgentConfiguration.init(
       defaultValue: "active",
     },
     name: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    description: {
       type: DataTypes.TEXT,
       allowNull: false,
     },

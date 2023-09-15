@@ -67,6 +67,7 @@ export type AgentConfigurationType = {
   status: AgentConfigurationStatus;
 
   name: string;
+  description: string;
   pictureUrl: string;
 
   // If undefined, no action performed, otherwise the action is

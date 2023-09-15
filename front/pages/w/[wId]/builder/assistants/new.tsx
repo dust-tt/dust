@@ -220,7 +220,7 @@ export default function CreateAssistant({
       assistant: {
         name: assistantHandle,
         pictureUrl: "https://dust.tt/static/droidavatar/Droid_Purple_7.jpg", // TODO
-        // description: assistantDescription as string, TODO seems ignored by backend
+        description: assistantDescription,
         status: "active",
         action: {
           type: "retrieval_configuration",
