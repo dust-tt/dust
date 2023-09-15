@@ -28,7 +28,9 @@ export function ConversationMessage({
           </div>
         </div>
       </div>
-      <div>{buttons}</div>
+      <div className="ite flex flex-col items-start gap-2 sm:flex-row">
+        {buttons}
+      </div>
     </div>
   );
 }
