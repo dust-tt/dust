@@ -134,7 +134,7 @@ export default function CreateAssistant({
         }}
         owner={owner}
         dataSources={configurableDataSources}
-        onSave={(dataSource, selectedResources) => {
+        onSave={({ dataSource, selectedResources }) => {
           setDataSourceConfigs((configs) => ({
             ...configs,
             [dataSource.name]: {
