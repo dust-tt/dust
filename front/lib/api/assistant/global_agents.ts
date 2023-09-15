@@ -92,7 +92,7 @@ async function _getSlackGlobalAgent(
     id: GLOBAL_AGENTS_ID.Slack,
     sId: GLOBAL_AGENTS_SID.Slack,
     name: "slack",
-    description: "Your Slack workspace.",
+    description: "An assistant with context on your Slack workspace.",
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     status: "active",
     scope: "global",
