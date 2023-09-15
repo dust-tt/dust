@@ -28,6 +28,11 @@ export default function Conversation({
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
   const [reconnectCounter, setReconnectCounter] = useState(0);
+  useEffect(() => {
+    if (window && window.scrollTo) {
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+  }, [conversation?.content.length]);
 
   useEffect(() => {
     if (!conversation) {
@@ -77,7 +82,7 @@ export default function Conversation({
   }
 
   return (
-    <div className="flex-col gap-6 ">
+    <div className="pb-24">
       {conversation.content.map((message) =>
         message.map((m) => {
           if (m.visibility === "deleted") {
