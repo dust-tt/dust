@@ -3,6 +3,7 @@
  */
 
 import { ModelId } from "@app/lib/databases";
+import { ioTsEnum } from "@app/lib/utils";
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
 import { AgentActionType } from "@app/types/assistant/conversation";
 
@@ -14,6 +15,7 @@ export const TIME_FRAME_UNITS = [
   "year",
 ] as const;
 export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
+export const TimeframeUnitCodec = ioTsEnum<TimeframeUnit>(TIME_FRAME_UNITS);
 
 export type TimeFrame = {
   duration: number;

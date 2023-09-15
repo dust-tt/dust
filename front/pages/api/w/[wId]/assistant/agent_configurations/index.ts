@@ -11,9 +11,8 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { ioTsEnum } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { TIME_FRAME_UNITS } from "@app/types/assistant/actions/retrieval";
+import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -43,7 +42,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         t.literal("none"),
         t.type({
           duration: t.number,
-          unit: ioTsEnum<(typeof TIME_FRAME_UNITS)[number]>(TIME_FRAME_UNITS),
+          unit: TimeframeUnitCodec,
         }),
       ]),
       topK: t.number,
