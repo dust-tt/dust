@@ -111,7 +111,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <pre className="mt-2 max-w-3xl break-all rounded-md bg-slate-800">
+    <pre className="my-2 max-w-3xl break-all rounded-md bg-slate-800">
       {/** should not need class max-w-3xl */}
       <div className="relative">
         <div className="absolute right-2 top-2">
