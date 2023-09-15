@@ -18,10 +18,12 @@ export function ConversationMessage({
       <div className="flex-shrink-0">
         <Avatar visual={pictureUrl} name={name || undefined} size="sm" />
       </div>
-      <div className="flex-grow">
-        <div className="flex flex-col gap-4">
+      <div className="min-w-0 flex-grow">
+        <div className="flex-col gap-4">
           <div className="text-sm font-medium">{name}</div>
-          <div>{children}</div>
+          <div className="min-w-0 break-words text-base font-normal">
+            {children}
+          </div>
         </div>
       </div>
     </div>
