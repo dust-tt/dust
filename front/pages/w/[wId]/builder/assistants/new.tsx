@@ -81,6 +81,14 @@ const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
   SELECTED: "Selected data sources",
 };
+
+const TIME_FRAME_MODES = ["AUTO", "FORCED"] as const;
+type TimeFrameMode = (typeof TIME_FRAME_MODES)[number];
+const TIME_FRAME_MODE_TO_LABEL: Record<TimeFrameMode, string> = {
+  AUTO: "Auto (default)",
+  FORCED: "Forced",
+};
+
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
   {
@@ -101,6 +109,7 @@ export default function CreateAssistant({
   dataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   const [dataSourceMode, setDataSourceMode] =
     useState<DataSourceMode>("GENERIC");
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -114,6 +123,8 @@ export default function CreateAssistant({
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
   } | null>(null);
+
+  const [timeFrameMode, setTimeFrameMode] = useState<TimeFrameMode>("AUTO");
 
   const [assistantHandle, setAssistantHandle] = useState<string | null>(null);
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -486,7 +497,6 @@ export default function CreateAssistant({
                 }}
                 onDelete={deleteDataSource}
               />
-              {/* TODO */}
               <div className="pt-6 text-base font-semibold text-element-900">
                 Timeframe for the data sources
               </div>
@@ -507,16 +517,46 @@ export default function CreateAssistant({
                     <Button
                       type="select"
                       labelVisible={true}
-                      label="Auto (default)"
+                      label={TIME_FRAME_MODE_TO_LABEL[timeFrameMode]}
                       variant="secondary"
                       size="sm"
                     />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items origin="bottomRight">
-                    <DropdownMenu.Item label="item 1" />
-                    <DropdownMenu.Item label="item 2" />
+                    {Object.entries(TIME_FRAME_MODE_TO_LABEL).map(
+                      ([key, value]) => (
+                        <DropdownMenu.Item
+                          key={key}
+                          label={value}
+                          onClick={() => {
+                            setTimeFrameMode(key as TimeFrameMode);
+                          }}
+                        />
+                      )
+                    )}
                   </DropdownMenu.Items>
                 </DropdownMenu>
+              </div>
+              <div>
+                <Transition
+                  show={timeFrameMode === "FORCED"}
+                  enterFrom="opacity-0"
+                  enterTo="opacity-100"
+                  leave="transition-all duration-300"
+                  enter="transition-all duration-300"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                  className="overflow-hidden"
+                  afterEnter={() => {
+                    window.scrollBy({
+                      left: 0,
+                      top: 140,
+                      behavior: "smooth",
+                    });
+                  }}
+                >
+                  Hello
+                </Transition>
               </div>
             </div>
           </div>
