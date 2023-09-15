@@ -105,16 +105,6 @@ async function handler(
     });
   }
 
-  if (message.status === "succeeded") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Agent message already succeeded.",
-      },
-    });
-  }
-
   const lastEventId = req.query.lastEventId || null;
   if (lastEventId && typeof lastEventId !== "string") {
     return apiError(req, res, {

@@ -25,8 +25,11 @@ export function AgentMessage({
   owner: WorkspaceType;
   conversationId: string;
 }) {
+  const [streamedAgentMessage, setStreamedAgentMessage] =
+    useState<AgentMessageType>(message);
+
   const shouldStream = (() => {
-    switch (message.status) {
+    switch (streamedAgentMessage.status) {
       case "succeeded":
       case "failed":
         return false;
@@ -37,12 +40,9 @@ export function AgentMessage({
       default:
         ((status: never) => {
           throw new Error(`Unknown status: ${status}`);
-        })(message.status);
+        })(streamedAgentMessage.status);
     }
   })();
-
-  const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessageType>(message);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
