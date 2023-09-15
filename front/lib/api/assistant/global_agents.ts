@@ -99,7 +99,7 @@ async function _getSlackGlobalAgent(
         "Answer the following question using all the data available in your Slack workspace.",
       model: {
         providerId: "openai",
-        modelId: "gpt-3.5-turbo",
+        modelId: "gpt-4",
       },
     },
     action: {
