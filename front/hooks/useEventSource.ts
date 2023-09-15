@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 
 export function useEventSource(
-  buildURL: (lastMessage: string | null) => string | null
+  buildURL: (lastMessage: string | null) => string | null,
+  onMessageCallback: (message: string) => void
 ) {
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
@@ -25,9 +25,8 @@ export function useEventSource(
     };
 
     es.onmessage = (event: MessageEvent<string>) => {
-      flushSync(() => {
-        setLastMessage(event.data);
-      });
+      onMessageCallback(event.data);
+      setLastMessage(event.data);
     };
 
     es.onerror = () => {
@@ -46,7 +45,7 @@ export function useEventSource(
       }
       es.close();
     };
-  }, [buildURL, lastMessage, reconnectCounter]);
+  }, [buildURL, lastMessage, onMessageCallback, reconnectCounter]);
 
-  return { lastMessage, isError };
+  return { isError };
 }

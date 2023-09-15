@@ -1,5 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -63,12 +63,7 @@ export function AgentMessage({
     },
     [conversationId, message.sId, owner.sId, shouldStream]
   );
-  const { lastMessage } = useEventSource(buildEventSourceURL);
-
-  useEffect(() => {
-    if (!lastMessage) {
-      return;
-    }
+  useEventSource(buildEventSourceURL, (mesasge) => {
     const eventPayload: {
       eventId: string;
       data:
@@ -78,7 +73,7 @@ export function AgentMessage({
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
         | AgentMessageSuccessEvent;
-    } = JSON.parse(lastMessage);
+    } = JSON.parse(mesasge);
 
     const event = eventPayload.data;
     switch (event.type) {
@@ -116,7 +111,7 @@ export function AgentMessage({
           console.error("Unknown event type", t);
         })(event);
     }
-  }, [lastMessage]);
+  });
 
   const agentMessageToRender = (() => {
     switch (message.status) {
