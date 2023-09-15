@@ -108,7 +108,7 @@ function NavigationBar({
           <div>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.label} className="flex grow flex-col">
+                <div key={nav.id} className="flex grow flex-col">
                   <Item
                     size="md"
                     selected={nav.current}
@@ -126,7 +126,7 @@ function NavigationBar({
                     <div className="mb-2 flex flex-col">
                       {nav.subMenu.map((nav) => {
                         return (
-                          <div key={nav.label} className="flex grow">
+                          <div key={nav.id} className="flex grow">
                             <Item
                               size="sm"
                               selected={nav.current}
