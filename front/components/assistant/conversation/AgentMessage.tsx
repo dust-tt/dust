@@ -70,7 +70,6 @@ export function AgentMessage({
       switch (event.type) {
         case "agent_action_success":
         case "retrieval_params":
-        case "retrieval_documents":
           setStreamedAgentMessage((m) => {
             return { ...m, action: event.action };
           });

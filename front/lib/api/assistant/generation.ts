@@ -54,9 +54,11 @@ export async function renderConversationForModel({
 
     if (isAgentMessageType(m)) {
       if (m.action) {
-        if (isRetrievalActionType(m.action) && !retrievalFound) {
-          messages.unshift(renderRetrievalActionForModel(m.action));
-          retrievalFound = true;
+        if (isRetrievalActionType(m.action)) {
+          if (!retrievalFound) {
+            messages.unshift(renderRetrievalActionForModel(m.action));
+            retrievalFound = true;
+          }
         } else {
           return new Err(
             new Error(
