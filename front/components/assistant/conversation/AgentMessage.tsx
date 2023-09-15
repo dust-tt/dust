@@ -125,7 +125,6 @@ export function AgentMessage({
         return message;
       case "created":
         return streamedAgentMessage;
-        break;
 
       default:
         ((status: never) => {
