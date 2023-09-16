@@ -247,7 +247,6 @@ function ErrorMessage({ error }: { error: { code: string; message: string } }) {
             <Button
               variant="tertiary"
               size="xs"
-              className="ml-2"
               icon={EyeIcon}
               label="See the error"
             />
