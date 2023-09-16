@@ -1,4 +1,6 @@
-import { Avatar } from "@dust-tt/sparkle";
+import { Avatar, IconButton } from "@dust-tt/sparkle";
+import { uuid4 } from "@temporalio/workflow";
+import { ComponentType, MouseEventHandler } from "react";
 
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
@@ -13,7 +15,10 @@ export function ConversationMessage({
   children?: React.ReactNode;
   name: string | null;
   pictureUrl?: string | null;
-  buttons?: React.ReactNode[];
+  buttons?: {
+    icon: ComponentType;
+    onClick: MouseEventHandler<HTMLButtonElement>;
+  }[];
 }) {
   return (
     <div className="flex w-full flex-row gap-4">
@@ -29,7 +34,17 @@ export function ConversationMessage({
         </div>
       </div>
       <div className="flex flex-col items-start gap-2 sm:flex-row">
-        {buttons}
+        {buttons &&
+          buttons.map((button) => (
+            <div key={uuid4()}>
+              <IconButton
+                variant="tertiary"
+                size="xs"
+                icon={button.icon}
+                onClick={button.onClick}
+              />
+            </div>
+          ))}
       </div>
     </div>
   );
