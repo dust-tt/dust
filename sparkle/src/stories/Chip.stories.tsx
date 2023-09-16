@@ -17,6 +17,7 @@ export const ListChipsExample = () => (
       <Chip size="xs" label="From here to there" />
       <Chip size="xs" label="Chip 2" color="emerald" />
       <Chip size="xs" label="Adding custom stuff" color="violet" />
+      <Chip size="xs" label="Warning chip" color="warning" />
     </Chip.List>
     <div className="s-h-8" />
     <Chip.List className="s-w-40">

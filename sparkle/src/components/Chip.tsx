@@ -4,7 +4,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 type ChipProps = {
   size?: "xs" | "sm";
-  color?: "emerald" | "amber" | "slate" | "violet";
+  color?: "emerald" | "amber" | "slate" | "violet" | "warning";
   label?: string;
   children?: ReactNode;
   className?: string;
@@ -35,6 +35,8 @@ export function Chip({
         return "s-bg-slate-100 s-border-slate-200";
       case "violet":
         return "s-bg-violet-100 s-border-violet-200";
+      case "warning":
+        return "s-bg-warning-100 s-border-warning-200";
     }
   })();
 
