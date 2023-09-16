@@ -7,7 +7,7 @@ import logger from "./logger";
 
 export const statsDClient = new StatsD();
 
-export const withLogging = (handler: any) => {
+export const withLogging = (handler: any, streaming = false) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
     const now = new Date();
     try {
@@ -51,6 +51,7 @@ export const withLogging = (handler: any) => {
       `method:${req.method}`,
       // Removed due to high cardinality
       // `url:${req.url}`,
+      streaming ? `streaming:true` : `streaming:false`,
       `status_code:${res.statusCode}`,
     ];
 

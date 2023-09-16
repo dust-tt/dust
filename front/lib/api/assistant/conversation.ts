@@ -586,35 +586,6 @@ export async function* postUserMessage(
       yield winner.v.value;
     }
   }
-
-  // await Promise.allSettled(
-  //   agentMessages.map(async function* (agentMessage, i) {
-  //     const agentMessageRow = agentMessageRows[i];
-
-  //     yield {
-  //       type: "agent_message_new",
-  //       created: Date.now(),
-  //       configurationId: agentMessage.configuration.sId,
-  //       messageId: agentMessage.sId,
-  //       message: agentMessage,
-  //     };
-
-  //     // We stitch the conversation to add the user message and only that agent message
-  //     // so that it can be used to prompt the agent.
-  //     const eventStream = runAgent(
-  //       auth,
-  //       agentMessage.configuration,
-  //       {
-  //         ...conversation,
-  //         content: [...conversation.content, [userMessage], [agentMessage]],
-  //       },
-  //       userMessage,
-  //       agentMessage
-  //     );
-
-  //     yield* streamRunAgentEvents(eventStream, agentMessageRow);
-  //   })
-  // );
 }
 
 // This method is in charge of re-running an agent interaction (generating a new
