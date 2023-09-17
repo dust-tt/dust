@@ -204,7 +204,8 @@ export async function* runGeneration(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
-  GenerationErrorEvent | GenerationTokensEvent | GenerationSuccessEvent
+  GenerationErrorEvent | GenerationTokensEvent | GenerationSuccessEvent,
+  void
 > {
   const owner = auth.workspace();
   if (!owner) {
@@ -214,7 +215,7 @@ export async function* runGeneration(
   const c = configuration.generation;
 
   if (!c) {
-    return {
+    yield {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -225,13 +226,14 @@ export async function* runGeneration(
           "Unexpected missing generation configuration received in `runGeneration`",
       },
     };
+    return;
   }
 
   const model = c.model;
 
   const contextSize = modelToContextSize(model);
   if (contextSize === null) {
-    return {
+    yield {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -241,6 +243,7 @@ export async function* runGeneration(
         message: `Unknown context size for model: ${model.providerId} ${model.modelId}`,
       },
     };
+    return;
   }
 
   const MIN_GENERATION_TOKENS = 2048;
@@ -259,7 +262,7 @@ export async function* runGeneration(
   });
 
   if (modelConversationRes.isErr()) {
-    return {
+    yield {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -269,6 +272,7 @@ export async function* runGeneration(
         message: `Failed tokenization for ${model.providerId} ${model.modelId}: ${modelConversationRes.error.message}`,
       },
     };
+    return;
   }
 
   const config = cloneBaseConfig(
@@ -285,7 +289,7 @@ export async function* runGeneration(
   ]);
 
   if (res.isErr()) {
-    return {
+    yield {
       type: "generation_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -295,6 +299,7 @@ export async function* runGeneration(
         message: `Error generating agent message: ${res.error}`,
       },
     };
+    return;
   }
 
   const { eventStream } = res.value;
@@ -311,7 +316,7 @@ export async function* runGeneration(
     }
 
     if (event.type === "error") {
-      return {
+      yield {
         type: "generation_error",
         created: Date.now(),
         configurationId: configuration.sId,
@@ -321,12 +326,13 @@ export async function* runGeneration(
           message: `Error generating agent message: ${event.content.message}`,
         },
       };
+      return;
     }
 
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
-        return {
+        yield {
           type: "generation_error",
           created: Date.now(),
           configurationId: configuration.sId,
@@ -336,6 +342,7 @@ export async function* runGeneration(
             message: `Error generating agent message: ${e.error}`,
           },
         };
+        return;
       }
 
       if (event.content.block_name === "MODEL" && e.value) {

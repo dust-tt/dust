@@ -157,7 +157,8 @@ export async function* runAgent(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
 > {
   // First run the action if a configuration is present.
   if (configuration.action !== null) {
@@ -175,7 +176,7 @@ export async function* runAgent(
           yield event;
         }
         if (event.type === "retrieval_error") {
-          return {
+          yield {
             type: "agent_error",
             created: event.created,
             configurationId: configuration.sId,
@@ -185,6 +186,7 @@ export async function* runAgent(
               message: event.error.message,
             },
           };
+          return;
         }
         if (event.type === "retrieval_success") {
           yield {
@@ -222,7 +224,7 @@ export async function* runAgent(
         yield event;
       }
       if (event.type === "generation_error") {
-        return {
+        yield {
           type: "agent_error",
           created: event.created,
           configurationId: configuration.sId,
@@ -232,6 +234,7 @@ export async function* runAgent(
             message: event.error.message,
           },
         };
+        return;
       }
       if (event.type === "generation_success") {
         yield {

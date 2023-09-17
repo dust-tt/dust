@@ -393,7 +393,8 @@ export async function* runRetrieval(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
-  RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent
+  RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
+  void
 > {
   const owner = auth.workspace();
   if (!owner) {
@@ -415,7 +416,7 @@ export async function* runRetrieval(
   );
 
   if (paramsRes.isErr()) {
-    return {
+    yield {
       type: "retrieval_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -425,6 +426,7 @@ export async function* runRetrieval(
         message: `Error generating parameters for retrieval: ${paramsRes.error.message}`,
       },
     };
+    return;
   }
 
   const params = paramsRes.value;
@@ -506,7 +508,7 @@ export async function* runRetrieval(
   ]);
 
   if (res.isErr()) {
-    return {
+    yield {
       type: "retrieval_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -516,6 +518,7 @@ export async function* runRetrieval(
         message: `Error searching data sources: ${res.error.message}`,
       },
     };
+    return;
   }
 
   const run = res.value;
@@ -523,7 +526,7 @@ export async function* runRetrieval(
 
   for (const t of run.traces) {
     if (t[1][0][0].error) {
-      return {
+      yield {
         type: "retrieval_error",
         created: Date.now(),
         configurationId: configuration.sId,
@@ -533,6 +536,7 @@ export async function* runRetrieval(
           message: `Error searching data sources: ${t[1][0][0].error}`,
         },
       };
+      return;
     }
     if (t[0][1] === "DATASOURCE") {
       const v = t[1][0][0].value as {

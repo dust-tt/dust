@@ -306,7 +306,7 @@ export default function CreateAssistant({
           model: {
             // TODO: make this configurable
             providerId: "openai",
-            modelId: "gpt4",
+            modelId: "gpt-4",
           },
         },
       },

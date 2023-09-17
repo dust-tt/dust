@@ -549,7 +549,8 @@ export async function* newChat(
   | ChatMessageTriggerEvent
   | ChatMessageCreateEvent
   | ChatMessageTokensEvent
-  | ChatSessionUpdateEvent
+  | ChatSessionUpdateEvent,
+  void
 > {
   const owner = auth.workspace();
   if (!owner) {
@@ -608,7 +609,8 @@ export async function* newChat(
   async function* runChatAssistant(
     retrievalMode: "auto" | "none"
   ): AsyncGenerator<
-    ChatMessageTokensEvent | ChatMessageCreateEvent | ChatMessageTriggerEvent
+    ChatMessageTokensEvent | ChatMessageCreateEvent | ChatMessageTriggerEvent,
+    void
   > {
     assistantConfig.MODEL.function_call = retrievalMode;
     const res = await runActionStreamed(

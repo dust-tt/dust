@@ -372,13 +372,14 @@ export async function* postUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
 > {
   const user = auth.user();
   const owner = auth.workspace();
 
   if (!owner || owner.id !== conversation.owner.id) {
-    return {
+    yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
@@ -386,6 +387,7 @@ export async function* postUserMessage(
         message: "The conversation does not exist.",
       },
     };
+    return;
   }
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
@@ -606,7 +608,8 @@ export async function* retryAgentMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
 > {
   const agentMessageResult: {
     agentMessage: AgentMessageType;
@@ -673,7 +676,7 @@ export async function* retryAgentMessage(
   });
 
   if (!agentMessageResult) {
-    return {
+    yield {
       type: "agent_error",
       created: Date.now(),
       configurationId: message.configuration.sId,
@@ -683,6 +686,7 @@ export async function* retryAgentMessage(
         message: "The message to retry was not found",
       },
     };
+    return;
   }
 
   const { agentMessage, agentMessageRow } = agentMessageResult;
@@ -753,9 +757,9 @@ export async function* editUserMessage(
     content: string;
     mentions: MentionType[];
   }
-): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent> {
+): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent, void> {
   if (auth.user()?.id !== message.user?.id) {
-    return {
+    yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
@@ -763,6 +767,7 @@ export async function* editUserMessage(
         message: "Only the author of the message can edit it",
       },
     };
+    return;
   }
 
   const event: UserMessageNewEvent | UserMessageErrorEvent =
@@ -906,7 +911,8 @@ async function* streamRunAgentEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
-    | AgentMessageSuccessEvent
+    | AgentMessageSuccessEvent,
+    void
   >,
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
@@ -915,7 +921,8 @@ async function* streamRunAgentEvents(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
 > {
   for await (const event of eventStream) {
     if (event.type === "agent_error") {
@@ -934,6 +941,7 @@ async function* streamRunAgentEvents(
       );
 
       yield event;
+      return;
     }
 
     if (event.type === "agent_action_success") {
