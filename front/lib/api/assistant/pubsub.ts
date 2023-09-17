@@ -109,10 +109,13 @@ export async function postUserMessageWithPubSub(
 export async function* getConversationEvents(
   conversationId: string,
   lastEventId: string | null
-): AsyncGenerator<{
-  eventId: string;
-  data: UserMessageNewEvent | AgentMessageNewEvent;
-}> {
+): AsyncGenerator<
+  {
+    eventId: string;
+    data: UserMessageNewEvent | AgentMessageNewEvent;
+  },
+  void
+> {
   const redis = await redisClient();
   const pubsubChannel = getConversationChannelId(conversationId);
 
@@ -146,15 +149,18 @@ export async function* getConversationEvents(
 export async function* getMessagesEvents(
   messageId: string,
   lastEventId: string | null
-): AsyncGenerator<{
-  eventId: string;
-  data:
-    | AgentErrorEvent
-    | AgentActionEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationSuccessEvent;
-}> {
+): AsyncGenerator<
+  {
+    eventId: string;
+    data:
+      | AgentErrorEvent
+      | AgentActionEvent
+      | AgentActionSuccessEvent
+      | GenerationTokensEvent
+      | AgentGenerationSuccessEvent;
+  },
+  void
+> {
   const pubsubChannel = getMessageChannelId(messageId);
   const redis = await redisClient();
 
