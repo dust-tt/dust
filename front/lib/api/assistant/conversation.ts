@@ -172,6 +172,17 @@ async function renderAgentMessage(
     );
   }
 
+  let error: {
+    code: string;
+    message: string;
+  } | null = null;
+  if (agentMessage.errorCode !== null && agentMessage.errorMessage !== null) {
+    error = {
+      code: agentMessage.errorCode,
+      message: agentMessage.errorMessage,
+    };
+  }
+
   return {
     id: message.id,
     sId: message.sId,
@@ -183,7 +194,7 @@ async function renderAgentMessage(
     action: agentRetrievalAction,
     content: agentMessage.content,
     feedbacks: [],
-    error: null,
+    error,
     configuration: agentConfiguration,
   };
 }
