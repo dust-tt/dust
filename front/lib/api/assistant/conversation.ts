@@ -176,13 +176,11 @@ async function renderAgentMessage(
     code: string;
     message: string;
   } | null = null;
-  if (agentMessage.status === "failed") {
-    if (agentMessage.errorCode !== null && agentMessage.errorMessage !== null) {
-      error = {
-        code: agentMessage.errorCode,
-        message: agentMessage.errorMessage,
-      };
-    }
+  if (agentMessage.errorCode !== null && agentMessage.errorMessage !== null) {
+    error = {
+      code: agentMessage.errorCode,
+      message: agentMessage.errorMessage,
+    };
   }
 
   return {
