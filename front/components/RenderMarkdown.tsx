@@ -28,13 +28,7 @@ function customDirectivesPlugin() {
         data.hProperties = {
           className: "inline-block font-medium text-brand",
         };
-        if (
-          node.children &&
-          node.children[0] &&
-          node.children[0].type === "text"
-        ) {
-          node.children[0].value = "@" + node.children[0].value;
-        }
+        node.children.unshift({ type: "text", value: "@" });
       }
     });
   };
