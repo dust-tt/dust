@@ -1,10 +1,12 @@
-import { Avatar } from "@dust-tt/sparkle";
+import { Avatar, IconButton } from "@dust-tt/sparkle";
+import { ComponentType, MouseEventHandler } from "react";
 
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
 export function ConversationMessage({
+  messageId,
   children,
   name,
   pictureUrl,
@@ -12,8 +14,12 @@ export function ConversationMessage({
 }: {
   children?: React.ReactNode;
   name: string | null;
+  messageId: string;
   pictureUrl?: string | null;
-  buttons?: React.ReactNode[];
+  buttons?: {
+    icon: ComponentType;
+    onClick: MouseEventHandler<HTMLButtonElement>;
+  }[];
 }) {
   return (
     <div className="flex w-full flex-row gap-4">
@@ -29,7 +35,17 @@ export function ConversationMessage({
         </div>
       </div>
       <div className="flex flex-col items-start gap-2 sm:flex-row">
-        {buttons}
+        {buttons &&
+          buttons.map((button, i) => (
+            <div key={`message-${messageId}-button-${i}`}>
+              <IconButton
+                variant="tertiary"
+                size="sm"
+                icon={button.icon}
+                onClick={button.onClick}
+              />
+            </div>
+          ))}
       </div>
     </div>
   );

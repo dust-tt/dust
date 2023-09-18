@@ -1,4 +1,4 @@
-import { ClipboardIcon, IconButton, Spinner } from "@dust-tt/sparkle";
+import { ClipboardIcon, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -133,25 +133,23 @@ export function AgentMessage({
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={agentMessageToRender.configuration.name}
-      buttons={[CopyToClipboardElement(agentMessageToRender.content)]}
+      messageId={agentMessageToRender.sId}
+      buttons={[
+        {
+          icon: ClipboardIcon,
+          onClick: () => {
+            void navigator.clipboard.writeText(
+              agentMessageToRender.content || ""
+            );
+          },
+        },
+      ]}
     >
       {renderMessage(agentMessageToRender)}
     </ConversationMessage>
   );
 }
 
-function CopyToClipboardElement(content: string | null) {
-  return (
-    <IconButton
-      variant="tertiary"
-      size="xs"
-      icon={ClipboardIcon}
-      onClick={() => {
-        void navigator.clipboard.writeText(content || "");
-      }}
-    />
-  );
-}
 function renderMessage(agentMessage: AgentMessageType) {
   // Display the error to the user so they can report it to us (or some can be
   // understandable directly to them)
