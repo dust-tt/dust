@@ -199,23 +199,21 @@ function renderMessage(agentMessage: AgentMessageType) {
   }
   // Messages with action
   if (agentMessage.action) {
-    const contentAvailable =
-      agentMessage.content && agentMessage.content !== "";
     return (
       <>
         <div
           className={
-            contentAvailable
+            agentMessage.content && agentMessage.content !== ""
               ? "border-b border-dashed border-structure-300"
               : ""
           }
         >
           <AgentAction action={agentMessage.action} />
         </div>
-        {contentAvailable && (
+        {agentMessage.content && agentMessage.content !== "" && (
           <>
             <div className="pt-4">
-              <RenderMarkdown content={agentMessage.content!} />
+              <RenderMarkdown content={agentMessage.content} />
             </div>
           </>
         )}
