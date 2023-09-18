@@ -1,4 +1,13 @@
-import { ClipboardIcon, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowPathIcon,
+  Button,
+  Chip,
+  ClipboardIcon,
+  DocumentDuplicateIcon,
+  DropdownMenu,
+  EyeIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -35,7 +44,6 @@ export function AgentMessage({
         return false;
       case "created":
         return true;
-        break;
 
       default:
         ((status: never) => {
@@ -128,22 +136,25 @@ export function AgentMessage({
         })(message.status);
     }
   })();
-
+  const buttons =
+    message.status === "failed"
+      ? []
+      : [
+          {
+            icon: ClipboardIcon,
+            onClick: () => {
+              void navigator.clipboard.writeText(
+                agentMessageToRender.content || ""
+              );
+            },
+          },
+        ];
   return (
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={agentMessageToRender.configuration.name}
       messageId={agentMessageToRender.sId}
-      buttons={[
-        {
-          icon: ClipboardIcon,
-          onClick: () => {
-            void navigator.clipboard.writeText(
-              agentMessageToRender.content || ""
-            );
-          },
-        },
-      ]}
+      buttons={buttons}
     >
       {renderMessage(agentMessageToRender)}
     </ConversationMessage>
@@ -155,12 +166,14 @@ function renderMessage(agentMessage: AgentMessageType) {
   // understandable directly to them)
   if (agentMessage.status === "failed") {
     return (
-      <div>
-        <div className="mb-2 text-xs font-bold text-element-600">
-          <p>Error Code: {agentMessage.error?.code}</p>
-          <p>Error Message: {agentMessage.error?.message}</p>
-        </div>
-      </div>
+      <ErrorMessage
+        error={
+          agentMessage.error || {
+            message: "Unexpected Error",
+            code: "unexpected_error",
+          }
+        }
+      />
     );
   }
 
@@ -209,4 +222,65 @@ function renderMessage(agentMessage: AgentMessageType) {
       </>
     );
   }
+}
+function ErrorMessage({ error }: { error: { code: string; message: string } }) {
+  const fullMessage =
+    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+  return (
+    <div className="flex flex-col gap-9">
+      <div className="flex flex-col gap-1 sm:flex-row">
+        <Chip
+          color="warning"
+          label={"ERROR: " + shortText(error.message)}
+          size="xs"
+        />
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              variant="tertiary"
+              size="xs"
+              icon={EyeIcon}
+              label="See the error"
+            />
+          </DropdownMenu.Button>
+          <div className="relative bottom-6 z-30">
+            <DropdownMenu.Items origin="topLeft" width={320}>
+              <div className="flex flex-col gap-3 pb-3 pt-5">
+                <div className="text-sm font-normal text-warning-800">
+                  {fullMessage}
+                </div>
+                <div className="self-end">
+                  <Button
+                    variant="tertiary"
+                    size="xs"
+                    icon={DocumentDuplicateIcon}
+                    label={"Copy"}
+                    onClick={() =>
+                      void navigator.clipboard.writeText(fullMessage)
+                    }
+                  />
+                </div>
+              </div>
+            </DropdownMenu.Items>
+          </div>
+        </DropdownMenu>
+      </div>
+      <div className="self-center">
+        <Button
+          variant="primary"
+          size="sm"
+          icon={ArrowPathIcon}
+          label="Retry"
+          onClick={() => {
+            // TODO
+            alert("To be done in a few hours");
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function shortText(text: string, maxLength = 30) {
+  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }
