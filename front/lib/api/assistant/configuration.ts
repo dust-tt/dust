@@ -20,6 +20,7 @@ import {
   DataSourceConfiguration,
   isTemplatedQuery,
   isTimeFrame,
+  RetrievalConfigurationType,
   RetrievalQuery,
   RetrievalTimeframe,
 } from "@app/types/assistant/actions/retrieval";
@@ -66,26 +67,60 @@ export async function getAgentConfiguration(
     return null;
   }
 
-  const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
-    where: {
-      retrievalConfigurationId: agent.retrievalConfiguration?.id,
-    },
-    include: [
-      {
-        model: DataSource,
-        as: "dataSource",
-        include: [
-          {
-            model: Workspace,
-            as: "workspace",
-          },
-        ],
+  let retrievalConfig: RetrievalConfigurationType | null = null;
+  if (agent.retrievalConfigurationId) {
+    const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
+      where: {
+        retrievalConfigurationId: agent.retrievalConfiguration?.id,
       },
-    ],
-  });
+      include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
+        },
+      ],
+    });
+    const actionConfig = agent.retrievalConfiguration;
+
+    if (!actionConfig) {
+      throw new Error(
+        `Couldn't find action configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
+      );
+    }
+
+    retrievalConfig = {
+      id: actionConfig.id,
+      sId: actionConfig.sId,
+      type: "retrieval_configuration",
+      query: renderRetrievalQueryType(actionConfig),
+      relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
+      topK: actionConfig.topK,
+      dataSources: dataSourcesConfig.map((dsConfig) => {
+        return {
+          dataSourceId: dsConfig.dataSource.name,
+          workspaceId: dsConfig.dataSource.workspace.sId,
+          filter: {
+            tags:
+              dsConfig.tagsIn && dsConfig.tagsNotIn
+                ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
+                : null,
+            parents:
+              dsConfig.parentsIn && dsConfig.parentsNotIn
+                ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
+                : null,
+          },
+        };
+      }),
+    };
+  }
 
   const generationConfig = agent.generationConfiguration;
-  const actionConfig = agent.retrievalConfiguration;
 
   return {
     id: agent.id,
@@ -95,32 +130,7 @@ export async function getAgentConfiguration(
     pictureUrl: agent.pictureUrl,
     description: agent.description,
     status: agent.status,
-    action: actionConfig
-      ? {
-          id: actionConfig.id,
-          sId: actionConfig.sId,
-          type: "retrieval_configuration",
-          query: renderRetrievalQueryType(actionConfig),
-          relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
-          topK: actionConfig.topK,
-          dataSources: dataSourcesConfig.map((dsConfig) => {
-            return {
-              dataSourceId: dsConfig.dataSource.name,
-              workspaceId: dsConfig.dataSource.workspace.sId,
-              filter: {
-                tags:
-                  dsConfig.tagsIn && dsConfig.tagsNotIn
-                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                    : null,
-                parents:
-                  dsConfig.parentsIn && dsConfig.parentsNotIn
-                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
-                    : null,
-              },
-            };
-          }),
-        }
-      : null,
+    action: retrievalConfig,
     generation: generationConfig
       ? {
           id: generationConfig.id,
