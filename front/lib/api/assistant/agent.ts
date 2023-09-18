@@ -250,6 +250,7 @@ export async function* runAgent(
     }
   }
 
+  agentMessage.status = "succeeded";
   yield {
     type: "agent_message_success",
     created: Date.now(),
