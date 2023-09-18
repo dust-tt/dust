@@ -54,7 +54,7 @@ export async function registerWebhook(
   }
 }
 
-async function _getParents(
+async function _getLocalParents(
   connectorId: string,
   driveObjectId: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
@@ -74,12 +74,12 @@ async function _getParents(
   }
 
   return parents.concat(
-    await getParents(connectorId, object.parentId, memoizationKey)
+    await getLocalParents(connectorId, object.parentId, memoizationKey)
   );
 }
 
-export const getParents = memoize(
-  _getParents,
+export const getLocalParents = memoize(
+  _getLocalParents,
   (connectorId, driveObjectId, memoizationKey) => {
     return `${connectorId}:${driveObjectId}:${memoizationKey}`;
   }
