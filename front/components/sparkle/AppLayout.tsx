@@ -47,8 +47,7 @@ function NavigationBar({
             <div className="pt-3">
               <Logo className="h-4 w-16" />
             </div>
-            {/* {user && user.workspaces.length > 1 ? ( */}
-            {user ? (
+            {user && user.workspaces.length > 1 ? (
               <div className="flex flex-row gap-2">
                 <div className="text-sm text-slate-500">Workspace:</div>
                 <WorkspacePicker
