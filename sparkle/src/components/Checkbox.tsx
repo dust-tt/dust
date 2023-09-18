@@ -7,6 +7,7 @@ interface CheckboxProps {
   onChange: (checked: boolean) => void;
   className?: string;
   disabled?: boolean;
+  partialChecked?: boolean;
 }
 
 export function Checkbox({
@@ -14,6 +15,7 @@ export function Checkbox({
   onChange,
   className = "",
   disabled,
+  partialChecked,
 }: CheckboxProps) {
   const baseStyleClasses = {
     base: "s-border s-bg-structure-50 s-justify-center s-w-5 s-h-5 s-border-element-600 s-rounded-md s-flex s-items-center s-transition-colors s-duration-200 s-ease-in-out",
@@ -26,9 +28,10 @@ export function Checkbox({
   };
 
   const checkedIndicatorClasses = {
-    base: "s-h-3 s-w-3 s-rounded s-bg-action-500 dark:s-bg-action-500-dark s-transition-opacity s-duration-200 s-ease-in-out",
-    selected: "s-opacity-100",
+    base: "s-h-3 s-w-3 s-rounded s-transition-opacity s-duration-200 s-ease-in-out",
+    selected: "s-opacity-100 s-bg-action-500 dark:s-bg-action-500-dark",
     unselected: "s-opacity-0",
+    partial: "s-opacity-100 s-bg-element-600 dark:s-bg-element-600-dark",
   };
 
   const combinedBaseClasses = classNames(
@@ -44,6 +47,8 @@ export function Checkbox({
     checkedIndicatorClasses.base,
     checked
       ? checkedIndicatorClasses.selected
+      : partialChecked
+      ? checkedIndicatorClasses.partial
       : checkedIndicatorClasses.unselected
   );
 
