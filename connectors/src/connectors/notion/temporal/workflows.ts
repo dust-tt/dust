@@ -137,7 +137,6 @@ export async function notionSyncWorkflow(
           runTimestamp,
           pageIndex,
           isBatchSync: isInitialSync,
-          skipUpToDatePages,
           queue: childWorkflowQueue,
         })
       );
@@ -298,7 +297,6 @@ export async function notionSyncResultPageDatabaseWorkflow(
         runTimestamp,
         pageIndex,
         isBatchSync,
-        skipUpToDatePages: false,
         queue: workflowQueue,
         childWorkflowsNameSuffix: `database-children-${databaseId}`,
       });
@@ -319,7 +317,6 @@ async function performUpserts({
   runTimestamp,
   pageIndex,
   isBatchSync,
-  skipUpToDatePages,
   queue,
   childWorkflowsNameSuffix = "",
 }: {
@@ -331,7 +328,6 @@ async function performUpserts({
   runTimestamp: number;
   pageIndex: number;
   isBatchSync: boolean;
-  skipUpToDatePages: boolean;
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
 }): Promise<void> {
