@@ -18,7 +18,7 @@ export default function WorkspacePicker({
         label={workspace ? workspace.name : "Select workspace"}
       />
 
-      <DropdownMenu.Items>
+      <DropdownMenu.Items origin="topLeft">
         {user.workspaces.map((w) => {
           return (
             <DropdownMenu.Item
