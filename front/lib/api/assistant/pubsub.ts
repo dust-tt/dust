@@ -7,6 +7,7 @@ import {
 import {
   AgentMessageNewEvent,
   postUserMessage,
+  retryAgentMessage,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
@@ -14,6 +15,7 @@ import { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 import {
+  AgentMessageType,
   ConversationType,
   MentionType,
   UserMessageContext,
@@ -96,6 +98,74 @@ export async function postUserMessageWithPubSub(
           reject(
             new Error(
               `Never got the user_message_new event for ${conversation.sId}`
+            )
+          );
+        }
+      }
+    })();
+  });
+
+  return promise;
+}
+
+export async function retryAgentMessageWithPubSub(
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+  }: {
+    conversation: ConversationType;
+    message: AgentMessageType;
+  }
+): Promise<AgentMessageType> {
+  const promise: Promise<AgentMessageType> = new Promise((resolve, reject) => {
+    void (async () => {
+      const redis = await redisClient();
+      let didResolve = false;
+      try {
+        for await (const event of retryAgentMessage(auth, {
+          conversation,
+          message,
+        })) {
+          switch (event.type) {
+            case "agent_message_new": {
+              const pubsubChannel = getConversationChannelId(conversation.sId);
+              await redis.xAdd(pubsubChannel, "*", {
+                payload: JSON.stringify(event),
+              });
+              await redis.expire(pubsubChannel, 60 * 10);
+              didResolve = true;
+              resolve(event.message);
+              break;
+            }
+            case "retrieval_params":
+            case "agent_error":
+            case "agent_action_success":
+            case "generation_tokens":
+            case "agent_generation_success":
+            case "agent_message_success": {
+              const pubsubChannel = getMessageChannelId(event.messageId);
+              await redis.xAdd(pubsubChannel, "*", {
+                payload: JSON.stringify(event),
+              });
+              await redis.expire(pubsubChannel, 60 * 10);
+              break;
+            }
+            default:
+              ((blockParent: never) => {
+                logger.error("Unknown event type", blockParent);
+              })(event);
+              return null;
+          }
+        }
+      } catch (e) {
+        logger.error({ error: e }, "Error Posting message");
+      } finally {
+        await redis.quit();
+        if (!didResolve) {
+          reject(
+            new Error(
+              `Never got the agent_message_new event for ${conversation.sId}`
             )
           );
         }
