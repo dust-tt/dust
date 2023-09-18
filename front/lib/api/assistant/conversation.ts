@@ -462,7 +462,7 @@ export async function* postUserMessage(
                 mention.configurationId
               );
               if (!configuration) {
-                throw new Error(`Configuration not found 1`);
+                throw new Error(`Configuration not found`);
               }
 
               await Mention.create(
@@ -857,7 +857,7 @@ export async function* editUserMessage(
                 mention.configurationId
               );
               if (!configuration) {
-                throw new Error(`Configuration not foundzz 2`);
+                throw new Error(`Configuration not found`);
               }
 
               await Mention.create(
