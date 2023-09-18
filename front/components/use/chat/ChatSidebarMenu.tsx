@@ -24,7 +24,7 @@ export function ChatSidebarMenu({
 
   return (
     <div className="flex grow flex-col">
-      <div className="flex border-b border-structure-200 py-2 pl-4 pr-2">
+      <div className="flex border-b border-structure-200 px-4 py-2">
         <Item
           size="md"
           selected={readOnly}

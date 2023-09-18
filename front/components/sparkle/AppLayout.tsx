@@ -41,66 +41,61 @@ function NavigationBar({
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
-      <div className="mt-4 flex flex-col gap-4">
-        <div className="flex flex-row">
-          <div className="flex flex-initial items-center">
-            <Logo className="-ml-4 h-4 w-32" />
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-row p-3">
+          <div className="flex flex-col gap-2">
+            <div className="pt-3">
+              <Logo className="h-4 w-16" />
+            </div>
+            {user && user.workspaces.length > 1 ? (
+              <div className="flex flex-row gap-2">
+                <div className="text-sm text-slate-500">Workspace:</div>
+                <WorkspacePicker
+                  user={user}
+                  workspace={owner}
+                  readOnly={false}
+                  onWorkspaceUpdate={(workspace) => {
+                    if (workspace.id !== owner.id) {
+                      void router
+                        .push(`/w/${workspace.sId}/u/chat`)
+                        .then(() => router.reload());
+                    }
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-1"></div>
-          <div className="flex flex-initial">
-            {user && (
-              <div className="static inset-auto right-0 flex flex-initial items-center pr-4">
-                <DropdownMenu>
-                  <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
-                    <span className="sr-only">Open user menu</span>
-                    <Avatar
-                      size="sm"
-                      visual={
-                        user.image
-                          ? user.image
-                          : "https://gravatar.com/avatar/anonymous?d=mp"
-                      }
-                      onClick={() => {
-                        "clickable";
-                      }}
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="topRight">
-                    <DropdownMenu.Item
-                      label="Sign&nbsp;out"
-                      onClick={() => {
-                        void signOut({
-                          callbackUrl: "/",
-                          redirect: true,
-                        });
-                      }}
-                    />
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-        </div>
-        {user && user.workspaces.length > 1 ? (
-          <div className="flex flex-row items-center px-4">
-            <div className="text-sm text-slate-500">Workspace:</div>
-            <div className="flex-1"></div>
-            <div>
-              <WorkspacePicker
-                user={user}
-                workspace={owner}
-                readOnly={false}
-                onWorkspaceUpdate={(workspace) => {
-                  if (workspace.id !== owner.id) {
-                    void router
-                      .push(`/w/${workspace.sId}/u/chat`)
-                      .then(() => router.reload());
+          {user && (
+            <DropdownMenu>
+              <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
+                <span className="sr-only">Open user menu</span>
+                <Avatar
+                  size="sm"
+                  visual={
+                    user.image
+                      ? user.image
+                      : "https://gravatar.com/avatar/anonymous?d=mp"
                   }
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
+                  onClick={() => {
+                    "clickable";
+                  }}
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topRight">
+                <DropdownMenu.Item
+                  label="Sign&nbsp;out"
+                  onClick={() => {
+                    void signOut({
+                      callbackUrl: "/",
+                      redirect: true,
+                    });
+                  }}
+                />
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          )}
+        </div>
         <div>
           <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
         </div>
