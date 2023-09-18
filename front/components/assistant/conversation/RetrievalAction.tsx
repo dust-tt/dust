@@ -31,36 +31,41 @@ export default function RetrievalAction({
   }
   return (
     <div>
-      <div className="mb-2 text-xs font-bold text-element-600">
+      <div className="text-xs font-bold text-element-600">
         Searching for:
+        <div className="ml-2 inline-block">
+          <Chip.List>
+            <Tooltip label="Docs created or updated during that time are included in the search">
+              <Chip
+                color="amber"
+                label={
+                  relativeTimeFrame
+                    ? "During the last " +
+                      (relativeTimeFrame.duration > 1
+                        ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
+                        : `${relativeTimeFrame.unit}`)
+                    : "All time"
+                }
+              />
+            </Tooltip>
+            <Tooltip label={`Query used for semantic search: ${query}`}>
+              <Chip
+                color="slate"
+                label={query ? shortText(query) : "No query"}
+              />
+            </Tooltip>
+          </Chip.List>
+        </div>
       </div>
-      <Chip.List>
-        <Tooltip label="Docs created or updated during that time are included in the search">
-          <Chip
-            color="amber"
-            label={
-              relativeTimeFrame
-                ? "During the last " +
-                  (relativeTimeFrame.duration > 1
-                    ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-                    : `${relativeTimeFrame.unit}`)
-                : "All time"
-            }
-          />
-        </Tooltip>
-        <Tooltip label={`Query used for semantic search: ${query}`}>
-          <Chip color="slate" label={query ? shortText(query) : "No query"} />
-        </Tooltip>
-      </Chip.List>
       {!retrievalAction.documents ? (
         <div>
-          <div className="my-2 text-xs font-bold text-element-600">
+          <div className="mt-2 text-xs font-bold text-element-600">
             Retrieving...
           </div>
           <Spinner size="sm" />
         </div>
       ) : (
-        <div className="my-2 text-xs font-bold text-element-600">
+        <div className="mt-2 text-xs font-bold text-element-600">
           Retrieved:
           <Chip color="violet" className="ml-2">
             {retrievalAction.documents.length > 0
