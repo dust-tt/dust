@@ -43,6 +43,7 @@ export default function DataSourceResourceSelectorTree({
         selectedParentIds={selectedParentIds}
         onSelectChange={onSelectChange}
         parentsById={parentsById}
+        parents={[]}
         isChecked={false}
       />
     </div>
@@ -81,6 +82,7 @@ function DataSourceResourceSelectorChildren({
   selectedParentIds,
   onSelectChange,
   parentsById,
+  parents,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -88,6 +90,7 @@ function DataSourceResourceSelectorChildren({
   expandable: boolean;
   isChecked: boolean;
   selectedParentIds: Set<string>;
+  parents: string[];
   onSelectChange: (
     resource: { resourceId: string; resourceName: string; parents: string[] },
     selected: boolean
@@ -100,7 +103,7 @@ function DataSourceResourceSelectorChildren({
       dataSource,
       parentId,
       filterPermission: "read",
-      retrieveParents: true,
+      retrieveParents: false,
     });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -191,7 +194,7 @@ function DataSourceResourceSelectorChildren({
                           {
                             resourceId: r.internalId,
                             resourceName: r.title,
-                            parents: r.parents ?? [],
+                            parents: parents,
                           },
                           checked
                         )
@@ -212,6 +215,7 @@ function DataSourceResourceSelectorChildren({
                       selectedParentIds={selectedParentIds}
                       onSelectChange={onSelectChange}
                       parentsById={parentsById}
+                      parents={[...parents, r.internalId]}
                     />
                   </div>
                 )}

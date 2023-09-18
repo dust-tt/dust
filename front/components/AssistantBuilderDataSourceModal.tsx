@@ -25,12 +25,10 @@ export default function AssistantBuilderDataSourceModal({
   onSave: (params: {
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
-    parentsById: Record<string, Set<string>>;
   }) => void;
   dataSourceToManage: {
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
-    parentsById: Record<string, Set<string>>;
   } | null;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
@@ -38,6 +36,7 @@ export default function AssistantBuilderDataSourceModal({
   const [selectedResources, setSelectedResources] = useState<
     Record<string, string>
   >({});
+
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
     {}
   );
@@ -46,7 +45,6 @@ export default function AssistantBuilderDataSourceModal({
     if (dataSourceToManage) {
       setSelectedDataSource(dataSourceToManage.dataSource);
       setSelectedResources(dataSourceToManage.selectedResources);
-      setParentsById(dataSourceToManage.parentsById);
     }
   }, [dataSourceToManage]);
 
@@ -72,7 +70,6 @@ export default function AssistantBuilderDataSourceModal({
         onSave({
           dataSource: selectedDataSource,
           selectedResources,
-          parentsById,
         });
         onClose();
       }}
@@ -93,7 +90,6 @@ export default function AssistantBuilderDataSourceModal({
                 onSave({
                   dataSource: ds,
                   selectedResources: {},
-                  parentsById: {},
                 });
                 onClose();
               }

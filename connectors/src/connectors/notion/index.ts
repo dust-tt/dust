@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import PQueue from "p-queue";
 import { Transaction } from "sequelize";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";

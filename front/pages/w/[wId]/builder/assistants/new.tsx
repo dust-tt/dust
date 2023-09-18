@@ -135,14 +135,12 @@ export default function CreateAssistant({
       {
         dataSource: DataSourceType;
         selectedResources: Record<string, string>;
-        parentsById: Record<string, Set<string>>;
       }
     >
   >({});
   const [dataSourceToManage, setDataSourceToManage] = useState<{
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
-    parentsById: Record<string, Set<string>>;
   } | null>(null);
 
   const [timeFrameMode, setTimeFrameMode] = useState<TimeFrameMode>("AUTO");
@@ -365,13 +363,12 @@ export default function CreateAssistant({
         }}
         owner={owner}
         dataSources={configurableDataSources}
-        onSave={({ dataSource, selectedResources, parentsById }) => {
+        onSave={({ dataSource, selectedResources }) => {
           setDataSourceConfigs((configs) => ({
             ...configs,
             [dataSource.name]: {
               dataSource,
               selectedResources,
-              parentsById,
             },
           }));
         }}
