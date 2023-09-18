@@ -317,6 +317,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
     return new Err(new Error("Connector not found"));
   }
   const authCredentials = await getAuthObject(c.connectionId);
+  const memoKey = randomUUID();
   if (filterPermission === "read") {
     if (parentInternalId === null) {
       // Return the list of folders explicitly selected by the user.
@@ -347,7 +348,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             ancestors = await getParents(
               connectorId.toString(),
               f.folderId,
-              randomUUID()
+              memoKey
             );
           }
           return {
@@ -388,7 +389,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
               ancestors = await getParents(
                 connectorId.toString(),
                 f.driveFileId,
-                randomUUID()
+                memoKey
               );
             }
             return {
@@ -429,7 +430,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             ancestors = await getParents(
               connectorId.toString(),
               driveObject.id,
-              randomUUID()
+              memoKey
             );
           }
           return {
@@ -492,7 +493,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             ancestors = await getParents(
               connectorId.toString(),
               driveObject.id,
-              randomUUID()
+              memoKey
             );
           }
           return {
