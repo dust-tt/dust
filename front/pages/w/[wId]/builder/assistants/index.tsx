@@ -141,7 +141,9 @@ export default function AssistantsBuilder({
                   icon: PencilSquareIcon,
                   label: "Edit",
                   onClick: () => {
-                    alert(":)");
+                    void router.push(
+                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
+                    );
                   },
                 },
               }}

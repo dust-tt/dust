@@ -3,10 +3,10 @@ import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 
+import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/pages/w/[wId]/builder/assistants/new";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
