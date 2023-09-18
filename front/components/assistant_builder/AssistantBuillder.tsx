@@ -74,10 +74,10 @@ type AssistantBuilderState = {
 // - doesn't allow null handle/description/instructions
 // - allows null timeFrame
 // - allows null dataSourceConfigs
-type AssistantBuilderInitialState = {
+export type AssistantBuilderInitialState = {
   dataSourceMode: AssistantBuilderState["dataSourceMode"];
   dataSourceConfigs: AssistantBuilderState["dataSourceConfigs"] | null;
-  timeFrameMode: TimeFrameMode;
+  timeFrameMode: TimeFrameMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   handle: string;
   description: string;
@@ -90,6 +90,7 @@ type AssistantBuilderProps = {
   gaTrackingId: string;
   dataSources: DataSourceType[];
   initialBuilderState: AssistantBuilderInitialState | null;
+  agentConfigurationId: string | null;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -111,6 +112,7 @@ export default function AssistantBuilder({
   gaTrackingId,
   dataSources,
   initialBuilderState,
+  agentConfigurationId,
 }: AssistantBuilderProps) {
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
@@ -135,7 +137,9 @@ export default function AssistantBuilder({
         dataSourceConfigs: initialBuilderState.dataSourceConfigs ?? {
           ...DEFAULT_ASSISTANT_STATE.dataSourceConfigs,
         },
-        timeFrameMode: initialBuilderState.timeFrameMode,
+        timeFrameMode:
+          initialBuilderState.timeFrameMode ??
+          DEFAULT_ASSISTANT_STATE.timeFrameMode,
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
@@ -319,9 +323,11 @@ export default function AssistantBuilder({
     };
 
     const res = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations`,
+      !agentConfigurationId
+        ? `/api/w/${owner.sId}/assistant/agent_configurations`
+        : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
       {
-        method: "POST",
+        method: !agentConfigurationId ? "POST" : "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -436,6 +442,7 @@ export default function AssistantBuilder({
               </div>
               <AssistantBuilderTextInput
                 placeholder="SalesAssistantFrance"
+                value={builderState.handle}
                 onChange={(value) => {
                   setBuilderState((state) => ({
                     ...state,
@@ -454,6 +461,7 @@ export default function AssistantBuilder({
               </div>
               <AssistantBuilderTextInput
                 placeholder="Assistant designed to answer sales questions"
+                value={builderState.description}
                 onChange={(value) => {
                   setBuilderState((state) => ({
                     ...state,
@@ -476,6 +484,7 @@ export default function AssistantBuilder({
               </div>
               <AssistantBuilderTextInput
                 placeholder="Achieve a particular task, follow a template, use a certain formating..."
+                value={builderState.instructions}
                 onChange={(value) => {
                   setBuilderState((state) => ({
                     ...state,
@@ -592,11 +601,13 @@ export default function AssistantBuilder({
 
 function AssistantBuilderTextInput({
   placeholder,
+  value,
   onChange,
   error,
   name,
 }: {
   placeholder: string;
+  value: string | null;
   onChange: (value: string) => void;
   error?: string | null;
   name: string;
@@ -614,6 +625,7 @@ function AssistantBuilderTextInput({
         "bg-structure-50 stroke-structure-50"
       )}
       placeholder={placeholder}
+      value={value ?? ""}
       onChange={(e) => {
         onChange(e.target.value);
       }}
