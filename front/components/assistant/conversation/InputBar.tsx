@@ -65,6 +65,7 @@ function AgentListImpl(
     reset: () => void;
     selected: () => AgentConfigurationType | null;
     noMatch: () => boolean;
+    perfectMatch: () => boolean;
   }>
 ) {
   const [focus, setFocus] = useState<number>(0);
@@ -100,6 +101,11 @@ function AgentListImpl(
     },
     noMatch: () => {
       return filtered.length === 0;
+    },
+    perfectMatch: () => {
+      return !!filtered.find(
+        (a) => a.name.toLowerCase() === filter.toLowerCase()
+      );
     },
   }));
 
@@ -198,6 +204,7 @@ export function AssistantInputBar({
     reset: () => void;
     selected: () => AgentConfigurationType | null;
     noMatch: () => boolean;
+    perfectMatch: () => boolean;
   }>(null);
 
   useEffect(() => {
@@ -419,8 +426,10 @@ export function AssistantInputBar({
                     inputNode.onblur = () => {
                       let selected = agentListRef.current?.selected();
                       setAgentListVisible(false);
-                      setAgentListFilter("");
-                      agentListRef.current?.reset();
+                      setTimeout(() => {
+                        setAgentListFilter("");
+                        agentListRef.current?.reset();
+                      });
 
                       if (inputNode.getAttribute("ignore") !== "none") {
                         selected = null;
@@ -528,12 +537,17 @@ export function AssistantInputBar({
                         }
                       }
                       if (e.key === " ") {
-                        agentListRef.current?.reset();
-                        inputNode.setAttribute("ignore", "space");
-                        inputNode.blur();
-                        e.preventDefault();
+                        if (agentListRef.current?.perfectMatch()) {
+                          inputNode.blur();
+                          e.preventDefault();
+                        } else {
+                          agentListRef.current?.reset();
+                          inputNode.setAttribute("ignore", "space");
+                          inputNode.blur();
+                          e.preventDefault();
+                        }
                       }
-                      if (e.key === "Enter" || e.key === " ") {
+                      if (e.key === "Enter") {
                         inputNode.blur();
                         e.preventDefault();
                       }
