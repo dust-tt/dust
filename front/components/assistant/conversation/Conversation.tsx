@@ -88,7 +88,7 @@ export default function Conversation({
               return (
                 <div
                   key={`message-id-${m.sId}`}
-                  className="bg-structure-50 py-6"
+                  className="borer-strucutre-100 border-t bg-structure-50 px-2 py-6"
                 >
                   <div className="mx-auto flex max-w-4xl gap-4">
                     <UserMessage message={m} />
@@ -97,7 +97,10 @@ export default function Conversation({
               );
             case "agent_message":
               return (
-                <div key={`message-id-${m.sId}`} className="py-6">
+                <div
+                  key={`message-id-${m.sId}`}
+                  className="borer-strucutre-100 border-t px-2 py-6"
+                >
                   <div className="mx-auto flex max-w-4xl gap-4">
                     <AgentMessage
                       message={m}

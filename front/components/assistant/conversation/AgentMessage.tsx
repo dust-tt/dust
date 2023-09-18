@@ -185,7 +185,7 @@ function renderMessage(agentMessage: AgentMessageType) {
   ) {
     return (
       <div>
-        <div className="mb-2 text-xs font-bold text-element-600">
+        <div className="text-xs font-bold text-element-600">
           I'm thinking...
         </div>
         <Spinner size="sm" />
@@ -195,26 +195,24 @@ function renderMessage(agentMessage: AgentMessageType) {
 
   // Messages with no action and text
   if (agentMessage.action === null && agentMessage.content) {
-    return (
-      <>
-        <div className="mb-2 text-xs font-bold text-element-600">Answer:</div>
-        <div className="mb-2">
-          <RenderMarkdown content={agentMessage.content} />
-        </div>
-      </>
-    );
+    return <RenderMarkdown content={agentMessage.content} />;
   }
   // Messages with action
   if (agentMessage.action) {
     return (
       <>
-        <AgentAction action={agentMessage.action} />
+        <div
+          className={
+            agentMessage.content && agentMessage.content !== ""
+              ? "border-b border-dashed border-structure-300"
+              : ""
+          }
+        >
+          <AgentAction action={agentMessage.action} />
+        </div>
         {agentMessage.content && agentMessage.content !== "" && (
           <>
-            <div className="mb-2 text-xs font-bold text-element-600">
-              Answer:
-            </div>
-            <div className="mb-2">
+            <div className="pt-4">
               <RenderMarkdown content={agentMessage.content} />
             </div>
           </>
