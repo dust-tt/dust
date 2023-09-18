@@ -21,15 +21,17 @@ export default function DataSourceResourceSelectorTree({
   expandable, //if not, it's flat
   selectedParentIds,
   onSelectChange,
+  ancestorsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   expandable: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string },
+    resource: { resourceId: string; resourceName: string; ancestors: string[] },
     selected: boolean
   ) => void;
+  ancestorsById: Record<string, Set<string>>;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -40,6 +42,7 @@ export default function DataSourceResourceSelectorTree({
         expandable={expandable}
         selectedParentIds={selectedParentIds}
         onSelectChange={onSelectChange}
+        ancestorsById={ancestorsById}
         isChecked={false}
       />
     </div>
@@ -77,6 +80,7 @@ function DataSourceResourceSelectorChildren({
   isChecked,
   selectedParentIds,
   onSelectChange,
+  ancestorsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -85,13 +89,37 @@ function DataSourceResourceSelectorChildren({
   isChecked: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string },
+    resource: { resourceId: string; resourceName: string; ancestors: string[] },
     selected: boolean
   ) => void;
+  ancestorsById: Record<string, Set<string>>;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions(owner, dataSource, parentId, null);
+    useConnectorPermissions({
+      owner: owner,
+      dataSource,
+      parentId,
+      filterPermission: "read",
+      retrieveAncestors: true,
+    });
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const getCheckStatus = (
+    resourceId: string
+  ): "checked" | "unchecked" | "partial" => {
+    if (isChecked || selectedParentIds.has(resourceId)) {
+      return "checked";
+    }
+
+    for (const x of selectedParentIds) {
+      if (ancestorsById[x].has(resourceId)) {
+        return "partial";
+      }
+    }
+
+    return "unchecked";
+  };
 
   if (isResourcesError) {
     return (
@@ -110,6 +138,7 @@ function DataSourceResourceSelectorChildren({
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const titlePrefix = r.type === "channel" ? "#" : "";
+            const checkStatus = getCheckStatus(r.internalId);
             return (
               <div key={r.internalId}>
                 <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
@@ -151,11 +180,18 @@ function DataSourceResourceSelectorChildren({
                   <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
                   <div className="ml-32 flex-grow">
                     <Checkbox
-                      className="ml-auto"
-                      checked={isChecked || selectedParentIds.has(r.internalId)}
+                      className={classNames(
+                        "ml-auto",
+                        checkStatus === "partial" ? "bg-element-600" : ""
+                      )}
+                      checked={["checked", "partial"].includes(checkStatus)}
                       onChange={(checked) =>
                         onSelectChange(
-                          { resourceId: r.internalId, resourceName: r.title },
+                          {
+                            resourceId: r.internalId,
+                            resourceName: r.title,
+                            ancestors: r.ancestors ?? [],
+                          },
                           checked
                         )
                       }
@@ -171,11 +207,10 @@ function DataSourceResourceSelectorChildren({
                       dataSource={dataSource}
                       parentId={r.internalId}
                       expandable={expandable}
-                      isChecked={
-                        isChecked || selectedParentIds.has(r.internalId)
-                      }
+                      isChecked={checkStatus === "checked"}
                       selectedParentIds={selectedParentIds}
                       onSelectChange={onSelectChange}
+                      ancestorsById={ancestorsById}
                     />
                   </div>
                 )}

@@ -186,10 +186,12 @@ export const ConnectorsAPI = {
     connectorId,
     parentId,
     filterPermission,
+    retrieveAncestors,
   }: {
     connectorId: string;
     parentId?: string;
     filterPermission?: ConnectorPermission;
+    retrieveAncestors: boolean;
   }): Promise<ConnectorsAPIResponse<{ resources: ConnectorResource[] }>> {
     let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions?source=front`;
     if (parentId) {
@@ -197,6 +199,9 @@ export const ConnectorsAPI = {
     }
     if (filterPermission) {
       url += `&filterPermission=${filterPermission}`;
+    }
+    if (retrieveAncestors) {
+      url += "&retrieveAncestors=true";
     }
 
     const res = await fetch(url, {

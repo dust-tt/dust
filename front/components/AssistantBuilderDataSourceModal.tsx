@@ -192,6 +192,10 @@ function DataSourceResourceSelector({
   ) => void;
   onDelete?: () => void;
 }) {
+  const [ancestorsById, setAncestorsById] = useState<
+    Record<string, Set<string>>
+  >({});
+
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <div className="mb-6">
@@ -230,7 +234,21 @@ function DataSourceResourceSelector({
                 ]?.isNested
               }
               selectedParentIds={new Set(Object.keys(selectedResources))}
-              onSelectChange={onSelectChange}
+              ancestorsById={ancestorsById}
+              onSelectChange={(
+                { resourceId, resourceName, ancestors },
+                selected
+              ) => {
+                onSelectChange({ resourceId, resourceName }, selected);
+                const newAncestorsById = { ...ancestorsById };
+                if (selected) {
+                  newAncestorsById[resourceId] = new Set(ancestors);
+                  setAncestorsById(newAncestorsById);
+                } else {
+                  delete newAncestorsById[resourceId];
+                  setAncestorsById(newAncestorsById);
+                }
+              }}
             />
           </div>
           <div className="sticky top-16 hidden h-full flex-1 md:block">
