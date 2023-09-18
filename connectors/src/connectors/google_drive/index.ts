@@ -3,6 +3,8 @@ import { drive_v3 } from "googleapis";
 import { GaxiosResponse } from "googleapis-common";
 import { Transaction } from "sequelize";
 
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
+import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   Connector,
   GoogleDriveFiles,
@@ -23,7 +25,6 @@ import {
   ConnectorResourceType,
 } from "@connectors/types/resources";
 
-import { registerWebhook } from "./lib";
 import {
   driveObjectToDustType,
   folderHasChildren,
@@ -294,11 +295,13 @@ export async function cleanupGoogleDriveConnector(
   return new Ok(undefined);
 }
 
-export async function retrieveGoogleDriveConnectorPermissions(
-  connectorId: ModelId,
-  parentInternalId: string | null,
-  filterPermission: ConnectorPermission | null
-): Promise<Result<ConnectorResource[], Error>> {
+export async function retrieveGoogleDriveConnectorPermissions({
+  connectorId,
+  parentInternalId,
+  filterPermission,
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<
+  Result<ConnectorResource[], Error>
+> {
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -398,7 +401,6 @@ export async function retrieveGoogleDriveConnectorPermissions(
       const resources: ConnectorResource[] = await Promise.all(
         drives.map(async (d): Promise<ConnectorResource> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);
-
           return {
             provider: c.type,
             internalId: driveObject.id,

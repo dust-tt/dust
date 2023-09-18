@@ -1,12 +1,4 @@
-import {
-  CloudArrowDownIcon,
-  IconButton,
-  Item,
-  Modal,
-  PageHeader,
-  TrashIcon,
-  XCircleIcon,
-} from "@dust-tt/sparkle";
+import { CloudArrowDownIcon, Item, Modal, PageHeader } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useEffect, useState } from "react";
@@ -25,7 +17,6 @@ export default function AssistantBuilderDataSourceModal({
   dataSources,
   onSave,
   dataSourceToManage,
-  onDelete,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -39,13 +30,16 @@ export default function AssistantBuilderDataSourceModal({
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
   } | null;
-  onDelete?: () => void;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
   const [selectedResources, setSelectedResources] = useState<
     Record<string, string>
   >({});
+
+  const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
+    {}
+  );
 
   useEffect(() => {
     if (dataSourceToManage) {
@@ -73,7 +67,10 @@ export default function AssistantBuilderDataSourceModal({
         ) {
           throw new Error("Cannot save an incomplete configuration");
         }
-        onSave({ dataSource: selectedDataSource, selectedResources });
+        onSave({
+          dataSource: selectedDataSource,
+          selectedResources,
+        });
         onClose();
       }}
       hasChanged={
@@ -103,23 +100,24 @@ export default function AssistantBuilderDataSourceModal({
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
             selectedResources={selectedResources}
-            onSelectChange={({ resourceId, resourceName }, selected) => {
+            onSelectChange={(
+              { resourceId, resourceName, parents },
+              selected
+            ) => {
               const newSelectedResources = { ...selectedResources };
+              const newParentsById = { ...parentsById };
               if (selected) {
                 newSelectedResources[resourceId] = resourceName;
+                newParentsById[resourceId] = new Set(parents);
               } else {
                 delete newSelectedResources[resourceId];
+                delete newParentsById[resourceId];
               }
+
               setSelectedResources(newSelectedResources);
+              setParentsById(newParentsById);
             }}
-            onDelete={
-              onDelete
-                ? () => {
-                    onDelete();
-                    onClose();
-                  }
-                : undefined
-            }
+            parentsById={parentsById}
           />
         )}
       </div>
@@ -181,16 +179,16 @@ function DataSourceResourceSelector({
   owner,
   selectedResources,
   onSelectChange,
-  onDelete,
+  parentsById,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
   selectedResources: Record<string, string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string },
+    resource: { resourceId: string; resourceName: string; parents: string[] },
     selected: boolean
   ) => void;
-  onDelete?: () => void;
+  parentsById: Record<string, Set<string>>;
 }) {
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
@@ -230,48 +228,9 @@ function DataSourceResourceSelector({
                 ]?.isNested
               }
               selectedParentIds={new Set(Object.keys(selectedResources))}
+              parentsById={parentsById}
               onSelectChange={onSelectChange}
             />
-          </div>
-          <div className="sticky top-16 hidden h-full flex-1 md:block">
-            <div className="flex flex-row">
-              {onDelete && (
-                <IconButton
-                  icon={TrashIcon}
-                  variant="warning"
-                  onClick={onDelete}
-                  className="mr-2"
-                  size="sm"
-                />
-              )}
-              <div className="text-lg font-semibold text-element-900">
-                Selected{" "}
-                {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
-                  dataSource.connectorProvider as ConnectorProvider
-                ]?.plural ?? "resources"}
-                :
-              </div>
-            </div>
-            <ul className="pt-4">
-              {Object.entries(selectedResources).map(([id, name]) => (
-                <li key={id}>
-                  <div className="flex flex-row space-x-2">
-                    <div className="font-normal text-element-700">{name}</div>
-                    <IconButton
-                      icon={XCircleIcon}
-                      variant="warning"
-                      size="xs"
-                      onClick={() => {
-                        onSelectChange(
-                          { resourceId: id, resourceName: name },
-                          false
-                        );
-                      }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       )}

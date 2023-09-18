@@ -86,13 +86,12 @@ function PermissionTreeChildren({
   showExpand?: boolean;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions(
+    useConnectorPermissions({
       owner,
       dataSource,
       parentId,
-      permissionFilter || null
-    );
-
+      filterPermission: permissionFilter || null,
+    });
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>
   >({});

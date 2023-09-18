@@ -294,12 +294,17 @@ export function useEventSchemas(owner: WorkspaceType) {
   };
 }
 
-export function useConnectorPermissions(
-  owner: WorkspaceType,
-  dataSource: DataSourceType,
-  parentId: string | null,
-  filterPermission: ConnectorPermission | null
-) {
+export function useConnectorPermissions({
+  owner,
+  dataSource,
+  parentId,
+  filterPermission,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  parentId: string | null;
+  filterPermission: ConnectorPermission | null;
+}) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 

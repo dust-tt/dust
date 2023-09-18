@@ -2,6 +2,7 @@ import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 import { Op, Transaction } from "sequelize";
 
+import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   launchSlackBotJoinedWorkflow,
   launchSlackGarbageCollectWorkflow,
@@ -282,11 +283,13 @@ export async function cleanupSlackConnector(
   return new Ok(undefined);
 }
 
-export async function retrieveSlackConnectorPermissions(
-  connectorId: ModelId,
-  parentInternalId: string | null,
-  filterPermission: ConnectorPermission | null
-): Promise<Result<ConnectorResource[], Error>> {
+export async function retrieveSlackConnectorPermissions({
+  connectorId,
+  parentInternalId,
+  filterPermission,
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<
+  Result<ConnectorResource[], Error>
+> {
   if (parentInternalId) {
     return new Err(
       new Error(

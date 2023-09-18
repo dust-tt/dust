@@ -1,5 +1,3 @@
-import { Transaction } from "sequelize";
-
 import {
   cleanupGithubConnector,
   createGithubConnector,
@@ -18,6 +16,18 @@ import {
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
+  BotEnabledGetter,
+  BotToggler,
+  ConnectorCleaner,
+  ConnectorCreator,
+  ConnectorPermissionRetriever,
+  ConnectorPermissionSetter,
+  ConnectorResumer,
+  ConnectorStopper,
+  ConnectorUpdater,
+  SyncConnector,
+} from "@connectors/connectors/interface";
+import {
   cleanupNotionConnector,
   createNotionConnector,
   fullResyncNotionConnector,
@@ -33,24 +43,15 @@ import {
   setSlackConnectorPermissions,
   updateSlackConnector,
 } from "@connectors/connectors/slack";
+import {
+  getBotEnabled,
+  toggleSlackbot,
+} from "@connectors/connectors/slack/bot";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
-
-import { getBotEnabled, toggleSlackbot } from "./slack/bot";
-
-type ConnectorCreator = (
-  dataSourceConfig: DataSourceConfig,
-  connectionId: string
-) => Promise<Result<string, Error>>;
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
@@ -62,14 +63,6 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   google_drive: createGoogleDriveConnector,
 };
 
-type ConnectorUpdater = (
-  connectorId: ModelId,
-  params: {
-    connectionId?: string | null;
-    defaultNewResourcePermission?: ConnectorPermission | null;
-  }
-) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
-
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorUpdater
@@ -79,8 +72,6 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
 };
-
-type ConnectorStopper = (connectorId: string) => Promise<Result<string, Error>>;
 
 export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
@@ -98,13 +89,6 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   },
 };
 
-// Should cleanup any state/resources associated with the connector
-type ConnectorCleaner = (
-  connectorId: string,
-  transaction: Transaction,
-  force: boolean
-) => Promise<Result<void, Error>>;
-
 export const CLEAN_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
@@ -114,8 +98,6 @@ export const CLEAN_CONNECTOR_BY_TYPE: Record<
   github: cleanupGithubConnector,
   google_drive: cleanupGoogleDriveConnector,
 };
-
-type ConnectorResumer = (connectorId: string) => Promise<Result<string, Error>>;
 
 export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
@@ -132,11 +114,6 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   },
 };
 
-type BotToggler = (
-  connectorId: ModelId,
-  botEnabled: boolean
-) => Promise<Result<void, Error>>;
-
 const toggleBotNotImplemented = async (
   connectorId: ModelId
 ): Promise<Result<void, Error>> => {
@@ -151,10 +128,6 @@ export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
   github: toggleBotNotImplemented,
   google_drive: toggleBotNotImplemented,
 };
-
-type BotEnabledGetter = (
-  connectorId: ModelId
-) => Promise<Result<boolean, Error>>;
 
 const getBotEnabledNotImplemented = async (
   connectorId: ModelId
@@ -176,11 +149,6 @@ export const GET_BOT_ENABLED_BY_TYPE: Record<
   google_drive: getBotEnabledNotImplemented,
 };
 
-type SyncConnector = (
-  connectorId: string,
-  fromTs: number | null
-) => Promise<Result<string, Error>>;
-
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
     slack: launchSlackSyncWorkflow,
@@ -188,12 +156,6 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
   };
-
-type ConnectorPermissionRetriever = (
-  connectorId: ModelId,
-  parentInternalId: string | null,
-  filterPermission: ConnectorPermission | null
-) => Promise<Result<ConnectorResource[], Error>>;
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,
@@ -204,12 +166,6 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
 };
-
-type ConnectorPermissionSetter = (
-  connectorId: ModelId,
-  // internalId -> "read" | "write" | "read_write" | "none"
-  permissions: Record<string, ConnectorPermission>
-) => Promise<Result<void, Error>>;
 
 export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,

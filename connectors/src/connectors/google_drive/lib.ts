@@ -1,6 +1,8 @@
+import memoize from "lodash.memoize";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
+import { GoogleDriveFiles } from "@connectors/lib/models";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 
 import { getAuthObject } from "./temporal/activities";
@@ -51,3 +53,34 @@ export async function registerWebhook(
     return new Err(new HTTPError(await res.text(), res.status));
   }
 }
+
+async function _getLocalParents(
+  connectorId: string,
+  driveObjectId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+  memoizationKey: string
+): Promise<string[]> {
+  const parents: string[] = [driveObjectId];
+
+  const object = await GoogleDriveFiles.findOne({
+    where: {
+      connectorId,
+      driveFileId: driveObjectId,
+    },
+  });
+
+  if (!object || !object.parentId) {
+    return parents;
+  }
+
+  return parents.concat(
+    await getLocalParents(connectorId, object.parentId, memoizationKey)
+  );
+}
+
+export const getLocalParents = memoize(
+  _getLocalParents,
+  (connectorId, driveObjectId, memoizationKey) => {
+    return `${connectorId}:${driveObjectId}:${memoizationKey}`;
+  }
+);

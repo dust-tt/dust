@@ -132,7 +132,10 @@ export default function CreateAssistant({
   const [dataSourceConfigs, setDataSourceConfigs] = useState<
     Record<
       string,
-      { dataSource: DataSourceType; selectedResources: Record<string, string> }
+      {
+        dataSource: DataSourceType;
+        selectedResources: Record<string, string>;
+      }
     >
   >({});
   const [dataSourceToManage, setDataSourceToManage] = useState<{
@@ -370,11 +373,6 @@ export default function CreateAssistant({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
-        onDelete={
-          dataSourceToManage
-            ? () => deleteDataSource(dataSourceToManage.dataSource.name)
-            : undefined
-        }
       />
       <AppLayout
         user={user}
