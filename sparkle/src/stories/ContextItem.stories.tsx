@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
