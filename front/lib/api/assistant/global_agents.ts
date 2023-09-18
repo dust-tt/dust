@@ -17,6 +17,7 @@ enum GLOBAL_AGENTS_SID {
   CLAUDE_INSTANT = "claude-instant-1",
   CLAUDE = "claude-2",
   SLACK = "slack",
+  GOOGLE_DRIVE="google_drive",
   DUST = "dust",
 }
 
@@ -161,6 +162,63 @@ async function _getSlackGlobalAgent(
   };
 }
 
+async function _getGoogleDriveGlobalAgent(
+  auth: Authenticator
+): Promise<AgentConfigurationType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const api = new DustAPI(prodCredentials);
+
+  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+  if (dsRes.isErr()) {
+    return null;
+  }
+
+  const dataSources = dsRes.value.filter(
+    (d) => d.connectorProvider === "google_drive"
+  );
+
+  if (dataSources.length === 0) {
+    return null;
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+    name: "Google Drive",
+    description: "An assistant with context on your Google Drives.",
+    pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
+    status: "active",
+    scope: "global",
+    generation: {
+      id: -1,
+      prompt:
+        "Assist the user based on the retrieved data from their Slack workspace.",
+      model: {
+        providerId: "openai",
+        modelId: "gpt-4",
+      },
+    },
+    action: {
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE + "-action",
+      type: "retrieval_configuration",
+      query: "auto",
+      relativeTimeFrame: "auto",
+      topK: 16,
+      dataSources: dataSources.map((ds) => ({
+        dataSourceId: ds.name,
+        workspaceId: prodCredentials.workspaceId,
+        filter: { tags: null, parents: null },
+      })),
+    },
+  };
+}
+
 async function _getDustGlobalAgent(
   auth: Authenticator
 ): Promise<AgentConfigurationType | null> {
@@ -247,6 +305,8 @@ export async function getGlobalAgent(
       return _getClaudeGlobalAgent();
     case GLOBAL_AGENTS_SID.SLACK:
       return _getSlackGlobalAgent(auth);
+      case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
+        return _getGoogleDriveGlobalAgent(auth);
     case GLOBAL_AGENTS_SID.DUST:
       return _getDustGlobalAgent(auth);
     default:
@@ -275,6 +335,11 @@ export async function getGlobalAgents(
   if (slackAgent) {
     globalAgents.push(slackAgent);
   }
+
+  const googleDriveAgent = await _getGoogleDriveGlobalAgent(auth);
+  if (googleDriveAgent) {
+    globalAgents.push(googleDriveAgent);
+  }  
   const dustAgent = await _getDustGlobalAgent(auth);
   if (dustAgent) {
     globalAgents.push(dustAgent);
