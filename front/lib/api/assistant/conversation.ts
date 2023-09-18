@@ -693,23 +693,21 @@ export async function* retryAgentMessage(
     if (!messageRow || !messageRow.agentMessage) {
       return null;
     }
-    const agentMessageRow = messageRow.agentMessage;
+    const agentMessageRow = await AgentMessage.create(
+      {
+        status: "created",
+        agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
+      },
+      { transaction: t }
+    );
     const m = await Message.create(
       {
-        sId: messageRow.sId,
+        sId: generateModelSId(),
         rank: messageRow.rank,
         conversationId: conversation.id,
         parentId: messageRow.parentId,
         version: messageRow.version + 1,
-        agentMessageId: (
-          await AgentMessage.create(
-            {
-              status: "created",
-              agentConfigurationId: agentMessageRow.agentConfigurationId,
-            },
-            { transaction: t }
-          )
-        ).id,
+        agentMessageId: agentMessageRow.id,
       },
       {
         transaction: t,
@@ -764,7 +762,7 @@ export async function* retryAgentMessage(
 
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
-    return messages.some((m) => m.sId === message.parentMessageId);
+    return messages.some((m) => m.sId === agentMessage.parentMessageId);
   });
 
   // Then, find this agentmessage's array in conversation.content and add the
@@ -871,7 +869,7 @@ export async function* editUserMessage(
 
       const m = await Message.create(
         {
-          sId: messageRow.sId,
+          sId: generateModelSId(),
           rank: messageRow.rank,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
