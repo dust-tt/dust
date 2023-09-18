@@ -108,12 +108,12 @@ function DataSourceResourceSelectorChildren({
   const getCheckStatus = (
     resourceId: string
   ): "checked" | "unchecked" | "partial" => {
-    if (isChecked || selectedParentIds.has(resourceId)) {
+    if (isChecked || selectedParentIds?.has(resourceId)) {
       return "checked";
     }
 
     for (const x of selectedParentIds) {
-      if (ancestorsById[x].has(resourceId)) {
+      if (ancestorsById?.[x]?.has(resourceId)) {
         return "partial";
       }
     }

@@ -34,10 +34,12 @@ export default function AssistantBuilderDataSourceModal({
   onSave: (params: {
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
+    ancestorsById: Record<string, Set<string>>;
   }) => void;
   dataSourceToManage: {
     dataSource: DataSourceType;
     selectedResources: Record<string, string>;
+    ancestorsById: Record<string, Set<string>>;
   } | null;
   onDelete?: () => void;
 }) {
@@ -46,11 +48,15 @@ export default function AssistantBuilderDataSourceModal({
   const [selectedResources, setSelectedResources] = useState<
     Record<string, string>
   >({});
+  const [ancestorsById, setAncestorsById] = useState<
+    Record<string, Set<string>>
+  >({});
 
   useEffect(() => {
     if (dataSourceToManage) {
       setSelectedDataSource(dataSourceToManage.dataSource);
       setSelectedResources(dataSourceToManage.selectedResources);
+      setAncestorsById(dataSourceToManage.ancestorsById);
     }
   }, [dataSourceToManage]);
 
@@ -73,7 +79,11 @@ export default function AssistantBuilderDataSourceModal({
         ) {
           throw new Error("Cannot save an incomplete configuration");
         }
-        onSave({ dataSource: selectedDataSource, selectedResources });
+        onSave({
+          dataSource: selectedDataSource,
+          selectedResources,
+          ancestorsById,
+        });
         onClose();
       }}
       hasChanged={
@@ -93,6 +103,7 @@ export default function AssistantBuilderDataSourceModal({
                 onSave({
                   dataSource: ds,
                   selectedResources: {},
+                  ancestorsById: {},
                 });
                 onClose();
               }
@@ -103,14 +114,22 @@ export default function AssistantBuilderDataSourceModal({
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
             selectedResources={selectedResources}
-            onSelectChange={({ resourceId, resourceName }, selected) => {
+            onSelectChange={(
+              { resourceId, resourceName, ancestors },
+              selected
+            ) => {
               const newSelectedResources = { ...selectedResources };
+              const newAncestorsById = { ...ancestorsById };
               if (selected) {
                 newSelectedResources[resourceId] = resourceName;
+                newAncestorsById[resourceId] = new Set(ancestors);
               } else {
                 delete newSelectedResources[resourceId];
+                delete newAncestorsById[resourceId];
               }
+
               setSelectedResources(newSelectedResources);
+              setAncestorsById(newAncestorsById);
             }}
             onDelete={
               onDelete
@@ -120,6 +139,7 @@ export default function AssistantBuilderDataSourceModal({
                   }
                 : undefined
             }
+            ancestorsById={ancestorsById}
           />
         )}
       </div>
@@ -182,20 +202,18 @@ function DataSourceResourceSelector({
   selectedResources,
   onSelectChange,
   onDelete,
+  ancestorsById,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
   selectedResources: Record<string, string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string },
+    resource: { resourceId: string; resourceName: string; ancestors: string[] },
     selected: boolean
   ) => void;
   onDelete?: () => void;
+  ancestorsById: Record<string, Set<string>>;
 }) {
-  const [ancestorsById, setAncestorsById] = useState<
-    Record<string, Set<string>>
-  >({});
-
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <div className="mb-6">
@@ -235,20 +253,7 @@ function DataSourceResourceSelector({
               }
               selectedParentIds={new Set(Object.keys(selectedResources))}
               ancestorsById={ancestorsById}
-              onSelectChange={(
-                { resourceId, resourceName, ancestors },
-                selected
-              ) => {
-                onSelectChange({ resourceId, resourceName }, selected);
-                const newAncestorsById = { ...ancestorsById };
-                if (selected) {
-                  newAncestorsById[resourceId] = new Set(ancestors);
-                  setAncestorsById(newAncestorsById);
-                } else {
-                  delete newAncestorsById[resourceId];
-                  setAncestorsById(newAncestorsById);
-                }
-              }}
+              onSelectChange={onSelectChange}
             />
           </div>
           <div className="sticky top-16 hidden h-full flex-1 md:block">
@@ -281,7 +286,13 @@ function DataSourceResourceSelector({
                       size="xs"
                       onClick={() => {
                         onSelectChange(
-                          { resourceId: id, resourceName: name },
+                          {
+                            resourceId: id,
+                            resourceName: name,
+                            ancestors: ancestorsById[id]
+                              ? Array.from(ancestorsById[id])
+                              : [],
+                          },
                           false
                         );
                       }}
