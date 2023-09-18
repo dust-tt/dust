@@ -8,6 +8,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { UserMessageType } from "@app/types/assistant/conversation";
 
 export const PostMessagesRequestBodySchema = t.type({
   content: t.string,
@@ -28,7 +29,7 @@ export const PostMessagesRequestBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -110,7 +111,7 @@ async function handler(
 
       // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
       // the events in the background.
-      void postUserMessageWithPubSub(auth, {
+      const message = await postUserMessageWithPubSub(auth, {
         conversation,
         content,
         mentions,
@@ -123,7 +124,7 @@ async function handler(
         },
       });
 
-      res.status(200).end();
+      res.status(200).json({ message: message });
       return;
 
     default:
