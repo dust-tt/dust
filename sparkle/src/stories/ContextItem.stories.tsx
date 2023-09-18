@@ -21,7 +21,6 @@ const meta = {
 } satisfies Meta<typeof ContextItem>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const ListItemExample = () => (
   <div>
