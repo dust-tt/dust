@@ -1,13 +1,9 @@
-import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { GaxiosResponse } from "googleapis-common";
 import { Transaction } from "sequelize";
 
-import {
-  getLocalParents,
-  registerWebhook,
-} from "@connectors/connectors/google_drive/lib";
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   Connector,

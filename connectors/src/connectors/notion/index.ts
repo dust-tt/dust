@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import { Transaction } from "sequelize";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
@@ -30,7 +29,6 @@ import {
 } from "@connectors/types/resources";
 
 import { ConnectorPermissionRetriever } from "../interface";
-import { getParents } from "./lib/parents";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -357,8 +355,6 @@ export async function retrieveNotionConnectorPermissions({
       },
     }),
   ]);
-
-  const memoKey = randomUUID();
 
   const getPageResources = async (
     page: NotionPage
