@@ -19,7 +19,7 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-const MENTION_REGEX = /@\[([a-zA-Z0-9_\-]+)\]\{[a-zA-Z0-9_\-]+\}/g;
+const MENTION_REGEX = /@\[([a-zA-Z0-9_-]+)\]\{[a-zA-Z0-9_-]+\}/g;
 
 /**
  * This is a custom remark plugin that will replace all mentions in the markdown with a span element
