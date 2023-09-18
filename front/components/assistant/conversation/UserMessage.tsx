@@ -9,6 +9,7 @@ export function UserMessage({ message }: { message: UserMessageType }) {
     <ConversationMessage
       pictureUrl={message.user?.image}
       name={message.context.fullName}
+      messageId={message.sId}
     >
       <RenderMarkdown content={message.content} />
     </ConversationMessage>

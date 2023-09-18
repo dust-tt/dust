@@ -133,6 +133,7 @@ export function AgentMessage({
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={agentMessageToRender.configuration.name}
+      messageId={agentMessageToRender.sId}
       buttons={[
         {
           icon: ClipboardIcon,

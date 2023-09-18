@@ -90,21 +90,17 @@ export default function Conversation({
                   key={`message-id-${m.sId}`}
                   className="bg-structure-50 py-6"
                 >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <UserMessage message={m} />
-                  </div>
+                  <UserMessage message={m} />
                 </div>
               );
             case "agent_message":
               return (
                 <div key={`message-id-${m.sId}`} className="py-6">
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <AgentMessage
-                      message={m}
-                      owner={owner}
-                      conversationId={conversationId}
-                    />
-                  </div>
+                  <AgentMessage
+                    message={m}
+                    owner={owner}
+                    conversationId={conversationId}
+                  />
                 </div>
               );
             default:
