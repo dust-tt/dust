@@ -256,20 +256,52 @@ export default function CreateAssistant({
       throw new Error("Form not valid");
     }
 
-    let tfParam: t.TypeOf<
+    type BodyType = t.TypeOf<
       typeof PostOrPatchAgentConfigurationRequestBodySchema
-    >["assistant"]["action"]["timeframe"] = "auto";
+    >;
 
-    if (timeFrameMode === "FORCED") {
-      if (!timeFrame.value) {
-        // unreachable
-        // we keep this for TS
-        throw new Error("Form not valid");
-      }
-      tfParam = {
-        duration: timeFrame.value,
-        unit: timeFrame.unit,
-      };
+    let actionParam: BodyType["assistant"]["action"] | null = null;
+    switch (dataSourceMode) {
+      case "GENERIC":
+        break;
+      case "SELECTED":
+        let tfParam: NonNullable<BodyType["assistant"]["action"]>["timeframe"] =
+          "auto";
+        if (timeFrameMode === "FORCED") {
+          if (!timeFrame.value) {
+            // unreachable
+            // we keep this for TS
+            throw new Error("Form not valid");
+          }
+          tfParam = {
+            duration: timeFrame.value,
+            unit: timeFrame.unit,
+          };
+        }
+        actionParam = {
+          type: "retrieval_configuration",
+          query: "auto", // TODO ?
+          timeframe: tfParam,
+          topK: 16, // TODO ?
+          dataSources: Object.values(dataSourceConfigs).map(
+            ({ dataSource, selectedResources }) => ({
+              dataSourceId: dataSource.name,
+              workspaceId: owner.sId,
+              filter: {
+                parents: Object.keys(selectedResources).length
+                  ? { in: Object.keys(selectedResources), not: [] }
+                  : null,
+                tags: null,
+              },
+            })
+          ),
+        };
+        break;
+
+      default:
+        ((x: never) => {
+          throw new Error(`Unknown data source mode ${x}`);
+        })(dataSourceMode);
     }
 
     const body: t.TypeOf<
@@ -280,31 +312,10 @@ export default function CreateAssistant({
         pictureUrl: "https://dust.tt/static/droidavatar/Droid_Purple_7.jpg", // TODO
         description: assistantDescription,
         status: "active",
-        action: {
-          type: "retrieval_configuration",
-          query: "auto", // TODO ?
-          timeframe: tfParam,
-          topK: 16, // TODO ?
-          dataSources:
-            dataSourceMode === "GENERIC"
-              ? []
-              : Object.values(dataSourceConfigs).map(
-                  ({ dataSource, selectedResources }) => ({
-                    dataSourceId: dataSource.name,
-                    workspaceId: owner.sId,
-                    filter: {
-                      parents: Object.keys(selectedResources).length
-                        ? { in: Object.keys(selectedResources), not: [] }
-                        : null,
-                      tags: null,
-                    },
-                  })
-                ),
-        },
+        action: actionParam,
         generation: {
           prompt: assistantInstructions,
           model: {
-            // TODO: make this configurable
             providerId: "openai",
             modelId: "gpt-4",
           },

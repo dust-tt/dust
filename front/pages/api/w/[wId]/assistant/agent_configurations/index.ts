@@ -13,7 +13,10 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
+import {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: AgentConfigurationType[];
@@ -28,47 +31,50 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     description: t.string,
     pictureUrl: t.string,
     status: t.union([t.literal("active"), t.literal("archived")]),
-    action: t.type({
-      type: t.literal("retrieval_configuration"),
-      query: t.union([
-        t.type({
-          template: t.string,
-        }),
-        t.literal("auto"),
-        t.literal("none"),
-      ]),
-      timeframe: t.union([
-        t.literal("auto"),
-        t.literal("none"),
-        t.type({
-          duration: t.number,
-          unit: TimeframeUnitCodec,
-        }),
-      ]),
-      topK: t.number,
-      dataSources: t.array(
-        t.type({
-          dataSourceId: t.string,
-          workspaceId: t.string,
-          filter: t.type({
-            tags: t.union([
-              t.type({
-                in: t.array(t.string),
-                not: t.array(t.string),
-              }),
-              t.null,
-            ]),
-            parents: t.union([
-              t.type({
-                in: t.array(t.string),
-                not: t.array(t.string),
-              }),
-              t.null,
-            ]),
+    action: t.union([
+      t.null,
+      t.type({
+        type: t.literal("retrieval_configuration"),
+        query: t.union([
+          t.type({
+            template: t.string,
           }),
-        })
-      ),
-    }),
+          t.literal("auto"),
+          t.literal("none"),
+        ]),
+        timeframe: t.union([
+          t.literal("auto"),
+          t.literal("none"),
+          t.type({
+            duration: t.number,
+            unit: TimeframeUnitCodec,
+          }),
+        ]),
+        topK: t.number,
+        dataSources: t.array(
+          t.type({
+            dataSourceId: t.string,
+            workspaceId: t.string,
+            filter: t.type({
+              tags: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+              parents: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+            }),
+          })
+        ),
+      }),
+    ]),
     generation: t.type({
       prompt: t.string,
       model: t.type({
@@ -145,13 +151,18 @@ async function handler(
           modelId: generation.model.modelId,
         },
       });
-      const actionConfig = await createAgentActionConfiguration(auth, {
-        type: "retrieval_configuration",
-        query: action.query,
-        timeframe: action.timeframe,
-        topK: action.topK,
-        dataSources: action.dataSources,
-      });
+
+      let actionConfig: AgentActionConfigurationType | null = null;
+      if (action) {
+        actionConfig = await createAgentActionConfiguration(auth, {
+          type: "retrieval_configuration",
+          query: action.query,
+          timeframe: action.timeframe,
+          topK: action.topK,
+          dataSources: action.dataSources,
+        });
+      }
+
       const agentConfiguration = await createAgentConfiguration(auth, {
         name,
         description,
