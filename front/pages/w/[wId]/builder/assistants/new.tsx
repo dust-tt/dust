@@ -376,11 +376,6 @@ export default function CreateAssistant({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
-        onDelete={
-          dataSourceToManage
-            ? () => deleteDataSource(dataSourceToManage.dataSource.name)
-            : undefined
-        }
       />
       <AppLayout
         user={user}
