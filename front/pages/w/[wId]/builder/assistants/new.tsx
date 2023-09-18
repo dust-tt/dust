@@ -1,6 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import AssistantBuilder from "@app/components/assistant_builder/AssistantBuillder";
+import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
@@ -59,6 +59,7 @@ export default function CreateAssistant({
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}
       initialBuilderState={null}
+      agentConfigurationId={null}
     />
   );
 }

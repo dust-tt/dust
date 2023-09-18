@@ -11,17 +11,16 @@ import { Transition } from "@headlessui/react";
 import { PropsOf } from "@headlessui/react/dist/types";
 import { ComponentType } from "react";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { classNames } from "@app/lib/utils";
-import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
-import { DataSourceType } from "@app/types/data_source";
-
 import {
   CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
   TIME_FRAME_MODE_TO_LABEL,
   TIME_FRAME_UNIT_TO_LABEL,
   TimeFrameMode,
-} from "./shared";
+} from "@app/components/assistant_builder/shared";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { classNames } from "@app/lib/utils";
+import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
+import { DataSourceType } from "@app/types/data_source";
 
 export default function DataSourceSelectionSection({
   show,

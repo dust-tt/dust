@@ -2,7 +2,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder, {
   AssistantBuilderInitialState,
-} from "@app/components/assistant_builder/AssistantBuillder";
+} from "@app/components/assistant_builder/AssistantBuilder";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
