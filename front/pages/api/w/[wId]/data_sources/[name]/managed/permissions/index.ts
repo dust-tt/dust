@@ -112,7 +112,6 @@ async function handler(
         connectorId: dataSource.connectorId,
         parentId,
         filterPermission,
-        retrieveParents: req.query.retrieveParents === "true",
       });
       if (permissionsRes.isErr()) {
         return apiError(req, res, {

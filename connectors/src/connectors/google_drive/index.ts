@@ -303,7 +303,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-  retrieveParents,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
@@ -317,7 +316,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
     return new Err(new Error("Connector not found"));
   }
   const authCredentials = await getAuthObject(c.connectionId);
-  const memoKey = randomUUID();
   if (filterPermission === "read") {
     if (parentInternalId === null) {
       // Return the list of folders explicitly selected by the user.
@@ -343,14 +341,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             });
             fd.name = d.data.name;
           }
-          let parents: string[] | null = null;
-          if (retrieveParents) {
-            parents = await getLocalParents(
-              connectorId.toString(),
-              f.folderId,
-              memoKey
-            );
-          }
           return {
             provider: c.type,
             internalId: f.folderId,
@@ -358,7 +348,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             type: "folder",
             title: fd.name || "",
             sourceUrl: fd.webViewLink || null,
-            parents,
             expandable:
               (await GoogleDriveFiles.count({
                 where: {
@@ -384,14 +373,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
       const resources: ConnectorResource[] = await Promise.all(
         folders.map((f) => {
           return (async () => {
-            let parents: string[] | null = null;
-            if (retrieveParents) {
-              parents = await getLocalParents(
-                connectorId.toString(),
-                f.driveFileId,
-                memoKey
-              );
-            }
             return {
               provider: c.type,
               internalId: f.driveFileId,
@@ -402,7 +383,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
                   : "file",
               title: f.name || "",
               sourceUrl: null,
-              parents,
               expandable:
                 (await GoogleDriveFiles.count({
                   where: {
@@ -425,14 +405,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
       const resources: ConnectorResource[] = await Promise.all(
         drives.map(async (d): Promise<ConnectorResource> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);
-          let parents: string[] | null = null;
-          if (retrieveParents) {
-            parents = await getLocalParents(
-              connectorId.toString(),
-              driveObject.id,
-              memoKey
-            );
-          }
           return {
             provider: c.type,
             internalId: driveObject.id,
@@ -440,7 +412,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             type: "folder" as ConnectorResourceType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
-            parents,
             expandable: await folderHasChildren(connectorId, driveObject.id),
             permission: (await GoogleDriveFolders.findOne({
               where: {
@@ -488,14 +459,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
         remoteFolders.map(async (rf): Promise<ConnectorResource> => {
           const driveObject = await driveObjectToDustType(rf, authCredentials);
 
-          let parents: string[] | null = null;
-          if (retrieveParents) {
-            parents = await getLocalParents(
-              connectorId.toString(),
-              driveObject.id,
-              memoKey
-            );
-          }
           return {
             provider: c.type,
             internalId: driveObject.id,
@@ -503,7 +466,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             type: "folder" as ConnectorResourceType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
-            parents,
             expandable: await folderHasChildren(connectorId, driveObject.id),
             permission: (await GoogleDriveFolders.findOne({
               where: {

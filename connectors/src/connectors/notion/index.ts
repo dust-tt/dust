@@ -330,7 +330,6 @@ export async function cleanupNotionConnector(
 export async function retrieveNotionConnectorPermissions({
   connectorId,
   parentInternalId,
-  retrieveParents,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
@@ -380,18 +379,6 @@ export async function retrieveNotionConnectorPermissions({
     ]);
     const expandable = childPage || childDB ? true : false;
 
-    let parents = null;
-    if (retrieveParents) {
-      parents = await getParents(
-        {
-          workspaceId: c.workspaceId,
-          dataSourceName: c.dataSourceName,
-        },
-        page.notionPageId,
-        memoKey
-      );
-    }
-
     return {
       provider: c.type,
       internalId: page.notionPageId,
@@ -402,7 +389,6 @@ export async function retrieveNotionConnectorPermissions({
       sourceUrl: page.notionUrl || null,
       expandable,
       permission: "read",
-      parents,
     };
   };
 
@@ -413,18 +399,6 @@ export async function retrieveNotionConnectorPermissions({
   const getDbResources = async (
     db: NotionDatabase
   ): Promise<ConnectorResource> => {
-    let parents = null;
-    if (retrieveParents) {
-      parents = await getParents(
-        {
-          workspaceId: c.workspaceId,
-          dataSourceName: c.dataSourceName,
-        },
-        db.notionDatabaseId,
-        memoKey
-      );
-    }
-
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -435,7 +409,6 @@ export async function retrieveNotionConnectorPermissions({
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      parents,
     };
   };
 

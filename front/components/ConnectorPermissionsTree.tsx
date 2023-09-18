@@ -91,7 +91,6 @@ function PermissionTreeChildren({
       dataSource,
       parentId,
       filterPermission: permissionFilter || null,
-      retrieveParents: false,
     });
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>

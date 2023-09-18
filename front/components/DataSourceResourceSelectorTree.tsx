@@ -103,7 +103,6 @@ function DataSourceResourceSelectorChildren({
       dataSource,
       parentId,
       filterPermission: "read",
-      retrieveParents: false,
     });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});

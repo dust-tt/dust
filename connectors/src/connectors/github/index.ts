@@ -263,7 +263,6 @@ export async function cleanupGithubConnector(
 export async function retrieveGithubConnectorPermissions({
   connectorId,
   parentInternalId,
-  retrieveParents,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
@@ -306,7 +305,6 @@ export async function retrieveGithubConnectorPermissions({
         sourceUrl: repo.url,
         expandable: false,
         permission: "read" as ConnectorPermission,
-        parents: retrieveParents ? [] : null, // github repos have no parents
       }))
     );
   }
