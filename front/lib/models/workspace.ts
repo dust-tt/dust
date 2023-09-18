@@ -17,6 +17,7 @@ export class Workspace extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare upgradedAt: Date | null;
 
   declare sId: string;
   declare name: string;
@@ -40,6 +41,10 @@ Workspace.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    upgradedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     sId: {
       type: DataTypes.STRING,

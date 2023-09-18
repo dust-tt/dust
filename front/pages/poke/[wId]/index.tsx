@@ -115,7 +115,7 @@ export const getServerSideProps: GetServerSideProps<{
     (ds) => ds.connectorProvider === "slack"
   )?.connectorId;
 
-  let slackbotEnabled;
+  let slackbotEnabled = false;
   if (slackConnectorId) {
     const botEnabledRes = await ConnectorsAPI.getBotEnabled(slackConnectorId);
     if (botEnabledRes.isErr()) {
@@ -248,11 +248,13 @@ const WorkspacePage = ({
     (ds) => !!ds.connectorProvider
   );
 
+  // @todo remove fallback on workspace plan
   const isFullyUpgraded =
-    workspace.plan?.limits.dataSources.count === -1 &&
-    workspace.plan?.limits.dataSources.documents.count === -1 &&
-    workspace.plan?.limits.dataSources.documents.sizeMb === -1 &&
-    workspace.plan?.limits.dataSources.managed === true;
+    workspace.upgradedAt !== null ||
+    (workspace.plan?.limits.dataSources.count === -1 &&
+      workspace.plan?.limits.dataSources.documents.count === -1 &&
+      workspace.plan?.limits.dataSources.documents.sizeMb === -1 &&
+      workspace.plan?.limits.dataSources.managed === true);
 
   return (
     <div className="min-h-screen bg-structure-50">
@@ -275,7 +277,10 @@ const WorkspacePage = ({
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
             {isFullyUpgraded ? (
               <p className="mb-4 text-green-600">
-                This workspace is fully upgraded.
+                This workspace was fully upgraded
+                {workspace.upgradedAt &&
+                  `on ${new Date(workspace.upgradedAt).toLocaleDateString()}`}
+                .
               </p>
             ) : (
               <p className="mb-4 text-green-600">

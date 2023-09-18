@@ -122,7 +122,22 @@ export async function upgradeWorkspace(workspaceId: number) {
   plan.limits.dataSources.managed = true;
 
   workspace.plan = JSON.stringify(plan);
+  workspace.upgradedAt = new Date();
   await workspace.save();
+
+  return workspace;
+}
+
+export async function downgradeWorkspace(workspaceId: number) {
+  const workspace = await Workspace.findByPk(workspaceId);
+
+  if (!workspace) {
+    throw new Error(`Workspace not found. id=${workspaceId}`);
+  }
+  await workspace.update({
+    plan: null,
+    upgradedAt: null,
+  });
 
   return workspace;
 }

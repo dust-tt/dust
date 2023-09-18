@@ -146,6 +146,7 @@ async function handler(
           allowedDomain: ws.allowedDomain || null,
           plan: planForWorkspace(ws),
           role: "admin",
+          upgradedAt: ws.upgradedAt?.getTime() || null,
         })),
       });
     default:

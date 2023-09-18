@@ -250,6 +250,7 @@ export class Authenticator {
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           plan: planForWorkspace(this._workspace),
+          upgradedAt: this._workspace.upgradedAt?.getTime() || null,
         }
       : null;
   }
@@ -354,6 +355,7 @@ export async function getUserFromSession(
         allowedDomain: w.allowedDomain || null,
         role,
         plan: planForWorkspace(w),
+        upgradedAt: w.upgradedAt?.getTime() || null,
       };
     }),
     isDustSuperUser: user.isDustSuperUser,
