@@ -3,10 +3,10 @@ import {
   ClipboardIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { ElementContent, Root } from "hast";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import {
   amber,
@@ -19,53 +19,22 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-const MENTION_REGEX = /@\[([a-zA-Z0-9_-]+)\]\{[a-zA-Z0-9_-]+\}/g;
-
-/**
- * This is a custom remark plugin that will replace all mentions in the markdown with a span element
- * For some reasons it's not working and it's wrapping the mention in a div instead of a span, hence the custom DivBlock component below
- */
-function remarkMention() {
-  return (tree: Root) => {
-    visit(tree, "text", (node, index, parent) => {
-      let match;
-      let lastIndex = 0;
-      const newNodes: ElementContent[] = [];
-
-      while ((match = MENTION_REGEX.exec(node.value)) !== null) {
-        if (match.index > lastIndex) {
-          newNodes.push({
-            type: "text",
-            value: node.value.slice(lastIndex, match.index),
-          });
+function customDirectivesPlugin() {
+  return (tree: any) => {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.name === "mention") {
+        const data = node.data || (node.data = {});
+        data.hName = "span";
+        data.hProperties = {
+          className: "inline-block font-medium text-brand",
+        };
+        if (
+          node.children &&
+          node.children[0] &&
+          node.children[0].type === "text"
+        ) {
+          node.children[0].value = "@" + node.children[0].value;
         }
-
-        newNodes.push({
-          type: "element",
-          tagName: "span",
-          properties: {
-            className: ["inline-block", "font-medium", "text-brand"],
-          },
-          children: [
-            {
-              type: "text",
-              value: `@${match[1]}`,
-            },
-          ],
-        });
-
-        lastIndex = match.index + match[0].length;
-      }
-
-      if (lastIndex < node.value.length) {
-        newNodes.push({
-          type: "text",
-          value: node.value.slice(lastIndex),
-        });
-      }
-
-      if (parent && newNodes.length > 0) {
-        parent.children.splice(index || 0, 1, ...newNodes);
       }
     });
   };
@@ -113,9 +82,8 @@ export function RenderMarkdown({ content }: { content: string }) {
         ol: OlBlock,
         li: LiBlock,
         p: ParagraphBlock,
-        div: DivBlock,
       }}
-      remarkPlugins={[remarkMention, remarkGfm]}
+      remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
     >
       {addClosingBackticks(content)}
     </ReactMarkdown>
@@ -208,25 +176,6 @@ function LiBlock({ children }: { children: React.ReactNode }) {
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return <p className="py-2">{children}</p>;
-}
-/**
- * Because remarkMention is not working, we need to use this custom component to replace the div with a span
- * @todo remove this when remarkMention is fixed
- * @todo check the mention is actually a mention of an active assistant
- */
-function DivBlock({ children }: { children: React.ReactNode }) {
-  if (
-    children &&
-    Array.isArray(children) &&
-    children.length === 1 &&
-    typeof children[0] === "string" &&
-    children[0].startsWith("@")
-  ) {
-    return (
-      <span className="inline-block font-medium text-brand">{children}</span>
-    );
-  }
-  return <div>{children}</div>;
 }
 
 function CodeBlock({
