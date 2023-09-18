@@ -44,7 +44,6 @@ export function AgentMessage({
         return false;
       case "created":
         return true;
-        break;
 
       default:
         ((status: never) => {
@@ -155,16 +154,7 @@ export function AgentMessage({
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={agentMessageToRender.configuration.name}
       messageId={agentMessageToRender.sId}
-      buttons={[
-        {
-          icon: ClipboardIcon,
-          onClick: () => {
-            void navigator.clipboard.writeText(
-              agentMessageToRender.content || ""
-            );
-          },
-        },
-      ]}
+      buttons={buttons}
     >
       {renderMessage(agentMessageToRender)}
     </ConversationMessage>
