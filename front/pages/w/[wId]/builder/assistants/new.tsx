@@ -17,7 +17,14 @@ import { PropsOf } from "@headlessui/react/dist/types";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { ComponentType, useCallback, useEffect, useState } from "react";
+import {
+  ComponentType,
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/AssistantBuilderDataSourceModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -553,121 +560,12 @@ export default function CreateAssistant({
                   setShowDataSourcesModal(true);
                 }}
                 onDelete={deleteDataSource}
+                timeFrameMode={timeFrameMode}
+                setTimeFrameMode={setTimeFrameMode}
+                timeFrame={timeFrame}
+                setTimeFrame={setTimeFrame}
+                timeFrameError={timeFrameError}
               />
-              <div className="pt-6 text-base font-semibold text-element-900">
-                Timeframe for the data sources
-              </div>
-              <div className="text-sm font-normal text-element-900">
-                Define a specific time frame if you want the Assistant to only
-                focus on data from a specific time period.
-                <br />
-                <span className="font-bold">"Auto"</span> means the assistant
-                will define itself, from the question, what the timeframe should
-                be.
-              </div>
-              <div>
-                <div className="flex flex-row items-center space-x-2 pt-2">
-                  <div className="text-sm font-semibold text-element-900">
-                    Timeframe:
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenu.Button>
-                      <Button
-                        type="select"
-                        labelVisible={true}
-                        label={TIME_FRAME_MODE_TO_LABEL[timeFrameMode]}
-                        variant="secondary"
-                        size="sm"
-                      />
-                    </DropdownMenu.Button>
-                    <DropdownMenu.Items origin="bottomRight">
-                      {Object.entries(TIME_FRAME_MODE_TO_LABEL).map(
-                        ([key, value]) => (
-                          <DropdownMenu.Item
-                            key={key}
-                            label={value}
-                            onClick={() => {
-                              setTimeFrameMode(key as TimeFrameMode);
-                            }}
-                          />
-                        )
-                      )}
-                    </DropdownMenu.Items>
-                  </DropdownMenu>
-                </div>
-                <div className="mt-4">
-                  <Transition
-                    show={timeFrameMode === "FORCED"}
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="transition-all duration-300"
-                    enter="transition-all duration-300"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                    className=""
-                    afterEnter={() => {
-                      window.scrollBy({
-                        left: 0,
-                        top: 70,
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    <div className={"flex flex-row items-center gap-4"}>
-                      <div className="font-normal text-element-900">
-                        Focus on the last
-                      </div>
-                      <input
-                        type="text"
-                        className={classNames(
-                          "text-smborder-gray-300 h-8 w-16 rounded-md text-center",
-                          !timeFrameError
-                            ? "focus:border-action-500 focus:ring-action-500"
-                            : "border-red-500 focus:border-red-500 focus:ring-red-500",
-                          "bg-structure-50 stroke-structure-50"
-                        )}
-                        value={timeFrame.value || ""}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value, 10);
-                          if (!isNaN(value) || !e.target.value) {
-                            setTimeFrame((tf) => ({
-                              value: value || null,
-                              unit: tf.unit,
-                            }));
-                          }
-                        }}
-                      />
-                      <DropdownMenu>
-                        <DropdownMenu.Button tooltipPosition="above">
-                          <Button
-                            type="select"
-                            labelVisible={true}
-                            label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.unit]}
-                            variant="secondary"
-                            size="sm"
-                          />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="bottomLeft">
-                          {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                            ([key, value]) => (
-                              <DropdownMenu.Item
-                                key={key}
-                                label={value}
-                                onClick={() => {
-                                  setTimeFrame((tf) => ({
-                                    value: tf.value,
-                                    unit: key as TimeframeUnit,
-                                  }));
-                                }}
-                              />
-                            )
-                          )}
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
-                    </div>
-                  </Transition>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -714,6 +612,11 @@ function DataSourceSelectionSection({
   canAddDataSource,
   onManageDataSource,
   onDelete,
+  timeFrameMode,
+  setTimeFrameMode,
+  timeFrame,
+  setTimeFrame,
+  timeFrameError,
 }: {
   show: boolean;
   dataSourceConfigs: Record<
@@ -724,6 +627,16 @@ function DataSourceSelectionSection({
   canAddDataSource: boolean;
   onManageDataSource: (name: string) => void;
   onDelete?: (name: string) => void;
+  timeFrameMode: TimeFrameMode;
+  setTimeFrameMode: Dispatch<SetStateAction<TimeFrameMode>>;
+  timeFrame: { value: number | null; unit: TimeframeUnit };
+  setTimeFrame: Dispatch<
+    SetStateAction<{
+      value: number | null;
+      unit: TimeframeUnit;
+    }>
+  >;
+  timeFrameError: string | null;
 }) {
   return (
     <Transition
@@ -836,6 +749,117 @@ function DataSourceSelectionSection({
             )}
           </ul>
         )}
+      </div>
+      <div className="pt-6 text-base font-semibold text-element-900">
+        Timeframe for the data sources
+      </div>
+      <div className="text-sm font-normal text-element-900">
+        Define a specific time frame if you want the Assistant to only focus on
+        data from a specific time period.
+        <br />
+        <span className="font-bold">"Auto"</span> means the assistant will
+        define itself, from the question, what the timeframe should be.
+      </div>
+      <div>
+        <div className="flex flex-row items-center space-x-2 pt-2">
+          <div className="text-sm font-semibold text-element-900">
+            Timeframe:
+          </div>
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                type="select"
+                labelVisible={true}
+                label={TIME_FRAME_MODE_TO_LABEL[timeFrameMode]}
+                variant="secondary"
+                size="sm"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="bottomRight">
+              {Object.entries(TIME_FRAME_MODE_TO_LABEL).map(([key, value]) => (
+                <DropdownMenu.Item
+                  key={key}
+                  label={value}
+                  onClick={() => {
+                    setTimeFrameMode(key as TimeFrameMode);
+                  }}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
+        <div className="mt-4">
+          <Transition
+            show={timeFrameMode === "FORCED"}
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-all duration-300"
+            enter="transition-all duration-300"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+            className=""
+            afterEnter={() => {
+              window.scrollBy({
+                left: 0,
+                top: 70,
+                behavior: "smooth",
+              });
+            }}
+          >
+            <div className={"flex flex-row items-center gap-4"}>
+              <div className="font-normal text-element-900">
+                Focus on the last
+              </div>
+              <input
+                type="text"
+                className={classNames(
+                  "text-smborder-gray-300 h-8 w-16 rounded-md text-center",
+                  !timeFrameError
+                    ? "focus:border-action-500 focus:ring-action-500"
+                    : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                  "bg-structure-50 stroke-structure-50"
+                )}
+                value={timeFrame.value || ""}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) || !e.target.value) {
+                    setTimeFrame((tf) => ({
+                      value: value || null,
+                      unit: tf.unit,
+                    }));
+                  }
+                }}
+              />
+              <DropdownMenu>
+                <DropdownMenu.Button tooltipPosition="above">
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.unit]}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomLeft">
+                  {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                    ([key, value]) => (
+                      <DropdownMenu.Item
+                        key={key}
+                        label={value}
+                        onClick={() => {
+                          setTimeFrame((tf) => ({
+                            value: tf.value,
+                            unit: key as TimeframeUnit,
+                          }));
+                        }}
+                      />
+                    )
+                  )}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          </Transition>
+        </div>
       </div>
     </Transition>
   );
