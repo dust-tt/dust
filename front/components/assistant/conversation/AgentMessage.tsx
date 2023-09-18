@@ -253,8 +253,8 @@ function ErrorMessage({ error }: { error: { code: string; message: string } }) {
               label="See the error"
             />
           </DropdownMenu.Button>
-          <div className="relative bottom-4">
-            <DropdownMenu.Items origin="bottomLeft" width={320}>
+          <div className="relative bottom-6 z-30">
+            <DropdownMenu.Items origin="topLeft" width={320}>
               <div className="flex flex-col gap-3 pb-3 pt-5">
                 <div className="text-sm font-normal text-warning-800">
                   {fullMessage}
