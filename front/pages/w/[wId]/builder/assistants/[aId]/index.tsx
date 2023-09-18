@@ -63,7 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-export default function CreateAssistant({
+export default function EditAssistant({
   user,
   owner,
   gaTrackingId,
