@@ -5,6 +5,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -32,6 +33,34 @@ function customDirectivesPlugin() {
       }
     });
   };
+}
+
+function makeCustomCiteDirectivesPlugin(blobs: any = {}) {
+  // Initialize a counter to keep track of citation references, starting from 1.
+  let refCounter = 1;
+
+  // Return the actual plugin function.
+  return () => {
+    return (tree: any) => {
+      visit(tree, ["textDirective"], (node) => {
+        if (node.name === "cite") {
+          const data = node.data || (node.data = {});
+
+          const documentReference = node.children[0]?.value;
+          const link = blobs[documentReference];
+
+          // `sup` will then be mapped to a custom component `CiteBlock`.
+          data.hName = "sup";
+          data.hProperties = {
+            referenceLink: link,
+            text: refCounter
+          }
+
+          refCounter++;
+        }
+      });
+    };
+  }
 }
 
 function addClosingBackticks(str: string): string {
@@ -64,7 +93,7 @@ function addClosingBackticks(str: string): string {
   return str;
 }
 
-export function RenderMarkdown({ content }: { content: string }) {
+export function RenderMarkdown({ content, documentReferences }: { content: string, documentReferences?: Record<string, string> }) {
   return (
     <ReactMarkdown
       linkTarget="_blank"
@@ -76,8 +105,10 @@ export function RenderMarkdown({ content }: { content: string }) {
         ol: OlBlock,
         li: LiBlock,
         p: ParagraphBlock,
+        // To work with custom components, we use the `sup` HTML tag here as `react-markdown` doesn't natively support them.
+        sup: CiteBlock
       }}
-      remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkDirective, customDirectivesPlugin, makeCustomCiteDirectivesPlugin(documentReferences)]}
     >
       {addClosingBackticks(content)}
     </ReactMarkdown>
@@ -170,6 +201,36 @@ function LiBlock({ children }: { children: React.ReactNode }) {
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return <p className="py-2 first:pt-0 last:pb-0">{children}</p>;
+}
+
+// TODO: Consider moving type logic to dedicated place.
+interface CiteProps {
+  referenceLink: string | undefined,
+  text: string | undefined
+}
+
+type CiteBlockProps = ReactMarkdownProps & CiteProps;
+
+function isCiteProps(props: ReactMarkdownProps): props is CiteBlockProps {
+  return Object.prototype.hasOwnProperty.call(props, 'referenceLink');
+}
+
+function CiteBlock(props: ReactMarkdownProps) {
+  // Check if the provided props match the expected structure for citation rendering.
+  if (isCiteProps(props)) {
+    const {referenceLink, text} = props;
+
+    return (
+      <sup>
+        <a href={referenceLink} target="_blank" rel="noopener noreferrer" className="break-all text-blue-500 hover:underline">{text}</a>
+      </sup>
+    );
+  }
+
+  // If not rendering a custom citation, render the default behavior with 'children'.
+  const {children} = props;
+
+  return <sup>{children}</sup>;
 }
 
 function CodeBlock({

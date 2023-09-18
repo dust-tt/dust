@@ -293,6 +293,7 @@ export async function* runGeneration(
     {
       conversation: modelConversationRes.value,
       prompt: c.prompt,
+      // Future Enhancement: Think about incorporating a meta prompt for the retrieval action, asking the model to include references.
     },
   ]);
 

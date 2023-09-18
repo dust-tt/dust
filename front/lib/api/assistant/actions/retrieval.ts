@@ -558,7 +558,8 @@ export async function* runRetrieval(
         id: 0, // dummy pending database insertion
         dataSourceId: d.data_source_id,
         documentId: d.document_id,
-        reference: new_id().slice(0, 3),
+        // INFO: Be conservative and only keeps 2 characters for the reference id.
+        reference: new_id().slice(0, 2),
         timestamp: d.timestamp,
         tags: d.tags,
         sourceUrl: d.source_url ?? null,

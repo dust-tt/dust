@@ -156,12 +156,12 @@ export function AgentMessage({
       messageId={agentMessageToRender.sId}
       buttons={buttons}
     >
-      {renderMessage(agentMessageToRender)}
+      {renderMessage(owner, agentMessageToRender)}
     </ConversationMessage>
   );
 }
 
-function renderMessage(agentMessage: AgentMessageType) {
+function renderMessage(owner: WorkspaceType, agentMessage: AgentMessageType) {
   // Display the error to the user so they can report it to us (or some can be
   // understandable directly to them)
   if (agentMessage.status === "failed") {
@@ -199,6 +199,12 @@ function renderMessage(agentMessage: AgentMessageType) {
   }
   // Messages with action
   if (agentMessage.action) {
+    // Store possible references.
+    const references: Record<string, string> = {};
+    for (const doc of agentMessage.action.documents ?? []) {
+      references[doc.reference] = `https://dust.tt/w/${owner.sId}/builder/data-sources/${doc.dataSourceId}/upsert?documentId=${doc.documentId}`
+    }
+
     return (
       <>
         <div
@@ -213,7 +219,7 @@ function renderMessage(agentMessage: AgentMessageType) {
         {agentMessage.content && agentMessage.content !== "" && (
           <>
             <div className="pt-4">
-              <RenderMarkdown content={agentMessage.content} />
+              <RenderMarkdown content={agentMessage.content} documentReferences={references}/>
             </div>
           </>
         )}

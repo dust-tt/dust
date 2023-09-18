@@ -139,7 +139,7 @@ async function _getSlackGlobalAgent(
     generation: {
       id: -1,
       prompt:
-        "Assist the user based on the retrieved data from their Slack workspace.",
+        "Assist the user based on the retrieved data from their Slack workspace. Avoid list structures in data presentation, use natural language. Quote a few relevant references using :cite[reference].",
       model: {
         providerId: "openai",
         modelId: "gpt-4",
