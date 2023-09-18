@@ -1,5 +1,3 @@
-import { Transaction } from "sequelize";
-
 import {
   cleanupGithubConnector,
   createGithubConnector,
