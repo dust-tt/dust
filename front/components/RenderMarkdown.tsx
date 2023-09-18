@@ -6,6 +6,7 @@ import {
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import {
   amber,
@@ -16,6 +17,22 @@ import {
   violet,
   yellow,
 } from "tailwindcss/colors";
+import { visit } from "unist-util-visit";
+
+function customDirectivesPlugin() {
+  return (tree: any) => {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.name === "mention") {
+        const data = node.data || (node.data = {});
+        data.hName = "span";
+        data.hProperties = {
+          className: "inline-block font-medium text-brand",
+        };
+        node.children.unshift({ type: "text", value: "@" });
+      }
+    });
+  };
+}
 
 function addClosingBackticks(str: string): string {
   // Regular expression to find either a single backtick or triple backticks
@@ -60,7 +77,7 @@ export function RenderMarkdown({ content }: { content: string }) {
         li: LiBlock,
         p: ParagraphBlock,
       }}
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
     >
       {addClosingBackticks(content)}
     </ReactMarkdown>
