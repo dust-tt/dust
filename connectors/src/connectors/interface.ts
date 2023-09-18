@@ -55,7 +55,7 @@ export type ConnectorPermissionRetriever = (params: {
   connectorId: ModelId;
   parentInternalId: string | null;
   filterPermission: ConnectorPermission | null;
-  retrieveAncestors: boolean;
+  retrieveParents: boolean;
 }) => Promise<Result<ConnectorResource[], Error>>;
 
 export type ConnectorPermissionSetter = (

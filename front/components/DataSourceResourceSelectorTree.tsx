@@ -21,17 +21,17 @@ export default function DataSourceResourceSelectorTree({
   expandable, //if not, it's flat
   selectedParentIds,
   onSelectChange,
-  ancestorsById,
+  parentsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   expandable: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string; ancestors: string[] },
+    resource: { resourceId: string; resourceName: string; parents: string[] },
     selected: boolean
   ) => void;
-  ancestorsById: Record<string, Set<string>>;
+  parentsById: Record<string, Set<string>>;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -42,7 +42,7 @@ export default function DataSourceResourceSelectorTree({
         expandable={expandable}
         selectedParentIds={selectedParentIds}
         onSelectChange={onSelectChange}
-        ancestorsById={ancestorsById}
+        parentsById={parentsById}
         isChecked={false}
       />
     </div>
@@ -80,7 +80,7 @@ function DataSourceResourceSelectorChildren({
   isChecked,
   selectedParentIds,
   onSelectChange,
-  ancestorsById,
+  parentsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -89,10 +89,10 @@ function DataSourceResourceSelectorChildren({
   isChecked: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string; ancestors: string[] },
+    resource: { resourceId: string; resourceName: string; parents: string[] },
     selected: boolean
   ) => void;
-  ancestorsById: Record<string, Set<string>>;
+  parentsById: Record<string, Set<string>>;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -100,7 +100,7 @@ function DataSourceResourceSelectorChildren({
       dataSource,
       parentId,
       filterPermission: "read",
-      retrieveAncestors: true,
+      retrieveParents: true,
     });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -113,7 +113,7 @@ function DataSourceResourceSelectorChildren({
     }
 
     for (const x of selectedParentIds) {
-      if (ancestorsById?.[x]?.has(resourceId)) {
+      if (parentsById?.[x]?.has(resourceId)) {
         return "partial";
       }
     }
@@ -191,7 +191,7 @@ function DataSourceResourceSelectorChildren({
                           {
                             resourceId: r.internalId,
                             resourceName: r.title,
-                            ancestors: r.ancestors ?? [],
+                            parents: r.parents ?? [],
                           },
                           checked
                         )
@@ -211,7 +211,7 @@ function DataSourceResourceSelectorChildren({
                       isChecked={checkStatus === "checked"}
                       selectedParentIds={selectedParentIds}
                       onSelectChange={onSelectChange}
-                      ancestorsById={ancestorsById}
+                      parentsById={parentsById}
                     />
                   </div>
                 )}

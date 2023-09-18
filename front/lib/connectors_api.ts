@@ -62,7 +62,7 @@ export type ConnectorResource = {
   sourceUrl: string | null;
   expandable: boolean;
   permission: ConnectorPermission;
-  ancestors: string[] | null;
+  parents: string[] | null;
 };
 
 export type GoogleDriveFolderType = {
@@ -186,12 +186,12 @@ export const ConnectorsAPI = {
     connectorId,
     parentId,
     filterPermission,
-    retrieveAncestors,
+    retrieveParents,
   }: {
     connectorId: string;
     parentId?: string;
     filterPermission?: ConnectorPermission;
-    retrieveAncestors: boolean;
+    retrieveParents: boolean;
   }): Promise<ConnectorsAPIResponse<{ resources: ConnectorResource[] }>> {
     let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions?source=front`;
     if (parentId) {
@@ -200,8 +200,8 @@ export const ConnectorsAPI = {
     if (filterPermission) {
       url += `&filterPermission=${filterPermission}`;
     }
-    if (retrieveAncestors) {
-      url += "&retrieveAncestors=true";
+    if (retrieveParents) {
+      url += "&retrieveParents=true";
     }
 
     const res = await fetch(url, {

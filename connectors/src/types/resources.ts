@@ -33,7 +33,7 @@ export type ConnectorResource = {
   provider: ConnectorProvider;
   internalId: string;
   parentInternalId: string | null;
-  ancestors: string[] | null;
+  parents: string[] | null;
   type: ConnectorResourceType;
   title: string;
   sourceUrl: string | null;

@@ -299,13 +299,13 @@ export function useConnectorPermissions({
   dataSource,
   parentId,
   filterPermission,
-  retrieveAncestors,
+  retrieveParents,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
-  retrieveAncestors: boolean;
+  retrieveParents: boolean;
 }) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
@@ -317,8 +317,8 @@ export function useConnectorPermissions({
   if (filterPermission) {
     url += `&filterPermission=${filterPermission}`;
   }
-  if (retrieveAncestors) {
-    url += `&retrieveAncestors=true`;
+  if (retrieveParents) {
+    url += `&retrieveParents=true`;
   }
 
   const { data, error } = useSWR(url, permissionsFetcher);

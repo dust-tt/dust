@@ -59,7 +59,7 @@ const _getConnectorPermissions = async (
     connectorId: connector.id,
     parentInternalId,
     filterPermission,
-    retrieveAncestors: req.query.retrieveAncestors === "true",
+    retrieveParents: req.query.retrieveParents === "true",
   });
 
   if (pRes.isErr()) {

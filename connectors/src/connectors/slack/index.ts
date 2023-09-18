@@ -287,7 +287,7 @@ export async function retrieveSlackConnectorPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-  retrieveAncestors,
+  retrieveParents,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
@@ -356,7 +356,7 @@ export async function retrieveSlackConnectorPermissions({
     sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
     expandable: false,
     permission: ch.permission,
-    ancestors: retrieveAncestors ? [] : null, // slack channels have no ancestors
+    parents: retrieveParents ? [] : null, // slack channels have no parents
   }));
 
   return new Ok(resources);
