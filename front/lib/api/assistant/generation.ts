@@ -281,6 +281,14 @@ export async function* runGeneration(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
 
+  // This is the console.log you want to uncomment to generate inputs for the generator app.
+  // console.log(
+  //   JSON.stringify({
+  //     conversation: modelConversationRes.value,
+  //     prompt: c.prompt,
+  //   })
+  // );
+
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
       conversation: modelConversationRes.value,
