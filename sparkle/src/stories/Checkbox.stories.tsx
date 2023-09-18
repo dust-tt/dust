@@ -21,3 +21,17 @@ export const Unchecked: Story = {
     checked: false,
   },
 };
+
+export const PartialChecked: Story = {
+  args: {
+    checked: false,
+    partialChecked: true,
+  },
+};
+
+export const Disabled: Story = {
+  args: {
+    checked: true,
+    disabled: true,
+  },
+};
