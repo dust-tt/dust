@@ -176,12 +176,14 @@ function renderMessage(agentMessage: AgentMessageType) {
   // understandable directly to them)
   if (agentMessage.status === "failed") {
     return (
-      <div>
-        <div className="mb-2 text-xs font-bold text-element-600">
-          <p>Error Code: {agentMessage.error?.code}</p>
-          <p>Error Message: {agentMessage.error?.message}</p>
-        </div>
-      </div>
+      <ErrorMessage
+        error={
+          agentMessage.error || {
+            message: "Unexpected Error",
+            code: "unexpected_error",
+          }
+        }
+      />
     );
   }
 
@@ -279,6 +281,10 @@ function ErrorMessage({ error }: { error: { code: string; message: string } }) {
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"
+          onClick={() => {
+            // TODO
+            alert("To be done in a few hours");
+          }}
         />
       </div>
     </div>
