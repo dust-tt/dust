@@ -13,6 +13,9 @@ export { Tab };
 import { Item } from "./components/Item";
 export { Item };
 
+import { ContextItem } from "./components/ContextItem";
+export { ContextItem };
+
 import { Chip } from "./components/Chip";
 export { Chip };
 
@@ -125,6 +128,8 @@ import {
   ClipboardCheck as ClipboardCheckIcon,
   Clock as ClockIcon,
   CloudArrowDown as CloudArrowDownIcon,
+  CloudArrowLeftRight as CloudArrowLeftRightIcon,
+  CloudX as CloudXIcon,
   Cog6Tooth as Cog6ToothIcon,
   CommandLine as CommandLineIcon,
   Cube as CubeIcon,
@@ -135,6 +140,7 @@ import {
   ExclamationCircle as ExclamationCircleIcon,
   Eye as EyeIcon,
   EyeSlash as EyeSlashIcon,
+  Flag as FlagIcon,
   FolderOpen as FolderOpenIcon,
   GlobeAlt as GlobeAltIcon,
   HandThumbDown as HandThumbDownIcon,
@@ -153,6 +159,7 @@ import {
   QuestionMarkCircle as QuestionMarkCircleIcon,
   Robot as RobotIcon,
   Server as ServerIcon,
+  ShakeHands as ShakeHandsIcon,
   Sparkles as SparklesIcon,
   Square3Stack3D as Square3Stack3DIcon,
   TestTube as TestTubeIcon,
@@ -186,6 +193,8 @@ export {
   ClipboardIcon,
   ClockIcon,
   CloudArrowDownIcon,
+  CloudArrowLeftRightIcon,
+  CloudXIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   CubeIcon,
@@ -196,6 +205,7 @@ export {
   ExclamationCircleIcon,
   EyeIcon,
   EyeSlashIcon,
+  FlagIcon,
   FolderOpenIcon,
   GlobeAltIcon,
   HandThumbDownIcon,
@@ -214,6 +224,7 @@ export {
   QuestionMarkCircleIcon,
   RobotIcon,
   ServerIcon,
+  ShakeHandsIcon,
   SparklesIcon,
   Square3Stack3DIcon,
   TestTubeIcon,
@@ -247,6 +258,8 @@ import {
   ClipboardCheck as ClipboardCheckStrokeIcon,
   Clock as ClockStrokeIcon,
   CloudArrowDown as CloudArrowDownStrokeIcon,
+  CloudArrowLeftRight as CloudArrowLeftRightStrokeIcon,
+  CloudX as CloudXStrokeIcon,
   Cog6Tooth as Cog6ToothStrokeIcon,
   CommandLine as CommandLineStrokeIcon,
   Cube as CubeStrokeIcon,
@@ -257,6 +270,7 @@ import {
   ExclamationCircle as ExclamationCircleStrokeIcon,
   Eye as EyeStrokeIcon,
   EyeSlash as EyeSlashStrokeIcon,
+  Flag as FlagStrokeIcon,
   FolderOpen as FolderOpenStrokeIcon,
   GlobeAlt as GlobeAltStrokeIcon,
   HandThumbDown as HandThumbDownStrokeIcon,
@@ -275,6 +289,7 @@ import {
   QuestionMarkCircle as QuestionMarkCircleStrokeIcon,
   Robot as RobotStrokeIcon,
   Server as ServerStrokeIcon,
+  ShakeHands as ShakeHandsStrokeIcon,
   Sparkles as SparklesStrokeIcon,
   Square3Stack3D as Square3Stack3DStrokeIcon,
   TestTube as TestTubeStrokeIcon,
@@ -308,6 +323,8 @@ export {
   ClipboardStrokeIcon,
   ClockStrokeIcon,
   CloudArrowDownStrokeIcon,
+  CloudArrowLeftRightStrokeIcon,
+  CloudXStrokeIcon,
   Cog6ToothStrokeIcon,
   CommandLineStrokeIcon,
   CubeStrokeIcon,
@@ -318,6 +335,7 @@ export {
   ExclamationCircleStrokeIcon,
   EyeSlashStrokeIcon,
   EyeStrokeIcon,
+  FlagStrokeIcon,
   FolderOpenStrokeIcon,
   GlobeAltStrokeIcon,
   HandThumbDownStrokeIcon,
@@ -336,6 +354,7 @@ export {
   QuestionMarkCircleStrokeIcon,
   RobotStrokeIcon,
   ServerStrokeIcon,
+  ShakeHandsStrokeIcon,
   SparklesStrokeIcon,
   Square3Stack3DStrokeIcon,
   TestTubeStrokeIcon,
