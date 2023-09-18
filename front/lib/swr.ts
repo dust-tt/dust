@@ -294,12 +294,19 @@ export function useEventSchemas(owner: WorkspaceType) {
   };
 }
 
-export function useConnectorPermissions(
-  owner: WorkspaceType,
-  dataSource: DataSourceType,
-  parentId: string | null,
-  filterPermission: ConnectorPermission | null
-) {
+export function useConnectorPermissions({
+  owner,
+  dataSource,
+  parentId,
+  filterPermission,
+  retrieveAncestors,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  parentId: string | null;
+  filterPermission: ConnectorPermission | null;
+  retrieveAncestors: boolean;
+}) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
@@ -309,6 +316,9 @@ export function useConnectorPermissions(
   }
   if (filterPermission) {
     url += `&filterPermission=${filterPermission}`;
+  }
+  if (retrieveAncestors) {
+    url += `&retrieveAncestors=true`;
   }
 
   const { data, error } = useSWR(url, permissionsFetcher);

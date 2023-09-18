@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import PQueue from "p-queue";
 import { Transaction } from "sequelize";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
@@ -27,6 +29,9 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
+
+import { ConnectorPermissionRetriever } from "../interface";
+import { getParents } from "./lib/parents";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -323,10 +328,13 @@ export async function cleanupNotionConnector(
   return new Ok(undefined);
 }
 
-export async function retrieveNotionConnectorPermissions(
-  connectorId: ModelId,
-  parentInternalId: string | null
-): Promise<Result<ConnectorResource[], Error>> {
+export async function retrieveNotionConnectorPermissions({
+  connectorId,
+  parentInternalId,
+  retrieveAncestors,
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<
+  Result<ConnectorResource[], Error>
+> {
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -352,43 +360,72 @@ export async function retrieveNotionConnectorPermissions(
     }),
   ]);
 
-  const pageResources: ConnectorResource[] = await Promise.all(
-    pages.map((p) => {
-      return (async () => {
-        // Try to look for one NotionPage child and one NotionDatabase child to see if this page is
-        // expandable.
-        const [childPage, childDB] = await Promise.all([
-          NotionPage.findOne({
-            where: {
-              connectorId,
-              parentId: p.notionPageId,
-            },
-          }),
-          NotionDatabase.findOne({
-            where: {
-              connectorId,
-              parentId: p.notionPageId,
-            },
-          }),
-        ]);
-        const expandable = childPage || childDB ? true : false;
+  const memoKey = randomUUID();
 
-        return {
-          provider: c.type,
-          internalId: p.notionPageId,
-          parentInternalId:
-            !p.parentId || p.parentId === "workspace" ? null : p.parentId,
-          type: "file",
-          title: p.title || "",
-          sourceUrl: p.notionUrl || null,
-          expandable,
-          permission: "read",
-        };
-      })();
-    })
+  const getPageResources = async (
+    page: NotionPage
+  ): Promise<ConnectorResource> => {
+    const [childPage, childDB] = await Promise.all([
+      NotionPage.findOne({
+        where: {
+          connectorId,
+          parentId: page.notionPageId,
+        },
+      }),
+      NotionDatabase.findOne({
+        where: {
+          connectorId,
+          parentId: page.notionPageId,
+        },
+      }),
+    ]);
+    const expandable = childPage || childDB ? true : false;
+
+    let ancestors = null;
+    if (retrieveAncestors) {
+      ancestors = await getParents(
+        {
+          workspaceId: c.workspaceId,
+          dataSourceName: c.dataSourceName,
+        },
+        page.notionPageId,
+        memoKey
+      );
+    }
+
+    return {
+      provider: c.type,
+      internalId: page.notionPageId,
+      parentInternalId:
+        !page.parentId || page.parentId === "workspace" ? null : page.parentId,
+      type: "file",
+      title: page.title || "",
+      sourceUrl: page.notionUrl || null,
+      expandable,
+      permission: "read",
+      ancestors,
+    };
+  };
+
+  const pageResources = await Promise.all(
+    pages.map((p) => getPageResources(p))
   );
 
-  const dbResources: ConnectorResource[] = dbs.map((db) => {
+  const getDbResources = async (
+    db: NotionDatabase
+  ): Promise<ConnectorResource> => {
+    let ancestors = null;
+    if (retrieveAncestors) {
+      ancestors = await getParents(
+        {
+          workspaceId: c.workspaceId,
+          dataSourceName: c.dataSourceName,
+        },
+        db.notionDatabaseId,
+        memoKey
+      );
+    }
+
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -399,8 +436,11 @@ export async function retrieveNotionConnectorPermissions(
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
+      ancestors,
     };
-  });
+  };
+
+  const dbResources = await Promise.all(dbs.map((db) => getDbResources(db)));
 
   return new Ok(pageResources.concat(dbResources));
 }

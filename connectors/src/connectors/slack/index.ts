@@ -2,6 +2,7 @@ import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 import { Op, Transaction } from "sequelize";
 
+import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   launchSlackBotJoinedWorkflow,
   launchSlackGarbageCollectWorkflow,
@@ -282,11 +283,14 @@ export async function cleanupSlackConnector(
   return new Ok(undefined);
 }
 
-export async function retrieveSlackConnectorPermissions(
-  connectorId: ModelId,
-  parentInternalId: string | null,
-  filterPermission: ConnectorPermission | null
-): Promise<Result<ConnectorResource[], Error>> {
+export async function retrieveSlackConnectorPermissions({
+  connectorId,
+  parentInternalId,
+  filterPermission,
+  retrieveAncestors,
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<
+  Result<ConnectorResource[], Error>
+> {
   if (parentInternalId) {
     return new Err(
       new Error(
@@ -352,6 +356,7 @@ export async function retrieveSlackConnectorPermissions(
     sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
     expandable: false,
     permission: ch.permission,
+    ancestors: retrieveAncestors ? [] : null, // slack channels have no ancestors
   }));
 
   return new Ok(resources);

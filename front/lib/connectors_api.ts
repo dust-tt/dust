@@ -62,6 +62,7 @@ export type ConnectorResource = {
   sourceUrl: string | null;
   expandable: boolean;
   permission: ConnectorPermission;
+  ancestors: string[] | null;
 };
 
 export type GoogleDriveFolderType = {

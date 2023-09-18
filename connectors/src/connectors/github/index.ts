@@ -21,6 +21,8 @@ import {
   ConnectorResource,
 } from "@connectors/types/resources";
 
+import { ConnectorPermissionRetriever } from "../interface";
+
 type GithubInstallationId = string;
 
 const logger = mainLogger.child({ provider: "github" });
@@ -258,10 +260,13 @@ export async function cleanupGithubConnector(
   }
 }
 
-export async function retrieveGithubConnectorPermissions(
-  connectorId: ModelId,
-  parentInternalId: string | null
-): Promise<Result<ConnectorResource[], Error>> {
+export async function retrieveGithubConnectorPermissions({
+  connectorId,
+  parentInternalId,
+  retrieveAncestors,
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<
+  Result<ConnectorResource[], Error>
+> {
   if (parentInternalId) {
     return new Err(
       new Error(
@@ -301,6 +306,7 @@ export async function retrieveGithubConnectorPermissions(
         sourceUrl: repo.url,
         expandable: false,
         permission: "read" as ConnectorPermission,
+        ancestors: retrieveAncestors ? [] : null, // github repos have no ancestors
       }))
     );
   }
