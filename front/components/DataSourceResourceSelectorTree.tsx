@@ -184,7 +184,8 @@ function DataSourceResourceSelectorChildren({
                         "ml-auto",
                         checkStatus === "partial" ? "bg-element-600" : ""
                       )}
-                      checked={["checked", "partial"].includes(checkStatus)}
+                      checked={checkStatus === "checked"}
+                      partialChecked={checkStatus === "partial"}
                       onChange={(checked) =>
                         onSelectChange(
                           {
