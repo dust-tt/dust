@@ -138,13 +138,13 @@ function AgentListImpl(
       leaveTo="transform opacity-0 scale-100 translate-y-0"
     >
       <div
-        className="max-h-128 fixed z-10 w-44 rounded-xl border border-structure-100 bg-white shadow-xl"
+        className="max-h-128 fixed z-10 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
         style={{
           bottom: position.bottom,
           left: position.left,
         }}
       >
-        <div className="flex flex-col gap-y-4 overflow-y-auto px-3 py-2">
+        <div className="flex flex-col gap-y-4 px-3 py-2">
           {filtered.map((c, i) => (
             <div
               className="flex w-full px-1"
