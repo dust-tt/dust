@@ -1,10 +1,22 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  deleteConversation,
+  getConversation,
+  updateConversation,
+} from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ConversationType } from "@app/types/assistant/conversation";
+
+export const PatchConversationsRequestBodySchema = t.type({
+  title: t.union([t.string, t.null]),
+  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+});
 
 export type GetConversationsResponseBody = {
   conversation: ConversationType;
@@ -62,23 +74,54 @@ async function handler(
       },
     });
   }
-  const conversationId = req.query.cId;
+
+  const conversation = await getConversation(auth, req.query.cId);
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "The conversation you're trying to access was not found.",
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":
-      const conversation = await getConversation(auth, conversationId);
+      res.status(200).json({ conversation });
+      return;
 
-      if (!conversation) {
+    case "DELETE":
+      await deleteConversation(auth, conversation.sId);
+
+      res.status(200).end();
+      return;
+
+    case "PATCH":
+      const bodyValidation = PatchConversationsRequestBodySchema.decode(
+        req.body
+      );
+
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 400,
           api_error: {
-            type: "conversation_not_found",
-            message: "The conversation you're trying to access was not found.",
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      res.status(200).json({ conversation });
+      const { title, visibility } = bodyValidation.right;
+
+      const c = await updateConversation(auth, conversation.sId, {
+        title,
+        visibility,
+      });
+
+      res.status(200).json({ conversation: c });
       return;
 
     default:
@@ -86,7 +129,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }

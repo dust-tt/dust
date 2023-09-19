@@ -40,20 +40,45 @@ export function ConversationTitle({
         <span className="font-bold">{title}</span>
       </div>
 
-      <div className="hidden space-x-1 lg:flex">
-        {onDelete && (
-          <div className="flex flex-initial">
-            <Button
-              size="sm"
-              labelVisible={false}
-              tooltipPosition="below"
-              variant="secondaryWarning"
-              label="Delete"
-              icon={TrashIcon}
-              onClick={onDelete}
-            />
-          </div>
-        )}
+      <div className="flex space-x-1">
+        <div className="hidden lg:flex">
+          {onDelete && (
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  size="sm"
+                  labelVisible={false}
+                  tooltipPosition="below"
+                  variant="secondaryWarning"
+                  label="Delete Conversation"
+                  icon={TrashIcon}
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items width={280}>
+                <div className="flex flex-col gap-y-4 py-4">
+                  <div className="flex flex-col gap-y-2">
+                    <div className="grow text-sm font-medium text-element-800">
+                      Are you sure you want to delete?
+                    </div>
+
+                    <div className="text-sm font-normal text-element-700">
+                      This will delete the conversation for everyone.
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="primaryWarning"
+                      size="sm"
+                      label={"Delete for Everyone"}
+                      icon={TrashIcon}
+                      onClick={onDelete}
+                    />
+                  </div>
+                </div>
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          )}
+        </div>
 
         <DropdownMenu>
           <DropdownMenu.Button>
