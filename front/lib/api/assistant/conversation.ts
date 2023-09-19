@@ -1058,59 +1058,67 @@ async function* streamRunAgentEvents(
   void
 > {
   for await (const event of eventStream) {
-    if (event.type === "agent_error") {
-      // Store error in database.
-      await agentMessageRow.update({
-        status: "failed",
-        errorCode: event.error.code,
-        errorMessage: event.error.message,
-      });
-
-      logger.error(
-        {
-          error: event.error,
-        },
-        "Agent error"
-      );
-
-      yield event;
-      return;
-    }
-
-    if (event.type === "agent_action_success") {
-      // Store action in database.
-      if (event.action.type === "retrieval_action") {
+    switch (event.type) {
+      case "agent_error":
+        // Store error in database.
         await agentMessageRow.update({
-          agentRetrievalActionId: event.action.id,
+          status: "failed",
+          errorCode: event.error.code,
+          errorMessage: event.error.message,
         });
-      } else {
-        throw new Error(
-          `Action type ${event.action.type} agent_action_success handling not implemented`
+
+        logger.error(
+          {
+            error: event.error,
+          },
+          "Agent error"
         );
-      }
-      yield event;
-    }
 
-    if (event.type === "agent_generation_success") {
-      // Store message in database.
-      await agentMessageRow.update({
-        content: event.text,
-      });
-      yield event;
-    }
+        yield event;
+        return;
 
-    if (event.type === "agent_message_success") {
-      // Update status in database.
-      await agentMessageRow.update({
-        status: "succeeded",
-      });
-      yield event;
-    }
+      case "agent_action_success":
+        // Store action in database.
+        if (event.action.type === "retrieval_action") {
+          await agentMessageRow.update({
+            agentRetrievalActionId: event.action.id,
+          });
+        } else {
+          throw new Error(
+            `Action type ${event.action.type} agent_action_success handling not implemented`
+          );
+        }
+        yield event;
+        break;
 
-    // All other events that won't impact the database and are related to actions or tokens
-    // generation.
-    if (["retrieval_params", "generation_tokens"].includes(event.type)) {
-      yield event;
+      case "agent_generation_success":
+        // Store message in database.
+        await agentMessageRow.update({
+          content: event.text,
+        });
+        yield event;
+        break;
+
+      case "agent_message_success":
+        // Update status in database.
+        await agentMessageRow.update({
+          status: "succeeded",
+        });
+        yield event;
+        break;
+
+      // All other events that won't impact the database and are related to actions or tokens
+      // generation.
+      case "retrieval_params":
+      case "generation_tokens":
+        yield event;
+        break;
+
+      default:
+        ((event: never) => {
+          logger.error("Unknown `streamRunAgentEvents` event type", event);
+        })(event);
+        return;
     }
   }
 }

@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionSpecification,
@@ -172,34 +173,41 @@ export async function* runAgent(
       );
 
       for await (const event of eventStream) {
-        if (event.type === "retrieval_params") {
-          yield event;
-        }
-        if (event.type === "retrieval_error") {
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        }
-        if (event.type === "retrieval_success") {
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
+        switch (event.type) {
+          case "retrieval_params":
+            yield event;
+            break;
+          case "retrieval_error":
+            yield {
+              type: "agent_error",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: event.error.code,
+                message: event.error.message,
+              },
+            };
+            return;
+          case "retrieval_success":
+            yield {
+              type: "agent_action_success",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              action: event.action,
+            };
 
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+            // We stitch the action into the agent message. The conversation is expected to include
+            // the agentMessage object, updating this object will update the conversation as well.
+            agentMessage.action = event.action;
+            break;
+
+          default:
+            ((event: never) => {
+              logger.error("Unknown `runAgent` event type", event);
+            })(event);
+            return;
         }
       }
     } else {
@@ -220,32 +228,41 @@ export async function* runAgent(
     );
 
     for await (const event of eventStream) {
-      if (event.type === "generation_tokens") {
-        yield event;
-      }
-      if (event.type === "generation_error") {
-        yield {
-          type: "agent_error",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: event.error.code,
-            message: event.error.message,
-          },
-        };
-        return;
-      }
-      if (event.type === "generation_success") {
-        yield {
-          type: "agent_generation_success",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          text: event.text,
-        };
+      switch (event.type) {
+        case "generation_tokens":
+          yield event;
+          break;
 
-        agentMessage.content = event.text;
+        case "generation_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+
+        case "generation_success":
+          yield {
+            type: "agent_generation_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            text: event.text,
+          };
+
+          agentMessage.content = event.text;
+          break;
+
+        default:
+          ((event: never) => {
+            logger.error("Unknown `runAgent` event type", event);
+          })(event);
+          return;
       }
     }
   }

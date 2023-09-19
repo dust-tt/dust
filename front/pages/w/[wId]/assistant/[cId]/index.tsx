@@ -114,10 +114,6 @@ export default function AssistantConversation({
           onDelete={() => {
             void handdleDeleteConversation();
           }}
-          onUpdateVisibility={() => {
-            return;
-          }}
-          visibility={"unlisted"}
         />
       }
       navChildren={<AssistantSidebarMenu owner={owner} />}
