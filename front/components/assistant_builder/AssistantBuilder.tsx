@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   Icon,
   InformationCircleIcon,
+  Input,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -159,12 +160,16 @@ export default function AssistantBuilder({
   const assistantHandleIsValid = (handle: string) => {
     return /^[a-zA-Z0-9_-]{1,20}$/.test(handle);
   };
-  const assistantHandleIsAvailable = (handle: string) => {
-    return !agentConfigurations.some(
-      (agentConfiguration) =>
-        agentConfiguration.name.toLowerCase() === handle.toLowerCase()
-    );
-  };
+
+  const assistantHandleIsAvailable = useCallback(
+    (handle: string) => {
+      return !agentConfigurations.some(
+        (agentConfiguration) =>
+          agentConfiguration.name.toLowerCase() === handle.toLowerCase()
+      );
+    },
+    [agentConfigurations]
+  );
 
   const configuredDataSourceCount = Object.keys(
     builderState.dataSourceConfigurations
@@ -180,9 +185,7 @@ export default function AssistantBuilder({
     } else {
       edited = true;
       if (!assistantHandleIsValid(builderState.handle)) {
-        setAssistantHandleError(
-          "Assistant handle must be between 1 and 20 characters long and can only contain letters, numbers, underscores and dashes"
-        );
+        setAssistantHandleError("Only letters, numbers, _ and - allowed");
         valid = false;
       } else if (!assistantHandleIsAvailable(builderState.handle)) {
         setAssistantHandleError("Assistant handle is already taken");
@@ -233,6 +236,7 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.timeFrameMode,
     builderState.timeFrame.value,
+    assistantHandleIsAvailable,
   ]);
 
   useEffect(() => {
@@ -434,7 +438,7 @@ export default function AssistantBuilder({
                 icon={PencilSquareIcon}
               />
             </div>
-            <div className="ml-4 space-y-4">
+            <div className="ml-4 space-y-2">
               <div className="block text-sm font-medium text-element-900">
                 Name
               </div>
@@ -443,18 +447,22 @@ export default function AssistantBuilder({
                 with an “@” handle (for instance @myAssistant). It must be
                 unique.
               </div>
-              <AssistantBuilderTextInput
-                placeholder="SalesAssistantFrance"
-                value={builderState.handle}
-                onChange={(value) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    handle: value,
-                  }));
-                }}
-                error={assistantHandleError}
-                name="assistantName"
-              />
+              <div className="text-sm">
+                <Input
+                  placeholder="SalesAssistantFrance"
+                  value={builderState.handle}
+                  onChange={(value) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      handle: value,
+                    }));
+                  }}
+                  error={assistantHandleError}
+                  name="assistantName"
+                  showErrorLabel
+                  className="text-sm"
+                />
+              </div>
               <div className="block text-sm font-medium text-element-900">
                 Description
               </div>
@@ -462,18 +470,21 @@ export default function AssistantBuilder({
                 The description helps your collaborators and Dust to understand
                 the purpose of the Assistant.
               </div>
-              <AssistantBuilderTextInput
-                placeholder="Assistant designed to answer sales questions"
-                value={builderState.description}
-                onChange={(value) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    description: value,
-                  }));
-                }}
-                error={null} // TODO ?
-                name="assistantDescription"
-              />
+              <div className="text-sm">
+                <Input
+                  placeholder="Assistant designed to answer sales questions"
+                  value={builderState.description}
+                  onChange={(value) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      description: value,
+                    }));
+                  }}
+                  error={null} // TODO ?
+                  name="assistantDescription"
+                  className="text-sm"
+                />
+              </div>
             </div>
           </div>
           <div className="mt-8 flex w-full flex-row items-start">
@@ -485,18 +496,20 @@ export default function AssistantBuilder({
                 lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
                 diam et dolor aliquet.
               </div>
-              <AssistantBuilderTextArea
-                placeholder="Achieve a particular task, follow a template, use a certain formating..."
-                value={builderState.instructions}
-                onChange={(value) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    instructions: value,
-                  }));
-                }}
-                error={null}
-                name="assistantInstructions"
-              />
+              <div className="text-sm">
+                <AssistantBuilderTextArea
+                  placeholder="Achieve a particular task, follow a template, use a certain formating..."
+                  value={builderState.instructions}
+                  onChange={(value) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      instructions: value,
+                    }));
+                  }}
+                  error={null}
+                  name="assistantInstructions"
+                />
+              </div>
               <div className="flex flex-row items-center space-x-2">
                 <div className="text-sm font-semibold text-action-500">
                   Select a specific LLM model
@@ -605,41 +618,6 @@ export default function AssistantBuilder({
         </div>
       </AppLayout>
     </>
-  );
-}
-
-function AssistantBuilderTextInput({
-  placeholder,
-  value,
-  onChange,
-  error,
-  name,
-}: {
-  placeholder: string;
-  value: string | null;
-  onChange: (value: string) => void;
-  error?: string | null;
-  name: string;
-}) {
-  return (
-    <input
-      type="text"
-      name="name"
-      id={name}
-      className={classNames(
-        "block w-full min-w-0 rounded-md text-sm",
-        !error
-          ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
-          : "border-red-500 focus:border-red-500 focus:ring-red-500",
-        "bg-structure-50 stroke-structure-50"
-      )}
-      placeholder={placeholder}
-      value={value ?? ""}
-      onChange={(e) => {
-        onChange(e.target.value);
-      }}
-      data-1p-ignore
-    />
   );
 }
 
