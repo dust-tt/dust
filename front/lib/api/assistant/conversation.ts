@@ -229,6 +229,7 @@ export async function getUserConversations(
         required: true,
       },
     ],
+    order: [["createdAt", "DESC"]],
   });
 
   const conversations = participations.reduce<ConversationWithoutContentType[]>(
