@@ -95,6 +95,9 @@ async function handler(
           topK: action.topK,
           dataSources: action.dataSources,
         });
+      } else {
+        // in this case I think we want to to delete the action configuration
+        // or should we soft delete it?
       }
       if (generation) {
         await updateAgentGenerationConfiguration(
