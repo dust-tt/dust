@@ -311,3 +311,42 @@ export async function retrieveGithubConnectorPermissions({
 
   return new Ok(resources);
 }
+
+export async function retrieveGithubReposTitles(
+  connectorId: ModelId,
+  repoIds: string[]
+): Promise<Result<Record<string, string>, Error>> {
+  const c = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!c) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const githubInstallationId = c.connectionId;
+
+  const repoIdsSet = new Set(repoIds);
+
+  // for github, we just fetch all the repos from the github API and only filter the ones we need
+  // this is fine as we don't expect to have a lot of repos (it should rarely be more than 1 api call)
+  const repoTitles: Record<string, string> = {};
+  let pageNumber = 1; // 1-indexed
+  for (;;) {
+    const page = await getReposPage(githubInstallationId, pageNumber);
+    pageNumber += 1;
+    if (page.length === 0) {
+      break;
+    }
+
+    page.forEach((repo) => {
+      if (repoIdsSet.has(repo.id.toString())) {
+        repoTitles[repo.id.toString()] = repo.name;
+      }
+    });
+  }
+
+  return new Ok(repoTitles);
+}

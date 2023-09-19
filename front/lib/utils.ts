@@ -115,12 +115,15 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
   return markdown;
 };
 
-export function ioTsEnum<EnumType>(enumValues: readonly string[]) {
+export function ioTsEnum<EnumType>(
+  enumValues: readonly string[],
+  enumName?: string
+) {
   const isEnumValue = (input: unknown): input is EnumType =>
     enumValues.includes(input as string);
 
   return new t.Type<EnumType>(
-    uuidv4(),
+    enumName || uuidv4(),
     isEnumValue,
     (input, context) =>
       isEnumValue(input) ? t.success(input) : t.failure(input, context),

@@ -62,3 +62,14 @@ export type ConnectorPermissionSetter = (
   // internalId -> "read" | "write" | "read_write" | "none"
   permissions: Record<string, ConnectorPermission>
 ) => Promise<Result<void, Error>>;
+
+export type ConnectorBatchResourceTitleRetriever = (
+  connectorId: ModelId,
+  internalIds: string[]
+) => Promise<Result<Record<string, string | null>, Error>>;
+
+export type ConnectorResourceParentsRetriever = (
+  connectorId: ModelId,
+  internalId: string,
+  memoizationKey?: string
+) => Promise<Result<string[], Error>>;
