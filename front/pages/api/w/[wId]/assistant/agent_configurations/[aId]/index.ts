@@ -106,6 +106,7 @@ async function handler(
               providerId: generation.model.providerId,
               modelId: generation.model.modelId,
             },
+            temperature: generation.temperature,
           }
         );
       }

@@ -81,6 +81,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         providerId: t.string,
         modelId: t.string,
       }),
+      temperature: t.number,
     }),
   }),
 });
@@ -150,6 +151,7 @@ async function handler(
           providerId: generation.model.providerId,
           modelId: generation.model.modelId,
         },
+        temperature: generation.temperature,
       });
 
       let actionConfig: AgentActionConfigurationType | null = null;

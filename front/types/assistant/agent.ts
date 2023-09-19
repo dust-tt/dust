@@ -51,6 +51,7 @@ export type AgentGenerationConfigurationType = {
     providerId: string;
     modelId: string;
   };
+  temperature: number;
 };
 
 /**

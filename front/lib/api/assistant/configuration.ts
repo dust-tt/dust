@@ -139,6 +139,7 @@ export async function getAgentConfiguration(
             providerId: generationConfig.providerId,
             modelId: generationConfig.modelId,
           },
+          temperature: generationConfig.temperature,
         }
       : null,
   };
@@ -295,12 +296,14 @@ export async function createAgentGenerationConfiguration(
   {
     prompt,
     model,
+    temperature,
   }: {
     prompt: string;
     model: {
       providerId: string;
       modelId: string;
     };
+    temperature: number;
   }
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
@@ -308,10 +311,15 @@ export async function createAgentGenerationConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  if (temperature < 0) {
+    throw new Error("Temperature must be positive.");
+  }
+
   const genConfig = await AgentGenerationConfiguration.create({
     prompt: prompt,
     providerId: model.providerId,
     modelId: model.modelId,
+    temperature: temperature,
   });
 
   return {
@@ -321,6 +329,7 @@ export async function createAgentGenerationConfiguration(
       providerId: genConfig.providerId,
       modelId: genConfig.modelId,
     },
+    temperature: genConfig.temperature,
   };
 }
 
@@ -333,17 +342,23 @@ export async function updateAgentGenerationConfiguration(
   {
     prompt,
     model,
+    temperature,
   }: {
     prompt: string;
     model: {
       providerId: string;
       modelId: string;
     };
+    temperature: number;
   }
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  if (temperature < 0) {
+    throw new Error("Temperature must be positive.");
   }
 
   const agentConfig = await AgentConfiguration.findOne({
@@ -377,6 +392,7 @@ export async function updateAgentGenerationConfiguration(
     prompt: prompt,
     providerId: model.providerId,
     modelId: model.modelId,
+    temperature: temperature,
   });
 
   return {
@@ -386,6 +402,7 @@ export async function updateAgentGenerationConfiguration(
       providerId: updatedGenConfig.providerId,
       modelId: updatedGenConfig.modelId,
     },
+    temperature: updatedGenConfig.temperature,
   };
 }
 
