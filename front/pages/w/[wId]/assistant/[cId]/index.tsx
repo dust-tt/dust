@@ -3,6 +3,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { MentionType } from "@app/types/assistant/conversation";
@@ -97,6 +98,7 @@ export default function AssistantConversation({
           visibility={"unlisted"}
         />
       }
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Conversation owner={owner} conversationId={conversationId} />
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />

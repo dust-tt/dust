@@ -3,13 +3,19 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  getUserConversations,
+} from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import { ConversationType } from "@app/types/assistant/conversation";
+import {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 
 export const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
@@ -17,6 +23,9 @@ export const PostConversationsRequestBodySchema = t.type({
   message: t.union([PostMessagesRequestBodySchema, t.null]),
 });
 
+export type GetConversationsResponseBody = {
+  conversations: ConversationWithoutContentType[];
+};
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
 };
@@ -24,7 +33,10 @@ export type PostConversationsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    PostConversationsResponseBody | ReturnedAPIErrorType | void
+    | GetConversationsResponseBody
+    | PostConversationsResponseBody
+    | ReturnedAPIErrorType
+    | void
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -77,6 +89,11 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const conversations = await getUserConversations(auth);
+      res.status(200).json({ conversations });
+      return;
+
     case "POST":
       const bodyValidation = PostConversationsRequestBodySchema.decode(
         req.body

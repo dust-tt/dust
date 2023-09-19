@@ -279,7 +279,7 @@ const WorkspacePage = ({
               <p className="mb-4 text-green-600">
                 This workspace was fully upgraded
                 {workspace.upgradedAt &&
-                  `on ${new Date(workspace.upgradedAt).toLocaleDateString()}`}
+                  ` on ${new Date(workspace.upgradedAt).toLocaleDateString()}`}
                 .
               </p>
             ) : (

@@ -24,6 +24,7 @@ import {
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
+  ConversationWithoutContentType,
   isAgentMention,
   isAgentMessageType,
   isUserMention,
@@ -201,6 +202,51 @@ async function renderAgentMessage(
     error,
     configuration: agentConfiguration,
   };
+}
+
+/**
+ * TEMPORARY, we need to replace that by a proper list of participants attacthed to the conversation
+ */
+export async function getUserConversations(
+  auth: Authenticator
+): Promise<ConversationWithoutContentType[]> {
+  const owner = auth.workspace();
+  const user = auth.user();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  if (!user) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversations = await Conversation.findAll({
+    attributes: ["id", "sId", "title", "createdAt"],
+    include: [
+      {
+        model: Message,
+        attributes: [], // not needed
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            attributes: [], // not needed
+            where: { userId: user.id },
+          },
+        ],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
+  return conversations.map((conversation) => {
+    return {
+      id: conversation.id,
+      created: conversation.createdAt.getTime(),
+      sId: conversation.sId,
+      owner,
+      title: conversation.title,
+    };
+  });
 }
 
 export async function getConversation(
