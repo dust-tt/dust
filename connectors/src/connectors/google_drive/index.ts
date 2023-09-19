@@ -3,7 +3,10 @@ import { drive_v3 } from "googleapis";
 import { GaxiosResponse } from "googleapis-common";
 import { Transaction } from "sequelize";
 
-import { registerWebhook } from "@connectors/connectors/google_drive/lib";
+import {
+  getLocalParents,
+  registerWebhook,
+} from "@connectors/connectors/google_drive/lib";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   Connector,
@@ -36,6 +39,7 @@ import {
 } from "./temporal/activities";
 import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
 export type NangoConnectionId = string;
+import { v4 as uuidv4 } from "uuid";
 
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
@@ -518,4 +522,37 @@ export async function setGoogleDriveConnectorPermissions(
   }
 
   return new Ok(undefined);
+}
+
+export async function retrieveGoogleDriveObjectsTitles(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<Record<string, string>, Error>> {
+  const googleDriveFiles = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connectorId,
+      driveFileId: internalIds,
+    },
+  });
+
+  const titles = googleDriveFiles.reduce((acc, curr) => {
+    acc[curr.driveFileId] = curr.name;
+    return acc;
+  }, {} as Record<string, string>);
+
+  return new Ok(titles);
+}
+
+export async function retrieveGoogleDriveObjectsParents(
+  connectorId: ModelId,
+  internalId: string,
+  memoizationKey?: string
+): Promise<Result<string[], Error>> {
+  const memo = memoizationKey || uuidv4();
+  try {
+    const parents = await getLocalParents(connectorId, internalId, memo);
+    return new Ok(parents);
+  } catch (err) {
+    return new Err(err as Error);
+  }
 }

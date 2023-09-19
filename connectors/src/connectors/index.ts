@@ -4,6 +4,7 @@ import {
   fullResyncGithubConnector,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
+  retrieveGithubReposTitles,
   stopGithubConnector,
   updateGithubConnector,
 } from "@connectors/connectors/github";
@@ -11,6 +12,8 @@ import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
   retrieveGoogleDriveConnectorPermissions,
+  retrieveGoogleDriveObjectsParents,
+  retrieveGoogleDriveObjectsTitles,
   setGoogleDriveConnectorPermissions,
   updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
@@ -18,10 +21,12 @@ import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google
 import {
   BotEnabledGetter,
   BotToggler,
+  ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorCreator,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
+  ConnectorResourceParentsRetriever,
   ConnectorResumer,
   ConnectorStopper,
   ConnectorUpdater,
@@ -33,12 +38,15 @@ import {
   fullResyncNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
+  retrieveNotionResourceParents,
+  retrieveNotionResourcesTitles,
   stopNotionConnector,
   updateNotionConnector,
 } from "@connectors/connectors/notion";
 import {
   cleanupSlackConnector,
   createSlackConnector,
+  retrieveSlackChannelsTitles,
   retrieveSlackConnectorPermissions,
   setSlackConnectorPermissions,
   updateSlackConnector,
@@ -183,4 +191,24 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
     );
   },
   google_drive: setGoogleDriveConnectorPermissions,
+};
+
+export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorBatchResourceTitleRetriever
+> = {
+  slack: retrieveSlackChannelsTitles,
+  notion: retrieveNotionResourcesTitles,
+  github: retrieveGithubReposTitles,
+  google_drive: retrieveGoogleDriveObjectsTitles,
+};
+
+export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorResourceParentsRetriever
+> = {
+  notion: retrieveNotionResourceParents,
+  google_drive: retrieveGoogleDriveObjectsParents,
+  slack: async () => new Ok([]), // Slack is flat
+  github: async () => new Ok([]), // Github is flat,
 };

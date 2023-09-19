@@ -280,6 +280,62 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
+
+  async getResourcesParents({
+    connectorId,
+    resourceInternalIds,
+  }: {
+    connectorId: string;
+    resourceInternalIds: string[];
+  }): Promise<
+    ConnectorsAPIResponse<
+      {
+        internalId: string;
+        parents: string[];
+      }[]
+    >
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/resources/parents`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          resourceInternalIds,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async getResourcesTitles({
+    connectorId,
+    resourceInternalIds,
+  }: {
+    connectorId: string;
+    resourceInternalIds: string[];
+  }): Promise<
+    ConnectorsAPIResponse<
+      {
+        internalId: string;
+        title: string;
+      }[]
+    >
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/resources/titles`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          resourceInternalIds,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
 };
 
 function getDefaultHeaders() {

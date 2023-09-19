@@ -20,6 +20,9 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
+import { getResourcesParentsAPIHandler } from "./api/get_resources_parents";
+import { getResourcesTitlesAPIHandler } from "./api/get_resources_titles";
+
 export function startServer(port: number) {
   const app = express();
 
@@ -52,6 +55,16 @@ export function startServer(port: number) {
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
+  );
+  app.post(
+    // must be POST because of body
+    "/connectors/:connector_id/resources/parents",
+    getResourcesParentsAPIHandler
+  );
+  app.post(
+    // must be POST because of body
+    "/connectors/:connector_id/resources/titles",
+    getResourcesTitlesAPIHandler
   );
   app.post(
     "/connectors/:connector_id/permissions",

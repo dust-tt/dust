@@ -1,4 +1,5 @@
 import { Transaction } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
@@ -29,6 +30,7 @@ import {
 } from "@connectors/types/resources";
 
 import { ConnectorPermissionRetriever } from "../interface";
+import { getParents } from "./lib/parents";
 
 const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "notion" });
@@ -411,4 +413,68 @@ export async function retrieveNotionConnectorPermissions({
   const dbResources = await Promise.all(dbs.map((db) => getDbResources(db)));
 
   return new Ok(pageResources.concat(dbResources));
+}
+
+export async function retrieveNotionResourcesTitles(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<Record<string, string | null>, Error>> {
+  const pages = await NotionPage.findAll({
+    where: {
+      connectorId,
+      notionPageId: internalIds,
+    },
+  });
+
+  const dbs = await NotionDatabase.findAll({
+    where: {
+      connectorId,
+      notionDatabaseId: internalIds,
+    },
+  });
+
+  const titles = pages
+    .map((p) => ({ internalId: p.notionPageId, title: p.title }))
+    .concat(
+      dbs.map((db) => ({ internalId: db.notionDatabaseId, title: db.title }))
+    )
+    .reduce((acc, { internalId, title }) => {
+      acc[internalId] = title ?? null;
+      return acc;
+    }, {} as Record<string, string | null>);
+
+  return new Ok(titles);
+}
+
+export async function retrieveNotionResourceParents(
+  connectorId: ModelId,
+  internalId: string,
+  memoizationKey?: string
+): Promise<Result<string[], Error>> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const memo = memoizationKey || uuidv4();
+
+  try {
+    const parents = await getParents(
+      {
+        dataSourceName: connector.dataSourceName,
+        workspaceId: connector.workspaceId,
+      },
+      internalId,
+      memo
+    );
+
+    return new Ok(parents);
+  } catch (e) {
+    logger.error(
+      { connectorId, internalId, memoizationKey, error: e },
+      "Error retrieving notion resource parents"
+    );
+    return new Err(e as Error);
+  }
 }

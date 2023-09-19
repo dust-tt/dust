@@ -2,7 +2,7 @@ import memoize from "lodash.memoize";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
-import { GoogleDriveFiles } from "@connectors/lib/models";
+import { GoogleDriveFiles, ModelId } from "@connectors/lib/models";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 
 import { getAuthObject } from "./temporal/activities";
@@ -55,7 +55,7 @@ export async function registerWebhook(
 }
 
 async function _getLocalParents(
-  connectorId: string,
+  connectorId: ModelId,
   driveObjectId: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey: string
