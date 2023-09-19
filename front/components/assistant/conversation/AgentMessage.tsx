@@ -152,7 +152,7 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
-      name={agentMessageToRender.configuration.name}
+      name={`@${agentMessageToRender.configuration.name}`}
       messageId={agentMessageToRender.sId}
       buttons={buttons}
     >
@@ -185,7 +185,7 @@ function renderMessage(agentMessage: AgentMessageType) {
   ) {
     return (
       <div>
-        <div className="text-xs font-bold text-element-600">
+        <div className="pb-2 text-xs font-bold text-element-600">
           I'm thinking...
         </div>
         <Spinner size="sm" />
