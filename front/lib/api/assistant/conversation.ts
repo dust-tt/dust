@@ -151,8 +151,11 @@ async function renderUserMessage(
 
 async function renderAgentMessage(
   auth: Authenticator,
-  message: Message,
-  agentMessage: AgentMessage
+  {
+    message,
+    agentMessage,
+    messages,
+  }: { message: Message; agentMessage: AgentMessage; messages: Message[] }
 ): Promise<AgentMessageType> {
   const [agentConfiguration, agentRetrievalAction] = await Promise.all([
     getAgentConfiguration(auth, agentMessage.agentConfigurationId),
@@ -189,7 +192,8 @@ async function renderAgentMessage(
     type: "agent_message",
     visibility: message.visibility,
     version: message.version,
-    parentMessageId: null,
+    parentMessageId:
+      messages.find((m) => m.id === message.parentId)?.sId ?? null,
     status: agentMessage.status,
     action: agentRetrievalAction,
     content: agentMessage.content,
@@ -249,18 +253,17 @@ export async function getConversation(
           return { m, rank: message.rank, version: message.version };
         }
         if (message.agentMessage) {
-          const m = await renderAgentMessage(
-            auth,
+          const m = await renderAgentMessage(auth, {
             message,
-            message.agentMessage
-          );
+            agentMessage: message.agentMessage,
+            messages,
+          });
           return { m, rank: message.rank, version: message.version };
         }
         throw new Error("Unreachable: message must be either user or agent");
       })();
     })
   );
-
   render.sort((a, b) => {
     if (a.rank !== b.rank) {
       return a.rank - b.rank;
