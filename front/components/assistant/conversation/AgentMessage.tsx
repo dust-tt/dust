@@ -224,15 +224,12 @@ export function AgentMessage({
 
   async function retryHandler(agentMessage: AgentMessageType) {
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/retry`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messageId: agentMessage.sId,
-        }),
       }
     );
   }

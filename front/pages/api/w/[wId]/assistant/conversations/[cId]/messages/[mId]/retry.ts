@@ -13,9 +13,12 @@ import {
   isAgentMessageType,
 } from "@app/types/assistant/conversation";
 
-export const PostRetryRequestBodySchema = t.type({
-  messageId: t.string,
-});
+export const PostRetryRequestBodySchema = t.union([
+  t.null,
+  t.undefined,
+  t.literal(""),
+  t.type({}),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -81,6 +84,17 @@ async function handler(
     });
   }
 
+  if (!(typeof req.query.mId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
+  }
+  const messageId = req.query.mId;
+
   switch (req.method) {
     case "POST":
       const bodyValidation = PostRetryRequestBodySchema.decode(req.body);
@@ -96,8 +110,6 @@ async function handler(
           },
         });
       }
-
-      const { messageId } = bodyValidation.right;
 
       const message = conversation.content
         .flat()
