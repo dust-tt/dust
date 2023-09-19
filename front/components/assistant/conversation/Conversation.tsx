@@ -78,45 +78,44 @@ export default function Conversation({
 
   return (
     <div className="pb-24">
-      {conversation.content.map((message) =>
-        message.map((m) => {
-          if (m.visibility === "deleted") {
-            return null;
-          }
-          switch (m.type) {
-            case "user_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="borer-strucutre-100 border-t bg-structure-50 px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <UserMessage message={m} />
-                  </div>
+      {conversation.content.map((versionedMessages) => {
+        const m = versionedMessages.reduce((acc, cur) =>
+          cur.version > acc.version ? cur : acc
+        );
+
+        if (m.visibility === "deleted") {
+          return null;
+        }
+        switch (m.type) {
+          case "user_message":
+            return (
+              <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
+                <div className="mx-auto flex max-w-4xl gap-4">
+                  <UserMessage message={m} />
                 </div>
-              );
-            case "agent_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="borer-strucutre-100 border-t px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <AgentMessage
-                      message={m}
-                      owner={owner}
-                      conversationId={conversationId}
-                    />
-                  </div>
+              </div>
+            );
+          case "agent_message":
+            return (
+              <div
+                key={`message-id-${m.sId}`}
+                className="border-t border-structure-100 px-2 py-6"
+              >
+                <div className="mx-auto flex max-w-4xl gap-4">
+                  <AgentMessage
+                    message={m}
+                    owner={owner}
+                    conversationId={conversationId}
+                  />
                 </div>
-              );
-            default:
-              ((message: never) => {
-                console.error("Unknown message type", message);
-              })(m);
-          }
-        })
-      )}
+              </div>
+            );
+          default:
+            ((message: never) => {
+              console.error("Unknown message type", message);
+            })(m);
+        }
+      })}
     </div>
   );
 }
