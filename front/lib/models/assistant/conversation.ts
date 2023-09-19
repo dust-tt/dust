@@ -125,6 +125,14 @@ ConversationParticipant.init(
   {
     modelName: "conversation_participant",
     sequelize: front_sequelize,
+    indexes: [
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["userId", "conversationId"],
+      },
+    ],
   }
 );
 Conversation.hasMany(ConversationParticipant, {
