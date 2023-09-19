@@ -8,6 +8,10 @@ import {
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { useConversation } from "@app/lib/swr";
+import {
+  AgentMessageType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
@@ -78,45 +82,49 @@ export default function Conversation({
 
   return (
     <div className="pb-24">
-      {conversation.content.map((message) =>
-        message.map((m) => {
-          if (m.visibility === "deleted") {
-            return null;
-          }
-          switch (m.type) {
-            case "user_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="borer-strucutre-100 border-t bg-structure-50 px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <UserMessage message={m} />
-                  </div>
+      {conversation.content.map((versionedMessages) => {
+        // Lots of typing because of the reduce which Typescript
+        // doesn't handle well on union types
+        const m = (versionedMessages as any[]).reduce(
+          (
+            acc: UserMessageType | AgentMessageType,
+            cur: UserMessageType | AgentMessageType
+          ) => (cur.version > acc.version ? cur : acc)
+        ) as UserMessageType | AgentMessageType;
+
+        if (m.visibility === "deleted") {
+          return null;
+        }
+        switch (m.type) {
+          case "user_message":
+            return (
+              <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
+                <div className="mx-auto flex max-w-4xl gap-4">
+                  <UserMessage message={m} />
                 </div>
-              );
-            case "agent_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="borer-strucutre-100 border-t px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <AgentMessage
-                      message={m}
-                      owner={owner}
-                      conversationId={conversationId}
-                    />
-                  </div>
+              </div>
+            );
+          case "agent_message":
+            return (
+              <div
+                key={`message-id-${m.sId}`}
+                className="border-t border-structure-100 px-2 py-6"
+              >
+                <div className="mx-auto flex max-w-4xl gap-4">
+                  <AgentMessage
+                    message={m}
+                    owner={owner}
+                    conversationId={conversationId}
+                  />
                 </div>
-              );
-            default:
-              ((message: never) => {
-                console.error("Unknown message type", message);
-              })(m);
-          }
-        })
-      )}
+              </div>
+            );
+          default:
+            ((message: never) => {
+              console.error("Unknown message type", message);
+            })(m);
+        }
+      })}
     </div>
   );
 }

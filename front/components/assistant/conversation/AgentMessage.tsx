@@ -159,69 +159,89 @@ export function AgentMessage({
       {renderMessage(agentMessageToRender)}
     </ConversationMessage>
   );
+
+  function renderMessage(agentMessage: AgentMessageType) {
+    // Display the error to the user so they can report it to us (or some can be
+    // understandable directly to them)
+    if (agentMessage.status === "failed") {
+      return (
+        <ErrorMessage
+          error={
+            agentMessage.error || {
+              message: "Unexpected Error",
+              code: "unexpected_error",
+            }
+          }
+          retryHandler={async () => await retryHandler(agentMessage)}
+        />
+      );
+    }
+
+    // Loading state (no action nor text yet)
+    if (
+      agentMessage.status === "created" &&
+      !agentMessage.action &&
+      (!agentMessage.content || agentMessage.content === "")
+    ) {
+      return (
+        <div>
+          <div className="pb-2 text-xs font-bold text-element-600">
+            I'm thinking...
+          </div>
+          <Spinner size="sm" />
+        </div>
+      );
+    }
+
+    // Messages with no action and text
+    if (agentMessage.action === null && agentMessage.content) {
+      return <RenderMarkdown content={agentMessage.content} />;
+    }
+    // Messages with action
+    if (agentMessage.action) {
+      return (
+        <>
+          <div
+            className={
+              agentMessage.content && agentMessage.content !== ""
+                ? "border-b border-dashed border-structure-300"
+                : ""
+            }
+          >
+            <AgentAction action={agentMessage.action} />
+          </div>
+          {agentMessage.content && agentMessage.content !== "" && (
+            <>
+              <div className="pt-4">
+                <RenderMarkdown content={agentMessage.content} />
+              </div>
+            </>
+          )}
+        </>
+      );
+    }
+  }
+
+  async function retryHandler(agentMessage: AgentMessageType) {
+    await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
 }
 
-function renderMessage(agentMessage: AgentMessageType) {
-  // Display the error to the user so they can report it to us (or some can be
-  // understandable directly to them)
-  if (agentMessage.status === "failed") {
-    return (
-      <ErrorMessage
-        error={
-          agentMessage.error || {
-            message: "Unexpected Error",
-            code: "unexpected_error",
-          }
-        }
-      />
-    );
-  }
-
-  // Loading state (no action nor text yet)
-  if (
-    agentMessage.status === "created" &&
-    !agentMessage.action &&
-    (!agentMessage.content || agentMessage.content === "")
-  ) {
-    return (
-      <div>
-        <div className="pb-2 text-xs font-bold text-element-600">
-          I'm thinking...
-        </div>
-        <Spinner size="sm" />
-      </div>
-    );
-  }
-
-  // Messages with no action and text
-  if (agentMessage.action === null && agentMessage.content) {
-    return <RenderMarkdown content={agentMessage.content} />;
-  }
-  // Messages with action
-  if (agentMessage.action) {
-    return (
-      <>
-        <div
-          className={
-            agentMessage.content && agentMessage.content !== ""
-              ? "border-b border-dashed border-structure-300"
-              : ""
-          }
-        >
-          <AgentAction action={agentMessage.action} />
-        </div>
-        {agentMessage.content && agentMessage.content !== "" && (
-          <>
-            <div className="pt-4">
-              <RenderMarkdown content={agentMessage.content} />
-            </div>
-          </>
-        )}
-      </>
-    );
-  }
-}
-function ErrorMessage({ error }: { error: { code: string; message: string } }) {
+function ErrorMessage({
+  error,
+  retryHandler,
+}: {
+  error: { code: string; message: string };
+  retryHandler: () => void;
+}) {
   const fullMessage =
     "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
   return (
@@ -269,10 +289,7 @@ function ErrorMessage({ error }: { error: { code: string; message: string } }) {
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"
-          onClick={() => {
-            // TODO
-            alert("To be done in a few hours");
-          }}
+          onClick={retryHandler}
         />
       </div>
     </div>
