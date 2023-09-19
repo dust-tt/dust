@@ -4,25 +4,18 @@ import {
   ClipboardCheckIcon,
   DropdownMenu,
   LinkStrokeIcon,
-  SliderToggle,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-
-import { ConversationVisibility } from "@app/types/assistant/conversation";
 
 export function ConversationTitle({
   title,
   shareLink,
   onDelete,
-  visibility,
-  onUpdateVisibility,
 }: {
   title: string;
   shareLink: string;
   onDelete?: () => void;
-  visibility: ConversationVisibility;
-  onUpdateVisibility: (visibility: ConversationVisibility) => void;
 }) {
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
