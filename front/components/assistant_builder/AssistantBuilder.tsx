@@ -410,7 +410,7 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="mt-8 flex flex-col space-y-8">
+        <div className="flex flex-col space-y-8 pt-8">
           <div className="flex flex-row items-start">
             <div className="flex flex-col items-center space-y-2">
               <Avatar
