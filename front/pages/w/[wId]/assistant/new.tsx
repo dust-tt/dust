@@ -133,7 +133,6 @@ export default function AssistantNew({
           <ConversationTitle
             title={conversation.title || ""}
             shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
-            // onDelete={() => {}}
             onUpdateVisibility={() => {
               return;
             }}

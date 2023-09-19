@@ -50,9 +50,8 @@ export function ConversationTitle({
                   labelVisible={false}
                   tooltipPosition="below"
                   variant="secondaryWarning"
-                  label="Delete"
+                  label="Delete Conversation"
                   icon={TrashIcon}
-                  onClick={onDelete}
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items width={280}>

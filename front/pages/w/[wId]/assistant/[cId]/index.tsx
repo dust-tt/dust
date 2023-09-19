@@ -1,4 +1,5 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -53,6 +54,8 @@ export default function AssistantConversation({
   baseUrl,
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
     const mRes = await fetch(
@@ -80,6 +83,23 @@ export default function AssistantConversation({
     }
   };
 
+  const handdleDeleteConversation = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      window.alert(`Error deleting conversation: ${data.error.message}`);
+      return;
+    }
+
+    await router.push(`/w/${owner.sId}/assistant/new`);
+  };
+
   return (
     <AppLayout
       user={user}
@@ -91,7 +111,9 @@ export default function AssistantConversation({
         <ConversationTitle
           title={""} // TODO: Get title from conversation.
           shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-          // onDelete={() => {}}
+          onDelete={() => {
+            void handdleDeleteConversation();
+          }}
           onUpdateVisibility={() => {
             return;
           }}
