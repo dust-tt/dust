@@ -1,4 +1,5 @@
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
@@ -107,8 +108,14 @@ async function _getClaudeGlobalAgent(): Promise<AgentConfigurationType> {
   };
 }
 
-async function _getSlackGlobalAgent(
-  auth: Authenticator
+async function _getManagedDataSourceAgent(
+  auth: Authenticator,
+  connectorProvider: ConnectorProvider,
+  agentId: GLOBAL_AGENTS_SID,
+  name: string,
+  description: string,
+  pictureUrl: string,
+  prompt: string
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -123,26 +130,25 @@ async function _getSlackGlobalAgent(
     return null;
   }
 
-  const slackDataSources = dsRes.value.filter(
-    (d) => d.connectorProvider === "slack"
+  const dataSources = dsRes.value.filter(
+    (d) => d.connectorProvider === connectorProvider
   );
 
-  if (slackDataSources.length === 0) {
+  if (dataSources.length === 0) {
     return null;
   }
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.SLACK,
-    name: "slack",
-    description: "An assistant with context on your Slack workspace.",
-    pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
+    sId: agentId,
+    name: name,
+    description,
+    pictureUrl,
     status: "active",
     scope: "global",
     generation: {
       id: -1,
-      prompt:
-        "Assist the user based on the retrieved data from their Slack workspace.",
+      prompt,
       model: {
         providerId: "openai",
         modelId: "gpt-4",
@@ -150,12 +156,12 @@ async function _getSlackGlobalAgent(
     },
     action: {
       id: -1,
-      sId: GLOBAL_AGENTS_SID.SLACK + "-action",
+      sId: agentId + "-action",
       type: "retrieval_configuration",
       query: "auto",
       relativeTimeFrame: "auto",
       topK: 16,
-      dataSources: slackDataSources.map((ds) => ({
+      dataSources: dataSources.map((ds) => ({
         dataSourceId: ds.name,
         workspaceId: prodCredentials.workspaceId,
         filter: { tags: null, parents: null },
@@ -167,173 +173,53 @@ async function _getSlackGlobalAgent(
 async function _getGoogleDriveGlobalAgent(
   auth: Authenticator
 ): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
-
-  const dataSources = dsRes.value.filter(
-    (d) => d.connectorProvider === "google_drive"
+  return await _getManagedDataSourceAgent(
+    auth,
+    "google_drive",
+    GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+    "googledrive",
+    "An assistant with context on your Google Drives.",
+    "https://dust.tt/static/systemavatar/drive_avatar_full.png",
+    "Assist the user based on the retrieved data from their Google Drives."
   );
+}
 
-  if (dataSources.length === 0) {
-    return null;
-  }
+async function _getSlackGlobalAgent(auth: Authenticator) {
+  return await _getManagedDataSourceAgent(
+    auth,
+    "slack",
+    GLOBAL_AGENTS_SID.SLACK,
+    "slack",
+    "An assistant with context on your Slack Channels.",
+    "https://dust.tt/static/systemavatar/slack_avatar_full.png",
+    "Assist the user based on the retrieved data from their Slack Channels."
+  );
+}
 
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
-    name: "Google Drive",
-    description: "An assistant with context on your Google Drives.",
-    pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
-    status: "active",
-    scope: "global",
-    generation: {
-      id: -1,
-      prompt:
-        "Assist the user based on the retrieved data from their Google Drives.",
-      model: {
-        providerId: "openai",
-        modelId: "gpt-4",
-      },
-    },
-    action: {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE + "-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: 16,
-      dataSources: dataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        workspaceId: prodCredentials.workspaceId,
-        filter: { tags: null, parents: null },
-      })),
-    },
-  };
+async function _getGithubGlobalAgent(auth: Authenticator) {
+  return await _getManagedDataSourceAgent(
+    auth,
+    "github",
+    GLOBAL_AGENTS_SID.GITHUB,
+    "github",
+    "An assistant with context on your Github Issues and Discussions.",
+    "https://dust.tt/static/systemavatar/github_avatar_full.png",
+    "Assist the user based on the retrieved data from their Github Issues and Discussions."
+  );
 }
 
 async function _getNotionGlobalAgent(
   auth: Authenticator
 ): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
-
-  const dataSources = dsRes.value.filter(
-    (d) => d.connectorProvider === "notion"
+  return await _getManagedDataSourceAgent(
+    auth,
+    "notion",
+    GLOBAL_AGENTS_SID.NOTION,
+    "notion",
+    "An assistant with context on your Notion Spaces.",
+    "https://dust.tt/static/systemavatar/notion_avatar_full.png",
+    "Assist the user based on the retrieved data from their Notion Spaces."
   );
-
-  if (dataSources.length === 0) {
-    return null;
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.NOTION,
-    name: "Notion",
-    description: "An assistant with context on your Notion Spaces.",
-    pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
-    status: "active",
-    scope: "global",
-    generation: {
-      id: -1,
-      prompt:
-        "Assist the user based on the retrieved data from their Notion Spaces.",
-      model: {
-        providerId: "openai",
-        modelId: "gpt-4",
-      },
-    },
-    action: {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.NOTION + "-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: 16,
-      dataSources: dataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        workspaceId: prodCredentials.workspaceId,
-        filter: { tags: null, parents: null },
-      })),
-    },
-  };
-}
-
-async function _getGithubGlobalAgent(
-  auth: Authenticator
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
-
-  const dataSources = dsRes.value.filter(
-    (d) => d.connectorProvider === "github"
-  );
-
-  if (dataSources.length === 0) {
-    return null;
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.GITHUB,
-    name: "Github",
-    description:
-      "An assistant with context on your Github Issues and Discussions.",
-    pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
-    status: "active",
-    scope: "global",
-    generation: {
-      id: -1,
-      prompt:
-        "Assist the user based on the retrieved data from their Github Issues and Discussions.",
-      model: {
-        providerId: "openai",
-        modelId: "gpt-4",
-      },
-    },
-    action: {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.GITHUB + "-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: 16,
-      dataSources: dataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        workspaceId: prodCredentials.workspaceId,
-        filter: { tags: null, parents: null },
-      })),
-    },
-  };
 }
 
 async function _getDustGlobalAgent(
