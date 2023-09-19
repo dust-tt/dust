@@ -162,7 +162,7 @@ export default function AssistantBuilder({
   const assistantHandleIsAvailable = (handle: string) => {
     return !agentConfigurations.some(
       (agentConfiguration) =>
-        agentConfiguration.name.toLowerCase() === handle.toLocaleLowerCase()
+        agentConfiguration.name.toLowerCase() === handle.toLowerCase()
     );
   };
 
