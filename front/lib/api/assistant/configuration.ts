@@ -503,10 +503,19 @@ export async function updateAgentActionConfiguration(
   }
 
   if (!agentConfig.retrievalConfigurationId) {
-    throw new Error(
-      "Cannot update AgentActionConfiguration: Agent has no retrieval config."
-    );
+    const retrievalConfig = await createAgentActionConfiguration(auth, {
+      type,
+      query,
+      timeframe,
+      topK,
+      dataSources,
+    });
+    await agentConfig.update({
+      retrievalConfigurationId: retrievalConfig.id,
+    });
+    return retrievalConfig;
   }
+
   const existingRetrievalConfig = await AgentRetrievalConfiguration.findOne({
     where: {
       id: agentConfig.retrievalConfigurationId,
