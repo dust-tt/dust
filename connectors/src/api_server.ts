@@ -56,11 +56,13 @@ export function startServer(port: number) {
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
   );
-  app.get(
+  app.post(
+    // must be POST because of body
     "/connectors/:connector_id/resources/parents",
     getResourcesParentsAPIHandler
   );
-  app.get(
+  app.post(
+    // must be POST because of body
     "/connectors/:connector_id/resources/titles",
     getResourcesTitlesAPIHandler
   );
