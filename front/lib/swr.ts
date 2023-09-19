@@ -426,6 +426,23 @@ export function useConversation({
   };
 }
 
+export function useConversations({ workspaceId }: { workspaceId: string }) {
+  const conversationFetcher: Fetcher<{ conversations: ConversationType[] }> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/conversations`,
+    conversationFetcher
+  );
+
+  return {
+    conversations: data ? data.conversations : [],
+    isConversationLoading: !error && !data,
+    isConversationError: error,
+    mutateConversation: mutate,
+  };
+}
+
 export function useAgentConfigurations({
   workspaceId,
 }: {

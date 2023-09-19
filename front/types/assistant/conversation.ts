@@ -127,3 +127,10 @@ export type ConversationType = {
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
 };
+export type ConversationWithoutContentType = {
+  id: ModelId;
+  created: number;
+  sId: string;
+  owner: WorkspaceType;
+  title: string | null;
+};

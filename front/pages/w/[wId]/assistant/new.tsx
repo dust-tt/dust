@@ -13,6 +13,7 @@ import { useState } from "react";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import type {
@@ -140,6 +141,7 @@ export default function AssistantNew({
           />
         )
       }
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       {!conversation ? (
         <>
