@@ -13,6 +13,7 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AgentMessage,
   Conversation,
+  ConversationParticipant,
   Mention,
   Message,
   User,
@@ -268,9 +269,6 @@ async function renderAgentMessage(
   };
 }
 
-/**
- * TEMPORARY, we need to replace that by a proper list of participants attacthed to the conversation
- */
 export async function getUserConversations(
   auth: Authenticator
 ): Promise<ConversationWithoutContentType[]> {
@@ -283,34 +281,42 @@ export async function getUserConversations(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const conversations = await Conversation.findAll({
-    attributes: ["id", "sId", "title", "createdAt"],
+  const participations = await ConversationParticipant.findAll({
+    where: {
+      userId: user.id,
+      action: "posted",
+    },
     include: [
       {
-        model: Message,
-        attributes: [], // not needed
-        include: [
-          {
-            model: UserMessage,
-            as: "userMessage",
-            attributes: [], // not needed
-            where: { userId: user.id },
-          },
-        ],
+        model: Conversation,
+        as: "conversation",
+        required: true,
       },
     ],
     order: [["createdAt", "DESC"]],
   });
 
-  return conversations.map((conversation) => {
-    return {
-      id: conversation.id,
-      created: conversation.createdAt.getTime(),
-      sId: conversation.sId,
-      owner,
-      title: conversation.title,
-    };
-  });
+  const conversations = participations.reduce<ConversationWithoutContentType[]>(
+    (acc, p) => {
+      if (!p.conversation) {
+        logger.error("Participation without conversation");
+        return acc;
+      }
+
+      const conversation = {
+        id: p.conversationId,
+        created: p.conversation.createdAt.getTime(),
+        sId: p.conversation.sId,
+        owner,
+        title: p.conversation.title,
+      };
+
+      return [...acc, conversation];
+    },
+    []
+  );
+
+  return conversations;
 }
 
 export async function getConversation(
@@ -490,32 +496,67 @@ export async function* postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      const m = await Message.create(
-        {
-          sId: generateModelSId(),
-          rank: nextMessageRank++,
-          conversationId: conversation.id,
-          parentId: null,
-          userMessageId: (
-            await UserMessage.create(
+      async function createMessageAndUserMessage() {
+        return await Message.create(
+          {
+            sId: generateModelSId(),
+            rank: nextMessageRank++,
+            conversationId: conversation.id,
+            parentId: null,
+            userMessageId: (
+              await UserMessage.create(
+                {
+                  content,
+                  userContextUsername: context.username,
+                  userContextTimezone: context.timezone,
+                  userContextFullName: context.fullName,
+                  userContextEmail: context.email,
+                  userContextProfilePictureUrl: context.profilePictureUrl,
+                  userId: user ? user.id : null,
+                },
+                { transaction: t }
+              )
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
+      async function createOrUpdateParticipation() {
+        if (user) {
+          const participant = await ConversationParticipant.findOne({
+            where: {
+              conversationId: conversation.id,
+              userId: user.id,
+            },
+            transaction: t,
+          });
+          if (participant) {
+            return await participant.update(
               {
-                content,
-                userContextUsername: context.username,
-                userContextTimezone: context.timezone,
-                userContextFullName: context.fullName,
-                userContextEmail: context.email,
-                userContextProfilePictureUrl: context.profilePictureUrl,
-                userId: user ? user.id : null,
+                action: "posted",
               },
               { transaction: t }
-            )
-          ).id,
-        },
-        {
-          transaction: t,
+            );
+          } else {
+            return await ConversationParticipant.create(
+              {
+                conversationId: conversation.id,
+                userId: user.id,
+                action: "posted",
+              },
+              { transaction: t }
+            );
+          }
         }
-      );
+      }
+      const result = await Promise.all([
+        createMessageAndUserMessage(),
+        createOrUpdateParticipation(),
+      ]);
 
+      const m = result[0];
       const userMessage: UserMessageType = {
         id: m.id,
         sId: m.sId,

@@ -134,3 +134,5 @@ export type ConversationWithoutContentType = {
   owner: WorkspaceType;
   title: string | null;
 };
+
+export type ParticipantActionType = "posted" | "reacted" | "subscribed";

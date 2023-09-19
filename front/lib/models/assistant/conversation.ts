@@ -16,6 +16,7 @@ import {
   AgentMessageStatus,
   ConversationVisibility,
   MessageVisibility,
+  ParticipantActionType,
 } from "@app/types/assistant/conversation";
 
 export class Conversation extends Model<
@@ -84,6 +85,73 @@ Workspace.hasMany(Conversation, {
 
 Conversation.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
+});
+
+export class ConversationParticipant extends Model<
+  InferAttributes<ConversationParticipant>,
+  InferCreationAttributes<ConversationParticipant>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare action: ParticipantActionType;
+
+  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+
+  declare conversation?: NonAttribute<Conversation>;
+  declare user?: NonAttribute<User>;
+}
+ConversationParticipant.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    action: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "conversation_participant",
+    sequelize: front_sequelize,
+    indexes: [
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["userId", "conversationId"],
+        unique: true,
+      },
+    ],
+  }
+);
+Conversation.hasMany(ConversationParticipant, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "CASCADE",
+});
+ConversationParticipant.belongsTo(Conversation, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+User.hasMany(ConversationParticipant, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "CASCADE",
+});
+ConversationParticipant.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: false },
 });
 
 export class UserMessage extends Model<

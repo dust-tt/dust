@@ -13,6 +13,7 @@ import {
 import {
   AgentMessage,
   Conversation,
+  ConversationParticipant,
   Mention,
   Message,
   UserMessage,
@@ -51,6 +52,7 @@ export {
   ChatSession,
   Clone,
   Conversation,
+  ConversationParticipant,
   Dataset,
   DataSource,
   DocumentTrackerChangeSuggestion,
