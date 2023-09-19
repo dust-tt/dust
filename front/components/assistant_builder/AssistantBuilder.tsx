@@ -52,7 +52,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
 
 type AssistantBuilderState = {
   dataSourceMode: DataSourceMode;
-  dataSourceConfigs: Record<
+  dataSourceConfigurations: Record<
     string,
     {
       dataSource: DataSourceType;
@@ -72,10 +72,12 @@ type AssistantBuilderState = {
 // initial state is like the state, but:
 // - doesn't allow null handle/description/instructions
 // - allows null timeFrame
-// - allows null dataSourceConfigs
+// - allows null dataSourceConfigurations
 export type AssistantBuilderInitialState = {
   dataSourceMode: AssistantBuilderState["dataSourceMode"];
-  dataSourceConfigs: AssistantBuilderState["dataSourceConfigs"] | null;
+  dataSourceConfigurations:
+    | AssistantBuilderState["dataSourceConfigurations"]
+    | null;
   timeFrameMode: TimeFrameMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   handle: string;
@@ -94,7 +96,7 @@ type AssistantBuilderProps = {
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   dataSourceMode: "GENERIC",
-  dataSourceConfigs: {},
+  dataSourceConfigurations: {},
   timeFrameMode: "AUTO",
   timeFrame: {
     value: 1,
@@ -133,9 +135,10 @@ export default function AssistantBuilder({
     if (initialBuilderState) {
       setBuilderState({
         dataSourceMode: initialBuilderState.dataSourceMode,
-        dataSourceConfigs: initialBuilderState.dataSourceConfigs ?? {
-          ...DEFAULT_ASSISTANT_STATE.dataSourceConfigs,
-        },
+        dataSourceConfigurations:
+          initialBuilderState.dataSourceConfigurations ?? {
+            ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
+          },
         timeFrameMode:
           initialBuilderState.timeFrameMode ??
           DEFAULT_ASSISTANT_STATE.timeFrameMode,
@@ -159,7 +162,7 @@ export default function AssistantBuilder({
   };
 
   const configuredDataSourceCount = Object.keys(
-    builderState.dataSourceConfigs
+    builderState.dataSourceConfigurations
   ).length;
 
   const formValidation = useCallback(async () => {
@@ -232,14 +235,14 @@ export default function AssistantBuilder({
   }, [formValidation]);
 
   const configurableDataSources = dataSources.filter(
-    (dataSource) => !builderState.dataSourceConfigs[dataSource.name]
+    (dataSource) => !builderState.dataSourceConfigurations[dataSource.name]
   );
 
   const deleteDataSource = (name: string) => {
-    setBuilderState(({ dataSourceConfigs, ...rest }) => {
-      const newConfigs = { ...dataSourceConfigs };
+    setBuilderState(({ dataSourceConfigurations, ...rest }) => {
+      const newConfigs = { ...dataSourceConfigurations };
       delete newConfigs[name];
-      return { ...rest, dataSourceConfigs: newConfigs };
+      return { ...rest, dataSourceConfigurations: newConfigs };
     });
   };
 
@@ -281,7 +284,7 @@ export default function AssistantBuilder({
           query: "auto", // TODO ?
           timeframe: tfParam,
           topK: 16, // TODO ?
-          dataSources: Object.values(builderState.dataSourceConfigs).map(
+          dataSources: Object.values(builderState.dataSourceConfigurations).map(
             ({ dataSource, selectedResources }) => ({
               dataSourceId: dataSource.name,
               workspaceId: owner.sId,
@@ -357,8 +360,8 @@ export default function AssistantBuilder({
         onSave={({ dataSource, selectedResources }) => {
           setBuilderState((state) => ({
             ...state,
-            dataSourceConfigs: {
-              ...state.dataSourceConfigs,
+            dataSourceConfigurations: {
+              ...state.dataSourceConfigurations,
               [dataSource.name]: {
                 dataSource,
                 selectedResources,
@@ -561,13 +564,17 @@ export default function AssistantBuilder({
               <div className="pb-8">
                 <DataSourceSelectionSection
                   show={builderState.dataSourceMode === "SELECTED"}
-                  dataSourceConfigs={builderState.dataSourceConfigs}
+                  dataSourceConfigurations={
+                    builderState.dataSourceConfigurations
+                  }
                   openDataSourceModal={() => {
                     setShowDataSourcesModal(true);
                   }}
                   canAddDataSource={configurableDataSources.length > 0}
                   onManageDataSource={(name) => {
-                    setDataSourceToManage(builderState.dataSourceConfigs[name]);
+                    setDataSourceToManage(
+                      builderState.dataSourceConfigurations[name]
+                    );
                     setShowDataSourcesModal(true);
                   }}
                   onDelete={deleteDataSource}
