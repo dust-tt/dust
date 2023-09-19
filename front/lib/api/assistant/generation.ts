@@ -280,6 +280,7 @@ export async function* runGeneration(
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+  config.MODEL.temperature = c.temperature;
 
   // This is the console.log you want to uncomment to generate inputs for the generator app.
   // console.log(
