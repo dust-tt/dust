@@ -92,24 +92,12 @@ export function ConversationTitle({
           <DropdownMenu.Items width={280}>
             <div className="flex flex-col gap-y-4 py-4">
               <div className="flex flex-col gap-y-2">
-                <div className="flex flex-row">
-                  <div className="grow text-sm font-medium text-element-800">
-                    Share with the Workspace
-                  </div>
-                  <div>
-                    <SliderToggle
-                      selected={visibility === "workspace"}
-                      onClick={() => {
-                        onUpdateVisibility(
-                          visibility === "workspace" ? "unlisted" : "workspace"
-                        );
-                      }}
-                    />
-                  </div>
+                <div className="grow text-sm font-medium text-element-800">
+                  Share this conversation with others
                 </div>
-
                 <div className="text-sm font-normal text-element-700">
-                  Make visible to all your co-workers in "All conversations".
+                  Share the conversation link with other members of your
+                  workspace to invite them to contribute.
                 </div>
               </div>
               <div className="flex justify-center">
