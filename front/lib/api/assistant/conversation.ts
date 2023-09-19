@@ -764,6 +764,11 @@ export async function* retryAgentMessage(
   const parentMessageIndex = conversation.content.findIndex((messages) => {
     return messages.some((m) => m.sId === agentMessage.parentMessageId);
   });
+  if (parentMessageIndex === -1) {
+    throw new Error(
+      `Parent message ${agentMessage.parentMessageId} not found in conversation`
+    );
+  }
 
   // Then, find this agentmessage's array in conversation.content and add the
   // new agent message to it.
