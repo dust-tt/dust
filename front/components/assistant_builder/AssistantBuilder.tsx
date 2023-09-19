@@ -4,13 +4,12 @@ import {
   DropdownMenu,
   Icon,
   InformationCircleIcon,
-  PageHeader,
   PencilSquareIcon,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
 import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import ReactTextareaAutosize from "react-textarea-autosize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { classNames } from "@app/lib/utils";
@@ -411,13 +410,8 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="mt-8 flex flex-col space-y-8 pb-8">
-          <PageHeader
-            title="Assistant Editor"
-            icon={RobotIcon}
-            description="Make and maintain your customized assistants."
-          />
-          <div className="mt-8 flex flex-row items-start">
+        <div className="flex flex-col space-y-8 pt-8">
+          <div className="flex flex-row items-start">
             <div className="flex flex-col items-center space-y-2">
               <Avatar
                 size="lg"
@@ -473,8 +467,8 @@ export default function AssistantBuilder({
               />
             </div>
           </div>
-          <div className="mt-8 flex flex-row items-start">
-            <div className="space-y-2">
+          <div className="mt-8 flex w-full flex-row items-start">
+            <div className="w-full space-y-2">
               <div className="text-lg font-bold text-element-900">
                 Instructions
               </div>
@@ -482,7 +476,7 @@ export default function AssistantBuilder({
                 lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
                 diam et dolor aliquet.
               </div>
-              <AssistantBuilderTextInput
+              <AssistantBuilderTextArea
                 placeholder="Achieve a particular task, follow a template, use a certain formating..."
                 value={builderState.instructions}
                 onChange={(value) => {
@@ -563,34 +557,36 @@ export default function AssistantBuilder({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-              <DataSourceSelectionSection
-                show={builderState.dataSourceMode === "SELECTED"}
-                dataSourceConfigs={builderState.dataSourceConfigs}
-                openDataSourceModal={() => {
-                  setShowDataSourcesModal(true);
-                }}
-                canAddDataSource={configurableDataSources.length > 0}
-                onManageDataSource={(name) => {
-                  setDataSourceToManage(builderState.dataSourceConfigs[name]);
-                  setShowDataSourcesModal(true);
-                }}
-                onDelete={deleteDataSource}
-                timeFrameMode={builderState.timeFrameMode}
-                setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    timeFrameMode,
-                  }));
-                }}
-                timeFrame={builderState.timeFrame}
-                setTimeFrame={(timeFrame) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    timeFrame,
-                  }));
-                }}
-                timeFrameError={timeFrameError}
-              />
+              <div className="pb-8">
+                <DataSourceSelectionSection
+                  show={builderState.dataSourceMode === "SELECTED"}
+                  dataSourceConfigs={builderState.dataSourceConfigs}
+                  openDataSourceModal={() => {
+                    setShowDataSourcesModal(true);
+                  }}
+                  canAddDataSource={configurableDataSources.length > 0}
+                  onManageDataSource={(name) => {
+                    setDataSourceToManage(builderState.dataSourceConfigs[name]);
+                    setShowDataSourcesModal(true);
+                  }}
+                  onDelete={deleteDataSource}
+                  timeFrameMode={builderState.timeFrameMode}
+                  setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      timeFrameMode,
+                    }));
+                  }}
+                  timeFrame={builderState.timeFrame}
+                  setTimeFrame={(timeFrame) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      timeFrame,
+                    }));
+                  }}
+                  timeFrameError={timeFrameError}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -619,6 +615,40 @@ function AssistantBuilderTextInput({
       id={name}
       className={classNames(
         "block w-full min-w-0 rounded-md text-sm",
+        !error
+          ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
+          : "border-red-500 focus:border-red-500 focus:ring-red-500",
+        "bg-structure-50 stroke-structure-50"
+      )}
+      placeholder={placeholder}
+      value={value ?? ""}
+      onChange={(e) => {
+        onChange(e.target.value);
+      }}
+      data-1p-ignore
+    />
+  );
+}
+
+function AssistantBuilderTextArea({
+  placeholder,
+  value,
+  onChange,
+  error,
+  name,
+}: {
+  placeholder: string;
+  value: string | null;
+  onChange: (value: string) => void;
+  error?: string | null;
+  name: string;
+}) {
+  return (
+    <ReactTextareaAutosize
+      name="name"
+      id={name}
+      className={classNames(
+        "block max-h-64 min-h-32 w-full min-w-0 rounded-md text-sm",
         !error
           ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
           : "border-red-500 focus:border-red-500 focus:ring-red-500",
