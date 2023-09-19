@@ -288,12 +288,12 @@ export const ConnectorsAPI = {
     connectorId: string;
     resourceInternalIds: string[];
   }): Promise<
-    ConnectorsAPIResponse<
-      {
+    ConnectorsAPIResponse<{
+      resources: {
         internalId: string;
         parents: string[];
-      }[]
-    >
+      }[];
+    }>
   > {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${connectorId}/resources/parents`,
@@ -316,12 +316,12 @@ export const ConnectorsAPI = {
     connectorId: string;
     resourceInternalIds: string[];
   }): Promise<
-    ConnectorsAPIResponse<
-      {
+    ConnectorsAPIResponse<{
+      resources: {
         internalId: string;
         title: string;
-      }[]
-    >
+      }[];
+    }>
   > {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${connectorId}/resources/titles`,
