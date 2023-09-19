@@ -58,6 +58,9 @@ export { Spinner };
 import { Modal } from "./components/Modal";
 export { Modal };
 
+import { Input } from "./components/Input";
+export { Input };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
