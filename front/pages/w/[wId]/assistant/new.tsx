@@ -14,7 +14,6 @@ import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import type {
   PostConversationsRequestBodySchema,
@@ -127,8 +126,7 @@ export default function AssistantNew({
       owner={owner}
       isWideMode={conversation ? true : false}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="lab"
-      subNavigation={subNavigationLab({ owner, current: "assistant" })}
+      topNavigationCurrent="assistant_v2"
       titleChildren={
         conversation && (
           <ConversationTitle

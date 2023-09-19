@@ -4,7 +4,6 @@ import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -86,8 +85,7 @@ export default function AssistantConversation({
       owner={owner}
       isWideMode={true}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="lab"
-      subNavigation={subNavigationLab({ owner, current: "assistant" })}
+      topNavigationCurrent="assistant_v2"
       titleChildren={
         <ConversationTitle
           title={""} // TODO: Get title from conversation.
