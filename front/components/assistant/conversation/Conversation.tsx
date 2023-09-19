@@ -9,10 +9,6 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { useConversation } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
-import {
-  AgentMessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 export default function Conversation({
   conversationId,
@@ -83,11 +79,9 @@ export default function Conversation({
   return (
     <div className="pb-24">
       {conversation.content.map((versionedMessages) => {
-        // @ts-ignore This is type safe but typescript cannot
-        // correctly infer the types of the reduce
         const m = versionedMessages.reduce((acc, cur) =>
           cur.version > acc.version ? cur : acc
-        ) as AgentMessageType | UserMessageType;
+        );
 
         if (m.visibility === "deleted") {
           return null;
