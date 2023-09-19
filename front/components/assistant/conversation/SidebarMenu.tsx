@@ -12,12 +12,6 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
     void router.push(`/w/${owner.sId}/assistant/new`);
   };
 
-  // @todo move to a lib function?
-  const isWorkspaceUpgraded =
-    owner.plan !== null &&
-    typeof owner.plan?.limits?.dataSources?.count === "number" &&
-    owner.plan?.limits?.dataSources?.count !== 0;
-
   const { conversations } = useConversations({ workspaceId: owner.sId });
 
   return (
@@ -26,7 +20,6 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
         <div className="flex w-full flex-col pl-4 pr-2">
           <div className="pr py-4 text-right">
             <Button
-              disabled={!isWorkspaceUpgraded}
               labelVisible={true}
               label="New Conversation"
               icon={ChatBubbleBottomCenterPlusIcon}
