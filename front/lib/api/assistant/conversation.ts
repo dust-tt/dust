@@ -452,31 +452,60 @@ export async function* postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      const m = await Message.create(
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user?.id,
+        },
+        transaction: t,
+      });
+      const userMsg = await UserMessage.create(
+        {
+          content,
+          userContextUsername: context.username,
+          userContextTimezone: context.timezone,
+          userContextFullName: context.fullName,
+          userContextEmail: context.email,
+          userContextProfilePictureUrl: context.profilePictureUrl,
+          userId: user ? user.id : null,
+        },
+        { transaction: t }
+      );
+
+      const messagePromise = Message.create(
         {
           sId: generateModelSId(),
           rank: nextMessageRank++,
           conversationId: conversation.id,
           parentId: null,
-          userMessageId: (
-            await UserMessage.create(
-              {
-                content,
-                userContextUsername: context.username,
-                userContextTimezone: context.timezone,
-                userContextFullName: context.fullName,
-                userContextEmail: context.email,
-                userContextProfilePictureUrl: context.profilePictureUrl,
-                userId: user ? user.id : null,
-              },
-              { transaction: t }
-            )
-          ).id,
+          userMessageId: userMsg.id,
         },
         {
           transaction: t,
         }
       );
+      let participantPromise = null;
+      if (user) {
+        if (participant) {
+          participantPromise = participant.update(
+            {
+              action: "posted",
+            },
+            { transaction: t }
+          );
+        } else {
+          participantPromise = ConversationParticipant.create(
+            {
+              conversationId: conversation.id,
+              userId: user.id,
+              action: "posted",
+            },
+            { transaction: t }
+          );
+        }
+      }
+
+      const [m] = await Promise.all([messagePromise, participantPromise]);
 
       const userMessage: UserMessageType = {
         id: m.id,
@@ -489,17 +518,6 @@ export async function* postUserMessage(
         content,
         context: context,
       };
-
-      if (user) {
-        await ConversationParticipant.create(
-          {
-            conversationId: conversation.id,
-            userId: user.id,
-            action: "posted",
-          },
-          { transaction: t }
-        );
-      }
 
       const results: { row: AgentMessage; m: AgentMessageType }[] =
         await Promise.all(

@@ -131,6 +131,7 @@ ConversationParticipant.init(
       },
       {
         fields: ["userId", "conversationId"],
+        unique: true,
       },
     ],
   }
