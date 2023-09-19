@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
@@ -130,6 +131,9 @@ export default function AssistantBuilder({
     string | null
   >(null);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   useEffect(() => {
     if (initialBuilderState) {
@@ -155,10 +159,11 @@ export default function AssistantBuilder({
   const assistantHandleIsValid = (handle: string) => {
     return /^[a-zA-Z0-9_-]{1,20}$/.test(handle);
   };
-  const assistantHandleIsAvailable = async (handle: string) => {
-    // TODO: check if handle is available
-    void handle;
-    return true;
+  const assistantHandleIsAvailable = (handle: string) => {
+    return !agentConfigurations.some(
+      (agentConfiguration) =>
+        agentConfiguration.name.toLowerCase() === handle.toLowerCase()
+    );
   };
 
   const configuredDataSourceCount = Object.keys(
@@ -179,7 +184,7 @@ export default function AssistantBuilder({
           "Assistant handle must be between 1 and 20 characters long and can only contain letters, numbers, underscores and dashes"
         );
         valid = false;
-      } else if (!(await assistantHandleIsAvailable(builderState.handle))) {
+      } else if (!assistantHandleIsAvailable(builderState.handle)) {
         setAssistantHandleError("Assistant handle is already taken");
         valid = false;
       } else {
