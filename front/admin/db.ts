@@ -11,6 +11,7 @@ import {
   ChatSession,
   Clone,
   Conversation,
+  ConversationParticipant,
   Dataset,
   DataSource,
   DocumentTrackerChangeSuggestion,
@@ -67,6 +68,7 @@ async function main() {
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
+  await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
   await Message.sync({ alter: true });
