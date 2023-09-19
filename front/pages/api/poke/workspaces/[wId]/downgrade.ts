@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { downgradeWorkspace } from "@app/lib/api/workspace";
 import {
   getSession,
   getUserFromSession,
@@ -71,16 +72,7 @@ async function handler(
         });
       }
 
-      await Workspace.update(
-        {
-          plan: null,
-        },
-        {
-          where: {
-            id: workspace.id,
-          },
-        }
-      );
+      await downgradeWorkspace(workspace.id);
 
       const plan = await planForWorkspace(workspace);
 
@@ -92,6 +84,7 @@ async function handler(
           allowedDomain: workspace.allowedDomain || null,
           role: "admin",
           plan,
+          upgradedAt: workspace.upgradedAt?.getTime() || null,
         },
       });
 
