@@ -466,61 +466,67 @@ export async function* postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user?.id,
-        },
-        transaction: t,
-      });
-      const userMsg = await UserMessage.create(
-        {
-          content,
-          userContextUsername: context.username,
-          userContextTimezone: context.timezone,
-          userContextFullName: context.fullName,
-          userContextEmail: context.email,
-          userContextProfilePictureUrl: context.profilePictureUrl,
-          userId: user ? user.id : null,
-        },
-        { transaction: t }
-      );
-
-      const messagePromise = Message.create(
-        {
-          sId: generateModelSId(),
-          rank: nextMessageRank++,
-          conversationId: conversation.id,
-          parentId: null,
-          userMessageId: userMsg.id,
-        },
-        {
-          transaction: t,
-        }
-      );
-      let participantPromise = null;
-      if (user) {
-        if (participant) {
-          participantPromise = participant.update(
-            {
-              action: "posted",
-            },
-            { transaction: t }
-          );
-        } else {
-          participantPromise = ConversationParticipant.create(
-            {
+      async function createMessageAndUserMessage() {
+        return await Message.create(
+          {
+            sId: generateModelSId(),
+            rank: nextMessageRank++,
+            conversationId: conversation.id,
+            parentId: null,
+            userMessageId: (
+              await UserMessage.create(
+                {
+                  content,
+                  userContextUsername: context.username,
+                  userContextTimezone: context.timezone,
+                  userContextFullName: context.fullName,
+                  userContextEmail: context.email,
+                  userContextProfilePictureUrl: context.profilePictureUrl,
+                  userId: user ? user.id : null,
+                },
+                { transaction: t }
+              )
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
+      async function createOrUpdateParticipation() {
+        if (user) {
+          const participant = await ConversationParticipant.findOne({
+            where: {
               conversationId: conversation.id,
               userId: user.id,
-              action: "posted",
             },
-            { transaction: t }
-          );
+            transaction: t,
+          });
+          if (participant) {
+            return await participant.update(
+              {
+                action: "posted",
+              },
+              { transaction: t }
+            );
+          } else {
+            return await ConversationParticipant.create(
+              {
+                conversationId: conversation.id,
+                userId: user.id,
+                action: "posted",
+              },
+              { transaction: t }
+            );
+          }
         }
       }
+      const result = await Promise.all([
+        createMessageAndUserMessage(),
+        createOrUpdateParticipation(),
+      ]);
 
-      const [m] = await Promise.all([messagePromise, participantPromise]);
-
+      const m = result[0];
       const userMessage: UserMessageType = {
         id: m.id,
         sId: m.sId,
