@@ -15,7 +15,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 const { GA_TRACKING_ID = "" } = process.env;
 
 type DataSourceConfig = NonNullable<
-  AssistantBuilderInitialState["dataSourceConfigs"]
+  AssistantBuilderInitialState["dataSourceConfigurations"]
 >[string];
 
 export const getServerSideProps: GetServerSideProps<{
@@ -23,7 +23,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigs: Record<string, DataSourceConfig>;
+  dataSourceConfigurations: Record<string, DataSourceConfig>;
   agentConfiguration: AgentConfigurationType;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -74,7 +74,7 @@ export const getServerSideProps: GetServerSideProps<{
     });
   }
 
-  const dataSourceConfigsArray: DataSourceConfig[] = await Promise.all(
+  const dataSourceConfigurationsArray: DataSourceConfig[] = await Promise.all(
     selectedResources.map(async (ds): Promise<DataSourceConfig> => {
       const dataSource = dataSourceByName[ds.dataSourceName];
       if (!dataSource.connectorId || !ds.resources) {
@@ -103,7 +103,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   // key: dataSourceName, value: DataSourceConfig
-  const dataSourceConfigs = dataSourceConfigsArray.reduce(
+  const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
     {} as Record<string, DataSourceConfig>
   );
@@ -114,7 +114,7 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
-      dataSourceConfigs,
+      dataSourceConfigurations,
       agentConfiguration: config,
     },
   };
@@ -125,7 +125,7 @@ export default function EditAssistant({
   owner,
   gaTrackingId,
   dataSources,
-  dataSourceConfigs,
+  dataSourceConfigurations,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const selectedDataSource =
@@ -158,7 +158,7 @@ export default function EditAssistant({
         dataSourceMode: selectedDataSource ? "SELECTED" : "GENERIC",
         timeFrameMode,
         timeFrame,
-        dataSourceConfigs, // TODO
+        dataSourceConfigurations, // TODO
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

@@ -24,7 +24,7 @@ import { DataSourceType } from "@app/types/data_source";
 
 export default function DataSourceSelectionSection({
   show,
-  dataSourceConfigs,
+  dataSourceConfigurations,
   openDataSourceModal,
   canAddDataSource,
   onManageDataSource,
@@ -36,7 +36,7 @@ export default function DataSourceSelectionSection({
   timeFrameError,
 }: {
   show: boolean;
-  dataSourceConfigs: Record<
+  dataSourceConfigurations: Record<
     string,
     { dataSource: DataSourceType; selectedResources: Record<string, string> }
   >;
@@ -72,7 +72,7 @@ export default function DataSourceSelectionSection({
         <div className="flex flex-row items-start">
           <div className="text-base font-semibold">Select the data sources</div>
           <div className="flex-grow" />
-          {Object.keys(dataSourceConfigs).length > 0 && (
+          {Object.keys(dataSourceConfigurations).length > 0 && (
             <Button
               labelVisible={true}
               label="Add a data source"
@@ -84,7 +84,7 @@ export default function DataSourceSelectionSection({
             />
           )}
         </div>
-        {!Object.keys(dataSourceConfigs).length ? (
+        {!Object.keys(dataSourceConfigurations).length ? (
           <div
             className={classNames(
               "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
@@ -102,7 +102,7 @@ export default function DataSourceSelectionSection({
           </div>
         ) : (
           <ul className="mt-6">
-            {Object.entries(dataSourceConfigs).map(
+            {Object.entries(dataSourceConfigurations).map(
               ([key, { dataSource, selectedResources }]) => {
                 const selectedParentIds = Object.keys(selectedResources);
                 return (
