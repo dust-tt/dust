@@ -138,7 +138,7 @@ function AgentListImpl(
       leaveTo="transform opacity-0 scale-100 translate-y-0"
     >
       <div
-        className="max-h-128 fixed z-10 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
+        className="fixed z-10 max-h-96 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
         style={{
           bottom: position.bottom,
           left: position.left,
