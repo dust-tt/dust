@@ -17,7 +17,6 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationLab } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
 import GensTimeRangePicker, {
   gensDefaultTimeRange,
@@ -1338,7 +1337,6 @@ export default function AppGens({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="lab"
-      subNavigation={subNavigationLab({ owner, current: "gens" })}
     >
       <div className="flex flex-col">
         <Transition.Root show={explainExpanded} as={Fragment}>

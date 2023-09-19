@@ -9,7 +9,6 @@ import {
   KeyIcon,
   PaperAirplaneIcon,
   RobotIcon,
-  Square3Stack3DIcon,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 
@@ -22,7 +21,7 @@ import { WorkspaceType } from "@app/types/user";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "assistant" | "lab" | "settings";
+export type TopNavigationId = "assistant" | "assistant_v2" | "lab" | "settings";
 
 export type SubNavigationAdminId =
   | "data_sources"
@@ -36,8 +35,7 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "gens" | "extract" | "assistant";
-
+export type SubNavigationLabId = "extract";
 export type SparkleAppLayoutNavigation = {
   id:
     | TopNavigationId
@@ -63,7 +61,7 @@ export const topNavigation = ({
   owner: WorkspaceType;
   current: TopNavigationId;
 }) => {
-  const displayLabs = isDevelopmentOrDustWorkspace(owner);
+  const isDust = isDevelopmentOrDustWorkspace(owner);
   const nav: SparkleAppLayoutNavigation[] = [
     {
       id: "assistant",
@@ -72,15 +70,25 @@ export const topNavigation = ({
       icon: ChatBubbleBottomCenterTextIcon,
       sizing: "hug",
       current: current === "assistant",
-      hasSeparator: displayLabs ? false : true,
+      hasSeparator: isDust ? false : true,
     },
   ];
-  if (displayLabs) {
+  if (isDust) {
+    nav.push({
+      id: "assistants",
+      label: "V2",
+      href: `/w/${owner.sId}/assistant/new`,
+      icon: RobotIcon,
+      sizing: "hug",
+      current: current === "assistant_v2",
+      hasSeparator: isDust ? false : true,
+    });
+
     nav.push({
       id: "lab",
-      label: "Lab",
+      label: "",
       icon: TestTubeIcon,
-      href: `/w/${owner.sId}/u/gens`,
+      href: `/w/${owner.sId}/u/extract`,
       sizing: "hug",
       current: current === "lab",
       hasSeparator: true,
@@ -240,20 +248,6 @@ export const subNavigationLab = ({
       icon: ArrowUpOnSquareIcon,
       href: `/w/${owner.sId}/u/extract`,
       current: current === "extract",
-    },
-    {
-      id: "gens",
-      label: "Gens",
-      icon: Square3Stack3DIcon,
-      href: `/w/${owner.sId}/u/gens`,
-      current: current === "gens",
-    },
-    {
-      id: "assistant",
-      label: "Assistant v2",
-      icon: RobotIcon,
-      href: `/w/${owner.sId}/assistant/new`,
-      current: current === "assistant",
     },
   ];
 
