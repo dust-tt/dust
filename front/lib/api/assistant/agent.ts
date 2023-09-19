@@ -204,8 +204,8 @@ export async function* runAgent(
             break;
 
           default:
-            ((blockParent: never) => {
-              logger.error("Unknown `runAgent` event type", blockParent);
+            ((event: never) => {
+              logger.error("Unknown `runAgent` event type", event);
             })(event);
             return;
         }
@@ -259,8 +259,8 @@ export async function* runAgent(
           break;
 
         default:
-          ((blockParent: never) => {
-            logger.error("Unknown `runAgent` event type", blockParent);
+          ((event: never) => {
+            logger.error("Unknown `runAgent` event type", event);
           })(event);
           return;
       }

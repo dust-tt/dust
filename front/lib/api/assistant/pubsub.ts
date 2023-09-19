@@ -84,8 +84,8 @@ export async function postUserMessageWithPubSub(
             }
 
             default:
-              ((blockParent: never) => {
-                logger.error("Unknown event type", blockParent);
+              ((event: never) => {
+                logger.error("Unknown event type", event);
               })(event);
               return null;
           }
@@ -152,8 +152,8 @@ export async function retryAgentMessageWithPubSub(
               break;
             }
             default:
-              ((blockParent: never) => {
-                logger.error("Unknown event type", blockParent);
+              ((event: never) => {
+                logger.error("Unknown event type", event);
               })(event);
               return null;
           }

@@ -1115,11 +1115,8 @@ async function* streamRunAgentEvents(
         break;
 
       default:
-        ((blockParent: never) => {
-          logger.error(
-            "Unknown `streamRunAgentEvents` event type",
-            blockParent
-          );
+        ((event: never) => {
+          logger.error("Unknown `streamRunAgentEvents` event type", event);
         })(event);
         return;
     }
