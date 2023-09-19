@@ -561,36 +561,40 @@ export default function AssistantBuilder({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-              <DataSourceSelectionSection
-                show={builderState.dataSourceMode === "SELECTED"}
-                dataSourceConfigurations={builderState.dataSourceConfigurations}
-                openDataSourceModal={() => {
-                  setShowDataSourcesModal(true);
-                }}
-                canAddDataSource={configurableDataSources.length > 0}
-                onManageDataSource={(name) => {
-                  setDataSourceToManage(
-                    builderState.dataSourceConfigurations[name]
-                  );
-                  setShowDataSourcesModal(true);
-                }}
-                onDelete={deleteDataSource}
-                timeFrameMode={builderState.timeFrameMode}
-                setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    timeFrameMode,
-                  }));
-                }}
-                timeFrame={builderState.timeFrame}
-                setTimeFrame={(timeFrame) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    timeFrame,
-                  }));
-                }}
-                timeFrameError={timeFrameError}
-              />
+              <div className="pb-8">
+                <DataSourceSelectionSection
+                  show={builderState.dataSourceMode === "SELECTED"}
+                  dataSourceConfigurations={
+                    builderState.dataSourceConfigurations
+                  }
+                  openDataSourceModal={() => {
+                    setShowDataSourcesModal(true);
+                  }}
+                  canAddDataSource={configurableDataSources.length > 0}
+                  onManageDataSource={(name) => {
+                    setDataSourceToManage(
+                      builderState.dataSourceConfigurations[name]
+                    );
+                    setShowDataSourcesModal(true);
+                  }}
+                  onDelete={deleteDataSource}
+                  timeFrameMode={builderState.timeFrameMode}
+                  setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      timeFrameMode,
+                    }));
+                  }}
+                  timeFrame={builderState.timeFrame}
+                  setTimeFrame={(timeFrame) => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      timeFrame,
+                    }));
+                  }}
+                  timeFrameError={timeFrameError}
+                />
+              </div>
             </div>
           </div>
         </div>
