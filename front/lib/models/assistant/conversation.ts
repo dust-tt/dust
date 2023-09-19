@@ -99,6 +99,9 @@ export class ConversationParticipant extends Model<
 
   declare conversationId: ForeignKey<Conversation["id"]>;
   declare userId: ForeignKey<User["id"]>;
+
+  declare conversation?: NonAttribute<Conversation>;
+  declare user?: NonAttribute<User>;
 }
 ConversationParticipant.init(
   {

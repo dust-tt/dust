@@ -217,27 +217,41 @@ export async function getUserConversations(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const conversations = await Conversation.findAll({
-    attributes: ["id", "sId", "title", "createdAt"],
+  const participations = await ConversationParticipant.findAll({
+    where: {
+      userId: user.id,
+      action: "posted",
+    },
     include: [
       {
-        model: ConversationParticipant,
-        where: { userId: user.id, action: "posted" },
-        attributes: [], // not needed
+        model: Conversation,
+        as: "conversation",
+        required: true,
       },
     ],
-    order: [["createdAt", "DESC"]],
   });
 
-  return conversations.map((conversation) => {
-    return {
-      id: conversation.id,
-      created: conversation.createdAt.getTime(),
-      sId: conversation.sId,
-      owner,
-      title: conversation.title,
-    };
-  });
+  const conversations = participations.reduce<ConversationWithoutContentType[]>(
+    (acc, p) => {
+      if (!p.conversation) {
+        logger.error("Participation without conversation");
+        return acc;
+      }
+
+      const conversation = {
+        id: p.conversationId,
+        created: p.conversation.createdAt.getTime(),
+        sId: p.conversation.sId,
+        owner,
+        title: p.conversation.title,
+      };
+
+      return [...acc, conversation];
+    },
+    []
+  );
+
+  return conversations;
 }
 
 export async function getConversation(
