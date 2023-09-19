@@ -173,7 +173,7 @@ impl Block for Chat {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id, model_id, function_call) = match config {
+        let (provider_id, model_id, temperature, function_call) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -213,6 +213,23 @@ impl Block for Chat {
                     ))?,
                 };
 
+                let temperature = match v.get("temperature") {
+                    Some(v) => match v {
+                        Value::Number(t) => match t.as_f64() {
+                            Some(t) => Some(t as f32),
+                            None => Err(anyhow!(
+                                "Invalid `temperature` in configuration for chat block `{}`",
+                                name
+                            ))?,
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `temperature` in configuration for chat block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => None,
+                };
+
                 let function_call = match v.get("function_call") {
                     Some(v) => match v {
                         Value::Null => None,
@@ -228,7 +245,7 @@ impl Block for Chat {
                     _ => None,
                 };
 
-                (provider_id, model_id, function_call)
+                (provider_id, model_id, temperature, function_call)
             }
             _ => Err(anyhow!(
                 "Missing configuration for chat block `{}`, \
@@ -413,7 +430,10 @@ impl Block for Chat {
             &messages,
             &functions,
             function_call,
-            self.temperature,
+            match temperature {
+                Some(t) => t,
+                None => self.temperature,
+            },
             self.top_p,
             1,
             &self.stop,
