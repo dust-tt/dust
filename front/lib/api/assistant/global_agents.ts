@@ -36,6 +36,7 @@ async function _getGPT35TurboGlobalAgent(): Promise<AgentConfigurationType> {
         providerId: "openai",
         modelId: "gpt-3.5-turbo",
       },
+      temperature: 0.7,
     },
     action: null,
   };
@@ -57,6 +58,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
         providerId: "openai",
         modelId: "gpt-4",
       },
+      temperature: 0.7,
     },
     action: null,
   };
@@ -78,6 +80,7 @@ async function _getClaudeInstantGlobalAgent(): Promise<AgentConfigurationType> {
         providerId: "anthropic",
         modelId: "claude-instant-1.2",
       },
+      temperature: 0.7,
     },
     action: null,
   };
@@ -99,6 +102,7 @@ async function _getClaudeGlobalAgent(): Promise<AgentConfigurationType> {
         providerId: "anthropic",
         modelId: "claude-2",
       },
+      temperature: 0.7,
     },
     action: null,
   };
@@ -144,6 +148,7 @@ async function _getSlackGlobalAgent(
         providerId: "openai",
         modelId: "gpt-4",
       },
+      temperature: 0.4,
     },
     action: {
       id: -1,
@@ -202,6 +207,7 @@ async function _getDustGlobalAgent(
         providerId: "openai",
         modelId: "gpt-4",
       },
+      temperature: 0.4,
     },
     action: {
       id: -1,

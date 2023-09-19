@@ -167,6 +167,10 @@ It is used to issue completion requests to large language models as part of an a
   <Property name="model_id" type="string">
     The model to use from the provider specified by `provider_id`.
   </Property>
+  <Property name="temperature" type="float">
+    An override for the temperature to use when sampling from the model. See the
+    specification section for more details.
+  </Property>
   <Property name="use_cache" type="bool">
     Whether to rely on the automated caching mechanism of the `llm` block. If
     set to _true_ and a previous request was made with the same specification
@@ -292,6 +296,10 @@ generates a new message in response.
   </Property>
   <Property name="model_id" type="string">
     The model to use from the provider specified by `provider_id`.
+  </Property>
+  <Property name="temperature" type="float">
+    An override for the temperature to use when sampling from the model. See the
+    specification section for more details.
   </Property>
   <Property name="use_cache" type="bool">
     Whether to rely on the automated caching mechanism of the `llm` block. If

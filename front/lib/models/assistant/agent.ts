@@ -27,6 +27,7 @@ export class AgentGenerationConfiguration extends Model<
   declare prompt: string;
   declare providerId: string;
   declare modelId: string;
+  declare temperature: number;
 }
 AgentGenerationConfiguration.init(
   {
@@ -56,6 +57,11 @@ AgentGenerationConfiguration.init(
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    temperature: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0.7,
     },
   },
   {

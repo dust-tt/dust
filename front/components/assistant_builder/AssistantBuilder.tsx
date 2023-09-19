@@ -317,6 +317,7 @@ export default function AssistantBuilder({
             providerId: "openai",
             modelId: "gpt-4",
           },
+          temperature: 0.7,
         },
       },
     };

@@ -305,7 +305,7 @@ impl Block for LLM {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let (provider_id, model_id) = match config {
+        let (provider_id, model_id, temperature) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -345,7 +345,24 @@ impl Block for LLM {
                     ))?,
                 };
 
-                (provider_id, model_id)
+                let temperature = match v.get("temperature") {
+                    Some(v) => match v {
+                        Value::Number(t) => match t.as_f64() {
+                            Some(t) => Some(t as f32),
+                            None => Err(anyhow!(
+                                "Invalid `temperature` in configuration for chat block `{}`",
+                                name
+                            ))?,
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `temperature` in configuration for chat block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => None,
+                };
+
+                (provider_id, model_id, temperature)
             }
             _ => Err(anyhow!(
                 "Missing configuration for llm block `{}`, \
@@ -424,7 +441,10 @@ impl Block for LLM {
                     &messages,
                     &vec![],
                     None,
-                    self.temperature,
+                    match temperature {
+                        Some(t) => t,
+                        None => self.temperature,
+                    },
                     self.top_p,
                     1,
                     &self.stop,
