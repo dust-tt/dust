@@ -37,7 +37,7 @@ import {
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 
 /**
- * Conversation Creation and Update
+ * Conversation Creation, update and deletion
  */
 
 export async function createConversation(
@@ -71,6 +71,70 @@ export async function createConversation(
     visibility: conversation.visibility,
     content: [],
   };
+}
+
+export async function updateConversation(
+  auth: Authenticator,
+  conversationId: string,
+  {
+    title,
+    visibility,
+  }: {
+    title: string | null;
+    visibility: ConversationVisibility;
+  }
+): Promise<ConversationType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: auth.workspace()?.id,
+    },
+  });
+
+  if (!conversation) {
+    throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  await conversation.update({
+    title: title,
+    visibility: visibility,
+  });
+
+  const c = await getConversation(auth, conversationId);
+
+  if (!c) {
+    throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  return c;
+}
+
+export async function deleteConversation(
+  auth: Authenticator,
+  conversationId: string
+): Promise<void> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: auth.workspace()?.id,
+    },
+  });
+
+  if (!conversation) {
+    throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  await conversation.destroy();
 }
 
 /**
@@ -339,41 +403,6 @@ export async function getConversation(
     visibility: conversation.visibility,
     content,
   };
-}
-
-export async function updateConversation(
-  auth: Authenticator,
-  conversationId: string,
-  {
-    title,
-    visibility,
-  }: {
-    title: string | null;
-    visibility: ConversationVisibility;
-  }
-): Promise<ConversationType> {
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-    },
-  });
-
-  if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
-  }
-
-  await conversation.update({
-    title: title,
-    visibility: visibility,
-  });
-
-  const c = await getConversation(auth, conversationId);
-
-  if (!c) {
-    throw new Error(`Conversation ${conversationId} not found`);
-  }
-
-  return c;
 }
 
 /**
