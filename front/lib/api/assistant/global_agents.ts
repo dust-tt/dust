@@ -271,10 +271,10 @@ export async function getGlobalAgents(
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const globalAgents = [
-    await _getGPT35TurboGlobalAgent(),
     await _getGPT4GlobalAgent(),
-    await _getClaudeInstantGlobalAgent(),
+    await _getGPT35TurboGlobalAgent(),
     await _getClaudeGlobalAgent(),
+    await _getClaudeInstantGlobalAgent(),
   ];
 
   const slackAgent = await _getSlackGlobalAgent(auth);
