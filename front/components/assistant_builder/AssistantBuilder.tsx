@@ -165,10 +165,11 @@ export default function AssistantBuilder({
     (handle: string) => {
       return !agentConfigurations.some(
         (agentConfiguration) =>
-          agentConfiguration.name.toLowerCase() === handle.toLowerCase()
+          agentConfiguration.name.toLowerCase() === handle.toLowerCase() &&
+          initialBuilderState?.handle !== handle
       );
     },
-    [agentConfigurations]
+    [agentConfigurations, initialBuilderState?.handle]
   );
 
   const configuredDataSourceCount = Object.keys(
