@@ -1,12 +1,13 @@
 import { CloudArrowDownIcon, Item, Modal, PageHeader } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -40,6 +41,40 @@ export default function AssistantBuilderDataSourceModal({
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
     {}
   );
+  const [parentsAreLoading, setParentsAreLoading] = useState(false);
+  const [parentsAreError, setParentsAreError] = useState(false);
+
+  const fetchParents = useCallback(async () => {
+    setParentsAreLoading(true);
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${selectedDataSource?.name}/managed/parents`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            resourceInternalIds: Object.keys(selectedResources),
+          }),
+        }
+      );
+      if (!res.ok) {
+        throw new Error("Failed to fetch parents");
+      }
+      const json: GetConnectorResourceParentsResponseBody = await res.json();
+      setParentsById(
+        json.resources.reduce((acc, r) => {
+          acc[r.internalId] = new Set(r.parents);
+          return acc;
+        }, {} as Record<string, Set<string>>)
+      );
+    } catch (e) {
+      setParentsAreError(true);
+    } finally {
+      setParentsAreLoading(false);
+    }
+  }, [owner, selectedDataSource, selectedResources]);
 
   useEffect(() => {
     if (dataSourceToManage) {
@@ -47,6 +82,24 @@ export default function AssistantBuilderDataSourceModal({
       setSelectedResources(dataSourceToManage.selectedResources);
     }
   }, [dataSourceToManage]);
+
+  const hasParentsById = Object.keys(parentsById || {}).length > 0;
+  const hasSelectedResources = Object.keys(selectedResources).length > 0;
+
+  useEffect(() => {
+    if (parentsAreLoading || parentsAreError) {
+      return;
+    }
+    if (!hasParentsById && hasSelectedResources) {
+      fetchParents().catch(console.error);
+    }
+  }, [
+    hasParentsById,
+    hasSelectedResources,
+    fetchParents,
+    parentsAreLoading,
+    parentsAreError,
+  ]);
 
   const onClose = () => {
     setOpen(false);
