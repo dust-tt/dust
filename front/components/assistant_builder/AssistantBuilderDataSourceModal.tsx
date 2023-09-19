@@ -38,68 +38,12 @@ export default function AssistantBuilderDataSourceModal({
     Record<string, string>
   >({});
 
-  const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
-    {}
-  );
-  const [parentsAreLoading, setParentsAreLoading] = useState(false);
-  const [parentsAreError, setParentsAreError] = useState(false);
-
-  const fetchParents = useCallback(async () => {
-    setParentsAreLoading(true);
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${selectedDataSource?.name}/managed/parents`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            resourceInternalIds: Object.keys(selectedResources),
-          }),
-        }
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch parents");
-      }
-      const json: GetConnectorResourceParentsResponseBody = await res.json();
-      setParentsById(
-        json.resources.reduce((acc, r) => {
-          acc[r.internalId] = new Set(r.parents);
-          return acc;
-        }, {} as Record<string, Set<string>>)
-      );
-    } catch (e) {
-      setParentsAreError(true);
-    } finally {
-      setParentsAreLoading(false);
-    }
-  }, [owner, selectedDataSource, selectedResources]);
-
   useEffect(() => {
     if (dataSourceToManage) {
       setSelectedDataSource(dataSourceToManage.dataSource);
       setSelectedResources(dataSourceToManage.selectedResources);
     }
   }, [dataSourceToManage]);
-
-  const hasParentsById = Object.keys(parentsById || {}).length > 0;
-  const hasSelectedResources = Object.keys(selectedResources).length > 0;
-
-  useEffect(() => {
-    if (parentsAreLoading || parentsAreError) {
-      return;
-    }
-    if (!hasParentsById && hasSelectedResources) {
-      fetchParents().catch(console.error);
-    }
-  }, [
-    hasParentsById,
-    hasSelectedResources,
-    fetchParents,
-    parentsAreLoading,
-    parentsAreError,
-  ]);
 
   const onClose = () => {
     setOpen(false);
@@ -153,24 +97,16 @@ export default function AssistantBuilderDataSourceModal({
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
             selectedResources={selectedResources}
-            onSelectChange={(
-              { resourceId, resourceName, parents },
-              selected
-            ) => {
+            onSelectChange={({ resourceId, resourceName }, selected) => {
               const newSelectedResources = { ...selectedResources };
-              const newParentsById = { ...parentsById };
               if (selected) {
                 newSelectedResources[resourceId] = resourceName;
-                newParentsById[resourceId] = new Set(parents);
               } else {
                 delete newSelectedResources[resourceId];
-                delete newParentsById[resourceId];
               }
 
               setSelectedResources(newSelectedResources);
-              setParentsById(newParentsById);
             }}
-            parentsById={parentsById}
           />
         )}
       </div>
@@ -232,17 +168,71 @@ function DataSourceResourceSelector({
   owner,
   selectedResources,
   onSelectChange,
-  parentsById,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
   selectedResources: Record<string, string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string; parents: string[] },
+    resource: { resourceId: string; resourceName: string },
     selected: boolean
   ) => void;
-  parentsById: Record<string, Set<string>>;
 }) {
+  const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
+    {}
+  );
+  const [parentsAreLoading, setParentsAreLoading] = useState(false);
+  const [parentsAreError, setParentsAreError] = useState(false);
+
+  const fetchParents = useCallback(async () => {
+    setParentsAreLoading(true);
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource?.name}/managed/parents`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            resourceInternalIds: Object.keys(selectedResources),
+          }),
+        }
+      );
+      if (!res.ok) {
+        throw new Error("Failed to fetch parents");
+      }
+      const json: GetConnectorResourceParentsResponseBody = await res.json();
+      setParentsById(
+        json.resources.reduce((acc, r) => {
+          acc[r.internalId] = new Set(r.parents);
+          return acc;
+        }, {} as Record<string, Set<string>>)
+      );
+    } catch (e) {
+      setParentsAreError(true);
+    } finally {
+      setParentsAreLoading(false);
+    }
+  }, [owner, dataSource?.name, selectedResources]);
+
+  const hasParentsById = Object.keys(parentsById || {}).length > 0;
+  const hasSelectedResources = Object.keys(selectedResources).length > 0;
+
+  useEffect(() => {
+    if (parentsAreLoading || parentsAreError) {
+      return;
+    }
+    if (!hasParentsById && hasSelectedResources) {
+      fetchParents().catch(console.error);
+    }
+  }, [
+    hasParentsById,
+    hasSelectedResources,
+    fetchParents,
+    parentsAreLoading,
+    parentsAreError,
+  ]);
+
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <div className="mb-6">
@@ -282,7 +272,20 @@ function DataSourceResourceSelector({
               }
               selectedParentIds={new Set(Object.keys(selectedResources))}
               parentsById={parentsById}
-              onSelectChange={onSelectChange}
+              onSelectChange={(
+                { resourceId, resourceName, parents },
+                selected
+              ) => {
+                const newParentsById = { ...parentsById };
+                if (selected) {
+                  newParentsById[resourceId] = new Set(parents);
+                } else {
+                  delete newParentsById[resourceId];
+                }
+
+                setParentsById(newParentsById);
+                onSelectChange({ resourceId, resourceName }, selected);
+              }}
             />
           </div>
         </div>
