@@ -59,7 +59,7 @@ export default function RetrievalAction({
       </div>
       {!retrievalAction.documents ? (
         <div>
-          <div className="mt-2 text-xs font-bold text-element-600">
+          <div className="my-2 text-xs font-bold text-element-600">
             Retrieving...
           </div>
           <Spinner size="sm" />
