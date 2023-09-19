@@ -13,6 +13,7 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AgentMessage,
   Conversation,
+  ConversationParticipant,
   Mention,
   Message,
   User,
@@ -204,9 +205,6 @@ async function renderAgentMessage(
   };
 }
 
-/**
- * TEMPORARY, we need to replace that by a proper list of participants attacthed to the conversation
- */
 export async function getUserConversations(
   auth: Authenticator
 ): Promise<ConversationWithoutContentType[]> {
@@ -223,16 +221,9 @@ export async function getUserConversations(
     attributes: ["id", "sId", "title", "createdAt"],
     include: [
       {
-        model: Message,
+        model: ConversationParticipant,
+        where: { userId: user.id, action: "posted" },
         attributes: [], // not needed
-        include: [
-          {
-            model: UserMessage,
-            as: "userMessage",
-            attributes: [], // not needed
-            where: { userId: user.id },
-          },
-        ],
       },
     ],
     order: [["createdAt", "DESC"]],
@@ -498,6 +489,17 @@ export async function* postUserMessage(
         content,
         context: context,
       };
+
+      if (user) {
+        await ConversationParticipant.create(
+          {
+            conversationId: conversation.id,
+            userId: user.id,
+            action: "posted",
+          },
+          { transaction: t }
+        );
+      }
 
       const results: { row: AgentMessage; m: AgentMessageType }[] =
         await Promise.all(
