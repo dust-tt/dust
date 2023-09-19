@@ -24,7 +24,7 @@ type GetResourcesParentsResponseBody = {
   }[];
 };
 
-const _getResourcesDetail = async (
+const _getResourcesParents = async (
   req: Request<
     { connector_id: string },
     GetResourcesParentsResponseBody,
@@ -89,4 +89,4 @@ const _getResourcesDetail = async (
   return res.status(200).json({ resources });
 };
 
-export const getResourcesDetailAPIHandler = withLogging(_getResourcesDetail);
+export const getResourcesParentsAPIHandler = withLogging(_getResourcesParents);

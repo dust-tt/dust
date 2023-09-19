@@ -22,7 +22,7 @@ type GetResourcesTitlesResponseBody = {
   }[];
 };
 
-const _getResourcesDetail = async (
+const _getResourcesTitles = async (
   req: Request<
     { connector_id: string },
     GetResourcesTitlesResponseBody,
@@ -83,4 +83,4 @@ const _getResourcesDetail = async (
   });
 };
 
-export const getResourcesDetailAPIHandler = withLogging(_getResourcesDetail);
+export const getResourcesTitlesAPIHandler = withLogging(_getResourcesTitles);
