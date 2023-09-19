@@ -8,6 +8,10 @@ import {
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { useConversation } from "@app/lib/swr";
+import {
+  AgentMessageType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
@@ -79,9 +83,14 @@ export default function Conversation({
   return (
     <div className="pb-24">
       {conversation.content.map((versionedMessages) => {
-        const m = versionedMessages.reduce((acc, cur) =>
-          cur.version > acc.version ? cur : acc
-        );
+        // Lots of typing because of the reduce which Typescript
+        // doesn't handle well on union types
+        const m = (versionedMessages as any[]).reduce(
+          (
+            acc: UserMessageType | AgentMessageType,
+            cur: UserMessageType | AgentMessageType
+          ) => (cur.version > acc.version ? cur : acc)
+        ) as UserMessageType | AgentMessageType;
 
         if (m.visibility === "deleted") {
           return null;
