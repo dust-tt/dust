@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/assistant/agent";
 import {
   AgentMessageNewEvent,
+  ConversationTitleEvent,
   postUserMessage,
   retryAgentMessage,
   UserMessageNewEvent,
@@ -49,7 +50,8 @@ export async function postUserMessageWithPubSub(
         })) {
           switch (event.type) {
             case "user_message_new":
-            case "agent_message_new": {
+            case "agent_message_new":
+            case "conversation_title": {
               const pubsubChannel = getConversationChannelId(conversation.sId);
               await redis.xAdd(pubsubChannel, "*", {
                 payload: JSON.stringify(event),
@@ -182,7 +184,7 @@ export async function* getConversationEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data: UserMessageNewEvent | AgentMessageNewEvent;
+    data: UserMessageNewEvent | AgentMessageNewEvent | ConversationTitleEvent;
   },
   void
 > {

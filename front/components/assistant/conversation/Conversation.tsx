@@ -5,6 +5,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   AgentMessageNewEvent,
+  ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { useConversation } from "@app/lib/swr";
@@ -15,11 +16,13 @@ import {
 import { WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
-  conversationId,
   owner,
+  conversationId,
+  onTitleUpdate,
 }: {
-  conversationId: string;
   owner: WorkspaceType;
+  conversationId: string;
+  onTitleUpdate: (title: string | null) => void;
 }) {
   const {
     conversation,
@@ -36,6 +39,10 @@ export default function Conversation({
       window.scrollTo(0, document.body.scrollHeight);
     }
   }, [conversation?.content.length]);
+
+  useEffect(() => {
+    onTitleUpdate(conversation?.title ?? null);
+  }, [conversation?.title, onTitleUpdate]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -55,14 +62,31 @@ export default function Conversation({
   );
 
   const onEventCallback = useCallback(
-    (event: string) => {
+    (eventStr: string) => {
       const eventPayload: {
         eventId: string;
-        data: UserMessageNewEvent | AgentMessageNewEvent;
-      } = JSON.parse(event);
+        data:
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | ConversationTitleEvent;
+      } = JSON.parse(eventStr);
+
+      const event = eventPayload.data;
+
       if (!eventIds.current.includes(eventPayload.eventId)) {
         eventIds.current.push(eventPayload.eventId);
-        void mutateConversation();
+        switch (event.type) {
+          case "user_message_new":
+          case "agent_message_new":
+          case "conversation_title": {
+            void mutateConversation();
+            break;
+          }
+          default:
+            ((t: never) => {
+              console.error("Unknown event type", t);
+            })(event);
+        }
       }
     },
     [mutateConversation]

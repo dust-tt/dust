@@ -241,7 +241,13 @@ export default function AssistantNew({
           </div>
         </>
       ) : (
-        <Conversation owner={owner} conversationId={conversation.sId} />
+        <Conversation
+          owner={owner}
+          conversationId={conversation.sId}
+          onTitleUpdate={() => {
+            // Nothing to do as this new page will be long gone by the time the title is updated.
+          }}
+        />
       )}
 
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />

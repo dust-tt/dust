@@ -1,4 +1,9 @@
 import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@app/lib/actions/registry";
+import { runAction } from "@app/lib/actions/server";
+import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -7,7 +12,10 @@ import {
   runAgent,
 } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
+import {
+  GenerationTokensEvent,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -19,6 +27,7 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
@@ -412,6 +421,75 @@ export async function getConversation(
 }
 
 /**
+ * Title generation
+ */
+
+export async function generateConversationTitle(
+  auth: Authenticator,
+  conversation: ConversationType
+): Promise<Result<string, Error>> {
+  const model = {
+    providerId: "openai",
+    modelId: "gpt-3.5-turbo-16k",
+  };
+  const allowedTokenCount = 12288; // for 16k model.
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel({
+    conversation,
+    model,
+    allowedTokenCount,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return modelConversationRes;
+  }
+
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-title-generator"].config
+  );
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await runAction(auth, "assistant-v2-title-generator", config, [
+    {
+      conversation: modelConversationRes.value,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return new Err(
+      new Error(`Error generating conversation title: ${res.error}`)
+    );
+  }
+
+  const run = res.value;
+
+  let title: string | null = null;
+  for (const t of run.traces) {
+    if (t[1][0][0].error) {
+      return new Err(
+        new Error(`Error generating conversation title: ${t[1][0][0].error}`)
+      );
+    }
+    if (t[0][1] === "OUTPUT") {
+      const v = t[1][0][0].value as any;
+      if (v.conversation_title) {
+        title = v.conversation_title;
+      }
+    }
+  }
+
+  if (title === null) {
+    return new Err(
+      new Error(`Error generating conversation title: malformed output`)
+    );
+  }
+
+  return new Ok(title);
+}
+
+/**
  * Conversation API
  */
 
@@ -442,6 +520,13 @@ export type AgentMessageNewEvent = {
   message: AgentMessageType;
 };
 
+// Event sent when the conversation title is updated.
+export type ConversationTitleEvent = {
+  type: "conversation_title";
+  created: number;
+  title: string;
+};
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -467,7 +552,8 @@ export async function* postUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | ConversationTitleEvent,
   void
 > {
   const user = auth.user();
@@ -718,6 +804,44 @@ export async function* postUserMessage(
       eventStreamsPromises[winner.offset] =
         eventStreamGenerators[winner.offset].next();
       yield winner.v.value;
+    }
+  }
+
+  // Generate a new title if the conversation does not have one already.
+  if (conversation.title === null) {
+    const titleRes = await generateConversationTitle(auth, {
+      ...conversation,
+      content: [
+        ...conversation.content,
+        [userMessage],
+        ...agentMessages.map((m) => [m]),
+      ],
+    });
+    if (titleRes.isErr()) {
+      logger.error(
+        {
+          error: titleRes.error,
+        },
+        "Conversation title generation error"
+      );
+    } else {
+      const title = titleRes.value;
+      await Conversation.update(
+        {
+          title,
+        },
+        {
+          where: {
+            id: conversation.id,
+          },
+        }
+      );
+
+      yield {
+        type: "conversation_title",
+        created: Date.now(),
+        title,
+      };
     }
   }
 }

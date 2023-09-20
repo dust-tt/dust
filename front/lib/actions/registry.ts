@@ -28,6 +28,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-title-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "84dfc1d4f7",
+      appHash:
+        "b7b8a87fde20d0302dfc13e80f147a5dc1967bb9795f55a47428b92936e5cdec",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo-16k",
+        function_call: "update_title",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-v2-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
