@@ -2,18 +2,16 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getAgentConfiguration,
-  updateAgentActionConfiguration,
-  updateAgentConfiguration,
-  updateAgentGenerationConfiguration,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "..";
+import {
+  createOrUpgradeAgentConfiguration,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "..";
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
@@ -84,46 +82,14 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, status, action, generation, description } =
-        bodyValidation.right.assistant;
-
-      if (action) {
-        await updateAgentActionConfiguration(auth, req.query.aId as string, {
-          type: "retrieval_configuration",
-          query: action.query,
-          timeframe: action.timeframe,
-          topK: action.topK,
-          dataSources: action.dataSources,
-        });
-      }
-      if (generation) {
-        await updateAgentGenerationConfiguration(
-          auth,
-          req.query.aId as string,
-          {
-            prompt: generation.prompt,
-            model: {
-              providerId: generation.model.providerId,
-              modelId: generation.model.modelId,
-            },
-            temperature: generation.temperature,
-          }
-        );
-      }
-
-      const updatedAgentConfig = await updateAgentConfiguration(
+      const agentConfiguration = await createOrUpgradeAgentConfiguration(
         auth,
-        req.query.aId as string,
-        {
-          name,
-          pictureUrl,
-          description,
-          status,
-        }
+        bodyValidation.right,
+        req.query.aId as string
       );
 
       return res.status(200).json({
-        agentConfiguration: updatedAgentConfig,
+        agentConfiguration: agentConfiguration,
       });
 
     default:

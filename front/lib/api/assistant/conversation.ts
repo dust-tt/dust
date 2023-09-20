@@ -596,6 +596,7 @@ export async function* postUserMessage(
                 {
                   status: "created",
                   agentConfigurationId: configuration.sId,
+                  agentConfigurationVersion: configuration.version,
                 },
                 { transaction: t }
               );
@@ -768,6 +769,8 @@ export async function* retryAgentMessage(
       {
         status: "created",
         agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
+        agentConfigurationVersion:
+          messageRow.agentMessage.agentConfigurationVersion,
       },
       { transaction: t }
     );

@@ -63,7 +63,10 @@ export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {
   id: ModelId;
+
   sId: string;
+  version: number;
+
   scope: AgentConfigurationScope;
   status: AgentConfigurationStatus;
 

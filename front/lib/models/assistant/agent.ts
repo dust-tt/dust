@@ -82,6 +82,8 @@ export class AgentConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
+  declare version: number;
+
   declare status: AgentConfigurationStatus;
   declare name: string;
   declare description: string;
@@ -118,7 +120,11 @@ AgentConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     status: {
       type: DataTypes.STRING,
@@ -143,8 +149,9 @@ AgentConfiguration.init(
     sequelize: front_sequelize,
     indexes: [
       { fields: ["workspaceId"] },
-      { fields: ["workspaceId", "name"], unique: true },
-      { fields: ["sId"], unique: true },
+      { fields: ["workspaceId", "name"] },
+      { fields: ["sId"] },
+      { fields: ["sId", "version"], unique: true },
     ],
   }
 );

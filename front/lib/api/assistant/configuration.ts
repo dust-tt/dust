@@ -52,6 +52,7 @@ export async function getAgentConfiguration(
       sId: agentId,
       workspaceId: owner.id,
     },
+    order: [["version", "DESC"]],
     include: [
       {
         model: AgentGenerationConfiguration,
@@ -62,7 +63,9 @@ export async function getAgentConfiguration(
         as: "retrievalConfiguration",
       },
     ],
+    limit: 1,
   });
+
   if (!agent) {
     return null;
   }
@@ -125,6 +128,7 @@ export async function getAgentConfiguration(
   return {
     id: agent.id,
     sId: agent.sId,
+    version: agent.version,
     scope: "workspace",
     name: agent.name,
     pictureUrl: agent.pictureUrl,
@@ -161,6 +165,7 @@ export async function getAgentConfigurations(
   const rawAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
+      status: "active",
       ...(agentPrefix
         ? {
             name: {
@@ -170,6 +175,7 @@ export async function getAgentConfigurations(
         : {}),
     },
   });
+
   const agents = await Promise.all(
     rawAgents.map(async (a) => {
       const agentConfig = await getAgentConfiguration(auth, a.sId);
@@ -200,6 +206,7 @@ export async function createAgentConfiguration(
     status,
     generation,
     action,
+    agentConfigurationId,
   }: {
     name: string;
     description: string;
@@ -207,6 +214,7 @@ export async function createAgentConfiguration(
     status: AgentConfigurationStatus;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;
+    agentConfigurationId?: string;
   }
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
@@ -214,23 +222,64 @@ export async function createAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  // Create Agent config
-  const agentConfig = await AgentConfiguration.create({
-    sId: generateModelSId(),
-    status: status,
-    name: name,
-    description: description,
-    pictureUrl: pictureUrl,
-    workspaceId: owner.id,
-    generationConfigurationId: generation?.id || null,
-    // We know here that the retrievalConfiguration is one that we created and not a "global
-    // virtual" one so we're good to set the foreign key.
-    retrievalConfigurationId: action?.id || null,
-  });
+  let version = 0;
+
+  const agentConfig = await front_sequelize.transaction(
+    async (t): Promise<AgentConfiguration> => {
+      if (agentConfigurationId) {
+        const latestVersion = await AgentConfiguration.max<
+          number | null,
+          AgentConfiguration
+        >("version", {
+          where: {
+            workspaceId: owner.id,
+            sId: agentConfigurationId,
+          },
+          transaction: t,
+        });
+
+        if (latestVersion !== null) {
+          version = latestVersion + 1;
+        }
+
+        await AgentConfiguration.update(
+          { status: "archived" },
+          {
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          }
+        );
+      }
+
+      // Create Agent config
+      return AgentConfiguration.create(
+        {
+          sId: agentConfigurationId || generateModelSId(),
+          version,
+          status: status,
+          name: name,
+          description: description,
+          pictureUrl: pictureUrl,
+          workspaceId: owner.id,
+          generationConfigurationId: generation?.id || null,
+          // We know here that the retrievalConfiguration is one that we created and not a "global
+          // virtual" one so we're good to set the foreign key.
+          retrievalConfigurationId: action?.id || null,
+        },
+        {
+          transaction: t,
+        }
+      );
+    }
+  );
 
   return {
     id: agentConfig.id,
     sId: agentConfig.sId,
+    version: agentConfig.version,
     scope: "workspace",
     name: agentConfig.name,
     description: agentConfig.description,
@@ -239,53 +288,6 @@ export async function createAgentConfiguration(
     action: action,
     generation: generation,
   };
-}
-
-/**
- * Update Agent Configuration
- */
-export async function updateAgentConfiguration(
-  auth: Authenticator,
-  agentId: string,
-  {
-    name,
-    description,
-    pictureUrl,
-    status,
-  }: {
-    name: string;
-    description: string;
-    pictureUrl: string;
-    status: AgentConfigurationStatus;
-  }
-): Promise<AgentConfigurationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  await AgentConfiguration.update(
-    {
-      name: name,
-      description: description,
-      pictureUrl: pictureUrl,
-      status: status,
-      workspaceId: owner.id,
-    },
-    {
-      where: {
-        sId: agentId,
-        workspaceId: owner.id,
-      },
-    }
-  );
-
-  const configuration = await getAgentConfiguration(auth, agentId);
-
-  if (!configuration) {
-    throw new Error("Updated AgentConfiguration not found");
-  }
-  return configuration;
 }
 
 /**
@@ -330,79 +332,6 @@ export async function createAgentGenerationConfiguration(
       modelId: genConfig.modelId,
     },
     temperature: genConfig.temperature,
-  };
-}
-
-/**
- * Update Agent Generation Configuration
- */
-export async function updateAgentGenerationConfiguration(
-  auth: Authenticator,
-  agentId: string,
-  {
-    prompt,
-    model,
-    temperature,
-  }: {
-    prompt: string;
-    model: {
-      providerId: string;
-      modelId: string;
-    };
-    temperature: number;
-  }
-): Promise<AgentGenerationConfigurationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  if (temperature < 0) {
-    throw new Error("Temperature must be positive.");
-  }
-
-  const agentConfig = await AgentConfiguration.findOne({
-    where: {
-      sId: agentId,
-    },
-  });
-  if (!agentConfig) {
-    throw new Error(
-      "Cannot update AgentGenerationConfiguration: Agent not found."
-    );
-  }
-
-  if (!agentConfig.generationConfigurationId) {
-    throw new Error(
-      "Cannot update AgentGenerationConfiguration: Agent has no config."
-    );
-  }
-  const existingGenConfig = await AgentGenerationConfiguration.findOne({
-    where: {
-      id: agentConfig.generationConfigurationId,
-    },
-  });
-  if (!existingGenConfig) {
-    throw new Error(
-      "Cannot update AgentGenerationConfiguration: config not found."
-    );
-  }
-
-  const updatedGenConfig = await existingGenConfig.update({
-    prompt: prompt,
-    providerId: model.providerId,
-    modelId: model.modelId,
-    temperature: temperature,
-  });
-
-  return {
-    id: updatedGenConfig.id,
-    prompt: updatedGenConfig.prompt,
-    model: {
-      providerId: updatedGenConfig.providerId,
-      modelId: updatedGenConfig.modelId,
-    },
-    temperature: updatedGenConfig.temperature,
   };
 }
 
@@ -454,111 +383,6 @@ export async function createAgentActionConfiguration(
     return {
       id: retrievalConfig.id,
       sId: retrievalConfig.sId,
-      type: "retrieval_configuration",
-      query,
-      relativeTimeFrame: timeframe,
-      topK,
-      dataSources,
-    };
-  });
-}
-
-/**
- * Update Agent Retrieval Configuration
- * This will destroy and recreate the retrieval config
- */
-export async function updateAgentActionConfiguration(
-  auth: Authenticator,
-  agentId: string,
-  {
-    type,
-    query,
-    timeframe,
-    topK,
-    dataSources,
-  }: {
-    type: string;
-    query: RetrievalQuery;
-    timeframe: RetrievalTimeframe;
-    topK: number;
-    dataSources: DataSourceConfiguration[];
-  }
-): Promise<AgentActionConfigurationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  if (type !== "retrieval_configuration") {
-    throw new Error("Unkown Agent action type");
-  }
-
-  const agentConfig = await AgentConfiguration.findOne({
-    where: {
-      sId: agentId,
-    },
-  });
-  if (!agentConfig) {
-    throw new Error("Cannot update AgentActionConfiguration: Agent not found.");
-  }
-
-  if (!agentConfig.retrievalConfigurationId) {
-    const retrievalConfig = await createAgentActionConfiguration(auth, {
-      type,
-      query,
-      timeframe,
-      topK,
-      dataSources,
-    });
-    await agentConfig.update({
-      retrievalConfigurationId: retrievalConfig.id,
-    });
-    return retrievalConfig;
-  }
-
-  const existingRetrievalConfig = await AgentRetrievalConfiguration.findOne({
-    where: {
-      id: agentConfig.retrievalConfigurationId,
-    },
-  });
-  if (!existingRetrievalConfig) {
-    throw new Error(
-      "Cannot update AgentActionConfiguration: config not found."
-    );
-  }
-
-  return await front_sequelize.transaction(async (t) => {
-    const updatedRetrievalConfig = await existingRetrievalConfig.update(
-      {
-        query: isTemplatedQuery(query) ? "templated" : query,
-        queryTemplate: isTemplatedQuery(query) ? query.template : null,
-        relativeTimeFrame: isTimeFrame(timeframe) ? "custom" : timeframe,
-        relativeTimeFrameDuration: isTimeFrame(timeframe)
-          ? timeframe.duration
-          : null,
-        relativeTimeFrameUnit: isTimeFrame(timeframe) ? timeframe.unit : null,
-        topK: topK,
-      },
-      { transaction: t }
-    );
-
-    // Destroy existing dataSources config
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        retrievalConfigurationId: existingRetrievalConfig.id,
-      },
-    });
-
-    // Create new dataSources config
-    await _createAgentDataSourcesConfigData(
-      t,
-      dataSources,
-      updatedRetrievalConfig.id
-    );
-
-    return {
-      id: updatedRetrievalConfig.id,
-      sId: updatedRetrievalConfig.sId,
       type: "retrieval_configuration",
       query,
       relativeTimeFrame: timeframe,

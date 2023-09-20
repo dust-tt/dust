@@ -16,6 +16,7 @@ import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
   AgentConfigurationType,
+  AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -142,40 +143,13 @@ async function handler(
         });
       }
 
-      const { name, description, pictureUrl, status, action, generation } =
-        bodyValidation.right.assistant;
-
-      const generationConfig = await createAgentGenerationConfiguration(auth, {
-        prompt: generation.prompt,
-        model: {
-          providerId: generation.model.providerId,
-          modelId: generation.model.modelId,
-        },
-        temperature: generation.temperature,
-      });
-
-      let actionConfig: AgentActionConfigurationType | null = null;
-      if (action) {
-        actionConfig = await createAgentActionConfiguration(auth, {
-          type: "retrieval_configuration",
-          query: action.query,
-          timeframe: action.timeframe,
-          topK: action.topK,
-          dataSources: action.dataSources,
-        });
-      }
-
-      const agentConfiguration = await createAgentConfiguration(auth, {
-        name,
-        description,
-        pictureUrl,
-        status,
-        generation: generationConfig,
-        action: actionConfig,
-      });
+      const agentConfiguration = await createOrUpgradeAgentConfiguration(
+        auth,
+        bodyValidation.right
+      );
 
       return res.status(200).json({
-        agentConfiguration,
+        agentConfiguration: agentConfiguration,
       });
 
     default:
@@ -191,3 +165,50 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+/**
+ * Create Or Upgrade Agent Configuration
+ * If an agentConfigurationId is provided, it will create a new version of the agent configuration
+ * with the same agentConfigurationId.
+ * If no agentConfigurationId is provided, it will create a new agent configuration.
+ * In both cases, it will return the new agent configuration.
+ **/
+export async function createOrUpgradeAgentConfiguration(
+  auth: Authenticator,
+  {
+    assistant: { generation, action, name, description, pictureUrl, status },
+  }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
+  agentConfigurationId?: string
+): Promise<AgentConfigurationType> {
+  let generationConfig: AgentGenerationConfigurationType | null = null;
+  if (generation)
+    generationConfig = await createAgentGenerationConfiguration(auth, {
+      prompt: generation.prompt,
+      model: {
+        providerId: generation.model.providerId,
+        modelId: generation.model.modelId,
+      },
+      temperature: generation.temperature,
+    });
+
+  let actionConfig: AgentActionConfigurationType | null = null;
+  if (action) {
+    actionConfig = await createAgentActionConfiguration(auth, {
+      type: "retrieval_configuration",
+      query: action.query,
+      timeframe: action.timeframe,
+      topK: action.topK,
+      dataSources: action.dataSources,
+    });
+  }
+
+  return createAgentConfiguration(auth, {
+    name,
+    description,
+    pictureUrl,
+    status,
+    generation: generationConfig,
+    action: actionConfig,
+    agentConfigurationId,
+  });
+}
