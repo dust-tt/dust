@@ -133,12 +133,10 @@ export function renderRetrievalActionForModel(
 
     content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
     content += `REFERENCE: ${d.reference}\n`;
-
     content += `EXTRACTS:\n`;
     for (const c of d.chunks) {
       content += `${c.text}\n`;
     }
-
     content += "\n";
   }
 
