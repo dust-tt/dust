@@ -2,14 +2,12 @@ import {
   Button,
   CloudArrowDownIcon,
   Cog6ToothIcon,
+  ContextItem,
   DropdownMenu,
-  Icon,
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
-import { PropsOf } from "@headlessui/react/dist/types";
-import { ComponentType } from "react";
 
 import {
   CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
@@ -101,27 +99,55 @@ export default function DataSourceSelectionSection({
             />
           </div>
         ) : (
-          <ul className="mt-6">
+          <ContextItem.List className="mt-6">
             {Object.entries(dataSourceConfigurations).map(
               ([key, { dataSource, selectedResources }]) => {
                 const selectedParentIds = Object.keys(selectedResources);
                 return (
-                  <li key={key} className="px-2 py-4">
-                    <SelectedDataSourcesListItem
-                      IconComponent={
-                        dataSource.connectorProvider
-                          ? CONNECTOR_CONFIGURATIONS[
-                              dataSource.connectorProvider
-                            ].logoComponent
-                          : CloudArrowDownIcon
-                      }
-                      name={
-                        dataSource.connectorProvider
-                          ? CONNECTOR_CONFIGURATIONS[
-                              dataSource.connectorProvider
-                            ].name
-                          : dataSource.name
-                      }
+                  <ContextItem
+                    key={key}
+                    title={
+                      dataSource.connectorProvider
+                        ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
+                            .name
+                        : dataSource.name
+                    }
+                    visual={
+                      <ContextItem.Visual
+                        visual={
+                          dataSource.connectorProvider
+                            ? CONNECTOR_CONFIGURATIONS[
+                                dataSource.connectorProvider
+                              ].logoComponent
+                            : CloudArrowDownIcon
+                        }
+                      />
+                    }
+                    action={
+                      <Button.List>
+                        <Button
+                          icon={TrashIcon}
+                          variant="secondaryWarning"
+                          label="Remove"
+                          labelVisible={false}
+                          onClick={() => {
+                            onDelete?.(key);
+                          }}
+                        />
+                        <Button
+                          variant="secondary"
+                          icon={Cog6ToothIcon}
+                          label="Manage"
+                          size="sm"
+                          onClick={() => {
+                            onManageDataSource(key);
+                          }}
+                          disabled={dataSource.connectorProvider === null}
+                        />
+                      </Button.List>
+                    }
+                  >
+                    <ContextItem.Description
                       description={
                         dataSource.connectorProvider
                           ? `Assistant has access to ${
@@ -137,29 +163,12 @@ export default function DataSourceSelectionSection({
                             }`
                           : "Assistant has access to all documents"
                       }
-                      buttonProps={
-                        dataSource.connectorProvider
-                          ? {
-                              variant: "secondary",
-                              icon: Cog6ToothIcon,
-                              label: "Manage",
-                              onClick: () => {
-                                onManageDataSource(key);
-                              },
-                            }
-                          : {
-                              variant: "secondaryWarning",
-                              icon: TrashIcon,
-                              label: "Remove",
-                              onClick: () => onDelete?.(key),
-                            }
-                      }
                     />
-                  </li>
+                  </ContextItem>
                 );
               }
             )}
-          </ul>
+          </ContextItem.List>
         )}
       </div>
       <div className="pt-6 text-base font-semibold text-element-900">
@@ -274,39 +283,5 @@ export default function DataSourceSelectionSection({
         </div>
       </div>
     </Transition>
-  );
-}
-
-function SelectedDataSourcesListItem({
-  IconComponent,
-  name,
-  description,
-  buttonProps,
-}: {
-  IconComponent: ComponentType<{ className?: string }>;
-  name: string;
-  description: string;
-  buttonProps: PropsOf<typeof Button>;
-}) {
-  return (
-    <div className="flex items-start">
-      <div className="min-w-5 flex">
-        <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-          <Icon visual={IconComponent} className="text-slate-400" />
-        </div>
-        <div className="flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center">
-            <span className={classNames("text-sm font-bold text-element-900")}>
-              {name}
-            </span>
-          </div>
-          <div className="mt-2 text-sm text-element-700">{description}</div>
-        </div>
-      </div>
-      <div className="flex flex-1" />
-      <div>
-        <Button {...buttonProps} />
-      </div>
-    </div>
   );
 }
