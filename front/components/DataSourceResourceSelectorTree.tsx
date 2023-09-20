@@ -103,6 +103,7 @@ function DataSourceResourceSelectorChildren({
       dataSource,
       parentId,
       filterPermission: "read",
+      disabled: dataSource.connectorId === null,
     });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
