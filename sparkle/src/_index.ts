@@ -43,6 +43,9 @@ export { Checkbox };
 import { IconButton } from "./components/IconButton";
 export { IconButton };
 
+import { Tree } from "./components/Tree";
+export { Tree };
+
 import { IconToggleButton } from "./components/IconToggleButton";
 export { IconToggleButton };
 
