@@ -57,7 +57,7 @@ export async function getAgentConfiguration(
     },
   });
 
-  if (!latestVersion) {
+  if (latestVersion === null) {
     return null;
   }
 
