@@ -24,11 +24,11 @@ export function AgentSuggestion({
   agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
 
   return (
-    <div className="mt-2">
+    <div className="pt-4">
       <div className="text-xs font-bold text-element-600">
         Which KillerZorg would you like to talk with?
       </div>
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         {agentConfigurations.slice(0, 3).map((agent) => (
           <Button
             key={`message-${userMessage.sId}-suggestion-${agent.sId}`}

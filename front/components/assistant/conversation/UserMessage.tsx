@@ -16,8 +16,10 @@ export function UserMessage({
       messageId={message.sId}
     >
       <div className="flex flex-col gap-4">
-        <RenderMarkdown content={message.content} />
-        {children}
+        <div>
+          <RenderMarkdown content={message.content} />
+        </div>
+        <div>{children}</div>
       </div>
     </ConversationMessage>
   );
