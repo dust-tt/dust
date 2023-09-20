@@ -47,28 +47,12 @@ export async function getAgentConfiguration(
     return await getGlobalAgent(auth, agentId);
   }
 
-  const latestVersion = await AgentConfiguration.max<
-    number | null,
-    AgentConfiguration
-  >("version", {
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (latestVersion === null) {
-    return null;
-  }
-
   const agent = await AgentConfiguration.findOne({
     where: {
       sId: agentId,
       workspaceId: owner.id,
-      version: {
-        [Op.eq]: latestVersion,
-      },
     },
+    order: [["version", "DESC"]],
     include: [
       {
         model: AgentGenerationConfiguration,
@@ -79,7 +63,9 @@ export async function getAgentConfiguration(
         as: "retrievalConfiguration",
       },
     ],
+    limit: 1,
   });
+
   if (!agent) {
     return null;
   }
