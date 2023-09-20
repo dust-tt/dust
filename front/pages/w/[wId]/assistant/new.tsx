@@ -1,4 +1,5 @@
 import {
+  ArrowDownCircleIcon,
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
@@ -6,6 +7,7 @@ import {
   PageHeader,
   QuestionMarkCircleStrokeIcon,
 } from "@dust-tt/sparkle";
+import { ArrowUpCircleIcon } from "@heroicons/react/20/solid";
 import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -17,13 +19,12 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { getFeaturedAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useAgentConfigurations } from "@app/lib/swr";
 import type {
   PostConversationsRequestBodySchema,
   PostConversationsResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   ConversationType,
   MentionType,
@@ -35,7 +36,6 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
-  featuredAgents: AgentConfigurationType[];
   baseUrl: string;
   gaTrackingId: string;
 }> = async (context) => {
@@ -56,13 +56,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const featuredAgents = await getFeaturedAgentConfigurations(auth);
-
   return {
     props: {
       user,
       owner,
-      featuredAgents,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -72,7 +69,6 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AssistantNew({
   user,
   owner,
-  featuredAgents,
   baseUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -81,6 +77,14 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+  const [showAllAgents, setShowAllAgents] = useState<boolean>(false);
+
+  const agents = showAllAgents
+    ? agentConfigurations
+    : agentConfigurations.slice(0, 4);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
@@ -191,7 +195,7 @@ export default function AssistantNew({
             </div>
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-4 gap-2">
-                {featuredAgents.map((agent) => (
+                {agents.map((agent) => (
                   <div key={agent.sId} className="flex flex-col gap-1">
                     <Avatar
                       visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
@@ -211,6 +215,16 @@ export default function AssistantNew({
             </div>
             <div className="flex flex-col gap-2">
               <div>
+                <Button
+                  variant="tertiary"
+                  icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
+                  label={
+                    showAllAgents ? "Hide All Assistants" : "See all Assistants"
+                  }
+                  onClick={() => {
+                    setShowAllAgents(!showAllAgents);
+                  }}
+                />
                 <StartHelperConversationButton content="Hey @helper, how do I use the assistant?" />
               </div>
             </div>

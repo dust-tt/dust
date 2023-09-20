@@ -188,22 +188,6 @@ export async function getAgentConfigurations(
   return [...globalAgents, ...agents];
 }
 
-export async function getFeaturedAgentConfigurations(
-  auth: Authenticator
-): Promise<AgentConfigurationType[] | []> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  // @todo build the real logic. We want:
-  // First global agent @helper
-  // Then custom agents
-  // Then global agents: first the one attached to a managed datasource, then @gpt4 and @claude
-  const agents = await getAgentConfigurations(auth);
-  return agents.slice(0, 4);
-}
-
 /**
  * Create Agent Configuration
  */
