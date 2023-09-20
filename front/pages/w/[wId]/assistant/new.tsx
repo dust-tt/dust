@@ -1,10 +1,12 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Logo,
+  Icon,
   PageHeader,
-  RobotIcon,
+  QuestionMarkCircleStrokeIcon,
 } from "@dust-tt/sparkle";
+import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -15,11 +17,13 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { getFeaturedAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import type {
   PostConversationsRequestBodySchema,
   PostConversationsResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   ConversationType,
   MentionType,
@@ -31,6 +35,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  featuredAgents: AgentConfigurationType[];
   baseUrl: string;
   gaTrackingId: string;
 }> = async (context) => {
@@ -51,27 +56,23 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const featuredAgents = await getFeaturedAgentConfigurations(auth);
+
   return {
     props: {
       user,
       owner,
+      featuredAgents,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
 };
 
-export function AssistantHelper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-16 rounded-xl border border-structure-200 bg-structure-50 px-8 pb-8 pt-4 drop-shadow-2xl">
-      {children}
-    </div>
-  );
-}
-
 export default function AssistantNew({
   user,
   owner,
+  featuredAgents,
   baseUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -148,34 +149,111 @@ export default function AssistantNew({
             title="Welcome to Assistant"
             icon={ChatBubbleBottomCenterTextIcon}
           />
-          <AssistantHelper>
-            <div className="mb-8 text-lg font-bold">
-              Get started with{" "}
-              <Logo className="inline-block w-14 pb-0.5 pl-1"></Logo>
-            </div>
-            <p className="my-4 text-sm text-element-800">
-              Lorem ispum dolor sit amet, consectetur adipiscing elit. You have
-              access to multiple assistants, each with their own set of skills.
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            </p>
-            <p className="my-4 text-sm text-element-800">
-              Assistants you have access to:{" "}
-              <span className="font-bold italic">@gpt3.5-turbo</span>, and{" "}
-              <span className="font-bold italic">@claude-instant</span>.
-            </p>
-            {["admin", "builder"].includes(owner.role) && (
-              <div className="pt-4 text-center">
+
+          {/* GETTING STARTED */}
+          <div className="flex flex-col gap-8">
+            <div className="mt-6 flex flex-col gap-2">
+              <div className="flex flex-row gap-2">
+                <Icon visual={FlagIcon} size="md" />
+                <span className="text-lg font-bold">Getting started?</span>
+              </div>
+              <p className="text-element-700">
+                Using assistant is easy as asking a question to a friend or a
+                coworker.
+                <br />
+                Try it out:
+              </p>
+              <div>
                 <Button
                   variant={"primary"}
-                  icon={RobotIcon}
-                  label="Configure new Custom Assistants"
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  label="Hey @helper, how do I use the assistant?"
                   onClick={() => {
-                    void router.push(`/w/${owner.sId}/builder/assistants`);
+                    window.alert("To be implemented, sorry!");
                   }}
                 />
               </div>
-            )}
-          </AssistantHelper>
+            </div>
+
+            {/* FEATURED AGENTS */}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-row gap-2">
+                <Icon visual={HandRaisedIcon} size="md" />
+                <span className="text-lg font-bold">
+                  Meet your smart friends
+                </span>
+              </div>
+              <p className="text-element-700">
+                Dust is not just a single assistant, it’s a full team at your
+                service.
+                <br />
+                Each member has a set of specific set skills.
+              </p>
+              <p className="text-element-700">
+                Meet some of your Assistants team:
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-4 gap-2">
+                {featuredAgents.map((agent) => (
+                  <div key={agent.sId} className="flex flex-col gap-1">
+                    <Avatar
+                      visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
+                      size={"sm"}
+                    />
+                    <div>
+                      <div className="text-md font-bold text-element-900">
+                        @{agent.name}
+                      </div>
+                      <div className="text-sm text-element-700">
+                        {agent.description}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div>
+                <Button
+                  variant={"secondary"}
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  label="Hey @helper, how do I use the assistant?"
+                  onClick={() => {
+                    window.alert("To be implemented, sorry!");
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* FAQ */}
+            <div className="mt-6 flex flex-col gap-2">
+              <div className="flex flex-row gap-2">
+                <Icon visual={QuestionMarkCircleStrokeIcon} size="md" />
+                <span className="text-lg font-bold">
+                  Frequently asked questions
+                </span>
+              </div>
+              <div>
+                <Button
+                  variant={"secondary"}
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  label="@helper, what can I use the Assistant for?"
+                  onClick={() => {
+                    window.alert("To be implemented, sorry!");
+                  }}
+                />
+                <Button
+                  variant={"secondary"}
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  label="@helper, what are the limitations of the Assistant?"
+                  onClick={() => {
+                    window.alert("To be implemented, sorry!");
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </>
       ) : (
         <Conversation owner={owner} conversationId={conversation.sId} />
