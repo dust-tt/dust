@@ -116,17 +116,9 @@ impl AnthropicLLM {
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
 
-        match max_tokens {
-            Some(m) => {
-                if m == -1 {
-                    let tokens = self.encode(&prompt).await?;
-                    max_tokens = Some((self.context_size() - tokens.len()) as i32);
-                }
-            }
-            None => {
-                let tokens = self.encode(&prompt).await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(&prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let response = self
@@ -172,17 +164,9 @@ impl AnthropicLLM {
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
 
-        match max_tokens {
-            Some(m) => {
-                if m == -1 {
-                    let tokens = self.encode(&prompt).await?;
-                    max_tokens = Some((self.context_size() - tokens.len()) as i32);
-                }
-            }
-            None => {
-                let tokens = self.encode(&prompt).await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(&prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let response = self
