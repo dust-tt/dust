@@ -80,6 +80,7 @@ async function _getHelperGlobalAgent(
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
+    version: 0,
     name: "helper",
     description:
       "Here to help with everything about assistant, and Dust's product in general",
