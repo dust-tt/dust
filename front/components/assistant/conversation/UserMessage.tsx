@@ -7,7 +7,7 @@ import { UserMessageType } from "@app/types/assistant/conversation";
 export function UserMessage({ message }: { message: UserMessageType }) {
   return (
     <ConversationMessage
-      pictureUrl={message.user?.image}
+      pictureUrl={message.context.profilePictureUrl}
       name={message.context.fullName}
       messageId={message.sId}
     >
