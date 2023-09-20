@@ -157,16 +157,21 @@ export default function AssistantBuilder({
     }
   }, [initialBuilderState]);
 
-  const assistantHandleIsValid = (handle: string) => {
-    return /^[a-zA-Z0-9_-]{1,20}$/.test(handle);
+  const removeLeadingAt = (handle: string) => {
+    return handle.startsWith("@") ? handle.slice(1) : handle;
   };
+
+  const assistantHandleIsValid = useCallback((handle: string) => {
+    return /^[a-zA-Z0-9_-]{1,20}$/.test(removeLeadingAt(handle));
+  }, []);
 
   const assistantHandleIsAvailable = useCallback(
     (handle: string) => {
       return !agentConfigurations.some(
         (agentConfiguration) =>
-          agentConfiguration.name.toLowerCase() === handle.toLowerCase() &&
-          initialBuilderState?.handle !== handle
+          agentConfiguration.name.toLowerCase() ===
+            removeLeadingAt(handle).toLowerCase() &&
+          initialBuilderState?.handle !== removeLeadingAt(handle)
       );
     },
     [agentConfigurations, initialBuilderState?.handle]
@@ -180,7 +185,7 @@ export default function AssistantBuilder({
     let valid = true;
     let edited = false;
 
-    if (!builderState.handle) {
+    if (!builderState.handle || builderState.handle === "@") {
       setAssistantHandleError(null);
       valid = false;
     } else {
@@ -196,13 +201,13 @@ export default function AssistantBuilder({
       }
     }
 
-    if (!builderState.description) {
+    if (!builderState.description?.trim()) {
       valid = false;
     } else {
       edited = true;
     }
 
-    if (!builderState.instructions) {
+    if (!builderState.instructions?.trim()) {
       valid = false;
     } else {
       edited = true;
@@ -238,6 +243,7 @@ export default function AssistantBuilder({
     builderState.timeFrameMode,
     builderState.timeFrame.value,
     assistantHandleIsAvailable,
+    assistantHandleIsValid,
   ]);
 
   useEffect(() => {
@@ -319,13 +325,13 @@ export default function AssistantBuilder({
       typeof PostOrPatchAgentConfigurationRequestBodySchema
     > = {
       assistant: {
-        name: builderState.handle,
+        name: removeLeadingAt(builderState.handle),
         pictureUrl: "https://dust.tt/static/droidavatar/Droid_Purple_7.jpg", // TODO
-        description: builderState.description,
+        description: builderState.description.trim(),
         status: "active",
         action: actionParam,
         generation: {
-          prompt: builderState.instructions,
+          prompt: builderState.instructions.trim(),
           model: {
             providerId: "openai",
             modelId: "gpt-4",
@@ -455,7 +461,7 @@ export default function AssistantBuilder({
                   onChange={(value) => {
                     setBuilderState((state) => ({
                       ...state,
-                      handle: value,
+                      handle: value.trim(),
                     }));
                   }}
                   error={assistantHandleError}
