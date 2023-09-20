@@ -45,7 +45,7 @@ export function useEventSource(
       }
       es.close();
     };
-  }, [buildURL, lastEvent, onEventCallback, reconnectCounter]);
+  }, [buildURL, onEventCallback, reconnectCounter]);
 
   return { isError };
 }
