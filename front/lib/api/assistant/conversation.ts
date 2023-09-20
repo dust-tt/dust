@@ -768,7 +768,8 @@ export async function* retryAgentMessage(
       {
         status: "created",
         agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
-        agentConfigurationVersion: 0,
+        agentConfigurationVersion:
+          messageRow.agentMessage.agentConfigurationVersion,
       },
       { transaction: t }
     );
