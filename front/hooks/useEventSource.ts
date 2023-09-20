@@ -7,17 +7,18 @@ export function useEventSource(
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
   const [reconnectCounter, setReconnectCounter] = useState(0);
-  const [lastEvent, setLastEvent] = useState<string | null>(null);
+  const lastEvent = useRef<string | null>(null);
   const errorCount = useRef(0);
   const [isError, setIsError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const url = buildURL(lastEvent);
+    const url = buildURL(lastEvent.current);
     if (!url) {
       return;
     }
     let reconnectTimeout: NodeJS.Timeout | null = null;
 
+    console.log("connecting to URL", url);
     const es = new EventSource(url);
 
     es.onopen = () => {
@@ -26,7 +27,7 @@ export function useEventSource(
 
     es.onmessage = (event: MessageEvent<string>) => {
       onEventCallback(event.data);
-      setLastEvent(event.data);
+      lastEvent.current = event.data;
     };
 
     es.onerror = () => {
@@ -43,6 +44,7 @@ export function useEventSource(
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
+      console.log("closing eventsoruce connection");
       es.close();
     };
   }, [buildURL, lastEvent, onEventCallback, reconnectCounter]);
