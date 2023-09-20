@@ -154,6 +154,16 @@ export default function DataSourceSelectionSection({
                               onClick: () => onDelete?.(key),
                             }
                       }
+                      deleteButtonProps={
+                        dataSource.connectorProvider
+                          ? {
+                              variant: "secondaryWarning",
+                              icon: TrashIcon,
+                              label: "Remove",
+                              onClick: () => onDelete?.(key),
+                            }
+                          : undefined
+                      }
                     />
                   </li>
                 );
@@ -282,14 +292,16 @@ function SelectedDataSourcesListItem({
   name,
   description,
   buttonProps,
+  deleteButtonProps,
 }: {
   IconComponent: ComponentType<{ className?: string }>;
   name: string;
   description: string;
   buttonProps: PropsOf<typeof Button>;
+  deleteButtonProps?: PropsOf<typeof Button>;
 }) {
   return (
-    <div className="flex items-start">
+    <div className="flex items-center">
       <div className="min-w-5 flex">
         <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
           <Icon visual={IconComponent} className="text-slate-400" />
@@ -305,7 +317,10 @@ function SelectedDataSourcesListItem({
       </div>
       <div className="flex flex-1" />
       <div>
-        <Button {...buttonProps} />
+        <div className="flex flex-col gap-2">
+          <Button {...buttonProps} />
+          {deleteButtonProps && <Button {...deleteButtonProps} />}
+        </div>
       </div>
     </div>
   );
