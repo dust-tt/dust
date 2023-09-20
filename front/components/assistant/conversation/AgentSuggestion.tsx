@@ -1,139 +1,172 @@
+import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { UserMessageType, ConversationType, isUserMessageType, isAgentMention } from "@app/types/assistant/conversation";
+import {
+  UserMessageType,
+  ConversationType,
+  isUserMessageType,
+  isAgentMention,
+} from "@app/types/assistant/conversation";
+import { WorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
 
 export function AgentSuggestion({
-    userMessage,
-    agentConfigurations,
-    conversation,
-  }: {
-    userMessage: UserMessageType;
-    agentConfigurations: AgentConfigurationType[];
-    conversation: ConversationType;
-  }) {
-    agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
+  owner,
+  userMessage,
+  conversation,
+}: {
+  owner: WorkspaceType;
+  userMessage: UserMessageType;
+  conversation: ConversationType;
+}) {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+  agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
 
-    return (
-      <div className="mt-2">
-        <div className="text-xs font-bold text-element-600">
-          Which KillerZorg would you like to talk with?
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          {agentConfigurations.slice(0, 3).map((agent) => (
-            <Button
-              key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
-              size="xs"
-              variant="tertiary"
-              label={`@${agent.name}`}
-              onClick={() => console.log(agent)}
-              icon={() => (
-                <img
-                  className="h-5 w-5 rounded rounded-xl"
-                  src={agent.pictureUrl}
-                />
-              )}
-            />
-          ))}
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                variant="tertiary"
-                size="xs"
-                icon={RobotIcon}
-                label="Select another"
-              />
-            </DropdownMenu.Button>
-            <div className="relative bottom-6 z-30">
-              <DropdownMenu.Items origin="topLeft" width={320}>
-                {agentConfigurations.slice(3).map((agent) => (
-                  <DropdownMenu.Item
-                    key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
-                    label={agent.name}
-                    visual={agent.pictureUrl}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </div>
-          </DropdownMenu>
-        </div>
+  return (
+    <div className="mt-2">
+      <div className="text-xs font-bold text-element-600">
+        Which KillerZorg would you like to talk with?
       </div>
-    );
+      <div className="mt-2 flex items-center gap-2">
+        {agentConfigurations.slice(0, 3).map((agent) => (
+          <Button
+            key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
+            size="xs"
+            variant="tertiary"
+            label={`@${agent.name}`}
+            onClick={() => selectSuggestionHandler(agent)}
+            icon={() => (
+              <img
+                className="h-5 w-5 rounded rounded-xl"
+                src={agent.pictureUrl}
+              />
+            )}
+          />
+        ))}
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              variant="tertiary"
+              size="xs"
+              icon={RobotIcon}
+              label="Select another"
+            />
+          </DropdownMenu.Button>
+          <div className="relative bottom-6 z-30">
+            <DropdownMenu.Items origin="topLeft" width={320}>
+              {agentConfigurations.slice(3).map((agent) => (
+                <DropdownMenu.Item
+                  key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
+                  label={agent.name}
+                  visual={agent.pictureUrl}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </div>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
 
-    /**
-     * Compare agents by whom was last mentioned in conversation from this user.
-     * If none has been mentioned, dust comes first, then gpt4 , then custom
-     * agents (in any order), then global agents with a specific source, then
-     * claude, then the rest
-     */
-    function compareAgentSuggestions(
-      a: AgentConfigurationType,
-      b: AgentConfigurationType
-    ) {
-      // index of last user message in conversation mentioning agent a
-      const aIndex = conversation!.content.findLastIndex((ms) =>
-        ms.some(
-          (m) =>
-            isUserMessageType(m) &&
-            m.user?.id === userMessage.user?.id &&
-            m.mentions.some(
-              (mention) =>
-                isAgentMention(mention) && mention.configurationId === a.sId
-            )
-        )
-      );
-      // index of last user message in conversation mentioning agent b
-      const bIndex = conversation!.content.findLastIndex((ms) =>
-        ms.some(
-          (m) =>
-            isUserMessageType(m) &&
-            m.user?.id === userMessage.user?.id &&
-            m.mentions.some(
-              (mention) =>
-                isAgentMention(mention) && mention.configurationId === b.sId
-            )
-        )
-      );
-      //
-      if (aIndex === -1 && bIndex === -1) {
-        // if neither a nor b was mentioned, dust comes first, then gpt4
-        if (a.name === "Dust") {
-          return -1;
-        }
-        if (b.name === "Dust") {
-          return 1;
-        }
-        if (a.name === "gpt4") {
-          return -1;
-        }
-        if (b.name === "gpt4") {
-          return 1;
-        }
-        // custom agents come next
-        if (a.scope === "workspace") {
-          return -1;
-        }
-        if (b.scope === "workspace") {
-          return 1;
-        }
-        // datasource-specific global agents come next
-        if (a.action?.dataSources.length === 1) {
-          return -1;
-        }
-        if (a.action?.dataSources.length === 1) {
-          return 1;
-        }
-        // claude comes next
-        if (a.name === "claude") {
-          return -1;
-        }
-        if (b.name === "claude") {
-          return 1;
-        }
-        // the rest
-        return 0;
+  async function selectSuggestionHandler(agent: AgentConfigurationType) {
+    // POST edit message
+    const editedContent = `:mention[${agent.name}]{${agent.sId}} ${userMessage.content}`;
+    const editedMessage = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editedContent,
+          mentions: [
+            {
+              type: "agent",
+              configurationId: agent.sId,
+            },
+          ],
+        }),
       }
-
-      // sort by largest index first
-      return bIndex - aIndex;
-    }
+    );
   }
+
+  /**
+   * Compare agents by whom was last mentioned in conversation from this user.
+   * If none has been mentioned, dust comes first, then gpt4 , then custom
+   * agents (in any order), then global agents with a specific source, then
+   * claude, then the rest
+   */
+  function compareAgentSuggestions(
+    a: AgentConfigurationType,
+    b: AgentConfigurationType
+  ) {
+    // index of last user message in conversation mentioning agent a
+    const aIndex = conversation!.content.findLastIndex((ms) =>
+      ms.some(
+        (m) =>
+          isUserMessageType(m) &&
+          m.user?.id === userMessage.user?.id &&
+          m.mentions.some(
+            (mention) =>
+              isAgentMention(mention) && mention.configurationId === a.sId
+          )
+      )
+    );
+    // index of last user message in conversation mentioning agent b
+    const bIndex = conversation!.content.findLastIndex((ms) =>
+      ms.some(
+        (m) =>
+          isUserMessageType(m) &&
+          m.user?.id === userMessage.user?.id &&
+          m.mentions.some(
+            (mention) =>
+              isAgentMention(mention) && mention.configurationId === b.sId
+          )
+      )
+    );
+    //
+    if (aIndex === -1 && bIndex === -1) {
+      // if neither a nor b was mentioned, dust comes first, then gpt4
+      if (a.name === "Dust") {
+        return -1;
+      }
+      if (b.name === "Dust") {
+        return 1;
+      }
+      if (a.name === "gpt4") {
+        return -1;
+      }
+      if (b.name === "gpt4") {
+        return 1;
+      }
+      // custom agents come next
+      if (a.scope === "workspace") {
+        return -1;
+      }
+      if (b.scope === "workspace") {
+        return 1;
+      }
+      // datasource-specific global agents come next
+      if (a.action?.dataSources.length === 1) {
+        return -1;
+      }
+      if (a.action?.dataSources.length === 1) {
+        return 1;
+      }
+      // claude comes next
+      if (a.name === "claude") {
+        return -1;
+      }
+      if (b.name === "claude") {
+        return 1;
+      }
+      // the rest
+      return 0;
+    }
+
+    // sort by largest index first
+    return bIndex - aIndex;
+  }
+}

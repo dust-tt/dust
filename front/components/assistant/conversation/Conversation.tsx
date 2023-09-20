@@ -8,7 +8,7 @@ import {
   ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
-import { useAgentConfigurations, useConversation } from "@app/lib/swr";
+import { useConversation } from "@app/lib/swr";
 import {
   AgentMessageType,
   UserMessageType,
@@ -32,9 +32,6 @@ export default function Conversation({
     mutateConversation,
   } = useConversation({
     conversationId,
-    workspaceId: owner.sId,
-  });
-  const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
 
@@ -133,7 +130,7 @@ export default function Conversation({
                       <AgentSuggestion
                         userMessage={m}
                         conversation={conversation}
-                        agentConfigurations={agentConfigurations.slice()}
+                        owner={owner}
                       />
                     )}
                   </UserMessage>
