@@ -19,6 +19,7 @@ export const AvatarExample = () => (
       <Avatar size="sm" />
       <Avatar size="md" />
       <Avatar size="lg" />
+      <Avatar size="xl" />
     </div>
     <div>With name</div>
     <div className="s-flex s-gap-4">
@@ -26,6 +27,7 @@ export const AvatarExample = () => (
       <Avatar size="sm" name="Rafael Doe" />
       <Avatar size="md" name="Aria Doe" />
       <Avatar size="lg" name="Omar Doe" />
+      <Avatar size="xl" name="Omar Doe" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />
@@ -83,6 +85,7 @@ export const AvatarBusyExample = () => (
       <Avatar busy size="sm" />
       <Avatar busy size="md" />
       <Avatar busy size="lg" />
+      <Avatar busy size="xl" />
     </div>
     <div>With name</div>
     <div className="s-flex s-gap-4">
@@ -90,6 +93,7 @@ export const AvatarBusyExample = () => (
       <Avatar busy size="sm" name="Rafael Doe" />
       <Avatar busy size="md" name="Aria Doe" />
       <Avatar busy size="lg" name="Omar Doe" />
+      <Avatar busy size="xl" name="Eleanor Doe" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar busy size="sm" name="Eleanor Wright" />
