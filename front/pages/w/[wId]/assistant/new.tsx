@@ -166,6 +166,7 @@ export default function AssistantNew({
               <div>
                 <StartHelperConversationButton
                   content="Hey @helper, how do I use the assistant?"
+                  handleSubmit={handleSubmit}
                   variant="primary"
                 />
               </div>
@@ -221,7 +222,10 @@ export default function AssistantNew({
                     setShowAllAgents(!showAllAgents);
                   }}
                 />
-                <StartHelperConversationButton content="Hey @helper, how do I use the assistant?" />
+                <StartHelperConversationButton
+                  content="Hey @helper, how do I use the assistant?"
+                  handleSubmit={handleSubmit}
+                />
               </div>
             </div>
 
@@ -234,8 +238,14 @@ export default function AssistantNew({
                 </span>
               </div>
               <div>
-                <StartHelperConversationButton content="@helper, what can I use the Assistant for?" />
-                <StartHelperConversationButton content="@helper, what are the limitations of the Assistant?" />
+                <StartHelperConversationButton
+                  content="@helper, what can I use the Assistant for?"
+                  handleSubmit={handleSubmit}
+                />
+                <StartHelperConversationButton
+                  content="@helper, what are the limitations of the Assistant?"
+                  handleSubmit={handleSubmit}
+                />
               </div>
             </div>
           </div>
@@ -257,20 +267,29 @@ export default function AssistantNew({
 
 function StartHelperConversationButton({
   content,
+  handleSubmit,
   variant = "secondary",
 }: {
   content: string;
+  handleSubmit: (input: string, mentions: MentionType[]) => Promise<void>;
   variant?: "primary" | "secondary";
 }) {
+  const contentWithMarkdownMention = content.replace(
+    "@helper",
+    ":mention[helper]{helper}"
+  );
+
   return (
     <Button
       variant={variant}
       icon={ChatBubbleBottomCenterTextIcon}
       label={content}
       onClick={() => {
-        // @todo once we have global @helper
-        // We handleSubmit with a mention to @helper
-        window.alert("To be implemented, sorry!");
+        void handleSubmit(contentWithMarkdownMention, [
+          {
+            configurationId: "helper",
+          },
+        ]);
       }}
     />
   );
