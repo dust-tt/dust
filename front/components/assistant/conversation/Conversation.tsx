@@ -14,6 +14,7 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 
 export default function Conversation({
   owner,
@@ -123,7 +124,7 @@ export default function Conversation({
           case "user_message":
             return (
               <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
-                <div className="mx-auto flex max-w-4xl gap-4">
+                <div className="mx-auto flex max-w-4xl flex-col gap-4">
                   <UserMessage message={m} />
                 </div>
               </div>
