@@ -164,13 +164,9 @@ export default function AssistantNew({
                 Try it out:
               </p>
               <div>
-                <Button
-                  variant={"primary"}
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label="Hey @helper, how do I use the assistant?"
-                  onClick={() => {
-                    window.alert("To be implemented, sorry!");
-                  }}
+                <StartHelperConversationButton
+                  content="Hey @helper, how do I use the assistant?"
+                  variant="primary"
                 />
               </div>
             </div>
@@ -215,14 +211,7 @@ export default function AssistantNew({
             </div>
             <div className="flex flex-col gap-2">
               <div>
-                <Button
-                  variant={"secondary"}
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label="Hey @helper, how do I use the assistant?"
-                  onClick={() => {
-                    window.alert("To be implemented, sorry!");
-                  }}
-                />
+                <StartHelperConversationButton content="Hey @helper, how do I use the assistant?" />
               </div>
             </div>
 
@@ -235,22 +224,8 @@ export default function AssistantNew({
                 </span>
               </div>
               <div>
-                <Button
-                  variant={"secondary"}
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label="@helper, what can I use the Assistant for?"
-                  onClick={() => {
-                    window.alert("To be implemented, sorry!");
-                  }}
-                />
-                <Button
-                  variant={"secondary"}
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label="@helper, what are the limitations of the Assistant?"
-                  onClick={() => {
-                    window.alert("To be implemented, sorry!");
-                  }}
-                />
+                <StartHelperConversationButton content="@helper, what can I use the Assistant for?" />
+                <StartHelperConversationButton content="@helper, what are the limitations of the Assistant?" />
               </div>
             </div>
           </div>
@@ -261,5 +236,26 @@ export default function AssistantNew({
 
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
+  );
+}
+
+function StartHelperConversationButton({
+  content,
+  variant = "secondary",
+}: {
+  content: string;
+  variant?: "primary" | "secondary";
+}) {
+  return (
+    <Button
+      variant={variant}
+      icon={ChatBubbleBottomCenterTextIcon}
+      label={content}
+      onClick={() => {
+        // @todo once we have global @helper
+        // We handleSubmit with a mention to @helper
+        window.alert("To be implemented, sorry!");
+      }}
+    />
   );
 }
