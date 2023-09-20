@@ -222,6 +222,7 @@ export async function getAgentConfigurations(
   const rawAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
+      status: "active",
       ...(agentPrefix
         ? {
             name: {
@@ -231,6 +232,7 @@ export async function getAgentConfigurations(
         : {}),
     },
   });
+
   const agents = await Promise.all(
     rawAgents.map(async (a) => {
       const agentConfig = await getAgentConfiguration(auth, a.sId);
