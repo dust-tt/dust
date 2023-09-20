@@ -1,4 +1,3 @@
-import * as t from "io-ts";
 import { Op, Transaction } from "sequelize";
 
 import {
@@ -24,7 +23,6 @@ import {
   RetrievalConfigurationType,
   RetrievalQuery,
   RetrievalTimeframe,
-  TimeframeUnitCodec,
 } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
@@ -32,61 +30,6 @@ import {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
 } from "@app/types/assistant/agent";
-
-export const CreateAgentActionSchema = t.type({
-  type: t.literal("retrieval_configuration"),
-  query: t.union([
-    t.type({
-      template: t.string,
-    }),
-    t.literal("auto"),
-    t.literal("none"),
-  ]),
-  timeframe: t.union([
-    t.literal("auto"),
-    t.literal("none"),
-    t.type({
-      duration: t.number,
-      unit: TimeframeUnitCodec,
-    }),
-  ]),
-  topK: t.number,
-  dataSources: t.array(
-    t.type({
-      dataSourceId: t.string,
-      workspaceId: t.string,
-      filter: t.type({
-        tags: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-      }),
-    })
-  ),
-});
-export type CreateAgentActionType = t.TypeOf<typeof CreateAgentActionSchema>;
-
-export const CreateAgentGenerationSchema = t.type({
-  prompt: t.string,
-  model: t.type({
-    providerId: t.string,
-    modelId: t.string,
-  }),
-  temperature: t.number,
-});
-export type CreateAgentGenerationType = t.TypeOf<
-  typeof CreateAgentGenerationSchema
->;
 
 /**
  * Get an agent configuration
@@ -252,70 +195,9 @@ export async function getAgentConfigurations(
 }
 
 /**
- * Create Or Upgrade Agent Configuration
- * If an agentConfigurationId is provided, it will create a new version of the agent configuration
- * with the same agentConfigurationId.
- * If no agentConfigurationId is provided, it will create a new agent configuration.
- * In both cases, it will return the new agent configuration.
- **/
-
-export async function createOrUpgradeAgentConfiguration(
-  auth: Authenticator,
-  {
-    name,
-    description,
-    pictureUrl,
-    status,
-    generation,
-    action,
-    agentConfigurationId,
-  }: {
-    name: string;
-    description: string;
-    pictureUrl: string;
-    status: AgentConfigurationStatus;
-    generation: CreateAgentGenerationType | null;
-    action: CreateAgentActionType | null;
-    agentConfigurationId?: string;
-  }
-): Promise<AgentConfigurationType> {
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-  if (generation)
-    generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: generation.prompt,
-      model: {
-        providerId: generation.model.providerId,
-        modelId: generation.model.modelId,
-      },
-      temperature: generation.temperature,
-    });
-
-  let actionConfig: AgentActionConfigurationType | null = null;
-  if (action) {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "retrieval_configuration",
-      query: action.query,
-      timeframe: action.timeframe,
-      topK: action.topK,
-      dataSources: action.dataSources,
-    });
-  }
-
-  return createAgentConfiguration(auth, {
-    name,
-    description,
-    pictureUrl,
-    status,
-    generation: generationConfig,
-    action: actionConfig,
-    agentConfigurationId,
-  });
-}
-
-/**
  * Create Agent Configuration
  */
-async function createAgentConfiguration(
+export async function createAgentConfiguration(
   auth: Authenticator,
   {
     name,
@@ -411,7 +293,7 @@ async function createAgentConfiguration(
 /**
  * Create Agent Generation Configuration
  */
-async function createAgentGenerationConfiguration(
+export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
     prompt,
@@ -456,7 +338,7 @@ async function createAgentGenerationConfiguration(
 /**
  * Create Agent RetrievalConfiguration
  */
-async function createAgentActionConfiguration(
+export async function createAgentActionConfiguration(
   auth: Authenticator,
   {
     type,

@@ -4,15 +4,20 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  CreateAgentActionSchema,
-  CreateAgentGenerationSchema,
-  createOrUpgradeAgentConfiguration,
+  createAgentActionConfiguration,
+  createAgentConfiguration,
+  createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
+import {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  AgentGenerationConfigurationType,
+} from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: AgentConfigurationType[];
@@ -27,8 +32,58 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     description: t.string,
     pictureUrl: t.string,
     status: t.union([t.literal("active"), t.literal("archived")]),
-    action: t.union([t.null, CreateAgentActionSchema]),
-    generation: CreateAgentGenerationSchema,
+    action: t.union([
+      t.null,
+      t.type({
+        type: t.literal("retrieval_configuration"),
+        query: t.union([
+          t.type({
+            template: t.string,
+          }),
+          t.literal("auto"),
+          t.literal("none"),
+        ]),
+        timeframe: t.union([
+          t.literal("auto"),
+          t.literal("none"),
+          t.type({
+            duration: t.number,
+            unit: TimeframeUnitCodec,
+          }),
+        ]),
+        topK: t.number,
+        dataSources: t.array(
+          t.type({
+            dataSourceId: t.string,
+            workspaceId: t.string,
+            filter: t.type({
+              tags: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+              parents: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+            }),
+          })
+        ),
+      }),
+    ]),
+    generation: t.type({
+      prompt: t.string,
+      model: t.type({
+        providerId: t.string,
+        modelId: t.string,
+      }),
+      temperature: t.number,
+    }),
   }),
 });
 
@@ -88,18 +143,10 @@ async function handler(
         });
       }
 
-      const { name, pictureUrl, status, action, generation, description } =
-        bodyValidation.right.assistant;
-
-      const agentConfiguration = await createOrUpgradeAgentConfiguration(auth, {
-        name,
-        description,
-        pictureUrl,
-        status,
-        generation: generation,
-        action: action,
-        agentConfigurationId: req.query.aId as string,
-      });
+      const agentConfiguration = await createOrUpgradeAgentConfiguration(
+        auth,
+        bodyValidation.right
+      );
 
       return res.status(200).json({
         agentConfiguration: agentConfiguration,
@@ -118,3 +165,50 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+/**
+ * Create Or Upgrade Agent Configuration
+ * If an agentConfigurationId is provided, it will create a new version of the agent configuration
+ * with the same agentConfigurationId.
+ * If no agentConfigurationId is provided, it will create a new agent configuration.
+ * In both cases, it will return the new agent configuration.
+ **/
+export async function createOrUpgradeAgentConfiguration(
+  auth: Authenticator,
+  {
+    assistant: { generation, action, name, description, pictureUrl, status },
+  }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
+  agentConfigurationId?: string
+): Promise<AgentConfigurationType> {
+  let generationConfig: AgentGenerationConfigurationType | null = null;
+  if (generation)
+    generationConfig = await createAgentGenerationConfiguration(auth, {
+      prompt: generation.prompt,
+      model: {
+        providerId: generation.model.providerId,
+        modelId: generation.model.modelId,
+      },
+      temperature: generation.temperature,
+    });
+
+  let actionConfig: AgentActionConfigurationType | null = null;
+  if (action) {
+    actionConfig = await createAgentActionConfiguration(auth, {
+      type: "retrieval_configuration",
+      query: action.query,
+      timeframe: action.timeframe,
+      topK: action.topK,
+      dataSources: action.dataSources,
+    });
+  }
+
+  return createAgentConfiguration(auth, {
+    name,
+    description,
+    pictureUrl,
+    status,
+    generation: generationConfig,
+    action: actionConfig,
+    agentConfigurationId,
+  });
+}
