@@ -4,8 +4,6 @@ import { promisify } from "util";
 
 const readFileAsync = promisify(fs.readFile);
 
-const { URL } = process.env;
-
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
@@ -50,11 +48,9 @@ async function _getHelperGlobalAgent(
       "prompt/global_agent_helper_prompt.md"
     );
     const staticPrompt = await readFileAsync(filePath, "utf-8");
-    console.log(prompt);
     if (staticPrompt) {
       prompt = prompt + staticPrompt;
     }
-    console.log(prompt);
   } catch (err) {
     logger.error("Error reading prompt file for @helper agent:", err);
   }
@@ -64,7 +60,7 @@ async function _getHelperGlobalAgent(
     name: "helper",
     description:
       "Here to help with everything about assistant, and Dust's product in general",
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
+    pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: "active",
     scope: "global",
     generation: {
