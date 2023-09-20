@@ -17,6 +17,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export default function Conversation({
   owner,
@@ -163,35 +164,7 @@ export default function Conversation({
   );
 
   function AgentSuggestion({ userMessage }: { userMessage: UserMessageType }) {
-    // Sort agent configurations by last mention in conversation from this user
-    agentConfigurations.sort((a, b) => {
-      // index of last user message in conversation mentioning agent a
-      const aIndex = conversation!.content.findLastIndex((ms) =>
-        ms.some(
-          (m) =>
-            isUserMessageType(m) &&
-            m.user?.id === userMessage.user?.id &&
-            m.mentions.some(
-              (mention) =>
-                isAgentMention(mention) && mention.configurationId === a.sId
-            )
-        )
-      );
-      // index of last user message in conversation mentioning agent b
-      const bIndex = conversation!.content.findLastIndex((ms) =>
-        ms.some(
-          (m) =>
-            isUserMessageType(m) &&
-            m.user?.id === userMessage.user?.id &&
-            m.mentions.some(
-              (mention) =>
-                isAgentMention(mention) && mention.configurationId === b.sId
-            )
-        )
-      );
-      // sort by largest index first
-      return bIndex - aIndex;
-    });
+    agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
 
     return (
       <div className="mt-2">
@@ -238,5 +211,83 @@ export default function Conversation({
         </div>
       </div>
     );
+
+    /**
+     * Compare agents by whom was last mentioned in conversation from this user.
+     * If none has been mentioned, dust comes first, then gpt4 , then custom
+     * agents (in any order), then global agents with a specific source, then
+     * claude, then the rest
+     */
+    function compareAgentSuggestions(
+      a: AgentConfigurationType,
+      b: AgentConfigurationType
+    ) {
+      // index of last user message in conversation mentioning agent a
+      const aIndex = conversation!.content.findLastIndex((ms) =>
+        ms.some(
+          (m) =>
+            isUserMessageType(m) &&
+            m.user?.id === userMessage.user?.id &&
+            m.mentions.some(
+              (mention) =>
+                isAgentMention(mention) && mention.configurationId === a.sId
+            )
+        )
+      );
+      // index of last user message in conversation mentioning agent b
+      const bIndex = conversation!.content.findLastIndex((ms) =>
+        ms.some(
+          (m) =>
+            isUserMessageType(m) &&
+            m.user?.id === userMessage.user?.id &&
+            m.mentions.some(
+              (mention) =>
+                isAgentMention(mention) && mention.configurationId === b.sId
+            )
+        )
+      );
+      //
+      if (aIndex === -1 && bIndex === -1) {
+        // if neither a nor b was mentioned, dust comes first, then gpt4
+        if (a.name === "Dust") {
+          return -1;
+        }
+        if (b.name === "Dust") {
+          return 1;
+        }
+        if (a.name === "gpt4") {
+          return -1;
+        }
+        if (b.name === "gpt4") {
+          return 1;
+        }
+        // custom agents come next
+        if (a.scope === "workspace") {
+          return -1;
+        }
+        if (b.scope === "workspace") {
+          return 1;
+        }
+        // datasource-specific global agents come next
+        if (a.action?.dataSources.length === 1) {
+          return -1;
+        }
+        if (a.action?.dataSources.length === 1) {
+          return 1;
+        }
+        // claude comes next
+        if (a.name === "claude") {
+          return -1;
+        }
+        if (b.name === "claude") {
+          return 1;
+        }
+        // the rest
+        return 0;
+      }
+
+      // sort by largest index first
+      return bIndex - aIndex;
+    }
   }
 }

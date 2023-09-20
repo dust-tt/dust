@@ -15,7 +15,6 @@ export function UserMessage({
       name={message.context.fullName}
       messageId={message.sId}
     >
-      <RenderMarkdown content={message.content} />
       <div className="flex flex-col gap-4">
         <RenderMarkdown content={message.content} />
         {children}
