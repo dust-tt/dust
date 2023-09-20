@@ -18,7 +18,6 @@ export function useEventSource(
     }
     let reconnectTimeout: NodeJS.Timeout | null = null;
 
-    console.log("connecting to URL", url);
     const es = new EventSource(url);
 
     es.onopen = () => {
@@ -44,7 +43,6 @@ export function useEventSource(
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      console.log("closing eventsoruce connection");
       es.close();
     };
   }, [buildURL, lastEvent, onEventCallback, reconnectCounter]);
