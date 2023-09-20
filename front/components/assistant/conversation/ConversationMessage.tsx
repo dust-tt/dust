@@ -24,7 +24,7 @@ export function ConversationMessage({
   return (
     <div className="flex w-full flex-row gap-4">
       <div className="flex-shrink-0">
-        <Avatar visual={pictureUrl} name={name || undefined} size="sm" />
+        <Avatar visual={pictureUrl} name={name || undefined} size="md" />
       </div>
       <div className="min-w-0 flex-grow">
         <div className="flex flex-col gap-4">

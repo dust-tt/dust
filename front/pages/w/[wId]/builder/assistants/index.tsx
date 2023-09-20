@@ -178,7 +178,7 @@ function ListItem({
     <div className="flex items-start">
       <div className="min-w-5 flex">
         <div className="mr-2">
-          <Avatar visual={<img src={imageUrl} />} size={"sm"} />
+          <Avatar visual={<img src={imageUrl} />} size="md" />
         </div>
         <div className="flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center">

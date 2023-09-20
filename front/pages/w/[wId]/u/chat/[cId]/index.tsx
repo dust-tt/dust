@@ -541,11 +541,11 @@ export function MessageView({
             {message.role === "assistant" ? (
               <Avatar
                 visual="/static/systemavatar/dust_avatar_full.png"
-                size="sm"
+                size="md"
                 busy={loading}
               />
             ) : (
-              <Avatar visual={readOnly ? null : user?.image} size="sm" />
+              <Avatar visual={readOnly ? null : user?.image} size="md" />
             )}
           </div>
           <div
