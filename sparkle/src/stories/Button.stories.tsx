@@ -218,6 +218,47 @@ export const ButtonExamples = () => (
         disabled
       />
     </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        variant="avatar"
+        size="md"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+      />
+      <Button
+        variant="avatar"
+        size="md"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+        disabled={true}
+      />
+      <Button
+        variant="avatar"
+        size="sm"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+      />
+      <Button
+        variant="avatar"
+        size="sm"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+        disabled
+      />
+      <Button
+        variant="avatar"
+        size="xs"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+      />
+      <Button
+        variant="avatar"
+        size="xs"
+        label="@soupinou"
+        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+        disabled
+      />
+    </div>
   </div>
 );
 

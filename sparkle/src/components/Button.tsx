@@ -3,6 +3,7 @@ import React, { ComponentType, MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
+import { Avatar } from "./Avatar";
 import { Icon, IconProps } from "./Icon";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
@@ -12,7 +13,9 @@ export type ButtonProps = {
     | "primaryWarning"
     | "secondary"
     | "secondaryWarning"
-    | "tertiary";
+    | "tertiary"
+    | "avatar";
+
   type?: "button" | "menu" | "select";
   size?: "xs" | "sm" | "md";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -20,14 +23,27 @@ export type ButtonProps = {
   label: string;
   labelVisible?: boolean;
   icon?: ComponentType;
+  avatar?: string;
   className?: string;
   tooltipPosition?: TooltipProps["position"];
 };
 
+const textClasses = {
+  xs: "s-text-xs s-font-semibold",
+  sm: "s-text-sm s-font-semibold",
+  md: "s-text-base s-font-bold",
+};
+
 const sizeClasses = {
-  xs: "s-gap-x-1 s-px-3 s-py-1.5 s-text-xs s-font-semibold",
-  sm: "s-gap-x-1 s-px-4 s-py-2 s-text-sm s-font-semibold",
-  md: "s-gap-x-1.5 s-px-5 s-py-3 s-text-base s-font-bold",
+  xs: "s-gap-x-1 s-px-3 s-py-1.5",
+  sm: "s-gap-x-1 s-px-4 s-py-2",
+  md: "s-gap-x-1.5 s-px-5 s-py-3",
+};
+
+const sizeAvatarClasses = {
+  xs: "s-gap-x-1 s-pl-0.5 s-pr-3 s-py-0.5",
+  sm: "s-gap-x-1 s-pl-0.5 s-pr-4 s-py-0.5",
+  md: "s-gap-x-1.5 s-pl-1 s-pr-5 s-py-1",
 };
 
 const containerClasses = {
@@ -112,6 +128,21 @@ const variantClasses = {
         "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
     },
   },
+  avatar: {
+    base: "s-text-element-800 s-border-structure-200 s-bg-structure-0",
+    hover: "hover:s-bg-action-50 hover:s-border-action-200",
+    active: "active:s-bg-action-100 active:s-border-action-500",
+    disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
+    dark: {
+      base: "dark:s-text-element-700-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
+      hover:
+        "dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
+      active:
+        "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
+      disabled:
+        "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
+    },
+  },
 };
 
 const transitionClasses =
@@ -128,10 +159,12 @@ export function Button({
   icon,
   className = "",
   tooltipPosition = "above",
+  avatar,
 }: ButtonProps) {
   const buttonClasses = classNames(
     "s-inline-flex s-items-center s-border s-scale-95 s-box-border s-rounded-full s-whitespace-nowrap",
-    sizeClasses[size],
+    !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
+    textClasses[size],
     !disabled ? transitionClasses : "",
     !disabled ? variantClasses[variant]?.base : "",
     !disabled ? variantClasses[variant]?.hover : "",
@@ -147,7 +180,7 @@ export function Button({
 
   const finalContainerClasses = classNames(containerClasses[size]);
 
-  return labelVisible ? (
+  const buttonBase = (
     <button
       type="button"
       className={buttonClasses}
@@ -156,7 +189,10 @@ export function Button({
       aria-label={label}
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-      <div className={finalContainerClasses}>{label}</div>
+      {avatar && <Avatar size={size} visual={avatar} isRounded />}
+      {labelVisible ? (
+        <div className={finalContainerClasses}>{label}</div>
+      ) : null}
       {type === "menu" && (
         <Icon
           className="s-opacity-50"
@@ -172,17 +208,13 @@ export function Button({
         />
       )}
     </button>
+  );
+
+  return labelVisible ? (
+    buttonBase
   ) : (
     <Tooltip label={label} position={tooltipPosition}>
-      <button
-        type="button"
-        className={buttonClasses}
-        onClick={onClick}
-        disabled={disabled}
-        aria-label={label}
-      >
-        {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-      </button>
+      {buttonBase}
     </Tooltip>
   );
 }
