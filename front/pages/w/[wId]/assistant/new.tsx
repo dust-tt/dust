@@ -233,7 +233,7 @@ export default function AssistantNew({
                   <div key={agent.sId} className="flex flex-col gap-1">
                     <Avatar
                       visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
-                      size={"sm"}
+                      size="md"
                     />
                     <div>
                       <div className="text-md font-bold text-element-900">

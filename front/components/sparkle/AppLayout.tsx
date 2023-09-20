@@ -71,7 +71,7 @@ function NavigationBar({
               <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
                 <span className="sr-only">Open user menu</span>
                 <Avatar
-                  size="sm"
+                  size="md"
                   visual={
                     user.image
                       ? user.image

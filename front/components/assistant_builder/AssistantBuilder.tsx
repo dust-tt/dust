@@ -434,7 +434,7 @@ export default function AssistantBuilder({
           <div className="flex flex-row items-start">
             <div className="flex flex-col items-center space-y-2">
               <Avatar
-                size="lg"
+                size="xl"
                 visual={<img src="/static/droidavatar/Droid_Purple_7.jpg" />}
               />
               <Button
