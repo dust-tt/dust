@@ -127,6 +127,10 @@ export type ConversationType = {
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
 };
+
+/**
+ * A lighter version of Conversation without the content (for menu display).
+ */
 export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;

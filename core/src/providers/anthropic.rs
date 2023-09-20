@@ -106,14 +106,20 @@ impl AnthropicLLM {
         temperature: f32,
         top_p: f32,
         stop: &Vec<String>,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
     ) -> Result<LLMChatGeneration> {
         assert!(self.api_key.is_some());
 
         let prompt = self.chat_prompt(messages);
+
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
+
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(&prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
+        }
 
         let response = self
             .completion(
@@ -149,13 +155,19 @@ impl AnthropicLLM {
         temperature: f32,
         top_p: f32,
         stop: &Vec<String>,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<LLMChatGeneration> {
         let prompt = self.chat_prompt(messages);
+
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
+
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(&prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
+        }
 
         let response = self
             .streamed_completion(
@@ -419,7 +431,7 @@ impl LLM for AnthropicLLM {
     async fn generate(
         &self,
         prompt: &str,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
@@ -436,6 +448,13 @@ impl LLM for AnthropicLLM {
             return Err(anyhow!(
                 "Anthropic only supports generating one sample at a time."
             ))?;
+        }
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self.encode(prompt).await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
         }
 
         let c: Vec<Tokens> = match event_sender {

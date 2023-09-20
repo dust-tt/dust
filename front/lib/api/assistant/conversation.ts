@@ -702,6 +702,7 @@ export async function* postUserMessage(
 
     return streamRunAgentEvents(eventStream, agentMessageRows[i]);
   });
+
   const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
   while (eventStreamsPromises.length > 0) {
     const winner = await Promise.race(
