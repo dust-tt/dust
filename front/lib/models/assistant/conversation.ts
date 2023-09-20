@@ -243,7 +243,11 @@ export class AgentMessage extends Model<
   declare errorMessage: string | null;
 
   declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
-  declare agentConfigurationId: string; // Not a relation as global agents are not in the DB
+
+  // Not a relation as global agents are not in the DB
+  // needs both sId and version to uniquely identify the agent configuration
+  declare agentConfigurationId: string;
+  declare agentConfigurationVersion: number;
 }
 
 AgentMessage.init(
@@ -282,7 +286,12 @@ AgentMessage.init(
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
+    },
+    agentConfigurationVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {

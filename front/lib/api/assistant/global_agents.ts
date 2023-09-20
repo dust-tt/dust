@@ -28,6 +28,7 @@ async function _getGPT35TurboGlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
+    version: 0,
     name: "gpt3.5-turbo",
     description: "OpenAI's cost-effective and high throughput model.",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
@@ -50,6 +51,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
+    version: 0,
     name: "gpt4",
     description: "OpenAI's most powerful model.",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
@@ -72,6 +74,7 @@ async function _getClaudeInstantGlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+    version: 0,
     name: "claude-instant",
     description: "Anthropic's low-latency and high throughput model.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
@@ -94,6 +97,7 @@ async function _getClaudeGlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE,
+    version: 0,
     name: "claude",
     description: "Anthropic's superior performance model.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
@@ -145,6 +149,7 @@ async function _getManagedDataSourceAgent(
   return {
     id: -1,
     sId: agentId,
+    version: 0,
     name: name,
     description,
     pictureUrl,
@@ -254,6 +259,7 @@ async function _getDustGlobalAgent(
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.DUST,
+    version: 0,
     name: "Dust",
     description:
       "An assistant with context on your managed and static data sources.",

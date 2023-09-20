@@ -125,6 +125,7 @@ export async function getAgentConfiguration(
   return {
     id: agent.id,
     sId: agent.sId,
+    version: agent.version,
     scope: "workspace",
     name: agent.name,
     pictureUrl: agent.pictureUrl,
@@ -200,6 +201,8 @@ export async function createAgentConfiguration(
     status,
     generation,
     action,
+    sId,
+    version = 0,
   }: {
     name: string;
     description: string;
@@ -207,6 +210,8 @@ export async function createAgentConfiguration(
     status: AgentConfigurationStatus;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;
+    version?: number;
+    sId?: string;
   }
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
@@ -216,7 +221,8 @@ export async function createAgentConfiguration(
 
   // Create Agent config
   const agentConfig = await AgentConfiguration.create({
-    sId: generateModelSId(),
+    sId: sId || generateModelSId(),
+    version,
     status: status,
     name: name,
     description: description,
@@ -231,6 +237,7 @@ export async function createAgentConfiguration(
   return {
     id: agentConfig.id,
     sId: agentConfig.sId,
+    version: agentConfig.version,
     scope: "workspace",
     name: agentConfig.name,
     description: agentConfig.description,
