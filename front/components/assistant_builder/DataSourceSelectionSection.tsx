@@ -104,7 +104,6 @@ export default function DataSourceSelectionSection({
               ([key, { dataSource, selectedResources }]) => {
                 const selectedParentIds = Object.keys(selectedResources);
                 return (
-                  // <Fragment key={key}>
                   <ContextItem
                     key={key}
                     title={
