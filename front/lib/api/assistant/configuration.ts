@@ -204,7 +204,7 @@ export async function createAgentConfiguration(
     status,
     generation,
     action,
-    sId,
+    agentConfigurationId,
   }: {
     name: string;
     description: string;
@@ -212,8 +212,7 @@ export async function createAgentConfiguration(
     status: AgentConfigurationStatus;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;
-    version?: number;
-    sId?: string;
+    agentConfigurationId?: string;
   }
 ): Promise<AgentConfigurationType> {
   const owner = auth.workspace();
@@ -225,14 +224,14 @@ export async function createAgentConfiguration(
 
   const agentConfig = await front_sequelize.transaction(
     async (t): Promise<AgentConfiguration> => {
-      if (sId) {
+      if (agentConfigurationId) {
         const latestVersion = await AgentConfiguration.max<
           number | null,
           AgentConfiguration
         >("version", {
           where: {
             workspaceId: owner.id,
-            sId: sId,
+            sId: agentConfigurationId,
           },
           transaction: t,
         });
@@ -245,7 +244,7 @@ export async function createAgentConfiguration(
           { status: "archived" },
           {
             where: {
-              sId: sId,
+              sId: agentConfigurationId,
               workspaceId: owner.id,
             },
             transaction: t,
@@ -256,7 +255,7 @@ export async function createAgentConfiguration(
       // Create Agent config
       return AgentConfiguration.create(
         {
-          sId: sId || generateModelSId(),
+          sId: agentConfigurationId || generateModelSId(),
           version,
           status: status,
           name: name,
