@@ -77,14 +77,51 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
+  const [showAllAgents, setShowAllAgents] = useState<boolean>(false);
+
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
-  const [showAllAgents, setShowAllAgents] = useState<boolean>(false);
 
-  const agents = showAllAgents
-    ? agentConfigurations
-    : agentConfigurations.slice(0, 4);
+  let agents = agentConfigurations;
+  const customOrder = [
+    "Dust",
+    "gpt4",
+    "slack",
+    "notion",
+    "googledrive",
+    "github",
+    "claude",
+  ];
+  // Sort agents based on custom criteria
+  agents.sort((a, b) => {
+    // Check for 'Dust'
+    if (a.name === "Dust") return -1;
+    if (b.name === "Dust") return 1;
+
+    // Check for 'gpt4'
+    if (a.name === "gpt-4") return -1;
+    if (b.name === "gpt4") return 1;
+
+    // Check for agents with 'scope' set to 'workspace'
+    if (a.scope === "workspace" && b.scope !== "workspace") return -1;
+    if (b.scope === "workspace" && a.scope !== "workspace") return 1;
+
+    // Check for customOrder (slack, notion, googledrive, github, claude)
+    const aIndex = customOrder.indexOf(a.name);
+    const bIndex = customOrder.indexOf(b.name);
+
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex; // Both are in customOrder, sort them accordingly
+    }
+
+    if (aIndex !== -1) return -1; // Only a is in customOrder, it comes first
+    if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
+
+    return 0; // Default: keep the original order
+  });
+
+  agents = showAllAgents ? agents : agents.slice(0, 4);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
