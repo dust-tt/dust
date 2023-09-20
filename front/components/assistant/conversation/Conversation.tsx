@@ -8,13 +8,15 @@ import {
   ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
-import { useConversation } from "@app/lib/swr";
+import { useAgentConfigurations, useConversation } from "@app/lib/swr";
 import {
   AgentMessageType,
   UserMessageType,
+  isAgentMention,
+  isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
+import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
 
 export default function Conversation({
   owner,
@@ -32,6 +34,9 @@ export default function Conversation({
     mutateConversation,
   } = useConversation({
     conversationId,
+    workspaceId: owner.sId,
+  });
+  const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
 
@@ -125,7 +130,11 @@ export default function Conversation({
             return (
               <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                  <UserMessage message={m} />
+                  <UserMessage message={m}>
+                    {m.mentions.length === 0 && (
+                      <AgentSuggestion userMessage={m} />
+                    )}
+                  </UserMessage>
                 </div>
               </div>
             );
@@ -152,4 +161,82 @@ export default function Conversation({
       })}
     </div>
   );
+
+  function AgentSuggestion({ userMessage }: { userMessage: UserMessageType }) {
+    // Sort agent configurations by last mention in conversation from this user
+    agentConfigurations.sort((a, b) => {
+      // index of last user message in conversation mentioning agent a
+      const aIndex = conversation!.content.findLastIndex((ms) =>
+        ms.some(
+          (m) =>
+            isUserMessageType(m) &&
+            m.user?.id === userMessage.user?.id &&
+            m.mentions.some(
+              (mention) =>
+                isAgentMention(mention) && mention.configurationId === a.sId
+            )
+        )
+      );
+      // index of last user message in conversation mentioning agent b
+      const bIndex = conversation!.content.findLastIndex((ms) =>
+        ms.some(
+          (m) =>
+            isUserMessageType(m) &&
+            m.user?.id === userMessage.user?.id &&
+            m.mentions.some(
+              (mention) =>
+                isAgentMention(mention) && mention.configurationId === b.sId
+            )
+        )
+      );
+      // sort by largest index first
+      return bIndex - aIndex;
+    });
+
+    return (
+      <div className="mt-2">
+        <div className="text-xs font-bold text-element-600">
+          Which KillerZorg would you like to talk with?
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          {agentConfigurations.slice(0, 3).map((agent) => (
+            <Button
+              key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
+              size="xs"
+              variant="tertiary"
+              label={`@${agent.name}`}
+              onClick={() => console.log(agent)}
+              icon={() => (
+                <img
+                  className="h-5 w-5 rounded rounded-xl"
+                  src={agent.pictureUrl}
+                />
+              )}
+            />
+          ))}
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                variant="tertiary"
+                size="xs"
+                icon={RobotIcon}
+                label="Select another"
+              />
+            </DropdownMenu.Button>
+            <div className="relative bottom-6 z-30">
+              <DropdownMenu.Items origin="topLeft" width={320}>
+                {agentConfigurations.slice(3).map((agent) => (
+                  <DropdownMenu.Item
+                    key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
+                    label={agent.name}
+                    visual={agent.pictureUrl}
+                  />
+                ))}
+              </DropdownMenu.Items>
+            </div>
+          </DropdownMenu>
+        </div>
+      </div>
+    );
+  }
 }
