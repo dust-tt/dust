@@ -1,13 +1,14 @@
+import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
+
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  UserMessageType,
   ConversationType,
-  isUserMessageType,
   isAgentMention,
+  isUserMessageType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
 
 export function AgentSuggestion({
   owner,
@@ -65,9 +66,8 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    // POST edit message
     const editedContent = `:mention[${agent.name}]{${agent.sId}} ${userMessage.content}`;
-    const editedMessage = await fetch(
+    await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
       {
         method: "POST",
@@ -98,7 +98,7 @@ export function AgentSuggestion({
     b: AgentConfigurationType
   ) {
     // index of last user message in conversation mentioning agent a
-    const aIndex = conversation!.content.findLastIndex((ms) =>
+    const aIndex = conversation.content.findLastIndex((ms) =>
       ms.some(
         (m) =>
           isUserMessageType(m) &&
@@ -110,7 +110,7 @@ export function AgentSuggestion({
       )
     );
     // index of last user message in conversation mentioning agent b
-    const bIndex = conversation!.content.findLastIndex((ms) =>
+    const bIndex = conversation.content.findLastIndex((ms) =>
       ms.some(
         (m) =>
           isUserMessageType(m) &&
@@ -161,7 +161,7 @@ export function AgentSuggestion({
       return 0;
     }
 
-    // sort by largest index first
+    // if a or b was mentioned, sort by largest index first
     return bIndex - aIndex;
   }
 }

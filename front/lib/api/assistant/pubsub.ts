@@ -7,8 +7,8 @@ import {
 } from "@app/lib/api/assistant/agent";
 import {
   AgentMessageNewEvent,
+  ConversationTitleEvent,
   editUserMessage,
-  ConversationTitleEvent,  
   postUserMessage,
   retryAgentMessage,
   UserMessageErrorEvent,
@@ -46,7 +46,7 @@ export async function postUserMessageWithPubSub(
     mentions,
     context,
   });
-  return handleUserMessageEvents(auth, conversation, postMessageEvents);
+  return handleUserMessageEvents(conversation, postMessageEvents);
 }
 
 export async function editUserMessageWithPubSub(
@@ -69,11 +69,10 @@ export async function editUserMessageWithPubSub(
     content,
     mentions,
   });
-  return handleUserMessageEvents(auth, conversation, editMessageEvents);
+  return handleUserMessageEvents(conversation, editMessageEvents);
 }
 
-export async function handleUserMessageEvents(
-  auth: Authenticator,
+async function handleUserMessageEvents(
   conversation: ConversationType,
   messageEventGenerator: AsyncGenerator<
     | UserMessageErrorEvent
@@ -84,7 +83,8 @@ export async function handleUserMessageEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
-    | AgentMessageSuccessEvent,
+    | AgentMessageSuccessEvent
+    | ConversationTitleEvent,
     void
   >
 ): Promise<UserMessageType> {

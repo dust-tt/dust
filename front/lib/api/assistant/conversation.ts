@@ -30,6 +30,7 @@ import {
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   AgentMention,
   AgentMessageType,
@@ -46,7 +47,6 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 /**
  * Conversation Creation, update and deletion
@@ -1034,6 +1034,7 @@ export async function* newAgentMessage(
       {
         status: "created",
         agentConfigurationId: agentConfiguration.sId,
+        agentConfigurationVersion: agentConfiguration.version,
       },
       { transaction: t }
     );

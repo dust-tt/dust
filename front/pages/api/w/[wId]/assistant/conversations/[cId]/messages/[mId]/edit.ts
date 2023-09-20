@@ -4,15 +4,14 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
-  AgentMessageType,
-  UserMessageType,
   isUserMessageType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
-import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 
 export const PostEditRequestBodySchema = t.type({
   content: t.string,

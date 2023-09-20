@@ -1,5 +1,5 @@
-import { RenderMarkdown } from "@app/components/RenderMarkdown";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { RenderMarkdown } from "@app/components/RenderMarkdown";
 import { UserMessageType } from "@app/types/assistant/conversation";
 
 export function UserMessage({

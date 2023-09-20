@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -14,7 +15,6 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 
 export default function Conversation({
   owner,
