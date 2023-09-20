@@ -219,7 +219,6 @@ export async function createAgentConfiguration(
     generation,
     action,
     sId,
-    version = 0,
   }: {
     name: string;
     description: string;
@@ -234,6 +233,34 @@ export async function createAgentConfiguration(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  let version = 0;
+
+  if (sId) {
+    const latestVersion = await AgentConfiguration.max<
+      number | null,
+      AgentConfiguration
+    >("version", {
+      where: {
+        workspaceId: owner.id,
+        sId: sId,
+      },
+    });
+
+    if (latestVersion !== null) {
+      version = latestVersion + 1;
+    }
+
+    await AgentConfiguration.update(
+      { status: "archived" },
+      {
+        where: {
+          sId: sId,
+          workspaceId: owner.id,
+        },
+      }
+    );
   }
 
   // Create Agent config
