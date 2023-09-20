@@ -15,3 +15,10 @@ alter table
 
 alter table
     "agent_configurations" drop constraint "agent_configurations_sId_key5";
+
+alter table
+    "agent_configurations" drop constraint "agent_configurations_workspace_id_name";
+
+DROP index "agent_configurations_s_id";
+
+drop index "agent_configurations_workspace_id_name";
