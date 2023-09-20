@@ -47,10 +47,27 @@ export async function getAgentConfiguration(
     return await getGlobalAgent(auth, agentId);
   }
 
+  const latestVersion = await AgentConfiguration.max<
+    number | null,
+    AgentConfiguration
+  >("version", {
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!latestVersion) {
+    return null;
+  }
+
   const agent = await AgentConfiguration.findOne({
     where: {
       sId: agentId,
       workspaceId: owner.id,
+      version: {
+        [Op.eq]: latestVersion,
+      },
     },
     include: [
       {
