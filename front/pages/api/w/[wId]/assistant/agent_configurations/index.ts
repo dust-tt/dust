@@ -4,19 +4,15 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  createAgentActionConfiguration,
-  createAgentConfiguration,
-  createAgentGenerationConfiguration,
+  CreateAgentActionSchema,
+  CreateAgentGenerationSchema,
+  createOrUpgradeAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
-import {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: AgentConfigurationType[];
@@ -31,58 +27,8 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     description: t.string,
     pictureUrl: t.string,
     status: t.union([t.literal("active"), t.literal("archived")]),
-    action: t.union([
-      t.null,
-      t.type({
-        type: t.literal("retrieval_configuration"),
-        query: t.union([
-          t.type({
-            template: t.string,
-          }),
-          t.literal("auto"),
-          t.literal("none"),
-        ]),
-        timeframe: t.union([
-          t.literal("auto"),
-          t.literal("none"),
-          t.type({
-            duration: t.number,
-            unit: TimeframeUnitCodec,
-          }),
-        ]),
-        topK: t.number,
-        dataSources: t.array(
-          t.type({
-            dataSourceId: t.string,
-            workspaceId: t.string,
-            filter: t.type({
-              tags: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-              parents: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-            }),
-          })
-        ),
-      }),
-    ]),
-    generation: t.type({
-      prompt: t.string,
-      model: t.type({
-        providerId: t.string,
-        modelId: t.string,
-      }),
-      temperature: t.number,
-    }),
+    action: t.union([t.null, CreateAgentActionSchema]),
+    generation: CreateAgentGenerationSchema,
   }),
 });
 
@@ -142,40 +88,21 @@ async function handler(
         });
       }
 
-      const { name, description, pictureUrl, status, action, generation } =
+      const { name, pictureUrl, status, action, generation, description } =
         bodyValidation.right.assistant;
 
-      const generationConfig = await createAgentGenerationConfiguration(auth, {
-        prompt: generation.prompt,
-        model: {
-          providerId: generation.model.providerId,
-          modelId: generation.model.modelId,
-        },
-        temperature: generation.temperature,
-      });
-
-      let actionConfig: AgentActionConfigurationType | null = null;
-      if (action) {
-        actionConfig = await createAgentActionConfiguration(auth, {
-          type: "retrieval_configuration",
-          query: action.query,
-          timeframe: action.timeframe,
-          topK: action.topK,
-          dataSources: action.dataSources,
-        });
-      }
-
-      const agentConfiguration = await createAgentConfiguration(auth, {
+      const agentConfiguration = await createOrUpgradeAgentConfiguration(auth, {
         name,
         description,
         pictureUrl,
         status,
-        generation: generationConfig,
-        action: actionConfig,
+        generation: generation,
+        action: action,
+        agentConfigurationId: req.query.aId as string,
       });
 
       return res.status(200).json({
-        agentConfiguration,
+        agentConfiguration: agentConfiguration,
       });
 
     default:
