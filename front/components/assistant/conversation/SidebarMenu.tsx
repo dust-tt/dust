@@ -99,9 +99,11 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
                               selected={router.query.cId === c.sId}
                               label={
                                 c.title ||
-                                `Conversation from ${new Date(
-                                  c.created
-                                ).toLocaleDateString()}`
+                                (moment(c.created).isSame(moment(), "day")
+                                  ? "New Conversation"
+                                  : `Conversation from ${new Date(
+                                      c.created
+                                    ).toLocaleDateString()}`)
                               }
                               onClick={async () =>
                                 await router.push(

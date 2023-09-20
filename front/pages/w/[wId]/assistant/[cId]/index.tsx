@@ -1,5 +1,7 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
+import { mutate } from "swr";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -56,6 +58,8 @@ export default function AssistantConversation({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
+  const [title, setTitle] = useState<string | null>(null);
+
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
     const mRes = await fetch(
@@ -109,7 +113,7 @@ export default function AssistantConversation({
       topNavigationCurrent="assistant_v2"
       titleChildren={
         <ConversationTitle
-          title={""} // TODO: Get title from conversation.
+          title={title || ""}
           shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
           onDelete={() => {
             void handdleDeleteConversation();
@@ -118,7 +122,15 @@ export default function AssistantConversation({
       }
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
-      <Conversation owner={owner} conversationId={conversationId} />
+      <Conversation
+        owner={owner}
+        conversationId={conversationId}
+        onTitleUpdate={(title) => {
+          setTitle(title);
+          // We mutate the list of conversations so that the title gets updated.
+          void mutate(`/api/w/${owner.sId}/assistant/conversations`);
+        }}
+      />
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
   );
