@@ -11,6 +11,34 @@ import logger from "@app/logger/logger";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType } from "@app/types/user";
 
+class HelperAssistantPrompt {
+  private static instance: HelperAssistantPrompt;
+  private staticPrompt: string | null = null;
+
+  public static getInstance(): HelperAssistantPrompt {
+    if (!HelperAssistantPrompt.instance) {
+      HelperAssistantPrompt.instance = new HelperAssistantPrompt();
+    }
+    return HelperAssistantPrompt.instance;
+  }
+
+  public async getStaticPrompt(): Promise<string | null> {
+    if (this.staticPrompt === null) {
+      try {
+        const filePath = path.join(
+          process.cwd(),
+          "prompt/global_agent_helper_prompt.md"
+        );
+        this.staticPrompt = await readFileAsync(filePath, "utf-8");
+      } catch (err) {
+        logger.error("Error reading prompt file for @helper agent:", err);
+        return null;
+      }
+    }
+    return this.staticPrompt;
+  }
+}
+
 /**
  * GLOBAL AGENTS CONFIGURATION
  *
@@ -42,18 +70,13 @@ async function _getHelperGlobalAgent(
     prompt = `My name is ${user.name}. `;
   }
 
-  try {
-    const filePath = path.join(
-      process.cwd(),
-      "prompt/global_agent_helper_prompt.md"
-    );
-    const staticPrompt = await readFileAsync(filePath, "utf-8");
-    if (staticPrompt) {
-      prompt = prompt + staticPrompt;
-    }
-  } catch (err) {
-    logger.error("Error reading prompt file for @helper agent:", err);
+  const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
+  const staticPrompt = await helperAssistantPromptInstance.getStaticPrompt();
+
+  if (staticPrompt) {
+    prompt = prompt + staticPrompt;
   }
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
