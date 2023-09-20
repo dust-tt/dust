@@ -67,7 +67,7 @@ async function _getHelperGlobalAgent(
   let prompt = "";
 
   if (user) {
-    prompt = `My name is ${user.name}. `;
+    prompt = `The user you're interacting with is ${user.name}. `;
   }
 
   const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
@@ -91,8 +91,8 @@ async function _getHelperGlobalAgent(
       id: -1,
       prompt: prompt,
       model: {
-        providerId: "openai",
-        modelId: "gpt-3.5-turbo",
+        providerId: "anthropic",
+        modelId: "claude-2",
       },
       temperature: 0.7,
     },
