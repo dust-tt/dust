@@ -470,7 +470,6 @@ impl LLM for AnthropicLLM {
             if m == -1 {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some((self.context_size() - tokens.len()) as i32);
-                // println!("Using max_tokens = {}", max_tokens.unwrap());
             }
         }
 
