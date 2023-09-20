@@ -194,7 +194,7 @@ export default function AssistantNew({
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-4">
                 {agents.map((agent) => (
                   <div key={agent.sId} className="flex flex-col gap-1">
                     <Avatar
