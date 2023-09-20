@@ -24,6 +24,7 @@ export { default as CloudX } from "./CloudX";
 export { default as Cog6Tooth } from "./Cog6Tooth";
 export { default as CommandLine } from "./CommandLine";
 export { default as Cube } from "./Cube";
+export { default as Dash } from "./Dash";
 export { default as DocumentDuplicate } from "./DocumentDuplicate";
 export { default as DocumentPlus } from "./DocumentPlus";
 export { default as DocumentText } from "./DocumentText";

@@ -10,9 +10,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Selectable: Story = {
+  args: {
+    checked: true,
+    variant: "selectable",
+  },
+};
+
 export const Checked: Story = {
   args: {
     checked: true,
+    variant: "checkable",
   },
 };
 

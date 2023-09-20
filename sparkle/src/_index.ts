@@ -43,6 +43,9 @@ export { Checkbox };
 import { IconButton } from "./components/IconButton";
 export { IconButton };
 
+import { Tree } from "./components/Tree";
+export { Tree };
+
 import { IconToggleButton } from "./components/IconToggleButton";
 export { IconToggleButton };
 
@@ -136,6 +139,7 @@ import {
   Cog6Tooth as Cog6ToothIcon,
   CommandLine as CommandLineIcon,
   Cube as CubeIcon,
+  Dash as DashIcon,
   DocumentDuplicate as DocumentDuplicateIcon,
   DocumentPlus as DocumentPlusIcon,
   DocumentText as DocumentTextIcon,
@@ -201,6 +205,7 @@ export {
   Cog6ToothIcon,
   CommandLineIcon,
   CubeIcon,
+  DashIcon,
   DocumentDuplicateIcon,
   DocumentPlusIcon,
   DocumentTextIcon,
@@ -266,6 +271,7 @@ import {
   Cog6Tooth as Cog6ToothStrokeIcon,
   CommandLine as CommandLineStrokeIcon,
   Cube as CubeStrokeIcon,
+  Dash as DashStrokeIcon,
   DocumentDuplicate as DocumentDuplicateStrokeIcon,
   DocumentPlus as DocumentPlusStrokeIcon,
   DocumentText as DocumentTextStrokeIcon,
@@ -331,6 +337,7 @@ export {
   Cog6ToothStrokeIcon,
   CommandLineStrokeIcon,
   CubeStrokeIcon,
+  DashStrokeIcon,
   DocumentDuplicateStrokeIcon,
   DocumentPlusStrokeIcon,
   DocumentTextStrokeIcon,

@@ -4,11 +4,12 @@ import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
-  size: "xs" | "sm" | "md" | "lg" | "full";
+  size: "xs" | "sm" | "md" | "lg" | "xl";
   name?: string;
   visual?: string | React.ReactNode;
   onClick?: () => void;
   busy?: boolean;
+  isRounded?: boolean;
 };
 
 const colors = [
@@ -50,27 +51,36 @@ const txtColors = [
 ];
 
 const sizeClasses = {
-  xs: "s-h-6 s-w-6 s-rounded-full",
-  sm: "s-h-10 s-w-10 s-rounded-xl",
-  md: "s-h-16 s-w-16 s-rounded-2xl",
-  lg: "s-h-36 s-w-36 s-rounded-3xl",
-  full: "s-h-full s-w-full",
+  xs: "s-h-6 s-w-6",
+  sm: "s-h-8 s-w-8",
+  md: "s-h-10 s-w-10",
+  lg: "s-h-16 s-w-16",
+  xl: "s-h-36 s-w-36",
+};
+
+const roundedClasses = {
+  xs: "s-rounded-full",
+  sm: "s-rounded-lg",
+  md: "s-rounded-xl",
+  lg: "s-rounded-2xl",
+  xl: "s-rounded-3xl",
 };
 
 const textSize = {
   xs: "s-text-xs",
-  sm: "s-text-base",
-  md: "s-text-3xl",
-  lg: "s-text-7xl",
-  full: "s-text-6xl",
+  sm: "s-text-sm",
+  md: "s-text-base",
+  lg: "s-text-3xl",
+  xl: "s-text-7xl",
 };
 
 export function Avatar({
-  size = "sm",
+  size = "md",
   name,
   visual,
   onClick,
   busy = false,
+  isRounded = false,
 }: AvatarProps) {
   const getColor = (name: string) => {
     let hash = 0;
@@ -97,6 +107,7 @@ export function Avatar({
 
   const avatarClass = classNames(
     sizeClasses[size],
+    isRounded ? "s-rounded-full" : roundedClasses[size],
     name ? getColor(name) : "s-bg-slate-200",
     "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
     clickableStyles,
