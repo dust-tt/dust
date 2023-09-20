@@ -237,46 +237,57 @@ export async function createAgentConfiguration(
 
   let version = 0;
 
-  if (sId) {
-    const latestVersion = await AgentConfiguration.max<
-      number | null,
-      AgentConfiguration
-    >("version", {
-      where: {
-        workspaceId: owner.id,
-        sId: sId,
-      },
-    });
+  const agentConfig = await front_sequelize.transaction(
+    async (t): Promise<AgentConfiguration> => {
+      if (sId) {
+        const latestVersion = await AgentConfiguration.max<
+          number | null,
+          AgentConfiguration
+        >("version", {
+          where: {
+            workspaceId: owner.id,
+            sId: sId,
+          },
+          transaction: t,
+        });
 
-    if (latestVersion !== null) {
-      version = latestVersion + 1;
-    }
+        if (latestVersion !== null) {
+          version = latestVersion + 1;
+        }
 
-    await AgentConfiguration.update(
-      { status: "archived" },
-      {
-        where: {
-          sId: sId,
-          workspaceId: owner.id,
-        },
+        await AgentConfiguration.update(
+          { status: "archived" },
+          {
+            where: {
+              sId: sId,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          }
+        );
       }
-    );
-  }
 
-  // Create Agent config
-  const agentConfig = await AgentConfiguration.create({
-    sId: sId || generateModelSId(),
-    version,
-    status: status,
-    name: name,
-    description: description,
-    pictureUrl: pictureUrl,
-    workspaceId: owner.id,
-    generationConfigurationId: generation?.id || null,
-    // We know here that the retrievalConfiguration is one that we created and not a "global
-    // virtual" one so we're good to set the foreign key.
-    retrievalConfigurationId: action?.id || null,
-  });
+      // Create Agent config
+      return AgentConfiguration.create(
+        {
+          sId: sId || generateModelSId(),
+          version,
+          status: status,
+          name: name,
+          description: description,
+          pictureUrl: pictureUrl,
+          workspaceId: owner.id,
+          generationConfigurationId: generation?.id || null,
+          // We know here that the retrievalConfiguration is one that we created and not a "global
+          // virtual" one so we're good to set the foreign key.
+          retrievalConfigurationId: action?.id || null,
+        },
+        {
+          transaction: t,
+        }
+      );
+    }
+  );
 
   return {
     id: agentConfig.id,
