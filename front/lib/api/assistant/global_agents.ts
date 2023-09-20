@@ -1,7 +1,17 @@
+import fs from "fs";
+import path from "path";
+import { promisify } from "util";
+
+const readFileAsync = promisify(fs.readFile);
+
+const { URL } = process.env;
+
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
+import logger from "@app/logger/logger";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { UserType } from "@app/types/user";
 
 /**
  * GLOBAL AGENTS CONFIGURATION
@@ -13,15 +23,61 @@ import { AgentConfigurationType } from "@app/types/assistant/agent";
  */
 
 enum GLOBAL_AGENTS_SID {
-  GPT35_TURBO = "gpt-3.5-turbo",
-  GPT4 = "gpt-4",
-  CLAUDE_INSTANT = "claude-instant-1",
-  CLAUDE = "claude-2",
+  HELPER = "helper",
+  DUST = "dust",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
   GITHUB = "github",
-  DUST = "dust",
+  GPT4 = "gpt-4",
+  CLAUDE = "claude-2",
+  GPT35_TURBO = "gpt-3.5-turbo",
+  CLAUDE_INSTANT = "claude-instant-1",
+}
+
+async function _getHelperGlobalAgent(
+  user: UserType | null
+): Promise<AgentConfigurationType> {
+  let prompt = "";
+
+  if (user) {
+    prompt = `My name is ${user.name}. `;
+  }
+
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "prompt/global_agent_helper_prompt.md"
+    );
+    const staticPrompt = await readFileAsync(filePath, "utf-8");
+    console.log(prompt);
+    if (staticPrompt) {
+      prompt = prompt + staticPrompt;
+    }
+    console.log(prompt);
+  } catch (err) {
+    logger.error("Error reading prompt file for @helper agent:", err);
+  }
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.HELPER,
+    name: "helper",
+    description:
+      "Here to help with everything about assistant, and Dust's product in general",
+    pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
+    status: "active",
+    scope: "global",
+    generation: {
+      id: -1,
+      prompt: prompt,
+      model: {
+        providerId: "openai",
+        modelId: "gpt-3.5-turbo",
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
 }
 
 async function _getGPT35TurboGlobalAgent(): Promise<AgentConfigurationType> {
@@ -302,8 +358,11 @@ export async function getGlobalAgent(
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
+  const user = auth.user();
 
   switch (sId) {
+    case GLOBAL_AGENTS_SID.HELPER:
+      return _getHelperGlobalAgent(user);
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       return _getGPT35TurboGlobalAgent();
     case GLOBAL_AGENTS_SID.GPT4:
@@ -334,10 +393,12 @@ export async function getGlobalAgents(
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
+  const user = auth.user();
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const globalAgents = [
+    await _getHelperGlobalAgent(user),
     await _getGPT4GlobalAgent(),
     await _getGPT35TurboGlobalAgent(),
     await _getClaudeGlobalAgent(),
