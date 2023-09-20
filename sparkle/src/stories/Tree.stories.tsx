@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { Tree } from "../index_with_tw_base";
@@ -9,7 +9,6 @@ const meta = {
 } satisfies Meta<typeof Tree>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const TreeExample = () => {
   return (
