@@ -31,6 +31,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
+  AgentMention,
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
@@ -45,6 +46,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 /**
  * Conversation Creation, update and deletion
@@ -1003,8 +1005,152 @@ export async function* retryAgentMessage(
   yield* streamRunAgentEvents(eventStream, agentMessageRow);
 }
 
-// This method creates a new user message version (without re-running subsequent actions for now, in
-// the future we will likely want to run new mentions).
+export async function* newAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    parentMessage,
+    agentConfiguration,
+  }: {
+    conversation: ConversationType;
+    parentMessage: UserMessageType;
+    agentConfiguration: AgentConfigurationType;
+  }
+): AsyncGenerator<
+  | AgentMessageNewEvent
+  | AgentErrorEvent
+  | AgentActionEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
+> {
+  const agentMessageResult: {
+    agentMessage: AgentMessageType;
+    agentMessageRow: AgentMessage;
+  } | null = await front_sequelize.transaction(async (t) => {
+    const agentMessageRow = await AgentMessage.create(
+      {
+        status: "created",
+        agentConfigurationId: agentConfiguration.sId,
+      },
+      { transaction: t }
+    );
+
+    // Get the max rank of messages in this conversation from db
+    const maxRank = await Message.max<number | null, Message>("rank", {
+      where: {
+        conversationId: conversation.id,
+      },
+      transaction: t,
+    });
+    if (maxRank === null) {
+      throw new Error("Unreachable: error getting max rank from DB");
+    }
+
+    const m = await Message.create(
+      {
+        sId: generateModelSId(),
+        rank: maxRank + 1,
+        conversationId: conversation.id,
+        parentId: parentMessage.id,
+        version: 0,
+        agentMessageId: agentMessageRow.id,
+      },
+      {
+        transaction: t,
+      }
+    );
+    const agentMessage: AgentMessageType = {
+      id: m.id,
+      sId: m.sId,
+      type: "agent_message",
+      visibility: m.visibility,
+      version: m.version,
+      parentMessageId: parentMessage.sId,
+      status: "created",
+      action: null,
+      content: null,
+      feedbacks: [],
+      error: null,
+      configuration: agentConfiguration,
+    };
+    return {
+      agentMessage,
+      agentMessageRow,
+    };
+  });
+
+  if (!agentMessageResult) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: parentMessage.sId,
+      error: {
+        code: "not_created",
+        message: "Could not create agent message from parent",
+      },
+    };
+    return;
+  }
+
+  const { agentMessage, agentMessageRow } = agentMessageResult;
+
+  yield {
+    type: "agent_message_new",
+    created: Date.now(),
+    configurationId: agentMessage.configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
+  };
+
+  // We stitch the conversation to create the agent message correctly: no other
+  // messages than this agent's past its parent message.
+
+  // Find the array of the parent message in conversation.content.
+  const parentMessageIndex = conversation.content.findIndex((messages) => {
+    return messages.some((m) => m.sId === agentMessage.parentMessageId);
+  });
+  if (parentMessageIndex === -1) {
+    throw new Error(
+      `Parent message ${agentMessage.parentMessageId} not found in conversation`
+    );
+  }
+
+  // Stitch the conversation.
+  const newContent = [
+    ...conversation.content.slice(0, parentMessageIndex + 1),
+    [agentMessage],
+  ];
+
+  const userMessage =
+    conversation.content[parentMessageIndex][
+      conversation.content[parentMessageIndex].length - 1
+    ];
+  if (!isUserMessageType(userMessage)) {
+    throw new Error("Unreachable: parent message must be a user message");
+  }
+
+  const eventStream = runAgent(
+    auth,
+    agentMessage.configuration,
+    {
+      ...conversation,
+      content: newContent,
+    },
+    userMessage,
+    agentMessage
+  );
+
+  yield* streamRunAgentEvents(eventStream, agentMessageRow);
+}
+
+/* This method creates a new user message version, and if there is a new agent
+ * mention, runs it (breaks if more than 1)
+ * TODO: support more than 1 new agent mention
+ */
 export async function* editUserMessage(
   auth: Authenticator,
   {
@@ -1018,7 +1164,18 @@ export async function* editUserMessage(
     content: string;
     mentions: MentionType[];
   }
-): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent, void> {
+): AsyncGenerator<
+  | UserMessageNewEvent
+  | UserMessageErrorEvent
+  | AgentMessageNewEvent
+  | AgentErrorEvent
+  | AgentActionEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
+> {
   if (auth.user()?.id !== message.user?.id) {
     yield {
       type: "user_message_error",
@@ -1026,6 +1183,44 @@ export async function* editUserMessage(
       error: {
         code: "not_allowed",
         message: "Only the author of the message can edit it",
+      },
+    };
+    return;
+  }
+
+  // Get new agent mentions, that are in 'mentions' array but not in message.mentions.
+  const additionalMentions = mentions.filter(
+    (mention) =>
+      isAgentMention(mention) &&
+      !message.mentions.some(
+        (m) =>
+          isAgentMention(m) && m.configurationId === mention.configurationId
+      )
+  ) as AgentMention[];
+
+  if (additionalMentions.length > 1) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message:
+          "Editing a message with more than 1 new agent mention is not yet supported",
+      },
+    };
+    return;
+  }
+  const agentConfiguration = await getAgentConfiguration(
+    auth,
+    additionalMentions[0].configurationId
+  );
+  if (!agentConfiguration) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "configuration_not_found",
+        message: "Configuration not found",
       },
     };
     return;
@@ -1069,7 +1264,6 @@ export async function* editUserMessage(
           },
         };
       }
-
       const m = await Message.create(
         {
           sId: generateModelSId(),
@@ -1140,8 +1334,6 @@ export async function* editUserMessage(
         })
       );
 
-      // TODO: handle (new) user and agent mentions. For now editing a message has no action.
-
       const userMessage: UserMessageType = {
         id: m.id,
         sId: m.sId,
@@ -1163,6 +1355,14 @@ export async function* editUserMessage(
     });
 
   yield event;
+  if (event.type === "user_message_error") {
+    return;
+  }
+  yield* newAgentMessage(auth, {
+    conversation,
+    parentMessage: message,
+    agentConfiguration: agentConfiguration,
+  });
 }
 
 async function* streamRunAgentEvents(

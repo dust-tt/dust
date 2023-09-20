@@ -3,6 +3,7 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
+  AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import {
   AgentMessageNewEvent,
@@ -10,6 +11,7 @@ import {
   ConversationTitleEvent,  
   postUserMessage,
   retryAgentMessage,
+  UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
@@ -38,17 +40,60 @@ export async function postUserMessageWithPubSub(
     context: UserMessageContext;
   }
 ): Promise<UserMessageType> {
+  const postMessageEvents = postUserMessage(auth, {
+    conversation,
+    content,
+    mentions,
+    context,
+  });
+  return handleUserMessageEvents(auth, conversation, postMessageEvents);
+}
+
+export async function editUserMessageWithPubSub(
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+    content,
+    mentions,
+  }: {
+    conversation: ConversationType;
+    message: UserMessageType;
+    content: string;
+    mentions: MentionType[];
+  }
+): Promise<UserMessageType> {
+  const editMessageEvents = editUserMessage(auth, {
+    conversation,
+    message,
+    content,
+    mentions,
+  });
+  return handleUserMessageEvents(auth, conversation, editMessageEvents);
+}
+
+export async function handleUserMessageEvents(
+  auth: Authenticator,
+  conversation: ConversationType,
+  messageEventGenerator: AsyncGenerator<
+    | UserMessageErrorEvent
+    | UserMessageNewEvent
+    | AgentMessageNewEvent
+    | AgentErrorEvent
+    | AgentActionEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationSuccessEvent
+    | AgentMessageSuccessEvent,
+    void
+  >
+): Promise<UserMessageType> {
   const promise: Promise<UserMessageType> = new Promise((resolve, reject) => {
     void (async () => {
       const redis = await redisClient();
       let didResolve = false;
       try {
-        for await (const event of postUserMessage(auth, {
-          conversation,
-          content,
-          mentions,
-          context,
-        })) {
+        for await (const event of messageEventGenerator) {
           switch (event.type) {
             case "user_message_new":
             case "agent_message_new":
@@ -89,71 +134,6 @@ export async function postUserMessageWithPubSub(
             default:
               ((event: never) => {
                 logger.error("Unknown event type", event);
-              })(event);
-              return null;
-          }
-        }
-      } catch (e) {
-        logger.error({ error: e }, "Error Posting message");
-      } finally {
-        await redis.quit();
-        if (!didResolve) {
-          reject(
-            new Error(
-              `Never got the user_message_new event for ${conversation.sId}`
-            )
-          );
-        }
-      }
-    })();
-  });
-
-  return promise;
-}
-
-export async function editUserMessageWithPubSub(
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-    content,
-    mentions,
-  }: {
-    conversation: ConversationType;
-    message: UserMessageType;
-    content: string;
-    mentions: MentionType[];
-  }
-): Promise<UserMessageType> {
-  const promise: Promise<UserMessageType> = new Promise((resolve, reject) => {
-    void (async () => {
-      const redis = await redisClient();
-      let didResolve = false;
-      try {
-        for await (const event of editUserMessage(auth, {
-          conversation,
-          message,
-          content,
-          mentions,
-        })) {
-          switch (event.type) {
-            case "user_message_new":
-              const pubsubChannel = getConversationChannelId(conversation.sId);
-              await redis.xAdd(pubsubChannel, "*", {
-                payload: JSON.stringify(event),
-              });
-              await redis.expire(pubsubChannel, 60 * 10);
-              didResolve = true;
-              resolve(event.message);
-              break;
-            case "user_message_error": {
-              reject(new Error(event.error.message));
-              break;
-            }
-
-            default:
-              ((blockParent: never) => {
-                logger.error("Unknown event type", blockParent);
               })(event);
               return null;
           }
