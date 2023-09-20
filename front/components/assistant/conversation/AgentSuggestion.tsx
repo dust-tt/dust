@@ -33,15 +33,10 @@ export function AgentSuggestion({
           <Button
             key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
             size="xs"
-            variant="tertiary"
+            variant="avatar"
             label={`@${agent.name}`}
             onClick={() => selectSuggestionHandler(agent)}
-            icon={() => (
-              <img
-                className="h-5 w-5 rounded rounded-xl"
-                src={agent.pictureUrl}
-              />
-            )}
+            avatar={agent.pictureUrl}
           />
         ))}
         <DropdownMenu>
