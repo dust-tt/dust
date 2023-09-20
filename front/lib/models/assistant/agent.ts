@@ -149,7 +149,7 @@ AgentConfiguration.init(
     sequelize: front_sequelize,
     indexes: [
       { fields: ["workspaceId"] },
-      { fields: ["workspaceId", "name"], unique: true },
+      { fields: ["workspaceId", "name"] },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
     ],
