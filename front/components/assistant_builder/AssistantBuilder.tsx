@@ -18,6 +18,11 @@ import ReactTextareaAutosize from "react-textarea-autosize";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import {
+  DROID_AVATAR_FILES,
+  DROID_AVATARS_BASE_PATH,
+  TimeFrameMode,
+} from "@app/components/assistant_builder/shared";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -32,17 +37,12 @@ import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import { DROID_AVATAR_FILES, DROID_AVATARS_BASE_PATH } from "./shared";
-
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
 const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
   SELECTED: "Selected data sources",
 };
-
-const TIME_FRAME_MODES = ["AUTO", "FORCED"] as const;
-type TimeFrameMode = (typeof TIME_FRAME_MODES)[number];
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
@@ -326,7 +326,7 @@ export default function AssistantBuilder({
       }
     }
 
-    if (builderState.timeFrameMode === "FORCED") {
+    if (builderState.timeFrameMode === "CUSTOM") {
       edited = true;
 
       if (!builderState.timeFrame.value) {
@@ -388,19 +388,29 @@ export default function AssistantBuilder({
       case "GENERIC":
         break;
       case "SELECTED":
-        let tfParam: NonNullable<BodyType["assistant"]["action"]>["timeframe"] =
-          "auto";
-        if (builderState.timeFrameMode === "FORCED") {
-          if (!builderState.timeFrame.value) {
-            // unreachable
-            // we keep this for TS
-            throw new Error("Form not valid");
+        const tfParam = (() => {
+          switch (builderState.timeFrameMode) {
+            case "AUTO":
+              return "auto";
+            case "ALL_TIME":
+              return "none";
+            case "CUSTOM":
+              if (!builderState.timeFrame.value) {
+                // unreachable
+                // we keep this for TS
+                throw new Error("Form not valid");
+              }
+              return {
+                duration: builderState.timeFrame.value,
+                unit: builderState.timeFrame.unit,
+              };
+            default:
+              ((x: never) => {
+                throw new Error(`Unknown time frame mode ${x}`);
+              })(builderState.timeFrameMode);
           }
-          tfParam = {
-            duration: builderState.timeFrame.value,
-            unit: builderState.timeFrame.unit,
-          };
-        }
+        })();
+
         actionParam = {
           type: "retrieval_configuration",
           query: "auto", // TODO ?
