@@ -423,34 +423,25 @@ export async function getGlobalAgents(
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  const globalAgents = [
-    await _getHelperGlobalAgent(user),
-    await _getGPT4GlobalAgent(),
-    await _getGPT35TurboGlobalAgent(),
-    await _getClaudeGlobalAgent(),
-    await _getClaudeInstantGlobalAgent(),
-  ];
+  const agentCandidates = await Promise.all([
+    _getHelperGlobalAgent(user),
+    _getGPT4GlobalAgent(),
+    _getGPT35TurboGlobalAgent(),
+    _getClaudeGlobalAgent(),
+    _getClaudeInstantGlobalAgent(),
+    _getSlackGlobalAgent(auth),
+    _getGoogleDriveGlobalAgent(auth),
+    _getNotionGlobalAgent(auth),
+    _getGithubGlobalAgent(auth),
+    _getDustGlobalAgent(auth),
+  ]);
 
-  const slackAgent = await _getSlackGlobalAgent(auth);
-  if (slackAgent) {
-    globalAgents.push(slackAgent);
-  }
+  const globalAgents: AgentConfigurationType[] = [];
 
-  const googleDriveAgent = await _getGoogleDriveGlobalAgent(auth);
-  if (googleDriveAgent) {
-    globalAgents.push(googleDriveAgent);
-  }
-  const notionAgent = await _getNotionGlobalAgent(auth);
-  if (notionAgent) {
-    globalAgents.push(notionAgent);
-  }
-  const githubAgent = await _getGithubGlobalAgent(auth);
-  if (githubAgent) {
-    globalAgents.push(githubAgent);
-  }
-  const dustAgent = await _getDustGlobalAgent(auth);
-  if (dustAgent) {
-    globalAgents.push(dustAgent);
+  for (const agentFetcherResult of agentCandidates) {
+    if (agentFetcherResult) {
+      globalAgents.push(agentFetcherResult);
+    }
   }
 
   return globalAgents;
