@@ -1,4 +1,4 @@
-import { SupportedModel } from "@app/lib/api/assistant/generation";
+import { SupportedModel } from "@app/lib/api/assistant/supported_models";
 import { ModelId } from "@app/lib/databases";
 import { RetrievalConfigurationType } from "@app/types/assistant/actions/retrieval";
 

@@ -12,7 +12,7 @@ import {
 import {
   isSupportedModel,
   SupportedModel,
-} from "@app/lib/api/assistant/generation";
+} from "@app/lib/api/assistant/supported_models";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
