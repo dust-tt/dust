@@ -8,7 +8,6 @@ import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Chip,
   ContextItem,
   FlagStrokeIcon,
   Page,
