@@ -123,8 +123,12 @@ export default function Conversation({
           case "user_message":
             return (
               <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
-                <div className="mx-auto flex max-w-4xl gap-4">
-                  <UserMessage message={m} />
+                <div className="mx-auto flex max-w-4xl flex-col gap-4">
+                  <UserMessage
+                    message={m}
+                    conversation={conversation}
+                    owner={owner}
+                  />
                 </div>
               </div>
             );

@@ -846,6 +846,348 @@ export async function* postUserMessage(
   }
 }
 
+/** This method creates a new user message version, and if there are new agent
+ *  mentions, run them
+ *  TODO: support editing with new agent mentions for any
+ *  message (rather than just the last)
+ */
+export async function* editUserMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+    content,
+    mentions,
+  }: {
+    conversation: ConversationType;
+    message: UserMessageType;
+    content: string;
+    mentions: MentionType[];
+  }
+): AsyncGenerator<
+  | UserMessageNewEvent
+  | UserMessageErrorEvent
+  | AgentMessageNewEvent
+  | AgentErrorEvent
+  | AgentActionEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationSuccessEvent
+  | AgentMessageSuccessEvent,
+  void
+> {
+  const user = auth.user();
+  const owner = auth.workspace();
+
+  if (!owner || owner.id !== conversation.owner.id) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_not_found",
+        message: "The conversation does not exist.",
+      },
+    };
+    return;
+  }
+  if (auth.user()?.id !== message.user?.id) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message: "Only the author of the message can edit it",
+      },
+    };
+    return;
+  }
+  if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message:
+          "Editing a message that already has agent mentions is not yet supported",
+      },
+    };
+    return;
+  }
+
+  if (
+    !conversation.content[conversation.content.length - 1].some(
+      (m) => m.sId === message.sId
+    ) &&
+    mentions.filter((m) => isAgentMention(m)).length > 0
+  ) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "not_allowed",
+        message:
+          "Adding agent mentions when editing is only supported for the last message of the conversation",
+      },
+    };
+    return;
+  }
+
+  // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+  const { userMessage, agentMessages, agentMessageRows } =
+    await front_sequelize.transaction(async (t) => {
+      const messageRow = await Message.findOne({
+        where: {
+          sId: message.sId,
+          conversationId: conversation.id,
+        },
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+      if (!messageRow || !messageRow.userMessage) {
+        throw new Error(
+          "Unexpected: Message or UserMessage to edit not found in DB"
+        );
+      }
+      const userMessageRow = messageRow.userMessage;
+      // adding messageRow as param otherwise Ts doesn't get it can't be null
+      async function createMessageAndUserMessage(messageRow: Message) {
+        return await Message.create(
+          {
+            sId: generateModelSId(),
+            rank: messageRow.rank,
+            conversationId: conversation.id,
+            parentId: messageRow.parentId,
+            version: messageRow.version + 1,
+            userMessageId: (
+              await UserMessage.create(
+                {
+                  content,
+                  userContextUsername: userMessageRow.userContextUsername,
+                  userContextTimezone: userMessageRow.userContextTimezone,
+                  userContextFullName: userMessageRow.userContextFullName,
+                  userContextEmail: userMessageRow.userContextEmail,
+                  userContextProfilePictureUrl:
+                    userMessageRow.userContextProfilePictureUrl,
+                  userId: userMessageRow.userId,
+                },
+                { transaction: t }
+              )
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
+      async function createOrUpdateParticipation() {
+        if (user) {
+          const participant = await ConversationParticipant.findOne({
+            where: {
+              conversationId: conversation.id,
+              userId: user.id,
+            },
+            transaction: t,
+          });
+          if (participant) {
+            return await participant.update(
+              {
+                action: "posted",
+              },
+              { transaction: t }
+            );
+          } else {
+            throw new Error(
+              "Unreachable: edited message implies participation"
+            );
+          }
+        }
+      }
+      const result = await Promise.all([
+        createMessageAndUserMessage(messageRow),
+        createOrUpdateParticipation(),
+      ]);
+
+      const m = result[0];
+      const userMessage: UserMessageType = {
+        id: m.id,
+        sId: m.sId,
+        type: "user_message",
+        visibility: m.visibility,
+        version: m.version,
+        user: user,
+        mentions,
+        content,
+        context: message.context,
+      };
+
+      // For now agent messages are appended at the end of conversation
+      // it is fine since for now editing with new mentions is only supported
+      // for the last user message
+      let nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
+            conversationId: conversation.id,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+      const results: { row: AgentMessage; m: AgentMessageType }[] =
+        await Promise.all(
+          mentions.filter(isAgentMention).map((mention) => {
+            // For each assistant/agent mention, create an "empty" agent message.
+            return (async () => {
+              // `getAgentConfiguration` checks that we're only pulling a configuration from the
+              // same workspace or a global one.
+              const configuration = await getAgentConfiguration(
+                auth,
+                mention.configurationId
+              );
+              if (!configuration) {
+                throw new Error(`Configuration not found`);
+              }
+
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  agentConfigurationId: configuration.sId,
+                },
+                { transaction: t }
+              );
+
+              const agentMessageRow = await AgentMessage.create(
+                {
+                  status: "created",
+                  agentConfigurationId: configuration.sId,
+                  agentConfigurationVersion: configuration.version,
+                },
+                { transaction: t }
+              );
+              const messageRow = await Message.create(
+                {
+                  sId: generateModelSId(),
+                  rank: nextMessageRank++,
+                  conversationId: conversation.id,
+                  parentId: userMessage.id,
+                  agentMessageId: agentMessageRow.id,
+                },
+                {
+                  transaction: t,
+                }
+              );
+
+              return {
+                row: agentMessageRow,
+                m: {
+                  id: messageRow.id,
+                  sId: messageRow.sId,
+                  type: "agent_message",
+                  visibility: "visible",
+                  version: 0,
+                  parentMessageId: userMessage.sId,
+                  status: "created",
+                  action: null,
+                  content: null,
+                  feedbacks: [],
+                  error: null,
+                  configuration,
+                },
+              };
+            })();
+          })
+        );
+
+      await Promise.all(
+        mentions.filter(isUserMention).map((mention) => {
+          return (async () => {
+            const user = await User.findOne({
+              where: {
+                provider: mention.provider,
+                providerId: mention.providerId,
+              },
+            });
+
+            if (user) {
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  userId: user.id,
+                },
+                { transaction: t }
+              );
+            }
+          })();
+        })
+      );
+
+      return {
+        userMessage,
+        agentMessages: results.map(({ m }) => m),
+        agentMessageRows: results.map(({ row }) => row),
+      };
+    });
+
+  if (agentMessageRows.length !== agentMessages.length) {
+    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
+  }
+
+  yield {
+    type: "user_message_new",
+    created: Date.now(),
+    messageId: userMessage.sId,
+    message: userMessage,
+  };
+
+  for (let i = 0; i < agentMessages.length; i++) {
+    const agentMessage = agentMessages[i];
+
+    yield {
+      type: "agent_message_new",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+    };
+  }
+
+  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
+    // We stitch the conversation to add the user message and only that agent message
+    // so that it can be used to prompt the agent.
+    const eventStream = runAgent(
+      auth,
+      agentMessage.configuration,
+      {
+        ...conversation,
+        content: [...conversation.content, [userMessage], [agentMessage]],
+      },
+      userMessage,
+      agentMessage
+    );
+
+    return streamRunAgentEvents(eventStream, agentMessageRows[i]);
+  });
+
+  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
+  while (eventStreamsPromises.length > 0) {
+    const winner = await Promise.race(
+      eventStreamsPromises.map(async (p, i) => {
+        return { v: await p, offset: i };
+      })
+    );
+    if (winner.v.done) {
+      eventStreamGenerators.splice(winner.offset, 1);
+      eventStreamsPromises.splice(winner.offset, 1);
+    } else {
+      eventStreamsPromises[winner.offset] =
+        eventStreamGenerators[winner.offset].next();
+      yield winner.v.value;
+    }
+  }
+}
+
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
 export async function* retryAgentMessage(
@@ -1001,168 +1343,6 @@ export async function* retryAgentMessage(
   );
 
   yield* streamRunAgentEvents(eventStream, agentMessageRow);
-}
-
-// This method creates a new user message version (without re-running subsequent actions for now, in
-// the future we will likely want to run new mentions).
-export async function* editUserMessage(
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-    content,
-    mentions,
-  }: {
-    conversation: ConversationType;
-    message: UserMessageType;
-    content: string;
-    mentions: MentionType[];
-  }
-): AsyncGenerator<UserMessageNewEvent | UserMessageErrorEvent, void> {
-  if (auth.user()?.id !== message.user?.id) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
-        message: "Only the author of the message can edit it",
-      },
-    };
-    return;
-  }
-
-  const event: UserMessageNewEvent | UserMessageErrorEvent =
-    await front_sequelize.transaction(async (t) => {
-      const messageRow = await Message.findOne({
-        where: {
-          sId: message.sId,
-          conversationId: conversation.id,
-        },
-        include: [
-          {
-            model: UserMessage,
-            as: "userMessage",
-            required: true,
-          },
-        ],
-      });
-      if (!messageRow) {
-        return {
-          type: "user_message_error",
-          created: Date.now(),
-          messageId: message.sId,
-          error: {
-            code: "not_found",
-            message: "Message not found",
-          },
-        };
-      }
-      const userMessageRow = messageRow.userMessage;
-      if (!userMessageRow) {
-        return {
-          type: "user_message_error",
-          created: Date.now(),
-          messageId: message.sId,
-          error: {
-            code: "not_found",
-            message: "UserMessage not found",
-          },
-        };
-      }
-
-      const m = await Message.create(
-        {
-          sId: generateModelSId(),
-          rank: messageRow.rank,
-          conversationId: conversation.id,
-          parentId: messageRow.parentId,
-          version: messageRow.version + 1,
-          userMessageId: (
-            await UserMessage.create(
-              {
-                content,
-                userContextUsername: userMessageRow.userContextUsername,
-                userContextTimezone: userMessageRow.userContextTimezone,
-                userContextFullName: userMessageRow.userContextFullName,
-                userContextEmail: userMessageRow.userContextEmail,
-                userContextProfilePictureUrl:
-                  userMessageRow.userContextProfilePictureUrl,
-                userId: userMessageRow.userId,
-              },
-              { transaction: t }
-            )
-          ).id,
-        },
-        {
-          transaction: t,
-        }
-      );
-
-      await Promise.all(
-        mentions.map((mention) => {
-          return (async () => {
-            if (isAgentMention(mention)) {
-              const configuration = await getAgentConfiguration(
-                auth,
-                mention.configurationId
-              );
-              if (!configuration) {
-                throw new Error(`Configuration not found`);
-              }
-
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  agentConfigurationId: configuration.sId,
-                },
-                { transaction: t }
-              );
-            }
-            if (isUserMention(mention)) {
-              const user = await User.findOne({
-                where: {
-                  provider: mention.provider,
-                  providerId: mention.providerId,
-                },
-              });
-
-              if (user) {
-                await Mention.create(
-                  {
-                    messageId: m.id,
-                    userId: user.id,
-                  },
-                  { transaction: t }
-                );
-              }
-            }
-          })();
-        })
-      );
-
-      // TODO: handle (new) user and agent mentions. For now editing a message has no action.
-
-      const userMessage: UserMessageType = {
-        id: m.id,
-        sId: m.sId,
-        type: "user_message",
-        visibility: message.visibility,
-        version: m.version,
-        user: message.user,
-        mentions: message.mentions,
-        content,
-        context: message.context,
-      };
-
-      return {
-        type: "user_message_new",
-        created: Date.now(),
-        messageId: userMessage.sId,
-        message: userMessage,
-      };
-    });
-
-  yield event;
 }
 
 async function* streamRunAgentEvents(

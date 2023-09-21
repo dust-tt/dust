@@ -576,7 +576,7 @@ export function AssistantInputBar({
               <div className="flex flex-col justify-center">
                 <DropdownMenu>
                   <DropdownMenu.Button icon={RobotIcon} />
-                  <DropdownMenu.Items origin="bottomRight">
+                  <DropdownMenu.Items origin="bottomRight" width={240}>
                     {agentConfigurations.map((c) => (
                       <DropdownMenu.Item
                         key={c.sId}

@@ -3,12 +3,15 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
+  AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  editUserMessage,
   postUserMessage,
   retryAgentMessage,
+  UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
@@ -37,17 +40,60 @@ export async function postUserMessageWithPubSub(
     context: UserMessageContext;
   }
 ): Promise<UserMessageType> {
+  const postMessageEvents = postUserMessage(auth, {
+    conversation,
+    content,
+    mentions,
+    context,
+  });
+  return handleUserMessageEvents(conversation, postMessageEvents);
+}
+
+export async function editUserMessageWithPubSub(
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+    content,
+    mentions,
+  }: {
+    conversation: ConversationType;
+    message: UserMessageType;
+    content: string;
+    mentions: MentionType[];
+  }
+): Promise<UserMessageType> {
+  const editMessageEvents = editUserMessage(auth, {
+    conversation,
+    message,
+    content,
+    mentions,
+  });
+  return handleUserMessageEvents(conversation, editMessageEvents);
+}
+
+async function handleUserMessageEvents(
+  conversation: ConversationType,
+  messageEventGenerator: AsyncGenerator<
+    | UserMessageErrorEvent
+    | UserMessageNewEvent
+    | AgentMessageNewEvent
+    | AgentErrorEvent
+    | AgentActionEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationSuccessEvent
+    | AgentMessageSuccessEvent
+    | ConversationTitleEvent,
+    void
+  >
+): Promise<UserMessageType> {
   const promise: Promise<UserMessageType> = new Promise((resolve, reject) => {
     void (async () => {
       const redis = await redisClient();
       let didResolve = false;
       try {
-        for await (const event of postUserMessage(auth, {
-          conversation,
-          content,
-          mentions,
-          context,
-        })) {
+        for await (const event of messageEventGenerator) {
           switch (event.type) {
             case "user_message_new":
             case "agent_message_new":
