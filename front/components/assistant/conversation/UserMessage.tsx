@@ -5,6 +5,7 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+
 import { AgentSuggestion } from "./AgentSuggestion";
 
 export function UserMessage({
