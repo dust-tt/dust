@@ -80,7 +80,7 @@ export async function renderConversationForModel({
     if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.
       const content = m.content.replace(
-        /:mention\[(.*?)\]{.*?}/g,
+        /:mention\[(.+)\]\{.+\}/g,
         (match, name) => {
           return `@${name}`;
         }
