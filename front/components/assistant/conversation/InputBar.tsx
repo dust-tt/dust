@@ -233,8 +233,8 @@ export function AssistantInputBar({
             mentions.push({
               configurationId: agentConfigurationId,
             });
-            // Internal format for mentions is `:mention[agentName]{agentConfigurationId}`.
-            content += `:mention[${agentName}]{${agentConfigurationId}}`;
+            // Internal format for mentions is `:mention[agentName]{id=agentConfigurationId}`.
+            content += `:mention[${agentName}]{id=${agentConfigurationId}}`;
           }
         }
         if (node.nodeType === Node.TEXT_NODE) {
