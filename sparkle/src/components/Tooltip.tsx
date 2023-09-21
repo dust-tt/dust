@@ -4,7 +4,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 export interface TooltipProps {
   children: React.ReactNode;
-  label?: React.ReactNode | string;
+  label?: string;
   position?: "above" | "below";
   content?: React.ReactNode;
 }
