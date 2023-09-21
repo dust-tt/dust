@@ -77,6 +77,67 @@ export const AvatarExample = () => (
   </div>
 );
 
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))",
+  gap: "48px 16px",
+};
+
+export const AvatarGridExample = () => (
+  <div style={gridStyle}>
+    <Avatar size="auto" />
+    <Avatar size="auto" />
+    <Avatar size="auto" />
+    <Avatar size="auto" />
+    <Avatar size="auto" />
+    <Avatar size="auto" name="Isabelle Doe" />
+    <Avatar size="auto" name="Rafael Doe" />
+    <Avatar size="auto" name="Aria Doe" />
+    <Avatar size="auto" name="Omar Doe" />
+    <Avatar size="auto" name="Omar Doe" />
+    <Avatar size="auto" name="Eleanor Wright" />
+    <Avatar size="auto" name="Mason Johnson" />
+    <Avatar size="auto" name="Oliver Bennett" />
+    <Avatar size="auto" name="Sophia Garcia" />
+    <Avatar size="auto" name="Lucas Adams" />
+    <Avatar size="auto" name="Ava Torres" />
+    <Avatar size="auto" name="Liam White" />
+    <Avatar size="auto" name="Emma Jenkins" />
+    <Avatar size="auto" name="Noah Martinez" />
+    <Avatar size="auto" name="Isabella Thompson" />
+    <Avatar size="auto" name="Ethan Roberts" />
+    <Avatar size="auto" name="Charlotte Turner" />
+    <Avatar size="auto" name="Benjamin Foster" />
+    <Avatar size="auto" name="Mia Evans" />
+    <Avatar size="auto" name="Alexander Perry" />
+    <Avatar size="auto" name="Harper Sanchez" />
+    <Avatar size="auto" name="William Murphy" />
+    <Avatar size="auto" name="Lily Phillips" />
+    <Avatar size="auto" name="James Coleman" />
+    <Avatar size="auto" name="Aria Mitchell" />
+    <Avatar
+      size="auto"
+      name="Isabelle Doe"
+      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+    />
+    <Avatar
+      size="auto"
+      name="Rafael Doe"
+      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+    />
+    <Avatar
+      size="auto"
+      name="Aria Doe"
+      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+    />
+    <Avatar
+      size="auto"
+      name="Omar Doe"
+      visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+    />
+  </div>
+);
+
 export const AvatarBusyExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
     <div>With nothing</div>

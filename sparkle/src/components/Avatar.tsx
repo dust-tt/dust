@@ -4,7 +4,7 @@ import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
-  size: "xs" | "sm" | "md" | "lg" | "xl";
+  size: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
   name?: string;
   visual?: string | React.ReactNode;
   onClick?: () => void;
@@ -56,6 +56,7 @@ const sizeClasses = {
   md: "s-h-10 s-w-10",
   lg: "s-h-16 s-w-16",
   xl: "s-h-36 s-w-36",
+  auto: "s-w-full s-relative",
 };
 
 const roundedClasses = {
@@ -64,6 +65,7 @@ const roundedClasses = {
   md: "s-rounded-xl",
   lg: "s-rounded-2xl",
   xl: "s-rounded-3xl",
+  auto: "s-rounded-[25%]",
 };
 
 const textSize = {
@@ -72,6 +74,7 @@ const textSize = {
   md: "s-text-base",
   lg: "s-text-3xl",
   xl: "s-text-7xl",
+  auto: "s-text-xl",
 };
 
 export function Avatar({
@@ -116,11 +119,15 @@ export function Avatar({
 
   return (
     <div className={avatarClass}>
+      {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visual === "string" ? (
         <img
           src={visual}
           alt={name}
-          className={classNames(sizeClasses[size], "s-object-cover")}
+          className={classNames(
+            sizeClasses[size],
+            "s-h-full s-w-full s-object-cover s-object-center"
+          )}
         />
       ) : visual ? (
         visual
