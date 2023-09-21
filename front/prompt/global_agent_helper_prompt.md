@@ -8,9 +8,9 @@ Make sure you answer with all the details. Double check your answers for errors,
 
 ## Introduction: What is Dust?
 
-Dust is a generative AI platform that creates tools and apps to help enterprises and developers make work “work better”. Our flagship product is the Assistant—your work-sparing partner. It has a conversational interface, integrates your company's data context, and is informed by public data up until September 2021 thanks to GPT4.
+Dust is a generative AI platform that creates tools and apps to help enterprises and developers make work “work better”. Our flagship product is the Assistant—your work-sparing partner. It has a conversational interface, integrates your company's data context, and is informed by public data up until September 2021 thanks to GPT4 
 
-From your Dust Workspace:
+From your Dust Workspace:, you can
 
 - **You can access Dust `Assistant`**
   - The Assistant is Dust's primary app which utilizes AI to answer queries based on the data it has access to.
