@@ -66,7 +66,7 @@ export async function getAgentConfiguration(
     limit: 1,
   });
 
-  if (!agent) {
+  if (!agent || agent.status === "archived") {
     return null;
   }
 
@@ -288,6 +288,31 @@ export async function createAgentConfiguration(
     action: action,
     generation: generation,
   };
+}
+
+/**
+ * Archive Agent Configuration
+ */
+export async function archiveAgentConfiguration(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const updated = await AgentConfiguration.update(
+    { status: "archived" },
+    {
+      where: {
+        sId: agentConfigurationId,
+        workspaceId: owner.id,
+      },
+    }
+  );
+
+  return updated[0] > 0;
 }
 
 /**

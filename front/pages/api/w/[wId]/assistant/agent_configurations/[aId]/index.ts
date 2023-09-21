@@ -2,7 +2,10 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -16,11 +19,17 @@ import {
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
+export type DeleteAgentConfigurationResponseBody = {
+  success: boolean;
+};
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetAgentConfigurationResponseBody | ReturnedAPIErrorType | void
+    | GetAgentConfigurationResponseBody
+    | DeleteAgentConfigurationResponseBody
+    | ReturnedAPIErrorType
+    | void
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -91,6 +100,21 @@ async function handler(
       return res.status(200).json({
         agentConfiguration: agentConfiguration,
       });
+    case "DELETE":
+      const archived = await archiveAgentConfiguration(
+        auth,
+        req.query.aId as string
+      );
+      if (!archived) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The Assistant you're trying to delete was not found.",
+          },
+        });
+      }
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {
@@ -98,7 +122,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or PATCH is expected.",
+            "The method passed is not supported, GET or PATCH or DELETE is expected.",
         },
       });
   }

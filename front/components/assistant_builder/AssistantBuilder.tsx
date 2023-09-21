@@ -7,6 +7,7 @@ import {
   Input,
   Modal,
   PencilSquareIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
 import router from "next/router";
@@ -404,6 +405,23 @@ export default function AssistantBuilder({
     return res.json();
   };
 
+  const handleDeleteAgent = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      window.alert(`Error deleting Assistant: ${data.error.message}`);
+      return;
+    }
+
+    await router.push(`/w/${owner.sId}/builder/assistants`);
+  };
+
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -685,6 +703,42 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
+          {agentConfigurationId && (
+            <div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    size="sm"
+                    variant="secondaryWarning"
+                    label="Delete this Assistant"
+                    icon={TrashIcon}
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomLeft" width={280}>
+                  <div className="flex flex-col gap-y-4 py-4">
+                    <div className="flex flex-col gap-y-2">
+                      <div className="grow text-sm font-medium text-element-800">
+                        Are you sure you want to delete?
+                      </div>
+
+                      <div className="text-sm font-normal text-element-700">
+                        This will delete the Assistant for everyone.
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <Button
+                        variant="primaryWarning"
+                        size="sm"
+                        label="Delete for Everyone"
+                        icon={TrashIcon}
+                        onClick={handleDeleteAgent}
+                      />
+                    </div>
+                  </div>
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </AppLayout>
     </>
