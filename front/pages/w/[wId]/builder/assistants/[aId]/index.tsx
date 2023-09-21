@@ -162,6 +162,7 @@ export default function EditAssistant({
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
+        avatarUrl: agentConfiguration.pictureUrl,
       }}
       agentConfigurationId={agentConfiguration.sId}
     />
