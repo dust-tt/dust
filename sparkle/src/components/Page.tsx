@@ -142,10 +142,14 @@ Page.Horizontal = function ({
   return (
     <div
       className={classNames(
+        "s-flex s-flex-row",
         sizing === "grow" ? "s-grow" : "",
         sizing === "shrink" ? "s-shrink" : "",
         gapSizes[gap],
-        "s-flex s-flex-row"
+        align === "left" ? "s-justify-start" : "",
+        align === "center" ? "s-justify-center" : "",
+        align === "right" ? "s-justify-end" : "",
+        align === "stretch" ? "s-justify-stretch" : ""
       )}
     >
       {children}

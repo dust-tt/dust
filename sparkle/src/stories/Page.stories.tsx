@@ -20,6 +20,32 @@ const meta = {
 
 export default meta;
 
+export const PageHorExample = () => {
+  return (
+    <Page>
+      <Page.Horizontal>
+        <div className="s-h-16 s-w-16 s-bg-brand" />
+      </Page.Horizontal>
+      <Page.Header
+        title="Title"
+        description="Description"
+        icon={ChatBubbleBottomCenterTextIcon}
+      />
+      <Page.P>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
+        a massa quis lacinia. Donec euismod nisl eget nunc Lorem ipsum dolor sit
+        amet, consectetur adipiscing elit. Nullam euismod a massa quis lacinia.
+        Donec euismod nisl eget nunc
+      </Page.P>
+      <Page.SectionHeader
+        title="Section Title"
+        description="Section Description"
+        action={{ label: "Action", size: "sm" }}
+      />
+    </Page>
+  );
+};
+
 export const PageExample = () => {
   return (
     <Page>
