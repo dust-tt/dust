@@ -1,3 +1,5 @@
+import moment from "moment-timezone";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -76,10 +78,17 @@ export async function renderConversationForModel({
       }
     }
     if (isUserMessageType(m)) {
+      // Replace all `:mention[{name}]{.*}` with `@name`.
+      const content = m.content.replace(
+        /:mention\[(.+)\]\{.+\}/g,
+        (match, name) => {
+          return `@${name}`;
+        }
+      );
       messages.unshift({
         role: "user" as const,
         name: m.context.username,
-        content: m.content,
+        content,
       });
     }
   }
@@ -195,6 +204,26 @@ export type GenerationSuccessEvent = {
   text: string;
 };
 
+// Construct the full prompt from the agent configuration.
+// - Meta data about the agent and current time.
+function constructPrompt(
+  userMessage: UserMessageType,
+  configuration: AgentConfigurationType
+) {
+  if (!configuration.generation) {
+    return "";
+  }
+
+  const d = moment(new Date()).tz(userMessage.context.timezone);
+
+  let meta = "";
+  meta += `ASSISTANT: @${configuration.name}\n`;
+  meta += `LOCAL_TIME: ${d.format("YYYY-MM-DD HH:mm")}\n`;
+  meta += `INSTRUCTIONS:\n${configuration.generation.prompt}`;
+
+  return meta;
+}
+
 // This function is in charge of running the generation of a message from the agent. It does not
 // create any state, only stream tokens and/or error and final success events.
 export async function* runGeneration(
@@ -286,14 +315,14 @@ export async function* runGeneration(
   // console.log(
   //   JSON.stringify({
   //     conversation: modelConversationRes.value,
-  //     prompt: c.prompt,
+  //     prompt: constructPrompt(userMessage, configuration),
   //   })
   // );
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
       conversation: modelConversationRes.value,
-      prompt: c.prompt,
+      prompt: constructPrompt(userMessage, configuration),
     },
   ]);
 

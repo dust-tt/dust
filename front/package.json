@@ -39,6 +39,7 @@
     "io-ts-reporters": "^2.0.1",
     "jsonwebtoken": "^9.0.0",
     "minimist": "^1.2.8",
+    "moment-timezone": "^0.5.43",
     "next": "^13.1.5",
     "next-auth": "^4.18.10",
     "next-remove-imports": "^1.0.8",

@@ -82,12 +82,20 @@ impl AnthropicLLM {
             .iter()
             .map(|cm| -> String {
                 format!(
-                    "\n\n{}: {}",
+                    "\n\n{}:{} {}",
+                    match cm.name.as_ref() {
+                        Some(name) => match cm.role {
+                            ChatMessageRole::User => format!(" [{}]", name),
+                            ChatMessageRole::Function => format!(" [{}]", name),
+                            _ => String::from(""),
+                        },
+                        None => String::from(""),
+                    },
                     match cm.role {
-                        ChatMessageRole::System => "Human",
+                        ChatMessageRole::System => "System",
                         ChatMessageRole::Assistant => "Assistant",
                         ChatMessageRole::User => "Human",
-                        ChatMessageRole::Function => "Human",
+                        ChatMessageRole::Function => "FunctionResult",
                     },
                     cm.content.as_ref().unwrap_or(&String::from("")).clone()
                 )
@@ -115,6 +123,8 @@ impl AnthropicLLM {
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
+        stop_tokens.push(String::from("\n\nSystem:"));
+        stop_tokens.push(String::from("\n\nFunctionResult:"));
 
         if max_tokens.is_none() || max_tokens.unwrap() == -1 {
             let tokens = self.encode(&prompt).await?;
@@ -163,6 +173,8 @@ impl AnthropicLLM {
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
+        stop_tokens.push(String::from("\n\nSystem:"));
+        stop_tokens.push(String::from("\n\nFunctionResult:"));
 
         if max_tokens.is_none() || max_tokens.unwrap() == -1 {
             let tokens = self.encode(&prompt).await?;
