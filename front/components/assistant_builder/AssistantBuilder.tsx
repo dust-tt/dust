@@ -264,7 +264,7 @@ export default function AssistantBuilder({
       }
     }
 
-    if (builderState.timeFrameMode === "FORCED") {
+    if (builderState.timeFrameMode === "CUSTOM") {
       edited = true;
 
       if (!builderState.timeFrame.value) {
@@ -332,7 +332,7 @@ export default function AssistantBuilder({
               return "auto";
             case "ALL_TIME":
               return "none";
-            case "FORCED":
+            case "CUSTOM":
               if (!builderState.timeFrame.value) {
                 // unreachable
                 // we keep this for TS

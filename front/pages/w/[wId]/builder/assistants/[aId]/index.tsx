@@ -140,7 +140,7 @@ export default function EditAssistant({
         timeFrameMode = "ALL_TIME";
         break;
       default:
-        timeFrameMode = "FORCED";
+        timeFrameMode = "CUSTOM";
         timeFrame = {
           value: agentConfiguration.action.relativeTimeFrame.duration,
           unit: agentConfiguration.action.relativeTimeFrame.unit,

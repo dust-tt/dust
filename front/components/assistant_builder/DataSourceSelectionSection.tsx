@@ -201,7 +201,7 @@ export default function DataSourceSelectionSection({
         </div>
         <div className="mt-4">
           <Transition
-            show={timeFrameMode === "FORCED"}
+            show={timeFrameMode === "CUSTOM"}
             enterFrom="opacity-0"
             enterTo="opacity-100"
             leave="transition-all duration-300"
