@@ -29,6 +29,14 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import {
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  getSupportedModelConfig,
+  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  GPT_4_DEFAULT_MODEL_CONFIG,
+  SupportedModel,
+} from "@app/lib/api/assistant/generation";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -36,6 +44,13 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+const usedModelConfigs = [
+  GPT_4_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+];
 
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
@@ -75,9 +90,8 @@ type AssistantBuilderState = {
   description: string | null;
   instructions: string | null;
   avatarUrl: string | null;
-  modelSettings: {
-    modelId: string;
-    modelProviderId: string;
+  generationSettings: {
+    modelSettings: SupportedModel;
     temperature: number;
   };
 };
@@ -97,9 +111,8 @@ export type AssistantBuilderInitialState = {
   description: string;
   instructions: string;
   avatarUrl: string;
-  modelSettings: {
-    modelId: string;
-    modelProviderId: string;
+  generationSettings: {
+    modelSettings: SupportedModel;
     temperature: number;
   } | null;
 };
@@ -125,9 +138,8 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   description: null,
   instructions: null,
   avatarUrl: null,
-  modelSettings: {
-    modelId: "gpt-4",
-    modelProviderId: "openai",
+  generationSettings: {
+    modelSettings: { modelId: "gpt-4", providerId: "openai" },
     temperature: 0.7,
   },
 };
@@ -146,30 +158,6 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
       : prev
   );
   return closest;
-};
-
-const MODELS = [
-  { modelId: "gpt-4-32k", modelProviderId: "openai" },
-  {
-    modelId: "gpt-3.5-turbo",
-    modelProviderId: "openai",
-  },
-  {
-    modelId: "claude-2",
-    modelProviderId: "anthropic",
-  },
-  {
-    modelId: "claude-instant-1.2",
-    modelProviderId: "anthropic",
-  },
-];
-
-const LABEL_BY_MODEL_ID: Record<string, string> = {
-  "gpt-4-32k": "GPT-4",
-  "gpt-4": "GPT-4",
-  "gpt-3.5-turbo": "GPT-3.5 Turbo",
-  "claude-2": "Claude 2",
-  "claude-instant-1.2": "Claude Instant 1.2",
 };
 
 export default function AssistantBuilder({
@@ -255,8 +243,8 @@ export default function AssistantBuilder({
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
         avatarUrl: initialBuilderState.avatarUrl,
-        modelSettings: initialBuilderState.modelSettings ?? {
-          ...DEFAULT_ASSISTANT_STATE.modelSettings,
+        generationSettings: initialBuilderState.generationSettings ?? {
+          ...DEFAULT_ASSISTANT_STATE.generationSettings,
         },
       });
     }
@@ -448,11 +436,8 @@ export default function AssistantBuilder({
         action: actionParam,
         generation: {
           prompt: builderState.instructions.trim(),
-          model: {
-            providerId: builderState.modelSettings.modelProviderId,
-            modelId: builderState.modelSettings.modelId,
-          },
-          temperature: builderState.modelSettings.temperature,
+          model: builderState.generationSettings.modelSettings,
+          temperature: builderState.generationSettings.temperature,
         },
       },
     };
@@ -682,11 +667,11 @@ export default function AssistantBuilder({
               </div>
               <AdvancedSettings
                 show={showAdvancedSettings}
-                modelSettings={builderState.modelSettings}
-                setModelSettings={(modelSettings) => {
+                generationSettings={builderState.generationSettings}
+                setGenerationSettings={(generationSettings) => {
                   setBuilderState((state) => ({
                     ...state,
-                    modelSettings,
+                    generationSettings,
                   }));
                 }}
               />
@@ -910,15 +895,22 @@ function AvatarPicker({
 
 function AdvancedSettings({
   show,
-  modelSettings,
-  setModelSettings,
+  generationSettings,
+  setGenerationSettings,
 }: {
   show: boolean;
-  modelSettings: AssistantBuilderState["modelSettings"];
-  setModelSettings: (
-    modelSettings: AssistantBuilderState["modelSettings"]
+  generationSettings: AssistantBuilderState["generationSettings"];
+  setGenerationSettings: (
+    generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
+  const supportedModelConfig = getSupportedModelConfig(
+    generationSettings.modelSettings
+  );
+  if (!supportedModelConfig) {
+    // unreachable
+    alert("Unsupported model");
+  }
   return (
     <Transition
       show={show}
@@ -939,21 +931,27 @@ function AdvancedSettings({
               <Button
                 type="select"
                 labelVisible={true}
-                label={LABEL_BY_MODEL_ID[modelSettings.modelId]}
+                label={
+                  getSupportedModelConfig(generationSettings.modelSettings)
+                    .displayName
+                }
                 variant="secondary"
                 size="sm"
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topLeft">
-              {MODELS.map(({ modelId, modelProviderId }) => (
+              {usedModelConfigs.map((modelConfig) => (
                 <DropdownMenu.Item
-                  key={modelId}
-                  label={LABEL_BY_MODEL_ID[modelId]}
+                  key={modelConfig.modelId}
+                  label={modelConfig.displayName}
                   onClick={() => {
-                    setModelSettings({
-                      ...modelSettings,
-                      modelId,
-                      modelProviderId,
+                    setGenerationSettings({
+                      ...generationSettings,
+                      modelSettings: {
+                        modelId: modelConfig.modelId,
+                        providerId: modelConfig.providerId,
+                        // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                      } as SupportedModel,
                     });
                   }}
                 />
@@ -971,8 +969,9 @@ function AdvancedSettings({
                 type="select"
                 labelVisible={true}
                 label={
-                  getCreativityLevelFromTemperature(modelSettings?.temperature)
-                    .label
+                  getCreativityLevelFromTemperature(
+                    generationSettings?.temperature
+                  ).label
                 }
                 variant="secondary"
                 size="sm"
@@ -984,8 +983,8 @@ function AdvancedSettings({
                   key={label}
                   label={label}
                   onClick={() => {
-                    setModelSettings({
-                      ...modelSettings,
+                    setGenerationSettings({
+                      ...generationSettings,
                       temperature: value,
                     });
                   }}

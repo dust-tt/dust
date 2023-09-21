@@ -11,6 +11,13 @@ import logger from "@app/logger/logger";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType } from "@app/types/user";
 
+import {
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  GPT_4_DEFAULT_MODEL_CONFIG,
+} from "./generation";
+
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
   private staticPrompt: string | null = null;
@@ -91,8 +98,8 @@ async function _getHelperGlobalAgent(
       id: -1,
       prompt: prompt,
       model: {
-        providerId: "anthropic",
-        modelId: "claude-2",
+        providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -114,8 +121,8 @@ async function _getGPT35TurboGlobalAgent(): Promise<AgentConfigurationType> {
       id: -1,
       prompt: "",
       model: {
-        providerId: "openai",
-        modelId: "gpt-3.5-turbo",
+        providerId: GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -137,8 +144,8 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
       id: -1,
       prompt: "",
       model: {
-        providerId: "openai",
-        modelId: "gpt-4",
+        providerId: GPT_4_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_4_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -160,8 +167,8 @@ async function _getClaudeInstantGlobalAgent(): Promise<AgentConfigurationType> {
       id: -1,
       prompt: "",
       model: {
-        providerId: "anthropic",
-        modelId: "claude-instant-1.2",
+        providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -183,8 +190,8 @@ async function _getClaudeGlobalAgent(): Promise<AgentConfigurationType> {
       id: -1,
       prompt: "",
       model: {
-        providerId: "anthropic",
-        modelId: "claude-2",
+        providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -235,8 +242,8 @@ async function _getManagedDataSourceAgent(
       id: -1,
       prompt,
       model: {
-        providerId: "openai",
-        modelId: "gpt-4",
+        providerId: GPT_4_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_4_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.4,
     },
@@ -347,8 +354,8 @@ async function _getDustGlobalAgent(
       prompt:
         "Assist the user based on the retrieved data from their workspace.",
       model: {
-        providerId: "openai",
-        modelId: "gpt-4",
+        providerId: GPT_4_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_4_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.4,
     },
