@@ -1,3 +1,4 @@
+import { SupportedModel } from "@app/lib/api/assistant/generation";
 import { ModelId } from "@app/lib/databases";
 import { RetrievalConfigurationType } from "@app/types/assistant/actions/retrieval";
 
@@ -47,10 +48,7 @@ export type AgentActionSpecification = {
 export type AgentGenerationConfigurationType = {
   id: ModelId;
   prompt: string;
-  model: {
-    providerId: string;
-    modelId: string;
-  };
+  model: SupportedModel;
   temperature: number;
 };
 

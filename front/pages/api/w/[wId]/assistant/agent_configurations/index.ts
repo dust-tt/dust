@@ -9,6 +9,10 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import {
+  isSupportedModel,
+  SupportedModel,
+} from "@app/lib/api/assistant/generation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -78,10 +82,15 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     ]),
     generation: t.type({
       prompt: t.string,
-      model: t.type({
-        providerId: t.string,
-        modelId: t.string,
-      }),
+      // enforce that the model is a supported model
+      // the modelId and providerId are checked together, so
+      // (gpt-4, anthropic) won't pass
+      model: new t.Type<SupportedModel>(
+        "SupportedModel",
+        isSupportedModel,
+        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+        t.identity
+      ),
       temperature: t.number,
     }),
   }),
@@ -184,10 +193,7 @@ export async function createOrUpgradeAgentConfiguration(
   if (generation)
     generationConfig = await createAgentGenerationConfiguration(auth, {
       prompt: generation.prompt,
-      model: {
-        providerId: generation.model.providerId,
-        modelId: generation.model.modelId,
-      },
+      model: generation.model,
       temperature: generation.temperature,
     });
 

@@ -1,6 +1,10 @@
 import { Op, Transaction } from "sequelize";
 
 import {
+  isSupportedModel,
+  SupportedModel,
+} from "@app/lib/api/assistant/generation";
+import {
   getGlobalAgent,
   getGlobalAgents,
   isGlobalAgentId,
@@ -124,6 +128,23 @@ export async function getAgentConfiguration(
   }
 
   const generationConfig = agent.generationConfiguration;
+  let generation: AgentGenerationConfigurationType | null = null;
+
+  if (generationConfig) {
+    const model = {
+      providerId: generationConfig.providerId,
+      modelId: generationConfig.modelId,
+    };
+    if (!isSupportedModel(model)) {
+      throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
+    }
+    generation = {
+      id: generationConfig.id,
+      prompt: generationConfig.prompt,
+      temperature: generationConfig.temperature,
+      model,
+    };
+  }
 
   return {
     id: agent.id,
@@ -135,17 +156,7 @@ export async function getAgentConfiguration(
     description: agent.description,
     status: agent.status,
     action: retrievalConfig,
-    generation: generationConfig
-      ? {
-          id: generationConfig.id,
-          prompt: generationConfig.prompt,
-          model: {
-            providerId: generationConfig.providerId,
-            modelId: generationConfig.modelId,
-          },
-          temperature: generationConfig.temperature,
-        }
-      : null,
+    generation,
   };
 }
 
@@ -326,10 +337,7 @@ export async function createAgentGenerationConfiguration(
     temperature,
   }: {
     prompt: string;
-    model: {
-      providerId: string;
-      modelId: string;
-    };
+    model: SupportedModel;
     temperature: number;
   }
 ): Promise<AgentGenerationConfigurationType> {
@@ -352,11 +360,8 @@ export async function createAgentGenerationConfiguration(
   return {
     id: genConfig.id,
     prompt: genConfig.prompt,
-    model: {
-      providerId: genConfig.providerId,
-      modelId: genConfig.modelId,
-    },
     temperature: genConfig.temperature,
+    model,
   };
 }
 
