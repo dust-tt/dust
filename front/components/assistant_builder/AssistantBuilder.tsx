@@ -649,7 +649,7 @@ export default function AssistantBuilder({
           {agentConfigurationId && (
             <div>
               <DropdownMenu>
-                <DropdownMenu.Button tooltipPosition="above">
+                <DropdownMenu.Button>
                   <Button
                     size="sm"
                     variant="secondaryWarning"
@@ -657,7 +657,7 @@ export default function AssistantBuilder({
                     icon={TrashIcon}
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items width={280}>
+                <DropdownMenu.Items origin="bottomLeft" width={280}>
                   <div className="flex flex-col gap-y-4 py-4">
                     <div className="flex flex-col gap-y-2">
                       <div className="grow text-sm font-medium text-element-800">
