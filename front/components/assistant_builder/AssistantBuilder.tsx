@@ -13,6 +13,14 @@ import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  AppLayoutSimpleCloseTitle,
+  AppLayoutSimpleSaveCancelTitle,
+} from "@app/components/sparkle/AppLayoutTitle";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -21,14 +29,6 @@ import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import AppLayout from "../sparkle/AppLayout";
-import {
-  AppLayoutSimpleCloseTitle,
-  AppLayoutSimpleSaveCancelTitle,
-} from "../sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "../sparkle/navigation";
-import AssistantBuilderDataSourceModal from "./AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "./DataSourceSelectionSection";
 import { DROID_AVATAR_FILES, DROID_AVATARS_BASE_PATH } from "./shared";
 
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
