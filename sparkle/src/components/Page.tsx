@@ -12,7 +12,7 @@ interface PageProps {
 export function Page({ children }: PageProps) {
   return (
     <main className="s-h-full s-py-16">
-      <div className="s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-items-start s-gap-6 s-px-6 s-text-sm s-font-normal s-text-element-800">
+      <div className="s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-gap-6 s-px-6 s-text-sm s-font-normal s-text-element-800">
         {children}
       </div>
     </main>
@@ -121,7 +121,7 @@ Page.H = function ({ children, variant }: PageHProps) {
 interface PageDivProps {
   children: React.ReactNode;
   sizing?: "shrink" | "grow";
-  align?: "left" | "center" | "right";
+  align?: "stretch" | "left" | "center" | "right";
   gap?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
@@ -179,8 +179,8 @@ Page.Vertical = function ({
 Page.Fluid = function ({
   children,
   sizing,
-  align = "left",
-  gap = "md",
+  align = "stretch",
+  gap = "xs",
 }: PageDivProps) {
   return (
     <div

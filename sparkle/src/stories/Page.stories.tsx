@@ -160,7 +160,7 @@ export const HelpExample = () => {
         title="Welcome to Assistant"
         icon={ChatBubbleBottomCenterTextIcon}
       />
-      <Page.Vertical gap="xs">
+      <Page.Vertical gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" visual={FlagStrokeIcon} />
         <Page.P variant="secondary">
           Using assistant is easy as asking a question to a friend or a
@@ -196,23 +196,21 @@ export const HelpExample = () => {
         <Page.Fluid>
           <Button
             variant="secondary"
-            label="Hey @helper, how do I use the assistant ?"
+            label="Hey @helper, how do I use the assistant?"
             icon={ChatBubbleLeftRight}
+            hasMagnifying={false}
           />
           <Button
             variant="secondary"
-            label="Hey @helper, how do I use the assistant ?"
+            label="Hey @helper, What is assistant not good at?"
             icon={ChatBubbleLeftRight}
+            hasMagnifying={false}
           />
           <Button
             variant="secondary"
-            label="Hey @helper, how do I use the assistant ?"
+            label="Hey @helper, Anything I should know?"
             icon={ChatBubbleLeftRight}
-          />
-          <Button
-            variant="secondary"
-            label="Hey @helper, how do I use the assistant ?"
-            icon={ChatBubbleLeftRight}
+            hasMagnifying={false}
           />
         </Page.Fluid>
       </Page.Vertical>
