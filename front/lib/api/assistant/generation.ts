@@ -5,13 +5,19 @@ import {
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderRetrievalActionForModel } from "@app/lib/api/assistant/actions/retrieval";
+import {
+  renderRetrievalActionForModel,
+  retrievalMetaPrompt,
+} from "@app/lib/api/assistant/actions/retrieval";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
+import {
+  isRetrievalActionType,
+  isRetrievalConfiguration,
+} from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   AgentMessageType,
@@ -198,6 +204,10 @@ function constructPrompt(
   meta += `ASSISTANT: @${configuration.name}\n`;
   meta += `LOCAL_TIME: ${d.format("YYYY-MM-DD HH:mm")}\n`;
   meta += `INSTRUCTIONS:\n${configuration.generation.prompt}`;
+
+  if (isRetrievalConfiguration(configuration.action)) {
+    meta += "\n" + retrievalMetaPrompt();
+  }
 
   return meta;
 }

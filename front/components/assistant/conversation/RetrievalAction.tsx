@@ -11,7 +11,7 @@ import {
   RetrievalDocumentType,
 } from "@app/types/assistant/actions/retrieval";
 
-const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
+export const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
   google_drive: "/static/google_drive_32x32.png",
@@ -121,7 +121,7 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
   return summary;
 }
 
-function providerFromDocument(document: RetrievalDocumentType): string {
+export function providerFromDocument(document: RetrievalDocumentType): string {
   let provider = "none";
   if (document.dataSourceId.startsWith("managed-slack")) {
     provider = "slack";
@@ -136,4 +136,28 @@ function providerFromDocument(document: RetrievalDocumentType): string {
     provider = "github";
   }
   return provider;
+}
+
+export function titleFromDocument(document: RetrievalDocumentType): string {
+  const provider = providerFromDocument(document);
+
+  if (provider === "slack") {
+    for (const t of document.tags) {
+      if (t.startsWith("channelName:")) {
+        return `#${t.substring(12)}`;
+      }
+    }
+  }
+
+  for (const t of document.tags) {
+    if (t.startsWith("title:")) {
+      return t.substring(6);
+    }
+  }
+
+  if (provider === "none") {
+    return `[${document.dataSourceId}] ${document.documentId}`;
+  }
+
+  return document.documentId;
 }

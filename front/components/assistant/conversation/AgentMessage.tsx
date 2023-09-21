@@ -22,6 +22,10 @@ import {
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
+import {
+  isRetrievalActionType,
+  RetrievalDocumentType,
+} from "@app/types/assistant/actions/retrieval";
 import { AgentMessageType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
@@ -206,6 +210,17 @@ export function AgentMessage({
     }
     // Messages with action
     if (agentMessage.action) {
+      const references: { [key: string]: RetrievalDocumentType } = {};
+      if (
+        message.action &&
+        isRetrievalActionType(message.action) &&
+        message.action.documents
+      ) {
+        message.action.documents.forEach((d) => {
+          references[d.reference] = d;
+        });
+      }
+
       return (
         <>
           <div
@@ -223,6 +238,7 @@ export function AgentMessage({
                 <RenderMarkdown
                   content={agentMessage.content}
                   blinkingCursor={streaming}
+                  references={references}
                 />
               </div>
             </>

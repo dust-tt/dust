@@ -1,10 +1,13 @@
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
+  DocumentDuplicateStrokeIcon,
   IconButton,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -19,7 +22,16 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-function customDirectivesPlugin() {
+import { classNames } from "@app/lib/utils";
+import { RetrievalDocumentType } from "@app/types/assistant/actions/retrieval";
+
+import {
+  PROVIDER_LOGO_PATH,
+  providerFromDocument,
+  titleFromDocument,
+} from "./assistant/conversation/RetrievalAction";
+
+function mentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention") {
@@ -31,6 +43,45 @@ function customDirectivesPlugin() {
         node.children.unshift({ type: "text", value: "@" });
       }
     });
+  };
+}
+
+function citeDirective() {
+  // Initialize a counter to keep track of citation references, starting from 1.
+  let refCounter = 1;
+  const refSeen: { [ref: string]: number } = {};
+
+  const counter = (ref: string) => {
+    if (!refSeen[ref]) {
+      refSeen[ref] = refCounter++;
+    }
+    return refSeen[ref];
+  };
+
+  return () => {
+    return (tree: any) => {
+      visit(tree, ["textDirective"], (node) => {
+        if (node.name === "cite" && node.children[0]?.value) {
+          const data = node.data || (node.data = {});
+
+          const references = node.children[0]?.value
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length == 2)
+            .map((ref: string) => ({
+              counter: counter(ref),
+              ref,
+              link: "https://dust.tt",
+            }));
+
+          // `sup` will then be mapped to a custom component `CiteBlock`.
+          data.hName = "sup";
+          data.hProperties = {
+            references: JSON.stringify(references),
+          };
+        }
+      });
+    };
   };
 }
 
@@ -67,9 +118,11 @@ function addClosingBackticks(str: string): string {
 export function RenderMarkdown({
   content,
   blinkingCursor,
+  references,
 }: {
   content: string;
   blinkingCursor: boolean;
+  references?: { [key: string]: RetrievalDocumentType };
 }) {
   return (
     <div className={blinkingCursor ? "blinking-cursor" : ""}>
@@ -83,13 +136,97 @@ export function RenderMarkdown({
           ol: OlBlock,
           li: LiBlock,
           p: ParagraphBlock,
+          sup: CiteBlockWrapper(references || {}),
         }}
-        remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
+        remarkPlugins={[
+          remarkDirective,
+          mentionDirective,
+          citeDirective(),
+          remarkGfm,
+        ]}
       >
         {addClosingBackticks(content)}
       </ReactMarkdown>
     </div>
   );
+}
+
+function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
+  references: string;
+} {
+  return Object.prototype.hasOwnProperty.call(props, "references");
+}
+
+function CiteBlockWrapper(references: {
+  [key: string]: RetrievalDocumentType;
+}) {
+  const CiteBlock = (props: ReactMarkdownProps) => {
+    if (isCiteProps(props) && props.references) {
+      const refs = (
+        JSON.parse(props.references) as {
+          counter: number;
+          ref: string;
+          link: string;
+        }[]
+      ).filter((r) => r.ref in references);
+
+      return (
+        <>
+          {refs.map((r, i) => {
+            const document = references[r.ref];
+
+            const provider = providerFromDocument(document);
+            const title = titleFromDocument(document);
+            const citeClassNames = classNames(
+              "rounded-md bg-structure-100 px-1",
+              "text-xs font-semibold text-action-500",
+              "hover:bg-structure-200 hover:text-action-600"
+            );
+
+            return (
+              <sup key={`${r.ref}-${i}`}>
+                <Tooltip
+                  contentChildren={
+                    <div className="flex flex-row items-center gap-x-1">
+                      <div className={classNames("mr-1 flex h-4 w-4")}>
+                        {provider !== "none" ? (
+                          <img src={PROVIDER_LOGO_PATH[provider]}></img>
+                        ) : (
+                          <DocumentDuplicateStrokeIcon className="h-4 w-4 text-slate-500" />
+                        )}
+                      </div>
+                      <div className="text-md flex whitespace-nowrap">
+                        {title}
+                      </div>
+                    </div>
+                  }
+                  position="below"
+                >
+                  {document.sourceUrl ? (
+                    <a
+                      // TODO(spolu): for custom data source add data source name to title
+                      href={document.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={citeClassNames}
+                    >
+                      {r.counter}
+                    </a>
+                  ) : (
+                    <span className={citeClassNames}>{r.counter}</span>
+                  )}
+                </Tooltip>
+              </sup>
+            );
+          })}
+        </>
+      );
+    } else {
+      const { children } = props;
+      return <sup>{children}</sup>;
+    }
+  };
+  return CiteBlock;
 }
 
 function LinkBlock({
