@@ -51,7 +51,6 @@ export async function getAgentConfiguration(
     where: {
       sId: agentId,
       workspaceId: owner.id,
-      status: "active",
     },
     order: [["version", "DESC"]],
     include: [
@@ -67,7 +66,7 @@ export async function getAgentConfiguration(
     limit: 1,
   });
 
-  if (!agent) {
+  if (!agent || agent.status === "archived") {
     return null;
   }
 
