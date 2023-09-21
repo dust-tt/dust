@@ -313,7 +313,7 @@ function StartHelperConversationButton({
 }) {
   const contentWithMarkdownMention = content.replace(
     "@helper",
-    ":mention[helper]{id=helper}"
+    ":mention[helper]{sId=helper}"
   );
 
   return (
