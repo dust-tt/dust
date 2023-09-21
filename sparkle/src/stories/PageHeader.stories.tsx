@@ -6,7 +6,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/PageHeader",
+  title: "DEPRECATED/PageHeader",
   component: PageHeader,
 } satisfies Meta<typeof PageHeader>;
 

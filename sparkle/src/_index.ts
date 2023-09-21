@@ -22,11 +22,15 @@ export { Chip };
 import { DropdownMenu } from "./components/DropdownMenu";
 export { DropdownMenu };
 
-import { PageHeader } from "./components/PageHeader";
-export { PageHeader };
+import { Page } from "./components/Page";
+export { Page };
 
+//TO BE REMOVED SOON
 import { SectionHeader } from "./components/SectionHeader";
 export { SectionHeader };
+
+import { PageHeader } from "./components/PageHeader";
+export { PageHeader };
 
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };

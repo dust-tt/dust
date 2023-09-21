@@ -1,4 +1,10 @@
-import React, { ComponentType, MouseEvent, ReactNode } from "react";
+import React, {
+  Children,
+  cloneElement,
+  ComponentType,
+  MouseEvent,
+  ReactNode,
+} from "react";
 
 import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -20,6 +26,7 @@ export type ButtonProps = {
   size?: "xs" | "sm" | "md";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
+  hasMagnifying?: boolean;
   label: string;
   labelVisible?: boolean;
   icon?: ComponentType;
@@ -146,7 +153,10 @@ const variantClasses = {
 };
 
 const transitionClasses =
-  "s-transition-all s-ease-out s-duration-400 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none s-cursor-pointer";
+  "s-transition-all s-ease-out s-duration-400 s-cursor-pointer";
+
+const magnifyingClasses =
+  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none";
 
 export function Button({
   variant = "primary",
@@ -159,12 +169,14 @@ export function Button({
   icon,
   className = "",
   tooltipPosition = "above",
+  hasMagnifying = true,
   avatar,
 }: ButtonProps) {
   const buttonClasses = classNames(
-    "s-inline-flex s-items-center s-border s-scale-95 s-box-border s-rounded-full s-whitespace-nowrap",
+    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-rounded-full s-whitespace-nowrap",
     !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
     textClasses[size],
+    hasMagnifying ? (!disabled ? magnifyingClasses : "") : "",
     !disabled ? transitionClasses : "",
     !disabled ? variantClasses[variant]?.base : "",
     !disabled ? variantClasses[variant]?.hover : "",
@@ -224,10 +236,27 @@ interface ButtonBarProps {
   className?: string;
 }
 
+// Button.List = function ({ children, className }: ButtonBarProps) {
+//   return (
+//     <div className={classNames(className ? className : "", "s-flex")}>
+//       <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
+//     </div>
+//   );
+// };
+
 Button.List = function ({ children, className }: ButtonBarProps) {
+  const modifiedChildren = Children.map(children, (child) => {
+    // Check if this child is a Button
+    if (React.isValidElement<ButtonProps>(child) && child.type === Button) {
+      // Clone the element with hasMagnifying set to false
+      return cloneElement(child, { hasMagnifying: false });
+    }
+    return child;
+  });
+
   return (
     <div className={classNames(className ? className : "", "s-flex")}>
-      <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
+      <div className={"s-flex s-flex-row s-gap-2"}>{modifiedChildren}</div>
     </div>
   );
 };

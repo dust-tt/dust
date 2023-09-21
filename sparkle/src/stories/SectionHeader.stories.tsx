@@ -6,7 +6,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/SectionHeader",
+  title: "DEPRECATED/SectionHeader",
   component: SectionHeader,
 } satisfies Meta<typeof SectionHeader>;
 
