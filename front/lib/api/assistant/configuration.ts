@@ -51,6 +51,7 @@ export async function getAgentConfiguration(
     where: {
       sId: agentId,
       workspaceId: owner.id,
+      status: "active",
     },
     order: [["version", "DESC"]],
     include: [
@@ -288,6 +289,31 @@ export async function createAgentConfiguration(
     action: action,
     generation: generation,
   };
+}
+
+/**
+ * Archive Agent Configuration
+ */
+export async function archiveAgentConfiguration(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const updated = await AgentConfiguration.update(
+    { status: "archived" },
+    {
+      where: {
+        sId: agentConfigurationId,
+        workspaceId: owner.id,
+      },
+    }
+  );
+
+  return updated[0] > 0;
 }
 
 /**
