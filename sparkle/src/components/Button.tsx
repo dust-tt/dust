@@ -20,6 +20,7 @@ export type ButtonProps = {
   size?: "xs" | "sm" | "md";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
+  hasMagnifying?: boolean;
   label: string;
   labelVisible?: boolean;
   icon?: ComponentType;
@@ -146,7 +147,10 @@ const variantClasses = {
 };
 
 const transitionClasses =
-  "s-transition-all s-ease-out s-duration-400 hover:s-scale-100 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none s-cursor-pointer";
+  "s-transition-all s-ease-out s-duration-400 s-cursor-pointer";
+
+const magnifyingClasses =
+  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none";
 
 export function Button({
   variant = "primary",
@@ -159,12 +163,14 @@ export function Button({
   icon,
   className = "",
   tooltipPosition = "above",
+  hasMagnifying = true,
   avatar,
 }: ButtonProps) {
   const buttonClasses = classNames(
-    "s-inline-flex s-items-center s-border s-scale-95 s-box-border s-rounded-full s-whitespace-nowrap",
+    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-rounded-full s-whitespace-nowrap",
     !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
     textClasses[size],
+    hasMagnifying ? (!disabled ? magnifyingClasses : "") : "",
     !disabled ? transitionClasses : "",
     !disabled ? variantClasses[variant]?.base : "",
     !disabled ? variantClasses[variant]?.hover : "",
