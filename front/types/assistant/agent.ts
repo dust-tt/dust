@@ -58,7 +58,12 @@ export type AgentGenerationConfigurationType = {
  * Agent configuration
  */
 
-export type AgentConfigurationStatus = "active" | "archived";
+export type GlobalAgentStatus =
+  | "active"
+  | "disabled_by_admin"
+  | "disabled_missing_datasource";
+export type AgentStatus = "active" | "archived";
+export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 export type AgentConfigurationScope = "global" | "workspace";
 
 export type AgentConfigurationType = {

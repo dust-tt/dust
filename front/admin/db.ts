@@ -35,6 +35,7 @@ import {
   XP1Run,
   XP1User,
 } from "@app/lib/models";
+import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 
 async function main() {
   await User.sync({ alter: true });
@@ -62,6 +63,7 @@ async function main() {
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDataSourceConfiguration.sync({ alter: true });
   await AgentConfiguration.sync({ alter: true });
+  await GlobalAgentSettings.sync({ alter: true });
 
   await AgentRetrievalAction.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });

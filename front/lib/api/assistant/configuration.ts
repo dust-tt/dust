@@ -26,9 +26,9 @@ import {
 } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
-  AgentConfigurationStatus,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
+  AgentStatus,
 } from "@app/types/assistant/agent";
 
 /**
@@ -211,7 +211,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     pictureUrl: string;
-    status: AgentConfigurationStatus;
+    status: AgentStatus;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;

@@ -11,7 +11,7 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
-import { AgentConfigurationStatus } from "@app/types/assistant/agent";
+import { AgentStatus, GlobalAgentStatus } from "@app/types/assistant/agent";
 
 /**
  * Configuration of Agent generation.
@@ -84,7 +84,7 @@ export class AgentConfiguration extends Model<
   declare sId: string;
   declare version: number;
 
-  declare status: AgentConfigurationStatus;
+  declare status: AgentStatus;
   declare name: string;
   declare description: string;
   declare pictureUrl: string;
@@ -183,4 +183,65 @@ AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
   as: "retrievalConfiguration",
   foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+
+/**
+ * Global Agent settings
+ */
+export class GlobalAgentSettings extends Model<
+  InferAttributes<GlobalAgentSettings>,
+  InferCreationAttributes<GlobalAgentSettings>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentId: string;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare status: GlobalAgentStatus;
+}
+GlobalAgentSettings.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    agentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "disabled",
+    },
+  },
+  {
+    modelName: "global_agent_settings",
+    sequelize: front_sequelize,
+    indexes: [
+      { fields: ["workspaceId"] },
+      { fields: ["workspaceId", "agentId"], unique: true },
+    ],
+  }
+);
+//  Global Agent config <> Workspace
+Workspace.hasMany(GlobalAgentSettings, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "CASCADE",
+});
+GlobalAgentSettings.belongsTo(Workspace, {
+  foreignKey: { name: "workspaceId", allowNull: false },
 });
