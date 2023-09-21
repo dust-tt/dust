@@ -171,16 +171,6 @@ export default function DataSourceSelectionSection({
           </ContextItem.List>
         )}
       </div>
-      <div className="pt-6 text-base font-semibold text-element-900">
-        Timeframe for the data sources
-      </div>
-      <div className="text-sm font-normal text-element-900">
-        Define a specific time frame if you want the Assistant to only focus on
-        data from a specific time period.
-        <br />
-        <span className="font-bold">"Auto"</span> means the assistant will
-        define itself, from the question, what the timeframe should be.
-      </div>
       <div>
         <div className="flex flex-row items-center space-x-2 pt-2">
           <div className="text-sm font-semibold text-element-900">
@@ -280,6 +270,13 @@ export default function DataSourceSelectionSection({
               </DropdownMenu>
             </div>
           </Transition>
+        </div>
+        <div className="text-sm font-normal text-element-800">
+          Define a specific time frame if you want the Assistant to only focus
+          on data from a specific time period.
+          <br />
+          <span className="font-bold">"Auto"</span> means the assistant will
+          define itself, from the question, what the timeframe should be.
         </div>
       </div>
     </Transition>

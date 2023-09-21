@@ -431,28 +431,14 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex flex-col space-y-8 pt-8">
-          <div className="flex flex-row items-start">
-            <div className="flex flex-col items-center space-y-2">
-              <Avatar
-                size="xl"
-                visual={<img src="/static/droidavatar/Droid_Purple_7.jpg" />}
-              />
-              <Button
-                labelVisible={true}
-                label="Change"
-                variant="tertiary"
-                size="xs"
-                icon={PencilSquareIcon}
-              />
-            </div>
-            <div className="ml-4 space-y-2">
-              <div className="block text-sm font-medium text-element-900">
-                Name
+          <div className="flex flex-row items-start gap-8">
+            <div className="flex flex-col gap-4">
+              <div className="text-lg font-bold text-element-900">
+                Handle / Name
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                The name of your Assistant will be used to call your Assistant
-                with an “@” handle (for instance @myAssistant). It must be
-                unique.
+              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
+                The handle of your assistant will be used to call it with an “@”
+                handle (for instance @myAssistant).
               </div>
               <div className="text-sm">
                 <Input
@@ -470,12 +456,12 @@ export default function AssistantBuilder({
                   className="text-sm"
                 />
               </div>
-              <div className="block text-sm font-medium text-element-900">
+              <div className="text-lg font-bold text-element-900">
                 Description
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
                 The description helps your collaborators and Dust to understand
-                the purpose of the Assistant.
+                the purpose of the assistant. It must be descriptive and short.
               </div>
               <div className="text-sm">
                 <Input
@@ -493,15 +479,30 @@ export default function AssistantBuilder({
                 />
               </div>
             </div>
+            <div className="flex flex-col items-center space-y-2">
+              <Avatar
+                size="lg"
+                visual={<img src="/static/droidavatar/Droid_Purple_7.jpg" />}
+              />
+              <Button
+                labelVisible={true}
+                label="Change"
+                variant="tertiary"
+                size="xs"
+                icon={PencilSquareIcon}
+              />
+            </div>
           </div>
           <div className="mt-8 flex w-full flex-row items-start">
-            <div className="w-full space-y-2">
+            <div className="flex w-full flex-col gap-4">
               <div className="text-lg font-bold text-element-900">
                 Instructions
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
-                diam et dolor aliquet.
+              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
+                This is the heart and soul of your assistant. Describe, to your
+                assistant, its mission and purpose. Be specific on the role, the
+                expected output, the type of formatting.{" "}
+                <a className="font-bold text-action-500">See examples</a>
               </div>
               <div className="text-sm">
                 <AssistantBuilderTextArea
@@ -526,32 +527,37 @@ export default function AssistantBuilder({
             </div>
           </div>
           <div className="flex flex-row items-start">
-            <div className="space-y-2">
+            <div className="flex flex-col gap-4">
               <div className="text-lg font-bold text-element-900">
                 Data sources
               </div>
-              <div className="flex-grow self-stretch text-sm font-bold text-element-900">
-                <div className="font-normal text-element-700">
-                  Customize your Assistant's knowledge. Tips:
-                </div>
-                <ul role="list" className="list-disc pl-5 pt-2">
-                  <li>
-                    Setting data sources is not an obligation.
-                    <div className="font-normal text-element-700">
-                      By default, your assistant will follow your instructions
-                      and answer based on commun knowledge. Only do so if the
-                      context is important.
-                    </div>
-                  </li>
-                  <li>
-                    Choose your data sources with care.
-                    <div className="font-normal text-element-700">
-                      The more targeted your data are the better the answers
-                      will be.
-                    </div>
-                  </li>
-                </ul>
+              <div className="text-sm text-element-700">
+                Customize your Assistant's knowledge !
               </div>
+              <ul role="list" className="flex flex-row gap-12">
+                <li className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="text-base font-bold text-element-800">
+                      Setting data sources is not an obligation.
+                    </div>
+                    <div className="text-sm text-element-700">
+                      By default, your assistant will follow your instructions
+                      and answer based on commun knowledge.
+                    </div>
+                  </div>
+                </li>
+                <li className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="text-base font-bold text-element-800">
+                      Choose your data sources with care.
+                    </div>
+                    <div className="text-sm text-element-700">
+                      The more targeted your data the better the answers will
+                      be.
+                    </div>
+                  </div>
+                </li>
+              </ul>
               <div className="flex flex-row items-center space-x-2 pt-6">
                 <div className="text-sm font-semibold text-element-900">
                   Data source mode:
@@ -646,7 +652,7 @@ function AssistantBuilderTextArea({
       name="name"
       id={name}
       className={classNames(
-        "block max-h-64 min-h-32 w-full min-w-0 rounded-md text-sm",
+        "block max-h-64 min-h-48 w-full min-w-0 rounded-md text-sm",
         !error
           ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
           : "border-red-500 focus:border-red-500 focus:ring-red-500",
