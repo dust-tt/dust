@@ -873,8 +873,7 @@ export async function* editUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
-  | AgentMessageSuccessEvent
-  | ConversationTitleEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const user = auth.user();
@@ -1185,44 +1184,6 @@ export async function* editUserMessage(
       eventStreamsPromises[winner.offset] =
         eventStreamGenerators[winner.offset].next();
       yield winner.v.value;
-    }
-  }
-
-  // Generate a new title if the conversation does not have one already.
-  if (conversation.title === null) {
-    const titleRes = await generateConversationTitle(auth, {
-      ...conversation,
-      content: [
-        ...conversation.content,
-        [userMessage],
-        ...agentMessages.map((m) => [m]),
-      ],
-    });
-    if (titleRes.isErr()) {
-      logger.error(
-        {
-          error: titleRes.error,
-        },
-        "Conversation title generation error"
-      );
-    } else {
-      const title = titleRes.value;
-      await Conversation.update(
-        {
-          title,
-        },
-        {
-          where: {
-            id: conversation.id,
-          },
-        }
-      );
-
-      yield {
-        type: "conversation_title",
-        created: Date.now(),
-        title,
-      };
     }
   }
 }

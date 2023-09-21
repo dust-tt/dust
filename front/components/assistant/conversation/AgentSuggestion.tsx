@@ -68,7 +68,7 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    const editedContent = `:mention[${agent.name}]{${agent.sId}} ${userMessage.content}`;
+    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
       {
