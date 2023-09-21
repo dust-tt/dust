@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  ContextItem,
   PageHeader,
   PencilSquareIcon,
   PlusIcon,
@@ -8,7 +9,6 @@ import {
   SectionHeader,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { PropsOf } from "@headlessui/react/dist/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -17,7 +17,6 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -88,118 +87,81 @@ export default function AssistantsBuilder({
         icon={RobotIcon}
         description="Build an assistant."
       />
-      <div>
-        <SectionHeader
-          title="Dust Assistants"
-          description="AI assistants with specific capabilities that you can call using the “@” handle(for instance @myAssistant, @spelling, @translate)."
-        />
-        <ul className="mt-8 space-y-4">
-          {dustAgents.map((agent) => (
-            <ListItem
-              key={agent.sId}
-              imageUrl={agent.pictureUrl}
-              name={`@${agent.name}`}
-              description={agent.description}
-              action={{
-                type: "slider-toggle",
-                props: {
-                  selected: agent.status === "active",
-                  onClick: () => {
-                    alert(":)");
-                  },
-                },
-              }}
-            />
-          ))}
-        </ul>
-      </div>
-      <div>
-        <SectionHeader
-          title="Custom Assistants"
-          description="Build your own Assistant, use specific instructions and specific data sources to get better answers."
-          action={{
-            label: "Create a new Assistant",
-            variant: "secondary",
-            icon: PlusIcon,
-            size: "sm",
-            onClick: () => {
-              void router.push(`/w/${owner.sId}/builder/assistants/new`);
-            },
-          }}
-        />
-        <ul className="mt-8 space-y-4">
-          {workspaceAgents.map((agent) => (
-            <ListItem
-              key={agent.sId}
-              imageUrl={agent.pictureUrl}
-              name={`@${agent.name}`}
-              description={agent.description}
-              action={{
-                type: "button",
-                props: {
-                  variant: "secondary",
-                  icon: PencilSquareIcon,
-                  label: "Edit",
-                  onClick: () => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
-                    );
-                  },
-                },
-              }}
-            />
-          ))}
-        </ul>
+      <div className="flex flex-col gap-4 pb-4">
+        <div>
+          <SectionHeader
+            title="Dust Assistants"
+            description="AI assistants with specific capabilities that you can call using the “@” handle(for instance @myAssistant, @spelling, @translate)."
+          />
+          <ContextItem.List className="mt-8  text-element-900">
+            {dustAgents.map((agent) => (
+              <ContextItem
+                key={agent.sId}
+                title={`@${agent.name}`}
+                visual={
+                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+                }
+                action={
+                  <SliderToggle
+                    size="sm"
+                    onClick={() => {
+                      alert(":)");
+                    }}
+                    selected={agent.status === "active"}
+                  />
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-element-700">{agent.description}</div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        </div>
+        <div>
+          <SectionHeader
+            title="Custom Assistants"
+            description="Build your own Assistant, use specific instructions and specific data sources to get better answers."
+            action={{
+              label: "Create a new Assistant",
+              variant: "primary",
+              icon: PlusIcon,
+              size: "sm",
+              onClick: () => {
+                void router.push(`/w/${owner.sId}/builder/assistants/new`);
+              },
+            }}
+          />
+          <ContextItem.List className="mt-8  text-element-900">
+            {workspaceAgents.map((agent) => (
+              <ContextItem
+                key={agent.sId}
+                title={`@${agent.name}`}
+                visual={
+                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+                }
+                action={
+                  <Button
+                    variant="secondary"
+                    icon={PencilSquareIcon}
+                    label="Edit"
+                    size="sm"
+                    onClick={() => {
+                      void router.push(
+                        `/w/${owner.sId}/builder/assistants/${agent.sId}`
+                      );
+                    }}
+                  />
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-element-700">{agent.description}</div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        </div>
       </div>
     </AppLayout>
-  );
-}
-
-function ListItem({
-  imageUrl,
-  name,
-  description,
-  action,
-}: {
-  imageUrl: string;
-  name: string;
-  description: string;
-  action?:
-    | {
-        type: "button";
-        props: PropsOf<typeof Button>;
-      }
-    | {
-        type: "slider-toggle";
-        props: PropsOf<typeof SliderToggle>;
-      };
-}) {
-  return (
-    <div className="flex items-start">
-      <div className="min-w-5 flex">
-        <div className="mr-2">
-          <Avatar visual={<img src={imageUrl} />} size="md" />
-        </div>
-        <div className="flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center">
-            <span className={classNames("text-sm font-bold text-element-900")}>
-              {name}
-            </span>
-          </div>
-          <div className="mt-2 text-sm text-element-700">{description}</div>
-        </div>
-      </div>
-      <div className="flex flex-1" />
-      {action && action.type === "button" && (
-        <div>
-          <Button {...action.props} />
-        </div>
-      )}
-      {action && action.type === "slider-toggle" && (
-        <div>
-          <SliderToggle {...action.props} />
-        </div>
-      )}
-    </div>
   );
 }
