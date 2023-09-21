@@ -30,8 +30,11 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import {
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   getSupportedModelConfig,
-  SUPPORTED_MODEL_CONFIGS,
+  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  GPT_4_DEFAULT_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/api/assistant/generation";
 import { ConnectorProvider } from "@app/lib/connectors_api";
@@ -41,6 +44,13 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+const usedModelConfigs = [
+  GPT_4_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+];
 
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
@@ -930,7 +940,7 @@ function AdvancedSettings({
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topLeft">
-              {SUPPORTED_MODEL_CONFIGS.map((modelConfig) => (
+              {usedModelConfigs.map((modelConfig) => (
                 <DropdownMenu.Item
                   key={modelConfig.modelId}
                   label={modelConfig.displayName}
