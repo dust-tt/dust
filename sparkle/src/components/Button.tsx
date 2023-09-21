@@ -1,4 +1,10 @@
-import React, { ComponentType, MouseEvent, ReactNode } from "react";
+import React, {
+  Children,
+  cloneElement,
+  ComponentType,
+  MouseEvent,
+  ReactNode,
+} from "react";
 
 import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -230,10 +236,27 @@ interface ButtonBarProps {
   className?: string;
 }
 
+// Button.List = function ({ children, className }: ButtonBarProps) {
+//   return (
+//     <div className={classNames(className ? className : "", "s-flex")}>
+//       <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
+//     </div>
+//   );
+// };
+
 Button.List = function ({ children, className }: ButtonBarProps) {
+  const modifiedChildren = Children.map(children, (child) => {
+    // Check if this child is a Button
+    if (React.isValidElement<ButtonProps>(child) && child.type === Button) {
+      // Clone the element with hasMagnifying set to false
+      return cloneElement(child, { hasMagnifying: false });
+    }
+    return child;
+  });
+
   return (
     <div className={classNames(className ? className : "", "s-flex")}>
-      <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
+      <div className={"s-flex s-flex-row s-gap-2"}>{modifiedChildren}</div>
     </div>
   );
 };
