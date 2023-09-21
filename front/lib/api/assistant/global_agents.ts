@@ -48,7 +48,7 @@ class HelperAssistantPrompt {
  * - Add a case in getGlobalAgent with associated function.
  */
 
-enum GLOBAL_AGENTS_SID {
+export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   SLACK = "slack",
