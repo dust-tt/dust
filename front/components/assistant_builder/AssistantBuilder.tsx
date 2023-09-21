@@ -5,6 +5,7 @@ import {
   Icon,
   InformationCircleIcon,
   Input,
+  Modal,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -12,6 +13,14 @@ import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import {
+  AppLayoutSimpleCloseTitle,
+  AppLayoutSimpleSaveCancelTitle,
+} from "@app/components/sparkle/AppLayoutTitle";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -20,14 +29,7 @@ import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-import AppLayout from "../sparkle/AppLayout";
-import {
-  AppLayoutSimpleCloseTitle,
-  AppLayoutSimpleSaveCancelTitle,
-} from "../sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "../sparkle/navigation";
-import AssistantBuilderDataSourceModal from "./AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "./DataSourceSelectionSection";
+import { DROID_AVATAR_FILES, DROID_AVATARS_BASE_PATH } from "./shared";
 
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
@@ -69,6 +71,7 @@ type AssistantBuilderState = {
   handle: string | null;
   description: string | null;
   instructions: string | null;
+  avatarUrl: string | null;
 };
 
 // initial state is like the state, but:
@@ -85,6 +88,7 @@ export type AssistantBuilderInitialState = {
   handle: string;
   description: string;
   instructions: string;
+  avatarUrl: string;
 };
 
 type AssistantBuilderProps = {
@@ -107,6 +111,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   handle: null,
   description: null,
   instructions: null,
+  avatarUrl: null,
 };
 
 export default function AssistantBuilder({
@@ -136,6 +141,42 @@ export default function AssistantBuilder({
     workspaceId: owner.sId,
   });
 
+  const [avatarUrls, setAvatarUrls] = useState<
+    { available: boolean; url: string }[]
+  >([]);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (agentConfigurations?.length) {
+      const usedAvatarFiles = new Set(
+        agentConfigurations
+          .map((a) => a.pictureUrl.split(DROID_AVATARS_BASE_PATH)[1])
+          .filter(Boolean)
+      );
+      const availableUrls = DROID_AVATAR_FILES.filter(
+        (f) => !usedAvatarFiles.has(f)
+      ).map((f) => `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`);
+      setAvatarUrls(
+        DROID_AVATAR_FILES.map((f) => ({
+          url: `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`,
+          available: !usedAvatarFiles.has(f),
+        }))
+      );
+      // Only set a random avatar if one isn't already set
+      if (!builderState.avatarUrl) {
+        setBuilderState((state) => ({
+          ...state,
+          avatarUrl:
+            availableUrls[Math.floor(Math.random() * availableUrls.length)],
+        }));
+      }
+    }
+  }, [
+    agentConfigurations?.length,
+    agentConfigurations,
+    builderState.avatarUrl,
+  ]);
+
   useEffect(() => {
     if (initialBuilderState) {
       setBuilderState({
@@ -153,6 +194,7 @@ export default function AssistantBuilder({
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
+        avatarUrl: initialBuilderState.avatarUrl,
       });
     }
   }, [initialBuilderState]);
@@ -266,7 +308,8 @@ export default function AssistantBuilder({
     if (
       !builderState.handle ||
       !builderState.description ||
-      !builderState.instructions
+      !builderState.instructions ||
+      !builderState.avatarUrl
     ) {
       // should be unreachable
       // we keep this for TS
@@ -326,7 +369,7 @@ export default function AssistantBuilder({
     > = {
       assistant: {
         name: removeLeadingAt(builderState.handle),
-        pictureUrl: "https://dust.tt/static/droidavatar/Droid_Purple_7.jpg", // TODO
+        pictureUrl: builderState.avatarUrl,
         description: builderState.description.trim(),
         status: "active",
         action: actionParam,
@@ -386,6 +429,17 @@ export default function AssistantBuilder({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
+      />
+      <AvatarPicker
+        isOpen={isAvatarModalOpen}
+        setOpen={setIsAvatarModalOpen}
+        onPick={(avatarUrl) => {
+          setBuilderState((state) => ({
+            ...state,
+            avatarUrl,
+          }));
+        }}
+        avatarUrls={avatarUrls}
       />
       <AppLayout
         user={user}
@@ -481,8 +535,8 @@ export default function AssistantBuilder({
             </div>
             <div className="flex flex-col items-center space-y-2">
               <Avatar
-                size="lg"
-                visual={<img src="/static/droidavatar/Droid_Purple_7.jpg" />}
+                size="xl"
+                visual={<img src={builderState.avatarUrl || ""} />}
               />
               <Button
                 labelVisible={true}
@@ -490,6 +544,9 @@ export default function AssistantBuilder({
                 variant="tertiary"
                 size="xs"
                 icon={PencilSquareIcon}
+                onClick={() => {
+                  setIsAvatarModalOpen(true);
+                }}
               />
             </div>
           </div>
@@ -664,5 +721,44 @@ function AssistantBuilderTextArea({
         onChange(e.target.value);
       }}
     />
+  );
+}
+
+function AvatarPicker({
+  isOpen,
+  setOpen,
+  onPick,
+  avatarUrls,
+}: {
+  isOpen: boolean;
+  setOpen: (isOpen: boolean) => void;
+  onPick: (avatar: string) => void;
+  avatarUrls: { available: boolean; url: string }[];
+}) {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => setOpen(false)}
+      title="Pick an Avatar for your assistant:"
+      isFullScreen={false}
+      hasChanged={false}
+    >
+      <div className="grid max-w-3xl grid-cols-8 gap-4 pt-8">
+        {avatarUrls.map(({ available, url }) => (
+          <div
+            key={url}
+            className={classNames(available ? "cursor-pointer" : "opacity-30")}
+            onClick={() => {
+              if (available) {
+                onPick(url);
+                setOpen(false);
+              }
+            }}
+          >
+            <Avatar size="lg" visual={<img src={url} />} />
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
