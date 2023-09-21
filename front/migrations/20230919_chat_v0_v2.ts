@@ -38,12 +38,23 @@ async function _migrateWorkspace(workspaceId: string) {
     },
   });
   for (const oldChatSession of oldChatSessions) {
+    // If a conversation already exists, we don't migrate it.
+    const existingConversation = await Conversation.findOne({
+      where: {
+        sId: oldChatSession.sId,
+      },
+    });
+    if (existingConversation) {
+      console.log("Conversation already exists, skipping", oldChatSession.sId);
+      continue;
+    }
+
     // iterate on all old chat sessions
     const transactionRes = await front_sequelize.transaction(async (t) => {
       // One transaction / conversation (including all children messages, retrieval, actions etc)
 
       // Conversation will be dedup based on Conversation.sId, which is unique in the DB
-      const [newConversation] = await Conversation.upsert(
+      const newConversation = await Conversation.create(
         {
           createdAt: oldChatSession.createdAt,
           updatedAt: oldChatSession.updatedAt,
@@ -60,7 +71,7 @@ async function _migrateWorkspace(workspaceId: string) {
 
       if (oldChatSession.userId) {
         // dedup on (conversationId, userId)
-        await ConversationParticipant.upsert(
+        await ConversationParticipant.create(
           {
             createdAt: oldChatSession.createdAt,
             updatedAt: oldChatSession.updatedAt,
@@ -95,39 +106,9 @@ async function _migrateWorkspace(workspaceId: string) {
 
         switch (oldMessage.role) {
           case "user": {
-            // Dedup already migrated UserMessage based on conversation.id, createdAt, updatedAt and content.
-            const existingMessage: { id: number }[] =
-              await front_sequelize.query(
-                `
-            SELECT um.id FROM user_messages um
-            INNER JOIN messages m ON m."userMessageId" = um.id
-            WHERE m."conversationId" = :conversation_id
-            and um."createdAt" = :createdAt
-            and um."updatedAt" = :updatedAt
-            and um."content" = :content
-            `,
-                {
-                  replacements: {
-                    conversation_id: newConversation.id,
-                    createdAt: oldMessage.createdAt,
-                    updatedAt: oldMessage.updatedAt,
-                    content: oldMessage.message || "",
-                  },
-                  type: QueryTypes.SELECT,
-                }
-              );
-            if (existingMessage.length > 1) {
-              throw new Error(
-                `Found more than one matching message for conversation ${newConversation.id}`
-              );
-            }
             // dedup UserMessage based on it's primary key
-            const upsertRes = await UserMessage.upsert(
+            newUserMessage = await UserMessage.create(
               {
-                id:
-                  existingMessage.length > 0
-                    ? existingMessage[0].id
-                    : undefined,
                 createdAt: oldMessage.createdAt,
                 updatedAt: oldMessage.updatedAt,
                 content: oldMessage.message || "",
@@ -142,44 +123,13 @@ async function _migrateWorkspace(workspaceId: string) {
                 transaction: t,
               }
             );
-
-            newUserMessage = upsertRes[0];
             break;
           }
           case "assistant":
             {
-              const existingMessage: { id: number }[] =
-                await front_sequelize.query(
-                  `
-        SELECT am.id FROM agent_messages am
-        INNER JOIN messages m ON m."agentMessageId" = am.id
-        WHERE m."conversationId" = :conversation_id
-        and am."createdAt" = :createdAt
-        and am."updatedAt" = :updatedAt
-        and am."content" = :content
-        `,
-                  {
-                    replacements: {
-                      conversation_id: newConversation.id,
-                      createdAt: oldMessage.createdAt,
-                      updatedAt: oldMessage.updatedAt,
-                      content: oldMessage.message || "",
-                    },
-                    type: QueryTypes.SELECT,
-                  }
-                );
-              if (existingMessage.length > 1) {
-                throw new Error(
-                  `Found more than one matching message for conversation ${newConversation.id}`
-                );
-              }
               // dedup based on it's primary key
-              const upserRes = await AgentMessage.upsert(
+              newAgentMessage = await AgentMessage.create(
                 {
-                  id:
-                    existingMessage.length > 0
-                      ? existingMessage[0].id
-                      : undefined,
                   createdAt: oldMessage.createdAt,
                   updatedAt: oldMessage.updatedAt,
                   status: "succeeded",
@@ -192,13 +142,11 @@ async function _migrateWorkspace(workspaceId: string) {
                 }
               );
 
-              newAgentMessage = upserRes[0];
-
               const { chatRetrievedDocuments, retrievalMessage } =
                 await getRetrievalForOldMessage(oldMessage);
               if (retrievalMessage && !newAgentMessage.agentRetrievalActionId) {
                 // if we already have a agentRetrievalActionId, we don't re-migrate the retrieval as they are hard to dedup
-                const agentRetrievalAction = await AgentRetrievalAction.upsert(
+                const agentRetrievalAction = await AgentRetrievalAction.create(
                   {
                     id: newAgentMessage.agentRetrievalActionId || undefined,
                     createdAt: retrievalMessage.createdAt,
@@ -213,14 +161,14 @@ async function _migrateWorkspace(workspaceId: string) {
 
                 await newAgentMessage.update(
                   {
-                    agentRetrievalActionId: agentRetrievalAction[0].id,
+                    agentRetrievalActionId: agentRetrievalAction.id,
                   },
                   {
                     transaction: t,
                   }
                 );
                 for (const chatRetrievedDocument of chatRetrievedDocuments) {
-                  await RetrievalDocument.upsert(
+                  await RetrievalDocument.create(
                     {
                       createdAt: chatRetrievedDocument.createdAt,
                       updatedAt: chatRetrievedDocument.updatedAt,
@@ -233,7 +181,7 @@ async function _migrateWorkspace(workspaceId: string) {
                       ).getTime(),
                       tags: chatRetrievedDocument.tags,
                       score: chatRetrievedDocument.score,
-                      retrievalActionId: agentRetrievalAction[0].id,
+                      retrievalActionId: agentRetrievalAction.id,
                     },
                     {
                       transaction: t,
@@ -255,7 +203,7 @@ async function _migrateWorkspace(workspaceId: string) {
         }
 
         if (["user", "assistant"].includes(oldMessage.role)) {
-          const [newMessage] = (await Message.upsert(
+          const newMessage: Message = await Message.create(
             {
               sId: oldMessage.sId,
               createdAt: oldMessage.createdAt,
@@ -271,7 +219,7 @@ async function _migrateWorkspace(workspaceId: string) {
             {
               transaction: t,
             }
-          )) as [Message, boolean | null];
+          );
           if (newMessage.userMessageId) {
             previousMessage = newMessage;
           }
