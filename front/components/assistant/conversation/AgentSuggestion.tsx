@@ -30,16 +30,18 @@ export function AgentSuggestion({
         Which KillerZorg would you like to talk with?
       </div>
       <div className="mt-3 flex items-center gap-2">
-        {agentConfigurations.slice(0, 3).map((agent) => (
-          <Button
-            key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
-            size="xs"
-            variant="avatar"
-            label={`@${agent.name}`}
-            onClick={() => selectSuggestionHandler(agent)}
-            avatar={agent.pictureUrl}
-          />
-        ))}
+        <Button.List>
+          {agentConfigurations.slice(0, 3).map((agent) => (
+            <Button
+              key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
+              size="xs"
+              variant="avatar"
+              label={`@${agent.name}`}
+              onClick={() => selectSuggestionHandler(agent)}
+              avatar={agent.pictureUrl}
+            />
+          ))}
+        </Button.List>
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
