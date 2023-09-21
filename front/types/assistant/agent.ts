@@ -60,6 +60,7 @@ export type AgentGenerationConfigurationType = {
 
 export type AgentConfigurationStatus = "active" | "archived";
 export type AgentConfigurationScope = "global" | "workspace";
+export type GlobalAgentConfigurationStatus = "active" | "disabled";
 
 export type AgentConfigurationType = {
   id: ModelId;
