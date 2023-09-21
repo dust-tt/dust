@@ -172,7 +172,7 @@ export default function DataSourceSelectionSection({
         )}
       </div>
       <div>
-        <div className="flex flex-row items-center space-x-2 pt-2">
+        <div className="flex flex-row items-center space-x-2 pt-4">
           <div className="text-sm font-semibold text-element-900">
             Timeframe:
           </div>
@@ -217,14 +217,14 @@ export default function DataSourceSelectionSection({
               });
             }}
           >
-            <div className={"flex flex-row items-center gap-4"}>
+            <div className={"flex flex-row items-center gap-4 pb-4"}>
               <div className="font-normal text-element-900">
                 Focus on the last
               </div>
               <input
                 type="text"
                 className={classNames(
-                  "text-smborder-gray-300 h-8 w-16 rounded-md text-center",
+                  "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
                   !timeFrameError
                     ? "focus:border-action-500 focus:ring-action-500"
                     : "border-red-500 focus:border-red-500 focus:ring-red-500",
