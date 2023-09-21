@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -125,15 +124,11 @@ export default function Conversation({
             return (
               <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                  <UserMessage message={m}>
-                    {m.mentions.length === 0 && (
-                      <AgentSuggestion
-                        userMessage={m}
-                        conversation={conversation}
-                        owner={owner}
-                      />
-                    )}
-                  </UserMessage>
+                  <UserMessage
+                    message={m}
+                    conversation={conversation}
+                    owner={owner}
+                  />
                 </div>
               </div>
             );
