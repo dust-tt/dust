@@ -11,6 +11,7 @@ export function ConversationMessage({
   name,
   pictureUrl,
   buttons,
+  avatarBusy = false,
 }: {
   children?: React.ReactNode;
   name: string | null;
@@ -20,11 +21,17 @@ export function ConversationMessage({
     icon: ComponentType;
     onClick: MouseEventHandler<HTMLButtonElement>;
   }[];
+  avatarBusy?: boolean;
 }) {
   return (
     <div className="flex w-full flex-row gap-4">
       <div className="flex-shrink-0">
-        <Avatar visual={pictureUrl} name={name || undefined} size="md" />
+        <Avatar
+          visual={pictureUrl}
+          name={name || undefined}
+          size="md"
+          busy={avatarBusy}
+        />
       </div>
       <div className="min-w-0 flex-grow">
         <div className="flex flex-col gap-4">

@@ -149,12 +149,14 @@ export function AgentMessage({
             },
           },
         ];
+
   return (
     <ConversationMessage
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={`@${agentMessageToRender.configuration.name}`}
       messageId={agentMessageToRender.sId}
       buttons={buttons}
+      avatarBusy={agentMessageToRender.status === "created"}
     >
       {renderMessage(agentMessageToRender)}
     </ConversationMessage>
