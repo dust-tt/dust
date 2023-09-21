@@ -4,11 +4,17 @@ import { classNames } from "@sparkle/lib/utils";
 
 export interface TooltipProps {
   children: React.ReactNode;
-  label: string;
+  label?: React.ReactNode | string;
   position?: "above" | "below";
+  content?: React.ReactNode;
 }
 
-export function Tooltip({ children, label, position = "above" }: TooltipProps) {
+export function Tooltip({
+  children,
+  label,
+  position = "above",
+  content,
+}: TooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [timerId, setTimerId] = useState<number | null>(null);
 
@@ -57,7 +63,7 @@ export function Tooltip({ children, label, position = "above" }: TooltipProps) {
         )}
         onAnimationEnd={() => setIsHovered(false)}
       >
-        {label}
+        {content || label}
       </div>
     </div>
   );
