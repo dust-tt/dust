@@ -1,14 +1,16 @@
 import {
   Avatar,
   Button,
+  ChevronDownIcon,
+  ChevronUpIcon,
   DropdownMenu,
   Icon,
-  InformationCircleIcon,
   Input,
   Modal,
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
@@ -73,6 +75,11 @@ type AssistantBuilderState = {
   description: string | null;
   instructions: string | null;
   avatarUrl: string | null;
+  modelSettings: {
+    modelId: string;
+    modelProviderId: string;
+    temperature: number;
+  };
 };
 
 // initial state is like the state, but:
@@ -90,6 +97,11 @@ export type AssistantBuilderInitialState = {
   description: string;
   instructions: string;
   avatarUrl: string;
+  modelSettings: {
+    modelId: string;
+    modelProviderId: string;
+    temperature: number;
+  } | null;
 };
 
 type AssistantBuilderProps = {
@@ -113,6 +125,51 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   description: null,
   instructions: null,
   avatarUrl: null,
+  modelSettings: {
+    modelId: "gpt-4",
+    modelProviderId: "openai",
+    temperature: 0.7,
+  },
+};
+
+const CREATIVITY_LEVELS = [
+  { label: "Deterministic", value: 0 },
+  { label: "Factual", value: 0.2 },
+  { label: "Balanced", value: 0.7 },
+  { label: "Creative", value: 1 },
+];
+
+const getCreativityLevelFromTemperature = (temperature: number) => {
+  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
+    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
+      ? curr
+      : prev
+  );
+  return closest;
+};
+
+const MODELS = [
+  { modelId: "gpt-4-32k", modelProviderId: "openai" },
+  {
+    modelId: "gpt-3.5-turbo",
+    modelProviderId: "openai",
+  },
+  {
+    modelId: "claude-2",
+    modelProviderId: "anthropic",
+  },
+  {
+    modelId: "claude-instant-1.2",
+    modelProviderId: "anthropic",
+  },
+];
+
+const LABEL_BY_MODEL_ID: Record<string, string> = {
+  "gpt-4-32k": "GPT-4",
+  "gpt-4": "GPT-4",
+  "gpt-3.5-turbo": "GPT-3.5 Turbo",
+  "claude-2": "Claude 2",
+  "claude-instant-1.2": "Claude Instant 1.2",
 };
 
 export default function AssistantBuilder({
@@ -146,6 +203,8 @@ export default function AssistantBuilder({
     { available: boolean; url: string }[]
   >([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   useEffect(() => {
     if (agentConfigurations?.length) {
@@ -196,6 +255,9 @@ export default function AssistantBuilder({
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
         avatarUrl: initialBuilderState.avatarUrl,
+        modelSettings: initialBuilderState.modelSettings ?? {
+          ...DEFAULT_ASSISTANT_STATE.modelSettings,
+        },
       });
     }
   }, [initialBuilderState]);
@@ -377,10 +439,10 @@ export default function AssistantBuilder({
         generation: {
           prompt: builderState.instructions.trim(),
           model: {
-            providerId: "openai",
-            modelId: "gpt-4",
+            providerId: builderState.modelSettings.modelProviderId,
+            modelId: builderState.modelSettings.modelId,
           },
-          temperature: 0.7,
+          temperature: builderState.modelSettings.temperature,
         },
       },
     };
@@ -593,12 +655,31 @@ export default function AssistantBuilder({
                   name="assistantInstructions"
                 />
               </div>
-              <div className="flex flex-row items-center space-x-2">
+              <div
+                className="flex cursor-pointer flex-row items-center space-x-2"
+                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+              >
+                <Icon
+                  size="xs"
+                  visual={
+                    showAdvancedSettings ? ChevronDownIcon : ChevronUpIcon
+                  }
+                  className="text-element-700"
+                />
                 <div className="text-sm font-semibold text-action-500">
-                  Select a specific LLM model
+                  Advanced Settings
                 </div>
-                <Icon size="xs" visual={InformationCircleIcon} />
               </div>
+              <AdvancedSettings
+                show={showAdvancedSettings}
+                modelSettings={builderState.modelSettings}
+                setModelSettings={(modelSettings) => {
+                  setBuilderState((state) => ({
+                    ...state,
+                    modelSettings,
+                  }));
+                }}
+              />
             </div>
           </div>
           <div className="flex flex-row items-start">
@@ -814,5 +895,96 @@ function AvatarPicker({
         ))}
       </div>
     </Modal>
+  );
+}
+
+function AdvancedSettings({
+  show,
+  modelSettings,
+  setModelSettings,
+}: {
+  show: boolean;
+  modelSettings: AssistantBuilderState["modelSettings"];
+  setModelSettings: (
+    modelSettings: AssistantBuilderState["modelSettings"]
+  ) => void;
+}) {
+  return (
+    <Transition
+      show={show}
+      enterFrom="opacity-0"
+      enterTo="opacity-100"
+      leave="transition-all duration-300"
+      enter="transition-all duration-300"
+      leaveFrom="opacity-100"
+      leaveTo="opacity-0"
+    >
+      <div className="flex flex-row items-center gap-12">
+        <div className="flex flex-1 flex-row items-center gap-2">
+          <div className="text-sm font-semibold text-element-900">
+            Model selection:
+          </div>
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                type="select"
+                labelVisible={true}
+                label={LABEL_BY_MODEL_ID[modelSettings.modelId]}
+                variant="secondary"
+                size="sm"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="topLeft">
+              {MODELS.map(({ modelId, modelProviderId }) => (
+                <DropdownMenu.Item
+                  key={modelId}
+                  label={LABEL_BY_MODEL_ID[modelId]}
+                  onClick={() => {
+                    setModelSettings({
+                      ...modelSettings,
+                      modelId,
+                      modelProviderId,
+                    });
+                  }}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
+        <div className="flex flex-1 flex-row items-center gap-2">
+          <div className="text-sm font-semibold text-element-900">
+            Creativity level:
+          </div>
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                type="select"
+                labelVisible={true}
+                label={
+                  getCreativityLevelFromTemperature(modelSettings?.temperature)
+                    .label
+                }
+                variant="secondary"
+                size="sm"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="topLeft">
+              {CREATIVITY_LEVELS.map(({ label, value }) => (
+                <DropdownMenu.Item
+                  key={label}
+                  label={label}
+                  onClick={() => {
+                    setModelSettings({
+                      ...modelSettings,
+                      temperature: value,
+                    });
+                  }}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
+      </div>
+    </Transition>
   );
 }
