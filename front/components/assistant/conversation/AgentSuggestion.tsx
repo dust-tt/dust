@@ -52,7 +52,7 @@ export function AgentSuggestion({
             />
           </DropdownMenu.Button>
           <div className="relative bottom-6 z-30">
-            <DropdownMenu.Items origin="topLeft" width={320}>
+            <DropdownMenu.Items origin="topLeft" width={240}>
               {agentConfigurations.slice(3).map((agent) => (
                 <DropdownMenu.Item
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
