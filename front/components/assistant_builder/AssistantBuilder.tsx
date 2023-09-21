@@ -149,7 +149,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 };
 
 const MODELS = [
-  { modelId: "gpt-4", modelProviderId: "openai" },
+  { modelId: "gpt-4-32k", modelProviderId: "openai" },
   {
     modelId: "gpt-3.5-turbo",
     modelProviderId: "openai",
@@ -163,6 +163,14 @@ const MODELS = [
     modelProviderId: "anthropic",
   },
 ];
+
+const LABEL_BY_MODEL_ID: Record<string, string> = {
+  "gpt-4-32k": "GPT-4",
+  "gpt-4": "GPT-4",
+  "gpt-3.5-turbo": "GPT-3.5 Turbo",
+  "claude-2": "Claude 2",
+  "claude-instant-1.2": "Claude Instant 1.2",
+};
 
 export default function AssistantBuilder({
   user,
@@ -921,7 +929,7 @@ function AdvancedSettings({
               <Button
                 type="select"
                 labelVisible={true}
-                label={modelSettings.modelId}
+                label={LABEL_BY_MODEL_ID[modelSettings.modelId]}
                 variant="secondary"
                 size="sm"
               />
@@ -930,7 +938,7 @@ function AdvancedSettings({
               {MODELS.map(({ modelId, modelProviderId }) => (
                 <DropdownMenu.Item
                   key={modelId}
-                  label={modelId}
+                  label={LABEL_BY_MODEL_ID[modelId]}
                   onClick={() => {
                     setModelSettings({
                       ...modelSettings,
