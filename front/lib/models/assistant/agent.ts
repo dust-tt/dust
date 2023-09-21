@@ -11,10 +11,7 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  AgentConfigurationStatus,
-  GlobalAgentConfigurationStatus,
-} from "@app/types/assistant/agent";
+import { AgentStatus, GlobalAgentStatus } from "@app/types/assistant/agent";
 
 /**
  * Configuration of Agent generation.
@@ -87,7 +84,7 @@ export class AgentConfiguration extends Model<
   declare sId: string;
   declare version: number;
 
-  declare status: AgentConfigurationStatus;
+  declare status: AgentStatus;
   declare name: string;
   declare description: string;
   declare pictureUrl: string;
@@ -202,7 +199,7 @@ export class GlobalAgentSettings extends Model<
   declare agentId: string;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare status: GlobalAgentConfigurationStatus;
+  declare status: GlobalAgentStatus;
 }
 GlobalAgentSettings.init(
   {

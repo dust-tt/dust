@@ -9,6 +9,7 @@ import {
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
+  GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
@@ -59,6 +60,7 @@ export {
   EventSchema,
   ExtractedEvent,
   GensTemplate,
+  GlobalAgentSettings,
   Key,
   Membership,
   MembershipInvitation,
