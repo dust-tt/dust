@@ -6,14 +6,14 @@ export interface TooltipProps {
   children: React.ReactNode;
   label?: string;
   position?: "above" | "below";
-  content?: React.ReactNode;
+  contentChildren?: React.ReactNode;
 }
 
 export function Tooltip({
   children,
   label,
   position = "above",
-  content,
+  contentChildren,
 }: TooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [timerId, setTimerId] = useState<number | null>(null);
@@ -63,7 +63,7 @@ export function Tooltip({
         )}
         onAnimationEnd={() => setIsHovered(false)}
       >
-        {content || label}
+        {contentChildren || label}
       </div>
     </div>
   );
