@@ -122,7 +122,10 @@ export default function Conversation({
         switch (m.type) {
           case "user_message":
             return (
-              <div key={`message-id-${m.sId}`} className="bg-structure-50 py-6">
+              <div
+                key={`message-id-${m.sId}`}
+                className="border-t border-structure-100 bg-structure-50 px-2 py-6"
+              >
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
                   <UserMessage
                     message={m}
