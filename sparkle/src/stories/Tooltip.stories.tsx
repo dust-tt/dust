@@ -27,11 +27,11 @@ export const TooltipBelow: Story = {
   },
 };
 
-export const ToolTipWithVisual = () => (
+export const ToolTipWithContent = () => (
   <div className="s-pl-32">
     <Tooltip
       contentChildren={
-        <div className="s-w-64 s-whitespace-normal">
+        <div className="s-w-64">
           <div className="s-flex s-flex-col s-gap-y-2 s-break-words">
             <div className="s-flex s-font-semibold">
               This is a more complex tooltip:
