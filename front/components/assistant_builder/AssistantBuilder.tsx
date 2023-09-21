@@ -36,7 +36,7 @@ import {
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
   SupportedModel,
-} from "@app/lib/api/assistant/generation";
+} from "@app/lib/api/assistant/supported_models";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";

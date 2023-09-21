@@ -1,14 +1,14 @@
 import { Op, Transaction } from "sequelize";
 
 import {
-  isSupportedModel,
-  SupportedModel,
-} from "@app/lib/api/assistant/generation";
-import {
   getGlobalAgent,
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
+import {
+  isSupportedModel,
+  SupportedModel,
+} from "@app/lib/api/assistant/supported_models";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
