@@ -419,22 +419,12 @@ export async function getGlobalAgents(
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
-  const user = auth.user();
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  const agentCandidates = await Promise.all([
-    _getHelperGlobalAgent(user),
-    _getGPT4GlobalAgent(),
-    _getGPT35TurboGlobalAgent(),
-    _getClaudeGlobalAgent(),
-    _getClaudeInstantGlobalAgent(),
-    _getSlackGlobalAgent(auth),
-    _getGoogleDriveGlobalAgent(auth),
-    _getNotionGlobalAgent(auth),
-    _getGithubGlobalAgent(auth),
-    _getDustGlobalAgent(auth),
-  ]);
+  const agentCandidates = await Promise.all(
+    Object.values(GLOBAL_AGENTS_SID).map((sId) => getGlobalAgent(auth, sId))
+  );
 
   const globalAgents: AgentConfigurationType[] = [];
 
