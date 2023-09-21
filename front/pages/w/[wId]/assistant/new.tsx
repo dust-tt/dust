@@ -83,7 +83,7 @@ export default function AssistantNew({
     workspaceId: owner.sId,
   });
 
-  let agents = agentConfigurations;
+  let agents = agentConfigurations.filter((a) => a.status === "active");
   const customOrder = [
     "Dust",
     "gpt4",

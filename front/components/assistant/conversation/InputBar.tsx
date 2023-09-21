@@ -76,7 +76,8 @@ function AgentListImpl(
     workspaceId: owner.sId,
   });
 
-  const filtered = agentConfigurations.filter((a) => {
+  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  const filtered = activeAgents.filter((a) => {
     return (
       filter.length === 0 ||
       a.name.toLowerCase().startsWith(filter.toLowerCase())
@@ -214,6 +215,7 @@ export function AssistantInputBar({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
+  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
 
   const handleSubmit = async () => {
     const contentEditable = document.getElementById("dust-input-bar");
@@ -577,7 +579,7 @@ export function AssistantInputBar({
                 <DropdownMenu>
                   <DropdownMenu.Button icon={RobotIcon} />
                   <DropdownMenu.Items origin="bottomRight" width={240}>
-                    {agentConfigurations.map((c) => (
+                    {activeAgents.map((c) => (
                       <DropdownMenu.Item
                         key={c.sId}
                         label={"@" + c.name}
