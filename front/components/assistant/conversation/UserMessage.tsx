@@ -26,13 +26,16 @@ export function UserMessage({
         <div>
           <RenderMarkdown content={message.content} />
         </div>
-        {message.mentions.length === 0 && (
-          <AgentSuggestion
-            userMessage={message}
-            conversation={conversation}
-            owner={owner}
-          />
-        )}
+        {message.mentions.length === 0 &&
+          conversation.content[conversation.content.length - 1].some(
+            (m) => m.sId === message.sId
+          ) && (
+            <AgentSuggestion
+              userMessage={message}
+              conversation={conversation}
+              owner={owner}
+            />
+          )}
       </div>
     </ConversationMessage>
   );
