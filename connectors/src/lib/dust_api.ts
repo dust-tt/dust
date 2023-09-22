@@ -117,6 +117,15 @@ export type GenerationTokensEvent = {
   text: string;
 };
 
+// Event sent once the generation is completed.
+export type AgentGenerationSuccessEvent = {
+  type: "agent_generation_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  text: string;
+};
+
 const PostMessagesRequestBodySchemaIoTs = t.type({
   content: t.string,
   mentions: t.array(
@@ -405,7 +414,7 @@ export async function processStreamedChatResponse(res: Response) {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-export async function processStreamedV2ChatResponse(res: Response) {
+export async function processCreateConversationEvents(res: Response) {
   if (!res.ok || !res.body) {
     return new Err({
       type: "dust_api_error",
@@ -419,7 +428,7 @@ export async function processStreamedV2ChatResponse(res: Response) {
     | UserMessageErrorEvent
     | AgentErrorEvent
     | GenerationTokensEvent
-    | GenerationSuccessEvent
+    | AgentGenerationSuccessEvent
   )[] = [];
 
   const parser = createParser((event) => {
@@ -440,8 +449,8 @@ export async function processStreamedV2ChatResponse(res: Response) {
               pendingEvents.push(data as GenerationTokensEvent);
               break;
             }
-            case "generation_success": {
-              pendingEvents.push(data as GenerationSuccessEvent);
+            case "agent_generation_success": {
+              pendingEvents.push(data as AgentGenerationSuccessEvent);
               break;
             }
           }
@@ -619,7 +628,10 @@ export class DustAPI {
       }
     );
 
-    return processStreamedV2ChatResponse(streamRes);
+    return new Ok({
+      stream: processCreateConversationEvents(streamRes),
+      conversation: conv,
+    });
   }
 
   async getConversation(conversationid: string) {

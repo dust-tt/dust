@@ -1,6 +1,3 @@
-import { literal } from "sequelize";
-
-import { V2_ROLLED_OUT_WORKSPACES } from "@connectors/lib/assistant";
 import {
   ChatSessionUpdateEvent,
   DustAPI,
@@ -154,10 +151,8 @@ async function botAnswerMessage(
 
   await slackChatBotMessage.save();
   const dustAPI = new DustAPI({
-    // workspaceId: connector.workspaceId,
-    // apiKey: connector.workspaceAPIKey,
-    workspaceId: "0ec9852c2f",
-    apiKey: "sk-a6cf29d8d00e87f3234803cda9abee35",
+    workspaceId: connector.workspaceId,
+    apiKey: connector.workspaceAPIKey,
   });
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
@@ -188,23 +183,53 @@ async function botAnswerMessage(
     }
   }
 
-  if (!V2_ROLLED_OUT_WORKSPACES.includes(connector.workspaceId)) {
-    const chatRes = await dustAPI.newChatStreamed(
-      message,
-      slackUser.tz ? slackUser.tz : "Europe/Paris"
-    );
-    if (chatRes.isErr()) {
-      return new Err(new Error(chatRes.error.message));
-    }
-    const chat = chatRes.value;
-    let fullAnswer = "";
-    let lastSentDate = new Date();
-    for await (const event of chat.eventStream) {
-      if (event.type === "chat_message_create") {
-        if (event.message.role === "error") {
-          return new Err(new Error(event.message.message));
-        }
-      } else if (event.type === "chat_message_tokens") {
+  const messagePayload: PostMessagesRequestBodySchema = {
+    content: message,
+    mentions: [{ configurationId: "dust" }],
+    context: {
+      timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+      username: slackChatBotMessage.slackUserName,
+      fullName:
+        slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
+      email: slackChatBotMessage.slackEmail,
+      profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+    },
+  };
+  const convRes = await dustAPI.createConversation(
+    null,
+    "unlisted",
+    messagePayload
+  );
+  if (convRes.isErr()) {
+    return new Err(new Error(convRes.error.message));
+  }
+
+  const conv = convRes.value;
+  const stream = await conv.stream;
+  if (stream.isErr()) {
+    return new Err(new Error(stream.error.message));
+  }
+
+  let fullAnswer = "";
+  let lastSentDate = new Date();
+  for await (const event of stream.value.eventStream) {
+    switch (event.type) {
+      case "user_message_error": {
+        return new Err(
+          new Error(
+            `User message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
+
+      case "agent_error": {
+        return new Err(
+          new Error(
+            `Agent message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
+      case "generation_tokens": {
         fullAnswer += event.text;
         if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
           continue;
@@ -216,91 +241,21 @@ async function botAnswerMessage(
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
-      } else if (event.type === "chat_session_update") {
-        const finalAnswer = `${fullAnswer}\n\n <${DUST_API}/w/${connector.workspaceId}/u/chat/${event.session.sId}|Continue this conversation on Dust>`;
+        break;
+      }
+      case "agent_generation_success": {
+        const finalAnswer = `${event.text}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conv.conversation.sId}|Continue this conversation on Dust>`;
+
         await slackClient.chat.update({
           channel: slackChannel,
           text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
-
-        await slackChatBotMessage.update({
-          chatSessionSid: event.session.sId,
-          completedAt: literal("now()"),
-        });
-        return new Ok(event);
+        break;
       }
-    }
-  } else {
-    const messagePayload: PostMessagesRequestBodySchema = {
-      content: message,
-      mentions: [{ configurationId: "dust" }],
-      context: {
-        timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
-        username: slackChatBotMessage.slackUserName,
-        fullName:
-          slackChatBotMessage.slackFullName ||
-          slackChatBotMessage.slackUserName,
-        email: slackChatBotMessage.slackEmail,
-        profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      },
-    };
-    const convRes = await dustAPI.createConversation(
-      null,
-      "unlisted",
-      messagePayload
-    );
-    if (convRes.isErr()) {
-      return new Err(new Error(convRes.error.message));
-    }
-    const conv = convRes.value;
-
-    let fullAnswer = "";
-    let lastSentDate = new Date();
-    for await (const event of conv.eventStream) {
-      switch (event.type) {
-        case "user_message_error": {
-          return new Err(
-            new Error(
-              `User message error: code: ${event.error.code} message: ${event.error.message}`
-            )
-          );
-        }
-
-        case "agent_error": {
-          return new Err(
-            new Error(
-              `Agent message error: code: ${event.error.code} message: ${event.error.message}`
-            )
-          );
-        }
-        case "generation_tokens": {
-          fullAnswer += event.text;
-          if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
-            continue;
-          }
-          lastSentDate = new Date();
-          await slackClient.chat.update({
-            channel: slackChannel,
-            text: fullAnswer,
-            ts: mainMessage.ts as string,
-            thread_ts: slackMessageTs,
-          });
-          break;
-        }
-        case "generation_success": {
-          await slackClient.chat.update({
-            channel: slackChannel,
-            text: event.text,
-            ts: mainMessage.ts as string,
-            thread_ts: slackMessageTs,
-          });
-          break;
-        }
-        default:
-        // Nothing to do on unsupported events
-      }
+      default:
+      // Nothing to do on unsupported events
     }
   }
   return new Err(new Error("Failed to get the final answer from Dust"));
