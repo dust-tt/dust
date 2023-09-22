@@ -43,7 +43,8 @@ export type APIErrorType =
   | "connector_oauth_target_mismatch"
   | "conversation_not_found"
   | "agent_configuration_not_found"
-  | "message_not_found";
+  | "message_not_found"
+  | "global_agent_error";
 
 export type APIError = {
   type: APIErrorType;

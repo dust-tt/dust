@@ -14,9 +14,9 @@ import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -26,8 +26,6 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   gaTrackingId: string;
-  workspaceAgents: AgentConfigurationType[];
-  dustAgents: AgentConfigurationType[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
 
@@ -38,10 +36,6 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-
-  const allAgents = await getAgentConfigurations(auth);
-  const workspaceAgents = allAgents.filter((a) => a.scope === "workspace");
-  const dustAgents = allAgents.filter((a) => a.scope === "global");
 
   if (
     !owner ||
@@ -59,8 +53,6 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       gaTrackingId: GA_TRACKING_ID,
-      workspaceAgents,
-      dustAgents,
     },
   };
 };
@@ -69,10 +61,44 @@ export default function AssistantsBuilder({
   user,
   owner,
   gaTrackingId,
-  dustAgents,
-  workspaceAgents,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
+  const { agentConfigurations, mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+    });
+
+  const workspaceAgents = agentConfigurations.filter(
+    (a) => a.scope === "workspace"
+  );
+  const dustAgents = agentConfigurations.filter((a) => a.scope === "global");
+
+  const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status:
+            agent.status === "disabled_by_admin"
+              ? "active"
+              : "disabled_by_admin",
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      window.alert(`Error toggling Assistant: ${data.error.message}`);
+      return;
+    }
+
+    await mutateAgentConfigurations();
+  };
 
   return (
     <AppLayout
@@ -102,13 +128,16 @@ export default function AssistantsBuilder({
                   <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
                 }
                 action={
-                  <SliderToggle
-                    size="sm"
-                    onClick={() => {
-                      alert(":)");
-                    }}
-                    selected={agent.status === "active"}
-                  />
+                  agent.sId !== "helper" ? (
+                    <SliderToggle
+                      size="sm"
+                      onClick={async () => {
+                        await handleToggleAgentStatus(agent);
+                      }}
+                      selected={agent.status === "active"}
+                      disabled={agent.status === "disabled_missing_datasource"}
+                    />
+                  ) : null
                 }
               >
                 <ContextItem.Description>
