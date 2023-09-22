@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { createOrUpdateGlobalAgentSettings } from "@app/lib/api/assistant/global_agents";
+import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -64,7 +64,7 @@ async function handler(
         });
       }
 
-      const created = await createOrUpdateGlobalAgentSettings(auth, {
+      const created = await upsertGlobalAgentSettings(auth, {
         agentId: req.query.aId as string,
         status: bodyValidation.right.status,
       });

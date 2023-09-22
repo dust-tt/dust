@@ -107,9 +107,9 @@ async function _getHelperGlobalAgent({
 }
 
 async function _getGPT35TurboGlobalAgent({
-  overridedSettings,
+  settings,
 }: {
-  overridedSettings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
     id: -1,
@@ -118,7 +118,7 @@ async function _getGPT35TurboGlobalAgent({
     name: "gpt3.5-turbo",
     description: "OpenAI's cost-effective and high throughput model.",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
-    status: overridedSettings ? overridedSettings.status : "active",
+    status: settings ? settings.status : "active",
     scope: "global",
     generation: {
       id: -1,
@@ -134,9 +134,9 @@ async function _getGPT35TurboGlobalAgent({
 }
 
 async function _getGPT4GlobalAgent({
-  overridedSettings,
+  settings,
 }: {
-  overridedSettings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
     id: -1,
@@ -145,7 +145,7 @@ async function _getGPT4GlobalAgent({
     name: "gpt4",
     description: "OpenAI's most powerful model.",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
-    status: overridedSettings ? overridedSettings.status : "active",
+    status: settings ? settings.status : "active",
     scope: "global",
     generation: {
       id: -1,
@@ -161,9 +161,9 @@ async function _getGPT4GlobalAgent({
 }
 
 async function _getClaudeInstantGlobalAgent({
-  overridedSettings,
+  settings,
 }: {
-  overridedSettings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
     id: -1,
@@ -172,7 +172,7 @@ async function _getClaudeInstantGlobalAgent({
     name: "claude-instant",
     description: "Anthropic's low-latency and high throughput model.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status: overridedSettings ? overridedSettings.status : "active",
+    status: settings ? settings.status : "active",
     scope: "global",
     generation: {
       id: -1,
@@ -188,9 +188,9 @@ async function _getClaudeInstantGlobalAgent({
 }
 
 async function _getClaudeGlobalAgent({
-  overridedSettings,
+  settings,
 }: {
-  overridedSettings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
     id: -1,
@@ -199,7 +199,7 @@ async function _getClaudeGlobalAgent({
     name: "claude",
     description: "Anthropic's superior performance model.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status: overridedSettings ? overridedSettings.status : "active",
+    status: settings ? settings.status : "active",
     scope: "global",
     generation: {
       id: -1,
@@ -217,7 +217,7 @@ async function _getClaudeGlobalAgent({
 async function _getManagedDataSourceAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
     connectorProvider,
     agentId,
     name,
@@ -225,7 +225,7 @@ async function _getManagedDataSourceAgent(
     pictureUrl,
     prompt,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
     connectorProvider: ConnectorProvider;
     agentId: GLOBAL_AGENTS_SID;
     name: string;
@@ -248,7 +248,7 @@ async function _getManagedDataSourceAgent(
   }
 
   // Check if deactivated by an admin
-  if (overridedSettings && overridedSettings.status === "disabled_by_admin") {
+  if (settings && settings.status === "disabled_by_admin") {
     return {
       id: -1,
       sId: agentId,
@@ -319,13 +319,13 @@ async function _getManagedDataSourceAgent(
 async function _getGoogleDriveGlobalAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
   }
 ): Promise<AgentConfigurationType | null> {
   return await _getManagedDataSourceAgent(auth, {
-    overridedSettings,
+    settings,
     connectorProvider: "google_drive",
     agentId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
     name: "googledrive",
@@ -339,13 +339,13 @@ async function _getGoogleDriveGlobalAgent(
 async function _getSlackGlobalAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
   }
 ) {
   return await _getManagedDataSourceAgent(auth, {
-    overridedSettings,
+    settings,
     connectorProvider: "slack",
     agentId: GLOBAL_AGENTS_SID.SLACK,
     name: "slack",
@@ -359,13 +359,13 @@ async function _getSlackGlobalAgent(
 async function _getGithubGlobalAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
   }
 ) {
   return await _getManagedDataSourceAgent(auth, {
-    overridedSettings,
+    settings,
     connectorProvider: "github",
     agentId: GLOBAL_AGENTS_SID.GITHUB,
     name: "github",
@@ -380,13 +380,13 @@ async function _getGithubGlobalAgent(
 async function _getNotionGlobalAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
   }
 ): Promise<AgentConfigurationType | null> {
   return await _getManagedDataSourceAgent(auth, {
-    overridedSettings,
+    settings,
     connectorProvider: "notion",
     agentId: GLOBAL_AGENTS_SID.NOTION,
     name: "notion",
@@ -400,9 +400,9 @@ async function _getNotionGlobalAgent(
 async function _getDustGlobalAgent(
   auth: Authenticator,
   {
-    overridedSettings,
+    settings,
   }: {
-    overridedSettings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettings | null;
   }
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
@@ -415,7 +415,7 @@ async function _getDustGlobalAgent(
     "An assistant with context on your managed and static data sources.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  if (overridedSettings && overridedSettings.status === "disabled_by_admin") {
+  if (settings && settings.status === "disabled_by_admin") {
     return {
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST,
@@ -510,7 +510,7 @@ export async function getGlobalAgent(
   }
   const user = auth.user();
 
-  const overridedSettings = await GlobalAgentSettings.findOne({
+  const settings = await GlobalAgentSettings.findOne({
     where: { workspaceId: owner.id, agentId: sId },
   });
 
@@ -518,23 +518,23 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.HELPER:
       return _getHelperGlobalAgent({ user });
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      return _getGPT35TurboGlobalAgent({ overridedSettings });
+      return _getGPT35TurboGlobalAgent({ settings });
     case GLOBAL_AGENTS_SID.GPT4:
-      return _getGPT4GlobalAgent({ overridedSettings });
+      return _getGPT4GlobalAgent({ settings });
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      return _getClaudeInstantGlobalAgent({ overridedSettings });
+      return _getClaudeInstantGlobalAgent({ settings });
     case GLOBAL_AGENTS_SID.CLAUDE:
-      return _getClaudeGlobalAgent({ overridedSettings });
+      return _getClaudeGlobalAgent({ settings });
     case GLOBAL_AGENTS_SID.SLACK:
-      return _getSlackGlobalAgent(auth, { overridedSettings });
+      return _getSlackGlobalAgent(auth, { settings });
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
-      return _getGoogleDriveGlobalAgent(auth, { overridedSettings });
+      return _getGoogleDriveGlobalAgent(auth, { settings });
     case GLOBAL_AGENTS_SID.NOTION:
-      return _getNotionGlobalAgent(auth, { overridedSettings });
+      return _getNotionGlobalAgent(auth, { settings });
     case GLOBAL_AGENTS_SID.GITHUB:
-      return _getGithubGlobalAgent(auth, { overridedSettings });
+      return _getGithubGlobalAgent(auth, { settings });
     case GLOBAL_AGENTS_SID.DUST:
-      return _getDustGlobalAgent(auth, { overridedSettings });
+      return _getDustGlobalAgent(auth, { settings });
     default:
       return null;
   }
@@ -565,7 +565,7 @@ export async function getGlobalAgents(
   return globalAgents;
 }
 
-export async function createOrUpdateGlobalAgentSettings(
+export async function upsertGlobalAgentSettings(
   auth: Authenticator,
   {
     agentId,
