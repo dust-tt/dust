@@ -19,6 +19,7 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type {
@@ -84,42 +85,7 @@ export default function AssistantNew({
   });
 
   let agents = agentConfigurations.filter((a) => a.status === "active");
-  const customOrder = [
-    "Dust",
-    "gpt4",
-    "slack",
-    "notion",
-    "googledrive",
-    "github",
-    "claude",
-  ];
-  // Sort agents based on custom criteria
-  agents.sort((a, b) => {
-    // Check for 'Dust'
-    if (a.name === "Dust") return -1;
-    if (b.name === "Dust") return 1;
-
-    // Check for 'gpt4'
-    if (a.name === "gpt-4") return -1;
-    if (b.name === "gpt4") return 1;
-
-    // Check for agents with 'scope' set to 'workspace'
-    if (a.scope === "workspace" && b.scope !== "workspace") return -1;
-    if (b.scope === "workspace" && a.scope !== "workspace") return 1;
-
-    // Check for customOrder (slack, notion, googledrive, github, claude)
-    const aIndex = customOrder.indexOf(a.name);
-    const bIndex = customOrder.indexOf(b.name);
-
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex; // Both are in customOrder, sort them accordingly
-    }
-
-    if (aIndex !== -1) return -1; // Only a is in customOrder, it comes first
-    if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
-
-    return 0; // Default: keep the original order
-  });
+  agents.sort(compareAgentsForSort);
 
   agents = showAllAgents ? agents : agents.slice(0, 4);
 
