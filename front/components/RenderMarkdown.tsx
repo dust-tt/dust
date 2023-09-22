@@ -150,7 +150,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </div>
-        <div className="overflow-auto pt-8">
+        <div className="overflow-auto pt-8 text-sm">
           {validChildrenContent ? children : fallbackData || children}
         </div>
       </div>
@@ -301,7 +301,7 @@ function CodeBlock({
       {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
-    <code className="rounded-md border-structure-100 bg-slate-200 p-1">
+    <code className="rounded-md border-structure-100 bg-slate-200 p-1 text-sm">
       {children}
     </code>
   );
