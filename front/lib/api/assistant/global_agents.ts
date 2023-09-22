@@ -546,7 +546,7 @@ export async function getGlobalAgent(
   if (
     !owner.plan.limits.largeModels &&
     agentConfiguration.generation &&
-    !getSupportedModelConfig(agentConfiguration.generation?.model).largeModel
+    getSupportedModelConfig(agentConfiguration.generation?.model).largeModel
   ) {
     agentConfiguration.status = "require_upgrade";
   }

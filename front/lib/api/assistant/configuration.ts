@@ -357,6 +357,12 @@ export async function createAgentGenerationConfiguration(
   if (temperature < 0) {
     throw new Error("Temperature must be positive.");
   }
+  if (
+    getSupportedModelConfig(model).largeModel &&
+    !owner.plan.limits.largeModels
+  ) {
+    throw new Error("You need to upgrade your plan to use large models.");
+  }
 
   const genConfig = await AgentGenerationConfiguration.create({
     prompt: prompt,
