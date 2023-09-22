@@ -126,7 +126,7 @@ export const subNavigationAdmin = ({
     if (isDevelopmentOrDustWorkspace(owner)) {
       nav.push({
         id: "assistants",
-        label: "Assistants Builder",
+        label: "Assistants Manager",
         icon: RobotIcon,
         href: `/w/${owner.sId}/builder/assistants`,
         current: current === "assistants",

@@ -109,9 +109,9 @@ export default function AssistantsBuilder({
       subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
     >
       <PageHeader
-        title="Assistants Builder"
+        title="Assistants Manager"
         icon={RobotIcon}
-        description="Build an assistant."
+        description="Manage your workspace's assistants."
       />
       <div className="flex flex-col gap-4 pb-4">
         <div>
