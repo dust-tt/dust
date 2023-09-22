@@ -229,10 +229,10 @@ export default function AssistantNew({
                   setShowAllAgents(!showAllAgents);
                 }}
               />
-              {isBuilder ? (
+              {isBuilder && (
                 <>
                   <Button
-                    variant="primary"
+                    variant="secondary"
                     icon={Cog6ToothIcon}
                     label="Manage Assistants"
                     onClick={() => {
@@ -250,11 +250,6 @@ export default function AssistantNew({
                     }}
                   />
                 </>
-              ) : (
-                <StartHelperConversationButton
-                  content="Hey @helper, What can I use an Assistant for?"
-                  handleSubmit={handleSubmit}
-                />
               )}
             </div>
 
@@ -274,7 +269,7 @@ export default function AssistantNew({
                     handleSubmit={handleSubmit}
                   />
                   <StartHelperConversationButton
-                    content="@helper, what are custom Asssistants?"
+                    content="@helper, what are custom Assistants?"
                     handleSubmit={handleSubmit}
                   />
                   <StartHelperConversationButton
@@ -293,7 +288,7 @@ export default function AssistantNew({
               ) : (
                 <div className="flex flex-wrap gap-2">
                   <StartHelperConversationButton
-                    content="@helper, what are the limitations of Assistants?"
+                    content="Hey @helper, What can I use an Assistant for?"
                     handleSubmit={handleSubmit}
                   />
                   <StartHelperConversationButton
@@ -302,6 +297,10 @@ export default function AssistantNew({
                   />
                   <StartHelperConversationButton
                     content="@helper, how do Assistants work exactly?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what are the limitations of Assistants?"
                     handleSubmit={handleSubmit}
                   />
                 </div>
