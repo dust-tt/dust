@@ -11,7 +11,6 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { getRedirectPathFromStickyPath } from "@app/lib/redirect";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -275,15 +274,8 @@ async function handler(
         return;
       }
 
-      const pathFromSticky = await getRedirectPathFromStickyPath(
-        u,
-        u.workspaces[0]
-      );
-      if (pathFromSticky) {
-        res.redirect(pathFromSticky);
-      } else {
-        res.redirect(`/w/${u.workspaces[0].sId}`);
-      }
+      res.redirect(`/w/${u.workspaces[0].sId}`);
+
       return;
 
     default:

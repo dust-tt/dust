@@ -1,6 +1,5 @@
 import { GetServerSideProps } from "next";
 
-import { setUserMetadata } from "@app/lib/api/user";
 import { isOnAssistantV2 } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
@@ -25,10 +24,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     : `/w/${context.query.wId}/u/chat`;
 
   if (owner.role === "user") {
-    void setUserMetadata(user, {
-      key: "sticky_path",
-      value: redirectRoute,
-    });
     return {
       redirect: {
         destination: redirectRoute,
@@ -36,11 +31,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       },
     };
   }
-
-  void setUserMetadata(user, {
-    key: "sticky_path",
-    value: redirectRoute,
-  });
 
   return {
     redirect: {

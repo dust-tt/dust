@@ -13,7 +13,6 @@ import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-import { getRedirectPathFromStickyPath } from "@app/lib/redirect";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -25,14 +24,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   if (user && user.workspaces.length > 0) {
     let url = `/w/${user.workspaces[0].sId}`;
-
-    const pathFromSticky = await getRedirectPathFromStickyPath(
-      user,
-      user.workspaces[0]
-    );
-    if (pathFromSticky) {
-      url = pathFromSticky;
-    }
 
     if (context.query.wId) {
       url = `/api/login?wId=${context.query.wId}`;
