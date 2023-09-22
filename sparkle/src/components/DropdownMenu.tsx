@@ -225,19 +225,22 @@ DropdownMenu.Item = function ({
 };
 
 interface DropdownItemsProps {
-  origin?: "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
+  origin?: "topLeft" | "topRight" | "bottomLeft" | "bottomRight" | "auto";
   width?: number;
   children: React.ReactNode;
 }
 
 DropdownMenu.Items = function ({
-  origin = "topRight",
+  origin = "auto",
   width = 160,
   children,
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
   const [buttonHeight, setButtonHeight] = useState(0);
 
+  if (origin === "auto") {
+    origin = findOriginFromButton(buttonRef);
+  }
   useEffect(() => {
     if (buttonRef && buttonRef.current) {
       setButtonHeight(buttonRef.current.offsetHeight);
@@ -305,3 +308,22 @@ DropdownMenu.Items = function ({
     </Transition>
   );
 };
+
+function findOriginFromButton(
+  buttonRef: MutableRefObject<HTMLButtonElement | null> | null
+) {
+  if (!buttonRef) {
+    return "topRight";
+  }
+  const buttonRect = buttonRef.current?.getBoundingClientRect();
+  if (!buttonRect) {
+    return "topRight";
+  }
+  const windowHeight = window.innerHeight;
+  // Top half of screen
+  if (buttonRect.top < windowHeight / 2) {
+    return buttonRect.left < window.innerWidth / 2 ? "topLeft" : "topRight";
+  }
+  // Bottom half of screen
+  return buttonRect.left < window.innerWidth / 2 ? "bottomLeft" : "bottomRight";
+}

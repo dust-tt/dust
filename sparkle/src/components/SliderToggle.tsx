@@ -11,7 +11,7 @@ type SliderToggleProps = {
 };
 
 const baseClasses =
-  "s-box-border s-rounded-full s-border s-border-structure-300 dark:s-border-structure-300-dark s-transition-colors s-duration-300 s-ease-out s-cursor-pointer";
+  "s-box-border s-rounded-full s-border s-border-structure-300 dark:s-border-structure-300-dark s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer";
 
 const sizeClasses = {
   sm: "s-h-6 s-w-11",
@@ -26,7 +26,8 @@ const cusrsorSizeClasses = {
 const stateClasses = {
   idle: "s-bg-structure-200 hover:s-bg-action-400",
   selected: "s-bg-success-400 hover:s-bg-success-300",
-  disabled: "s-bg-structure-300 s-cursor-not-allowed",
+  disabled:
+    "s-bg-structure-300 s-cursor-not-allowed hover:s-bg-structure-300 hover:s-cursor-not-allowed",
   dark: {
     idle: "dark:s-bg-structure-200-dark dark:hover:s-bg-action-400",
     selected: "dark:s-bg-success-400-dark",
