@@ -101,7 +101,7 @@ export const topNavigation = ({
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/data-sources`,
+      href: `/w/${owner.sId}/builder/assistants`,
       current: current === "settings",
     });
   }
@@ -126,7 +126,7 @@ export const subNavigationAdmin = ({
     if (isDevelopmentOrDustWorkspace(owner)) {
       nav.push({
         id: "assistants",
-        label: "Assistants Manager",
+        label: "Assistants Builder",
         icon: RobotIcon,
         href: `/w/${owner.sId}/builder/assistants`,
         current: current === "assistants",
