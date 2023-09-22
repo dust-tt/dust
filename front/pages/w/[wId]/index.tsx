@@ -23,15 +23,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     ? `/w/${context.query.wId}/assistant/new`
     : `/w/${context.query.wId}/u/chat`;
 
-  if (owner.role === "user") {
-    return {
-      redirect: {
-        destination: redirectRoute,
-        permanent: false,
-      },
-    };
-  }
-
   return {
     redirect: {
       destination: redirectRoute,
