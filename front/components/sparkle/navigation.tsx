@@ -68,7 +68,7 @@ export const topNavigation = ({
 
   if (isOnV2) {
     nav.push({
-      id: "assistants",
+      id: "assistant",
       label: "Assistant",
       href: `/w/${owner.sId}/assistant/new`,
       icon: RobotIcon,
@@ -101,12 +101,15 @@ export const topNavigation = ({
   }
 
   if (owner.role === "admin" || owner.role === "builder") {
+    const defaultSettingsRoute = isOnV2
+      ? `/w/${owner.sId}/builder/assistants`
+      : `/w/${owner.sId}/builder/data-sources`;
     nav.push({
       id: "settings",
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/data-sources`,
+      href: defaultSettingsRoute,
       current: current === "settings",
     });
   }
@@ -128,7 +131,7 @@ export const subNavigationAdmin = ({
   const nav: SparkleAppLayoutNavigation[] = [];
 
   if (owner.role === "admin" || owner.role === "builder") {
-    if (isDevelopmentOrDustWorkspace(owner)) {
+    if (isOnAssistantV2(owner)) {
       nav.push({
         id: "assistants",
         label: "Assistants Manager",
