@@ -7,7 +7,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -34,13 +33,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (
-    !owner ||
-    !user ||
-    !auth.isBuilder() ||
-    !isDevelopmentOrDustWorkspace(owner) ||
-    !context.params?.aId
-  ) {
+  if (!owner || !user || !auth.isBuilder() || !context.params?.aId) {
     return {
       notFound: true,
     };
