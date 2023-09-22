@@ -22,6 +22,7 @@ export default function DataSourceResourceSelectorTree({
   selectedParentIds,
   onSelectChange,
   parentsById,
+  fullySelected,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -32,6 +33,7 @@ export default function DataSourceResourceSelectorTree({
     selected: boolean
   ) => void;
   parentsById: Record<string, Set<string>>;
+  fullySelected: boolean;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -45,6 +47,7 @@ export default function DataSourceResourceSelectorTree({
         parentsById={parentsById}
         parents={[]}
         isChecked={false}
+        fullySelected={fullySelected}
       />
     </div>
   );
@@ -83,6 +86,7 @@ function DataSourceResourceSelectorChildren({
   onSelectChange,
   parentsById,
   parents,
+  fullySelected,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -96,6 +100,7 @@ function DataSourceResourceSelectorChildren({
     selected: boolean
   ) => void;
   parentsById: Record<string, Set<string>>;
+  fullySelected: boolean;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -111,7 +116,7 @@ function DataSourceResourceSelectorChildren({
   const getCheckStatus = (
     resourceId: string
   ): "checked" | "unchecked" | "partial" => {
-    if (isChecked || selectedParentIds?.has(resourceId)) {
+    if (fullySelected || isChecked || selectedParentIds?.has(resourceId)) {
       return "checked";
     }
 
@@ -199,7 +204,7 @@ function DataSourceResourceSelectorChildren({
                           checked
                         )
                       }
-                      disabled={isChecked}
+                      disabled={isChecked || fullySelected}
                     />
                   </div>
                 </div>
@@ -216,6 +221,7 @@ function DataSourceResourceSelectorChildren({
                       onSelectChange={onSelectChange}
                       parentsById={parentsById}
                       parents={[...parents, r.internalId]}
+                      fullySelected={fullySelected}
                     />
                   </div>
                 )}
