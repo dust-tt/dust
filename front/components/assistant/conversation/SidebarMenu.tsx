@@ -1,5 +1,6 @@
 import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
 import moment from "moment";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -9,10 +10,6 @@ import { WorkspaceType } from "@app/types/user";
 
 export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
-
-  const onNewConversation = async () => {
-    void router.push(`/w/${owner.sId}/assistant/new`);
-  };
 
   const { conversations, isConversationLoading, isConversationError } =
     useConversations({
@@ -67,13 +64,14 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
           <div className="pr py-4 text-right">
-            <Button
-              labelVisible={true}
-              label="New Conversation"
-              icon={ChatBubbleBottomCenterPlusIcon}
-              onClick={onNewConversation}
-              className="flex-none shrink"
-            />
+            <Link href={`/w/${owner.sId}/assistant/new`}>
+              <Button
+                labelVisible={true}
+                label="New Conversation"
+                icon={ChatBubbleBottomCenterPlusIcon}
+                className="flex-none shrink"
+              />
+            </Link>
           </div>
           {isConversationError && (
             <div className="py-1">
@@ -105,11 +103,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
                                       c.created
                                     ).toLocaleDateString()}`)
                               }
-                              onClick={async () =>
-                                await router.push(
-                                  `/w/${owner.sId}/assistant/${c.sId}`
-                                )
-                              }
+                              href={`/w/${owner.sId}/assistant/${c.sId}`}
                             />
                           );
                         }
