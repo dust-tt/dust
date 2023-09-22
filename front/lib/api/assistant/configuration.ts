@@ -185,6 +185,7 @@ export async function getAgentConfigurations(
           }
         : {}),
     },
+    order: [["name", "ASC"]],
   });
 
   const agents = await Promise.all(
