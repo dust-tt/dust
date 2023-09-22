@@ -17,6 +17,7 @@ import {
 } from "react";
 import * as ReactDOMServer from "react-dom/server";
 
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -77,6 +78,7 @@ function AgentListImpl(
   });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  activeAgents.sort(compareAgentsForSort);
   const filtered = activeAgents.filter((a) => {
     return (
       filter.length === 0 ||
@@ -215,7 +217,9 @@ export function AssistantInputBar({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  activeAgents.sort(compareAgentsForSort);
 
   const handleSubmit = async () => {
     const contentEditable = document.getElementById("dust-input-bar");

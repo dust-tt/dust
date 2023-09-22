@@ -1,5 +1,6 @@
 import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
 
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -22,7 +23,9 @@ export function AgentSuggestion({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
-  agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
+
+  const agents = agentConfigurations.filter((a) => a.status === "active");
+  agents.sort((a, b) => compareAgentSuggestions(a, b));
 
   return (
     <div className="pt-4">
@@ -31,7 +34,7 @@ export function AgentSuggestion({
       </div>
       <div className="mt-3 flex items-center gap-2">
         <Button.List>
-          {agentConfigurations.slice(0, 3).map((agent) => (
+          {agents.slice(0, 3).map((agent) => (
             <Button
               key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
               size="xs"
@@ -53,7 +56,7 @@ export function AgentSuggestion({
           </DropdownMenu.Button>
           <div className="relative bottom-6 z-30">
             <DropdownMenu.Items origin="topLeft" width={240}>
-              {agentConfigurations.slice(3).map((agent) => (
+              {agents.slice(3).map((agent) => (
                 <DropdownMenu.Item
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
                   label={agent.name}
@@ -90,10 +93,8 @@ export function AgentSuggestion({
   }
 
   /**
-   * Compare agents by whom was last mentioned in conversation from this user.
-   * If none has been mentioned, dust comes first, then gpt4 , then custom
-   * agents (in any order), then global agents with a specific source, then
-   * claude, then the rest
+   * Compare agents by whom was last mentioned in conversation from this user. If none has been
+   * mentioned, use the shared `compareAgentsForSort` function.
    */
   function compareAgentSuggestions(
     a: AgentConfigurationType,
@@ -123,44 +124,9 @@ export function AgentSuggestion({
           )
       )
     );
-    //
+
     if (aIndex === -1 && bIndex === -1) {
-      // if neither a nor b was mentioned, dust comes first, then gpt4
-      if (a.name === "Dust") {
-        return -1;
-      }
-      if (b.name === "Dust") {
-        return 1;
-      }
-      if (a.name === "gpt4") {
-        return -1;
-      }
-      if (b.name === "gpt4") {
-        return 1;
-      }
-      // custom agents come next
-      if (a.scope === "workspace") {
-        return -1;
-      }
-      if (b.scope === "workspace") {
-        return 1;
-      }
-      // datasource-specific global agents come next
-      if (a.action?.dataSources.length === 1) {
-        return -1;
-      }
-      if (a.action?.dataSources.length === 1) {
-        return 1;
-      }
-      // claude comes next
-      if (a.name === "claude") {
-        return -1;
-      }
-      if (b.name === "claude") {
-        return 1;
-      }
-      // the rest
-      return 0;
+      return compareAgentsForSort(a, b);
     }
 
     // if a or b was mentioned, sort by largest index first

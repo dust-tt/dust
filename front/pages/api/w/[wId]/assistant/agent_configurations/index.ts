@@ -9,10 +9,7 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
-import {
-  isSupportedModel,
-  SupportedModel,
-} from "@app/lib/api/assistant/supported_models";
+import { isSupportedModel, SupportedModel } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";

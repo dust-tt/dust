@@ -9,7 +9,8 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
-} from "@app/lib/api/assistant/supported_models";
+} from "@app/lib/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
@@ -53,24 +54,9 @@ class HelperAssistantPrompt {
  * GLOBAL AGENTS CONFIGURATION
  *
  * To add an agent:
- * - Add a unique SID in GLOBAL_AGENTS_SID.
- * - Add a unique ID in GLOBAL_AGENTS_ID.
+ * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
-
-export enum GLOBAL_AGENTS_SID {
-  HELPER = "helper",
-  DUST = "dust",
-  SLACK = "slack",
-  GOOGLE_DRIVE = "google_drive",
-  NOTION = "notion",
-  GITHUB = "github",
-  GPT4 = "gpt-4",
-  CLAUDE = "claude-2",
-  GPT35_TURBO = "gpt-3.5-turbo",
-  CLAUDE_INSTANT = "claude-instant-1",
-}
-
 async function _getHelperGlobalAgent({
   user,
 }: {
@@ -499,7 +485,7 @@ async function _getDustGlobalAgent(
 }
 
 /**
- * EXPORTED FUNCTIONS
+ * Exported functions
  */
 
 export function isGlobalAgentId(sId: string): boolean {

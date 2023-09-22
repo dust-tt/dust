@@ -14,6 +14,7 @@ import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -73,6 +74,7 @@ export default function AssistantsBuilder({
     (a) => a.scope === "workspace"
   );
   const dustAgents = agentConfigurations.filter((a) => a.scope === "global");
+  dustAgents.sort(compareAgentsForSort);
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     const res = await fetch(
