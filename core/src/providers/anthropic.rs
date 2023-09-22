@@ -130,7 +130,7 @@ impl AnthropicLLM {
             let tokens = self.encode(&prompt).await?;
             max_tokens = Some(std::cmp::min(
                 (self.context_size() - tokens.len()) as i32,
-                8192,
+                16384,
             ));
         }
 
@@ -183,7 +183,7 @@ impl AnthropicLLM {
             let tokens = self.encode(&prompt).await?;
             max_tokens = Some(std::cmp::min(
                 (self.context_size() - tokens.len()) as i32,
-                8192,
+                16384,
             ));
         }
 
@@ -473,7 +473,7 @@ impl LLM for AnthropicLLM {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some(std::cmp::min(
                     (self.context_size() - tokens.len()) as i32,
-                    8192,
+                    16384,
                 ));
             }
         }
