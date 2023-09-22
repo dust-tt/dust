@@ -425,8 +425,7 @@ export async function processStreamedV2ChatResponse(res: Response) {
     if (event.type === "event") {
       if (event.data) {
         try {
-          const data = JSON.parse(event.data);
-
+          const data = JSON.parse(event.data).data;
           switch (data.type) {
             case "user_message_error": {
               pendingEvents.push(data as UserMessageErrorEvent);
@@ -649,7 +648,7 @@ export class DustAPI {
               return new Ok(agentMessage[0] as AgentMessageType);
             }
           }
-          await new Promise((r) => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 1000));
         }
 
         return new Err(
@@ -663,7 +662,7 @@ export class DustAPI {
     if (agentMessageRes.isErr()) {
       return agentMessageRes;
     }
-    console.log("v2message 4");
+    console.log("v2message 4", agentMessageRes.value);
 
     const streamRes = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${conversationId}/messages/${
