@@ -211,7 +211,7 @@ export default function DataSourceNew({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Automatically select this Data Source for Assistant queries
+                  Availability to @dust
                 </label>
               </div>
               <div className="mt-2 flex items-center">
@@ -220,9 +220,8 @@ export default function DataSourceNew({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  The assistant defaults to using the Data Source for answers.
-                  However, users can opt out for a conversation by clicking the
-                  Data Source icon below the chat input.
+                  Make this Data Source available to the{" "}
+                  <span className="font-semibold">@dust</span> assistant.
                 </p>
               </div>
             </div>
