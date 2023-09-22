@@ -58,11 +58,14 @@ class HelperAssistantPrompt {
  * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
-async function _getHelperGlobalAgent({
-  user,
-}: {
-  user: UserType | null;
-}): Promise<AgentConfigurationType> {
+async function _getHelperGlobalAgent(
+  auth: Authenticator,
+  {
+    user,
+  }: {
+    user: UserType | null;
+  }
+): Promise<AgentConfigurationType> {
   let prompt = "";
 
   if (user) {
@@ -75,6 +78,19 @@ async function _getHelperGlobalAgent({
   if (staticPrompt) {
     prompt = prompt + staticPrompt;
   }
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const model = owner.plan.limits.largeModels
+    ? {
+        providerId: GPT_4_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_4_DEFAULT_MODEL_CONFIG.modelId,
+      }
+    : {
+        providerId: GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG.modelId,
+      };
 
   return {
     id: -1,
@@ -89,10 +105,7 @@ async function _getHelperGlobalAgent({
     generation: {
       id: -1,
       prompt: prompt,
-      model: {
-        providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
-      },
+      model,
       temperature: 0.2,
     },
     action: null,
@@ -508,7 +521,7 @@ export async function getGlobalAgent(
   let agentConfiguration: AgentConfigurationType | null = null;
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      agentConfiguration = await _getHelperGlobalAgent({ user });
+      agentConfiguration = await _getHelperGlobalAgent(auth, { user });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
