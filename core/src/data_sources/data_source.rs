@@ -939,6 +939,14 @@ impl DataSource {
 
         let time_embedding_start = utils::now();
 
+        let query = match query {
+            Some(q) => match q.len() {
+                0 => None,
+                _ => Some(q),
+            },
+            None => None,
+        };
+
         let chunks = match query {
             None => {
                 let store = store.clone();
