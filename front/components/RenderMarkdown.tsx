@@ -64,23 +64,31 @@ function addClosingBackticks(str: string): string {
   return str;
 }
 
-export function RenderMarkdown({ content }: { content: string }) {
+export function RenderMarkdown({
+  content,
+  blinkingCursor,
+}: {
+  content: string;
+  blinkingCursor: boolean;
+}) {
   return (
-    <ReactMarkdown
-      linkTarget="_blank"
-      components={{
-        pre: PreBlock,
-        code: CodeBlock,
-        a: LinkBlock,
-        ul: UlBlock,
-        ol: OlBlock,
-        li: LiBlock,
-        p: ParagraphBlock,
-      }}
-      remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
-    >
-      {addClosingBackticks(content)}
-    </ReactMarkdown>
+    <div className={blinkingCursor ? "blinking-cursor" : ""}>
+      <ReactMarkdown
+        linkTarget="_blank"
+        components={{
+          pre: PreBlock,
+          code: CodeBlock,
+          a: LinkBlock,
+          ul: UlBlock,
+          ol: OlBlock,
+          li: LiBlock,
+          p: ParagraphBlock,
+        }}
+        remarkPlugins={[remarkDirective, customDirectivesPlugin, remarkGfm]}
+      >
+        {addClosingBackticks(content)}
+      </ReactMarkdown>
+    </div>
   );
 }
 
