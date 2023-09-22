@@ -508,28 +508,48 @@ export async function getGlobalAgent(
 
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      return _getHelperGlobalAgent({ user });
+	  agentConfiguration = await _getHelperGlobalAgent({user});
+      break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      return _getGPT35TurboGlobalAgent({ settings });
+	  agentConfiguration = await _getGPT35TurboGlobalAgent({settings});
+      break;
     case GLOBAL_AGENTS_SID.GPT4:
-      return _getGPT4GlobalAgent({ settings });
+	  agentConfiguration = await _getGPT4GlobalAgent({settings});
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      return _getClaudeInstantGlobalAgent({ settings });
+	  agentConfiguration = await _getClaudeInstantGlobalAgent({settings});
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE:
-      return _getClaudeGlobalAgent({ settings });
+	  agentConfiguration = await _getClaudeGlobalAgent({settings});
+      break;
     case GLOBAL_AGENTS_SID.SLACK:
-      return _getSlackGlobalAgent(auth, { settings });
+	  agentConfiguration = await _getSlackGlobalAgent(auth, {settings});
+      break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
-      return _getGoogleDriveGlobalAgent(auth, { settings });
+	  agentConfiguration = await _getGoogleDriveGlobalAgent(auth, {settings});
+      break;
     case GLOBAL_AGENTS_SID.NOTION:
-      return _getNotionGlobalAgent(auth, { settings });
+	  agentConfiguration = await _getNotionGlobalAgent(auth, {settings});
+      break;
     case GLOBAL_AGENTS_SID.GITHUB:
-      return _getGithubGlobalAgent(auth, { settings });
+	  agentConfiguration = await _getGithubGlobalAgent(auth, {settings});
+      break;
     case GLOBAL_AGENTS_SID.DUST:
-      return _getDustGlobalAgent(auth, { settings });
+	  agentConfiguration = await _getDustGlobalAgent(auth, {settings});
+      break;
     default:
       return null;
   }
+  // Enforce plan limits: check if large models are allowed and act accordingly
+  if (
+    !agentConfiguration ||
+    (!owner.plan.limits.largeModels &&
+      agentConfiguration.generation &&
+      !getSupportedModelConfig(agentConfiguration.generation?.model).largeModel)
+  ) {
+    return null;
+  }
+  return agentConfiguration;
 }
 
 export async function getGlobalAgents(
