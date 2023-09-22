@@ -1,6 +1,7 @@
 import { GetServerSideProps } from "next";
 
 import { setUserMetadata } from "@app/lib/api/user";
+import { isOnAssistantV2 } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
@@ -18,14 +19,19 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
+  const isOnV2 = isOnAssistantV2(owner);
+  const redirectRoute = isOnV2
+    ? `/w/${context.query.wId}/assistant/new`
+    : `/w/${context.query.wId}/u/chat`;
+
   if (owner.role === "user") {
     void setUserMetadata(user, {
       key: "sticky_path",
-      value: `/w/${context.query.wId}/u/chat`,
+      value: redirectRoute,
     });
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/u/chat`,
+        destination: redirectRoute,
         permanent: false,
       },
     };
@@ -33,12 +39,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   void setUserMetadata(user, {
     key: "sticky_path",
-    value: `/w/${context.query.wId}/u/chat`,
+    value: redirectRoute,
   });
 
   return {
     redirect: {
-      destination: `/w/${context.query.wId}/u/chat`,
+      destination: redirectRoute,
       permanent: false,
     },
   };

@@ -2,7 +2,6 @@ import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
-import { getUserMetadata } from "@app/lib/api/user";
 import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -12,6 +11,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { getRedirectPathFromStickyPath } from "@app/lib/redirect";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -275,9 +275,12 @@ async function handler(
         return;
       }
 
-      const m = await getUserMetadata(u, "sticky_path");
-      if (m) {
-        res.redirect(m.value);
+      const pathFromSticky = await getRedirectPathFromStickyPath(
+        u,
+        u.workspaces[0]
+      );
+      if (pathFromSticky) {
+        res.redirect(pathFromSticky);
       } else {
         res.redirect(`/w/${u.workspaces[0].sId}`);
       }

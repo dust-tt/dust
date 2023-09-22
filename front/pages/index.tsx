@@ -12,8 +12,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
-import { getUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";
+import { getRedirectPathFromStickyPath } from "@app/lib/redirect";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -26,9 +26,12 @@ export const getServerSideProps: GetServerSideProps<{
   if (user && user.workspaces.length > 0) {
     let url = `/w/${user.workspaces[0].sId}`;
 
-    const m = await getUserMetadata(user, "sticky_path");
-    if (m) {
-      url = m.value;
+    const pathFromSticky = await getRedirectPathFromStickyPath(
+      user,
+      user.workspaces[0]
+    );
+    if (pathFromSticky) {
+      url = pathFromSticky;
     }
 
     if (context.query.wId) {
