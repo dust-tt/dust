@@ -101,7 +101,7 @@ export const topNavigation = ({
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/data-sources`,
+      href: `/w/${owner.sId}/builder/assistants`,
       current: current === "settings",
     });
   }
@@ -120,17 +120,31 @@ export const subNavigationAdmin = ({
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
 }) => {
-  const nav: SparkleAppLayoutNavigation[] = [
-    {
-      id: "data_sources",
-      label: "Data Sources",
-      icon: CloudArrowDownIcon,
-      href: `/w/${owner.sId}/builder/data-sources`,
-      current: current === "data_sources",
-      subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources" ? subMenu : undefined,
-    },
-  ];
+  const nav: SparkleAppLayoutNavigation[] = [];
+
+  if (owner.role === "admin" || owner.role === "builder") {
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      nav.push({
+        id: "assistants",
+        label: "Assistants Builder",
+        icon: RobotIcon,
+        href: `/w/${owner.sId}/builder/assistants`,
+        current: current === "assistants",
+        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
+        subMenu: current === "assistants" ? subMenu : undefined,
+      });
+    }
+  }
+
+  nav.push({
+    id: "data_sources",
+    label: "Data Sources",
+    icon: CloudArrowDownIcon,
+    href: `/w/${owner.sId}/builder/data-sources`,
+    current: current === "data_sources",
+    subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
+    subMenu: current === "data_sources" ? subMenu : undefined,
+  });
 
   if (owner.role === "admin") {
     nav.push({
@@ -154,17 +168,6 @@ export const subNavigationAdmin = ({
       subMenuLabel: current === "developers" ? subMenuLabel : undefined,
       subMenu: current === "developers" ? subMenu : undefined,
     });
-    if (isDevelopmentOrDustWorkspace(owner)) {
-      nav.push({
-        id: "assistants",
-        label: "Assistants Manager",
-        icon: RobotIcon,
-        href: `/w/${owner.sId}/builder/assistants`,
-        current: current === "assistants",
-        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
-        subMenu: current === "assistants" ? subMenu : undefined,
-      });
-    }
   }
 
   return nav;

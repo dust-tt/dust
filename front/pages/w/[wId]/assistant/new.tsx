@@ -188,7 +188,7 @@ export default function AssistantNew({
           />
 
           {/* GETTING STARTED */}
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-8 pb-32">
             <div className="mt-6 flex flex-col gap-2">
               <div className="flex flex-row gap-2">
                 <Icon visual={FlagIcon} size="md" />
@@ -228,7 +228,7 @@ export default function AssistantNew({
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {agents.map((agent) => (
                   <div key={agent.sId} className="flex flex-col gap-1">
                     <Avatar
@@ -247,34 +247,32 @@ export default function AssistantNew({
                 ))}
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <div>
-                <Button
-                  variant="tertiary"
-                  icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
-                  label={
-                    showAllAgents ? "Hide All Assistants" : "See all Assistants"
-                  }
-                  onClick={() => {
-                    setShowAllAgents(!showAllAgents);
-                  }}
-                />
-                <StartHelperConversationButton
-                  content="Hey @helper, how do I use the assistant?"
-                  handleSubmit={handleSubmit}
-                />
-              </div>
+            <div className="flex flex-col items-start gap-2 sm:flex-row">
+              <Button
+                variant="tertiary"
+                icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
+                label={
+                  showAllAgents ? "Hide All Assistants" : "See all Assistants"
+                }
+                onClick={() => {
+                  setShowAllAgents(!showAllAgents);
+                }}
+              />
+              <StartHelperConversationButton
+                content="Hey @helper, how do I use the assistant?"
+                handleSubmit={handleSubmit}
+              />
             </div>
 
             {/* FAQ */}
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="mt-6 flex flex-col gap-3">
               <div className="flex flex-row gap-2">
                 <Icon visual={QuestionMarkCircleStrokeIcon} size="md" />
                 <span className="text-lg font-bold">
                   Frequently asked questions
                 </span>
               </div>
-              <div>
+              <div className="flex flex-col items-start gap-2 sm:flex-row">
                 <StartHelperConversationButton
                   content="@helper, what can I use the Assistant for?"
                   handleSubmit={handleSubmit}
