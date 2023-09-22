@@ -231,7 +231,7 @@ interface DropdownItemsProps {
 }
 
 DropdownMenu.Items = function ({
-  origin = "topRight",
+  origin = "auto",
   width = 160,
   children,
 }: DropdownItemsProps) {
