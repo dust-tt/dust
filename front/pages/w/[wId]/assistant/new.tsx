@@ -166,14 +166,14 @@ export default function AssistantNew({
                 <span className="text-lg font-bold">Getting started?</span>
               </div>
               <p className="text-element-700">
-                Using assistant is easy as asking a question to a friend or a
+                Using Assistants is easy as asking a question to a friend or a
                 coworker.
                 <br />
                 Try it out:
               </p>
               <div>
                 <StartHelperConversationButton
-                  content="Hey @helper, How can I interact with an assistant?"
+                  content="Hey @helper, how can I interact with an Assistant?"
                   handleSubmit={handleSubmit}
                   variant="primary"
                 />
@@ -189,7 +189,7 @@ export default function AssistantNew({
                 </span>
               </div>
               <p className="text-element-700">
-                Dust is not just a single assistant, it’s a full team at your
+                Dust is not just a single Assistant, it’s a full team at your
                 service.
                 <br />
                 Each member has a set of specific set skills.
@@ -277,7 +277,7 @@ export default function AssistantNew({
                     handleSubmit={handleSubmit}
                   />
                   <StartHelperConversationButton
-                    content="@helper, how can I make assistant smarter with my own data?"
+                    content="@helper, how can I make Assistant smarter with my own data?"
                     handleSubmit={handleSubmit}
                   />
                   <StartHelperConversationButton
