@@ -66,11 +66,13 @@ export const getServerSideProps: GetServerSideProps<{
   const selectedResources: {
     dataSourceName: string;
     resources: string[] | null;
+    isSelectAll: boolean;
   }[] = [];
   for (const ds of config.action?.dataSources ?? []) {
     selectedResources.push({
       dataSourceName: ds.dataSourceId,
       resources: ds.filter.parents?.in ?? null,
+      isSelectAll: !ds.filter.parents,
     });
   }
 
@@ -78,7 +80,11 @@ export const getServerSideProps: GetServerSideProps<{
     selectedResources.map(async (ds): Promise<DataSourceConfig> => {
       const dataSource = dataSourceByName[ds.dataSourceName];
       if (!dataSource.connectorId || !ds.resources) {
-        return { dataSource: dataSource, selectedResources: {} };
+        return {
+          dataSource: dataSource,
+          selectedResources: {},
+          isSelectAll: ds.isSelectAll,
+        };
       }
       const response = await ConnectorsAPI.getResourcesTitles({
         connectorId: dataSource.connectorId,
@@ -98,6 +104,7 @@ export const getServerSideProps: GetServerSideProps<{
       return {
         dataSource: dataSource,
         selectedResources,
+        isSelectAll: ds.isSelectAll,
       };
     })
   );
