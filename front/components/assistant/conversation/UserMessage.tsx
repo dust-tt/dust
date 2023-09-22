@@ -25,7 +25,7 @@ export function UserMessage({
     >
       <div className="flex flex-col gap-4">
         <div>
-          <RenderMarkdown content={message.content} />
+          <RenderMarkdown content={message.content} blinkingCursor={false} />
         </div>
         {message.mentions.length === 0 &&
           conversation.content[conversation.content.length - 1].some(

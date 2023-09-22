@@ -158,11 +158,11 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
     >
-      {renderMessage(agentMessageToRender)}
+      {renderMessage(agentMessageToRender, shouldStream)}
     </ConversationMessage>
   );
 
-  function renderMessage(agentMessage: AgentMessageType) {
+  function renderMessage(agentMessage: AgentMessageType, streaming: boolean) {
     // Display the error to the user so they can report it to us (or some can be
     // understandable directly to them)
     if (agentMessage.status === "failed") {
@@ -197,7 +197,12 @@ export function AgentMessage({
 
     // Messages with no action and text
     if (agentMessage.action === null && agentMessage.content) {
-      return <RenderMarkdown content={agentMessage.content} />;
+      return (
+        <RenderMarkdown
+          content={agentMessage.content}
+          blinkingCursor={streaming}
+        />
+      );
     }
     // Messages with action
     if (agentMessage.action) {
@@ -215,7 +220,10 @@ export function AgentMessage({
           {agentMessage.content && agentMessage.content !== "" && (
             <>
               <div className="pt-4">
-                <RenderMarkdown content={agentMessage.content} />
+                <RenderMarkdown
+                  content={agentMessage.content}
+                  blinkingCursor={streaming}
+                />
               </div>
             </>
           )}

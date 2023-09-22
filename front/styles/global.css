@@ -35,3 +35,15 @@ main {
     content: "";
   }
 }
+
+.blinking-cursor > :not(pre):last-child::after {
+  content: "";
+  width: 10px;
+  height: 20px;
+  @apply bg-success-400;
+  display: inline-block;
+  @apply animate-cursor-blink;
+  margin-left: 5px;
+  position: relative;
+  top: 4px;
+}

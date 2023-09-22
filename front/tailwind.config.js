@@ -76,10 +76,22 @@ module.exports = {
             filter: "brightness(80%)",
           },
         },
+        "cursor-blink": {
+          "0%": {
+            opacity: 1,
+          },
+          "90%": {
+            opacity: 1,
+          },
+          "100%": {
+            opacity: 0,
+          },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
         breathing: "breathing 4s infinite ease-in-out",
+        "cursor-blink": "cursor-blink 0.9s infinite;",
       },
       colors: {
         brand: {
