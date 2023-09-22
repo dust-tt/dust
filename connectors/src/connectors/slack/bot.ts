@@ -235,7 +235,7 @@ async function botAnswerMessage(
     const chatRes = await dustAPI.chatV2PostMessage(
       conv.sId,
       message,
-      [],
+      [{ configurationId: "dust" }],
       slackChatBotMessage.slackTimezone || "Europe/Paris",
       slackChatBotMessage.slackUserName,
       slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,

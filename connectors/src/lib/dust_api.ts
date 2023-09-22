@@ -619,7 +619,7 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    console.log("v2message 1");
+
     const postUserMessageRes = await fetch(url, {
       method: "POST",
       headers: headers,
@@ -631,7 +631,6 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
 
-    console.log("v2message 2");
     const agentMessageRes: Result<AgentMessageType, Error> =
       await (async () => {
         // looping 10 times to get the first agent message, we should listen on conversation stream
@@ -657,12 +656,10 @@ export class DustAPI {
           )
         );
       })();
-    console.log("v2message 3");
 
     if (agentMessageRes.isErr()) {
       return agentMessageRes;
     }
-    console.log("v2message 4", agentMessageRes.value);
 
     const streamRes = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${conversationId}/messages/${
