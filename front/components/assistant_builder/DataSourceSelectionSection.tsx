@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
+import { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import {
   CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
   TIME_FRAME_MODE_TO_LABEL,
@@ -18,7 +19,6 @@ import {
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames } from "@app/lib/utils";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
-import { DataSourceType } from "@app/types/data_source";
 
 export default function DataSourceSelectionSection({
   show,
@@ -36,7 +36,7 @@ export default function DataSourceSelectionSection({
   show: boolean;
   dataSourceConfigurations: Record<
     string,
-    { dataSource: DataSourceType; selectedResources: Record<string, string> }
+    AssistantBuilderDataSourceConfiguration
   >;
   openDataSourceModal: () => void;
   canAddDataSource: boolean;
@@ -101,7 +101,7 @@ export default function DataSourceSelectionSection({
         ) : (
           <ContextItem.List className="mt-6">
             {Object.entries(dataSourceConfigurations).map(
-              ([key, { dataSource, selectedResources }]) => {
+              ([key, { dataSource, selectedResources, isSelectAll }]) => {
                 const selectedParentIds = Object.keys(selectedResources);
                 return (
                   <ContextItem
@@ -149,7 +149,7 @@ export default function DataSourceSelectionSection({
                   >
                     <ContextItem.Description
                       description={
-                        dataSource.connectorProvider
+                        dataSource.connectorProvider && !isSelectAll
                           ? `Assistant has access to ${
                               selectedParentIds.length
                             } ${

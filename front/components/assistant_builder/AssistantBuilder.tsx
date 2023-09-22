@@ -72,14 +72,17 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
 };
 
+export type AssistantBuilderDataSourceConfiguration = {
+  dataSource: DataSourceType;
+  selectedResources: Record<string, string>;
+  isSelectAll: boolean;
+};
+
 type AssistantBuilderState = {
   dataSourceMode: DataSourceMode;
   dataSourceConfigurations: Record<
     string,
-    {
-      dataSource: DataSourceType;
-      selectedResources: Record<string, string>;
-    }
+    AssistantBuilderDataSourceConfiguration
   >;
   timeFrameMode: TimeFrameMode;
   timeFrame: {
@@ -172,10 +175,8 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
   });
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const [dataSourceToManage, setDataSourceToManage] = useState<{
-    dataSource: DataSourceType;
-    selectedResources: Record<string, string>;
-  } | null>(null);
+  const [dataSourceToManage, setDataSourceToManage] =
+    useState<AssistantBuilderDataSourceConfiguration | null>(null);
   const [edited, setEdited] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
@@ -405,11 +406,11 @@ export default function AssistantBuilder({
           timeframe: tfParam,
           topK: 16, // TODO ?
           dataSources: Object.values(builderState.dataSourceConfigurations).map(
-            ({ dataSource, selectedResources }) => ({
+            ({ dataSource, selectedResources, isSelectAll }) => ({
               dataSourceId: dataSource.name,
               workspaceId: owner.sId,
               filter: {
-                parents: Object.keys(selectedResources).length
+                parents: !isSelectAll
                   ? { in: Object.keys(selectedResources), not: [] }
                   : null,
                 tags: null,
@@ -491,7 +492,7 @@ export default function AssistantBuilder({
         }}
         owner={owner}
         dataSources={configurableDataSources}
-        onSave={({ dataSource, selectedResources }) => {
+        onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setBuilderState((state) => ({
             ...state,
             dataSourceConfigurations: {
@@ -499,6 +500,7 @@ export default function AssistantBuilder({
               [dataSource.name]: {
                 dataSource,
                 selectedResources,
+                isSelectAll,
               },
             },
           }));

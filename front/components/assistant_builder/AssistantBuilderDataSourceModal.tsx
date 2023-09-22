@@ -1,9 +1,18 @@
-import { CloudArrowDownIcon, Item, Modal, PageHeader } from "@dust-tt/sparkle";
+import {
+  CloudArrowDownIcon,
+  Item,
+  Modal,
+  PageHeader,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
+import {
+  AssistantBuilderDataSourceConfiguration,
+  CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
+} from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
@@ -23,25 +32,21 @@ export default function AssistantBuilderDataSourceModal({
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
-  onSave: (params: {
-    dataSource: DataSourceType;
-    selectedResources: Record<string, string>;
-  }) => void;
-  dataSourceToManage: {
-    dataSource: DataSourceType;
-    selectedResources: Record<string, string>;
-  } | null;
+  onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
+  dataSourceToManage: AssistantBuilderDataSourceConfiguration | null;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
   const [selectedResources, setSelectedResources] = useState<
     Record<string, string>
   >({});
+  const [isSelectAll, setIsSelectAll] = useState(false);
 
   useEffect(() => {
     if (dataSourceToManage) {
       setSelectedDataSource(dataSourceToManage.dataSource);
       setSelectedResources(dataSourceToManage.selectedResources);
+      setIsSelectAll(dataSourceToManage.isSelectAll);
     }
   }, [dataSourceToManage]);
 
@@ -53,23 +58,26 @@ export default function AssistantBuilderDataSourceModal({
     }, 200);
   };
 
+  const onSaveLocal = ({ isSelectAll }: { isSelectAll: boolean }) => {
+    if (
+      !selectedDataSource ||
+      (Object.keys(selectedResources).length === 0 && !isSelectAll)
+    ) {
+      throw new Error("Cannot save an incomplete configuration");
+    }
+    onSave({
+      dataSource: selectedDataSource,
+      selectedResources,
+      isSelectAll,
+    });
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      onSave={() => {
-        if (
-          !selectedDataSource ||
-          Object.keys(selectedResources).length === 0
-        ) {
-          throw new Error("Cannot save an incomplete configuration");
-        }
-        onSave({
-          dataSource: selectedDataSource,
-          selectedResources,
-        });
-        onClose();
-      }}
+      onSave={() => onSaveLocal({ isSelectAll })}
       hasChanged={
         !!selectedDataSource && Object.keys(selectedResources).length > 0
       }
@@ -87,6 +95,7 @@ export default function AssistantBuilderDataSourceModal({
                 onSave({
                   dataSource: ds,
                   selectedResources: {},
+                  isSelectAll: true,
                 });
                 onClose();
               }
@@ -97,6 +106,7 @@ export default function AssistantBuilderDataSourceModal({
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
             selectedResources={selectedResources}
+            isSelectAll={isSelectAll}
             onSelectChange={({ resourceId, resourceName }, selected) => {
               const newSelectedResources = { ...selectedResources };
               if (selected) {
@@ -106,6 +116,17 @@ export default function AssistantBuilderDataSourceModal({
               }
 
               setSelectedResources(newSelectedResources);
+            }}
+            toggleSelectAll={() => {
+              const selectAll = !isSelectAll;
+
+              setIsSelectAll(selectAll);
+              // we preserve the selected resources in the state
+              // so that we can restore them if the user unselects
+              // we however won't send them to the backend
+              if (selectAll) {
+                onSaveLocal({ isSelectAll: true });
+              }
             }}
           />
         )}
@@ -167,15 +188,19 @@ function DataSourceResourceSelector({
   dataSource,
   owner,
   selectedResources,
+  isSelectAll,
   onSelectChange,
+  toggleSelectAll,
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
   selectedResources: Record<string, string>;
+  isSelectAll: boolean;
   onSelectChange: (
     resource: { resourceId: string; resourceName: string },
     selected: boolean
   ) => void;
+  toggleSelectAll: () => void;
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
     {}
@@ -255,38 +280,48 @@ function DataSourceResourceSelector({
       {dataSource && (
         <div className="flex flex-row gap-32">
           <div className="flex-1">
-            <div className="pb-4 text-lg font-semibold text-element-900">
-              All available{" "}
-              {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
-                dataSource.connectorProvider as ConnectorProvider
-              ]?.plural ?? "resources"}
-              :
+            <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
+              Select all:{" "}
+              <SliderToggle selected={isSelectAll} onClick={toggleSelectAll} />
             </div>
-            <DataSourceResourceSelectorTree
-              owner={owner}
-              dataSource={dataSource}
-              expandable={
-                CONNECTOR_CONFIGURATIONS[
-                  dataSource.connectorProvider as ConnectorProvider
-                ]?.isNested
-              }
-              selectedParentIds={new Set(Object.keys(selectedResources))}
-              parentsById={parentsById}
-              onSelectChange={(
-                { resourceId, resourceName, parents },
-                selected
-              ) => {
-                const newParentsById = { ...parentsById };
-                if (selected) {
-                  newParentsById[resourceId] = new Set(parents);
-                } else {
-                  delete newParentsById[resourceId];
-                }
+            {!isSelectAll && (
+              <>
+                <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
+                  <div>
+                    All available{" "}
+                    {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                      dataSource.connectorProvider as ConnectorProvider
+                    ]?.plural ?? "resources"}
+                    :
+                  </div>
+                </div>
+                <DataSourceResourceSelectorTree
+                  owner={owner}
+                  dataSource={dataSource}
+                  expandable={
+                    CONNECTOR_CONFIGURATIONS[
+                      dataSource.connectorProvider as ConnectorProvider
+                    ]?.isNested
+                  }
+                  selectedParentIds={new Set(Object.keys(selectedResources))}
+                  parentsById={parentsById}
+                  onSelectChange={(
+                    { resourceId, resourceName, parents },
+                    selected
+                  ) => {
+                    const newParentsById = { ...parentsById };
+                    if (selected) {
+                      newParentsById[resourceId] = new Set(parents);
+                    } else {
+                      delete newParentsById[resourceId];
+                    }
 
-                setParentsById(newParentsById);
-                onSelectChange({ resourceId, resourceName }, selected);
-              }}
-            />
+                    setParentsById(newParentsById);
+                    onSelectChange({ resourceId, resourceName }, selected);
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
       )}
