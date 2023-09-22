@@ -8,6 +8,8 @@ const V2_ROLLED_OUT_WORKSPACES = [
   "76e5b694df", // dust-test
 ];
 
+// ./admin/cli.sh workspace add-user --wId <WORKSPACEID> --userId <USERID> --role <ROLE>
+
 /**
  * Supported models
  */
