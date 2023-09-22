@@ -89,10 +89,12 @@ export default function AssistantNew({
     workspaceId: owner.sId,
   });
 
-  let agents = agentConfigurations.filter((a) => a.status === "active");
-  agents.sort(compareAgentsForSort);
+  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  activeAgents.sort(compareAgentsForSort);
 
-  agents = showAllAgents ? agents : agents.slice(0, 4);
+  const displayedAgents = showAllAgents
+    ? activeAgents
+    : activeAgents.slice(0, 4);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
@@ -200,7 +202,7 @@ export default function AssistantNew({
             </div>
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {agents.map((agent) => (
+                {displayedAgents.map((agent) => (
                   <div key={agent.sId} className="flex flex-col gap-1">
                     <Avatar
                       visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
@@ -219,16 +221,18 @@ export default function AssistantNew({
               </div>
             </div>
             <div className="flex flex-col items-start gap-2 sm:flex-row">
-              <Button
-                variant="tertiary"
-                icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
-                label={
-                  showAllAgents ? "Hide All Assistants" : "See all Assistants"
-                }
-                onClick={() => {
-                  setShowAllAgents(!showAllAgents);
-                }}
-              />
+              {activeAgents.length > 4 && (
+                <Button
+                  variant="tertiary"
+                  icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
+                  label={
+                    showAllAgents ? "Hide All Assistants" : "See all Assistants"
+                  }
+                  onClick={() => {
+                    setShowAllAgents(!showAllAgents);
+                  }}
+                />
+              )}
               {isBuilder && (
                 <>
                   <Button
