@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button, Modal } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/Modal",
+  title: "Molecules/Modal",
   component: Modal,
 } satisfies Meta<typeof Modal>;
 

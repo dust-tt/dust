@@ -6,7 +6,7 @@ import { ChatBubbleBottomCenterText } from "@sparkle/icons/solid";
 import { Avatar, BarHeader, PageHeader } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/BarHeader",
+  title: "Molecules/BarHeader",
   component: BarHeader,
 } satisfies Meta<typeof BarHeader>;
 
@@ -32,10 +32,10 @@ export const BasicBarHeaderValidate = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
     </div>
   </div>
 );
@@ -48,10 +48,10 @@ export const BasicBarHeaderValidateSaveDisabled = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
     </div>
   </div>
 );
@@ -64,10 +64,10 @@ export const BasicBarHeaderBack = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
     </div>
   </div>
 );
@@ -80,10 +80,10 @@ export const BasicBarHeaderClose = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
     </div>
   </div>
 );
@@ -96,10 +96,10 @@ export const BasicBarHeaderConversation = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
+      <img src="https://source.unsplash.com/random" />
     </div>
   </div>
 );

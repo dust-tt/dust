@@ -25,6 +25,9 @@ export { DropdownMenu };
 import { Page } from "./components/Page";
 export { Page };
 
+import Frame from "./components/Frame";
+export { Frame };
+
 //TO BE REMOVED SOON
 import { SectionHeader } from "./components/SectionHeader";
 export { SectionHeader };

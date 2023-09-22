@@ -16,7 +16,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/ContextItem",
+  title: "Molecules/ContextItem",
   component: ContextItem,
 } satisfies Meta<typeof ContextItem>;
 
