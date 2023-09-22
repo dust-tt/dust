@@ -23,7 +23,9 @@ export function AgentSuggestion({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
-  agentConfigurations.sort((a, b) => compareAgentSuggestions(a, b));
+
+  const agents = agentConfigurations.filter((a) => a.status === "active");
+  agents.sort((a, b) => compareAgentSuggestions(a, b));
 
   return (
     <div className="pt-4">
@@ -32,7 +34,7 @@ export function AgentSuggestion({
       </div>
       <div className="mt-3 flex items-center gap-2">
         <Button.List>
-          {agentConfigurations.slice(0, 3).map((agent) => (
+          {agents.slice(0, 3).map((agent) => (
             <Button
               key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
               size="xs"
@@ -54,7 +56,7 @@ export function AgentSuggestion({
           </DropdownMenu.Button>
           <div className="relative bottom-6 z-30">
             <DropdownMenu.Items origin="topLeft" width={240}>
-              {agentConfigurations.slice(3).map((agent) => (
+              {agents.slice(3).map((agent) => (
                 <DropdownMenu.Item
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
                   label={agent.name}
