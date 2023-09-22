@@ -79,6 +79,17 @@ export default function AssistantsBuilder({
       );
       return;
     }
+
+    if (
+      agent.status === "active" &&
+      [...dustAgents, ...workspaceAgents].filter((a) => a.status === "active")
+        .length === 2 // helper + an active one
+    ) {
+      window.alert(
+        `At least one assistant must be active. If you need to disable this assistant, please enable another one first.`
+      );
+      return;
+    }
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
       {
