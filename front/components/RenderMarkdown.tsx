@@ -236,14 +236,18 @@ function CiteBlockWrapper(references: {
 
 function TableBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-auto overflow-x-auto rounded-lg border border-slate-200">
+    <div className="w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
       <table className="w-full table-auto">{children}</table>
     </div>
   );
 }
 
 function TableHeadBlock({ children }: { children: React.ReactNode }) {
-  return <thead className="bg-slate-50 px-2 py-2">{children}</thead>;
+  return (
+    <thead className="bg-structure-50 px-2 py-2 dark:bg-structure-50-dark">
+      {children}
+    </thead>
+  );
 }
 
 function TableBodyBlock({ children }: { children: React.ReactNode }) {
@@ -252,7 +256,7 @@ function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-element-700">
+    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-element-700 dark:text-element-700-dark">
       {children}
     </th>
   );
@@ -260,7 +264,7 @@ function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="whitespace-nowrap px-6 py-4 text-sm text-element-800">
+    <td className="whitespace-nowrap px-6 py-4 text-sm text-element-800 dark:text-element-800-dark">
       {children}
     </td>
   );
