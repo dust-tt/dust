@@ -2,7 +2,6 @@ import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
-import { getUserMetadata } from "@app/lib/api/user";
 import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -275,12 +274,8 @@ async function handler(
         return;
       }
 
-      const m = await getUserMetadata(u, "sticky_path");
-      if (m) {
-        res.redirect(m.value);
-      } else {
-        res.redirect(`/w/${u.workspaces[0].sId}`);
-      }
+      res.redirect(`/w/${u.workspaces[0].sId}`);
+
       return;
 
     default:

@@ -23,7 +23,6 @@ import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
-import { setUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
@@ -61,11 +60,6 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
-
-  void setUserMetadata(user, {
-    key: "sticky_path",
-    value: `/w/${context.query.wId}/u/chat`,
-  });
 
   const readOnly = !auth.isBuilder();
 
