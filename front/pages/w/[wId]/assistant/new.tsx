@@ -247,7 +247,7 @@ export default function AssistantNew({
                 ))}
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 items-start">
+            <div className="flex flex-col items-start gap-2 sm:flex-row">
               <Button
                 variant="tertiary"
                 icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
@@ -272,7 +272,7 @@ export default function AssistantNew({
                   Frequently asked questions
                 </span>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 items-start">
+              <div className="flex flex-col items-start gap-2 sm:flex-row">
                 <StartHelperConversationButton
                   content="@helper, what can I use the Assistant for?"
                   handleSubmit={handleSubmit}
