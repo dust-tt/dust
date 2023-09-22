@@ -3,8 +3,10 @@ import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  Cog6ToothIcon,
   Icon,
   PageHeader,
+  PlusCircleIcon,
   QuestionMarkCircleStrokeIcon,
 } from "@dust-tt/sparkle";
 import { ArrowUpCircleIcon } from "@heroicons/react/20/solid";
@@ -36,6 +38,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
+  isBuilder: boolean;
   owner: WorkspaceType;
   baseUrl: string;
   gaTrackingId: string;
@@ -60,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: {
       user,
+      isBuilder: auth.isBuilder(),
       owner,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -69,6 +73,7 @@ export const getServerSideProps: GetServerSideProps<{
 
 export default function AssistantNew({
   user,
+  isBuilder,
   owner,
   baseUrl,
   gaTrackingId,
@@ -161,14 +166,14 @@ export default function AssistantNew({
                 <span className="text-lg font-bold">Getting started?</span>
               </div>
               <p className="text-element-700">
-                Using assistant is easy as asking a question to a friend or a
+                Using Assistants is easy as asking a question to a friend or a
                 coworker.
                 <br />
                 Try it out:
               </p>
               <div>
                 <StartHelperConversationButton
-                  content="Hey @helper, how do I use the assistant?"
+                  content="Hey @helper, how can I interact with an Assistant?"
                   handleSubmit={handleSubmit}
                   variant="primary"
                 />
@@ -184,7 +189,7 @@ export default function AssistantNew({
                 </span>
               </div>
               <p className="text-element-700">
-                Dust is not just a single assistant, it’s a full team at your
+                Dust is not just a single Assistant, it’s a full team at your
                 service.
                 <br />
                 Each member has a set of specific set skills.
@@ -224,10 +229,28 @@ export default function AssistantNew({
                   setShowAllAgents(!showAllAgents);
                 }}
               />
-              <StartHelperConversationButton
-                content="Hey @helper, how do I use the assistant?"
-                handleSubmit={handleSubmit}
-              />
+              {isBuilder && (
+                <>
+                  <Button
+                    variant="secondary"
+                    icon={Cog6ToothIcon}
+                    label="Manage Assistants"
+                    onClick={() => {
+                      void router.push(`/w/${owner.sId}/builder/assistants`);
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    icon={PlusCircleIcon}
+                    label="Create a new Assistant"
+                    onClick={() => {
+                      void router.push(
+                        `/w/${owner.sId}/builder/assistants/new`
+                      );
+                    }}
+                  />
+                </>
+              )}
             </div>
 
             {/* FAQ */}
@@ -238,16 +261,50 @@ export default function AssistantNew({
                   Frequently asked questions
                 </span>
               </div>
-              <div className="flex flex-col items-start gap-2 sm:flex-row">
-                <StartHelperConversationButton
-                  content="@helper, what can I use the Assistant for?"
-                  handleSubmit={handleSubmit}
-                />
-                <StartHelperConversationButton
-                  content="@helper, what are the limitations of the Assistant?"
-                  handleSubmit={handleSubmit}
-                />
-              </div>
+
+              {isBuilder ? (
+                <div className="flex flex-wrap gap-2">
+                  <StartHelperConversationButton
+                    content="@helper, what can I use the Assistants for?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what are custom Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what customized Assistants should I create?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, how can I make Assistant smarter with my own data?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what's the level of security and privacy dust offers?"
+                    handleSubmit={handleSubmit}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <StartHelperConversationButton
+                    content="Hey @helper, What can I use an Assistant for?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, who creates Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, how do Assistants work exactly?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what are the limitations of Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </>
