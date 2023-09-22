@@ -89,8 +89,8 @@ export enum GLOBAL_AGENTS_SID {
   NOTION = "notion",
   GITHUB = "github",
   GPT4 = "gpt-4",
-  CLAUDE = "claude-2",
   GPT35_TURBO = "gpt-3.5-turbo",
+  CLAUDE = "claude-2",
   CLAUDE_INSTANT = "claude-instant-1",
 }
 
@@ -101,7 +101,10 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GITHUB,
+  GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE,
+  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.HELPER,
 ];
 
 // This function implements our general strategy to sort agents to users (input bar, assistant list,
@@ -111,12 +114,12 @@ export function compareAgentsForSort(
   b: AgentConfigurationType
 ) {
   // Check for 'Dust'
-  if (a.name === "Dust") return -1;
-  if (b.name === "Dust") return 1;
+  if (a.name === GLOBAL_AGENTS_SID.DUST) return -1;
+  if (b.name === GLOBAL_AGENTS_SID.DUST) return 1;
 
   // Check for 'gpt4'
-  if (a.name === "gpt-4") return -1;
-  if (b.name === "gpt4") return 1;
+  if (a.name === GLOBAL_AGENTS_SID.GPT4) return -1;
+  if (b.name === GLOBAL_AGENTS_SID.GPT4) return 1;
 
   // Check for agents with 'scope' set to 'workspace'
   if (a.scope === "workspace" && b.scope !== "workspace") return -1;
