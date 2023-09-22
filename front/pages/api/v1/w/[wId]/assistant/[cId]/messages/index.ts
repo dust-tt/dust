@@ -14,7 +14,7 @@ export type PostMessagesResponseBody = {
   message: UserMessageType;
 };
 
-const PostMessagesRequestBodySchema = t.type({
+export const PostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(
     t.union([
