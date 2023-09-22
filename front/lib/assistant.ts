@@ -5,6 +5,7 @@ import { WorkspaceType } from "@app/types/user";
 
 const V2_ROLLED_OUT_WORKSPACES = [
   "0ec9852c2f", // Dust
+  "76e5b694df", // dust-test
 ];
 
 /**
