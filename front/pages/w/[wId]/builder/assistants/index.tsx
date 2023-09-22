@@ -137,7 +137,10 @@ export default function AssistantsBuilder({
                         await handleToggleAgentStatus(agent);
                       }}
                       selected={agent.status === "active"}
-                      disabled={agent.status === "disabled_missing_datasource"}
+                      disabled={
+                        agent.status === "disabled_missing_datasource" ||
+                        agent.status === "require_upgrade"
+                      }
                     />
                   ) : null
                 }
