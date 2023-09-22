@@ -73,6 +73,12 @@ export default function AssistantsBuilder({
   const isBuilder = owner.role === "builder" || owner.role === "admin";
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
+    if (agent.status === "disabled_free_workspace") {
+      window.alert(
+        `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
+      );
+      return;
+    }
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
       {

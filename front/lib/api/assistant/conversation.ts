@@ -655,7 +655,7 @@ export async function* postUserMessage(
         context: context,
       };
 
-      const results: { row: AgentMessage; m: AgentMessageType }[] =
+      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
           mentions.filter(isAgentMention).map((mention) => {
             // For each assistant/agent mention, create an "empty" agent message.
@@ -667,7 +667,7 @@ export async function* postUserMessage(
                 mention.configurationId
               );
               if (!configuration) {
-                throw new Error(`Configuration not found`);
+                return null;
               }
 
               await Mention.create(
@@ -743,10 +743,15 @@ export async function* postUserMessage(
         })
       );
 
+      const nonNullResults = results.filter((r) => r !== null) as {
+        row: AgentMessage;
+        m: AgentMessageType;
+      }[];
+
       return {
         userMessage,
-        agentMessages: results.map(({ m }) => m),
-        agentMessageRows: results.map(({ row }) => row),
+        agentMessages: nonNullResults.map(({ m }) => m),
+        agentMessageRows: nonNullResults.map(({ row }) => row),
       };
     });
 
@@ -1035,7 +1040,7 @@ export async function* editUserMessage(
           },
           transaction: t,
         })) ?? -1) + 1;
-      const results: { row: AgentMessage; m: AgentMessageType }[] =
+      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
           mentions.filter(isAgentMention).map((mention) => {
             // For each assistant/agent mention, create an "empty" agent message.
@@ -1047,7 +1052,7 @@ export async function* editUserMessage(
                 mention.configurationId
               );
               if (!configuration) {
-                throw new Error(`Configuration not found`);
+                return null;
               }
 
               await Mention.create(
@@ -1123,10 +1128,14 @@ export async function* editUserMessage(
         })
       );
 
+      const nonNullResults = results.filter((r) => r !== null) as {
+        row: AgentMessage;
+        m: AgentMessageType;
+      }[];
       return {
         userMessage,
-        agentMessages: results.map(({ m }) => m),
-        agentMessageRows: results.map(({ row }) => row),
+        agentMessages: nonNullResults.map(({ m }) => m),
+        agentMessageRows: nonNullResults.map(({ row }) => row),
       };
     });
 

@@ -5,7 +5,11 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
-import { isSupportedModel, SupportedModel } from "@app/lib/assistant";
+import {
+  getSupportedModelConfig,
+  isSupportedModel,
+  SupportedModel,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -141,6 +145,13 @@ export async function getAgentConfiguration(
       temperature: generationConfig.temperature,
       model,
     };
+    // Enforce plan limits: check if large models are allowed and act accordingly
+    if (
+      !owner.plan.limits.largeModels &&
+      !getSupportedModelConfig(model).largeModel
+    ) {
+      return null;
+    }
   }
 
   return {
@@ -346,6 +357,12 @@ export async function createAgentGenerationConfiguration(
 
   if (temperature < 0) {
     throw new Error("Temperature must be positive.");
+  }
+  if (
+    getSupportedModelConfig(model).largeModel &&
+    !owner.plan.limits.largeModels
+  ) {
+    throw new Error("You need to upgrade your plan to use large models.");
   }
 
   const genConfig = await AgentGenerationConfiguration.create({
