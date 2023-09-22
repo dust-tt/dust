@@ -196,15 +196,13 @@ export async function getAgentConfigurations(
     order: [["name", "ASC"]],
   });
 
-  const agents = await Promise.all(
-    rawAgents.map(async (a) => {
-      const agentConfig = await getAgentConfiguration(auth, a.sId);
-      if (!agentConfig) {
-        throw new Error("AgentConfiguration not found");
-      }
-      return agentConfig;
-    })
-  );
+  const agents = (
+    await Promise.all(
+      rawAgents.map(async (a) => {
+        return await getAgentConfiguration(auth, a.sId);
+      })
+    )
+  ).filter((a) => a !== null) as AgentConfigurationType[];
 
   const globalAgents = (await getGlobalAgents(auth)).filter(
     (a) =>
