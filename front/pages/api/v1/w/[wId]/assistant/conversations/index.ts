@@ -66,6 +66,7 @@ async function handler(
   }
 
   switch (req.method) {
+    
     case "POST":
       const bodyValidation = PostConversationsRequestBodySchema.decode(
         req.body
