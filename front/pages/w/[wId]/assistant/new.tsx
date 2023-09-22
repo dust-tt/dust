@@ -1,14 +1,14 @@
 import {
-  ArrowDownCircleIcon,
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Icon,
-  PageHeader,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  FlagStrokeIcon,
+  Page,
   QuestionMarkCircleStrokeIcon,
+  ShakeHandsIcon,
 } from "@dust-tt/sparkle";
-import { ArrowUpCircleIcon } from "@heroicons/react/20/solid";
-import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -147,98 +147,81 @@ export default function AssistantNew({
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       {!conversation ? (
-        <>
-          <PageHeader
-            title="Welcome to Assistant"
-            icon={ChatBubbleBottomCenterTextIcon}
-          />
-
-          {/* GETTING STARTED */}
-          <div className="flex flex-col gap-8 pb-32">
-            <div className="mt-6 flex flex-col gap-2">
-              <div className="flex flex-row gap-2">
-                <Icon visual={FlagIcon} size="md" />
-                <span className="text-lg font-bold">Getting started?</span>
-              </div>
-              <p className="text-element-700">
+        <div className="s-text-sm s-font-normal s-text-element-800">
+          <Page.Vertical gap="lg" align="left">
+            <Page.Header
+              title="Welcome to Assistant"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            {/* GETTING STARTED */}
+            <Page.Vertical gap="xs" align="left">
+              <Page.SectionHeader
+                title="Getting started?"
+                visual={FlagStrokeIcon}
+              />
+              <Page.P variant="secondary">
                 Using assistant is easy as asking a question to a friend or a
                 coworker.
                 <br />
                 Try it out:
-              </p>
-              <div>
-                <StartHelperConversationButton
-                  content="Hey @helper, how do I use the assistant?"
-                  handleSubmit={handleSubmit}
-                  variant="primary"
-                />
-              </div>
-            </div>
-
-            {/* FEATURED AGENTS */}
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-row gap-2">
-                <Icon visual={HandRaisedIcon} size="md" />
-                <span className="text-lg font-bold">
-                  Meet your smart friends
-                </span>
-              </div>
-              <p className="text-element-700">
-                Dust is not just a single assistant, it’s a full team at your
-                service.
-                <br />
-                Each member has a set of specific set skills.
-              </p>
-              <p className="text-element-700">
-                Meet some of your Assistants team:
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {agents.map((agent) => (
-                  <div key={agent.sId} className="flex flex-col gap-1">
-                    <Avatar
-                      visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
-                      size="md"
-                    />
-                    <div>
-                      <div className="text-md font-bold text-element-900">
-                        @{agent.name}
-                      </div>
-                      <div className="text-sm text-element-700">
-                        {agent.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col items-start gap-2 sm:flex-row">
-              <Button
-                variant="tertiary"
-                icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
-                label={
-                  showAllAgents ? "Hide All Assistants" : "See all Assistants"
-                }
-                onClick={() => {
-                  setShowAllAgents(!showAllAgents);
-                }}
-              />
+              </Page.P>
               <StartHelperConversationButton
                 content="Hey @helper, how do I use the assistant?"
                 handleSubmit={handleSubmit}
+                variant="primary"
               />
-            </div>
-
-            {/* FAQ */}
-            <div className="mt-6 flex flex-col gap-3">
-              <div className="flex flex-row gap-2">
-                <Icon visual={QuestionMarkCircleStrokeIcon} size="md" />
-                <span className="text-lg font-bold">
-                  Frequently asked questions
-                </span>
+            </Page.Vertical>
+            <Page.Separator />
+            {/* FEATURED AGENTS */}
+            <Page.Vertical gap="lg" align="left">
+              <Page.Vertical gap="xs" align="left">
+                <Page.SectionHeader
+                  title="Meet your smart friends"
+                  visual={ShakeHandsIcon}
+                />
+                <Page.P variant="secondary">
+                  Dust is not just a single assistant, it’s a full team at your
+                  service.
+                  <br />
+                  Each member has a set of specific set skills.
+                </Page.P>
+                <Page.P variant="secondary">
+                  Meet some of your Assistants team:
+                </Page.P>
+              </Page.Vertical>
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {agents.map((agent) => (
+                    <AvatarListItem key={agent.sId} agent={agent} />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col items-start gap-2 sm:flex-row">
+              <Button.List>
+                <Button
+                  variant="tertiary"
+                  icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
+                  hasMagnifying={false}
+                  label={
+                    showAllAgents ? "Hide All Assistants" : "See all Assistants"
+                  }
+                  onClick={() => {
+                    setShowAllAgents(!showAllAgents);
+                  }}
+                />
+                <StartHelperConversationButton
+                  content="Hey @helper, how do I use the assistant?"
+                  handleSubmit={handleSubmit}
+                />
+              </Button.List>
+            </Page.Vertical>
+            <Page.Separator />
+            {/* FAQ */}
+            <Page.Vertical gap="xs" align="left">
+              <Page.SectionHeader
+                title="Frequently asked questions"
+                visual={QuestionMarkCircleStrokeIcon}
+              />
+              <Button.List>
                 <StartHelperConversationButton
                   content="@helper, what can I use the Assistant for?"
                   handleSubmit={handleSubmit}
@@ -247,10 +230,10 @@ export default function AssistantNew({
                   content="@helper, what are the limitations of the Assistant?"
                   handleSubmit={handleSubmit}
                 />
-              </div>
-            </div>
-          </div>
-        </>
+              </Button.List>
+            </Page.Vertical>
+          </Page.Vertical>
+        </div>
       ) : (
         <Conversation
           owner={owner}
@@ -285,6 +268,8 @@ function StartHelperConversationButton({
       variant={variant}
       icon={ChatBubbleBottomCenterTextIcon}
       label={content}
+      size="sm"
+      hasMagnifying={false}
       onClick={() => {
         void handleSubmit(contentWithMarkdownMention, [
           {
@@ -295,3 +280,28 @@ function StartHelperConversationButton({
     />
   );
 }
+interface Agent {
+  sId: string;
+  pictureUrl: string;
+  name: string;
+  description: string;
+}
+
+interface AvatarListItemProps {
+  agent: Agent;
+}
+
+const AvatarListItem: React.FC<AvatarListItemProps> = ({ agent }) => {
+  return (
+    <div className="flex flex-col gap-2">
+      <Avatar
+        visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
+        size="md"
+      />
+      <div className="flex flex-col gap-1">
+        <div className="text-md font-bold text-element-900">@{agent.name}</div>
+        <div className="text-sm text-element-700">{agent.description}</div>
+      </div>
+    </div>
+  );
+};

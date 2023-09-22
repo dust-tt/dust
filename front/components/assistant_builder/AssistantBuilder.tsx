@@ -898,7 +898,7 @@ function AvatarPicker({
     <Modal
       isOpen={isOpen}
       onClose={() => setOpen(false)}
-      title="Pick an Avatar for your assistant:"
+      title="Pick the design of your Assistant:"
       isFullScreen={false}
       hasChanged={false}
     >
