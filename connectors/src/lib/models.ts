@@ -317,9 +317,13 @@ export class SlackChatBotMessage extends Model<
   declare slackUserId: string;
   declare slackEmail: string;
   declare slackUserName: string;
+  declare slackFullName: string;
+  declare slackAvatar: string | null;
+  declare slackTimezone: string | null;
   declare messageTs: string | null;
   declare chatSessionSid: string | null;
   declare completedAt: Date | null;
+  declare conversationId: string | null; // conversationId is set only for V2 conversations
 }
 
 SlackChatBotMessage.init(
@@ -368,8 +372,24 @@ SlackChatBotMessage.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    slackTimezone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     completedAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    conversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    slackFullName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackAvatar: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },
