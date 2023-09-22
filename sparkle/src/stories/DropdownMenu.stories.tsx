@@ -156,6 +156,16 @@ export const DropdownExample = () => {
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+      <div className="w-full s-flex s-justify-end s-gap-6">
+        <div className="s-text-sm">Auto menu</div>
+        <DropdownMenu>
+          <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} />
+          <DropdownMenu.Items origin="auto">
+            <DropdownMenu.Item label="item 1" href="#" />
+            <DropdownMenu.Item label="item 2" href="#" />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
     </>
   );
 };
