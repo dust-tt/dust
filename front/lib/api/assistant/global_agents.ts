@@ -57,7 +57,6 @@ class HelperAssistantPrompt {
  * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
-
 async function _getHelperGlobalAgent({
   user,
 }: {
