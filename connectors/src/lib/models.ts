@@ -317,7 +317,7 @@ export class SlackChatBotMessage extends Model<
   declare slackUserId: string;
   declare slackEmail: string;
   declare slackUserName: string;
-  declare slackFullName: string;
+  declare slackFullName: string | null;
   declare slackAvatar: string | null;
   declare slackTimezone: string | null;
   declare messageTs: string | null;
@@ -386,7 +386,7 @@ SlackChatBotMessage.init(
     },
     slackFullName: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     slackAvatar: {
       type: DataTypes.STRING,
