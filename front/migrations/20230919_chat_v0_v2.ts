@@ -1,5 +1,5 @@
 import parseArgs from "minimist";
-import { QueryTypes } from "sequelize";
+import { literal, Op } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -35,6 +35,9 @@ async function _migrateWorkspace(workspaceId: string) {
   const oldChatSessions = await ChatSession.findAll({
     where: {
       workspaceId: workspace.id,
+      updatedAt: {
+        [Op.lt]: literal("NOW() - INTERVAL '1 HOUR'"),
+      },
     },
   });
   for (const oldChatSession of oldChatSessions) {
