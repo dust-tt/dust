@@ -118,24 +118,34 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can access Assistants.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
+      if (!auth.isUser()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only the workspace users can see Assistants.",
+          },
+        });
+      }
+
       const agentConfigurations = await getAgentConfigurations(auth);
       return res.status(200).json({
         agentConfigurations,
       });
     case "POST":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only builders of the workspace users can update Assistants.",
+          },
+        });
+      }
+
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
