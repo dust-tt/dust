@@ -79,7 +79,7 @@ export default function AssistantsBuilder({
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
       window.alert(
-        `${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
+        `Assistant @${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
       );
       return;
     }
