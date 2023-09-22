@@ -188,6 +188,7 @@ function DataSourceResourceSelectorChildren({
                   <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
                   <div className="ml-32 flex-grow">
                     <Checkbox
+                      variant="checkable"
                       className={classNames(
                         "ml-auto",
                         checkStatus === "partial" ? "bg-element-600" : ""
