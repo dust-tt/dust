@@ -77,6 +77,12 @@ export default function AssistantsBuilder({
   dustAgents.sort(compareAgentsForSort);
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
+    if (agent.status === "disabled_free_workspace") {
+      window.alert(
+        "Assistants with larger models are only available on our paid plans. Contact us at team@dust.tt to get access."
+      );
+      return;
+    }
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
       {
@@ -137,10 +143,7 @@ export default function AssistantsBuilder({
                         await handleToggleAgentStatus(agent);
                       }}
                       selected={agent.status === "active"}
-                      disabled={
-                        agent.status === "disabled_missing_datasource" ||
-                        agent.status === "require_upgrade"
-                      }
+                      disabled={agent.status === "disabled_missing_datasource"}
                     />
                   ) : null
                 }

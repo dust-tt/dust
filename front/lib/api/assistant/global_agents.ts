@@ -549,7 +549,7 @@ export async function getGlobalAgent(
     agentConfiguration.generation &&
     getSupportedModelConfig(agentConfiguration.generation?.model).largeModel
   ) {
-    agentConfiguration.status = "require_upgrade";
+    agentConfiguration.status = "disabled_free_workspace";
   }
   return agentConfiguration;
 }
