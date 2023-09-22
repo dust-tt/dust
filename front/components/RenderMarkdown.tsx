@@ -46,6 +46,21 @@ function mentionDirective() {
   };
 }
 
+function blinkingCursorDirective() {
+  return (tree: any) => {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.name === "blinking-cursor") {
+        const data = node.data || (node.data = {});
+        data.hName = "span";
+        data.hProperties = {
+          className:
+            "inline-block font-medium text-brand animate-cursor-blink bg-brand w-2.5 h-5 -mb-1",
+        };
+      }
+    });
+  };
+}
+
 function citeDirective() {
   // Initialize a counter to keep track of citation references, starting from 1.
   let refCounter = 1;
@@ -117,15 +132,13 @@ function addClosingBackticks(str: string): string {
 
 export function RenderMarkdown({
   content,
-  blinkingCursor,
   references,
 }: {
   content: string;
-  blinkingCursor: boolean;
   references?: { [key: string]: RetrievalDocumentType };
 }) {
   return (
-    <div className={blinkingCursor ? "blinking-cursor" : ""}>
+    <div>
       <ReactMarkdown
         linkTarget="_blank"
         components={{
@@ -145,6 +158,7 @@ export function RenderMarkdown({
         }}
         remarkPlugins={[
           remarkDirective,
+          blinkingCursorDirective,
           mentionDirective,
           citeDirective(),
           remarkGfm,

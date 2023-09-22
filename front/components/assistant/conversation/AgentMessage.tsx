@@ -203,8 +203,9 @@ export function AgentMessage({
     if (agentMessage.action === null && agentMessage.content) {
       return (
         <RenderMarkdown
-          content={agentMessage.content}
-          blinkingCursor={streaming}
+          content={
+            agentMessage.content + (streaming ? ":blinking-cursor[]" : "")
+          }
         />
       );
     }
@@ -237,7 +238,6 @@ export function AgentMessage({
               <div className="pt-4">
                 <RenderMarkdown
                   content={agentMessage.content}
-                  blinkingCursor={streaming}
                   references={references}
                 />
               </div>
