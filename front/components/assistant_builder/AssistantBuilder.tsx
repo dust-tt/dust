@@ -559,7 +559,7 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="flex flex-col space-y-8 pt-8">
+        <div className="flex flex-col space-y-8 pb-8 pt-8">
           <div className="flex flex-row items-start gap-8">
             <div className="flex flex-col gap-4">
               <div className="text-lg font-bold text-element-900">
