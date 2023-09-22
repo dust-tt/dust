@@ -71,7 +71,7 @@ export async function getAgentConfiguration(
     limit: 1,
   });
 
-  if (!agent || agent.status === "archived") {
+  if (!agent) {
     return null;
   }
 

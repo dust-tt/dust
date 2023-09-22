@@ -1,6 +1,8 @@
-import { literal } from "sequelize";
-
-import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
+import {
+  AgentGenerationSuccessEvent,
+  DustAPI,
+  PostMessagesRequestBodySchema,
+} from "@connectors/lib/dust_api";
 import {
   Connector,
   ModelId,
@@ -25,7 +27,7 @@ export async function botAnswerMessageWithErrorHandling(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string
-): Promise<Result<ChatSessionUpdateEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -98,7 +100,7 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   connector: Connector
-): Promise<Result<ChatSessionUpdateEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const { DUST_API = "https://dust.tt" } = process.env;
 
   const slackChatBotMessage = await SlackChatBotMessage.create({
@@ -107,6 +109,9 @@ async function botAnswerMessage(
     slackUserId: slackUserId,
     slackEmail: "",
     slackUserName: "",
+    slackFullName: "",
+    slackTimezone: null,
+    slackAvatar: null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
   });
@@ -134,8 +139,18 @@ async function botAnswerMessage(
   if (slackUser.profile?.display_name) {
     slackChatBotMessage.slackUserName = slackUser.profile.display_name;
   }
+  if (slackUser.profile?.real_name) {
+    slackChatBotMessage.slackFullName = slackUser.profile.real_name;
+  }
+  if (slackUser.profile?.image_512) {
+    slackChatBotMessage.slackAvatar = slackUser.profile.image_512;
+  }
+  if (slackUser.tz) {
+    slackChatBotMessage.slackTimezone = slackUser.tz;
+  }
+
   await slackChatBotMessage.save();
-  const c = new DustAPI({
+  const dustAPI = new DustAPI({
     workspaceId: connector.workspaceId,
     apiKey: connector.workspaceAPIKey,
   });
@@ -167,50 +182,85 @@ async function botAnswerMessage(
       }
     }
   }
-  const chatRes = await c.newChatStreamed(
-    message,
-    slackUser.tz ? slackUser.tz : "Europe/Paris"
+
+  const messagePayload: PostMessagesRequestBodySchema = {
+    content: message,
+    mentions: [{ configurationId: "dust" }],
+    context: {
+      timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+      username: slackChatBotMessage.slackUserName,
+      fullName:
+        slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
+      email: slackChatBotMessage.slackEmail,
+      profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+    },
+  };
+  const convRes = await dustAPI.createConversation(
+    null,
+    "unlisted",
+    messagePayload
   );
-  if (chatRes.isErr()) {
-    return new Err(new Error(chatRes.error.message));
+  if (convRes.isErr()) {
+    return new Err(new Error(convRes.error.message));
   }
-  const chat = chatRes.value;
+
+  const conv = convRes.value;
+  const stream = await conv.stream;
+  if (stream.isErr()) {
+    return new Err(new Error(stream.error.message));
+  }
+  slackChatBotMessage.conversationId = conv.conversation.sId;
+  await slackChatBotMessage.save();
+
   let fullAnswer = "";
   let lastSentDate = new Date();
-  for await (const event of chat.eventStream) {
-    if (event.type === "chat_message_create") {
-      if (event.message.role === "error") {
-        return new Err(new Error(event.message.message));
+  for await (const event of stream.value.eventStream) {
+    switch (event.type) {
+      case "user_message_error": {
+        return new Err(
+          new Error(
+            `User message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
       }
-    } else if (event.type === "chat_message_tokens") {
-      fullAnswer += event.text;
-      if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
-        continue;
-      }
-      lastSentDate = new Date();
-      await slackClient.chat.update({
-        channel: slackChannel,
-        text: fullAnswer,
-        ts: mainMessage.ts as string,
-        thread_ts: slackMessageTs,
-      });
-    } else if (event.type === "chat_session_update") {
-      const finalAnswer = `${fullAnswer}\n\n <${DUST_API}/w/${connector.workspaceId}/u/chat/${event.session.sId}|Continue this conversation on Dust>`;
-      await slackClient.chat.update({
-        channel: slackChannel,
-        text: finalAnswer,
-        ts: mainMessage.ts as string,
-        thread_ts: slackMessageTs,
-      });
 
-      await slackChatBotMessage.update({
-        chatSessionSid: event.session.sId,
-        completedAt: literal("now()"),
-      });
-      return new Ok(event);
+      case "agent_error": {
+        return new Err(
+          new Error(
+            `Agent message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
+      case "generation_tokens": {
+        fullAnswer += event.text;
+        if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
+          continue;
+        }
+        lastSentDate = new Date();
+        await slackClient.chat.update({
+          channel: slackChannel,
+          text: fullAnswer,
+          ts: mainMessage.ts as string,
+          thread_ts: slackMessageTs,
+        });
+        break;
+      }
+      case "agent_generation_success": {
+        const finalAnswer = `${event.text}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conv.conversation.sId}|Continue this conversation on Dust>`;
+
+        await slackClient.chat.update({
+          channel: slackChannel,
+          text: finalAnswer,
+          ts: mainMessage.ts as string,
+          thread_ts: slackMessageTs,
+        });
+        return new Ok(event);
+        break;
+      }
+      default:
+      // Nothing to do on unsupported events
     }
   }
-
   return new Err(new Error("Failed to get the final answer from Dust"));
 }
 

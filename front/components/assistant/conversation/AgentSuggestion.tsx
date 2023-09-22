@@ -55,12 +55,13 @@ export function AgentSuggestion({
             />
           </DropdownMenu.Button>
           <div className="relative bottom-6 z-30">
-            <DropdownMenu.Items origin="topLeft" width={240}>
+            <DropdownMenu.Items origin="auto" width={240}>
               {agents.slice(3).map((agent) => (
                 <DropdownMenu.Item
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
                   label={agent.name}
                   visual={agent.pictureUrl}
+                  onClick={() => selectSuggestionHandler(agent)}
                 />
               ))}
             </DropdownMenu.Items>

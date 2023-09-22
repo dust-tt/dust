@@ -37,22 +37,15 @@ export function AppLayoutSimpleSaveCancelTitle({
   onCancel: () => void;
 }) {
   return (
-    <div className="flex h-full flex-row items-center">
-      <div className="flex flex-initial font-bold">
-        <div
-          className={classNames(
-            "w-48 overflow-hidden truncate pl-10 sm:w-96 sm:pl-0 lg:w-auto lg:px-0"
-          )}
-        >
-          <span>{title}</span>
-        </div>
-      </div>
-      <div className="flex flex-1"></div>
-      <BarHeader.ButtonBar
-        variant="validate"
-        onCancel={onCancel}
-        onSave={onSave}
-      />
-    </div>
+    <BarHeader
+      title={title}
+      rightActions={
+        <BarHeader.ButtonBar
+          variant="validate"
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      }
+    />
   );
 }

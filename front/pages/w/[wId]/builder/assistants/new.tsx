@@ -3,7 +3,6 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -23,12 +22,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (
-    !owner ||
-    !user ||
-    !auth.isBuilder() ||
-    !isDevelopmentOrDustWorkspace(owner)
-  ) {
+  if (!owner || !user || !auth.isBuilder()) {
     return {
       notFound: true,
     };

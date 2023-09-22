@@ -311,6 +311,9 @@ export async function getUserConversations(
         logger.error("Participation without conversation");
         return acc;
       }
+      if (p.conversation.workspaceId !== owner.id) {
+        return acc;
+      }
 
       const conversation = {
         id: p.conversationId,

@@ -6,6 +6,7 @@ import {
   ChevronUpIcon,
   FlagStrokeIcon,
   Page,
+  WrenchIcon,
   QuestionMarkCircleStrokeIcon,
   ShakeHandsIcon,
 } from "@dust-tt/sparkle";
@@ -36,6 +37,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
+  isBuilder: boolean;
   owner: WorkspaceType;
   baseUrl: string;
   gaTrackingId: string;
@@ -60,6 +62,7 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: {
       user,
+      isBuilder: auth.isBuilder(),
       owner,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -69,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
 
 export default function AssistantNew({
   user,
+  isBuilder,
   owner,
   baseUrl,
   gaTrackingId,
@@ -84,10 +88,12 @@ export default function AssistantNew({
     workspaceId: owner.sId,
   });
 
-  let agents = agentConfigurations.filter((a) => a.status === "active");
-  agents.sort(compareAgentsForSort);
+  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  activeAgents.sort(compareAgentsForSort);
 
-  agents = showAllAgents ? agents : agents.slice(0, 4);
+  const displayedAgents = showAllAgents
+    ? activeAgents
+    : activeAgents.slice(0, 4);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
@@ -165,11 +171,11 @@ export default function AssistantNew({
                 <br />
                 Try it out:
               </Page.P>
-              <StartHelperConversationButton
-                content="Hey @helper, how do I use the assistant?"
-                handleSubmit={handleSubmit}
-                variant="primary"
-              />
+                <StartHelperConversationButton
+                  content="Hey @helper, how can I interact with an Assistant?"
+                  handleSubmit={handleSubmit}
+                  variant="primary"
+                />
             </Page.Vertical>
             <Page.Separator />
             {/* FEATURED AGENTS */}
@@ -197,10 +203,11 @@ export default function AssistantNew({
                 </div>
               </div>
               <Button.List>
+                
+                {activeAgents.length > 4 && (
                 <Button
                   variant="tertiary"
                   icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
-                  hasMagnifying={false}
                   label={
                     showAllAgents ? "Hide All Assistants" : "See all Assistants"
                   }
@@ -212,6 +219,33 @@ export default function AssistantNew({
                   content="Hey @helper, how do I use the assistant?"
                   handleSubmit={handleSubmit}
                 />
+              )}
+                
+              {isBuilder && (
+                <>
+                  <Button
+                    variant="secondary"
+                    icon={WrenchIcon}
+                    label="Manage Assistants"
+                    onClick={() => {
+                      void router.push(`/w/${owner.sId}/builder/assistants`);
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    icon={PlusCircleIcon}
+                    label="Create a new Assistant"
+                    onClick={() => {
+                      void router.push(
+                        `/w/${owner.sId}/builder/assistants/new`
+                      );
+                    }}
+                  />
+                </>
+              )}
+                
+                
+                
               </Button.List>
             </Page.Vertical>
             <Page.Separator />
@@ -222,14 +256,49 @@ export default function AssistantNew({
                 visual={QuestionMarkCircleStrokeIcon}
               />
               <Button.List>
-                <StartHelperConversationButton
-                  content="@helper, what can I use the Assistant for?"
-                  handleSubmit={handleSubmit}
-                />
-                <StartHelperConversationButton
-                  content="@helper, what are the limitations of the Assistant?"
-                  handleSubmit={handleSubmit}
-                />
+                {isBuilder ? (
+                <div className="flex flex-wrap gap-2">
+                  <StartHelperConversationButton
+                    content="@helper, what can I use the Assistants for?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what are custom Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what customized Assistants should I create?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, how can I make Assistant smarter with my own data?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what's the level of security and privacy dust offers?"
+                    handleSubmit={handleSubmit}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <StartHelperConversationButton
+                    content="Hey @helper, What can I use an Assistant for?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, who creates Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, how do Assistants work exactly?"
+                    handleSubmit={handleSubmit}
+                  />
+                  <StartHelperConversationButton
+                    content="@helper, what are the limitations of Assistants?"
+                    handleSubmit={handleSubmit}
+                  />
+                </div>
+              )}
               </Button.List>
             </Page.Vertical>
           </Page.Vertical>
