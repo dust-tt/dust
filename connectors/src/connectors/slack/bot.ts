@@ -1,5 +1,5 @@
 import {
-  ChatSessionUpdateEvent,
+  AgentGenerationSuccessEvent,
   DustAPI,
   PostMessagesRequestBodySchema,
 } from "@connectors/lib/dust_api";
@@ -27,7 +27,7 @@ export async function botAnswerMessageWithErrorHandling(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string
-): Promise<Result<ChatSessionUpdateEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -100,7 +100,7 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   connector: Connector
-): Promise<Result<ChatSessionUpdateEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const { DUST_API = "https://dust.tt" } = process.env;
 
   const slackChatBotMessage = await SlackChatBotMessage.create({
@@ -254,6 +254,7 @@ async function botAnswerMessage(
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
+        return new Ok(event);
         break;
       }
       default:
