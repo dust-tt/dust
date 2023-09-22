@@ -135,7 +135,7 @@ export default function AssistantNew({
       owner={owner}
       isWideMode={conversation ? true : false}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant_v2"
+      topNavigationCurrent="assistant"
       titleChildren={
         conversation && (
           <ConversationTitle

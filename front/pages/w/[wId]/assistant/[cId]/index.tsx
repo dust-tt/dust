@@ -110,7 +110,7 @@ export default function AssistantConversation({
       owner={owner}
       isWideMode={true}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant_v2"
+      topNavigationCurrent="assistant"
       titleChildren={
         <ConversationTitle
           title={title || ""}
