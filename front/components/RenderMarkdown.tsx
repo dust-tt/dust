@@ -301,7 +301,7 @@ function CodeBlock({
       {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
-    <code className="rounded-md border-structure-100 bg-slate-200 p-1 text-sm">
+    <code className="rounded-md border-structure-200 bg-structure-100 px-1.5 py-1 text-sm text-amber-600 dark:border-structure-200-dark dark:bg-structure-100-dark dark:text-amber-400">
       {children}
     </code>
   );
