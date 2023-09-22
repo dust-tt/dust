@@ -82,22 +82,22 @@ impl AnthropicLLM {
             .iter()
             .map(|cm| -> String {
                 format!(
-                    "\n\n{}:{} {}",
-                    match cm.name.as_ref() {
-                        Some(name) => match cm.role {
-                            ChatMessageRole::User => format!(" [{}]", name),
-                            ChatMessageRole::Function => format!(" [{}]", name),
-                            _ => String::from(""),
-                        },
-                        None => String::from(""),
-                    },
+                    "\n\n{}: {}",
                     match cm.role {
                         ChatMessageRole::System => "System",
                         ChatMessageRole::Assistant => "Assistant",
                         ChatMessageRole::User => "Human",
                         ChatMessageRole::Function => "FunctionResult",
                     },
-                    cm.content.as_ref().unwrap_or(&String::from("")).clone()
+                    cm.content.as_ref().unwrap_or(&String::from("")).clone(),
+                    // match cm.name.as_ref() {
+                    //     Some(name) => match cm.role {
+                    //         ChatMessageRole::User => format!(" [{}]", name),
+                    //         ChatMessageRole::Function => format!(" [{}]", name),
+                    //         _ => String::from(""),
+                    //     },
+                    //     None => String::from(""),
+                    // },
                 )
             })
             .collect::<Vec<_>>()

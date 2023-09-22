@@ -403,8 +403,7 @@ async function _getDustGlobalAgent(
   }
 
   const name = "Dust";
-  const description =
-    "An assistant with context on your managed and static data sources.";
+  const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
   if (settings && settings.status === "disabled_by_admin") {

@@ -432,7 +432,7 @@ export default function DataSourcesView({
                           </div>
                         )}
                       </div>
-                      <div className="mt-2 text-sm text-element-700">
+                      <div className="mr-2 mt-2 text-sm text-element-700">
                         {ds.description}
                       </div>
                     </div>
