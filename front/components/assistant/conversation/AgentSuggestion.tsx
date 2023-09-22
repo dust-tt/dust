@@ -27,7 +27,7 @@ export function AgentSuggestion({
   return (
     <div className="pt-4">
       <div className="text-xs font-bold text-element-600">
-        Which KillerZorg would you like to talk with?
+        Which Assistant would you like to talk with?
       </div>
       <div className="mt-3 flex items-center gap-2">
         <Button.List>
