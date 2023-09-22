@@ -13,7 +13,6 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
-import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   DataSourceConfiguration,
@@ -346,6 +345,17 @@ export async function renderRetrievalActionByModelId(
 }
 
 /**
+ * Retrieval meta-prompt
+ */
+export function retrievalMetaPrompt() {
+  return (
+    "To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
+    " (eg :cite[XX] or :cite[XX,XX] but not :site[XX][XX])." +
+    " Use citations as close as possible to the information you are citing."
+  );
+}
+
+/**
  * Action execution.
  */
 
@@ -552,21 +562,27 @@ export async function* runRetrieval(
         token_count: number;
       }[];
 
-      documents = v.map((d) => ({
-        id: 0, // dummy pending database insertion
-        dataSourceId: d.data_source_id,
-        documentId: d.document_id,
-        reference: new_id().slice(0, 3),
-        timestamp: d.timestamp,
-        tags: d.tags,
-        sourceUrl: d.source_url ?? null,
-        score: d.chunks.map((c) => c.score)[0],
-        chunks: d.chunks.map((c) => ({
-          text: c.text,
-          offset: c.offset,
-          score: c.score,
-        })),
-      }));
+      documents = v.map((d) => {
+        const reference = `${String.fromCharCode(
+          97 + Math.floor(Math.random() * 26)
+        )}${Math.floor(Math.random() * 9) + 1}`;
+
+        return {
+          id: 0, // dummy pending database insertion
+          dataSourceId: d.data_source_id,
+          documentId: d.document_id,
+          reference,
+          timestamp: d.timestamp,
+          tags: d.tags,
+          sourceUrl: d.source_url ?? null,
+          score: d.chunks.map((c) => c.score)[0],
+          chunks: d.chunks.map((c) => ({
+            text: c.text,
+            offset: c.offset,
+            score: c.score,
+          })),
+        };
+      });
     }
   }
 
