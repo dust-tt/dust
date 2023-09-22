@@ -92,7 +92,7 @@ async function _getHelperGlobalAgent({
         providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
       },
-      temperature: 0.7,
+      temperature: 0.2,
     },
     action: null,
   };
