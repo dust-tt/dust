@@ -11,6 +11,7 @@ export type LimitsType = {
     documents: { count: number; sizeMb: number };
     managed: boolean;
   };
+  largeModels?: boolean;
 };
 
 export type PlanType = {

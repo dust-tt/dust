@@ -120,6 +120,7 @@ export async function upgradeWorkspace(workspaceId: number) {
   plan.limits.dataSources.documents.count = -1;
   plan.limits.dataSources.documents.sizeMb = -1;
   plan.limits.dataSources.managed = true;
+  plan.limits.largeModels = true;
 
   workspace.plan = JSON.stringify(plan);
   workspace.upgradedAt = new Date();

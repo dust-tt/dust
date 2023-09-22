@@ -431,6 +431,7 @@ export function planForWorkspace(w: Workspace): PlanType {
       },
       managed: false,
     },
+    largeModels: false,
   };
 
   if (w.plan) {
@@ -442,6 +443,11 @@ export function planForWorkspace(w: Workspace): PlanType {
     }
 
     if (plan.limits) {
+      if (plan.limits.largeModels) {
+        if (typeof plan.limits.largeModels === "boolean") {
+          limits.largeModels = plan.limits.largeModels;
+        }
+      }
       if (plan.limits.dataSources) {
         if (
           plan.limits.dataSources.count &&
