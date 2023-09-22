@@ -45,13 +45,13 @@ The code is accessible and can act as such!
 
 ### How to invite members to the workspace
 
-As an Admin, go to ⚙️ > `Workspace Settings` > Members > Invite members by email > then select the user role: Admin, Builder or User. 
+As an Admin, go to ⚙️ > `Workspace Settings` > Members > Invite members by email > then select the user role: Admin, Builder or User.
 
 ### How to add Managed Data Sources
 
-**How to set up Managed Data Sources** 
+**How to set up Managed Data Sources**
 
-As an Admin, go to ⚙️ > `Data Sources` > Managed Data Sources > Select the desired Managed Data Sources and click `Activate` > Authenticate your account and select the data you wish to synchronize with Dust. 
+As an Admin, go to ⚙️ > `Data Sources` > Managed Data Sources > Select the desired Managed Data Sources and click `Activate` > Authenticate your account and select the data you wish to synchronize with Dust.
 
 As an Admin, go to `Settings` and then select `Automatically select this Data Source for Assistant queries` if you want the Assistant to default to using the DataSource for answers.
 
@@ -63,7 +63,7 @@ As an Admin, ⚙ > `Data Sources` > Select the desired Managed Data Sources a
 
 As a user, you can add your data to a managed data source like Notion or Google Drive. Dust will then automatically sync it through @Dust, @notion, or @googledrive.
 
-As an Admin or Builder go to ⚙️ > `Data Sources` > Static Data Sources > select the button `Add a new Data Source` > give your data source a name and optionally a description. If you want to add this data source to @Dust by default select `Automatically select this Data Source for Assistant queries` > then validate `create` . 
+As an Admin or Builder go to ⚙️ > `Data Sources` > Static Data Sources > select the button `Add a new Data Source` > give your data source a name and optionally a description. If you want to add this data source to @Dust by default select `Automatically select this Data Source for Assistant queries` > then validate `create` .
 
 ### What are the users’ different roles?
 
@@ -80,7 +80,7 @@ As an Admin or Builder go to ⚙️ > `Data Sources` > Static Data Sources > se
 - Edit member roles.
 - Link and update Managed Data Sources to the Workspace.
 
-### ****How do I install the @Dust Assistant in Slack?****
+### \***\*How do I install the @Dust Assistant in Slack?\*\***
 
 To get Dust in Slack, an Admin needs to install it. Once that's done, everyone in the Slack workspace can use the @Dust Slackbot. It only has to be installed once.
 
@@ -97,7 +97,7 @@ To export your @Dust conversation history in Slack, keep in mind that it's like 
 
 As a user, you can add your data to a managed data source like Notion or Google Drive. Dust will then automatically sync it through @Dust, @notion, or @googledrive.
 
-As an Admin or Builder go to ⚙️ > `Data Sources` > Static Data Sources > select the button `Add a new Data Source` > give your data source a name and optionally a description. If you want to add this data source to @Dust by default select `Automatically select this Data Source for Assistant queries` > then validate `create` . 
+As an Admin or Builder go to ⚙️ > `Data Sources` > Static Data Sources > select the button `Add a new Data Source` > give your data source a name and optionally a description. If you want to add this data source to @Dust by default select `Automatically select this Data Source for Assistant queries` > then validate `create` .
 
 ### What is the difference between Dust apps and an Assistant?
 
@@ -109,9 +109,9 @@ Assistants are different. They combine a large language model, context, planning
 
 ### How to create custom apps?
 
-As an Admin or a builder, to create Dust custom apps go to ⚙️ > `Developers Tools` > select `Create App` . From there, you can give the app a name and decide who can access the app. 
+As an Admin or a builder, to create Dust custom apps go to ⚙️ > `Developers Tools` > select `Create App` . From there, you can give the app a name and decide who can access the app.
 
-To learn how to develop an app you can explore Dust technical documentation here - [https://docs.dust.tt/](https://docs.dust.tt/) 
+To learn how to develop an app you can explore Dust technical documentation here - [https://docs.dust.tt/](https://docs.dust.tt/)
 
 ### How to create a custom Assistant?
 
@@ -138,7 +138,7 @@ Technically assistants first try to understand your question (Analysis), then wi
 
 ### How do I talk to an Assistant?
 
-Click on the message bar at the bottom of your screen and summon the desired assistant(s) or select it by clicking on 🤖 in the message bar. 
+Click on the message bar at the bottom of your screen and summon the desired assistant(s) or select it by clicking on 🤖 in the message bar.
 
 Then ask questions to communicate with an Assistant. The best way to ask a question to a Dust Assistant is to talk to it like a coworker or friend. Your question can be simple questions like 'how do I create a memo?' or more complex requests.
 
@@ -156,14 +156,14 @@ Although Assistants have safety controls and feedback mechanisms according to ou
 
 Ethan Mollick, a professor at the Wharton School who writes about AI, concludes that GPT-4 is better at solving math problems, while Claude 2 is better at writing.
 
-| Model | See images | Internet connection | Personality | When to use it |
-| --- | --- | --- | --- | --- |
-| GPT-3.5 |  | No | Neutral | Fast and capable, but other models are now stronger.  |
-| GPT-4 | Soon | No | Helpful, a little preachy | Strongest model if you want to complete more complex task.  |
-| Claude 2 |  | No | Pleasant | Strongest model to work with large amounts of text. You may choose Claude 2 if you're working with a lot of text. |
-| Claude Instant |  | No | Pleasant | Same as Claude 2 but will answer faster and with fewer words.  |
+| Model          | See images | Internet connection | Personality               | When to use it                                                                                                    |
+| -------------- | ---------- | ------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| GPT-3.5        |            | No                  | Neutral                   | Fast and capable, but other models are now stronger.                                                              |
+| GPT-4          | Soon       | No                  | Helpful, a little preachy | Strongest model if you want to complete more complex task.                                                        |
+| Claude 2       |            | No                  | Pleasant                  | Strongest model to work with large amounts of text. You may choose Claude 2 if you're working with a lot of text. |
+| Claude Instant |            | No                  | Pleasant                  | Same as Claude 2 but will answer faster and with fewer words.                                                     |
 
-Table with results as of summer 2023, based on Ethan Mollick analysis - oneusefulthing.org. 
+Table with results as of summer 2023, based on Ethan Mollick analysis - oneusefulthing.org.
 
 ### What are things to ask @gpt3.5-turbo?
 
@@ -195,7 +195,7 @@ For Admins and builders, Claude-instant can handle the most context: 100k tokens
 
 # About Data Sources
 
-What kind of documents can I synchronize with Dust Assistants? 
+What kind of documents can I synchronize with Dust Assistants?
 
 ### What data do the Assistants have access to?
 
@@ -226,7 +226,7 @@ Dust Assistants use OpenAI GPT4 and Anthropic Claude. They're best at English bu
 
 If you experience issues logging in please send a message to your workspace Admin or our team team@dust.tt will investigate.
 
-### ****The Assistant is producing links that don’t work and falsely claiming something that’s not true. What’s going on?****
+### \***\*The Assistant is producing links that don’t work and falsely claiming something that’s not true. What’s going on?\*\***
 
 Assistants can sometimes overstate their abilities. Despite what they might imply, Assistants can't use the internet or any tools or software not approved by the Admin. They can only use approved data sources and provide text responses.
 
