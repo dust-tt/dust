@@ -34,6 +34,7 @@ export const PartialChecked: Story = {
   args: {
     checked: false,
     partialChecked: true,
+    variant: "checkable",
   },
 };
 

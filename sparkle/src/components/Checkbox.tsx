@@ -59,9 +59,7 @@ export function Checkbox({
     checked && !partialChecked && !disabled
       ? checkedIndicatorClasses.selected
       : "",
-    checked && partialChecked && !disabled
-      ? checkedIndicatorClasses.partialChecked
-      : "",
+    partialChecked && !disabled ? checkedIndicatorClasses.partialChecked : "",
     !checked && !disabled ? checkedIndicatorClasses.unselected : ""
   );
 
