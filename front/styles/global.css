@@ -36,28 +36,14 @@ main {
   }
 }
 
-@keyframes cursor-blink {
-  0% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 .blinking-cursor > :not(pre):last-child::after {
   content: "";
   width: 10px;
   height: 20px;
   @apply bg-success-400;
   display: inline-block;
-  animation: cursor-blink 0.9s infinite;
+  @apply animate-cursor-blink;
   margin-left: 5px;
   position: relative;
   top: 4px;
-
-  /* background:red */
 }
