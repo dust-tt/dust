@@ -209,6 +209,8 @@ async function botAnswerMessage(
   if (stream.isErr()) {
     return new Err(new Error(stream.error.message));
   }
+  slackChatBotMessage.conversationId = conv.conversation.sId;
+  await slackChatBotMessage.save();
 
   let fullAnswer = "";
   let lastSentDate = new Date();
