@@ -8,7 +8,9 @@ import { ConversationType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{conversation:ConversationType} |ReturnedAPIErrorType>
+  res: NextApiResponse<
+    { conversation: ConversationType } | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -56,10 +58,10 @@ async function handler(
     case "GET": {
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
       });
 
-      res.status(200).json({conversation})
+      res.status(200).json({ conversation });
       return;
     }
 
