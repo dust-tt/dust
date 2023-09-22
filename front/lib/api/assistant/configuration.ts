@@ -172,7 +172,7 @@ export async function getAgentConfiguration(
  * Get the list agent configuration for the workspace, optionally whose names
  * match a prefix
  */
-export async function getAgentCnfigurations(
+export async function getAgentConfigurations(
   auth: Authenticator,
   agentPrefix?: string
 ): Promise<AgentConfigurationType[] | []> {
