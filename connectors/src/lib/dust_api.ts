@@ -140,13 +140,14 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+  message: PostMessagesRequestBodySchemaIoTs,
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
   typeof PostConversationsRequestBodySchemaIoTs
 >;
 
-type PostMessagesRequestBodySchema = t.TypeOf<
+export type PostMessagesRequestBodySchema = t.TypeOf<
   typeof PostMessagesRequestBodySchemaIoTs
 >;
 
@@ -545,10 +546,15 @@ export class DustAPI {
     return processStreamedChatResponse(res);
   }
 
-  async chatV2PostConversation(visibility: "unlisted" | "workspace") {
+  async createConversation(
+    title: string | null,
+    visibility: "unlisted" | "workspace",
+    message: PostMessagesRequestBodySchema
+  ) {
     const requestPayload: PostConversationsRequestBodySchema = {
       title: null,
       visibility,
+      message,
     };
 
     const res = await fetch(
@@ -567,10 +573,56 @@ export class DustAPI {
     if (json.error) {
       return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.conversation as { sId: string });
+    const conv = json.conversation as { sId: string };
+    const agentMessageRes: Result<AgentMessageType, Error> =
+      await (async () => {
+        // looping 10 times to get the first agent message, we should listen on conversation stream
+        // but this works for now as we have only one answer and are under time pressure.
+        for (let i = 0; i < 10; i++) {
+          const conversation = await this.getConversation(conv.sId);
+          if (conversation.isOk()) {
+            const agentMessage = conversation.value.content
+              .flat()
+              .filter((m) => {
+                return m.type === "agent_message";
+              });
+            if (agentMessage.length > 0) {
+              return new Ok(agentMessage[0] as AgentMessageType);
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+
+        return new Err(
+          new Error(
+            `Timeout waiting for agent message for conversation ${conv.sId}`
+          )
+        );
+      })();
+
+    if (agentMessageRes.isErr()) {
+      return agentMessageRes;
+    }
+
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+
+    const streamRes = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${
+        conv.sId
+      }/messages/${agentMessageRes.value.sId}/events`,
+      {
+        method: "GET",
+        headers: headers,
+      }
+    );
+
+    return processStreamedV2ChatResponse(streamRes);
   }
 
-  async chatV2GetConversation(conversationid: string) {
+  async getConversation(conversationid: string) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationid}`,
       {
@@ -588,89 +640,5 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.conversation as ConversationType);
-  }
-
-  async chatV2PostMessage(
-    conversationId: string,
-    userMessage: string,
-    mentions: (
-      | { configurationId: string }
-      | { provider: string; providerId: string }
-    )[],
-    timezone: string,
-    username: string,
-    fullName: string,
-    email: string,
-    profilePictureUrl: string | null
-  ) {
-    const requestPayload: PostMessagesRequestBodySchema = {
-      content: userMessage,
-      mentions: mentions,
-      context: {
-        timezone: timezone,
-        username: username,
-        fullName: fullName,
-        email: email,
-        profilePictureUrl: profilePictureUrl,
-      },
-    };
-    const url = `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${conversationId}/messages`;
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-    };
-
-    const postUserMessageRes = await fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(requestPayload),
-    });
-
-    const json = await postUserMessageRes.json();
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
-    }
-
-    const agentMessageRes: Result<AgentMessageType, Error> =
-      await (async () => {
-        // looping 10 times to get the first agent message, we should listen on conversation stream
-        // but this works for now as we have only one answer and are under time pressure.
-        for (let i = 0; i < 10; i++) {
-          const conversation = await this.chatV2GetConversation(conversationId);
-          if (conversation.isOk()) {
-            const agentMessage = conversation.value.content
-              .flat()
-              .filter((m) => {
-                return m.type === "agent_message";
-              });
-            if (agentMessage.length > 0) {
-              return new Ok(agentMessage[0] as AgentMessageType);
-            }
-          }
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-
-        return new Err(
-          new Error(
-            `Timeout waiting for agent message for conversation ${conversationId}`
-          )
-        );
-      })();
-
-    if (agentMessageRes.isErr()) {
-      return agentMessageRes;
-    }
-
-    const streamRes = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${conversationId}/messages/${
-        agentMessageRes.value.sId
-      }/events`,
-      {
-        method: "GET",
-        headers: headers,
-      }
-    );
-
-    return processStreamedV2ChatResponse(streamRes);
   }
 }

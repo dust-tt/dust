@@ -1,7 +1,11 @@
 import { literal } from "sequelize";
 
 import { V2_ROLLED_OUT_WORKSPACES } from "@connectors/lib/assistant";
-import { ChatSessionUpdateEvent, DustAPI } from "@connectors/lib/dust_api";
+import {
+  ChatSessionUpdateEvent,
+  DustAPI,
+  PostMessagesRequestBodySchema,
+} from "@connectors/lib/dust_api";
 import {
   Connector,
   ModelId,
@@ -150,8 +154,10 @@ async function botAnswerMessage(
 
   await slackChatBotMessage.save();
   const dustAPI = new DustAPI({
-    workspaceId: connector.workspaceId,
-    apiKey: connector.workspaceAPIKey,
+    // workspaceId: connector.workspaceId,
+    // apiKey: connector.workspaceAPIKey,
+    workspaceId: "0ec9852c2f",
+    apiKey: "sk-a6cf29d8d00e87f3234803cda9abee35",
   });
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
@@ -227,28 +233,32 @@ async function botAnswerMessage(
       }
     }
   } else {
-    const convRes = await dustAPI.chatV2PostConversation("unlisted");
+    const messagePayload: PostMessagesRequestBodySchema = {
+      content: message,
+      mentions: [{ configurationId: "dust" }],
+      context: {
+        timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+        username: slackChatBotMessage.slackUserName,
+        fullName:
+          slackChatBotMessage.slackFullName ||
+          slackChatBotMessage.slackUserName,
+        email: slackChatBotMessage.slackEmail,
+        profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+      },
+    };
+    const convRes = await dustAPI.createConversation(
+      null,
+      "unlisted",
+      messagePayload
+    );
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
     }
     const conv = convRes.value;
-    const chatRes = await dustAPI.chatV2PostMessage(
-      conv.sId,
-      message,
-      [{ configurationId: "dust" }],
-      slackChatBotMessage.slackTimezone || "Europe/Paris",
-      slackChatBotMessage.slackUserName,
-      slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
-      slackChatBotMessage.slackEmail,
-      slackChatBotMessage.slackAvatar || null
-    );
-    if (chatRes.isErr()) {
-      return new Err(new Error(chatRes.error.message));
-    }
-    const chat = chatRes.value;
+
     let fullAnswer = "";
     let lastSentDate = new Date();
-    for await (const event of chat.eventStream) {
+    for await (const event of conv.eventStream) {
       switch (event.type) {
         case "user_message_error": {
           return new Err(
