@@ -9,7 +9,7 @@ import {
   getSupportedModelConfig,
   isSupportedModel,
   SupportedModel,
-} from "@app/lib/api/assistant/supported_models";
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {

@@ -7,6 +7,7 @@ const readFileAsync = promisify(fs.readFile);
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  getSupportedModelConfig,
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";

@@ -44,7 +44,6 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { planForWorkspace } from "@app/lib/auth";
 
 const usedModelConfigs = [
   GPT_4_DEFAULT_MODEL_CONFIG,
