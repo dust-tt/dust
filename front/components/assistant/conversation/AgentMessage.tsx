@@ -8,7 +8,7 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -75,6 +75,7 @@ export function AgentMessage({
     },
     [conversationId, message.sId, owner.sId, shouldStream]
   );
+
   const onEventCallback = useCallback((eventStr: string) => {
     const eventPayload: {
       eventId: string;
@@ -124,6 +125,7 @@ export function AgentMessage({
         })(event);
     }
   }, []);
+
   useEventSource(buildEventSourceURL, onEventCallback);
 
   const agentMessageToRender = (() => {
@@ -140,6 +142,22 @@ export function AgentMessage({
         })(message.status);
     }
   })();
+
+  useEffect(() => {
+    if (
+      window &&
+      window.scrollTo &&
+      agentMessageToRender.status === "created"
+    ) {
+      if (
+        document.body.offsetHeight + window.scrollY >=
+        document.body.scrollHeight - 200
+      ) {
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    }
+  }, [agentMessageToRender.content, agentMessageToRender.status]);
+
   const buttons =
     message.status === "failed"
       ? []
