@@ -12,6 +12,7 @@ import {
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 
+import { isOnAssistantV2 } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
 import { WorkspaceType } from "@app/types/user";
@@ -21,7 +22,7 @@ import { WorkspaceType } from "@app/types/user";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "assistant" | "assistant_v2" | "lab" | "settings";
+export type TopNavigationId = "assistant" | "lab" | "settings";
 
 export type SubNavigationAdminId =
   | "data_sources"
@@ -61,9 +62,22 @@ export const topNavigation = ({
   owner: WorkspaceType;
   current: TopNavigationId;
 }) => {
+  const isOnV2 = isOnAssistantV2(owner);
   const isDust = isDevelopmentOrDustWorkspace(owner);
-  const nav: SparkleAppLayoutNavigation[] = [
-    {
+  const nav: SparkleAppLayoutNavigation[] = [];
+
+  if (isOnV2) {
+    nav.push({
+      id: "assistant",
+      label: "Assistant",
+      href: `/w/${owner.sId}/assistant/new`,
+      icon: RobotIcon,
+      sizing: "hug",
+      current: current === "assistant",
+      hasSeparator: isDust ? false : true,
+    });
+  } else {
+    nav.push({
       id: "assistant",
       label: "Assistant",
       href: `/w/${owner.sId}/u/chat`,
@@ -71,19 +85,10 @@ export const topNavigation = ({
       sizing: "hug",
       current: current === "assistant",
       hasSeparator: isDust ? false : true,
-    },
-  ];
-  if (isDust) {
-    nav.push({
-      id: "assistants",
-      label: "V2",
-      href: `/w/${owner.sId}/assistant/new`,
-      icon: RobotIcon,
-      sizing: "hug",
-      current: current === "assistant_v2",
-      hasSeparator: isDust ? false : true,
     });
+  }
 
+  if (isDust) {
     nav.push({
       id: "lab",
       label: "",
@@ -96,12 +101,15 @@ export const topNavigation = ({
   }
 
   if (owner.role === "admin" || owner.role === "builder") {
+    const defaultSettingsRoute = isOnV2
+      ? `/w/${owner.sId}/builder/assistants`
+      : `/w/${owner.sId}/builder/data-sources`;
     nav.push({
       id: "settings",
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/data-sources`,
+      href: defaultSettingsRoute,
       current: current === "settings",
     });
   }
@@ -123,7 +131,7 @@ export const subNavigationAdmin = ({
   const nav: SparkleAppLayoutNavigation[] = [];
 
   if (owner.role === "admin" || owner.role === "builder") {
-    if (isDevelopmentOrDustWorkspace(owner)) {
+    if (isOnAssistantV2(owner)) {
       nav.push({
         id: "assistants",
         label: "Assistants Manager",

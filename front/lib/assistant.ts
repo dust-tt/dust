@@ -1,5 +1,11 @@
 import { ExtractSpecificKeys } from "@app/lib/api/typescipt_utils";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { WorkspaceType } from "@app/types/user";
+
+const V2_ROLLED_OUT_WORKSPACES = [
+  "0ec9852c2f", // Dust
+];
 
 /**
  * Supported models
@@ -137,4 +143,11 @@ export function compareAgentsForSort(
   if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
 
   return 0; // Default: keep the original order
+}
+
+export function isOnAssistantV2(owner: WorkspaceType): boolean {
+  return (
+    isDevelopmentOrDustWorkspace(owner) ||
+    V2_ROLLED_OUT_WORKSPACES.includes(owner.sId)
+  );
 }
