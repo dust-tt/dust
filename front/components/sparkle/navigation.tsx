@@ -101,7 +101,7 @@ export const topNavigation = ({
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
+      href: `/w/${owner.sId}/builder/data-sources`,
       current: current === "settings",
     });
   }
