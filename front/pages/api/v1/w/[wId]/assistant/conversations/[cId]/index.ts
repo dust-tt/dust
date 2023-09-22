@@ -56,11 +56,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache",
-      });
-
       res.status(200).json({ conversation });
       return;
     }
