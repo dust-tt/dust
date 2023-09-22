@@ -79,7 +79,8 @@ export default function AssistantBuilderDataSourceModal({
       onClose={onClose}
       onSave={() => onSaveLocal({ isSelectAll })}
       hasChanged={
-        !!selectedDataSource && Object.keys(selectedResources).length > 0
+        !!selectedDataSource &&
+        (Object.keys(selectedResources).length > 0 || isSelectAll)
       }
       isFullScreen={true}
       title="Add a data source"
@@ -119,14 +120,7 @@ export default function AssistantBuilderDataSourceModal({
             }}
             toggleSelectAll={() => {
               const selectAll = !isSelectAll;
-
               setIsSelectAll(selectAll);
-              // we preserve the selected resources in the state
-              // so that we can restore them if the user unselects
-              // we however won't send them to the backend
-              if (selectAll) {
-                onSaveLocal({ isSelectAll: true });
-              }
             }}
           />
         )}
@@ -284,44 +278,41 @@ function DataSourceResourceSelector({
               Select all:{" "}
               <SliderToggle selected={isSelectAll} onClick={toggleSelectAll} />
             </div>
-            {!isSelectAll && (
-              <>
-                <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
-                  <div>
-                    All available{" "}
-                    {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
-                      dataSource.connectorProvider as ConnectorProvider
-                    ]?.plural ?? "resources"}
-                    :
-                  </div>
-                </div>
-                <DataSourceResourceSelectorTree
-                  owner={owner}
-                  dataSource={dataSource}
-                  expandable={
-                    CONNECTOR_CONFIGURATIONS[
-                      dataSource.connectorProvider as ConnectorProvider
-                    ]?.isNested
-                  }
-                  selectedParentIds={new Set(Object.keys(selectedResources))}
-                  parentsById={parentsById}
-                  onSelectChange={(
-                    { resourceId, resourceName, parents },
-                    selected
-                  ) => {
-                    const newParentsById = { ...parentsById };
-                    if (selected) {
-                      newParentsById[resourceId] = new Set(parents);
-                    } else {
-                      delete newParentsById[resourceId];
-                    }
+            <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
+              <div>
+                All available{" "}
+                {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                  dataSource.connectorProvider as ConnectorProvider
+                ]?.plural ?? "resources"}
+                :
+              </div>
+            </div>
+            <DataSourceResourceSelectorTree
+              owner={owner}
+              dataSource={dataSource}
+              expandable={
+                CONNECTOR_CONFIGURATIONS[
+                  dataSource.connectorProvider as ConnectorProvider
+                ]?.isNested
+              }
+              selectedParentIds={new Set(Object.keys(selectedResources))}
+              parentsById={parentsById}
+              onSelectChange={(
+                { resourceId, resourceName, parents },
+                selected
+              ) => {
+                const newParentsById = { ...parentsById };
+                if (selected) {
+                  newParentsById[resourceId] = new Set(parents);
+                } else {
+                  delete newParentsById[resourceId];
+                }
 
-                    setParentsById(newParentsById);
-                    onSelectChange({ resourceId, resourceName }, selected);
-                  }}
-                />
-              </>
-            )}
+                setParentsById(newParentsById);
+                onSelectChange({ resourceId, resourceName }, selected);
+              }}
+              fullySelected={isSelectAll}
+            />
           </div>
         </div>
       )}
