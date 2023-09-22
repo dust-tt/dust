@@ -68,7 +68,7 @@ export default function DataSourceSelectionSection({
     >
       <div>
         <div className="flex flex-row items-start">
-          <div className="text-base font-semibold">Select the data sources</div>
+          <div className="text-base font-semibold">Select the Data Sources</div>
           <div className="flex-grow" />
           {Object.keys(dataSourceConfigurations).length > 0 && (
             <Button
@@ -218,7 +218,7 @@ export default function DataSourceSelectionSection({
             }}
           >
             <div className={"flex flex-row items-center gap-4 pb-4"}>
-              <div className="font-normal text-element-900">
+              <div className="text-sm font-semibold text-element-900">
                 Focus on the last
               </div>
               <input
