@@ -47,7 +47,7 @@ export function Tooltip({
   const tooltipPositionClasses =
     position === "above" ? "s-bottom-full s-mb-2" : "s-top-full s-mt-2";
 
-  const labelClasses = "s-whitespace-no-wrap";
+  const labelClasses = "s-whitespace-nowrap";
 
   return (
     <div
@@ -62,11 +62,12 @@ export function Tooltip({
           baseClasses,
           hiddenOnMobileClasses,
           tooltipPositionClasses,
-          tooltipCenterClasses
+          tooltipCenterClasses,
+          contentChildren ? "" : labelClasses
         )}
         onAnimationEnd={() => setIsHovered(false)}
       >
-        {contentChildren || <span className={labelClasses}>{label}</span>}
+        {contentChildren || label}
       </div>
     </div>
   );
