@@ -5,10 +5,10 @@ import {
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
-import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import {
@@ -30,6 +30,11 @@ import {
   providerFromDocument,
   titleFromDocument,
 } from "./assistant/conversation/RetrievalAction";
+
+const SyntaxHighlighter = dynamic(
+  () => import("react-syntax-highlighter").then((mod) => mod.Light),
+  { ssr: false }
+);
 
 function mentionDirective() {
   return (tree: any) => {
