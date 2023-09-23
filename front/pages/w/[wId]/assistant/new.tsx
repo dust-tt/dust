@@ -8,7 +8,7 @@ import {
   Page,
   PlusIcon,
   QuestionMarkCircleStrokeIcon,
-  ShakeHandsIcon,
+  ShakeHandsStrokeIcon,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -184,7 +184,7 @@ export default function AssistantNew({
               <Page.Vertical gap="xs" align="left">
                 <Page.SectionHeader
                   title="Meet your smart friends"
-                  visual={ShakeHandsIcon}
+                  visual={ShakeHandsStrokeIcon}
                 />
                 <Page.P variant="secondary">
                   Dust is not just a single assistant, it’s a full team at your
@@ -205,25 +205,19 @@ export default function AssistantNew({
               </div>
               <Button.List>
                 {activeAgents.length > 4 && (
-                  <>
-                    <Button
-                      variant="tertiary"
-                      icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
-                      size="xs"
-                      label={
-                        showAllAgents
-                          ? "Hide All Assistants"
-                          : "See all Assistants"
-                      }
-                      onClick={() => {
-                        setShowAllAgents(!showAllAgents);
-                      }}
-                    />
-                    <StartHelperConversationButton
-                      content="Hey @helper, how do I use the assistant?"
-                      handleSubmit={handleSubmit}
-                    />
-                  </>
+                  <Button
+                    variant="primary"
+                    icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
+                    size="xs"
+                    label={
+                      showAllAgents
+                        ? "Hide All Assistants"
+                        : "See all Assistants"
+                    }
+                    onClick={() => {
+                      setShowAllAgents(!showAllAgents);
+                    }}
+                  />
                 )}
 
                 {isBuilder && (
@@ -232,6 +226,7 @@ export default function AssistantNew({
                       variant="primary"
                       icon={PlusIcon}
                       label="Create a new Assistant"
+                      hasMagnifying={false}
                       size="xs"
                       onClick={() => {
                         void router.push(
@@ -240,9 +235,10 @@ export default function AssistantNew({
                       }}
                     />
                     <Button
-                      variant="tertiary"
+                      variant="secondary"
                       icon={WrenchIcon}
                       label="Manage Assistants"
+                      hasMagnifying={false}
                       size="xs"
                       onClick={() => {
                         void router.push(`/w/${owner.sId}/builder/assistants`);
@@ -250,6 +246,10 @@ export default function AssistantNew({
                     />
                   </>
                 )}
+                <StartHelperConversationButton
+                  content="Hey @helper, how can I use an assistant?"
+                  handleSubmit={handleSubmit}
+                />
               </Button.List>
             </Page.Vertical>
             <Page.Separator />
