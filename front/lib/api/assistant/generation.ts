@@ -128,14 +128,6 @@ export async function renderConversationForModel({
     })
   );
 
-  logger.info(
-    {
-      messageCount: messages.length,
-      elapsed: Date.now() - now,
-    },
-    "[ASSISTANT_STATS] message token counts for model conversation rendering"
-  );
-
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected = [];
   let tokensUsed = 0;
@@ -150,6 +142,16 @@ export async function renderConversationForModel({
       selected.unshift(messages[i]);
     }
   }
+
+  logger.info(
+    {
+      messageCount: messages.length,
+      tokensUsed,
+      messageSelected: selected.length,
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_TRACE] message token counts for model conversation rendering"
+  );
 
   return new Ok({
     messages: selected,
@@ -293,6 +295,14 @@ export async function* runGeneration(
   //     prompt: constructPrompt(userMessage, configuration),
   //   })
   // );
+
+  logger.info(
+    {
+      model: model,
+      temperature: c.temperature,
+    },
+    "[ASSISTANT_TRACE] Running generation"
+  );
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
