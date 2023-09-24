@@ -405,6 +405,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
       const resources: ConnectorResource[] = await Promise.all(
         drives.map(async (d): Promise<ConnectorResource> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);
+          if (!driveObject) {
+            throw new Error(`Drive ${d.id} unexpectedly not found (got 404).`);
+          }
           return {
             provider: c.type,
             internalId: driveObject.id,

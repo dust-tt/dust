@@ -189,6 +189,9 @@ export async function syncFiles(
     authCredentials,
     driveFolderId
   );
+  if (!driveFolder) {
+    throw new Error(`Folder ${driveFolderId} unexpectedly not found (got 404)`);
+  }
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
     const visitedFolder = await GoogleDriveFiles.findOne({
@@ -445,6 +448,10 @@ async function getFileParents(
   /* eslint-disable @typescript-eslint/no-unused-vars */
   startSyncTs: number
 ): Promise<GoogleDriveObjectType[]> {
+  const logger = mainLogger.child({
+    provider: "google_drive",
+    connectorId: connectorId,
+  });
   const parents: GoogleDriveObjectType[] = [];
   let currentObject = driveFile;
   while (currentObject.parent) {
@@ -452,6 +459,13 @@ async function getFileParents(
       authCredentials,
       currentObject.parent
     );
+    if (!parent) {
+      // If we got a 404 error we stop the iteration as the parent disappeared.
+      logger.info("Parent not ound in `getFileParents`", {
+        parent_id: currentObject.parent,
+      });
+      break;
+    }
     parents.push(parent);
     currentObject = parent;
   }
@@ -743,6 +757,11 @@ export async function garbageCollector(
             authCredentials,
             file.driveFileId
           );
+          if (!driveFile) {
+            throw new Error(
+              `File ${file.driveFileId} unexpectedly not found (got 404).`
+            );
+          }
           const isInFolder = await objectIsInFolders(
             connectorId,
             authCredentials,
@@ -931,22 +950,29 @@ async function deleteOneFile(
 export async function getGoogleDriveObject(
   authCredentials: OAuth2Client,
   driveObjectId: string
-): Promise<GoogleDriveObjectType> {
+): Promise<GoogleDriveObjectType | null> {
   const drive = await getDriveClient(authCredentials);
 
-  const res = await drive.files.get({
-    fileId: driveObjectId,
-    supportsAllDrives: true,
-    fields: "*",
-  });
-  if (res.status !== 200) {
-    throw new Error(
-      `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
-    );
-  }
-  const file = res.data;
+  try {
+    const res = await drive.files.get({
+      fileId: driveObjectId,
+      supportsAllDrives: true,
+      fields: "*",
+    });
+    if (res.status !== 200) {
+      throw new Error(
+        `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
+      );
+    }
+    const file = res.data;
 
-  return await driveObjectToDustType(file, authCredentials);
+    return await driveObjectToDustType(file, authCredentials);
+  } catch (e) {
+    if ((e as GaxiosError).response?.status === 404) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 export async function driveObjectToDustType(
@@ -1009,6 +1035,9 @@ export async function markFolderAsVisited(
   }
   const authCredentials = await getAuthObject(connector.connectionId);
   const file = await getGoogleDriveObject(authCredentials, driveFileId);
+  if (!file) {
+    throw new Error(`File ${driveFileId} unexpectedly not found (got 404)`);
+  }
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
     dustFileId: getDocumentId(driveFileId),
