@@ -461,8 +461,9 @@ async function getFileParents(
     );
     if (!parent) {
       // If we got a 404 error we stop the iteration as the parent disappeared.
-      logger.info("Parent not ound in `getFileParents`", {
+      logger.info("Parent not found in `getFileParents`", {
         parent_id: currentObject.parent,
+        file_id: driveFile.id,
       });
       break;
     }
