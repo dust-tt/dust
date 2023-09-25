@@ -51,7 +51,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
     displayName: "GPT 4",
     contextSize: 8192,
     largeModel: true,
-    recommendedTopK: 32,
+    recommendedTopK: 16,
   },
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
