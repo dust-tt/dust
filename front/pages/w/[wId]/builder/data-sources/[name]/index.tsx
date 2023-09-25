@@ -32,7 +32,7 @@ import {
 } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
 import { useDocuments } from "@app/lib/swr";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
