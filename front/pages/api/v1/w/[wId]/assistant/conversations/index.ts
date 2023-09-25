@@ -94,8 +94,9 @@ async function handler(
       });
 
       if (message) {
-        // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
-        // the events in the background.
+        // Not awaiting this promise on purpose. We want to answer "OK" to the client ASAP and
+        // process the events in the background. So that the client gets updated as soon as
+        // possible.
         void postUserMessageWithPubSub(auth, {
           conversation,
           content: message.content,
@@ -109,6 +110,7 @@ async function handler(
           },
         });
       }
+
       res.status(200).json({ conversation });
       return;
 

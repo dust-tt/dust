@@ -16,7 +16,9 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
+import { APIErrorWithStatusCode } from "@app/lib/error";
 import { redisClient } from "@app/lib/redis";
+import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import {
   AgentMessageType,
@@ -25,6 +27,8 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+export type PubSubError = APIErrorWithStatusCode;
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
@@ -39,7 +43,7 @@ export async function postUserMessageWithPubSub(
     mentions: MentionType[];
     context: UserMessageContext;
   }
-): Promise<UserMessageType> {
+): Promise<Result<UserMessageType, PubSubError>> {
   const postMessageEvents = postUserMessage(auth, {
     conversation,
     content,
@@ -62,7 +66,7 @@ export async function editUserMessageWithPubSub(
     content: string;
     mentions: MentionType[];
   }
-): Promise<UserMessageType> {
+): Promise<Result<UserMessageType, PubSubError>> {
   const editMessageEvents = editUserMessage(auth, {
     conversation,
     message,
@@ -87,71 +91,87 @@ async function handleUserMessageEvents(
     | ConversationTitleEvent,
     void
   >
-): Promise<UserMessageType> {
-  const promise: Promise<UserMessageType> = new Promise((resolve, reject) => {
-    void (async () => {
-      const redis = await redisClient();
-      let didResolve = false;
-      try {
-        for await (const event of messageEventGenerator) {
-          switch (event.type) {
-            case "user_message_new":
-            case "agent_message_new":
-            case "conversation_title": {
-              const pubsubChannel = getConversationChannelId(conversation.sId);
-              await redis.xAdd(pubsubChannel, "*", {
-                payload: JSON.stringify(event),
-              });
-              await redis.expire(pubsubChannel, 60 * 10);
-              if (event.type === "user_message_new") {
-                didResolve = true;
-                resolve(event.message);
+): Promise<Result<UserMessageType, PubSubError>> {
+  const promise: Promise<Result<UserMessageType, PubSubError>> = new Promise(
+    (resolve) => {
+      void (async () => {
+        const redis = await redisClient();
+        let didResolve = false;
+        try {
+          for await (const event of messageEventGenerator) {
+            switch (event.type) {
+              case "user_message_new":
+              case "agent_message_new":
+              case "conversation_title": {
+                const pubsubChannel = getConversationChannelId(
+                  conversation.sId
+                );
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                if (event.type === "user_message_new") {
+                  didResolve = true;
+                  resolve(new Ok(event.message));
+                }
+                break;
               }
-              break;
-            }
-            case "retrieval_params":
-            case "agent_error":
-            case "agent_action_success":
-            case "generation_tokens":
-            case "agent_generation_success":
-            case "agent_message_success": {
-              const pubsubChannel = getMessageChannelId(event.messageId);
-              await redis.xAdd(pubsubChannel, "*", {
-                payload: JSON.stringify(event),
-              });
-              await redis.expire(pubsubChannel, 60 * 10);
-              break;
-            }
-            case "user_message_error": {
-              // We reject the promise here which means we'll get a 500 in the route calling
-              // postUserMessageWithPubSub. This is fine since `user_message_error` can only happen
-              // if we're trying to send a message to a conversation that we don't have access to,
-              // or this has already been checked if getConversation has been called.
-              reject(new Error(event.error.message));
-              break;
-            }
+              case "retrieval_params":
+              case "agent_error":
+              case "agent_action_success":
+              case "generation_tokens":
+              case "agent_generation_success":
+              case "agent_message_success": {
+                const pubsubChannel = getMessageChannelId(event.messageId);
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                break;
+              }
+              case "user_message_error": {
+                // We resolve the promise with an error as we were not able to create the user
+                // message. This is possible for a variety of reason and will get turned into a 400
+                // in the API route calling `{post/edit}UserMessageWithPubSub`.
+                didResolve = true;
+                resolve(
+                  new Err({
+                    status_code: 400,
+                    api_error: {
+                      type: "invalid_request_error",
+                      message: event.error.message,
+                    },
+                  })
+                );
+                break;
+              }
 
-            default:
-              ((event: never) => {
-                logger.error("Unknown event type", event);
-              })(event);
-              return null;
+              default:
+                ((event: never) => {
+                  logger.error("Unknown event type", event);
+                })(event);
+                return null;
+            }
+          }
+        } catch (e) {
+          logger.error({ error: e }, "Error Posting message");
+        } finally {
+          await redis.quit();
+          if (!didResolve) {
+            resolve(
+              new Err({
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: `Never got the user_message_new event for ${conversation.sId}`,
+                },
+              })
+            );
           }
         }
-      } catch (e) {
-        logger.error({ error: e }, "Error Posting message");
-      } finally {
-        await redis.quit();
-        if (!didResolve) {
-          reject(
-            new Error(
-              `Never got the user_message_new event for ${conversation.sId}`
-            )
-          );
-        }
-      }
-    })();
-  });
+      })();
+    }
+  );
 
   return promise;
 }
@@ -165,61 +185,69 @@ export async function retryAgentMessageWithPubSub(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<AgentMessageType> {
-  const promise: Promise<AgentMessageType> = new Promise((resolve, reject) => {
-    void (async () => {
-      const redis = await redisClient();
-      let didResolve = false;
-      try {
-        for await (const event of retryAgentMessage(auth, {
-          conversation,
-          message,
-        })) {
-          switch (event.type) {
-            case "agent_message_new": {
-              const pubsubChannel = getConversationChannelId(conversation.sId);
-              await redis.xAdd(pubsubChannel, "*", {
-                payload: JSON.stringify(event),
-              });
-              await redis.expire(pubsubChannel, 60 * 10);
-              didResolve = true;
-              resolve(event.message);
-              break;
+): Promise<Result<AgentMessageType, PubSubError>> {
+  const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
+    (resolve) => {
+      void (async () => {
+        const redis = await redisClient();
+        let didResolve = false;
+        try {
+          for await (const event of retryAgentMessage(auth, {
+            conversation,
+            message,
+          })) {
+            switch (event.type) {
+              case "agent_message_new": {
+                const pubsubChannel = getConversationChannelId(
+                  conversation.sId
+                );
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                didResolve = true;
+                resolve(new Ok(event.message));
+                break;
+              }
+              case "retrieval_params":
+              case "agent_error":
+              case "agent_action_success":
+              case "generation_tokens":
+              case "agent_generation_success":
+              case "agent_message_success": {
+                const pubsubChannel = getMessageChannelId(event.messageId);
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                break;
+              }
+              default:
+                ((event: never) => {
+                  logger.error("Unknown event type", event);
+                })(event);
+                return null;
             }
-            case "retrieval_params":
-            case "agent_error":
-            case "agent_action_success":
-            case "generation_tokens":
-            case "agent_generation_success":
-            case "agent_message_success": {
-              const pubsubChannel = getMessageChannelId(event.messageId);
-              await redis.xAdd(pubsubChannel, "*", {
-                payload: JSON.stringify(event),
-              });
-              await redis.expire(pubsubChannel, 60 * 10);
-              break;
-            }
-            default:
-              ((event: never) => {
-                logger.error("Unknown event type", event);
-              })(event);
-              return null;
+          }
+        } catch (e) {
+          logger.error({ error: e }, "Error Posting message");
+        } finally {
+          await redis.quit();
+          if (!didResolve) {
+            resolve(
+              new Err({
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: `Never got the user_message_new event for ${conversation.sId}`,
+                },
+              })
+            );
           }
         }
-      } catch (e) {
-        logger.error({ error: e }, "Error Posting message");
-      } finally {
-        await redis.quit();
-        if (!didResolve) {
-          reject(
-            new Error(
-              `Never got the agent_message_new event for ${conversation.sId}`
-            )
-          );
-        }
-      }
-    })();
-  });
+      })();
+    }
+  );
 
   return promise;
 }

@@ -132,14 +132,17 @@ async function handler(
       }
       const { content, mentions } = bodyValidation.right;
 
-      const editedMessage = await editUserMessageWithPubSub(auth, {
+      const editedMessageRes = await editUserMessageWithPubSub(auth, {
         conversation,
         message,
         content,
         mentions,
       });
+      if (editedMessageRes.isErr()) {
+        return apiError(req, res, editedMessageRes.error);
+      }
 
-      res.status(200).json({ message: editedMessage });
+      res.status(200).json({ message: editedMessageRes.value });
       return;
 
     default:

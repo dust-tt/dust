@@ -93,14 +93,20 @@ async function handler(
           },
         });
       }
+
       const { content, context, mentions } = bodyValidation.right;
-      const message = await postUserMessageWithPubSub(auth, {
+
+      const messageRes = await postUserMessageWithPubSub(auth, {
         conversation,
         content,
         mentions,
         context,
       });
-      res.status(200).json({ message: message });
+      if (messageRes.isErr()) {
+        return apiError(req, res, messageRes.error);
+      }
+
+      res.status(200).json({ message: messageRes.value });
       return;
 
     default:

@@ -932,7 +932,7 @@ export async function* editUserMessage(
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "not_allowed",
+        code: "edition_unsupported",
         message:
           "Adding agent mentions when editing is only supported for the last message of the conversation",
       },
