@@ -363,7 +363,7 @@ function LiBlock({ children }: { children: React.ReactNode }) {
   return <li className="py-2 first:pt-0 last:pb-0">{children}</li>;
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
-  return <p className="py-2 first:pt-0 last:pb-0">{children}</p>;
+  return <div className="py-2 first:pt-0 last:pb-0">{children}</div>;
 }
 
 function CodeBlock({
