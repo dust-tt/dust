@@ -43,7 +43,6 @@ export type ModelMessageType = {
 
 export type ModelConversationType = {
   messages: ModelMessageType[];
-  tokensUsed: number;
 };
 
 // This function transforms a conversation in a simplified format that we feed the model as context.
@@ -56,7 +55,12 @@ export async function renderConversationForModel({
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   allowedTokenCount: number;
-}): Promise<Result<ModelConversationType, Error>> {
+}): Promise<
+  Result<
+    { modelConversation: ModelConversationType; tokensUsed: number },
+    Error
+  >
+> {
   const messages = [];
 
   let retrievalFound = false;
@@ -159,7 +163,9 @@ export async function renderConversationForModel({
   );
 
   return new Ok({
-    messages: selected,
+    modelConversation: {
+      messages: selected,
+    },
     tokensUsed,
   });
 }
@@ -324,7 +330,7 @@ export async function* runGeneration(
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
-      conversation: modelConversationRes.value,
+      conversation: modelConversationRes.value.modelConversation,
       prompt: constructPrompt(userMessage, configuration),
     },
   ]);
