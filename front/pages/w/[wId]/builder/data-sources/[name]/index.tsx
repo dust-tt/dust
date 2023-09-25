@@ -32,7 +32,7 @@ import {
 } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
 import { useDocuments } from "@app/lib/swr";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -203,33 +203,29 @@ function StandardDataSourceView({
         <div className="flex flex-1">
           <div className="flex flex-col">
             <div className="flex flex-row">
-              <div className="flex flex-initial">
-                <div className="flex">
-                  <Button
-                    variant="tertiary"
-                    disabled={offset < limit}
-                    onClick={() => {
-                      if (offset >= limit) {
-                        setOffset(offset - limit);
-                      } else {
-                        setOffset(0);
-                      }
-                    }}
-                    label="Previous"
-                  />
-                </div>
-                <div className="ml-2 flex">
-                  <Button
-                    variant="tertiary"
-                    label="Next"
-                    disabled={offset + limit >= total}
-                    onClick={() => {
-                      if (offset + limit < total) {
-                        setOffset(offset + limit);
-                      }
-                    }}
-                  />
-                </div>
+              <div className="flex flex-initial gap-x-2">
+                <Button
+                  variant="tertiary"
+                  disabled={offset < limit}
+                  onClick={() => {
+                    if (offset >= limit) {
+                      setOffset(offset - limit);
+                    } else {
+                      setOffset(0);
+                    }
+                  }}
+                  label="Previous"
+                />
+                <Button
+                  variant="tertiary"
+                  label="Next"
+                  disabled={offset + limit >= total}
+                  onClick={() => {
+                    if (offset + limit < total) {
+                      setOffset(offset + limit);
+                    }
+                  }}
+                />
               </div>
             </div>
 
@@ -542,7 +538,7 @@ function ManagedDataSourceView({
         />
         <div className="flex flex-row">
           <div className="flex flex-1"></div>
-          <div className="flex">
+          <Button.List>
             <Button
               label="Search"
               variant="secondary"
@@ -552,20 +548,20 @@ function ManagedDataSourceView({
                 );
               }}
             />
-          </div>
-          <div className={classNames(isAdmin ? "flex" : "hidden")}>
-            <Button
-              label="Edit permissions"
-              variant="secondary"
-              onClick={() => {
-                if (["slack", "google_drive"].includes(connectorProvider)) {
-                  setShowPermissionModal(true);
-                } else {
-                  void handleUpdatePermissions();
-                }
-              }}
-            />
-          </div>
+            {isAdmin && (
+              <Button
+                label="Edit permissions"
+                variant="secondary"
+                onClick={() => {
+                  if (["slack", "google_drive"].includes(connectorProvider)) {
+                    setShowPermissionModal(true);
+                  } else {
+                    void handleUpdatePermissions();
+                  }
+                }}
+              />
+            )}
+          </Button.List>
         </div>
         <div className="text-sm text-element-900">
           {CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
