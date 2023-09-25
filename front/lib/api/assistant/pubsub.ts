@@ -28,6 +28,8 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 
+export type PubSubError = APIErrorWithStatusCode;
+
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
   {
@@ -41,7 +43,7 @@ export async function postUserMessageWithPubSub(
     mentions: MentionType[];
     context: UserMessageContext;
   }
-): Promise<Result<UserMessageType, APIErrorWithStatusCode>> {
+): Promise<Result<UserMessageType, PubSubError>> {
   const postMessageEvents = postUserMessage(auth, {
     conversation,
     content,
@@ -64,7 +66,7 @@ export async function editUserMessageWithPubSub(
     content: string;
     mentions: MentionType[];
   }
-): Promise<Result<UserMessageType, APIErrorWithStatusCode>> {
+): Promise<Result<UserMessageType, PubSubError>> {
   const editMessageEvents = editUserMessage(auth, {
     conversation,
     message,
@@ -89,9 +91,9 @@ async function handleUserMessageEvents(
     | ConversationTitleEvent,
     void
   >
-): Promise<Result<UserMessageType, APIErrorWithStatusCode>> {
-  const promise: Promise<Result<UserMessageType, APIErrorWithStatusCode>> =
-    new Promise((resolve) => {
+): Promise<Result<UserMessageType, PubSubError>> {
+  const promise: Promise<Result<UserMessageType, PubSubError>> = new Promise(
+    (resolve) => {
       void (async () => {
         const redis = await redisClient();
         let didResolve = false;
@@ -168,7 +170,8 @@ async function handleUserMessageEvents(
           }
         }
       })();
-    });
+    }
+  );
 
   return promise;
 }
@@ -182,9 +185,9 @@ export async function retryAgentMessageWithPubSub(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  const promise: Promise<Result<AgentMessageType, APIErrorWithStatusCode>> =
-    new Promise((resolve) => {
+): Promise<Result<AgentMessageType, PubSubError>> {
+  const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
+    (resolve) => {
       void (async () => {
         const redis = await redisClient();
         let didResolve = false;
@@ -243,7 +246,8 @@ export async function retryAgentMessageWithPubSub(
           }
         }
       })();
-    });
+    }
+  );
 
   return promise;
 }
