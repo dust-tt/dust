@@ -21,7 +21,6 @@ import {
   AgentConfigurationType,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
-import { UserType } from "@app/types/user";
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -59,17 +58,14 @@ class HelperAssistantPrompt {
  * - Add a case in getGlobalAgent with associated function.
  */
 async function _getHelperGlobalAgent(
-  auth: Authenticator,
-  {
-    user,
-  }: {
-    user: UserType | null;
-  }
+  auth: Authenticator
 ): Promise<AgentConfigurationType> {
   let prompt = "";
 
+  const user = auth.user();
   if (user) {
-    prompt = `The user you're interacting with is ${user.name}. `;
+    const role = auth.role();
+    prompt = `The user you're interacting with is granted with the role ${role}. Their name is ${user.name}. `;
   }
 
   const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
@@ -513,7 +509,6 @@ export async function getGlobalAgent(
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
-  const user = auth.user();
 
   const settings = await GlobalAgentSettings.findOne({
     where: { workspaceId: owner.id, agentId: sId },
@@ -521,7 +516,7 @@ export async function getGlobalAgent(
   let agentConfiguration: AgentConfigurationType | null = null;
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      agentConfiguration = await _getHelperGlobalAgent(auth, { user });
+      agentConfiguration = await _getHelperGlobalAgent(auth);
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
