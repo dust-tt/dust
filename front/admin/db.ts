@@ -6,9 +6,6 @@ import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
   App,
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
   Clone,
   Conversation,
   ConversationParticipant,
@@ -49,9 +46,6 @@ async function main() {
   await Key.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
-  await ChatSession.sync({ alter: true });
-  await ChatMessage.sync({ alter: true });
-  await ChatRetrievedDocument.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await EventSchema.sync({ alter: true });
   await ExtractedEvent.sync({ alter: true });
