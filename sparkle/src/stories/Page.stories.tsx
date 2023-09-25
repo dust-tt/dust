@@ -2,14 +2,12 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ChatBubbleLeftRight } from "@sparkle/icons/solid";
-import { QuestionMarkCircle, ShakeHands } from "@sparkle/icons/stroke";
 
 import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ContextItem,
-  FlagStrokeIcon,
   Page,
 } from "../index_with_tw_base";
 
