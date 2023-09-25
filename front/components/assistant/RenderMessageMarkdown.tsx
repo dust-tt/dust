@@ -189,10 +189,11 @@ function MentionBlock({
       ? "(This assistant was deleted)"
       : agentConfiguration?.status === "active"
       ? ""
-      : " (This assistant is deactivated for this workspace)";
+      : "(This assistant is deactivated for this workspace)";
   const tooltipContent = (
-    <div className="w-48">
-      {agentConfiguration?.description + "" + statusText}
+    <div className="flex w-64 flex-col gap-2">
+      <span>{agentConfiguration?.description}</span>
+      <span>{statusText}</span>
     </div>
   );
   return (
