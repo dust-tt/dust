@@ -251,7 +251,11 @@ async function botAnswerMessage(
         break;
       }
       case "agent_generation_success": {
-        const finalAnswer = `${event.text}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conv.conversation.sId}|Continue this conversation on Dust>`;
+        const finalAnswer = `${_removeCiteMention(
+          event.text
+        )}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${
+          conv.conversation.sId
+        }|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
           channel: slackChannel,
@@ -267,6 +271,14 @@ async function botAnswerMessage(
     }
   }
   return new Err(new Error("Failed to get the final answer from Dust"));
+}
+
+/*
+ * Temp > until I have a PR to properly handle mentions
+ */
+function _removeCiteMention(message: string) {
+  const regex = /:cite\[[a-zA-Z0-9,]+\]/g;
+  return message.replace(regex, "");
 }
 
 export async function getBotEnabled(
