@@ -19,7 +19,7 @@ import { useState } from "react";
 import { mutate } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationLab } from "@app/components/sparkle/navigation";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -132,8 +132,8 @@ export default function AppExtractEventsReadData({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="lab"
-      subNavigation={subNavigationLab({ owner, current: "extract" })}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
     >
       <PageHeader
         title="Extract"
