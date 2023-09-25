@@ -1689,9 +1689,9 @@ fn parse_points_into_chunks(
             let document_id = match payload.get("document_id") {
                 Some(t) => match t.kind {
                     Some(qdrant::value::Kind::StringValue(ref s)) => s.clone(),
-                    _ => Err(anyhow!("Invalid `document_id` in chunk payload (data_source_id: {}, internal_id: {}, kind: {:?})", data_source_id, internal_id, t.kind))?,
+                    _ => Err(anyhow!("Invalid `document_id` in chunk payload (data_source_id={} internal_id={} kind={:?})", data_source_id, internal_id, t.kind))?,
                 },
-                None => Err(anyhow!("Missing `document_id` in chunk payload (data_source_id: {}, internal_id: {})", data_source_id, internal_id))?,
+                None => Err(anyhow!("Missing `document_id` in chunk payload (data_source_id={} internal_id={})", data_source_id, internal_id))?,
             };
             let text = match payload.get("text") {
                 Some(t) => match t.kind {
