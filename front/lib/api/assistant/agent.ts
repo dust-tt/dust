@@ -34,9 +34,16 @@ import {
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
+  configuration: AgentConfigurationType,
   specification: AgentActionSpecification,
   conversation: ConversationType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  // We inject the prompt of the model so that its input generation behavior can be modified by its
+  // instructions. If there is no genration phase we default to a generic prompt.
+  const prompt = configuration.generation
+    ? configuration.generation.prompt
+    : "You are a conversational assistant with access to function calling.";
+
   const model = {
     providerId: "openai",
     modelId: "gpt-3.5-turbo-16k",
@@ -65,6 +72,7 @@ export async function generateActionInputs(
     {
       conversation: modelConversationRes.value.modelConversation,
       specification,
+      prompt,
     },
   ]);
 

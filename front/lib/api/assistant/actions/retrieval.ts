@@ -188,7 +188,7 @@ export async function retrievalActionSpecification(
 /// potentially generating the query and relative time frame.
 export async function generateRetrievalParams(
   auth: Authenticator,
-  configuration: RetrievalConfigurationType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<
@@ -201,29 +201,35 @@ export async function generateRetrievalParams(
     Error
   >
 > {
-  let query: string | null = null;
-  let relativeTimeFrame: TimeFrame | null = null;
-
-  if (
-    configuration.relativeTimeFrame !== "none" &&
-    configuration.relativeTimeFrame !== "auto"
-  ) {
-    relativeTimeFrame = configuration.relativeTimeFrame;
-  }
-
-  if (configuration.query !== "none" && configuration.query !== "auto") {
-    query = configuration.query.template.replace(
-      "_USER_MESSAGE_",
-      userMessage.content
+  const c = configuration.action;
+  if (!isRetrievalConfiguration(c)) {
+    throw new Error(
+      "Unexpected action configuration received in `generateRetrievalParams`"
     );
   }
 
-  const spec = await retrievalActionSpecification(configuration);
+  let query: string | null = null;
+  let relativeTimeFrame: TimeFrame | null = null;
+
+  if (c.relativeTimeFrame !== "none" && c.relativeTimeFrame !== "auto") {
+    relativeTimeFrame = c.relativeTimeFrame;
+  }
+
+  if (c.query !== "none" && c.query !== "auto") {
+    query = c.query.template.replace("_USER_MESSAGE_", userMessage.content);
+  }
+
+  const spec = await retrievalActionSpecification(c);
 
   if (spec.inputs.length > 0) {
     const now = Date.now();
 
-    const rawInputsRes = await generateActionInputs(auth, spec, conversation);
+    const rawInputsRes = await generateActionInputs(
+      auth,
+      configuration,
+      spec,
+      conversation
+    );
 
     if (rawInputsRes.isOk()) {
       const rawInputs = rawInputsRes.value;
@@ -235,7 +241,7 @@ export async function generateRetrievalParams(
         "[ASSISTANT_TRACE] retrieval action inputs generation"
       );
 
-      if (configuration.query === "auto") {
+      if (c.query === "auto") {
         if (!rawInputs.query || typeof rawInputs.query !== "string") {
           return new Err(
             new Error("Failed to generate a valid retrieval query.")
@@ -244,7 +250,7 @@ export async function generateRetrievalParams(
         query = rawInputs.query as string;
       }
 
-      if (configuration.relativeTimeFrame === "auto") {
+      if (c.relativeTimeFrame === "auto") {
         if (
           rawInputs.relativeTimeFrame &&
           typeof rawInputs.relativeTimeFrame === "string"
@@ -263,7 +269,7 @@ export async function generateRetrievalParams(
 
       // We fail the rerieval only if we had to generate a query but failed to do so, if the
       // relativeTimeFrame failed, we'll just use `null`.
-      if (configuration.query === "auto") {
+      if (c.query === "auto") {
         return rawInputsRes;
       }
     }
@@ -272,7 +278,7 @@ export async function generateRetrievalParams(
   return new Ok({
     query,
     relativeTimeFrame,
-    topK: configuration.topK,
+    topK: c.topK,
   });
 }
 
@@ -423,7 +429,7 @@ export async function* runRetrieval(
 
   const paramsRes = await generateRetrievalParams(
     auth,
-    c,
+    configuration,
     conversation,
     userMessage
   );
