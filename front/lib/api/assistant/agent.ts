@@ -63,7 +63,7 @@ export async function generateActionInputs(
 
   const res = await runAction(auth, "assistant-v2-inputs-generator", config, [
     {
-      conversation: modelConversationRes.value,
+      conversation: modelConversationRes.value.modelConversation,
       specification,
     },
   ]);
