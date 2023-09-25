@@ -148,7 +148,11 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
 
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
-  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+  visibility: t.union([
+    t.literal("unlisted"),
+    t.literal("workspace"),
+    t.literal("deleted"),
+  ]),
   message: PostMessagesRequestBodySchemaIoTs,
 });
 
@@ -190,7 +194,7 @@ export type GenerationSuccessEvent = {
   text: string;
 };
 
-export type ConversationVisibility = "unlisted" | "workspace";
+export type ConversationVisibility = "unlisted" | "workspace" | "deleted";
 
 /**
  *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
@@ -557,7 +561,7 @@ export class DustAPI {
 
   async createConversation(
     title: string | null,
-    visibility: "unlisted" | "workspace",
+    visibility: ConversationVisibility,
     message: PostMessagesRequestBodySchema
   ) {
     const requestPayload: PostConversationsRequestBodySchema = {

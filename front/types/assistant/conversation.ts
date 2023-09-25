@@ -112,7 +112,7 @@ export function isAgentMessageType(
  * Conversations
  */
 
-export type ConversationVisibility = "unlisted" | "workspace";
+export type ConversationVisibility = "unlisted" | "workspace" | "deleted";
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user

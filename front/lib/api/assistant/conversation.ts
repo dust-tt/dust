@@ -124,9 +124,14 @@ export async function updateConversation(
   return c;
 }
 
+/**
+ *  Mark the conversation as deleted, but does not remove it from database
+ *  unless destroy is explicitly set to true
+ */
 export async function deleteConversation(
   auth: Authenticator,
-  conversationId: string
+  conversationId: string,
+  destroy?: boolean
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -144,7 +149,13 @@ export async function deleteConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  await conversation.destroy();
+  if (destroy) {
+    await conversation.destroy();
+  } else {
+    await conversation.update({
+      visibility: "deleted",
+    });
+  }
 }
 
 /**
