@@ -108,7 +108,7 @@ async function botAnswerMessage(
     message: message,
     slackUserId: slackUserId,
     slackEmail: "",
-    slackUserName: "",
+    slackUserName: "unknown",
     slackFullName: "",
     slackTimezone: null,
     slackAvatar: null,
@@ -138,7 +138,12 @@ async function botAnswerMessage(
   }
   if (slackUser.profile?.display_name) {
     slackChatBotMessage.slackUserName = slackUser.profile.display_name;
+  } else if (slackUser.profile?.real_name) {
+    // A slack bot has no display name but just a real name so we use it if we could not find the
+    // display name.
+    slackChatBotMessage.slackUserName = slackUser.profile.real_name;
   }
+
   if (slackUser.profile?.real_name) {
     slackChatBotMessage.slackFullName = slackUser.profile.real_name;
   }
