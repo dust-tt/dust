@@ -821,7 +821,12 @@ export async function* postUserMessage(
       agentMessage
     );
 
-    return streamRunAgentEvents(eventStream, agentMessageRows[i]);
+    return streamRunAgentEvents(
+      auth,
+      eventStream,
+      agentMessages[i],
+      agentMessageRows[i]
+    );
   });
 
   const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
@@ -1205,7 +1210,12 @@ export async function* editUserMessage(
       agentMessage
     );
 
-    return streamRunAgentEvents(eventStream, agentMessageRows[i]);
+    return streamRunAgentEvents(
+      auth,
+      eventStream,
+      agentMessages[i],
+      agentMessageRows[i]
+    );
   });
 
   const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
@@ -1380,10 +1390,11 @@ export async function* retryAgentMessage(
     agentMessage
   );
 
-  yield* streamRunAgentEvents(eventStream, agentMessageRow);
+  yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
 }
 
 async function* streamRunAgentEvents(
+  auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
     | AgentActionEvent
@@ -1393,6 +1404,7 @@ async function* streamRunAgentEvents(
     | AgentMessageSuccessEvent,
     void
   >,
+  agentMessage: AgentMessageType,
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -1416,6 +1428,8 @@ async function* streamRunAgentEvents(
         logger.error(
           {
             error: event.error,
+            workspaceId: auth.workspace()?.sId,
+            agentMessageId: agentMessage.sId,
           },
           "Agent error"
         );
