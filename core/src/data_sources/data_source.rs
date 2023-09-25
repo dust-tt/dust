@@ -1008,6 +1008,8 @@ impl DataSource {
 
                 let time_chunk_start = utils::now();
                 let chunks = parse_points_into_chunks(
+                    &self.data_source_id,
+                    &self.internal_id,
                     &(results
                         .result
                         .into_iter()
@@ -1400,6 +1402,8 @@ impl DataSource {
             }
 
             let mut batch_chunks: Vec<(String, Chunk)> = parse_points_into_chunks(
+                &self.data_source_id,
+                &self.internal_id,
                 &batch_points
                     .into_iter()
                     .map(QdrantPoint::Retrieved)
@@ -1670,6 +1674,8 @@ enum QdrantPoint {
 }
 
 fn parse_points_into_chunks(
+    data_source_id: &str,
+    internal_id: &str,
     points: &Vec<QdrantPoint>,
 ) -> Result<Vec<(String, Chunk)>, anyhow::Error> {
     let chunks: Vec<(String, Chunk)> = points
@@ -1683,9 +1689,9 @@ fn parse_points_into_chunks(
             let document_id = match payload.get("document_id") {
                 Some(t) => match t.kind {
                     Some(qdrant::value::Kind::StringValue(ref s)) => s.clone(),
-                    _ => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+                    _ => Err(anyhow!("Invalid `document_id` in chunk payload (data_source_id={} internal_id={} kind={:?})", data_source_id, internal_id, t.kind))?,
                 },
-                None => Err(anyhow!("Missing `document_id` in chunk payload"))?,
+                None => Err(anyhow!("Missing `document_id` in chunk payload (data_source_id={} internal_id={})", data_source_id, internal_id))?,
             };
             let text = match payload.get("text") {
                 Some(t) => match t.kind {
