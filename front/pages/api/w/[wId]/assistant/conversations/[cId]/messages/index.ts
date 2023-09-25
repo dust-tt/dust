@@ -111,7 +111,7 @@ async function handler(
 
       // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
       // the events in the background.
-      const message = await postUserMessageWithPubSub(auth, {
+      const messageRes = await postUserMessageWithPubSub(auth, {
         conversation,
         content,
         mentions,
@@ -123,8 +123,11 @@ async function handler(
           profilePictureUrl: context.profilePictureUrl,
         },
       });
+      if (messageRes.isErr()) {
+        return apiError(req, res, messageRes.error);
+      }
 
-      res.status(200).json({ message: message });
+      res.status(200).json({ message: messageRes.value });
       return;
 
     default:

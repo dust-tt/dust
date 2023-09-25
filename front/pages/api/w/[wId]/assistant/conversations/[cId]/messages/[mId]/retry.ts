@@ -125,12 +125,15 @@ async function handler(
         });
       }
 
-      const retriedMessage = await retryAgentMessageWithPubSub(auth, {
+      const retriedMessageRes = await retryAgentMessageWithPubSub(auth, {
         conversation,
         message,
       });
+      if (retriedMessageRes.isErr()) {
+        return apiError(req, res, retriedMessageRes.error);
+      }
 
-      res.status(200).json({ message: retriedMessage });
+      res.status(200).json({ message: retriedMessageRes.value });
       return;
 
     default:
