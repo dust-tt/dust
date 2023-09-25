@@ -96,6 +96,7 @@ export enum GLOBAL_AGENTS_SID {
 }
 
 const CUSTOM_ORDER: string[] = [
+  GLOBAL_AGENTS_SID.HELPER,
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.SLACK,
@@ -105,7 +106,6 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-  GLOBAL_AGENTS_SID.HELPER,
 ];
 
 // This function implements our general strategy to sort agents to users (input bar, assistant list,
@@ -114,13 +114,17 @@ export function compareAgentsForSort(
   a: AgentConfigurationType,
   b: AgentConfigurationType
 ) {
-  // Check for 'Dust'
-  if (a.name === GLOBAL_AGENTS_SID.DUST) return -1;
-  if (b.name === GLOBAL_AGENTS_SID.DUST) return 1;
+  // Check for 'helper'
+  if (a.sId === GLOBAL_AGENTS_SID.HELPER) return -1;
+  if (b.sId === GLOBAL_AGENTS_SID.HELPER) return 1;
+
+  // Check for 'dust'
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) return -1;
+  if (b.sId === GLOBAL_AGENTS_SID.DUST) return 1;
 
   // Check for 'gpt4'
-  if (a.name === GLOBAL_AGENTS_SID.GPT4) return -1;
-  if (b.name === GLOBAL_AGENTS_SID.GPT4) return 1;
+  if (a.sId === GLOBAL_AGENTS_SID.GPT4) return -1;
+  if (b.sId === GLOBAL_AGENTS_SID.GPT4) return 1;
 
   // Check for agents with 'scope' set to 'workspace'
   if (a.scope === "workspace" && b.scope !== "workspace") return -1;
