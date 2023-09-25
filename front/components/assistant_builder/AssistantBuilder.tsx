@@ -537,7 +537,7 @@ export default function AssistantBuilder({
         titleChildren={
           !edited ? (
             <AppLayoutSimpleCloseTitle
-              title="Create an Assistant"
+              title="Create an assistant"
               onClose={() => {
                 void router.push(`/w/${owner.sId}/builder/assistants`);
               }}
@@ -909,7 +909,7 @@ function AvatarPicker({
               }
             }}
           >
-            <Avatar size="lg" visual={<img src={url} />} />
+            <Avatar size="lg" visual={<img src={url} />} clickable />
           </div>
         ))}
       </div>
