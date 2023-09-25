@@ -411,7 +411,7 @@ export default function AssistantBuilder({
           type: "retrieval_configuration",
           query: "auto", // TODO ?
           timeframe: tfParam,
-          topK: 16, // TODO ?
+          topK: "auto",
           dataSources: Object.values(builderState.dataSourceConfigurations).map(
             ({ dataSource, selectedResources, isSelectAll }) => ({
               dataSourceId: dataSource.name,
