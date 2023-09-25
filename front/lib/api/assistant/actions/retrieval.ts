@@ -461,8 +461,6 @@ export async function* runRetrieval(
     topK = params.topK;
   }
 
-  // let topK: number  = params.topK === "auto" ?
-
   // Create the AgentRetrievalAction object in the database and yield an event for the generation of
   // the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have retrieved documents but the error will be stored on the parent

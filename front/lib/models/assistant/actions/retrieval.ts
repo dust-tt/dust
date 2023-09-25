@@ -79,7 +79,7 @@ AgentRetrievalConfiguration.init(
     },
     topK: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     topKMode: {
       type: DataTypes.STRING,
