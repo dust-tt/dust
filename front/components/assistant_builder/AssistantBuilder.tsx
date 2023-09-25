@@ -55,7 +55,7 @@ const usedModelConfigs = [
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
 const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
-  GENERIC: "Generic model (No data source)",
+  GENERIC: "None (Generic model)",
   SELECTED: "Selected Data Sources",
 };
 
@@ -571,16 +571,13 @@ export default function AssistantBuilder({
         <div className="flex flex-col space-y-8 pb-8 pt-8">
           <div className="flex flex-row items-start gap-8">
             <div className="flex flex-col gap-4">
-              <div className="text-lg font-bold text-element-900">
-                Assistant handle / name
-              </div>
+              <div className="text-xl font-bold text-element-900">Name</div>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                The handle is used to call the assistant in a&nbsp;conversation
-                using the “@”&nbsp;handle (for&nbsp;instance&nbsp;
-                <span className="italic">@helper</span>). It&nbsp;should be
-                descriptive of what it does or the&nbsp;type of knowledge
-                it&nbsp;has (
-                <span className="italic">@writter,&nbsp;@translate…</span>).
+                Choose a name reflecting the expertise, knowledge access or
+                function of your&nbsp;assistant. Mentioning the&nbsp;assistant
+                in a conversation, like{" "}
+                <span className="italic">"@helper"</span> will prompt
+                a&nbsp;response from&nbsp;them.
               </div>
               <div className="text-sm">
                 <Input
@@ -598,13 +595,12 @@ export default function AssistantBuilder({
                   className="text-sm"
                 />
               </div>
-              <div className="text-lg font-bold text-element-900">
+              <div className="text-xl font-bold text-element-900">
                 Description
               </div>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                The description helps your collaborators and Dust understand the
-                purpose of the assistant. It&nbsp;should be&nbsp;descriptive
-                and&nbsp;short.
+                Add a short description that will help Dust and other workspace
+                members understand the&nbsp;assistant’s&nbsp;purpose.
               </div>
               <div className="text-sm">
                 <Input
@@ -641,18 +637,19 @@ export default function AssistantBuilder({
           </div>
           <div className="mt-8 flex w-full flex-row items-start">
             <div className="flex w-full flex-col gap-4">
-              <div className="text-lg font-bold text-element-900">
+              <div className="text-xl font-bold text-element-900">
                 Instructions
               </div>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                The heart and soul of your assistant.
+                This is your assistant’s heart and soul.
                 <br />
-                Describe, to your assistant, its mission and purpose. Be
+                Describe, as is you were addressing them, their purpose. Be
                 specific on the role (
-                <span className="italic">I want you to act as …</span>), the
-                expected output, the type of formatting (
+                <span className="italic">I want you to act as&nbsp;…</span>),
+                their expected output, and&nbsp;any formatting requirements you
+                have (
                 <span className="italic">
-                  Present your answer in a list, a table, a text,…
+                  ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
                 </span>
                 ).
               </div>
@@ -700,17 +697,14 @@ export default function AssistantBuilder({
           </div>
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
-              <div className="text-lg font-bold text-element-900">
+              <div className="text-xl font-bold text-element-900">
                 Data Sources
               </div>
               <div className="text-sm text-element-700">
-                Data Sources is the knowledge that your Assistant will have
-                access to to help it answer questions. Data&nbsp;Sources
-                availablity is&nbsp;managed by Administrators&nbsp;in{" "}
-                <span className="italic">Settings / Data&nbsp;Sources</span>.
-              </div>
-              <div className="text-sm text-element-700">
-                Here are two key tips:
+                Aside from common knowledge, your&nbsp;assistant can retrieve
+                knowledge from&nbsp;selected sources
+                to&nbsp;answer&nbsp;questions. The Data&nbsp;Sources to pick
+                from are&nbsp;managed by&nbsp;administrators.
               </div>
               <ul role="list" className="flex flex-row gap-12">
                 <li className="flex flex-1">
@@ -719,28 +713,28 @@ export default function AssistantBuilder({
                       Only set data sources if they are necessary.
                     </div>
                     <div className="text-sm text-element-700">
-                      By default, your assistant will follow
-                      your&nbsp;instructions and answer based on&nbsp;commun
-                      knowledge. It&nbsp;will answer&nbsp;faster.
+                      By default, the assistant will follow its instructions
+                      with common knowledge. It&nbsp;will answer faster when not
+                      using Data&nbsp;Sources.
                     </div>
                   </div>
                 </li>
                 <li className="flex flex-1">
                   <div className="flex flex-col">
                     <div className="text-sm font-bold text-element-800">
-                      Choose your data sources with care.
+                      Select your Data Sources carefully.
                     </div>
                     <div className="text-sm text-element-700">
-                      More is not necessarily better. The quality of answers on
-                      specific topic depend on the&nbsp;quality of
-                      the&nbsp;data.
+                      More is not necessarily better. The quality of your
+                      assistant’s answers to specific questions will depend on
+                      the&nbsp;quality of&nbsp;the&nbsp;underlying&nbsp;data.
                     </div>
                   </div>
                 </li>
               </ul>
               <div className="flex flex-row items-center space-x-2 pt-6">
                 <div className="text-sm font-semibold text-element-900">
-                  Data Source mode:
+                  Data Sources:
                 </div>
                 <DropdownMenu>
                   <DropdownMenu.Button>
@@ -956,7 +950,7 @@ function AdvancedSettings({
       <div className="flex flex-row items-center gap-12">
         <div className="flex flex-1 flex-row items-center gap-2">
           <div className="text-sm font-semibold text-element-900">
-            Model selection:
+            Underlying model:
           </div>
           <DropdownMenu>
             <DropdownMenu.Button>

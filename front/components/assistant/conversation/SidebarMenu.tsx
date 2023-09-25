@@ -1,4 +1,4 @@
-import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
+import { Button, ChatBubbleBottomCenterTextIcon, Item } from "@dust-tt/sparkle";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -68,7 +68,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
               <Button
                 labelVisible={true}
                 label="New Conversation"
-                icon={ChatBubbleBottomCenterPlusIcon}
+                icon={ChatBubbleBottomCenterTextIcon}
                 className="flex-none shrink"
               />
             </Link>

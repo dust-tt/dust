@@ -44,7 +44,6 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
 interface PageSectionHeaderProps {
   title: string;
   description?: string;
-  visual?: ComponentType<{ className?: string }>;
   action?: ButtonProps;
 }
 
@@ -52,7 +51,6 @@ Page.SectionHeader = function ({
   title,
   description,
   action,
-  visual,
 }: PageSectionHeaderProps) {
   const titleClasses =
     "s-text-lg s-font-semibold s-text-element-900 s-self-stretch";
@@ -61,11 +59,6 @@ Page.SectionHeader = function ({
   return (
     <div className="s-flex s-shrink s-grow s-basis-0 s-flex-col s-items-stretch s-justify-between s-gap-2 md:s-flex-row md:s-items-center">
       <div className="s-flex s-flex-row s-gap-2">
-        {visual && (
-          <div className="s-pt-0.5 s-text-element-800">
-            <Icon visual={visual} size="md" />
-          </div>
-        )}
         <div className="s-flex s-flex-col s-gap-1">
           <div className={titleClasses}>{title}</div>
           <div className={descriptionClasses}>{description}</div>
@@ -82,7 +75,7 @@ Page.SectionHeader = function ({
 
 Page.Separator = function () {
   return (
-    <div className="s-w-full s-py-4">
+    <div className="s-w-full s-py-3">
       <div className="s-h-px s-w-full s-bg-structure-200" />
     </div>
   );

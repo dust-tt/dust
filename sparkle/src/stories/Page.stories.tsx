@@ -2,14 +2,12 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ChatBubbleLeftRight } from "@sparkle/icons/solid";
-import { QuestionMarkCircle, ShakeHands } from "@sparkle/icons/stroke";
 
 import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ContextItem,
-  FlagStrokeIcon,
   Page,
 } from "../index_with_tw_base";
 
@@ -186,7 +184,7 @@ export const HelpExample = () => {
         icon={ChatBubbleBottomCenterTextIcon}
       />
       <Page.Vertical gap="xs" align="left">
-        <Page.SectionHeader title="Getting started?" visual={FlagStrokeIcon} />
+        <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">
           Using assistant is easy as asking a question to a friend or a
           coworker.
@@ -201,10 +199,7 @@ export const HelpExample = () => {
       </Page.Vertical>
       <Page.Separator />
       <Page.Vertical gap="xs">
-        <Page.SectionHeader
-          title="Meet your smart friends"
-          visual={ShakeHands}
-        />
+        <Page.SectionHeader title="Meet your smart friends" />
         <Page.P variant="secondary">
           Dust is not just a single assistant, it’s a full team at your service.{" "}
           <br />
@@ -214,10 +209,7 @@ export const HelpExample = () => {
       </Page.Vertical>
       <Page.Separator />
       <Page.Vertical gap="xs">
-        <Page.SectionHeader
-          title="Frequently asked questions"
-          visual={QuestionMarkCircle}
-        />
+        <Page.SectionHeader title="Frequently asked questions" />
         <Page.Fluid>
           <Button
             variant="secondary"

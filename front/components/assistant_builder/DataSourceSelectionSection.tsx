@@ -68,7 +68,7 @@ export default function DataSourceSelectionSection({
     >
       <div>
         <div className="flex flex-row items-start">
-          <div className="text-base font-semibold">Select the Data Sources</div>
+          <div className="pb-3 text-sm font-bold">Select the Data Sources:</div>
           <div className="flex-grow" />
           {Object.keys(dataSourceConfigurations).length > 0 && (
             <Button
@@ -271,12 +271,13 @@ export default function DataSourceSelectionSection({
             </div>
           </Transition>
         </div>
-        <div className="text-sm font-normal text-element-800">
-          Define a specific time frame if you want the Assistant to only focus
-          on data from a specific time period.
+        <div className="text-sm font-normal text-element-700">
+          You can filter the documents retrieved for a&nbsp;specific
+          time&nbsp;period.
           <br />
-          <span className="font-bold">"Auto"</span> means the assistant will
-          define itself, from the question, what the timeframe should be.
+          When <span className="italic">“Auto”</span> is selected,
+          the&nbsp;assistant will determine the&nbsp;timeframe from
+          the&nbsp;instructions and the&nbsp;question being&nbsp;asked.
         </div>
       </div>
     </Transition>
