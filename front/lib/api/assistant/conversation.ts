@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -45,7 +47,6 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
-import { Op } from "sequelize";
 
 /**
  * Conversation Creation, update and deletion
