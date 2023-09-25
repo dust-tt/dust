@@ -30,7 +30,6 @@ import {
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
-import { GensTemplate } from "@app/lib/models/gens";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
   Key,
@@ -59,7 +58,6 @@ export {
   DocumentTrackerChangeSuggestion,
   EventSchema,
   ExtractedEvent,
-  GensTemplate,
   GlobalAgentSettings,
   Key,
   Membership,
