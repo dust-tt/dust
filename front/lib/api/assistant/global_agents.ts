@@ -308,7 +308,7 @@ async function _getManagedDataSourceAgent(
       type: "retrieval_configuration",
       query: "auto",
       relativeTimeFrame: "auto",
-      topK: 16,
+      topK: "auto",
       dataSources: dataSources.map((ds) => ({
         dataSourceId: ds.name,
         workspaceId: prodCredentials.workspaceId,
@@ -483,7 +483,7 @@ async function _getDustGlobalAgent(
       type: "retrieval_configuration",
       query: "auto",
       relativeTimeFrame: "auto",
-      topK: 16,
+      topK: "auto",
       dataSources: dataSources.map((ds) => ({
         dataSourceId: ds.name,
         workspaceId: prodCredentials.workspaceId,
