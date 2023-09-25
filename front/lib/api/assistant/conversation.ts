@@ -45,6 +45,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
+import { Op } from "sequelize";
 
 /**
  * Conversation Creation, update and deletion
@@ -103,6 +104,7 @@ export async function updateConversation(
     where: {
       sId: conversationId,
       workspaceId: auth.workspace()?.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
 
@@ -142,6 +144,7 @@ export async function deleteConversation(
     where: {
       sId: conversationId,
       workspaceId: auth.workspace()?.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
 
@@ -290,7 +293,8 @@ async function renderAgentMessage(
 }
 
 export async function getUserConversations(
-  auth: Authenticator
+  auth: Authenticator,
+  includeDeleted?: boolean
 ): Promise<ConversationWithoutContentType[]> {
   const owner = auth.workspace();
   const user = auth.user();
@@ -311,6 +315,9 @@ export async function getUserConversations(
         model: Conversation,
         as: "conversation",
         required: true,
+        where: {
+          ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+        },
       },
     ],
     order: [["createdAt", "DESC"]],
@@ -344,7 +351,8 @@ export async function getUserConversations(
 
 export async function getConversation(
   auth: Authenticator,
-  conversationId: string
+  conversationId: string,
+  includeDeleted?: boolean
 ): Promise<ConversationType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -355,6 +363,7 @@ export async function getConversation(
     where: {
       sId: conversationId,
       workspaceId: owner.id,
+      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
     },
   });
 
