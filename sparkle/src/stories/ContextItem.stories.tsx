@@ -24,7 +24,7 @@ export default meta;
 
 export const ListItemExample = () => (
   <div>
-    <ContextItem.List>
+    <ContextItem.List hasBorder>
       <ContextItem
         title="Notion"
         visual={<ContextItem.Visual visual={Notion} />}

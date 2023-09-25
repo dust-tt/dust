@@ -44,9 +44,14 @@ export function ContextItem({
 interface ContextItemListProps {
   children: ReactNode;
   className?: string;
+  hasBorder?: boolean;
 }
 
-ContextItem.List = function ({ children, className }: ContextItemListProps) {
+ContextItem.List = function ({
+  children,
+  className,
+  hasBorder,
+}: ContextItemListProps) {
   // Ensure all children are of type ContextItem
   React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child) || child.type !== ContextItem) {
@@ -71,7 +76,11 @@ ContextItem.List = function ({ children, className }: ContextItemListProps) {
 
   return (
     <div
-      className={classNames(className ? className : "", "s-flex s-flex-col")}
+      className={classNames(
+        className ? className : "",
+        hasBorder ? "s-border-b s-border-t s-border-structure-200" : "",
+        "s-flex s-flex-col"
+      )}
     >
       {modifiedChildren}
     </div>
