@@ -68,7 +68,7 @@ export type RetrievalConfigurationType = {
   dataSources: DataSourceConfiguration[];
   query: RetrievalQuery;
   relativeTimeFrame: RetrievalTimeframe;
-  topK: number;
+  topK: number | "auto";
 
   // Dynamically decide to skip, if needed in the future
   // autoSkip: boolean;

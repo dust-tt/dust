@@ -102,13 +102,25 @@ export async function getAgentConfiguration(
       );
     }
 
+    let topK: number | "auto" = "auto";
+    if (actionConfig.topKMode === "custom") {
+      if (!actionConfig.topK) {
+        // unreachable
+        throw new Error(
+          `Couldn't find topK for retrieval configuration ${agent.retrievalConfigurationId}} with 'custom' topK mode`
+        );
+      }
+
+      topK = actionConfig.topK;
+    }
+
     retrievalConfig = {
       id: actionConfig.id,
       sId: actionConfig.sId,
       type: "retrieval_configuration",
       query: renderRetrievalQueryType(actionConfig),
       relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
-      topK: actionConfig.topK,
+      topK,
       dataSources: dataSourcesConfig.map((dsConfig) => {
         return {
           dataSourceId: dsConfig.dataSource.name,
@@ -393,7 +405,7 @@ export async function createAgentActionConfiguration(
     type: string;
     query: RetrievalQuery;
     timeframe: RetrievalTimeframe;
-    topK: number;
+    topK: number | "auto";
     dataSources: DataSourceConfiguration[];
   }
 ): Promise<AgentActionConfigurationType> {
@@ -417,7 +429,8 @@ export async function createAgentActionConfiguration(
           ? timeframe.duration
           : null,
         relativeTimeFrameUnit: isTimeFrame(timeframe) ? timeframe.unit : null,
-        topK: topK,
+        topK: topK !== "auto" ? topK : null,
+        topKMode: topK === "auto" ? "auto" : "custom",
       },
       { transaction: t }
     );

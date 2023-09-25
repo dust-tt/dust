@@ -5,6 +5,7 @@ import {
 import { runAction } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/generation";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize, ModelId } from "@app/lib/databases";
 import {
@@ -192,7 +193,11 @@ export async function generateRetrievalParams(
   userMessage: UserMessageType
 ): Promise<
   Result<
-    { query: string | null; relativeTimeFrame: TimeFrame | null; topK: number },
+    {
+      query: string | null;
+      relativeTimeFrame: TimeFrame | null;
+      topK: number | "auto";
+    },
     Error
   >
 > {
@@ -439,6 +444,23 @@ export async function* runRetrieval(
 
   const params = paramsRes.value;
 
+  const model = configuration.generation?.model;
+
+  let topK = 16;
+
+  if (params.topK === "auto") {
+    if (!model) {
+      logger.warn(
+        "Retrieval topK mode is set to auto, but there is no model to infer it from. Defaulting to 16."
+      );
+    } else {
+      const supportedModel = getSupportedModelConfig(model);
+      topK = supportedModel.recommendedTopK;
+    }
+  } else {
+    topK = params.topK;
+  }
+
   // Create the AgentRetrievalAction object in the database and yield an event for the generation of
   // the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have retrieved documents but the error will be stored on the parent
@@ -447,7 +469,7 @@ export async function* runRetrieval(
     query: params.query,
     relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
     relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
-    topK: params.topK,
+    topK,
     retrievalConfigurationId: c.sId,
   });
 
@@ -463,7 +485,7 @@ export async function* runRetrieval(
       params: {
         relativeTimeFrame: params.relativeTimeFrame,
         query: params.query,
-        topK: params.topK,
+        topK,
       },
       documents: null,
     },
@@ -507,7 +529,7 @@ export async function* runRetrieval(
   }
 
   // Handle top k.
-  config.DATASOURCE.top_k = params.topK;
+  config.DATASOURCE.top_k = topK;
 
   const res = await runAction(auth, "assistant-v2-retrieval", config, [
     {
@@ -631,7 +653,7 @@ export async function* runRetrieval(
       params: {
         relativeTimeFrame: params.relativeTimeFrame,
         query: params.query,
-        topK: params.topK,
+        topK,
       },
       documents,
     },

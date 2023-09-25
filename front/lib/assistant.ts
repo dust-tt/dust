@@ -12,6 +12,7 @@ export const GPT_4_DEFAULT_MODEL_CONFIG = {
   displayName: "GPT 4",
   contextSize: 32768,
   largeModel: true,
+  recommendedTopK: 32,
 } as const;
 
 export const GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG = {
@@ -20,6 +21,7 @@ export const GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG = {
   displayName: "GPT 3.5 Turbo",
   contextSize: 4096,
   largeModel: false,
+  recommendedTopK: 16,
 } as const;
 
 export const CLAUDE_DEFAULT_MODEL_CONFIG = {
@@ -28,6 +30,7 @@ export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   displayName: "Claude 2",
   contextSize: 100000,
   largeModel: true,
+  recommendedTopK: 32,
 } as const;
 
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
@@ -36,6 +39,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   displayName: "Claude Instant 1.2",
   contextSize: 100000,
   largeModel: false,
+  recommendedTopK: 32,
 } as const;
 
 export const SUPPORTED_MODEL_CONFIGS = [
@@ -47,6 +51,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
     displayName: "GPT 4",
     contextSize: 8192,
     largeModel: true,
+    recommendedTopK: 16,
   },
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,

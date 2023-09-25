@@ -30,8 +30,10 @@ export class AgentRetrievalConfiguration extends Model<
   declare relativeTimeFrame: "auto" | "none" | "custom";
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
-  declare topK: number;
+  declare topK: number | null;
+  declare topKMode: "auto" | "custom";
 }
+
 AgentRetrievalConfiguration.init(
   {
     id: {
@@ -77,7 +79,12 @@ AgentRetrievalConfiguration.init(
     },
     topK: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    topKMode: {
+      type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "auto",
     },
   },
   {
@@ -104,6 +111,15 @@ AgentRetrievalConfiguration.init(
               "Custom relative time frame must have a duration and unit set"
             );
           }
+        }
+
+        // Validation for TopK
+        if (retrieval.topKMode == "custom") {
+          if (retrieval.topK === null) {
+            throw new Error("topK must be set when topKMode is 'custom'");
+          }
+        } else if (retrieval.topK !== null) {
+          throw new Error("topK must be null when topKMode is not 'custom'");
         }
       },
     },

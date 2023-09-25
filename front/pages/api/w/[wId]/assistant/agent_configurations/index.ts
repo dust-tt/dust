@@ -52,7 +52,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
             unit: TimeframeUnitCodec,
           }),
         ]),
-        topK: t.number,
+        topK: t.union([t.number, t.literal("auto")]),
         dataSources: t.array(
           t.type({
             dataSourceId: t.string,

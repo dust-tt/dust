@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
-import { Workspace } from "@app/lib/models";
 import { planForWorkspace } from "@app/lib/auth";
+import { Workspace } from "@app/lib/models";
 
 async function main() {
   console.log("Fetching Upgraded Worspaces...");
@@ -34,7 +34,7 @@ async function main() {
 }
 
 async function addLargeModelTrue(workspace: Workspace) {
-  let plan = planForWorkspace(workspace);
+  const plan = planForWorkspace(workspace);
   plan.limits.largeModels = true;
   await workspace.update({
     plan: JSON.stringify(plan),
