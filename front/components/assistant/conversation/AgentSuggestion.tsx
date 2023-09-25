@@ -64,9 +64,11 @@ export function AgentSuggestion({
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
                   label={agent.name}
                   visual={agent.pictureUrl}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!loading) {
-                      void selectSuggestionHandler(agent);
+                      setLoading(true);
+                      await selectSuggestionHandler(agent);
+                      setLoading(false);
                     }
                   }}
                 />
@@ -79,7 +81,6 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    setLoading(true);
     const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
     const mRes = await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
@@ -104,7 +105,6 @@ export function AgentSuggestion({
       const data = await mRes.json();
       window.alert(`Error adding mention to message: ${data.error.message}`);
     }
-    setLoading(false);
   }
 
   /**
