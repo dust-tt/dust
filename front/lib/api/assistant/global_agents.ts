@@ -416,7 +416,7 @@ async function _getDustGlobalAgent(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const name = "Dust";
+  const name = "dust";
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
