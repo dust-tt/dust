@@ -73,12 +73,13 @@ export default function DataSourceSelectionSection({
           {Object.keys(dataSourceConfigurations).length > 0 && (
             <Button
               labelVisible={true}
-              label="Add a data source"
+              label="Add Data Sources"
               variant="primary"
               size="sm"
               icon={PlusIcon}
               onClick={openDataSourceModal}
               disabled={!canAddDataSource}
+              hasMagnifying={false}
             />
           )}
         </div>
@@ -90,7 +91,7 @@ export default function DataSourceSelectionSection({
           >
             <Button
               labelVisible={true}
-              label="Add a data source"
+              label="Add Data Sources"
               variant="primary"
               size="md"
               icon={PlusIcon}
@@ -99,7 +100,7 @@ export default function DataSourceSelectionSection({
             />
           </div>
         ) : (
-          <ContextItem.List className="mt-6">
+          <ContextItem.List className="mt-6 border-b border-t border-structure-200">
             {Object.entries(dataSourceConfigurations).map(
               ([key, { dataSource, selectedResources, isSelectAll }]) => {
                 const selectedParentIds = Object.keys(selectedResources);
