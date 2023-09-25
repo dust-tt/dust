@@ -6,9 +6,12 @@ import { WorkspaceType } from "@app/types/user";
  * Supported models
  */
 
+export const GPT_4_32K_MODEL_ID = "gpt-4-32k" as const;
+export const GPT_4_MODEL_ID = "gpt-4" as const;
+
 export const GPT_4_DEFAULT_MODEL_CONFIG = {
   providerId: "openai",
-  modelId: "gpt-4-32k",
+  modelId: GPT_4_32K_MODEL_ID,
   displayName: "GPT 4",
   contextSize: 32768,
   largeModel: true,
@@ -42,17 +45,19 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   recommendedTopK: 32,
 } as const;
 
+export const GPT_4_MODEL_CONFIG = {
+  providerId: "openai",
+  modelId: GPT_4_MODEL_ID,
+  displayName: "GPT 4",
+  contextSize: 8192,
+  largeModel: true,
+  recommendedTopK: 16,
+};
+
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
-  {
-    providerId: "openai",
-    modelId: "gpt-4",
-    displayName: "GPT 4",
-    contextSize: 8192,
-    largeModel: true,
-    recommendedTopK: 16,
-  },
+  GPT_4_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
 ] as const;
