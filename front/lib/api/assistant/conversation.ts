@@ -456,7 +456,7 @@ export async function generateConversationTitle(
 
   const res = await runAction(auth, "assistant-v2-title-generator", config, [
     {
-      conversation: modelConversationRes.value,
+      conversation: modelConversationRes.value.modelConversation,
     },
   ]);
 
