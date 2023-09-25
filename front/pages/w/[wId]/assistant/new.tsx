@@ -2,13 +2,11 @@ import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  FlagStrokeIcon,
   Page,
   PlusIcon,
-  QuestionMarkCircleStrokeIcon,
-  ShakeHandsStrokeIcon,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -154,18 +152,15 @@ export default function AssistantNew({
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       {!conversation ? (
-        <div className="s-text-sm s-font-normal s-text-element-800">
+        <div className="text-sm font-normal text-element-800">
           <Page.Vertical gap="lg" align="left">
             <Page.Header
-              title="Welcome to Assistant"
-              icon={ChatBubbleBottomCenterTextIcon}
+              title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
+              icon={ChatBubbleLeftRightIcon}
             />
             {/* GETTING STARTED */}
             <Page.Vertical gap="xs" align="left">
-              <Page.SectionHeader
-                title="Getting started?"
-                visual={FlagStrokeIcon}
-              />
+              <Page.SectionHeader title="Getting started?" />
               <Page.P variant="secondary">
                 Using assistant is easy as asking a question to a friend or a
                 coworker.
@@ -182,10 +177,7 @@ export default function AssistantNew({
             {/* FEATURED AGENTS */}
             <Page.Vertical gap="lg" align="left">
               <Page.Vertical gap="xs" align="left">
-                <Page.SectionHeader
-                  title="Meet your smart friends"
-                  visual={ShakeHandsStrokeIcon}
-                />
+                <Page.SectionHeader title="Meet your smart friends" />
                 <Page.P variant="secondary">
                   Dust is not just a single assistant, it’s a full team at your
                   service.
@@ -255,10 +247,7 @@ export default function AssistantNew({
             <Page.Separator />
             {/* FAQ */}
             <Page.Vertical gap="xs" align="left">
-              <Page.SectionHeader
-                title="Frequently asked questions"
-                visual={QuestionMarkCircleStrokeIcon}
-              />
+              <Page.SectionHeader title="Frequently asked questions" />
               <Button.List>
                 {isBuilder ? (
                   <div className="flex flex-wrap gap-2">
@@ -355,18 +344,12 @@ function StartHelperConversationButton({
     />
   );
 }
-interface Agent {
-  sId: string;
-  pictureUrl: string;
-  name: string;
-  description: string;
-}
 
-interface AvatarListItemProps {
-  agent: Agent;
-}
-
-const AvatarListItem: React.FC<AvatarListItemProps> = ({ agent }) => {
+const AvatarListItem = function ({
+  agent,
+}: {
+  agent: { sId: string; pictureUrl: string; name: string; description: string };
+}) {
   return (
     <div className="flex flex-col gap-2">
       <Avatar

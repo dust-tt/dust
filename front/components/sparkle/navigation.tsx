@@ -1,6 +1,7 @@
 import {
   ArrowUpOnSquareIcon,
   ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
   CloudArrowDownIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -69,9 +70,9 @@ export const topNavigation = ({
   if (isOnV2) {
     nav.push({
       id: "assistant",
-      label: "Assistant",
+      label: "Conversations",
       href: `/w/${owner.sId}/assistant/new`,
-      icon: RobotIcon,
+      icon: ChatBubbleLeftRightIcon,
       sizing: "hug",
       current: current === "assistant",
       hasSeparator: isDust ? false : true,
