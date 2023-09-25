@@ -133,8 +133,13 @@ export async function updateConversation(
  */
 export async function deleteConversation(
   auth: Authenticator,
-  conversationId: string,
-  destroy?: boolean
+  {
+    conversationId,
+    destroy,
+  }: {
+    conversationId: string;
+    destroy?: boolean;
+  }
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -316,9 +321,6 @@ export async function getUserConversations(
         model: Conversation,
         as: "conversation",
         required: true,
-        where: {
-          ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
-        },
       },
     ],
     order: [["createdAt", "DESC"]],
@@ -330,7 +332,10 @@ export async function getUserConversations(
         logger.error("Participation without conversation");
         return acc;
       }
-      if (p.conversation.workspaceId !== owner.id) {
+      if (
+        p.conversation.workspaceId !== owner.id ||
+        (p.conversation.visibility === "deleted" && !includeDeleted)
+      ) {
         return acc;
       }
 

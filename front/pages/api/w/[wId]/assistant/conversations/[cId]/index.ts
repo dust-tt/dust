@@ -96,7 +96,7 @@ async function handler(
       return;
 
     case "DELETE":
-      await deleteConversation(auth, conversation.sId);
+      await deleteConversation(auth, { conversationId: conversation.sId });
 
       res.status(200).end();
       return;
