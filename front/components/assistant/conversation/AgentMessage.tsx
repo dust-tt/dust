@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { RenderMarkdown } from "@app/components/RenderMarkdown";
+import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   AgentActionEvent,
@@ -220,7 +220,7 @@ export function AgentMessage({
     // Messages with no action and text
     if (agentMessage.action === null && agentMessage.content) {
       return (
-        <RenderMarkdown
+        <RenderMessageMarkdown
           content={agentMessage.content}
           blinkingCursor={streaming}
         />
@@ -253,7 +253,7 @@ export function AgentMessage({
           {agentMessage.content && agentMessage.content !== "" && (
             <>
               <div className="pt-4">
-                <RenderMarkdown
+                <RenderMessageMarkdown
                   content={agentMessage.content}
                   blinkingCursor={streaming}
                   references={references}

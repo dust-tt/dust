@@ -24,12 +24,13 @@ import { visit } from "unist-util-visit";
 
 import { classNames } from "@app/lib/utils";
 import { RetrievalDocumentType } from "@app/types/assistant/actions/retrieval";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 import {
   PROVIDER_LOGO_PATH,
   providerFromDocument,
   titleFromDocument,
-} from "./assistant/conversation/RetrievalAction";
+} from "./conversation/RetrievalAction";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -41,11 +42,11 @@ function mentionDirective() {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention") {
         const data = node.data || (node.data = {});
-        data.hName = "span";
+        data.hName = "mention";
         data.hProperties = {
-          className: "inline-block font-medium text-brand",
+          agentSId: node.attributes.sId,
+          agentName: node.children[0].value,
         };
-        node.children.unshift({ type: "text", value: "@" });
       }
     });
   };
@@ -120,14 +121,16 @@ function addClosingBackticks(str: string): string {
   return str;
 }
 
-export function RenderMarkdown({
+export function RenderMessageMarkdown({
   content,
   blinkingCursor,
   references,
+  agentConfigurations,
 }: {
   content: string;
   blinkingCursor: boolean;
   references?: { [key: string]: RetrievalDocumentType };
+  agentConfigurations?: AgentConfigurationType[];
 }) {
   return (
     <div className={blinkingCursor ? "blinking-cursor" : ""}>
@@ -147,6 +150,19 @@ export function RenderMarkdown({
           tbody: TableBodyBlock,
           th: TableHeaderBlock,
           td: TableDataBlock,
+          // @ts-expect-error - `mention` is a custom tag, currently refused by
+          // react-markdown types although the functionality is supported
+          mention: ({ agentName, agentSId }) => {
+            const agentConfiguration = agentConfigurations?.find(
+              (agentConfiguration) => agentConfiguration.sId === agentSId
+            );
+            return (
+              <MentionBlock
+                agentConfiguration={agentConfiguration}
+                agentName={agentName}
+              />
+            );
+          },
         }}
         remarkPlugins={[
           remarkDirective,
@@ -158,6 +174,34 @@ export function RenderMarkdown({
         {addClosingBackticks(content)}
       </ReactMarkdown>
     </div>
+  );
+}
+
+function MentionBlock({
+  agentName,
+  agentConfiguration,
+}: {
+  agentName: string;
+  agentConfiguration?: AgentConfigurationType;
+}) {
+  const statusText =
+    !agentConfiguration || agentConfiguration?.status === "archived"
+      ? "(This assistant was deleted)"
+      : agentConfiguration?.status === "active"
+      ? ""
+      : "(This assistant is deactivated for this workspace)";
+  const tooltipContent = (
+    <div className="flex w-64 flex-col gap-2">
+      <span>{agentConfiguration?.description}</span>
+      <span>{statusText}</span>
+    </div>
+  );
+  return (
+    <span className="inline-block cursor-default font-medium text-brand">
+      <Tooltip contentChildren={tooltipContent} position="below">
+        @{agentName}
+      </Tooltip>
+    </span>
   );
 }
 

@@ -1,5 +1,6 @@
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { RenderMarkdown } from "@app/components/RenderMarkdown";
+import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import { useAgentConfigurations } from "@app/lib/swr";
 import {
   ConversationType,
   UserMessageType,
@@ -17,6 +18,10 @@ export function UserMessage({
   conversation: ConversationType;
   owner: WorkspaceType;
 }) {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+
   return (
     <ConversationMessage
       pictureUrl={message.context.profilePictureUrl}
@@ -25,7 +30,11 @@ export function UserMessage({
     >
       <div className="flex flex-col gap-4">
         <div>
-          <RenderMarkdown content={message.content} blinkingCursor={false} />
+          <RenderMessageMarkdown
+            content={message.content}
+            blinkingCursor={false}
+            agentConfigurations={agentConfigurations}
+          />
         </div>
         {message.mentions.length === 0 &&
           conversation.content[conversation.content.length - 1].some(
