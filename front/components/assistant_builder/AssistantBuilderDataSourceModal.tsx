@@ -55,6 +55,7 @@ export default function AssistantBuilderDataSourceModal({
     setTimeout(() => {
       setSelectedDataSource(null);
       setSelectedResources({});
+      setIsSelectAll(false);
     }, 200);
   };
 
