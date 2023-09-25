@@ -9,11 +9,11 @@ export const TIME_FRAME_MODE_TO_LABEL: Record<TimeFrameMode, string> = {
   ALL_TIME: "All time",
 };
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
-  hour: "hours",
-  day: "days",
-  week: "weeks",
-  month: "months",
-  year: "years",
+  hour: "hour(s)",
+  day: "day(s)",
+  week: "week(s)",
+  month: "month(s)",
+  year: "year(s)",
 };
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<

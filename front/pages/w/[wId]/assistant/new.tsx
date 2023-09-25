@@ -1,16 +1,14 @@
 import {
-  ArrowDownCircleIcon,
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Cog6ToothIcon,
-  Icon,
-  PageHeader,
-  PlusCircleIcon,
-  QuestionMarkCircleStrokeIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Page,
+  PlusIcon,
+  WrenchIcon,
 } from "@dust-tt/sparkle";
-import { ArrowUpCircleIcon } from "@heroicons/react/20/solid";
-import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -154,164 +152,150 @@ export default function AssistantNew({
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       {!conversation ? (
-        <>
-          <PageHeader
-            title="Welcome to Assistant"
-            icon={ChatBubbleBottomCenterTextIcon}
-          />
-
-          {/* GETTING STARTED */}
-          <div className="flex flex-col gap-8 pb-32">
-            <div className="mt-6 flex flex-col gap-2">
-              <div className="flex flex-row gap-2">
-                <Icon visual={FlagIcon} size="md" />
-                <span className="text-lg font-bold">Getting started?</span>
-              </div>
-              <p className="text-element-700">
-                Using Assistants is easy as asking a question to a friend or a
+        <div className="text-sm font-normal text-element-800">
+          <Page.Vertical gap="lg" align="left">
+            <Page.Header
+              title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
+              icon={ChatBubbleLeftRightIcon}
+            />
+            {/* GETTING STARTED */}
+            <Page.Vertical gap="xs" align="left">
+              <Page.SectionHeader title="Getting started?" />
+              <Page.P variant="secondary">
+                Using assistant is easy as asking a question to a friend or a
                 coworker.
                 <br />
                 Try it out:
-              </p>
-              <div>
-                <StartHelperConversationButton
-                  content="Hey @helper, how can I interact with an Assistant?"
-                  handleSubmit={handleSubmit}
-                  variant="primary"
-                />
-              </div>
-            </div>
-
+              </Page.P>
+              <StartHelperConversationButton
+                content="Hey @helper, how can I interact with an Assistant?"
+                handleSubmit={handleSubmit}
+                variant="primary"
+              />
+            </Page.Vertical>
+            <Page.Separator />
             {/* FEATURED AGENTS */}
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-row gap-2">
-                <Icon visual={HandRaisedIcon} size="md" />
-                <span className="text-lg font-bold">
-                  Meet your smart friends
-                </span>
+            <Page.Vertical gap="lg" align="left">
+              <Page.Vertical gap="xs" align="left">
+                <Page.SectionHeader title="Meet your smart friends" />
+                <Page.P variant="secondary">
+                  Dust is not just a single assistant, it’s a full team at your
+                  service.
+                  <br />
+                  Each member has a set of specific set skills.
+                </Page.P>
+                <Page.P variant="secondary">
+                  Meet some of your Assistants team:
+                </Page.P>
+              </Page.Vertical>
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {displayedAgents.map((agent) => (
+                    <AvatarListItem key={agent.sId} agent={agent} />
+                  ))}
+                </div>
               </div>
-              <p className="text-element-700">
-                Dust is not just a single Assistant, it’s a full team at your
-                service.
-                <br />
-                Each member has a set of specific set skills.
-              </p>
-              <p className="text-element-700">
-                Meet some of your Assistants team:
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {displayedAgents.map((agent) => (
-                  <div key={agent.sId} className="flex flex-col gap-1">
-                    <Avatar
-                      visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
-                      size="md"
-                    />
-                    <div>
-                      <div className="text-md font-bold text-element-900">
-                        @{agent.name}
-                      </div>
-                      <div className="text-sm text-element-700">
-                        {agent.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col items-start gap-2 sm:flex-row">
-              {activeAgents.length > 4 && (
-                <Button
-                  variant="tertiary"
-                  icon={showAllAgents ? ArrowUpCircleIcon : ArrowDownCircleIcon}
-                  label={
-                    showAllAgents ? "Hide All Assistants" : "See all Assistants"
-                  }
-                  onClick={() => {
-                    setShowAllAgents(!showAllAgents);
-                  }}
-                />
-              )}
-              {isBuilder && (
-                <>
-                  <Button
-                    variant="secondary"
-                    icon={Cog6ToothIcon}
-                    label="Manage Assistants"
-                    onClick={() => {
-                      void router.push(`/w/${owner.sId}/builder/assistants`);
-                    }}
-                  />
+              <Button.List>
+                {activeAgents.length > 4 && (
                   <Button
                     variant="primary"
-                    icon={PlusCircleIcon}
-                    label="Create a new Assistant"
+                    icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
+                    size="xs"
+                    label={
+                      showAllAgents
+                        ? "Hide All Assistants"
+                        : "See all Assistants"
+                    }
                     onClick={() => {
-                      void router.push(
-                        `/w/${owner.sId}/builder/assistants/new`
-                      );
+                      setShowAllAgents(!showAllAgents);
                     }}
                   />
-                </>
-              )}
-            </div>
+                )}
 
+                {isBuilder && (
+                  <>
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
+                      label="Create a new Assistant"
+                      hasMagnifying={false}
+                      size="xs"
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/assistants/new`
+                        );
+                      }}
+                    />
+                    <Button
+                      variant="secondary"
+                      icon={WrenchIcon}
+                      label="Manage Assistants"
+                      hasMagnifying={false}
+                      size="xs"
+                      onClick={() => {
+                        void router.push(`/w/${owner.sId}/builder/assistants`);
+                      }}
+                    />
+                  </>
+                )}
+                <StartHelperConversationButton
+                  content="Hey @helper, how can I use an assistant?"
+                  handleSubmit={handleSubmit}
+                />
+              </Button.List>
+            </Page.Vertical>
+            <Page.Separator />
             {/* FAQ */}
-            <div className="mt-6 flex flex-col gap-3">
-              <div className="flex flex-row gap-2">
-                <Icon visual={QuestionMarkCircleStrokeIcon} size="md" />
-                <span className="text-lg font-bold">
-                  Frequently asked questions
-                </span>
-              </div>
-
-              {isBuilder ? (
-                <div className="flex flex-wrap gap-2">
-                  <StartHelperConversationButton
-                    content="@helper, what can I use the Assistants for?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, what are custom Assistants?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, what customized Assistants should I create?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, how can I make Assistant smarter with my own data?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, what's the level of security and privacy dust offers?"
-                    handleSubmit={handleSubmit}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <StartHelperConversationButton
-                    content="Hey @helper, What can I use an Assistant for?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, who creates Assistants?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, how do Assistants work exactly?"
-                    handleSubmit={handleSubmit}
-                  />
-                  <StartHelperConversationButton
-                    content="@helper, what are the limitations of Assistants?"
-                    handleSubmit={handleSubmit}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </>
+            <Page.Vertical gap="xs" align="left">
+              <Page.SectionHeader title="Frequently asked questions" />
+              <Button.List>
+                {isBuilder ? (
+                  <div className="flex flex-wrap gap-2">
+                    <StartHelperConversationButton
+                      content="@helper, what can I use the Assistants for?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, what are custom Assistants?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, what customized Assistants should I create?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, how can I make Assistant smarter with my own data?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, what's the level of security and privacy dust offers?"
+                      handleSubmit={handleSubmit}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <StartHelperConversationButton
+                      content="Hey @helper, What can I use an Assistant for?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, who creates Assistants?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, how do Assistants work exactly?"
+                      handleSubmit={handleSubmit}
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, what are the limitations of Assistants?"
+                      handleSubmit={handleSubmit}
+                    />
+                  </div>
+                )}
+              </Button.List>
+            </Page.Vertical>
+          </Page.Vertical>
+        </div>
       ) : (
         <Conversation
           owner={owner}
@@ -331,10 +315,12 @@ function StartHelperConversationButton({
   content,
   handleSubmit,
   variant = "secondary",
+  size = "xs",
 }: {
   content: string;
   handleSubmit: (input: string, mentions: MentionType[]) => Promise<void>;
   variant?: "primary" | "secondary";
+  size?: "sm" | "xs";
 }) {
   const contentWithMarkdownMention = content.replace(
     "@helper",
@@ -346,6 +332,8 @@ function StartHelperConversationButton({
       variant={variant}
       icon={ChatBubbleBottomCenterTextIcon}
       label={content}
+      size={size}
+      hasMagnifying={false}
       onClick={() => {
         void handleSubmit(contentWithMarkdownMention, [
           {
@@ -356,3 +344,22 @@ function StartHelperConversationButton({
     />
   );
 }
+
+const AvatarListItem = function ({
+  agent,
+}: {
+  agent: { sId: string; pictureUrl: string; name: string; description: string };
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Avatar
+        visual={<img src={agent.pictureUrl} alt="Agent Avatar" />}
+        size="md"
+      />
+      <div className="flex flex-col gap-1">
+        <div className="text-md font-bold text-element-900">@{agent.name}</div>
+        <div className="text-sm text-element-700">{agent.description}</div>
+      </div>
+    </div>
+  );
+};

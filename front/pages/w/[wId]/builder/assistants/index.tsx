@@ -115,13 +115,13 @@ export default function AssistantsBuilder({
       <PageHeader
         title="Assistants Manager"
         icon={RobotIcon}
-        description="Manage your workspace's assistants."
+        description="Create, manage and deploy Assistants to your collaborators."
       />
       <div className="flex flex-col gap-4 pb-4">
         <div>
           <SectionHeader
             title="Dust Assistants"
-            description="AI assistants with specific capabilities that you can call using the “@” handle(for instance @myAssistant, @spelling, @translate)."
+            description='Assistants built by Dust for multiple use cases. For instance, use "@helper" for any question Dust related, use the handle "@notion" to target specifically knowledge on Notion…'
           />
           <ContextItem.List className="mt-8  text-element-900">
             {dustAgents.map((agent) => (
@@ -157,7 +157,7 @@ export default function AssistantsBuilder({
         <div>
           <SectionHeader
             title="Custom Assistants"
-            description="Build your own Assistant, use specific instructions and specific data sources to get better answers."
+            description="Build your Assistant, tailored to your needs. Write specific instructions, select specific data sources to get better answers."
             action={{
               label: "Create a new Assistant",
               variant: "primary",

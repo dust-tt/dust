@@ -7,6 +7,7 @@ type AvatarProps = {
   size: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
   name?: string;
   visual?: string | React.ReactNode;
+  clickable?: boolean;
   onClick?: () => void;
   busy?: boolean;
   isRounded?: boolean;
@@ -82,6 +83,7 @@ export function Avatar({
   name,
   visual,
   onClick,
+  clickable = false,
   busy = false,
   isRounded = false,
 }: AvatarProps) {
@@ -102,7 +104,7 @@ export function Avatar({
   };
 
   const clickableStyles =
-    onClick && !busy
+    (onClick || clickable) && !busy
       ? "s-cursor-pointer hover:s-filter hover:s-brightness-110 active:s-brightness-90 s-transition s-duration-200 s-ease-out"
       : "";
 

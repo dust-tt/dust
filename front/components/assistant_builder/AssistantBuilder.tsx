@@ -56,7 +56,7 @@ const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
 const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
   GENERIC: "Generic model (No data source)",
-  SELECTED: "Selected data sources",
+  SELECTED: "Selected Data Sources",
 };
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
@@ -537,14 +537,14 @@ export default function AssistantBuilder({
         titleChildren={
           !edited ? (
             <AppLayoutSimpleCloseTitle
-              title="Design your custom Assistant"
+              title="Create an Assistant"
               onClose={() => {
                 void router.push(`/w/${owner.sId}/builder/assistants`);
               }}
             />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
-              title="Design your custom Assistant"
+              title="Edit an Assistant"
               onCancel={() => {
                 void router.push(`/w/${owner.sId}/builder/assistants`);
               }}
@@ -572,15 +572,19 @@ export default function AssistantBuilder({
           <div className="flex flex-row items-start gap-8">
             <div className="flex flex-col gap-4">
               <div className="text-lg font-bold text-element-900">
-                Handle / Name
+                Assistant handle / name
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
-                The handle of your assistant will be used to call it with an “@”
-                handle (for instance @myAssistant).
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                The handle is used to call the assistant in a&nbsp;conversation
+                using the “@”&nbsp;handle (for&nbsp;instance&nbsp;
+                <span className="italic">@helper</span>). It&nbsp;should be
+                descriptive of what it does or the&nbsp;type of knowledge
+                it&nbsp;has (
+                <span className="italic">@writter,&nbsp;@translate…</span>).
               </div>
               <div className="text-sm">
                 <Input
-                  placeholder="SalesAssistantFrance"
+                  placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
                   value={builderState.handle}
                   onChange={(value) => {
                     setBuilderState((state) => ({
@@ -597,13 +601,14 @@ export default function AssistantBuilder({
               <div className="text-lg font-bold text-element-900">
                 Description
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
-                The description helps your collaborators and Dust to understand
-                the purpose of the assistant. It must be descriptive and short.
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                The description helps your collaborators and Dust understand the
+                purpose of the assistant. It&nbsp;should be&nbsp;descriptive
+                and&nbsp;short.
               </div>
               <div className="text-sm">
                 <Input
-                  placeholder="Assistant designed to answer sales questions"
+                  placeholder="Anwser questions about sales, translate from English to French…"
                   value={builderState.description}
                   onChange={(value) => {
                     setBuilderState((state) => ({
@@ -639,15 +644,21 @@ export default function AssistantBuilder({
               <div className="text-lg font-bold text-element-900">
                 Instructions
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-800">
-                This is the heart and soul of your assistant. Describe, to your
-                assistant, its mission and purpose. Be specific on the role, the
-                expected output, the type of formatting.{" "}
-                <a className="font-bold text-action-500">See examples</a>
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                The heart and soul of your assistant.
+                <br />
+                Describe, to your assistant, its mission and purpose. Be
+                specific on the role (
+                <span className="italic">I want you to act as …</span>), the
+                expected output, the type of formatting (
+                <span className="italic">
+                  Present your answer in a list, a table, a text,…
+                </span>
+                ).
               </div>
               <div className="text-sm">
                 <AssistantBuilderTextArea
-                  placeholder="Achieve a particular task, follow a template, use a certain formating..."
+                  placeholder="I want you to act as…"
                   value={builderState.instructions}
                   onChange={(value) => {
                     setBuilderState((state) => ({
@@ -690,38 +701,46 @@ export default function AssistantBuilder({
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
               <div className="text-lg font-bold text-element-900">
-                Data sources
+                Data Sources
               </div>
               <div className="text-sm text-element-700">
-                Customize your Assistant's knowledge !
+                Data Sources is the knowledge that your Assistant will have
+                access to to help it answer questions. Data&nbsp;Sources
+                availablity is&nbsp;managed by Administrators&nbsp;in{" "}
+                <span className="italic">Settings / Data&nbsp;Sources</span>.
+              </div>
+              <div className="text-sm text-element-700">
+                Here are two key tips:
               </div>
               <ul role="list" className="flex flex-row gap-12">
                 <li className="flex flex-1">
                   <div className="flex flex-col">
-                    <div className="text-base font-bold text-element-800">
-                      Setting data sources is not an obligation.
+                    <div className="text-sm font-bold text-element-800">
+                      Only set data sources if they are necessary.
                     </div>
                     <div className="text-sm text-element-700">
-                      By default, your assistant will follow your instructions
-                      and answer based on commun knowledge.
+                      By default, your assistant will follow
+                      your&nbsp;instructions and answer based on&nbsp;commun
+                      knowledge. It&nbsp;will answer&nbsp;faster.
                     </div>
                   </div>
                 </li>
                 <li className="flex flex-1">
                   <div className="flex flex-col">
-                    <div className="text-base font-bold text-element-800">
+                    <div className="text-sm font-bold text-element-800">
                       Choose your data sources with care.
                     </div>
                     <div className="text-sm text-element-700">
-                      The more targeted your data the better the answers will
-                      be.
+                      More is not necessarily better. The quality of answers on
+                      specific topic depend on the&nbsp;quality of
+                      the&nbsp;data.
                     </div>
                   </div>
                 </li>
               </ul>
               <div className="flex flex-row items-center space-x-2 pt-6">
                 <div className="text-sm font-semibold text-element-900">
-                  Data source mode:
+                  Data Source mode:
                 </div>
                 <DropdownMenu>
                   <DropdownMenu.Button>
@@ -732,10 +751,11 @@ export default function AssistantBuilder({
                         DATA_SOURCE_MODE_TO_LABEL[builderState.dataSourceMode]
                       }
                       variant="secondary"
+                      hasMagnifying={false}
                       size="sm"
                     />
                   </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="topRight" width={260}>
+                  <DropdownMenu.Items origin="bottomRight" width={260}>
                     {Object.entries(DATA_SOURCE_MODE_TO_LABEL).map(
                       ([key, value]) => (
                         <DropdownMenu.Item
@@ -879,7 +899,7 @@ function AvatarPicker({
     <Modal
       isOpen={isOpen}
       onClose={() => setOpen(false)}
-      title="Pick an Avatar for your assistant:"
+      title="Pick the design of your Assistant:"
       isFullScreen={false}
       hasChanged={false}
     >
@@ -948,6 +968,7 @@ function AdvancedSettings({
                     .displayName
                 }
                 variant="secondary"
+                hasMagnifying={false}
                 size="sm"
               />
             </DropdownMenu.Button>
@@ -991,6 +1012,7 @@ function AdvancedSettings({
                   ).label
                 }
                 variant="secondary"
+                hasMagnifying={false}
                 size="sm"
               />
             </DropdownMenu.Button>
