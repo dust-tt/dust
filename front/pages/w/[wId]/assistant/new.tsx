@@ -241,7 +241,7 @@ export default function AssistantNew({
                     <Button
                       variant="primary"
                       icon={PlusIcon}
-                      label="Create a new Assistant"
+                      label="Create an assistant"
                       hasMagnifying={false}
                       size="xs"
                       onClick={() => {

@@ -115,7 +115,7 @@ To learn how to develop an app you can explore Dust technical documentation here
 
 ### How to create a custom Assistant?
 
-If you're an Admin or a builder, you can create a custom Assistant. Go to `Settings` > `Assistants Manager` > `Create a new Assistant`. There, you can name and describe the Assistant. Remember, the name can't have spaces. The description should help your teammates understand the Assistant's role.
+If you're an Admin or a builder, you can create a custom Assistant. Go to `Settings` > `Assistants Manager` > `Create an assistant`. There, you can name and describe the Assistant. Remember, the name can't have spaces. The description should help your teammates understand the Assistant's role.
 
 The key parts to set up when creating a custom Assistant are `Instructions`, `Advanced Settings`, and `Data Sources`.
 
