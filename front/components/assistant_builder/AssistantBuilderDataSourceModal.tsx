@@ -1,5 +1,6 @@
 import {
   CloudArrowDownIcon,
+  DocumentDuplicateIcon,
   Item,
   Modal,
   PageHeader,
@@ -83,7 +84,7 @@ export default function AssistantBuilderDataSourceModal({
         (Object.keys(selectedResources).length > 0 || isSelectAll)
       }
       isFullScreen={true}
-      title="Add a data source"
+      title="Add Data Sources"
     >
       <div className="w-full pt-12">
         {!selectedDataSource ? (
@@ -143,9 +144,8 @@ function PickDataSource({
       <div className="flex flex-col">
         <div className="mb-6">
           <PageHeader
-            title="Select a new data source"
+            title="Select Data Sources in:"
             icon={CloudArrowDownIcon}
-            description="What kind of data source do you want to add?"
           />
         </div>
 
@@ -164,7 +164,7 @@ function PickDataSource({
               icon={
                 ds.connectorProvider
                   ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                  : CloudArrowDownIcon
+                  : DocumentDuplicateIcon
               }
               key={ds.name}
               size="md"
@@ -257,7 +257,7 @@ function DataSourceResourceSelector({
       <div className="mb-6">
         <div>
           <PageHeader
-            title={`Select Data sources in ${
+            title={`Select Data Sources in ${
               CONNECTOR_CONFIGURATIONS[
                 dataSource?.connectorProvider as ConnectorProvider
               ]?.name
@@ -276,11 +276,15 @@ function DataSourceResourceSelector({
           <div className="flex-1">
             <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
               Select all:{" "}
-              <SliderToggle selected={isSelectAll} onClick={toggleSelectAll} />
+              <SliderToggle
+                selected={isSelectAll}
+                onClick={toggleSelectAll}
+                size="md"
+              />
             </div>
             <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
               <div>
-                All available{" "}
+                Select from available{" "}
                 {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
                   dataSource.connectorProvider as ConnectorProvider
                 ]?.plural ?? "resources"}
