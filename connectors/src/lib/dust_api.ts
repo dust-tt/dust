@@ -280,7 +280,6 @@ export type AgentMessageType = {
   visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-
   // configuration: AgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
