@@ -218,12 +218,6 @@ export const DustProdActionRegistry = createActionRegistry({
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;
 
-export function isDustRegistryActionName(
-  name: string
-): name is DustRegistryActionName {
-  return !!DustProdActionRegistry[name as DustRegistryActionName];
-}
-
 export function cloneBaseConfig(config: { [model: string]: any }) {
   return JSON.parse(JSON.stringify(config));
 }
