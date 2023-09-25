@@ -7,6 +7,9 @@ export { Button };
 import { SliderToggle } from "./components/SliderToggle";
 export { SliderToggle };
 
+import { Collapsible } from "./components/Collapsible";
+export { Collapsible };
+
 import { Tab } from "./components/Tab";
 export { Tab };
 
