@@ -1,5 +1,5 @@
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { RenderMarkdown } from "@app/components/RenderMarkdown";
+import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
 import {
   ConversationType,
@@ -30,7 +30,7 @@ export function UserMessage({
     >
       <div className="flex flex-col gap-4">
         <div>
-          <RenderMarkdown
+          <RenderMessageMarkdown
             content={message.content}
             blinkingCursor={false}
             agentConfigurations={agentConfigurations}
