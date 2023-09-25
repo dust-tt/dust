@@ -9,7 +9,11 @@ import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import {
+  getSupportedModelConfig,
+  GPT_4_32K_MODEL_ID,
+  GPT_4_MODEL_CONFIG,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
@@ -51,7 +55,12 @@ export async function renderConversationForModel({
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   allowedTokenCount: number;
-}): Promise<Result<ModelConversationType, Error>> {
+}): Promise<
+  Result<
+    { modelConversation: ModelConversationType; tokensUsed: number },
+    Error
+  >
+> {
   const messages = [];
 
   let retrievalFound = false;
@@ -154,7 +163,10 @@ export async function renderConversationForModel({
   );
 
   return new Ok({
-    messages: selected,
+    modelConversation: {
+      messages: selected,
+    },
+    tokensUsed,
   });
 }
 
@@ -248,7 +260,7 @@ export async function* runGeneration(
     return;
   }
 
-  const model = c.model;
+  let model = c.model;
 
   const contextSize = getSupportedModelConfig(c.model).contextSize;
 
@@ -281,6 +293,18 @@ export async function* runGeneration(
     return;
   }
 
+  // if model is gpt4-32k but tokens used is less than 4k,
+  // then we override the model to gpt4 standard (cheaper)
+  if (
+    model.modelId === GPT_4_32K_MODEL_ID &&
+    modelConversationRes.value.tokensUsed < 4000
+  ) {
+    model = {
+      modelId: GPT_4_MODEL_CONFIG.modelId,
+      providerId: GPT_4_MODEL_CONFIG.providerId,
+    };
+  }
+
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-generator"].config
   );
@@ -306,7 +330,7 @@ export async function* runGeneration(
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
-      conversation: modelConversationRes.value,
+      conversation: modelConversationRes.value.modelConversation,
       prompt: constructPrompt(userMessage, configuration),
     },
   ]);
