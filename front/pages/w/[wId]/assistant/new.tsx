@@ -153,7 +153,7 @@ export default function AssistantNew({
     >
       {!conversation ? (
         <div className="text-sm font-normal text-element-800">
-          <Page.Vertical gap="lg" align="left">
+          <Page.Vertical gap="md" align="left">
             <Page.Header
               title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
               icon={ChatBubbleLeftRightIcon}
@@ -162,31 +162,55 @@ export default function AssistantNew({
             <Page.Vertical gap="xs" align="left">
               <Page.SectionHeader title="Getting started?" />
               <Page.P variant="secondary">
-                Using assistant is easy as asking a question to a friend or a
+                Interact with assistants on Dust like you would with a friend or
                 coworker.
                 <br />
-                Try it out:
+                Try it for yourself:
               </Page.P>
               <StartHelperConversationButton
                 content="Hey @helper, how can I interact with an Assistant?"
                 handleSubmit={handleSubmit}
-                variant="primary"
+                variant="secondary"
               />
             </Page.Vertical>
             <Page.Separator />
             {/* FEATURED AGENTS */}
             <Page.Vertical gap="lg" align="left">
               <Page.Vertical gap="xs" align="left">
-                <Page.SectionHeader title="Meet your smart friends" />
-                <Page.P variant="secondary">
-                  Dust is not just a single assistant, it’s a full team at your
-                  service.
-                  <br />
-                  Each member has a set of specific set skills.
-                </Page.P>
-                <Page.P variant="secondary">
-                  Meet some of your Assistants team:
-                </Page.P>
+                <Page.SectionHeader title="Meet your team of assistants" />
+                {isBuilder && (
+                  <>
+                    <Page.P variant="secondary">
+                      Dust comes with multiple assistants, each with a specific
+                      set of skills.
+                      <br />
+                      Create assistants tailored for your needs.
+                    </Page.P>
+                    {activeAgents.length <= 4 && (
+                      <Page.P variant="secondary">
+                        Meet your first assistants:
+                      </Page.P>
+                    )}
+                    {activeAgents.length > 4 && (
+                      <Page.P variant="secondary">
+                        Meet your assistant team:
+                      </Page.P>
+                    )}
+                  </>
+                )}
+                {!isBuilder && (
+                  <>
+                    <Page.P variant="secondary">
+                      Dust is not just a single assistant, it’s a full team at
+                      your service.
+                      <br />
+                      Each member has a set of specific set skills.
+                    </Page.P>
+                    <Page.P variant="secondary">
+                      Meet some of your Assistants team:
+                    </Page.P>
+                  </>
+                )}
               </Page.Vertical>
               <div className="flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
