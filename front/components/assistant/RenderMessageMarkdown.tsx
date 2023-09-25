@@ -30,7 +30,7 @@ import {
   PROVIDER_LOGO_PATH,
   providerFromDocument,
   titleFromDocument,
-} from "./assistant/conversation/RetrievalAction";
+} from "./conversation/RetrievalAction";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -121,7 +121,7 @@ function addClosingBackticks(str: string): string {
   return str;
 }
 
-export function RenderMarkdown({
+export function RenderMessageMarkdown({
   content,
   blinkingCursor,
   references,
@@ -185,16 +185,14 @@ function MentionBlock({
   agentConfiguration?: AgentConfigurationType;
 }) {
   const statusText =
-    agentConfiguration?.status === "archived"
-      ? "[ARCHIVED] "
+    !agentConfiguration || agentConfiguration?.status === "archived"
+      ? "(This assistant was deleted)"
       : agentConfiguration?.status === "active"
       ? ""
-      : "[DISABLED] ";
+      : " (This assistant is deactivated for this workspace)";
   const tooltipContent = (
     <div className="w-48">
-      {agentConfiguration
-        ? statusText + agentConfiguration.description
-        : "Description unavailable"}
+      {agentConfiguration?.description + "" + statusText}
     </div>
   );
   return (
