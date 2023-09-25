@@ -261,7 +261,7 @@ function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-element-700 dark:text-element-700-dark">
+    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-element-700 dark:text-element-700-dark">
       {children}
     </th>
   );
@@ -269,7 +269,7 @@ function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="whitespace-nowrap px-6 py-4 text-sm text-element-800 dark:text-element-800-dark">
+    <td className="px-6 py-4 text-sm text-element-800 dark:text-element-800-dark">
       {children}
     </td>
   );
