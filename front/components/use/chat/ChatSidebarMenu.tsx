@@ -19,7 +19,7 @@ export function ChatSidebarMenu({
   const router = useRouter();
 
   const onNewConversation = async () => {
-    void router.push(`/w/${owner.sId}/u/chat`);
+    void router.push(`/w/${owner.sId}/assistant/new`);
   };
 
   return (

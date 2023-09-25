@@ -1,7 +1,6 @@
 import { GetServerSideProps } from "next";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
-import { generateModelSId } from "@app/lib/utils";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -13,10 +12,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  const cId = generateModelSId();
   return {
     redirect: {
-      destination: `/w/${context.query.wId}/u/chat/${cId}`,
+      destination: `/w/${context.query.wId}/assistant/new`,
       permanent: false,
     },
   };
