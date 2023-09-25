@@ -10,7 +10,6 @@ import {
   KeyIcon,
   PaperAirplaneIcon,
   RobotIcon,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 
 import { isOnAssistantV2 } from "@app/lib/assistant";
@@ -23,13 +22,14 @@ import { WorkspaceType } from "@app/types/user";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "assistant" | "lab" | "settings";
+export type TopNavigationId = "assistant" | "settings";
 
 export type SubNavigationAdminId =
   | "data_sources"
   | "workspace"
   | "developers"
-  | "assistants";
+  | "assistants"
+  | "extract";
 export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
@@ -43,8 +43,7 @@ export type SparkleAppLayoutNavigation = {
     | TopNavigationId
     | SubNavigationAdminId
     | SubNavigationDataSourceId
-    | SubNavigationAppId
-    | SubNavigationLabId;
+    | SubNavigationAppId;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
@@ -64,7 +63,6 @@ export const topNavigation = ({
   current: TopNavigationId;
 }) => {
   const isOnV2 = isOnAssistantV2(owner);
-  const isDust = isDevelopmentOrDustWorkspace(owner);
   const nav: SparkleAppLayoutNavigation[] = [];
 
   if (isOnV2) {
@@ -75,7 +73,7 @@ export const topNavigation = ({
       icon: ChatBubbleLeftRightIcon,
       sizing: "hug",
       current: current === "assistant",
-      hasSeparator: isDust ? false : true,
+      hasSeparator: true,
     });
   } else {
     nav.push({
@@ -85,18 +83,6 @@ export const topNavigation = ({
       icon: ChatBubbleBottomCenterTextIcon,
       sizing: "hug",
       current: current === "assistant",
-      hasSeparator: isDust ? false : true,
-    });
-  }
-
-  if (isDust) {
-    nav.push({
-      id: "lab",
-      label: "",
-      icon: TestTubeIcon,
-      href: `/w/${owner.sId}/u/extract`,
-      sizing: "hug",
-      current: current === "lab",
       hasSeparator: true,
     });
   }
@@ -179,6 +165,16 @@ export const subNavigationAdmin = ({
     });
   }
 
+  if (isDevelopmentOrDustWorkspace(owner)) {
+    nav.push({
+      id: "extract",
+      label: "Extract (Beta - Dust only)",
+      icon: ArrowUpOnSquareIcon,
+      href: `/w/${owner.sId}/u/extract`,
+      current: current === "extract",
+    });
+  }
+
   return nav;
 };
 
@@ -242,26 +238,6 @@ export const subNavigationApp = ({
       },
     ]);
   }
-
-  return nav;
-};
-
-export const subNavigationLab = ({
-  owner,
-  current,
-}: {
-  owner: WorkspaceType;
-  current: SubNavigationLabId;
-}) => {
-  const nav: SparkleAppLayoutNavigation[] = [
-    {
-      id: "extract",
-      label: "Extract",
-      icon: ArrowUpOnSquareIcon,
-      href: `/w/${owner.sId}/u/extract`,
-      current: current === "extract",
-    },
-  ];
 
   return nav;
 };

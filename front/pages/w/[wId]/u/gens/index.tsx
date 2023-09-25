@@ -1336,7 +1336,7 @@ export default function AppGens({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="lab"
+      topNavigationCurrent="settings"
     >
       <div className="flex flex-col">
         <Transition.Root show={explainExpanded} as={Fragment}>

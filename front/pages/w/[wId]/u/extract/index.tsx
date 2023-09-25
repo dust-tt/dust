@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationLab } from "@app/components/sparkle/navigation";
+import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useEventSchemas } from "@app/lib/swr";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -59,8 +59,8 @@ export default function AppExtractEvents({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="lab"
-      subNavigation={subNavigationLab({ owner, current: "extract" })}
+      topNavigationCurrent="settings"
+      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
     >
       <PageHeader
         title="Extract"
