@@ -60,12 +60,12 @@ class HelperAssistantPrompt {
 async function _getHelperGlobalAgent(
   auth: Authenticator
 ): Promise<AgentConfigurationType> {
-  const role = auth.role();
-  let prompt = `The user you're interacting with is granted with the role ${role}. `;
+  let prompt = "";
 
   const user = auth.user();
   if (user) {
-    prompt += `Their name is ${user.name}. `;
+    const role = auth.role();
+    prompt = `The user you're interacting with is granted with the role ${role}. Their name is ${user.name}. `;
   }
 
   const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
