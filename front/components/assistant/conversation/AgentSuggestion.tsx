@@ -1,4 +1,5 @@
 import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -26,6 +27,8 @@ export function AgentSuggestion({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
   agents.sort((a, b) => compareAgentSuggestions(a, b));
+
+  const [loading, setLoading] = useState(false);
 
   return (
     <div className="pt-4">
@@ -61,7 +64,11 @@ export function AgentSuggestion({
                   key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
                   label={agent.name}
                   visual={agent.pictureUrl}
-                  onClick={() => selectSuggestionHandler(agent)}
+                  onClick={() => {
+                    if (!loading) {
+                      void selectSuggestionHandler(agent);
+                    }
+                  }}
                 />
               ))}
             </DropdownMenu.Items>
@@ -72,8 +79,9 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
+    setLoading(true);
     const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-    await fetch(
+    const mRes = await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
       {
         method: "POST",
@@ -91,6 +99,12 @@ export function AgentSuggestion({
         }),
       }
     );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      window.alert(`Error adding mention to message: ${data.error.message}`);
+    }
+    setLoading(false);
   }
 
   /**
