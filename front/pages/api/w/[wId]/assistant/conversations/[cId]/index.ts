@@ -15,7 +15,11 @@ import { ConversationType } from "@app/types/assistant/conversation";
 
 export const PatchConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
-  visibility: t.union([t.literal("unlisted"), t.literal("workspace")]),
+  visibility: t.union([
+    t.literal("unlisted"),
+    t.literal("workspace"),
+    t.literal("deleted"),
+  ]),
 });
 
 export type GetConversationsResponseBody = {
@@ -92,7 +96,7 @@ async function handler(
       return;
 
     case "DELETE":
-      await deleteConversation(auth, conversation.sId);
+      await deleteConversation(auth, { conversationId: conversation.sId });
 
       res.status(200).end();
       return;

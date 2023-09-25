@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -103,6 +105,7 @@ export async function updateConversation(
     where: {
       sId: conversationId,
       workspaceId: auth.workspace()?.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
 
@@ -124,9 +127,19 @@ export async function updateConversation(
   return c;
 }
 
+/**
+ *  Mark the conversation as deleted, but does not remove it from database
+ *  unless destroy is explicitly set to true
+ */
 export async function deleteConversation(
   auth: Authenticator,
-  conversationId: string
+  {
+    conversationId,
+    destroy,
+  }: {
+    conversationId: string;
+    destroy?: boolean;
+  }
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -137,6 +150,7 @@ export async function deleteConversation(
     where: {
       sId: conversationId,
       workspaceId: auth.workspace()?.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
 
@@ -144,7 +158,13 @@ export async function deleteConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  await conversation.destroy();
+  if (destroy) {
+    await conversation.destroy();
+  } else {
+    await conversation.update({
+      visibility: "deleted",
+    });
+  }
 }
 
 /**
@@ -279,7 +299,8 @@ async function renderAgentMessage(
 }
 
 export async function getUserConversations(
-  auth: Authenticator
+  auth: Authenticator,
+  includeDeleted?: boolean
 ): Promise<ConversationWithoutContentType[]> {
   const owner = auth.workspace();
   const user = auth.user();
@@ -311,7 +332,10 @@ export async function getUserConversations(
         logger.error("Participation without conversation");
         return acc;
       }
-      if (p.conversation.workspaceId !== owner.id) {
+      if (
+        p.conversation.workspaceId !== owner.id ||
+        (p.conversation.visibility === "deleted" && !includeDeleted)
+      ) {
         return acc;
       }
 
@@ -333,7 +357,8 @@ export async function getUserConversations(
 
 export async function getConversation(
   auth: Authenticator,
-  conversationId: string
+  conversationId: string,
+  includeDeleted?: boolean
 ): Promise<ConversationType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -344,6 +369,7 @@ export async function getConversation(
     where: {
       sId: conversationId,
       workspaceId: owner.id,
+      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
     },
   });
 
