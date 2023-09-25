@@ -271,7 +271,8 @@ export default function AssistantBuilder({
         (agentConfiguration) =>
           agentConfiguration.name.toLowerCase() ===
             removeLeadingAt(handle).toLowerCase() &&
-          initialBuilderState?.handle !== removeLeadingAt(handle)
+          initialBuilderState?.handle.toLowerCase() !==
+            removeLeadingAt(handle).toLowerCase()
       );
     },
     [agentConfigurations, initialBuilderState?.handle]
