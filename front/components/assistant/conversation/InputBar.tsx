@@ -29,7 +29,6 @@ import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import Link from "next/link";
 
 // AGENT MENTION
 
