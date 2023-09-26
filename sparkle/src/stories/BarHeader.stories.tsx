@@ -32,10 +32,12 @@ export const BasicBarHeaderValidate = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+      </div>
     </div>
   </div>
 );
@@ -48,10 +50,12 @@ export const BasicBarHeaderValidateSaveDisabled = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+      </div>
     </div>
   </div>
 );
@@ -64,10 +68,12 @@ export const BasicBarHeaderBack = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+      </div>
     </div>
   </div>
 );
@@ -80,10 +86,12 @@ export const BasicBarHeaderClose = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+      </div>
     </div>
   </div>
 );
@@ -96,10 +104,12 @@ export const BasicBarHeaderConversation = () => (
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
-      <Avatar visual="https://source.unsplash.com/random" size="full" />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+      </div>
     </div>
   </div>
 );

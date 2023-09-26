@@ -1,5 +1,4 @@
-import { Disclosure } from "@headlessui/react";
-import { Transition } from "@headlessui/react";
+import { Disclosure, Transition } from "@headlessui/react";
 import React, { createContext, useContext } from "react";
 
 import { ChevronDown, ChevronRight } from "@sparkle/icons/solid";
@@ -17,7 +16,7 @@ const useOpenState = (): boolean => {
   return context;
 };
 
-interface CollapsibleProps {
+export interface CollapsibleProps {
   children: React.ReactNode;
 }
 
@@ -157,7 +156,7 @@ Collapsible.Button = function ({
   );
 };
 
-interface CollapsiblePanelProps {
+export interface CollapsiblePanelProps {
   children: React.ReactNode;
   open?: boolean;
 }

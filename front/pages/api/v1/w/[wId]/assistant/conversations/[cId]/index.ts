@@ -17,23 +17,12 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  if (!keyRes.value.isSystem) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The Assitant API is only accessible by system API Key. Ping us at team@dust.tt if you want access to it.",
-      },
-    });
-  }
-
   const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (keyWorkspaceId !== req.query.wId) {
+  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

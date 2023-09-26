@@ -15,10 +15,6 @@ import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invi
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import {
-  GetChatSessionResponseBody,
-  GetChatSessionsResponseBody,
-} from "@app/pages/api/w/[wId]/use/chats";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import { AppType } from "@app/types/app";
@@ -213,57 +209,6 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
   };
 }
 
-export function useChatSessions(
-  owner: WorkspaceType,
-  {
-    limit,
-    offset,
-    workspaceScope,
-  }: {
-    limit: number;
-    offset: number;
-    workspaceScope?: boolean;
-  }
-) {
-  const runsFetcher: Fetcher<GetChatSessionsResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
-    `/api/w/${
-      owner.sId
-    }/use/chats?limit=${limit}&offset=${offset}&workspaceScope=${
-      workspaceScope ? true : false
-    }`,
-    runsFetcher
-  );
-
-  return {
-    sessions: data ? data.sessions : [],
-    isChatSessionsLoading: !error && !data,
-    isChatSessionsError: error,
-    mutateChatSessions: mutate,
-  };
-}
-
-export function useChatSession({
-  owner,
-  cId,
-}: {
-  owner: WorkspaceType;
-  cId: string;
-}) {
-  const runsFetcher: Fetcher<GetChatSessionResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
-    `/api/w/${owner.sId}/use/chats/${cId}`,
-    runsFetcher
-  );
-
-  return {
-    chatSession: data ? data.session : undefined,
-    isChatSessionsLoading: !error && !data,
-    isChatSessionsError: error,
-    mutateChatSession: mutate,
-  };
-}
-
 export function useUserMetadata(key: string) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
@@ -439,9 +384,9 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
 
   return {
     conversations: data ? data.conversations : [],
-    isConversationLoading: !error && !data,
-    isConversationError: error,
-    mutateConversation: mutate,
+    isConversationsLoading: !error && !data,
+    isConversationsError: error,
+    mutateConversations: mutate,
   };
 }
 
