@@ -143,7 +143,7 @@ export function AvatarPicker({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Pick the design of your assistant:"
+      title="Select an avatar for your assistant:"
       isFullScreen={false}
       hasChanged={currentTab === "upload" && !!src}
       onSave={isUploadingAvatar ? undefined : onUpload}
@@ -158,7 +158,7 @@ export function AvatarPicker({
         <Tab
           tabs={[
             {
-              label: "Pick from the library",
+              label: "Pick one from the gallery",
               current: currentTab === "pick",
               icon: ImageIcon,
             },
