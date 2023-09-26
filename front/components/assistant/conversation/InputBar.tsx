@@ -9,6 +9,7 @@ import {
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
+import { useRouter } from "next/router";
 import {
   ForwardedRef,
   forwardRef,
@@ -26,8 +27,6 @@ import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { Plus } from "@dust-tt/sparkle/dist/cjs/icons/solid";
-import { useRouter } from "next/router";
 
 // AGENT MENTION
 
