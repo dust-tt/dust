@@ -101,7 +101,7 @@ async function botAnswerMessage(
   slackMessageTs: string,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
-  const { DUST_API = "https://dust.tt" } = process.env;
+  const { DUST_PUBLIC_URL = "https://dust.tt" } = process.env;
 
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
@@ -253,7 +253,7 @@ async function botAnswerMessage(
       case "agent_generation_success": {
         const finalAnswer = `${_removeCiteMention(
           event.text
-        )}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${
+        )}\n\n <${DUST_PUBLIC_URL}/w/${connector.workspaceId}/assistant/${
           conv.conversation.sId
         }|Continue this conversation on Dust>`;
 

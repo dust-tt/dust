@@ -18,7 +18,7 @@ type DataSourceType = {
   connectorProvider?: ConnectorProvider;
 };
 
-const { DUST_API = "https://dust.tt" } = process.env;
+const { FRONT_API = "https://dust.tt" } = process.env;
 
 type DustAPIErrorResponse = {
   type: string;
@@ -524,7 +524,7 @@ export class DustAPI {
    */
   async getDataSources(workspaceId: string) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${workspaceId}/data_sources`,
+      `${FRONT_API}/api/v1/w/${workspaceId}/data_sources`,
       {
         method: "GET",
         headers: {
@@ -541,7 +541,7 @@ export class DustAPI {
   }
 
   async newChatStreamed(userMessage: string, timezone: string) {
-    const url = `${DUST_API}/api/v1/w/${this.workspaceId()}/chats`;
+    const url = `${FRONT_API}/api/v1/w/${this.workspaceId()}/chats`;
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
@@ -571,7 +571,7 @@ export class DustAPI {
     };
 
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
+      `${FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
       {
         method: "POST",
         headers: {
@@ -623,7 +623,7 @@ export class DustAPI {
     };
 
     const streamRes = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${
+      `${FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/${
         conv.sId
       }/messages/${agentMessageRes.value.sId}/events`,
       {
@@ -640,7 +640,7 @@ export class DustAPI {
 
   async getConversation(conversationid: string) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationid}`,
+      `${FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationid}`,
       {
         method: "GET",
         headers: {
