@@ -272,7 +272,7 @@ export default function AssistantNew({
             {/* FAQ */}
             <Page.Vertical gap="xs" align="left">
               <Page.SectionHeader title="Frequently asked questions" />
-              <Button.List>
+              <Button.List className="flex-wrap">
                 {isBuilder ? (
                   <div className="flex flex-wrap gap-2">
                     <StartHelperConversationButton
