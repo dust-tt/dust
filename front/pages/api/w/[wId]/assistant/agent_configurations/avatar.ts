@@ -1,7 +1,11 @@
+import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
+import fs from "fs";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { withLogging } from "@app/logger/withlogging";
+
+const { DUST_UPLOAD_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
 export const config = {
   api: {
@@ -19,16 +23,39 @@ async function handler(
       const [_fields, files] = await form.parse(req);
       void _fields;
 
-      const file = files.file;
+      const maybeFiles = files.file;
 
-      if (!file) {
+      if (!maybeFiles) {
         res.status(400).send("No file uploaded.");
         return;
       }
 
-      console.log({ file });
+      const file = maybeFiles[0];
 
-      res.status(200).json({ ok: "oui" });
+      const storage = new Storage({
+        keyFilename: SERVICE_ACCOUNT,
+      });
+
+      const bucket = storage.bucket(DUST_UPLOAD_BUCKET);
+      const gcsFile = await bucket.file(file.newFilename);
+      const fileStream = fs.createReadStream(file.filepath);
+
+      await new Promise((resolve, reject) =>
+        fileStream
+          .pipe(
+            gcsFile.createWriteStream({
+              metadata: {
+                contentType: file.mimetype,
+              },
+            })
+          )
+          .on("error", reject)
+          .on("finish", resolve)
+      );
+
+      const fileUrl = `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/${file.newFilename}`;
+
+      res.status(200).json({ fileUrl });
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).send("Error uploading file.");

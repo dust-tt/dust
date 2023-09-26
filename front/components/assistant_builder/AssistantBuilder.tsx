@@ -1,5 +1,6 @@
+import "react-image-crop/dist/ReactCrop.css";
+
 import {
-  ArrowUpOnSquareIcon,
   Avatar,
   Button,
   ChevronDownIcon,
@@ -7,19 +8,17 @@ import {
   DropdownMenu,
   Icon,
   Input,
-  Modal,
   PencilSquareIcon,
-  Spinner,
-  Tab,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
-import { TruckIcon } from "@heroicons/react/20/solid";
 import * as t from "io-ts";
 import router from "next/router";
-import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 
+import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import {
@@ -880,126 +879,6 @@ function AssistantBuilderTextArea({
         onChange(e.target.value);
       }}
     />
-  );
-}
-
-function AvatarPicker({
-  owner,
-  isOpen,
-  setOpen,
-  onPick,
-  avatarUrls,
-}: {
-  owner: WorkspaceType;
-  isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
-  onPick: (avatar: string) => void;
-  avatarUrls: { available: boolean; url: string }[];
-}) {
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [currentTab, setCurrentTab] = useState<"pick" | "upload">("pick");
-  const [file, setFile] = useState<File | null>(null);
-
-  const onUploadClick = async (f: File) => {
-    const formData = new FormData();
-    formData.append("file", f);
-    setIsUploadingAvatar(true);
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/avatar`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      if (!res.ok) {
-        console.error("Error uploading avatar");
-        alert("Error uploading avatar");
-      }
-    } catch (e) {
-      console.error("Error uploading avatar");
-      alert("Error uploading avatar");
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const triggerFileInput = () => {
-    fileInputRef?.current?.click();
-  };
-
-  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e?.target?.files?.[0];
-
-    if (!file) return;
-
-    setFile(file);
-    setCurrentTab("upload");
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => setOpen(false)}
-      title="Pick the design of your assistant:"
-      isFullScreen={false}
-      hasChanged={false}
-    >
-      <input
-        type="file"
-        style={{ display: "none" }}
-        onChange={onFileChange}
-        ref={fileInputRef}
-      />
-      <div className="pt-8">
-        <Tab
-          tabs={[
-            {
-              label: "Pick from the library",
-              current: currentTab === "pick",
-              icon: TruckIcon,
-            },
-            {
-              label: "Upload your own",
-              current: currentTab === "upload",
-              icon: ArrowUpOnSquareIcon,
-            },
-          ]}
-          onTabClick={(tab) => {
-            const isUploadTab = tab.startsWith("Upload");
-            if (isUploadTab) {
-              triggerFileInput();
-            }
-          }}
-        />
-      </div>
-      {currentTab === "pick" && (
-        <div className="grid max-w-3xl grid-cols-8 gap-4 pt-8">
-          {avatarUrls.map(({ available, url }) => (
-            <div
-              key={url}
-              className={classNames(
-                available ? "cursor-pointer" : "opacity-30"
-              )}
-              onClick={() => {
-                if (available) {
-                  onPick(url);
-                  setOpen(false);
-                }
-              }}
-            >
-              <Avatar
-                size="lg"
-                visual={<img src={url} />}
-                clickable={available}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </Modal>
   );
 }
 
