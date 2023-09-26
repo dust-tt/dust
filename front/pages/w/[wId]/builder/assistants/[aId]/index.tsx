@@ -136,6 +136,8 @@ export default function EditAssistant({
   if (selectedDataSource && agentConfiguration.action?.relativeTimeFrame) {
     switch (agentConfiguration.action.relativeTimeFrame) {
       case "auto":
+        timeFrameMode = "AUTO";
+        break;
       case "none":
         timeFrameMode = "ALL_TIME";
         break;
