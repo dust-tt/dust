@@ -1,7 +1,12 @@
 import "react-image-crop/dist/ReactCrop.css";
 
-import { ArrowUpOnSquareIcon, Avatar, Modal, Tab } from "@dust-tt/sparkle";
-import { TruckIcon } from "@heroicons/react/20/solid";
+import {
+  ArrowUpOnSquareIcon,
+  Avatar,
+  ImageIcon,
+  Modal,
+  Tab,
+} from "@dust-tt/sparkle";
 import { ChangeEvent, useRef, useState } from "react";
 import React from "react";
 import ReactCrop, { centerCrop, Crop, makeAspectCrop } from "react-image-crop";
@@ -154,7 +159,7 @@ export function AvatarPicker({
             {
               label: "Pick from the library",
               current: currentTab === "pick",
-              icon: TruckIcon,
+              icon: ImageIcon,
             },
             {
               label: "Upload your own",
