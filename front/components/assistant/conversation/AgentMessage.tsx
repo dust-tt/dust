@@ -313,7 +313,7 @@ function ErrorMessage({
           </DropdownMenu.Button>
           <div className="relative bottom-6 z-30">
             <DropdownMenu.Items origin="topLeft" width={320}>
-              <div className="flex flex-col gap-3 pb-3 pt-5">
+              <div className="flex flex-col gap-3 px-4 pb-3 pt-5">
                 <div className="text-sm font-normal text-warning-800">
                   {fullMessage}
                 </div>
