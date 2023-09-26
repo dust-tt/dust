@@ -37,6 +37,7 @@ export { default as FolderOpen } from "./FolderOpen";
 export { default as GlobeAlt } from "./GlobeAlt";
 export { default as HandThumbDown } from "./HandThumbDown";
 export { default as HandThumbUp } from "./HandThumbUp";
+export { default as Image } from "./Image";
 export { default as InformationCircle } from "./InformationCircle";
 export { default as Key } from "./Key";
 export { default as Lightbulb } from "./Lightbulb";
