@@ -213,6 +213,7 @@ DropdownMenu.Item = function ({
   return (
     <Menu.Item disabled={disabled} key={key}>
       <StandardItem
+        className="s-px-4"
         variant="dropdown"
         size="md"
         href={href}
@@ -300,7 +301,7 @@ DropdownMenu.Items = function ({
       <Menu.Items
         className={`s-absolute s-z-10 ${getOriginClass(
           origin
-        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-px-4 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
+        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
         style={styleInsert(origin)}
       >
         <StandardItem.List>{children}</StandardItem.List>

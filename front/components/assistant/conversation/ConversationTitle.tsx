@@ -48,7 +48,7 @@ export function ConversationTitle({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items width={280}>
-                <div className="flex flex-col gap-y-4 py-4">
+                <div className="flex flex-col gap-y-4 px-4 py-4">
                   <div className="flex flex-col gap-y-2">
                     <div className="grow text-sm font-medium text-element-800">
                       Are you sure you want to delete?
@@ -83,7 +83,7 @@ export function ConversationTitle({
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items width={280}>
-            <div className="flex flex-col gap-y-4 py-4">
+            <div className="flex flex-col gap-y-4 p-4">
               <div className="flex flex-col gap-y-2">
                 <div className="grow text-sm font-medium text-element-800">
                   Share this conversation with others
