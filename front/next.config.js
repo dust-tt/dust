@@ -23,6 +23,11 @@ module.exports = removeImports({
           "https://dust-tt.notion.site/Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb",
         permanent: true,
       },
+      {
+        source: "/w/:wId/u/chat/:cId",
+        destination: "/w/:wId/assistant/:cId",
+        permanent: false,
+      },
     ];
   },
 });

@@ -19,11 +19,6 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import {
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
-} from "@app/lib/models/chat";
 import { DataSource } from "@app/lib/models/data_source";
 import {
   DocumentTrackerChangeSuggestion,
@@ -47,9 +42,6 @@ export {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
   App,
-  ChatMessage,
-  ChatRetrievedDocument,
-  ChatSession,
   Clone,
   Conversation,
   ConversationParticipant,
