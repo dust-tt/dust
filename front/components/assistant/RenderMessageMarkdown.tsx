@@ -431,6 +431,13 @@ function CodeBlock({
   const blue400 = blue["400"];
   const violet400 = violet["400"];
 
+  const languageOverrides: { [key: string]: string } = {
+    jsx: "javascript",
+    tsx: "typescript",
+  };
+
+  const languageToUse = languageOverrides[language] || language;
+
   return !inline && language ? (
     <SyntaxHighlighter
       className="rounded-md"
@@ -530,7 +537,7 @@ function CodeBlock({
           fontWeight: "bold",
         },
       }}
-      language={language}
+      language={languageToUse}
       PreTag="div"
     >
       {String(children).replace(/\n$/, "")}
