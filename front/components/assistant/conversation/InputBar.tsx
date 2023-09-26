@@ -1,9 +1,12 @@
 import {
   Avatar,
+  Button,
   DropdownMenu,
   IconButton,
   PaperAirplaneIcon,
+  PlusIcon,
   RobotIcon,
+  WrenchIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import {
@@ -23,6 +26,8 @@ import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+import { Plus } from "@dust-tt/sparkle/dist/cjs/icons/solid";
+import { useRouter } from "next/router";
 
 // AGENT MENTION
 
@@ -190,6 +195,7 @@ export function AssistantInputBar({
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
 }) {
+  const router = useRouter();
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
   const [agentListPosition, setAgentListPosition] = useState<{
@@ -609,6 +615,30 @@ export function AssistantInputBar({
                         }}
                       />
                     ))}
+                    <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
+                      <Button
+                        label="Create"
+                        size="xs"
+                        variant="secondary"
+                        icon={PlusIcon}
+                        onClick={() => {
+                          void router.push(
+                            `/w/${owner.sId}/builder/assistants/new`
+                          );
+                        }}
+                      />
+                      <Button
+                        label="Manage"
+                        size="xs"
+                        variant="tertiary"
+                        icon={WrenchIcon}
+                        onClick={() => {
+                          void router.push(
+                            `/w/${owner.sId}/builder/assistants`
+                          );
+                        }}
+                      />
+                    </div>
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
