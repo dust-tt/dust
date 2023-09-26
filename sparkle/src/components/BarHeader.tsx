@@ -6,6 +6,7 @@ import {
   Trash,
   XMark,
 } from "@sparkle/icons/solid";
+import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
@@ -13,19 +14,26 @@ interface BarHeaderProps {
   title: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
+  className?: string;
 }
 
 export function BarHeader({
   title,
   leftActions,
   rightActions,
+  className = "",
 }: BarHeaderProps) {
   const titleClasses =
     "s-text-base s-font-bold s-truncate s-text-element-800 s-grow";
   const buttonBarClasses = "s-flex s-gap-1";
 
   return (
-    <div className="s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-border-structure-300/30 s-bg-white/90 s-px-4 s-backdrop-blur-xl">
+    <div
+      className={classNames(
+        "s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-border-structure-300/30 s-bg-white/90 s-px-4 s-backdrop-blur-xl",
+        className
+      )}
+    >
       {leftActions && <div className={buttonBarClasses}>{leftActions}</div>}
       <div className={titleClasses}>{title}</div>
       {rightActions && <div className={buttonBarClasses}>{rightActions}</div>}
