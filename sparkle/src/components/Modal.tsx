@@ -55,7 +55,7 @@ export function Modal({
         <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
           <div
             className={classNames(
-              "s-flex s-items-center s-justify-center s-p-4 sm:s-p-0",
+              "s-flex s-items-center s-justify-center",
               isFullScreen ? "s-h-full s-p-0" : "s-min-h-full s-p-4"
             )}
           >
@@ -70,10 +70,10 @@ export function Modal({
             >
               <Dialog.Panel
                 className={classNames(
-                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-pb-4 s-shadow-xl s-transition-all sm:s-p-6",
+                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-py-6 s-transition-all sm:s-px-6",
                   isFullScreen
                     ? "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full"
-                    : "s-max-w-2xl s-rounded-lg lg:s-w-1/2"
+                    : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2"
                 )}
               >
                 <BarHeader
