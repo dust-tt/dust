@@ -237,7 +237,11 @@ interface ButtonListProps {
   className?: string;
 }
 
-Button.List = function ({ children, isWrapping, className }: ButtonListProps) {
+Button.List = function ({
+  children,
+  isWrapping = false,
+  className,
+}: ButtonListProps) {
   const modifiedChildren = Children.map(children, (child) => {
     // Check if this child is a Button
     if (React.isValidElement<ButtonProps>(child) && child.type === Button) {
