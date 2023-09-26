@@ -49,16 +49,35 @@ export function ConversationTitle({
         <span className="font-bold">{conversation?.title || ""}</span>
       </div>
 
-      <div className="flex gap-1">
-        {conversation.participants.map((participant) => (
-          <Avatar
-            key={participant.id}
-            name={participant.name}
-            visual={participant.pictureUrl}
-            size="md"
-            isRounded={true}
-          />
-        ))}
+      <div className="flex gap-2">
+        <div className="flex">
+          {conversation.participants.agents.map((agent) => (
+            <div
+              className="-mr-4 inline-block last:mr-0"
+              key={agent.configurationId}
+            >
+              <Avatar
+                name={agent.name}
+                visual={agent.pictureUrl}
+                size="md"
+                isRounded={true}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex">
+          {conversation.participants.users.map((user, i) => (
+            <div className="-mr-4 inline-block last:mr-0" key={i}>
+              <Avatar
+                name={user.name}
+                visual={user.pictureUrl}
+                size="md"
+                isRounded={true}
+              />
+            </div>
+          ))}
+        </div>
+
         <div className="hidden lg:flex">
           {onDelete && (
             <DropdownMenu>

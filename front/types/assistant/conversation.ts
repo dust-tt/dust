@@ -126,7 +126,21 @@ export type ConversationType = {
   title: string | null;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
-  participants: { id: string; name: string; pictureUrl: string | null }[];
+  participants: {
+    users: UserParticipant[];
+    agents: AgentParticipant[];
+  };
+};
+
+export type UserParticipant = {
+  userName: string;
+  name: string;
+  pictureUrl: string | null;
+};
+export type AgentParticipant = {
+  configurationId: string;
+  name: string;
+  pictureUrl: string | null;
 };
 
 /**

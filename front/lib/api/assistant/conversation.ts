@@ -82,7 +82,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
-    participants: [],
+    participants: { users: [], agents: [] },
   };
 }
 
@@ -400,7 +400,8 @@ export async function getConversation(
     ],
   });
 
-  const participants = new Map();
+  const userParticipants = new Map();
+  const agentParticipants = new Map();
 
   const render = await Promise.all(
     messages.map((message) => {
@@ -409,10 +410,10 @@ export async function getConversation(
           const m = await renderUserMessage(message, message.userMessage);
 
           const key = `${m.context.username}-${m.context.profilePictureUrl}`;
-          if (!participants.has(key)) {
-            participants.set(key, {
+          if (!userParticipants.has(key)) {
+            userParticipants.set(key, {
               id: key,
-              name: m.context.fullName,
+              name: m.context.fullName || m.context.username,
               pictureUrl: m.context.profilePictureUrl,
             });
           }
@@ -425,8 +426,8 @@ export async function getConversation(
             messages,
           });
           const key = m.sId;
-          if (!participants.has(key)) {
-            participants.set(key, {
+          if (!agentParticipants.has(key)) {
+            agentParticipants.set(key, {
               id: key,
               name: m.configuration.name,
               pictureUrl: m.configuration.pictureUrl,
@@ -466,7 +467,10 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-    participants: Array.from(participants.values()),
+    participants: {
+      users: Array.from(userParticipants.values()),
+      agents: Array.from(agentParticipants.values()),
+    },
   };
 }
 
