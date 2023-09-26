@@ -1,11 +1,8 @@
 import {
   Avatar,
   Button,
-  ChevronDownIcon,
-  ChevronUpIcon,
   Collapsible,
   DropdownMenu,
-  Icon,
   Input,
   Modal,
   PencilSquareIcon,
