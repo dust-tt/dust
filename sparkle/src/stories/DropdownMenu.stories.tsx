@@ -120,8 +120,9 @@ export const DropdownExample = () => {
             <Avatar name="Dust" size="lg" onClick={() => ""} />
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            {["item 1", "item 2", "item 3"].map((item) => (
+              <DropdownMenu.Item label={item} href="#" key={item} />
+            ))}
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
