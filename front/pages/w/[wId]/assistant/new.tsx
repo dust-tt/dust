@@ -144,7 +144,8 @@ export default function AssistantNew({
       titleChildren={
         conversation && (
           <ConversationTitle
-            title={conversation.title || ""}
+            owner={owner}
+            conversationId={conversation.sId}
             shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
           />
         )
@@ -321,13 +322,7 @@ export default function AssistantNew({
           </Page.Vertical>
         </div>
       ) : (
-        <Conversation
-          owner={owner}
-          conversationId={conversation.sId}
-          onTitleUpdate={() => {
-            // Nothing to do as this new page will be long gone by the time the title is updated.
-          }}
-        />
+        <Conversation owner={owner} conversationId={conversation.sId} />
       )}
 
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />

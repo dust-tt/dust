@@ -384,9 +384,9 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
 
   return {
     conversations: data ? data.conversations : [],
-    isConversationLoading: !error && !data,
-    isConversationError: error,
-    mutateConversation: mutate,
+    isConversationsLoading: !error && !data,
+    isConversationsError: error,
+    mutateConversations: mutate,
   };
 }
 

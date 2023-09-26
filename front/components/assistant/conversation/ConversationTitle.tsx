@@ -1,5 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
+  Avatar,
   Button,
   ClipboardCheckIcon,
   DropdownMenu,
@@ -8,12 +9,17 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useConversation } from "@app/lib/swr";
+import { WorkspaceType } from "@app/types/user";
+
 export function ConversationTitle({
-  title,
+  owner,
+  conversationId,
   shareLink,
   onDelete,
 }: {
-  title: string;
+  owner: WorkspaceType;
+  conversationId: string;
   shareLink: string;
   onDelete?: () => void;
 }) {
@@ -27,13 +33,51 @@ export function ConversationTitle({
     }, 1000);
   };
 
+  const { conversation, isConversationError, isConversationLoading } =
+    useConversation({
+      conversationId,
+      workspaceId: owner.sId,
+    });
+
+  if (isConversationLoading || isConversationError || !conversation) {
+    return null;
+  }
+
   return (
     <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">
       <div className="overflow-hidden truncate">
-        <span className="font-bold">{title}</span>
+        <span className="font-bold">{conversation?.title || ""}</span>
       </div>
 
-      <div className="flex space-x-1">
+      <div className="flex gap-2">
+        <div className="hidden lg:flex">
+          {conversation.participants.agents.map((agent) => (
+            <div
+              className="-mr-5 inline-block last:mr-0"
+              key={agent.configurationId}
+            >
+              <Avatar
+                name={agent.name}
+                visual={agent.pictureUrl}
+                size="md"
+                isRounded={true}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="hidden lg:flex">
+          {conversation.participants.users.map((user, i) => (
+            <div className="-mr-5 inline-block last:mr-0" key={i}>
+              <Avatar
+                name={user.fullName || user.username}
+                visual={user.pictureUrl}
+                size="md"
+                isRounded={true}
+              />
+            </div>
+          ))}
+        </div>
+
         <div className="hidden lg:flex">
           {onDelete && (
             <DropdownMenu>

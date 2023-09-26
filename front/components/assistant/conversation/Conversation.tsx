@@ -8,7 +8,7 @@ import {
   ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
-import { useConversation } from "@app/lib/swr";
+import { useConversation, useConversations } from "@app/lib/swr";
 import {
   AgentMessageType,
   UserMessageType,
@@ -18,11 +18,9 @@ import { WorkspaceType } from "@app/types/user";
 export default function Conversation({
   owner,
   conversationId,
-  onTitleUpdate,
 }: {
   owner: WorkspaceType;
   conversationId: string;
-  onTitleUpdate: (title: string | null) => void;
 }) {
   const {
     conversation,
@@ -34,15 +32,15 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
+
   useEffect(() => {
     if (window && window.scrollTo) {
       window.scrollTo(0, document.body.scrollHeight);
     }
   }, [conversation?.content.length]);
-
-  useEffect(() => {
-    onTitleUpdate(conversation?.title ?? null);
-  }, [conversation?.title, onTitleUpdate]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -78,8 +76,11 @@ export default function Conversation({
         switch (event.type) {
           case "user_message_new":
           case "agent_message_new":
+            void mutateConversation();
+            break;
           case "conversation_title": {
             void mutateConversation();
+            void mutateConversations(); // to refresh the list of convos in the sidebar
             break;
           }
           default:
@@ -89,7 +90,7 @@ export default function Conversation({
         }
       }
     },
-    [mutateConversation]
+    [mutateConversation, mutateConversations]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback);
