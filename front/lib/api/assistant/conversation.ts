@@ -425,10 +425,10 @@ export async function getConversation(
             agentMessage: message.agentMessage,
             messages,
           });
-          const key = m.sId;
-          if (!agentParticipants.has(key)) {
-            agentParticipants.set(key, {
-              id: key,
+          const configurationId = m.configuration.sId;
+          if (!agentParticipants.has(configurationId)) {
+            agentParticipants.set(configurationId, {
+              configurationId: configurationId,
               name: m.configuration.name,
               pictureUrl: m.configuration.pictureUrl,
             });
