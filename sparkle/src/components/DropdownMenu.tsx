@@ -209,7 +209,8 @@ DropdownMenu.Item = function ({
   onClick,
 }: DropdownItemProps) {
   return (
-    <Menu.Item disabled={disabled}>
+    // need to use as="div" -- otherwise we get a "forwardRef" error in the console
+    <Menu.Item disabled={disabled} as="div">
       <StandardItem
         className="s-px-4"
         variant="dropdown"
