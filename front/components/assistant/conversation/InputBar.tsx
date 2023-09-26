@@ -3,6 +3,7 @@ import {
   Button,
   DropdownMenu,
   IconButton,
+  MagnifyingGlassStrokeIcon,
   PaperAirplaneIcon,
   PlusIcon,
   RobotIcon,
@@ -598,57 +599,28 @@ export function AssistantInputBar({
 
             <div className={classNames("z-10 flex flex-row space-x-4 pr-2")}>
               <div className="flex flex-col justify-center">
-                <DropdownMenu>
-                  <DropdownMenu.Button icon={RobotIcon} />
-                  <DropdownMenu.Items origin="bottomRight" width={240}>
-                    {activeAgents.map((c) => (
-                      <DropdownMenu.Item
-                        key={c.sId}
-                        label={"@" + c.name}
-                        visual={c.pictureUrl}
-                        onClick={() => {
-                          // We construct the HTML for an AgentMention and inject it in the content
-                          // editable with an extra space after it.
-                          const htmlString =
-                            ReactDOMServer.renderToStaticMarkup(
-                              <AgentMention agentConfiguration={c} />
-                            );
-                          const wrapper = document.createElement("div");
-                          wrapper.innerHTML = htmlString.trim();
-                          const mentionNode = wrapper.firstChild;
-                          const contentEditable =
-                            document.getElementById("dust-input-bar");
-                          if (contentEditable && mentionNode) {
-                            // Add mentionNode as last childe of contentEditable.
-                            contentEditable.appendChild(mentionNode);
-                            const afterTextNode = document.createTextNode(" ");
-                            contentEditable.appendChild(afterTextNode);
-                          }
-                        }}
-                      />
-                    ))}
-                    {(owner.role === "admin" || owner.role === "builder") && (
-                      <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
-                        <Link href={`/w/${owner.sId}/builder/assistants/new`}>
-                          <Button
-                            label="Create"
-                            size="xs"
-                            variant="secondary"
-                            icon={PlusIcon}
-                          />
-                        </Link>
-                        <Link href={`/w/${owner.sId}/builder/assistants`}>
-                          <Button
-                            label="Manage"
-                            size="xs"
-                            variant="tertiary"
-                            icon={WrenchIcon}
-                          />
-                        </Link>
-                      </div>
-                    )}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                <AssistantPicker
+                  owner={owner}
+                  onItemClick={(c) => {
+                    // We construct the HTML for an AgentMention and inject it in the content
+                    // editable with an extra space after it.
+                    const htmlString = ReactDOMServer.renderToStaticMarkup(
+                      <AgentMention agentConfiguration={c} />
+                    );
+                    const wrapper = document.createElement("div");
+                    wrapper.innerHTML = htmlString.trim();
+                    const mentionNode = wrapper.firstChild;
+                    const contentEditable =
+                      document.getElementById("dust-input-bar");
+                    if (contentEditable && mentionNode) {
+                      // Add mentionNode as last childe of contentEditable.
+                      contentEditable.appendChild(mentionNode);
+                      const afterTextNode = document.createTextNode(" ");
+                      contentEditable.appendChild(afterTextNode);
+                    }
+                  }}
+                  assistants={activeAgents}
+                />
               </div>
               <IconButton
                 variant="primary"
@@ -662,6 +634,80 @@ export function AssistantInputBar({
         </div>
       </div>
     </>
+  );
+}
+
+export function AssistantPicker({
+  owner,
+  assistants,
+  onItemClick,
+}: {
+  owner: WorkspaceType;
+  assistants: AgentConfigurationType[];
+  onItemClick: (assistant: AgentConfigurationType) => void;
+}) {
+  const [searchText, setSearchText] = useState("");
+
+  const searchedAssistants = assistants.filter((a) =>
+    a.name.toLowerCase().startsWith(searchText.toLowerCase())
+  );
+
+  return (
+    <div onBlur={() => setSearchText("")}>
+      <DropdownMenu>
+        <DropdownMenu.Button icon={RobotIcon} />
+        <DropdownMenu.Items origin="bottomRight" width={240}>
+          <div className="border-b border-structure-100 p-2">
+            <div className="relative text-sm font-medium text-element-800">
+              <input
+                type="text"
+                placeholder="Search"
+                value={searchText}
+                className="w-full rounded-full border-structure-200 pr-8"
+                onKeyUp={(e) => {
+                  if (e.key === "Enter" && searchedAssistants.length > 0) {
+                    onItemClick(searchedAssistants[0]);
+                    setSearchText("");
+                  }
+                }}
+                onChange={(e) => {
+                  setSearchText(e.target.value.toLowerCase());
+                }}
+              />
+              <MagnifyingGlassStrokeIcon className="absolute right-3 top-2.5 h-5 w-5" />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto [&>*]:w-full">
+            {searchedAssistants.map((c) => (
+              <DropdownMenu.Item
+                key={c.sId}
+                label={"@" + c.name}
+                visual={c.pictureUrl}
+                onClick={() => onItemClick(c)}
+              />
+            ))}
+          </div>
+          <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
+            <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Button
+                label="Create"
+                size="xs"
+                variant="secondary"
+                icon={PlusIcon}
+              />
+            </Link>
+            <Link href={`/w/${owner.sId}/builder/assistants`}>
+              <Button
+                label="Manage"
+                size="xs"
+                variant="tertiary"
+                icon={WrenchIcon}
+              />
+            </Link>
+          </div>
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    </div>
   );
 }
 
