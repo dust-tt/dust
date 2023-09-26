@@ -1,5 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
+  Avatar,
   Button,
   ClipboardCheckIcon,
   DropdownMenu,
@@ -8,12 +9,17 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useConversation } from "@app/lib/swr";
+import { WorkspaceType } from "@app/types/user";
+
 export function ConversationTitle({
-  title,
+  owner,
+  conversationId,
   shareLink,
   onDelete,
 }: {
-  title: string;
+  owner: WorkspaceType;
+  conversationId: string;
   shareLink: string;
   onDelete?: () => void;
 }) {
@@ -27,13 +33,32 @@ export function ConversationTitle({
     }, 1000);
   };
 
+  const { conversation, isConversationError, isConversationLoading } =
+    useConversation({
+      conversationId,
+      workspaceId: owner.sId,
+    });
+
+  if (isConversationLoading || isConversationError || !conversation) {
+    return null;
+  }
+
   return (
     <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">
       <div className="overflow-hidden truncate">
-        <span className="font-bold">{title}</span>
+        <span className="font-bold">{conversation?.title || ""}</span>
       </div>
 
-      <div className="flex space-x-1">
+      <div className="flex gap-1">
+        {conversation.participants.map((participant) => (
+          <Avatar
+            key={participant.id}
+            name={participant.name}
+            visual={participant.pictureUrl}
+            size="md"
+            isRounded={true}
+          />
+        ))}
         <div className="hidden lg:flex">
           {onDelete && (
             <DropdownMenu>

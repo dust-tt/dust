@@ -11,7 +11,7 @@ import { WorkspaceType } from "@app/types/user";
 export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
 
-  const { conversations, isConversationLoading, isConversationError } =
+  const { conversations, isConversationsLoading, isConversationsError } =
     useConversations({
       workspaceId: owner.sId,
     });
@@ -55,7 +55,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
   };
 
   const conversationsByDate =
-    !isConversationLoading && conversations.length
+    !isConversationsLoading && conversations.length
       ? groupConversationsByDate(conversations)
       : {};
 
@@ -73,7 +73,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
               />
             </Link>
           </div>
-          {isConversationError && (
+          {isConversationsError && (
             <div className="py-1">
               <Item.SectionHeader label="Error loading conversations" />
             </div>
