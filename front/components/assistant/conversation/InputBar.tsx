@@ -9,7 +9,7 @@ import {
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
-import { useRouter } from "next/router";
+import Link from "next/link";
 import {
   ForwardedRef,
   forwardRef,
@@ -27,7 +27,6 @@ import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import Link from "next/link";
 
 // AGENT MENTION
 
@@ -195,7 +194,6 @@ export function AssistantInputBar({
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
 }) {
-  const router = useRouter();
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
   const [agentListPosition, setAgentListPosition] = useState<{
