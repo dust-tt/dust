@@ -1,16 +1,13 @@
 import {
   Avatar,
   Button,
-  ChevronDownIcon,
-  ChevronUpIcon,
+  Collapsible,
   DropdownMenu,
-  Icon,
   Input,
   Modal,
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
@@ -198,8 +195,6 @@ export default function AssistantBuilder({
     { available: boolean; url: string }[]
   >([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   useEffect(() => {
     if (agentConfigurations?.length) {
@@ -667,24 +662,8 @@ export default function AssistantBuilder({
                   name="assistantInstructions"
                 />
               </div>
-              <div
-                className="flex cursor-pointer flex-row items-center space-x-2"
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-              >
-                <Icon
-                  size="xs"
-                  visual={
-                    showAdvancedSettings ? ChevronDownIcon : ChevronUpIcon
-                  }
-                  className="text-element-700"
-                />
-                <div className="text-sm font-semibold text-action-500">
-                  Advanced Settings
-                </div>
-              </div>
               <AdvancedSettings
                 owner={owner}
-                show={showAdvancedSettings}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
                   setBuilderState((state) => ({
@@ -919,12 +898,10 @@ function AvatarPicker({
 
 function AdvancedSettings({
   owner,
-  show,
   generationSettings,
   setGenerationSettings,
 }: {
   owner: WorkspaceType;
-  show: boolean;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
@@ -938,95 +915,90 @@ function AdvancedSettings({
     alert("Unsupported model");
   }
   return (
-    <Transition
-      show={show}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-all duration-300"
-      enter="transition-all duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
-    >
-      <div className="flex flex-row items-center gap-12">
-        <div className="flex flex-1 flex-row items-center gap-2">
-          <div className="text-sm font-semibold text-element-900">
-            Underlying model:
+    <Collapsible>
+      <Collapsible.Button label="Advanced settings" />
+      <Collapsible.Panel>
+        <div className="flex flex-row items-center gap-12">
+          <div className="flex flex-1 flex-row items-center gap-2">
+            <div className="text-sm font-semibold text-element-900">
+              Underlying model:
+            </div>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    getSupportedModelConfig(generationSettings.modelSettings)
+                      .displayName
+                  }
+                  variant="secondary"
+                  hasMagnifying={false}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topLeft">
+                {usedModelConfigs
+                  .filter(
+                    (modelConfig) =>
+                      !modelConfig.largeModel || owner.plan.limits.largeModels
+                  )
+                  .map((modelConfig) => (
+                    <DropdownMenu.Item
+                      key={modelConfig.modelId}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                          } as SupportedModel,
+                        });
+                      }}
+                    />
+                  ))}
+              </DropdownMenu.Items>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                type="select"
-                labelVisible={true}
-                label={
-                  getSupportedModelConfig(generationSettings.modelSettings)
-                    .displayName
-                }
-                variant="secondary"
-                hasMagnifying={false}
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topLeft">
-              {usedModelConfigs
-                .filter(
-                  (modelConfig) =>
-                    !modelConfig.largeModel || owner.plan.limits.largeModels
-                )
-                .map((modelConfig) => (
+          <div className="flex flex-1 flex-row items-center gap-2">
+            <div className="text-sm font-semibold text-element-900">
+              Creativity level:
+            </div>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    getCreativityLevelFromTemperature(
+                      generationSettings?.temperature
+                    ).label
+                  }
+                  variant="secondary"
+                  hasMagnifying={false}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topLeft">
+                {CREATIVITY_LEVELS.map(({ label, value }) => (
                   <DropdownMenu.Item
-                    key={modelConfig.modelId}
-                    label={modelConfig.displayName}
+                    key={label}
+                    label={label}
                     onClick={() => {
                       setGenerationSettings({
                         ...generationSettings,
-                        modelSettings: {
-                          modelId: modelConfig.modelId,
-                          providerId: modelConfig.providerId,
-                          // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                        } as SupportedModel,
+                        temperature: value,
                       });
                     }}
                   />
                 ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
-        </div>
-        <div className="flex flex-1 flex-row items-center gap-2">
-          <div className="text-sm font-semibold text-element-900">
-            Creativity level:
+              </DropdownMenu.Items>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                type="select"
-                labelVisible={true}
-                label={
-                  getCreativityLevelFromTemperature(
-                    generationSettings?.temperature
-                  ).label
-                }
-                variant="secondary"
-                hasMagnifying={false}
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topLeft">
-              {CREATIVITY_LEVELS.map(({ label, value }) => (
-                <DropdownMenu.Item
-                  key={label}
-                  label={label}
-                  onClick={() => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      temperature: value,
-                    });
-                  }}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
         </div>
-      </div>
-    </Transition>
+      </Collapsible.Panel>
+    </Collapsible>
   );
 }

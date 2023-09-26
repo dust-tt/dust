@@ -159,26 +159,10 @@ export default function AssistantNew({
               title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
               icon={ChatBubbleLeftRightIcon}
             />
-            {/* GETTING STARTED */}
-            <Page.Vertical gap="xs" align="left">
-              <Page.SectionHeader title="Getting started?" />
-              <Page.P variant="secondary">
-                Interact with assistants on Dust like you would with a friend or
-                coworker.
-                <br />
-                Try it for yourself:
-              </Page.P>
-              <StartHelperConversationButton
-                content="Hey @helper, how can I interact with an Assistant?"
-                handleSubmit={handleSubmit}
-                variant="secondary"
-              />
-            </Page.Vertical>
-            <Page.Separator />
             {/* FEATURED AGENTS */}
             <Page.Vertical gap="lg" align="left">
               <Page.Vertical gap="xs" align="left">
-                <Page.SectionHeader title="Meet your team of assistants" />
+                <Page.SectionHeader title="Meet your team" />
                 {isBuilder && (
                   <>
                     <Page.P variant="secondary">
@@ -187,16 +171,6 @@ export default function AssistantNew({
                       <br />
                       Create assistants tailored for your needs.
                     </Page.P>
-                    {activeAgents.length <= 4 && (
-                      <Page.P variant="secondary">
-                        Meet your first assistants:
-                      </Page.P>
-                    )}
-                    {activeAgents.length > 4 && (
-                      <Page.P variant="secondary">
-                        Meet your assistant team:
-                      </Page.P>
-                    )}
                   </>
                 )}
                 {!isBuilder && (
@@ -208,7 +182,7 @@ export default function AssistantNew({
                       Each member has a set of specific set skills.
                     </Page.P>
                     <Page.P variant="secondary">
-                      Meet some of your Assistants team:
+                      Meet some of your assistants team:
                     </Page.P>
                   </>
                 )}
@@ -228,8 +202,8 @@ export default function AssistantNew({
                     size="xs"
                     label={
                       showAllAgents
-                        ? "Hide All Assistants"
-                        : "See all Assistants"
+                        ? "Hide All assistants"
+                        : "See all assistants"
                     }
                     onClick={() => {
                       setShowAllAgents(!showAllAgents);
@@ -254,7 +228,7 @@ export default function AssistantNew({
                     <Button
                       variant="secondary"
                       icon={WrenchIcon}
-                      label="Manage Assistants"
+                      label="Manage assistants"
                       hasMagnifying={false}
                       size="xs"
                       onClick={() => {
@@ -277,19 +251,24 @@ export default function AssistantNew({
                 {isBuilder ? (
                   <div className="flex flex-wrap gap-2">
                     <StartHelperConversationButton
-                      content="@helper, what can I use the Assistants for?"
+                      content="Hey @helper, how can I interact with an assistant?"
+                      handleSubmit={handleSubmit}
+                      variant="secondary"
+                    />
+                    <StartHelperConversationButton
+                      content="@helper, what can I use the assistants for?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, what are custom Assistants?"
+                      content="@helper, what are custom assistants?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, what customized Assistants should I create?"
+                      content="@helper, what customized assistants should I create?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, how can I make Assistant smarter with my own data?"
+                      content="@helper, how can I make assistant smarter with my own data?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
@@ -300,19 +279,24 @@ export default function AssistantNew({
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     <StartHelperConversationButton
-                      content="Hey @helper, What can I use an Assistant for?"
+                      content="Hey @helper, how can I interact with an assistant?"
+                      handleSubmit={handleSubmit}
+                      variant="secondary"
+                    />
+                    <StartHelperConversationButton
+                      content="Hey @helper, What can I use an assistant for?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, who creates Assistants?"
+                      content="@helper, who creates assistants?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, how do Assistants work exactly?"
+                      content="@helper, how do assistants work exactly?"
                       handleSubmit={handleSubmit}
                     />
                     <StartHelperConversationButton
-                      content="@helper, what are the limitations of Assistants?"
+                      content="@helper, what are the limitations of assistants?"
                       handleSubmit={handleSubmit}
                     />
                   </div>
