@@ -3,6 +3,7 @@ import {
   Button,
   ChevronDownIcon,
   ChevronUpIcon,
+  Collapsible,
   DropdownMenu,
   Icon,
   Input,
@@ -667,32 +668,22 @@ export default function AssistantBuilder({
                   name="assistantInstructions"
                 />
               </div>
-              <div
-                className="flex cursor-pointer flex-row items-center space-x-2"
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-              >
-                <Icon
-                  size="xs"
-                  visual={
-                    showAdvancedSettings ? ChevronDownIcon : ChevronUpIcon
-                  }
-                  className="text-element-700"
-                />
-                <div className="text-sm font-semibold text-action-500">
-                  Advanced Settings
-                </div>
-              </div>
-              <AdvancedSettings
-                owner={owner}
-                show={showAdvancedSettings}
-                generationSettings={builderState.generationSettings}
-                setGenerationSettings={(generationSettings) => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    generationSettings,
-                  }));
-                }}
-              />
+              <Collapsible>
+                <Collapsible.Button label="Advanced settings" />
+                <Collapsible.Panel>
+                  <AdvancedSettings
+                    owner={owner}
+                    show={showAdvancedSettings}
+                    generationSettings={builderState.generationSettings}
+                    setGenerationSettings={(generationSettings) => {
+                      setBuilderState((state) => ({
+                        ...state,
+                        generationSettings,
+                      }));
+                    }}
+                  />
+                </Collapsible.Panel>
+              </Collapsible>
             </div>
           </div>
           <div className="flex flex-row items-start">
