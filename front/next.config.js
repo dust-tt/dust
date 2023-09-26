@@ -26,7 +26,7 @@ module.exports = removeImports({
       {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
-        permanent: true,
+        permanent: false,
       },
     ];
   },
