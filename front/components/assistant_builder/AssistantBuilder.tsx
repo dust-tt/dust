@@ -1,18 +1,21 @@
+import "react-image-crop/dist/ReactCrop.css";
+
 import {
   Avatar,
   Button,
   Collapsible,
   DropdownMenu,
   Input,
-  Modal,
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
 import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 
+import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import {
@@ -510,6 +513,7 @@ export default function AssistantBuilder({
         dataSourceToManage={dataSourceToManage}
       />
       <AvatarPicker
+        owner={owner}
         isOpen={isAvatarModalOpen}
         setOpen={setIsAvatarModalOpen}
         onPick={(avatarUrl) => {
@@ -620,7 +624,7 @@ export default function AssistantBuilder({
               />
               <Button
                 labelVisible={true}
-                label="Change"
+                label={"Change"}
                 variant="tertiary"
                 size="xs"
                 icon={PencilSquareIcon}
@@ -854,45 +858,6 @@ function AssistantBuilderTextArea({
         onChange(e.target.value);
       }}
     />
-  );
-}
-
-function AvatarPicker({
-  isOpen,
-  setOpen,
-  onPick,
-  avatarUrls,
-}: {
-  isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
-  onPick: (avatar: string) => void;
-  avatarUrls: { available: boolean; url: string }[];
-}) {
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => setOpen(false)}
-      title="Pick the design of your assistant:"
-      isFullScreen={false}
-      hasChanged={false}
-    >
-      <div className="grid max-w-3xl grid-cols-8 gap-4 pt-8">
-        {avatarUrls.map(({ available, url }) => (
-          <div
-            key={url}
-            className={classNames(available ? "cursor-pointer" : "opacity-30")}
-            onClick={() => {
-              if (available) {
-                onPick(url);
-                setOpen(false);
-              }
-            }}
-          >
-            <Avatar size="lg" visual={<img src={url} />} clickable />
-          </div>
-        ))}
-      </div>
-    </Modal>
   );
 }
 
