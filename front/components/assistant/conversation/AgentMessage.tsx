@@ -170,6 +170,12 @@ export function AgentMessage({
               );
             },
           },
+          {
+            icon: ArrowPathIcon,
+            onClick: () => {
+              void retryHandler(agentMessageToRender);
+            },
+          },
         ];
 
   return (
