@@ -50,10 +50,10 @@ export function ConversationTitle({
       </div>
 
       <div className="flex gap-2">
-        <div className="flex">
+        <div className="hidden lg:flex">
           {conversation.participants.agents.map((agent) => (
             <div
-              className="-mr-4 inline-block last:mr-0"
+              className="-mr-5 inline-block last:mr-0"
               key={agent.configurationId}
             >
               <Avatar
@@ -65,9 +65,9 @@ export function ConversationTitle({
             </div>
           ))}
         </div>
-        <div className="flex">
+        <div className="hidden lg:flex">
           {conversation.participants.users.map((user, i) => (
-            <div className="-mr-4 inline-block last:mr-0" key={i}>
+            <div className="-mr-5 inline-block last:mr-0" key={i}>
               <Avatar
                 name={user.name}
                 visual={user.pictureUrl}
