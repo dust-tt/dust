@@ -34,7 +34,7 @@ Always use "@" before the assistant's name when you call them, like you do in Sl
 
 ### Is there a Dust conversations API?
 
-A new version of the API will be available soon. 
+A new version of the API will be available soon.
 
 # Dust for the admins
 
