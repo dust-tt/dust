@@ -15,23 +15,12 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  if (!keyRes.value.isSystem) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The Assitant API is only accessible by system API Key. Ping us at team@dust.tt if you want access to it.",
-      },
-    });
-  }
-
   const { auth, keyWorkspaceId } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (keyWorkspaceId !== req.query.wId) {
+  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -41,8 +30,8 @@ async function handler(
     });
   }
 
-  const conv = await getConversation(auth, req.query.cId as string);
-  if (!conv) {
+  const conversation = await getConversation(auth, req.query.cId as string);
+  if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -60,7 +49,7 @@ async function handler(
         Connection: "keep-alive",
       });
 
-      for await (const event of getConversationEvents(conv.sId, null)) {
+      for await (const event of getConversationEvents(conversation.sId, null)) {
         res.write(JSON.stringify(event));
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
