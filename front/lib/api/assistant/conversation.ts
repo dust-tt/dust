@@ -412,8 +412,8 @@ export async function getConversation(
           const key = `${m.context.username}-${m.context.profilePictureUrl}`;
           if (!userParticipants.has(key)) {
             userParticipants.set(key, {
-              id: key,
-              name: m.context.fullName || m.context.username,
+              username: m.context.username,
+              fullName: m.context.fullName,
               pictureUrl: m.context.profilePictureUrl,
             });
           }

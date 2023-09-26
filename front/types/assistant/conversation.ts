@@ -133,8 +133,8 @@ export type ConversationType = {
 };
 
 export type UserParticipant = {
-  userName: string;
-  name: string;
+  username: string;
+  fullName: string | null;
   pictureUrl: string | null;
 };
 export type AgentParticipant = {

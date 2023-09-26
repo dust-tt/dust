@@ -69,7 +69,7 @@ export function ConversationTitle({
           {conversation.participants.users.map((user, i) => (
             <div className="-mr-5 inline-block last:mr-0" key={i}>
               <Avatar
-                name={user.name}
+                name={user.fullName || user.username}
                 visual={user.pictureUrl}
                 size="md"
                 isRounded={true}
