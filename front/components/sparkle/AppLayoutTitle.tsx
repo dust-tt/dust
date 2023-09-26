@@ -12,6 +12,7 @@ export function AppLayoutSimpleCloseTitle({
     <BarHeader
       title={title}
       rightActions={<BarHeader.ButtonBar variant="close" onClose={onClose} />}
+      className="ml-10 lg:ml-0"
     />
   );
 }
@@ -35,6 +36,7 @@ export function AppLayoutSimpleSaveCancelTitle({
           onSave={onSave}
         />
       }
+      className="ml-10 lg:ml-0"
     />
   );
 }
