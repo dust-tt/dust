@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode, useState } from "react";
 
 import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -88,6 +88,9 @@ export function Avatar({
   isRounded = false,
 }: AvatarProps) {
   const getColor = (name: string) => {
+    if (/^\d+$/.test(name)) {
+      return "s-bg-slate-300";
+    }
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -96,6 +99,9 @@ export function Avatar({
   };
 
   const getTextVariant = (name: string) => {
+    if (/^\d+$/.test(name)) {
+      return "s-text-slate-700";
+    }
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -144,8 +150,66 @@ export function Avatar({
           {name[0].toUpperCase()}
         </span>
       ) : (
-        <User className="s-h-1/2 s-w-1/2 s-opacity-20" /> // Default icon with size and slate-900 color
+        <User className="s-h-1/2 s-w-1/2 s-opacity-20" />
       )}
     </div>
   );
 }
+
+interface AvatarStackProps {
+  children: ReactNode;
+  maxAvatars?: number;
+}
+
+Avatar.Stack = function ({ children, maxAvatars = 3 }: AvatarStackProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+
+  // Convert children to an array and slice it to maxAvatars
+  const childrenArray = React.Children.toArray(children);
+  const visibleChildren = childrenArray.slice(0, maxAvatars);
+  const remainingCount = childrenArray.length - maxAvatars - 1;
+
+  return (
+    <div
+      className="s-flex s-flex-row"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        marginLeft: "20px",
+      }}
+    >
+      {remainingCount > 0 && (
+        <div
+          className="s-cursor-pointer s-drop-shadow-md"
+          style={{
+            width: isHovered ? "42px" : "32px",
+            transition: "width 300ms ease-out",
+            marginLeft: "-20px",
+          }}
+        >
+          <Avatar size="sm" name={String(remainingCount + 1)} isRounded />
+        </div>
+      )}
+      {visibleChildren.map((child) => (
+        <div
+          className="s-cursor-pointer s-drop-shadow-md"
+          style={{
+            width: isHovered ? "44px" : "32px",
+            transition: "width 300ms ease-out",
+            marginLeft: "-20px",
+          }}
+        >
+          {child}
+        </div>
+      ))}
+    </div>
+  );
+};
