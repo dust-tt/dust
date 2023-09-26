@@ -10,9 +10,9 @@ import {
 } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 
-import { IconButton } from "..";
 import { Checkbox } from "./Checkbox";
 import { Icon } from "./Icon";
+import { IconButton } from "./IconButton";
 import Spinner from "./Spinner";
 
 export interface TreeProps {

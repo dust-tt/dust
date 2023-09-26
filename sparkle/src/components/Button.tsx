@@ -236,14 +236,6 @@ interface ButtonBarProps {
   className?: string;
 }
 
-// Button.List = function ({ children, className }: ButtonBarProps) {
-//   return (
-//     <div className={classNames(className ? className : "", "s-flex")}>
-//       <div className={"s-flex s-flex-row s-gap-1"}>{children}</div>
-//     </div>
-//   );
-// };
-
 Button.List = function ({ children, className }: ButtonBarProps) {
   const modifiedChildren = Children.map(children, (child) => {
     // Check if this child is a Button
@@ -256,7 +248,9 @@ Button.List = function ({ children, className }: ButtonBarProps) {
 
   return (
     <div className={classNames(className ? className : "", "s-flex")}>
-      <div className={"s-flex s-flex-row s-gap-2"}>{modifiedChildren}</div>
+      <div className={"s-flex s-flex-row s-flex-wrap s-gap-2"}>
+        {modifiedChildren}
+      </div>
     </div>
   );
 };
