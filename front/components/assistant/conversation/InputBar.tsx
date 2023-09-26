@@ -27,6 +27,7 @@ import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+import Link from "next/link";
 
 // AGENT MENTION
 
@@ -615,28 +616,22 @@ export function AssistantInputBar({
                       />
                     ))}
                     <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
-                      <Button
-                        label="Create"
-                        size="xs"
-                        variant="secondary"
-                        icon={PlusIcon}
-                        onClick={() => {
-                          void router.push(
-                            `/w/${owner.sId}/builder/assistants/new`
-                          );
-                        }}
-                      />
-                      <Button
-                        label="Manage"
-                        size="xs"
-                        variant="tertiary"
-                        icon={WrenchIcon}
-                        onClick={() => {
-                          void router.push(
-                            `/w/${owner.sId}/builder/assistants`
-                          );
-                        }}
-                      />
+                      <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                        <Button
+                          label="Create"
+                          size="xs"
+                          variant="secondary"
+                          icon={PlusIcon}
+                        />
+                      </Link>
+                      <Link href={`/w/${owner.sId}/builder/assistants`}>
+                        <Button
+                          label="Manage"
+                          size="xs"
+                          variant="tertiary"
+                          icon={WrenchIcon}
+                        />
+                      </Link>
                     </div>
                   </DropdownMenu.Items>
                 </DropdownMenu>
