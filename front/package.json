@@ -13,7 +13,7 @@
     "initdb": "env $(cat .env.local) npx tsx admin/db.ts"
   },
   "dependencies": {
-    "@dust-tt/sparkle": "0.1.82-henry-image",
+    "@dust-tt/sparkle": "0.1.82",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@nangohq/frontend": "^0.16.1",
@@ -53,6 +53,7 @@
     "react": "^18.2.0",
     "react-accessible-treeview": "^2.6.0",
     "react-beforeunload": "^2.5.3",
+    "react-cropper": "^2.3.3",
     "react-dom": "^18.2.0",
     "react-icons": "^4.9.0",
     "react-image-crop": "^10.1.8",
