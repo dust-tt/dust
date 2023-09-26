@@ -9,6 +9,15 @@ import {
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType } from "@app/types/user";
 
+export async function isWorkspaceAllowedOnDomain(wId: string) {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: wId,
+    },
+  });
+  return workspace && workspace.allowedDomain !== null;
+}
+
 /**
  * Returns the users members of the workspace associated with the authenticator (without listing
  * their own workspaces).
