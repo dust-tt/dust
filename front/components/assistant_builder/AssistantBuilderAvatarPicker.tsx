@@ -3,6 +3,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
+  Button,
   ImageIcon,
   Modal,
   Tab,
@@ -170,8 +171,7 @@ export function AvatarPicker({
           onTabClick={(tab) => {
             const isUploadTab = tab.startsWith("Upload");
             if (isUploadTab) {
-              // triggers file selection. once file is selected, tab will change to `upload`
-              fileInputRef?.current?.click();
+              setCurrentTab("upload");
             } else {
               setCurrentTab("pick");
             }
@@ -202,37 +202,51 @@ export function AvatarPicker({
           ))}
         </div>
       )}
-      {currentTab === "upload" && src && (
-        <div className="pt-8">
-          <ReactCrop crop={crop} aspect={1} onChange={(_, pC) => setCrop(pC)}>
-            <img
-              src={src}
-              alt="Profile"
-              onLoad={(event) => {
-                const { naturalWidth: width, naturalHeight: height } =
-                  event.currentTarget;
+      <div
+        className={classNames(
+          "flex  w-full items-center justify-center  pt-8 align-middle",
+          currentTab !== "upload" ? "hidden" : "",
+          !src ? "min-h-64 bg-slate-50" : ""
+        )}
+      >
+        {src ? (
+          <div>
+            <ReactCrop crop={crop} aspect={1} onChange={(_, pC) => setCrop(pC)}>
+              <img
+                src={src}
+                alt="Profile"
+                onLoad={(event) => {
+                  const { naturalWidth: width, naturalHeight: height } =
+                    event.currentTarget;
 
-                const newCrop = centerCrop(
-                  makeAspectCrop(
-                    {
-                      unit: "%",
-                      width: 100,
-                    },
-                    1,
+                  const newCrop = centerCrop(
+                    makeAspectCrop(
+                      {
+                        unit: "%",
+                        width: 100,
+                      },
+                      1,
+                      width,
+                      height
+                    ),
                     width,
                     height
-                  ),
-                  width,
-                  height
-                );
+                  );
 
-                setCrop(newCrop);
-              }}
-              ref={imageRef}
-            />
-          </ReactCrop>
-        </div>
-      )}
+                  setCrop(newCrop);
+                }}
+                ref={imageRef}
+              />
+            </ReactCrop>
+          </div>
+        ) : (
+          <Button
+            label="Upload"
+            icon={ArrowUpOnSquareIcon}
+            onClick={() => fileInputRef?.current?.click()}
+          />
+        )}
+      </div>
     </Modal>
   );
 }
