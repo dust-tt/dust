@@ -613,24 +613,26 @@ export function AssistantInputBar({
                         }}
                       />
                     ))}
-                    <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
-                      <Link href={`/w/${owner.sId}/builder/assistants/new`}>
-                        <Button
-                          label="Create"
-                          size="xs"
-                          variant="secondary"
-                          icon={PlusIcon}
-                        />
-                      </Link>
-                      <Link href={`/w/${owner.sId}/builder/assistants`}>
-                        <Button
-                          label="Manage"
-                          size="xs"
-                          variant="tertiary"
-                          icon={WrenchIcon}
-                        />
-                      </Link>
-                    </div>
+                    {(owner.role === "admin" || owner.role === "builder") && (
+                      <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
+                        <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                          <Button
+                            label="Create"
+                            size="xs"
+                            variant="secondary"
+                            icon={PlusIcon}
+                          />
+                        </Link>
+                        <Link href={`/w/${owner.sId}/builder/assistants`}>
+                          <Button
+                            label="Manage"
+                            size="xs"
+                            variant="tertiary"
+                            icon={WrenchIcon}
+                          />
+                        </Link>
+                      </div>
+                    )}
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
