@@ -233,7 +233,7 @@ export function Button({
 
 interface ButtonListProps {
   children: ReactNode;
-  isWrapping: boolean;
+  isWrapping?: boolean;
   className?: string;
 }
 
