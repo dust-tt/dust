@@ -7,15 +7,11 @@ import { mutate } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  AppLayoutSimpleCloseTitle,
-  AppLayoutSimpleSaveCancelTitle,
-} from "@app/components/sparkle/AppLayoutTitle";
+import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
-import { getProviderLogoPathForDataSource } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
@@ -247,6 +243,7 @@ function StandardDataSourceSettings({
           isSaving={isSavingOrDeleting}
         />
       }
+      hideSidebar={true}
     >
       <div className="flex flex-col pt-8">
         <div className="space-y-8 divide-y divide-gray-200">
@@ -447,13 +444,24 @@ function ManagedDataSourceSettings({
 }) {
   const router = useRouter();
 
+  const [edited, setEdited] = useState(false);
+  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
+
   const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
     dataSource.assistantDefaultSelected
   );
-  const logo = getProviderLogoPathForDataSource(dataSource);
-  if (!logo) {
-    throw new Error(`No logo for data source ${dataSource.name}`);
-  }
+
+  const formValidation = useCallback(() => {
+    let edited = false;
+    if (assistantDefaultSelected === !dataSource.assistantDefaultSelected) {
+      edited = true;
+    }
+    setEdited(edited);
+  }, [dataSource, assistantDefaultSelected]);
+
+  useEffect(() => {
+    formValidation();
+  }, [formValidation]);
 
   return (
     <AppLayout
@@ -466,15 +474,28 @@ function ManagedDataSourceSettings({
         current: "data_sources",
       })}
       titleChildren={
-        <AppLayoutSimpleCloseTitle
+        <AppLayoutSimpleSaveCancelTitle
           title="Data Source Settings"
-          onClose={() => {
+          onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
             );
           }}
+          onSave={
+            edited
+              ? async () => {
+                  setIsSavingOrDeleting(true);
+                  await handleUpdate({
+                    assistantDefaultSelected,
+                  });
+                  setIsSavingOrDeleting(false);
+                }
+              : undefined
+          }
+          isSaving={isSavingOrDeleting}
         />
       }
+      hideSidebar={true}
     >
       <div className="flex flex-col pt-8">
         <div className="space-y-8">
@@ -498,31 +519,6 @@ function ManagedDataSourceSettings({
                   <span className="font-semibold">@dust</span> assistant.
                 </p>
               </div>
-            </div>
-          </div>
-          <div className="flex">
-            <div className="flex flex-1"></div>
-            <div className="ml-2 flex">
-              <Button
-                variant="tertiary"
-                onClick={() => {
-                  void router.push(
-                    `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
-                  );
-                }}
-                label={"Cancel"}
-              />
-            </div>
-            <div className="ml-2 flex">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  void handleUpdate({
-                    assistantDefaultSelected,
-                  });
-                }}
-                label={"Update"}
-              />
             </div>
           </div>
         </div>

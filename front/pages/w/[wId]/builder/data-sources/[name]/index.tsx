@@ -9,7 +9,6 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
@@ -578,6 +577,7 @@ export default function DataSourceView({
           }}
         />
       }
+      hideSidebar={true}
     >
       {dataSource.connectorId && connector ? (
         <ManagedDataSourceView

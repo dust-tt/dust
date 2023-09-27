@@ -257,6 +257,7 @@ export default function DataSourceUpsert({
           isSaving={loading}
         />
       }
+      hideSidebar={true}
     >
       <div className="flex flex-col pt-8">
         <div className="space-y-2">

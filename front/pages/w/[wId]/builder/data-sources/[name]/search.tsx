@@ -161,6 +161,7 @@ export default function DataSourceView({
           }}
         />
       }
+      hideSidebar={true}
     >
       <div className="mt-8 flex flex-col">
         <div className="sm:col-span-6">

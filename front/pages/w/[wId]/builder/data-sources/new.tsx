@@ -171,6 +171,7 @@ export default function DataSourceNew({
           }}
         />
       }
+      hideSidebar={true}
     >
       <div className="flex flex-1 flex-col space-y-4">
         <SectionHeader
