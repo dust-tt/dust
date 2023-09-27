@@ -31,11 +31,13 @@ export function AssistantPicker({
   );
   return (
     <DropdownMenu>
-      {pickerButton ? (
-        <DropdownMenu.Button>{pickerButton}</DropdownMenu.Button>
-      ) : (
-        <DropdownMenu.Button icon={RobotIcon} />
-      )}
+      <div onClick={() => setSearchText("")}>
+        {pickerButton ? (
+          <DropdownMenu.Button>{pickerButton}</DropdownMenu.Button>
+        ) : (
+          <DropdownMenu.Button icon={RobotIcon} />
+        )}
+      </div>
       <DropdownMenu.Items origin="auto" width={240}>
         {assistants.length > 7 && (
           <div className="border-b border-structure-100 p-2">
@@ -45,7 +47,7 @@ export function AssistantPicker({
                 placeholder="Search"
                 value={searchText}
                 className="h-9 w-full rounded-full border-structure-200 pr-8"
-                onKeyUp={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === "Enter" && searchedAssistants.length > 0) {
                     onItemClick(searchedAssistants[0]);
                     setSearchText("");
