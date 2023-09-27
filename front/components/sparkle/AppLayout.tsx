@@ -154,6 +154,7 @@ export default function AppLayout({
   user,
   owner,
   isWideMode = false,
+  hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
   gaTrackingId,
@@ -164,6 +165,7 @@ export default function AppLayout({
   user: UserType | null;
   owner: WorkspaceType;
   isWideMode?: boolean;
+  hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
@@ -185,86 +187,93 @@ export default function AppLayout({
       </Head>
 
       <div className="light h-full">
-        <Transition.Root show={sidebarOpen} as={Fragment}>
-          <Dialog
-            as="div"
-            className="relative z-50 lg:hidden"
-            onClose={setSidebarOpen}
-          >
-            <Transition.Child
-              as={Fragment}
-              enter="transition-opacity ease-linear duration-300"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="transition-opacity ease-linear duration-300"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
+        {!hideSidebar && (
+          <Transition.Root show={sidebarOpen} as={Fragment}>
+            <Dialog
+              as="div"
+              className="relative z-50 lg:hidden"
+              onClose={setSidebarOpen}
             >
-              <div className="fixed inset-0 bg-gray-900/80" />
-            </Transition.Child>
-
-            <div className="fixed inset-0 flex">
               <Transition.Child
                 as={Fragment}
-                enter="transition ease-in-out duration-300 transform"
-                enterFrom="-translate-x-full"
-                enterTo="translate-x-0"
-                leave="transition ease-in-out duration-300 transform"
-                leaveFrom="translate-x-0"
-                leaveTo="-translate-x-full"
+                enter="transition-opacity ease-linear duration-300"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+                leave="transition-opacity ease-linear duration-300"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
               >
-                <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                  <Transition.Child
-                    as={Fragment}
-                    enter="ease-in-out duration-300"
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="ease-in-out duration-300"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                  >
-                    <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                      <button
-                        type="button"
-                        className="-m-2.5 p-2.5"
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <span className="sr-only">Close sidebar</span>
-                        <XMarkIcon
-                          className="h-6 w-6 text-white"
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </div>
-                  </Transition.Child>
-                  <NavigationBar
-                    user={user}
-                    owner={owner}
-                    subNavigation={subNavigation}
-                    topNavigationCurrent={topNavigationCurrent}
-                  >
-                    {navChildren && navChildren}
-                  </NavigationBar>
-                </Dialog.Panel>
+                <div className="fixed inset-0 bg-gray-900/80" />
               </Transition.Child>
-            </div>
-          </Dialog>
-        </Transition.Root>
 
-        {/* Static sidebar for desktop */}
-        <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-          <NavigationBar
-            user={user}
-            owner={owner}
-            subNavigation={subNavigation}
-            topNavigationCurrent={topNavigationCurrent}
-          >
-            {navChildren && navChildren}
-          </NavigationBar>
-        </div>
+              <div className="fixed inset-0 flex">
+                <Transition.Child
+                  as={Fragment}
+                  enter="transition ease-in-out duration-300 transform"
+                  enterFrom="-translate-x-full"
+                  enterTo="translate-x-0"
+                  leave="transition ease-in-out duration-300 transform"
+                  leaveFrom="translate-x-0"
+                  leaveTo="-translate-x-full"
+                >
+                  <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+                    <Transition.Child
+                      as={Fragment}
+                      enter="ease-in-out duration-300"
+                      enterFrom="opacity-0"
+                      enterTo="opacity-100"
+                      leave="ease-in-out duration-300"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                    >
+                      <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
+                        <button
+                          type="button"
+                          className="-m-2.5 p-2.5"
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <span className="sr-only">Close sidebar</span>
+                          <XMarkIcon
+                            className="h-6 w-6 text-white"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </div>
+                    </Transition.Child>
+                    <NavigationBar
+                      user={user}
+                      owner={owner}
+                      subNavigation={subNavigation}
+                      topNavigationCurrent={topNavigationCurrent}
+                    >
+                      {navChildren && navChildren}
+                    </NavigationBar>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </Dialog>
+          </Transition.Root>
+        )}
 
-        <div className={classNames("mt-0 h-full flex-1 lg:pl-80")}>
-          {/* Title bar with mobile sidebar opener and possible childrens. */}
+        {!hideSidebar && (
+          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <NavigationBar
+              user={user}
+              owner={owner}
+              subNavigation={subNavigation}
+              topNavigationCurrent={topNavigationCurrent}
+            >
+              {navChildren && navChildren}
+            </NavigationBar>
+          </div>
+        )}
+
+        <div
+          className={classNames(
+            "mt-0 h-full flex-1",
+            !hideSidebar ? "lg:pl-80" : ""
+          )}
+        >
           <div
             className={classNames(
               "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:px-6"
@@ -281,7 +290,8 @@ export default function AppLayout({
           </div>
           <div
             className={classNames(
-              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:left-80 lg:pl-0",
+              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:pl-0",
+              !hideSidebar ? "lg:left-80" : "",
               "border-b border-structure-100 bg-white/30 backdrop-blur-md",
               titleChildren ? "fixed" : "lg:hidden"
             )}
