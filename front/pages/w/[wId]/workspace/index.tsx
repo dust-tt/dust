@@ -198,7 +198,7 @@ export default function WorkspaceAdmin({
       <PageHeader
         title="Workspace Settings"
         icon={KeyIcon}
-        description="Use this page to manage your workspace, invite team menbers to Dust and manage their roles."
+        description="Use this page to manage your workspace, invite team members to Dust and manage their roles."
       />
 
       <div className="flex flex-col">
