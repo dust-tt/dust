@@ -195,7 +195,7 @@ Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
           {child}
         </div>
       ))}
-      {nbMoreItems && nbMoreItems > 0 && (
+      {Boolean(nbMoreItems) && (
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
@@ -206,7 +206,7 @@ Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
         >
           <Avatar
             size="sm"
-            name={"+" + String(nbMoreItems < 10 ? nbMoreItems : "")}
+            name={"+" + String(Number(nbMoreItems) < 10 ? nbMoreItems : "")}
             isRounded
           />
         </div>
