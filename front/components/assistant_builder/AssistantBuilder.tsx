@@ -185,6 +185,7 @@ export default function AssistantBuilder({
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
   const [edited, setEdited] = useState(false);
+  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -552,6 +553,7 @@ export default function AssistantBuilder({
               onSave={
                 submitEnabled
                   ? () => {
+                      setIsSavingOrDeleting(true);
                       submitForm()
                         .then(async () => {
                           await mutate(
@@ -560,6 +562,7 @@ export default function AssistantBuilder({
                           void router.push(
                             `/w/${owner.sId}/builder/assistants`
                           );
+                          setIsSavingOrDeleting(false);
                         })
                         .catch((e) => {
                           console.error(e);
