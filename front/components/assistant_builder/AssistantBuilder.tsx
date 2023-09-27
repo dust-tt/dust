@@ -482,6 +482,7 @@ export default function AssistantBuilder({
     if (!res.ok) {
       const data = await res.json();
       window.alert(`Error deleting Assistant: ${data.error.message}`);
+      setIsSavingOrDeleting(false);
       return;
     }
 
