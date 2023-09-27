@@ -88,7 +88,8 @@ export function Avatar({
   isRounded = false,
 }: AvatarProps) {
   const getColor = (name: string) => {
-    if (/^\d+$/.test(name)) {
+    if (/\+/.test(name)) {
+      //find if there is a plus
       return "s-bg-slate-300";
     }
     let hash = 0;
@@ -99,7 +100,7 @@ export function Avatar({
   };
 
   const getTextVariant = (name: string) => {
-    if (/^\d+$/.test(name)) {
+    if (/\+/.test(name)) {
       return "s-text-slate-700";
     }
     let hash = 0;
@@ -147,7 +148,7 @@ export function Avatar({
             "s-select-none s-font-medium"
           )}
         >
-          {name[0].toUpperCase()}
+          {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
         <User className="s-h-1/2 s-w-1/2 s-opacity-20" />
@@ -158,10 +159,10 @@ export function Avatar({
 
 interface AvatarStackProps {
   children: ReactNode;
-  maxAvatars?: number;
+  nbMoreItems?: number;
 }
 
-Avatar.Stack = function ({ children, maxAvatars = 3 }: AvatarStackProps) {
+Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseEnter = () => {
@@ -171,11 +172,7 @@ Avatar.Stack = function ({ children, maxAvatars = 3 }: AvatarStackProps) {
   const handleMouseLeave = () => {
     setIsHovered(false);
   };
-
-  // Convert children to an array and slice it to maxAvatars
   const childrenArray = React.Children.toArray(children);
-  const visibleChildren = childrenArray.slice(0, maxAvatars);
-  const remainingCount = childrenArray.length - maxAvatars - 1;
 
   return (
     <div
@@ -186,30 +183,34 @@ Avatar.Stack = function ({ children, maxAvatars = 3 }: AvatarStackProps) {
         marginLeft: "20px",
       }}
     >
-      {remainingCount > 0 && (
-        <div
-          className="s-cursor-pointer s-drop-shadow-md"
-          style={{
-            width: isHovered ? "42px" : "32px",
-            transition: "width 300ms ease-out",
-            marginLeft: "-20px",
-          }}
-        >
-          <Avatar size="sm" name={String(remainingCount + 1)} isRounded />
-        </div>
-      )}
-      {visibleChildren.map((child) => (
+      {childrenArray.map((child) => (
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
             width: isHovered ? "44px" : "32px",
-            transition: "width 300ms ease-out",
+            transition: "width 200ms ease-out",
             marginLeft: "-20px",
           }}
         >
           {child}
         </div>
       ))}
+      {nbMoreItems && (
+        <div
+          className="s-cursor-pointer s-drop-shadow-md"
+          style={{
+            width: isHovered ? "42px" : "32px",
+            transition: "width 200ms ease-out",
+            marginLeft: "-20px",
+          }}
+        >
+          <Avatar
+            size="sm"
+            name={"+" + String(nbMoreItems < 10 ? nbMoreItems : "")}
+            isRounded
+          />
+        </div>
+      )}
     </div>
   );
 };

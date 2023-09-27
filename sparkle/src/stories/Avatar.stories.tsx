@@ -40,13 +40,14 @@ export const AvatarStackExample = () => (
       />
     </Avatar.Stack>
 
-    <Avatar.Stack maxAvatars={4}>
+    <Avatar.Stack nbMoreItems={8}>
       <Avatar
         size="sm"
         name="Rafael Doe"
         visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
         isRounded
       />
+      <Avatar size="sm" name="Mason Johnson" isRounded />
       <Avatar
         size="sm"
         name="Omar Doe"
@@ -54,14 +55,6 @@ export const AvatarStackExample = () => (
         isRounded
       />
       <Avatar size="sm" name="Eleanor Wright" isRounded />
-      <Avatar size="sm" name="Mason Johnson" isRounded />
-      <Avatar
-        size="sm"
-        name="Aria Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
-        isRounded
-      />
-      <Avatar size="sm" name="Oliver Bennett" isRounded />
     </Avatar.Stack>
   </div>
 );
