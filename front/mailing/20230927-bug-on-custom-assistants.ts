@@ -13,8 +13,7 @@ export const sendAPIUserEmail = async ({
   const msg = {
     to: user_email,
     from: "spolu@dust.tt",
-    subject:
-      "[DUST] Resolved: Access Issue with Your Custom Assistants on Dust",
+    subject: "[Dust] Resolved: access to your custom assistants",
     html: `<p>Hi there—</p>
     <p>I'm Stan, a cofounder of Dust.</p>
     <p>Thanks for trying us out. We noticed that you tried creating at least one custom assistant over the last few days. Due to an issue on our end, these assistants didn't show up in your workspace as a free user and you weren't able to start conversations with them.</p>
