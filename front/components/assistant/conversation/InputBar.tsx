@@ -610,6 +610,7 @@ export function AssistantInputBar({
                     }
                   }}
                   assistants={activeAgents}
+                  manageButtons={true}
                 />
               </div>
               <IconButton

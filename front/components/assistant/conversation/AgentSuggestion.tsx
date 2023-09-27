@@ -11,6 +11,7 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 
 export function AgentSuggestion({
   owner,
@@ -48,34 +49,25 @@ export function AgentSuggestion({
             />
           ))}
         </Button.List>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <AssistantPicker
+          owner={owner}
+          assistants={agents.slice(3)}
+          onItemClick={async (agent) => {
+            if (!loading) {
+              setLoading(true);
+              await selectSuggestionHandler(agent);
+              setLoading(false);
+            }
+          }}
+          pickerButton={
             <Button
               variant="tertiary"
               size="xs"
               icon={RobotIcon}
               label="Select another"
             />
-          </DropdownMenu.Button>
-          <div className="relative bottom-6 z-30">
-            <DropdownMenu.Items origin="auto" width={240}>
-              {agents.slice(3).map((agent) => (
-                <DropdownMenu.Item
-                  key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
-                  label={agent.name}
-                  visual={agent.pictureUrl}
-                  onClick={async () => {
-                    if (!loading) {
-                      setLoading(true);
-                      await selectSuggestionHandler(agent);
-                      setLoading(false);
-                    }
-                  }}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </div>
-        </DropdownMenu>
+          }
+        />
       </div>
     </div>
   );

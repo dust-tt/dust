@@ -15,21 +15,27 @@ export function AssistantPicker({
   owner,
   assistants,
   onItemClick,
+  pickerButton,
+  manageButtons,
 }: {
   owner: WorkspaceType;
   assistants: AgentConfigurationType[];
   onItemClick: (assistant: AgentConfigurationType) => void;
+  pickerButton?: React.ReactNode;
+  manageButtons?: boolean;
 }) {
   const [searchText, setSearchText] = useState("");
-
   const searchedAssistants = assistants.filter((a) =>
     a.name.toLowerCase().startsWith(searchText.toLowerCase())
   );
-
   return (
     <DropdownMenu>
-      <DropdownMenu.Button icon={RobotIcon} />
-      <DropdownMenu.Items origin="bottomRight" width={240}>
+      {pickerButton ? (
+        <DropdownMenu.Button>{pickerButton}</DropdownMenu.Button>
+      ) : (
+        <DropdownMenu.Button icon={RobotIcon} />
+      )}
+      <DropdownMenu.Items origin="auto" width={240}>
         {assistants.length > 7 && (
           <div className="border-b border-structure-100 p-2">
             <div className="relative text-sm font-medium text-element-800">
@@ -56,7 +62,7 @@ export function AssistantPicker({
         <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
           {searchedAssistants.map((c) => (
             <DropdownMenu.Item
-              key={c.sId}
+              key={`assistant-picker-${c.sId}`}
               label={"@" + c.name}
               visual={c.pictureUrl}
               onClick={() => {
@@ -66,26 +72,27 @@ export function AssistantPicker({
             />
           ))}
         </div>
-        {(owner.role === "admin" || owner.role === "builder") && (
-          <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
-            <Link href={`/w/${owner.sId}/builder/assistants/new`}>
-              <Button
-                label="Create"
-                size="xs"
-                variant="secondary"
-                icon={PlusIcon}
-              />
-            </Link>
-            <Link href={`/w/${owner.sId}/builder/assistants`}>
-              <Button
-                label="Manage"
-                size="xs"
-                variant="tertiary"
-                icon={WrenchIcon}
-              />
-            </Link>
-          </div>
-        )}
+        {(owner.role === "admin" || owner.role === "builder") &&
+          manageButtons && (
+            <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
+              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                <Button
+                  label="Create"
+                  size="xs"
+                  variant="secondary"
+                  icon={PlusIcon}
+                />
+              </Link>
+              <Link href={`/w/${owner.sId}/builder/assistants`}>
+                <Button
+                  label="Manage"
+                  size="xs"
+                  variant="tertiary"
+                  icon={WrenchIcon}
+                />
+              </Link>
+            </div>
+          )}
       </DropdownMenu.Items>
     </DropdownMenu>
   );
