@@ -190,7 +190,22 @@ export default function AssistantNew({
               <div className="flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   {displayedAgents.map((agent) => (
-                    <AvatarListItem key={agent.sId} agent={agent} />
+                    <a
+                      key={agent.sId}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        void handleSubmit(
+                          `Hi :mention[${agent.name}]{sId=${agent.sId}}, how can you help me with?`,
+                          [
+                            {
+                              configurationId: agent.sId,
+                            },
+                          ]
+                        );
+                      }}
+                    >
+                      <AvatarListItem agent={agent} />
+                    </a>
                   ))}
                 </div>
               </div>
