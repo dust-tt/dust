@@ -19,28 +19,39 @@ export const BasicBarHeader: Story = {
   },
 };
 
-export const BasicBarHeaderValidate = () => (
-  <div className="s-mt-16 s-h-full s-w-full">
-    <BarHeader
-      title="Knowledge Base"
-      rightActions={
-        <BarHeader.ButtonBar
-          variant="validate"
-          onSave={() => alert("Save !")}
-        />
-      }
-    />
-    <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
-      <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
-      <div className="s-flex s-flex-col s-gap-y-96">
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+export const BasicBarHeaderValidate = () => {
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  return (
+    <div className="s-mt-16 s-h-full s-w-full">
+      <BarHeader
+        title="Knowledge Base"
+        rightActions={
+          <BarHeader.ButtonBar
+            variant="validate"
+            isSaving={isSaving}
+            onSave={() => {
+              setIsSaving(true);
+              setTimeout(() => {
+                setIsSaving(false);
+                alert("Save !");
+              }, 2000);
+            }}
+          />
+        }
+      />
+      <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
+        <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
+        <div className="s-flex s-flex-col s-gap-y-96">
+          <Avatar visual="https://source.unsplash.com/random" size="xl" />
+          <Avatar visual="https://source.unsplash.com/random" size="xl" />
+          <Avatar visual="https://source.unsplash.com/random" size="xl" />
+          <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const BasicBarHeaderValidateSaveDisabled = () => (
   <div className="s-mt-16 s-h-full s-w-full">
