@@ -62,7 +62,7 @@ export function ConversationTitle({
               <Avatar
                 name={agent.name}
                 visual={agent.pictureUrl}
-                size="md"
+                size="sm"
                 key={agent.configurationId}
                 isRounded
               />
@@ -81,7 +81,7 @@ export function ConversationTitle({
               <Avatar
                 name={user.fullName || user.username}
                 visual={user.pictureUrl}
-                size="md"
+                size="sm"
                 key={i}
                 isRounded
               />
