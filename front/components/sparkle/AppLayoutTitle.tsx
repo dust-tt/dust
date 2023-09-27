@@ -21,10 +21,12 @@ export function AppLayoutSimpleSaveCancelTitle({
   title,
   onSave,
   onCancel,
+  isSaving,
 }: {
   title: string;
   onSave?: () => void;
   onCancel: () => void;
+  isSaving?: boolean;
 }) {
   return (
     <BarHeader
@@ -34,6 +36,7 @@ export function AppLayoutSimpleSaveCancelTitle({
           variant="validate"
           onCancel={onCancel}
           onSave={onSave}
+          isSaving={isSaving}
         />
       }
       className="ml-10 lg:ml-0"

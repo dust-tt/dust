@@ -576,7 +576,7 @@ export default function AssistantBuilder({
                     }
                   : undefined
               }
-
+              isSaving={isSavingOrDeleting}
             />
           )
         }
