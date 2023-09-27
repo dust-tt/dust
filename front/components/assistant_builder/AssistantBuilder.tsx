@@ -14,6 +14,7 @@ import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
+import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -552,14 +553,19 @@ export default function AssistantBuilder({
                 submitEnabled
                   ? () => {
                       submitForm()
-                        .then(() => {
+                        .then(async () => {
+                          await mutate(
+                            `/api/w/${owner.sId}/assistant/agent_configurations`
+                          );
                           void router.push(
                             `/w/${owner.sId}/builder/assistants`
                           );
                         })
                         .catch((e) => {
                           console.error(e);
-                          alert("An error occured");
+                          alert(
+                            "An error occured while saving your agent. Please try again. If the error persists, pease reach out to team@dust.tt"
+                          );
                         });
                     }
                   : undefined
