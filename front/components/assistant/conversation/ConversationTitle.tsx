@@ -52,6 +52,7 @@ export function ConversationTitle({
       <div className="flex gap-2">
         <div className="hidden lg:flex">
           <Avatar.Stack
+            size="md"
             nbMoreItems={
               conversation.participants.agents.length > 4
                 ? conversation.participants.agents.length - 4
@@ -62,7 +63,7 @@ export function ConversationTitle({
               <Avatar
                 name={agent.name}
                 visual={agent.pictureUrl}
-                size="sm"
+                size="md"
                 key={agent.configurationId}
                 isRounded
               />
@@ -71,6 +72,7 @@ export function ConversationTitle({
         </div>
         <div className="hidden lg:flex">
           <Avatar.Stack
+            size="md"
             nbMoreItems={
               conversation.participants.users.length > 4
                 ? conversation.participants.users.length - 4
@@ -81,7 +83,7 @@ export function ConversationTitle({
               <Avatar
                 name={user.fullName || user.username}
                 visual={user.pictureUrl}
-                size="sm"
+                size="md"
                 key={i}
                 isRounded
               />
