@@ -525,6 +525,7 @@ export default function AssistantBuilder({
         avatarUrls={avatarUrls}
       />
       <AppLayout
+        hideSidebar
         user={user}
         owner={owner}
         gaTrackingId={gaTrackingId}
