@@ -51,31 +51,44 @@ export function ConversationTitle({
 
       <div className="flex gap-2">
         <div className="hidden lg:flex">
-          {conversation.participants.agents.map((agent) => (
-            <div
-              className="-mr-5 inline-block last:mr-0"
-              key={agent.configurationId}
-            >
+          <Avatar.Stack
+            size="md"
+            nbMoreItems={
+              conversation.participants.agents.length > 4
+                ? conversation.participants.agents.length - 4
+                : 0
+            }
+          >
+            {conversation.participants.agents.slice(0, 4).map((agent) => (
               <Avatar
                 name={agent.name}
                 visual={agent.pictureUrl}
                 size="md"
-                isRounded={true}
+                key={agent.configurationId}
+                isRounded
               />
-            </div>
-          ))}
+            ))}
+          </Avatar.Stack>
         </div>
         <div className="hidden lg:flex">
-          {conversation.participants.users.map((user, i) => (
-            <div className="-mr-5 inline-block last:mr-0" key={i}>
+          <Avatar.Stack
+            size="md"
+            nbMoreItems={
+              conversation.participants.users.length > 4
+                ? conversation.participants.users.length - 4
+                : 0
+            }
+          >
+            {conversation.participants.users.slice(0, 4).map((user, i) => (
               <Avatar
                 name={user.fullName || user.username}
                 visual={user.pictureUrl}
                 size="md"
-                isRounded={true}
+                key={i}
+                isRounded
               />
-            </div>
-          ))}
+            ))}
+          </Avatar.Stack>
         </div>
 
         <div className="hidden lg:flex">
