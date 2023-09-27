@@ -470,6 +470,11 @@ Mention.init(
   {
     modelName: "mention",
     sequelize: front_sequelize,
+    indexes: [
+      {
+        fields: ["messageId"],
+      },
+    ],
   }
 );
 
