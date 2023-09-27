@@ -144,7 +144,7 @@ export function AvatarPicker({
       isOpen={isOpen}
       onClose={onClose}
       title="Select an avatar for your assistant:"
-      isFullScreen={false}
+      isFullScreen={true}
       hasChanged={currentTab === "upload" && !!src}
       onSave={isUploadingAvatar ? undefined : onUpload}
     >
@@ -154,98 +154,104 @@ export function AvatarPicker({
         onChange={onFileChange}
         ref={fileInputRef}
       />
-      <div className="pt-8">
-        <Tab
-          tabs={[
-            {
-              label: "Pick one from the gallery",
-              current: currentTab === "pick",
-              icon: ImageIcon,
-            },
-            {
-              label: "Upload your own",
-              current: currentTab === "upload",
-              icon: ArrowUpOnSquareIcon,
-            },
-          ]}
-          onTabClick={(tab) => {
-            const isUploadTab = tab.startsWith("Upload");
-            if (isUploadTab) {
-              setCurrentTab("upload");
-            } else {
-              setCurrentTab("pick");
-            }
-          }}
-        />
-      </div>
-      {currentTab === "pick" && (
-        <div className="grid max-w-3xl grid-cols-8 gap-4 pt-8">
-          {avatarUrls.map(({ available, url }) => (
-            <div
-              key={url}
-              className={classNames(
-                available ? "cursor-pointer" : "opacity-30"
-              )}
-              onClick={() => {
-                if (available) {
-                  onPick(url);
-                  onClose();
-                }
-              }}
-            >
-              <Avatar
-                size="lg"
-                visual={<img src={url} />}
-                clickable={available}
-              />
-            </div>
-          ))}
+      <div className="mx-auto max-w-4xl px-8 pt-6">
+        <div className="overflow-x-auto">
+          <Tab
+            tabs={[
+              {
+                label: "Gallery",
+                current: currentTab === "pick",
+                icon: ImageIcon,
+              },
+              {
+                label: "Upload",
+                current: currentTab === "upload",
+                icon: ArrowUpOnSquareIcon,
+              },
+            ]}
+            onTabClick={(tab) => {
+              const isUploadTab = tab.startsWith("Upload");
+              if (isUploadTab) {
+                setCurrentTab("upload");
+              } else {
+                setCurrentTab("pick");
+              }
+            }}
+          />
         </div>
-      )}
-      <div
-        className={classNames(
-          "flex  w-full items-center justify-center  pt-8 align-middle",
-          currentTab !== "upload" ? "hidden" : "",
-          !src ? "min-h-64 bg-slate-50" : ""
+        {currentTab === "pick" && (
+          <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
+            {avatarUrls.map(({ available, url }) => (
+              <div
+                key={url}
+                className={classNames(
+                  available ? "cursor-pointer" : "opacity-30"
+                )}
+                onClick={() => {
+                  if (available) {
+                    onPick(url);
+                    onClose();
+                  }
+                }}
+              >
+                <Avatar
+                  size="auto"
+                  visual={<img src={url} />}
+                  clickable={available}
+                />
+              </div>
+            ))}
+          </div>
         )}
-      >
-        {src ? (
-          <div>
-            <ReactCrop crop={crop} aspect={1} onChange={(_, pC) => setCrop(pC)}>
-              <img
-                src={src}
-                alt="Profile"
-                onLoad={(event) => {
-                  const { naturalWidth: width, naturalHeight: height } =
-                    event.currentTarget;
+        <div
+          className={classNames(
+            "mt-8 flex items-center justify-center",
+            currentTab !== "upload" ? "hidden" : "",
+            !src ? "min-h-64 bg-slate-50" : ""
+          )}
+        >
+          {src ? (
+            <div>
+              <ReactCrop
+                crop={crop}
+                aspect={1}
+                onChange={(_, pC) => setCrop(pC)}
+              >
+                <img
+                  src={src}
+                  alt="Profile"
+                  onLoad={(event) => {
+                    const { naturalWidth: width, naturalHeight: height } =
+                      event.currentTarget;
 
-                  const newCrop = centerCrop(
-                    makeAspectCrop(
-                      {
-                        unit: "%",
-                        width: 100,
-                      },
-                      1,
+                    const newCrop = centerCrop(
+                      makeAspectCrop(
+                        {
+                          unit: "%",
+                          width: 100,
+                        },
+                        1,
+                        width,
+                        height
+                      ),
                       width,
                       height
-                    ),
-                    width,
-                    height
-                  );
+                    );
 
-                  setCrop(newCrop);
-                }}
-                ref={imageRef}
-              />
-            </ReactCrop>
-          </div>
-        ) : (
-          <Button
-            label="Upload"
-            icon={ArrowUpOnSquareIcon}
-            onClick={() => fileInputRef?.current?.click()}
-          />
-        )}
+                    setCrop(newCrop);
+                  }}
+                  ref={imageRef}
+                />
+              </ReactCrop>
+            </div>
+          ) : (
+            <Button
+              label="Upload"
+              icon={ArrowUpOnSquareIcon}
+              onClick={() => fileInputRef?.current?.click()}
+            />
+          )}
+        </div>
       </div>
     </Modal>
   );
