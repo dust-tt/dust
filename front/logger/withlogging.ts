@@ -63,7 +63,7 @@ export const withLogging = (handler: any, streaming = false) => {
         method: req.method,
         url: req.url,
         statusCode: res.statusCode,
-        duration: `${elapsed} ms`,
+        durationMs: elapsed,
       },
       "Processed request"
     );
