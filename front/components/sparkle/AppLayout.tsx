@@ -154,24 +154,24 @@ export default function AppLayout({
   user,
   owner,
   isWideMode = false,
+  hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
   gaTrackingId,
   navChildren,
   titleChildren,
   children,
-  hideSidebar = false,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
   isWideMode?: boolean;
+  hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SparkleAppLayoutNavigation[] | null;
   gaTrackingId: string;
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
-  hideSidebar?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -290,9 +290,8 @@ export default function AppLayout({
           </div>
           <div
             className={classNames(
-              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12",
+              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:pl-0",
               !hideSidebar ? "lg:left-80" : "",
-              "lg:pl-0",
               "border-b border-structure-100 bg-white/30 backdrop-blur-md",
               titleChildren ? "fixed" : "lg:hidden"
             )}
