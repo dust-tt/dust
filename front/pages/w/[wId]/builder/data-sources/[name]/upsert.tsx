@@ -220,7 +220,7 @@ export default function DataSourceUpsert({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Upsert document"
+          title="Upsert a document"
           onClose={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`

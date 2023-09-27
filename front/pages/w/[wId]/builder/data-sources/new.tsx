@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -135,11 +136,19 @@ export default function DataSourceNew({
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title="Create a Data Source"
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/builder/data-sources`);
+          }}
+        />
+      }
     >
       <div className="flex flex-1 flex-col space-y-4">
         <SectionHeader
           title="Create a new Data Source"
-          description="A Data Source allows you to upload text documents (via API or manually) to make them available to Dust."
+          description="A Data Source allows you to upload text documents (via API or manually) to make them available to your assistants."
         />
         <div>
           <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -148,7 +157,7 @@ export default function DataSourceNew({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                DataSource Name
+                Data Source Name
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">

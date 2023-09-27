@@ -153,7 +153,7 @@ export default function DataSourceView({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Search documents"
+          title="Search Data Source"
           onClose={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`

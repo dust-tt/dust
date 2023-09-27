@@ -1,4 +1,4 @@
-import { Button, Checkbox } from "@dust-tt/sparkle";
+import { Button, Checkbox, TrashIcon } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -356,13 +356,14 @@ function StandardDataSourceSettings({
         </div>
       </div>
 
-      <div className="flex pt-6">
+      <div className="flex pt-24">
         <div className="flex">
           <Button
             variant="secondaryWarning"
             onClick={handleDelete}
+            icon={TrashIcon}
             disabled={isDeleting || isUpdating}
-            label={isDeleting ? "Deleting..." : "Delete"}
+            label={isDeleting ? "Deleting..." : "Delete this Data Source"}
           />
         </div>
         <div className="flex-1"></div>

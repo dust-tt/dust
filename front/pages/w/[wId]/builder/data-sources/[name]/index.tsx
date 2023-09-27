@@ -15,6 +15,7 @@ import { useSWRConfig } from "swr";
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -181,7 +182,7 @@ function StandardDataSourceView({
   return (
     <div className="flex flex-col">
       <SectionHeader
-        title={`Manage ${dataSource.name}`}
+        title={`Data Source ${dataSource.name}`}
         description="Use this page to view and upload documents to your data source."
         action={
           readOnly
@@ -242,7 +243,7 @@ function StandardDataSourceView({
           <div className="">
             <div className="mt-0 flex-none">
               <Button
-                variant="secondary"
+                variant="primary"
                 icon={PlusIcon}
                 label="Document"
                 onClick={() => {
@@ -591,6 +592,8 @@ export default function DataSourceView({
   githubAppUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   return (
     <AppLayout
       user={user}
@@ -601,6 +604,14 @@ export default function DataSourceView({
         owner,
         current: "data_sources",
       })}
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title={`Manage Data Source`}
+          onClose={() => {
+            void router.push(`/w/${owner.sId}/builder/data-sources`);
+          }}
+        />
+      }
     >
       {dataSource.connectorId && connector ? (
         <ManagedDataSourceView
