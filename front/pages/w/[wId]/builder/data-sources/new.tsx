@@ -1,11 +1,11 @@
-import { Button, Checkbox, SectionHeader } from "@dust-tt/sparkle";
+import { Checkbox, SectionHeader } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -60,8 +60,9 @@ export default function DataSourceNew({
   dataSources,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [disabled, setDisabled] = useState(true);
-  const [creating, setCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const [valid, setValid] = useState(true);
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
@@ -71,6 +72,9 @@ export default function DataSourceNew({
   const [dataSourceDescription, setDataSourceDescription] = useState("");
 
   const formValidation = useCallback(() => {
+    let edited = false;
+    let valid = true;
+
     let exists = false;
     dataSources.forEach((d) => {
       if (d.name == dataSourceName) {
@@ -79,35 +83,51 @@ export default function DataSourceNew({
     });
     if (exists) {
       setDataSourceNameError("A DataSource with the same name already exists");
-      return false;
+      valid = false;
     } else if (dataSourceName.length == 0) {
+      valid = false;
       setDataSourceNameError("");
-      return false;
     } else if (dataSourceName.startsWith("managed-")) {
       setDataSourceNameError(
         "DataSource name cannot start with the prefix `managed-`"
       );
-      return false;
+      valid = false;
       // eslint-disable-next-line no-useless-escape
     } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDataSourceNameError(
         "DataSource name must only contain letters, numbers, and the characters `._-`"
       );
-      return false;
+      valid = false;
     } else {
+      edited = true;
       setDataSourceNameError("");
-      return true;
     }
-  }, [dataSourceName, dataSources]);
+
+    if (dataSourceDescription.length > 0) {
+      edited = true;
+    }
+
+    if (assistantDefaultSelected === false) {
+      edited = true;
+    }
+
+    setEdited(edited);
+    setValid(valid);
+  }, [
+    dataSourceName,
+    dataSourceDescription,
+    assistantDefaultSelected,
+    dataSources,
+  ]);
 
   useEffect(() => {
-    setDisabled(!formValidation());
-  }, [dataSourceName, formValidation]);
+    formValidation();
+  }, [formValidation]);
 
   const router = useRouter();
 
   const handleCreate = async () => {
-    setCreating(true);
+    setIsSaving(true);
     const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
       method: "POST",
       headers: {
@@ -124,7 +144,7 @@ export default function DataSourceNew({
       await router.push(`/w/${owner.sId}/builder/data-sources`);
     } else {
       const err = (await res.json()) as { error: APIError };
-      setCreating(false);
+      setIsSaving(false);
       window.alert(`Error creating DataSource: ${err.error.message}`);
     }
   };
@@ -137,9 +157,16 @@ export default function DataSourceNew({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
       titleChildren={
-        <AppLayoutSimpleCloseTitle
+        <AppLayoutSimpleSaveCancelTitle
           title="Create a Data Source"
-          onClose={() => {
+          onSave={
+            valid && edited && !isSaving
+              ? async () => {
+                  await handleCreate();
+                }
+              : undefined
+          }
+          onCancel={() => {
             void router.push(`/w/${owner.sId}/builder/data-sources`);
           }}
         />
@@ -235,29 +262,6 @@ export default function DataSourceNew({
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="flex flex-row py-8">
-        <div className="flex flex-1"></div>
-        <div className="flex">
-          <Button
-            variant="tertiary"
-            disabled={creating}
-            onClick={async () => {
-              void router.push(`/w/${owner.sId}/builder/data-sources`);
-            }}
-            label="Cancel"
-          />
-        </div>
-        <div className="flex">
-          <Button
-            disabled={disabled || creating}
-            onClick={async () => {
-              await handleCreate();
-            }}
-            label={creating ? "Creating..." : "Create"}
-          />
         </div>
       </div>
     </AppLayout>
