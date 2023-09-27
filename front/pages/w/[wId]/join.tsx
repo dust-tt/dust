@@ -70,7 +70,7 @@ export default function Join({
             <p className="font-regular mb-16 text-slate-400">
               Glad to see you!
               <br />
-              Please log-in or sign-up with your company email to access this
+              Please log in or sign up with your company email to access this
               page.
             </p>
             <GoogleSignInButton
