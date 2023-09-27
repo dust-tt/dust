@@ -304,6 +304,7 @@ export default function AppView({
 
   return (
     <AppLayout
+      hideSidebar
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
