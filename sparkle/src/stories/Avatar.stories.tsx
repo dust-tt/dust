@@ -84,7 +84,7 @@ export const AvatarExample = () => (
 );
 
 export const AvatarStackExample = () => (
-  <div className="s-flex s-flex-row s-gap-3">
+  <div className="s-flex s-flex-row s-gap-2">
     <Avatar.Stack>
       <Avatar
         size="sm"

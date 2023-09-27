@@ -195,7 +195,7 @@ Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
           {child}
         </div>
       ))}
-      {nbMoreItems && (
+      {nbMoreItems && nbMoreItems > 0 && (
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
