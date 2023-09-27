@@ -471,6 +471,7 @@ export default function AssistantBuilder({
   };
 
   const handleDeleteAgent = async () => {
+    setIsSavingOrDeleting(true);
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
       {
@@ -485,6 +486,7 @@ export default function AssistantBuilder({
     }
 
     await router.push(`/w/${owner.sId}/builder/assistants`);
+    setIsSavingOrDeleting(false);
   };
 
   return (
@@ -574,6 +576,7 @@ export default function AssistantBuilder({
                     }
                   : undefined
               }
+
             />
           )
         }
