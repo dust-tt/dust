@@ -117,7 +117,9 @@ export default function AssistantConversation({
           }}
         />
       }
-      navChildren={<AssistantSidebarMenu owner={owner} />}
+      navChildren={
+        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
+      }
     >
       <Conversation owner={owner} conversationId={conversationId} />
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />

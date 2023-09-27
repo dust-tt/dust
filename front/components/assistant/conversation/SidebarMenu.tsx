@@ -8,7 +8,13 @@ import { useConversations } from "@app/lib/swr";
 import { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
-export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
+export function AssistantSidebarMenu({
+  owner,
+  triggerInputAnimation,
+}: {
+  owner: WorkspaceType;
+  triggerInputAnimation: (() => void) | null;
+}) {
   const router = useRouter();
 
   const { conversations, isConversationsLoading, isConversationsError } =
@@ -64,7 +70,17 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
           <div className="pr py-4 text-right">
-            <Link href={`/w/${owner.sId}/assistant/new`}>
+            <Link
+              href={`/w/${owner.sId}/assistant/new`}
+              onClick={() => {
+                if (
+                  router.pathname === "/w/[wId]/assistant/new" &&
+                  triggerInputAnimation
+                ) {
+                  triggerInputAnimation();
+                }
+              }}
+            >
               <Button
                 labelVisible={true}
                 label="New Conversation"

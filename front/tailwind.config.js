@@ -92,6 +92,7 @@ module.exports = {
         "move-square": "move-square 4s ease-out infinite",
         breathing: "breathing 4s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
+        shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
       },
       colors: {
         brand: {
