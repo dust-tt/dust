@@ -160,19 +160,35 @@ export function Avatar({
 interface AvatarStackProps {
   children: ReactNode;
   nbMoreItems?: number;
+  size?: "sm" | "md";
 }
 
-Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
+const SIZE_SETTINGS = {
+  sm: { widthHovered: "44px", width: "32px" },
+  md: { widthHovered: "52px", width: "40px" }, // Adjust these values as needed for the 'md' size
+};
+
+Avatar.Stack = function ({
+  children,
+  nbMoreItems,
+  size = "sm",
+}: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const childrenArray = React.Children.toArray(children);
 
   const handleMouseEnter = () => {
-    setIsHovered(true);
+    if (childrenArray.length > 1) {
+      setIsHovered(true);
+    }
   };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
+    if (childrenArray.length > 1) {
+      setIsHovered(false);
+    }
   };
-  const childrenArray = React.Children.toArray(children);
+
+  const sizeSetting = SIZE_SETTINGS[size];
 
   return (
     <div
@@ -187,7 +203,7 @@ Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
-            width: isHovered ? "44px" : "32px",
+            width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
             transition: "width 200ms ease-out",
             marginLeft: "-20px",
           }}
@@ -195,19 +211,20 @@ Avatar.Stack = function ({ children, nbMoreItems }: AvatarStackProps) {
           {child}
         </div>
       ))}
-      {nbMoreItems && (
+      {Boolean(nbMoreItems) && (
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
-            width: isHovered ? "42px" : "32px",
+            width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
             transition: "width 200ms ease-out",
             marginLeft: "-20px",
           }}
         >
           <Avatar
-            size="sm"
-            name={"+" + String(nbMoreItems < 10 ? nbMoreItems : "")}
+            size={size}
+            name={"+" + String(Number(nbMoreItems) < 10 ? nbMoreItems : "")}
             isRounded
+            clickable
           />
         </div>
       )}
