@@ -7,7 +7,12 @@ import { isWorkspaceAllowedOnDomain } from "@app/lib/api/workspace";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
+export const getServerSideProps: GetServerSideProps<{
+  wId: string;
+  cId: string;
+  gaTrackingId: string;
+  baseUrl: string;
+}> = async (context) => {
   const wId = context.query.wId as string;
   const cId = context.query.cId as string;
 
