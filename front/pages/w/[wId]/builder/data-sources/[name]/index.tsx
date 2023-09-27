@@ -4,7 +4,6 @@ import {
   PlusIcon,
   SectionHeader,
 } from "@dust-tt/sparkle";
-import { TrashIcon } from "@heroicons/react/20/solid";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -125,8 +124,6 @@ function StandardDataSourceView({
   readOnly: boolean;
   dataSource: DataSourceType;
 }) {
-  const { mutate } = useSWRConfig();
-
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
@@ -158,26 +155,6 @@ function StandardDataSourceView({
   if (offset + limit > total) {
     last = total;
   }
-
-  const handleDelete = async (documentId: string) => {
-    if (
-      confirm(
-        "Are you sure you you want to delete this document (and associated chunks)?"
-      )
-    ) {
-      await fetch(
-        `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
-        }/documents/${encodeURIComponent(documentId)}`,
-        {
-          method: "DELETE",
-        }
-      );
-      await mutate(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/documents?limit=${limit}&offset=${offset}`
-      );
-    }
-  };
 
   return (
     <div className="flex flex-col">
@@ -296,20 +273,14 @@ function StandardDataSourceView({
                       </div>
                     </div>
                     <div className="col-span-1">
-                      {readOnly ? null : (
-                        <div className="ml-2 flex flex-row">
-                          <div className="flex flex-1"></div>
-                          <div className="flex flex-initial">
-                            <TrashIcon
-                              className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block"
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                await handleDelete(d.document_id);
-                              }}
-                            />
-                          </div>
+                      <div className="ml-2 flex flex-row">
+                        <div className="flex flex-1"></div>
+                        <div className="mt-0 flex items-center">
+                          <p className="text-sm text-gray-500">
+                            {timeAgoFrom(d.timestamp)} ago
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-2 flex justify-between">
@@ -317,11 +288,6 @@ function StandardDataSourceView({
                       <p className="text-sm text-gray-300">
                         {Math.floor(d.text_size / 1024)} kb / {d.chunk_count}{" "}
                         chunks{" "}
-                      </p>
-                    </div>
-                    <div className="mt-0 flex items-center">
-                      <p className="text-sm text-gray-500">
-                        {timeAgoFrom(d.timestamp)} ago
                       </p>
                     </div>
                   </div>

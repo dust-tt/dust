@@ -157,6 +157,7 @@ export async function getAgentConfiguration(
       temperature: generationConfig.temperature,
       model,
     };
+
     // Enforce plan limits: check if large models are allowed and act accordingly
     if (
       !owner.plan.limits.largeModels &&
