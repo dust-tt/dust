@@ -132,4 +132,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withLogging(handler, true);
