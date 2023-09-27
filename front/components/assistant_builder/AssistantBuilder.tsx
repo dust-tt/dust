@@ -572,6 +572,7 @@ export default function AssistantBuilder({
                             "An error occured while saving your agent." +
                               " Please try again. If the error persists, pease reach out to team@dust.tt"
                           );
+                          setIsSavingOrDeleting(false);
                         });
                     }
                   : undefined
