@@ -1,15 +1,16 @@
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { WorkspaceType } from "@app/types/user";
 import {
-  DropdownMenu,
-  RobotIcon,
-  MagnifyingGlassStrokeIcon,
   Button,
+  DropdownMenu,
+  MagnifyingGlassStrokeIcon,
   PlusIcon,
+  RobotIcon,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
+
+import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { WorkspaceType } from "@app/types/user";
 
 export function AssistantPicker({
   owner,

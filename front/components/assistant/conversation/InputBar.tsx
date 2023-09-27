@@ -13,13 +13,13 @@ import {
 } from "react";
 import * as ReactDOMServer from "react-dom/server";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 
 // AGENT MENTION
 

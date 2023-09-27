@@ -1,6 +1,7 @@
-import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
+import { Button, RobotIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -11,7 +12,6 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 
 export function AgentSuggestion({
   owner,
