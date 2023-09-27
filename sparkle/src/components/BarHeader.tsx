@@ -55,6 +55,7 @@ type BarHeaderButtonBarValidateProps = {
   variant: "validate";
   onCancel?: () => void;
   onSave?: () => void;
+  isSaving?: boolean;
 };
 
 type BarHeaderButtonBarConversationProps = {
@@ -103,13 +104,14 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             label="Cancel"
             variant="secondaryWarning"
             onClick={props.onCancel}
+            disabled={!props.onCancel || props.isSaving}
           />
           <Button
             size="sm"
-            label="Save"
+            label={props.isSaving ? "Saving" : "Save"}
             variant="primary"
             onClick={props.onSave}
-            disabled={!props.onSave}
+            disabled={!props.onSave || props.isSaving}
           />
         </>
       );

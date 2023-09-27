@@ -194,7 +194,7 @@ export default function AssistantNew({
                   ))}
                 </div>
               </div>
-              <Button.List>
+              <Button.List isWrapping={true}>
                 {activeAgents.length > 4 && (
                   <Button
                     variant="primary"

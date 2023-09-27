@@ -160,7 +160,7 @@ export async function getAgentConfiguration(
     // Enforce plan limits: check if large models are allowed and act accordingly
     if (
       !owner.plan.limits.largeModels &&
-      !getSupportedModelConfig(model).largeModel
+      getSupportedModelConfig(model).largeModel
     ) {
       return null;
     }

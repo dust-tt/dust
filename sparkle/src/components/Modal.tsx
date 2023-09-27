@@ -1,6 +1,8 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
+import { classNames } from "@sparkle/lib/utils";
+
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
 import { ButtonProps } from "./Button";
 
@@ -52,9 +54,10 @@ export function Modal({
 
         <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
           <div
-            className={`s-flex s-items-center s-justify-center s-p-4 sm:s-p-0 ${
-              isFullScreen ? "s-h-full" : "s-min-h-full"
-            }`}
+            className={classNames(
+              "s-flex s-items-center s-justify-center",
+              isFullScreen ? "s-h-full s-p-0" : "s-min-h-full s-p-4"
+            )}
           >
             <Transition.Child
               as={Fragment}
@@ -66,11 +69,12 @@ export function Modal({
               leaveTo="s-opacity-0 s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
             >
               <Dialog.Panel
-                className={`s-relative s-transform s-overflow-hidden s-rounded-lg s-bg-white s-px-4 s-pb-4 s-shadow-xl s-transition-all sm:s-p-6 ${
+                className={classNames(
+                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-py-6 s-transition-all sm:s-px-6",
                   isFullScreen
                     ? "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full"
-                    : "s-max-w-2xl lg:s-w-1/2"
-                }`}
+                    : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2"
+                )}
               >
                 <BarHeader
                   title={title || ""}

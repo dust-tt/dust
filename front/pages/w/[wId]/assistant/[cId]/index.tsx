@@ -30,7 +30,7 @@ export const getServerSideProps: GetServerSideProps<{
   if (!owner || !auth.isUser() || !user) {
     return {
       redirect: {
-        destination: "/",
+        destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
         permanent: false,
       },
     };
