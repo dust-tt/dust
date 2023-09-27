@@ -1,3 +1,4 @@
+import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,6 +10,10 @@ export const statsDClient = new StatsD();
 
 export const withLogging = (handler: any, streaming = false) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
+    const ddtraceSpan = tracer.scope().active();
+    if (ddtraceSpan) {
+      ddtraceSpan.setTag("streaming", streaming);
+    }
     const now = new Date();
     try {
       await handler(req, res);
