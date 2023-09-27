@@ -463,7 +463,7 @@ export default function AssistantBuilder({
     );
 
     if (!res.ok) {
-      throw new Error("An error occured");
+      throw new Error("An error occurred while saving the configuration.");
     }
 
     return res.json();
@@ -564,7 +564,8 @@ export default function AssistantBuilder({
                         .catch((e) => {
                           console.error(e);
                           alert(
-                            "An error occured while saving your agent. Please try again. If the error persists, pease reach out to team@dust.tt"
+                            "An error occured while saving your agent." +
+                              " Please try again. If the error persists, pease reach out to team@dust.tt"
                           );
                         });
                     }
