@@ -70,7 +70,7 @@ export function Modal({
             >
               <Dialog.Panel
                 className={classNames(
-                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-py-6 s-transition-all sm:s-px-6",
+                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-transition-all sm:s-px-6",
                   isFullScreen
                     ? "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full"
                     : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2"
@@ -81,7 +81,7 @@ export function Modal({
                   rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
                 />
                 <div
-                  className={`s-pt-8 ${
+                  className={`s-pb-6 s-pt-14 ${
                     isFullScreen ? "s-h-full s-overflow-y-auto" : ""
                   }`}
                 >
