@@ -1,3 +1,4 @@
+import tracer from "dd-trace";
 import { createParser } from "eventsource-parser";
 
 import { Err, Ok, Result } from "@app/lib/result";
@@ -526,14 +527,25 @@ export const CoreAPI = {
       documents: CoreAPIDocument[];
     }>
   > {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
-      {
-        method: "GET",
+    return await tracer.trace(
+      `CoreAPI`,
+      { resource: "getDataSourceDocuments" },
+      async (span) => {
+        if (span) {
+          span.setTag("projectId", projectId);
+          span.setTag("dataSourceName", dataSourceName);
+          span.setTag("limit", limit);
+          span.setTag("offset", offset);
+        }
+        const response = await fetch(
+          `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
+          {
+            method: "GET",
+          }
+        );
+        return _resultFromResponse(response);
       }
     );
-
-    return _resultFromResponse(response);
   },
 
   async getDataSourceDocument({
@@ -640,27 +652,39 @@ export const CoreAPI = {
       data_source: CoreAPIDataSource;
     }>
   > {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          document_id: documentId,
-          timestamp,
-          text,
-          tags,
-          parents,
-          source_url: sourceUrl,
-          credentials,
-          light_document_output: lightDocumentOutput,
-        }),
+    return await tracer.trace(
+      `CoreAPI`,
+      { resource: "upsertDataSourceDocument" },
+      async (span) => {
+        if (span) {
+          span.setTag("projectId", projectId);
+          span.setTag("dataSourceName", dataSourceName);
+          span.setTag("documentId", documentId);
+        }
+
+        const response = await fetch(
+          `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              document_id: documentId,
+              timestamp,
+              text,
+              tags,
+              parents,
+              source_url: sourceUrl,
+              credentials,
+              light_document_output: lightDocumentOutput,
+            }),
+          }
+        );
+
+        return _resultFromResponse(response);
       }
     );
-
-    return _resultFromResponse(response);
   },
 
   async updateDataSourceDocumentTags({
