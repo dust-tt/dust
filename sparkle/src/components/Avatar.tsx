@@ -199,8 +199,9 @@ Avatar.Stack = function ({
         marginLeft: "20px",
       }}
     >
-      {childrenArray.map((child) => (
+      {childrenArray.map((child, i) => (
         <div
+          key={i}
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
             width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
