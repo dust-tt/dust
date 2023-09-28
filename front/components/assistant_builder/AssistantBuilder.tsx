@@ -803,12 +803,12 @@ export default function AssistantBuilder({
             </div>
           </div>
           {agentConfigurationId && (
-            <div>
+            <div className="flex w-full justify-center">
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
-                    size="sm"
-                    variant="secondaryWarning"
+                    size="md"
+                    variant="primaryWarning"
                     label="Delete this Assistant"
                     icon={TrashIcon}
                   />
@@ -816,12 +816,13 @@ export default function AssistantBuilder({
                 <DropdownMenu.Items origin="bottomLeft" width={280}>
                   <div className="flex flex-col gap-y-4 px-4 py-4">
                     <div className="flex flex-col gap-y-2">
-                      <div className="grow text-sm font-medium text-element-800">
+                      <div className="grow text-sm font-medium text-element-900">
                         Are you sure you want to delete?
                       </div>
 
-                      <div className="text-sm font-normal text-element-700">
-                        This will delete the Assistant for everyone.
+                      <div className="text-sm font-normal text-element-800">
+                        This will be permanent and delete the&nbsp;assistant
+                        for&nbsp;everyone.
                       </div>
                     </div>
                     <div className="flex justify-center">
