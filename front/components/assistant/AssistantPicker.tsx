@@ -41,7 +41,7 @@ export function AssistantPicker({
       </div>
       <DropdownMenu.Items origin="auto" width={240}>
         {assistants.length > 7 && (
-          <div className="border-b border-structure-100 p-2 pb-0">
+          <div className="border-b border-structure-100 p-2">
             <Searchbar
               placeholder="Search"
               name="input"
