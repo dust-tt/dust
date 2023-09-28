@@ -284,13 +284,11 @@ export default function AssistantBuilder({
 
   const formValidation = useCallback(async () => {
     let valid = true;
-    let edited = false;
 
     if (!builderState.handle || builderState.handle === "@") {
       setAssistantHandleError(null);
       valid = false;
     } else {
-      edited = true;
       if (!assistantHandleIsValid(builderState.handle)) {
         setAssistantHandleError("Only letters, numbers, _ and - allowed");
         valid = false;
@@ -302,29 +300,22 @@ export default function AssistantBuilder({
       }
     }
 
+    // description
     if (!builderState.description?.trim()) {
       valid = false;
-    } else {
-      edited = true;
     }
 
     if (!builderState.instructions?.trim()) {
       valid = false;
-    } else {
-      edited = true;
     }
 
     if (builderState.dataSourceMode === "SELECTED") {
-      edited = true;
-
       if (!configuredDataSourceCount) {
         valid = false;
       }
     }
 
     if (builderState.timeFrameMode === "CUSTOM") {
-      edited = true;
-
       if (!builderState.timeFrame.value) {
         valid = false;
         setTimeFrameError("Timeframe must be a number");
@@ -334,7 +325,6 @@ export default function AssistantBuilder({
     }
 
     setSubmitEnabled(valid);
-    setEdited(edited);
   }, [
     builderState.handle,
     builderState.description,
@@ -356,6 +346,7 @@ export default function AssistantBuilder({
   );
 
   const deleteDataSource = (name: string) => {
+    setEdited(true);
     setBuilderState(({ dataSourceConfigurations, ...rest }) => {
       const newConfigs = { ...dataSourceConfigurations };
       delete newConfigs[name];
@@ -503,6 +494,7 @@ export default function AssistantBuilder({
         owner={owner}
         dataSources={configurableDataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
+          setEdited(true);
           setBuilderState((state) => ({
             ...state,
             dataSourceConfigurations: {
@@ -522,6 +514,7 @@ export default function AssistantBuilder({
         isOpen={isAvatarModalOpen}
         setOpen={setIsAvatarModalOpen}
         onPick={(avatarUrl) => {
+          setEdited(true);
           setBuilderState((state) => ({
             ...state,
             avatarUrl,
@@ -599,6 +592,7 @@ export default function AssistantBuilder({
                   placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
                   value={builderState.handle}
                   onChange={(value) => {
+                    setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
                       handle: value.trim(),
@@ -622,6 +616,7 @@ export default function AssistantBuilder({
                   placeholder="Anwser questions about sales, translate from English to French…"
                   value={builderState.description}
                   onChange={(value) => {
+                    setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
                       description: value,
@@ -673,6 +668,7 @@ export default function AssistantBuilder({
                   placeholder="I want you to act as…"
                   value={builderState.instructions}
                   onChange={(value) => {
+                    setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
                       instructions: value,
@@ -686,6 +682,7 @@ export default function AssistantBuilder({
                 owner={owner}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
+                  setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
                     generationSettings,
@@ -755,6 +752,7 @@ export default function AssistantBuilder({
                           key={key}
                           label={value}
                           onClick={() => {
+                            setEdited(true);
                             setBuilderState((state) => ({
                               ...state,
                               dataSourceMode: key as DataSourceMode,
@@ -785,6 +783,7 @@ export default function AssistantBuilder({
                   onDelete={deleteDataSource}
                   timeFrameMode={builderState.timeFrameMode}
                   setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
+                    setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
                       timeFrameMode,
@@ -792,6 +791,7 @@ export default function AssistantBuilder({
                   }}
                   timeFrame={builderState.timeFrame}
                   setTimeFrame={(timeFrame) => {
+                    setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
                       timeFrame,
