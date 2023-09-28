@@ -23,6 +23,7 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AgentMessage,
   Conversation,
+  ConversationAgent,
   ConversationParticipant,
   Mention,
   Message,
@@ -625,9 +626,27 @@ export async function* postUserMessage(
     return;
   }
 
+  const agentMentions = mentions.filter(isAgentMention);
+
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await front_sequelize.transaction(async (t) => {
+      // TODO: if no agentMentions, we want to use the auto-reply enabled agents
+      if (agentMentions.length) {
+        // disable auto-reply for all `conversation_agents` for this conversation
+        await ConversationAgent.update(
+          {
+            autoReplyEnabled: false,
+          },
+          {
+            where: {
+              conversationId: conversation.id,
+            },
+            transaction: t,
+          }
+        );
+      }
+
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -711,8 +730,8 @@ export async function* postUserMessage(
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
-          mentions.filter(isAgentMention).map((mention) => {
-            // For each assistant/agent mention, create an "empty" agent message.
+          agentMentions.map((mention) => {
+            // For each assistant/agent mention, create an "empty" agent message and upsert a "replyEnabled" conversation_agent row.
             return (async () => {
               // `getAgentConfiguration` checks that we're only pulling a configuration from the
               // same workspace or a global one.
@@ -747,6 +766,17 @@ export async function* postUserMessage(
                   conversationId: conversation.id,
                   parentId: userMessage.id,
                   agentMessageId: agentMessageRow.id,
+                },
+                {
+                  transaction: t,
+                }
+              );
+
+              await ConversationAgent.upsert(
+                {
+                  conversationId: conversation.id,
+                  agentConfigurationId: configuration.sId,
+                  autoReplyEnabled: true,
                 },
                 {
                   transaction: t,
