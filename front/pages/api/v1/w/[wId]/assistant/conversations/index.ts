@@ -8,7 +8,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PostMessagesRequestBodySchema } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages";
+import { PostMessagesRequestBodySchema } from "@app/pages/api/v1/w/[wId]/assistant/[cId]/messages";
 import { ConversationType } from "@app/types/assistant/conversation";
 
 const PostConversationsRequestBodySchema = t.type({
