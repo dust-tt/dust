@@ -14,6 +14,7 @@ import router from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
+import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -184,6 +185,7 @@ export default function AssistantBuilder({
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
   const [edited, setEdited] = useState(false);
+  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -462,13 +464,14 @@ export default function AssistantBuilder({
     );
 
     if (!res.ok) {
-      throw new Error("An error occured");
+      throw new Error("An error occurred while saving the configuration.");
     }
 
     return res.json();
   };
 
   const handleDeleteAgent = async () => {
+    setIsSavingOrDeleting(true);
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
       {
@@ -479,10 +482,12 @@ export default function AssistantBuilder({
     if (!res.ok) {
       const data = await res.json();
       window.alert(`Error deleting Assistant: ${data.error.message}`);
+      setIsSavingOrDeleting(false);
       return;
     }
 
     await router.push(`/w/${owner.sId}/builder/assistants`);
+    setIsSavingOrDeleting(false);
   };
 
   return (
@@ -551,19 +556,29 @@ export default function AssistantBuilder({
               onSave={
                 submitEnabled
                   ? () => {
+                      setIsSavingOrDeleting(true);
                       submitForm()
-                        .then(() => {
+                        .then(async () => {
+                          await mutate(
+                            `/api/w/${owner.sId}/assistant/agent_configurations`
+                          );
                           void router.push(
                             `/w/${owner.sId}/builder/assistants`
                           );
+                          setIsSavingOrDeleting(false);
                         })
                         .catch((e) => {
                           console.error(e);
-                          alert("An error occured");
+                          alert(
+                            "An error occured while saving your agent." +
+                              " Please try again. If the error persists, pease reach out to team@dust.tt"
+                          );
+                          setIsSavingOrDeleting(false);
                         });
                     }
                   : undefined
               }
+              isSaving={isSavingOrDeleting}
             />
           )
         }
