@@ -153,7 +153,7 @@ export default function DataSourceView({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Search documents"
+          title="Search Data Source"
           onClose={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
@@ -161,6 +161,7 @@ export default function DataSourceView({
           }}
         />
       }
+      hideSidebar={true}
     >
       <div className="mt-8 flex flex-col">
         <div className="sm:col-span-6">

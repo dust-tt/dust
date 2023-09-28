@@ -1,10 +1,11 @@
-import { Button, Checkbox, SectionHeader } from "@dust-tt/sparkle";
+import { Checkbox, SectionHeader } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -59,8 +60,9 @@ export default function DataSourceNew({
   dataSources,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [disabled, setDisabled] = useState(true);
-  const [creating, setCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEdited, setIsEdited] = useState(false);
+  const [isValid, setIsValid] = useState(true);
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
@@ -70,6 +72,9 @@ export default function DataSourceNew({
   const [dataSourceDescription, setDataSourceDescription] = useState("");
 
   const formValidation = useCallback(() => {
+    let edited = false;
+    let valid = true;
+
     let exists = false;
     dataSources.forEach((d) => {
       if (d.name == dataSourceName) {
@@ -78,35 +83,51 @@ export default function DataSourceNew({
     });
     if (exists) {
       setDataSourceNameError("A DataSource with the same name already exists");
-      return false;
+      valid = false;
     } else if (dataSourceName.length == 0) {
+      valid = false;
       setDataSourceNameError("");
-      return false;
     } else if (dataSourceName.startsWith("managed-")) {
       setDataSourceNameError(
         "DataSource name cannot start with the prefix `managed-`"
       );
-      return false;
+      valid = false;
       // eslint-disable-next-line no-useless-escape
     } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDataSourceNameError(
         "DataSource name must only contain letters, numbers, and the characters `._-`"
       );
-      return false;
+      valid = false;
     } else {
+      edited = true;
       setDataSourceNameError("");
-      return true;
     }
-  }, [dataSourceName, dataSources]);
+
+    if (dataSourceDescription.length > 0) {
+      edited = true;
+    }
+
+    if (assistantDefaultSelected === false) {
+      edited = true;
+    }
+
+    setIsEdited(edited);
+    setIsValid(valid);
+  }, [
+    dataSourceName,
+    dataSourceDescription,
+    assistantDefaultSelected,
+    dataSources,
+  ]);
 
   useEffect(() => {
-    setDisabled(!formValidation());
-  }, [dataSourceName, formValidation]);
+    formValidation();
+  }, [formValidation]);
 
   const router = useRouter();
 
   const handleCreate = async () => {
-    setCreating(true);
+    setIsSaving(true);
     const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
       method: "POST",
       headers: {
@@ -123,7 +144,7 @@ export default function DataSourceNew({
       await router.push(`/w/${owner.sId}/builder/data-sources`);
     } else {
       const err = (await res.json()) as { error: APIError };
-      setCreating(false);
+      setIsSaving(false);
       window.alert(`Error creating DataSource: ${err.error.message}`);
     }
   };
@@ -135,11 +156,27 @@ export default function DataSourceNew({
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
+      titleChildren={
+        <AppLayoutSimpleSaveCancelTitle
+          title="Create a Data Source"
+          onSave={
+            isValid && isEdited && !isSaving
+              ? async () => {
+                  await handleCreate();
+                }
+              : undefined
+          }
+          onCancel={() => {
+            void router.push(`/w/${owner.sId}/builder/data-sources`);
+          }}
+        />
+      }
+      hideSidebar={true}
     >
       <div className="flex flex-1 flex-col space-y-4">
         <SectionHeader
           title="Create a new Data Source"
-          description="A Data Source allows you to upload text documents (via API or manually) to make them available to Dust."
+          description="A Data Source allows you to upload text documents (via API or manually) to make them available to your assistants."
         />
         <div>
           <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -148,7 +185,7 @@ export default function DataSourceNew({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                DataSource Name
+                Data Source Name
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
@@ -226,29 +263,6 @@ export default function DataSourceNew({
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="flex flex-row py-8">
-        <div className="flex flex-1"></div>
-        <div className="flex">
-          <Button
-            variant="tertiary"
-            disabled={creating}
-            onClick={async () => {
-              void router.push(`/w/${owner.sId}/builder/data-sources`);
-            }}
-            label="Cancel"
-          />
-        </div>
-        <div className="flex">
-          <Button
-            disabled={disabled || creating}
-            onClick={async () => {
-              await handleCreate();
-            }}
-            label={creating ? "Creating..." : "Create"}
-          />
         </div>
       </div>
     </AppLayout>

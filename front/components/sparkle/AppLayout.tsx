@@ -306,7 +306,7 @@ export default function AppLayout({
           <main
             className={classNames(
               "h-full pt-16",
-              titleChildren ? "pt-16" : "lg:pt-8"
+              titleChildren ? "" : "lg:pt-8"
             )}
           >
             <div

@@ -8,13 +8,15 @@ PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 import {
   Button,
   DocumentPlusIcon,
+  DropdownMenu,
   IconButton,
   PlusIcon,
+  TrashIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -208,6 +210,25 @@ export default function DataSourceUpsert({
     setTags(newTags);
   };
 
+  const handleDelete = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${
+        dataSource.name
+      }/documents/${encodeURIComponent(documentId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      alert("There was an error deleting the document.");
+      return;
+    }
+    await router.push(
+      `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+    );
+  };
+
   return (
     <AppLayout
       user={user}
@@ -219,17 +240,26 @@ export default function DataSourceUpsert({
         current: "data_sources",
       })}
       titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title="Upsert document"
-          onClose={() => {
+        <AppLayoutSimpleSaveCancelTitle
+          title="Upsert a document"
+          onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
             );
           }}
+          onSave={
+            !readOnly && !disabled
+              ? async () => {
+                  await handleUpsert();
+                }
+              : undefined
+          }
+          isSaving={loading}
         />
       }
+      hideSidebar={true}
     >
-      <div className="mt-8 flex flex-col">
+      <div className="flex flex-col pt-8">
         <div className="space-y-2">
           <div className="flex flex-1">
             <div className="w-full">
@@ -326,98 +356,116 @@ export default function DataSourceUpsert({
             </div>
           </div>
 
-          <div className="flex flex-1">
-            <div className="w-full">
-              <div className="sm:col-span-5">
-                <div className="flex flex-row items-center">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-700">
-                      Text Content
-                    </h3>
-                    <p className="my-2 text-sm text-gray-500">
-                      Upload (text or PDF) or copy the text data for the
-                      document you want to create or replace (upsert).
-                    </p>
+          <div className="flex w-full flex-1">
+            <div className="w-full sm:col-span-5">
+              <div className="flex flex-row items-center">
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Text Content
+                  </h3>
+                  <p className="my-2 text-sm text-gray-500">
+                    Upload (text or PDF) or copy the text data for the document
+                    you want to create or replace (upsert).
+                  </p>
+                </div>
+                {!readOnly ? (
+                  <div className="ml-2 mt-0 flex-initial">
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept=".txt, .pdf, .md, .csv"
+                      ref={fileInputRef}
+                      onChange={async (e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          await handleFileUpload(e.target.files[0]);
+                        }
+                      }}
+                    ></input>
+                    <Button
+                      variant="tertiary"
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.click();
+                        }
+                      }}
+                      icon={DocumentPlusIcon}
+                      disabled={readOnly || uploading}
+                      label={uploading ? "Uploading..." : "Upload"}
+                    ></Button>
                   </div>
-                  {!readOnly ? (
-                    <div className="ml-2 mt-0 flex-initial">
-                      <input
-                        className="hidden"
-                        type="file"
-                        accept=".txt, .pdf, .md, .csv"
-                        ref={fileInputRef}
-                        onChange={async (e) => {
-                          if (e.target.files && e.target.files.length > 0) {
-                            await handleFileUpload(e.target.files[0]);
-                          }
-                        }}
-                      ></input>
-                      <Button
-                        variant="tertiary"
-                        onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.click();
-                          }
-                        }}
-                        icon={DocumentPlusIcon}
-                        disabled={readOnly || uploading}
-                        label={uploading ? "Uploading..." : "Upload"}
-                      ></Button>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="mt-1 flex rounded-md shadow-sm">
-                  <textarea
-                    name="text"
-                    id="text"
-                    rows={20}
-                    readOnly={readOnly}
-                    className={classNames(
-                      "font-mono block w-full min-w-0 flex-1 rounded-md text-xs",
-                      "border-gray-300",
-                      readOnly
-                        ? "focus:border-gray-300 focus:ring-0"
-                        : "focus:border-action-500 focus:ring-action-500",
-                      downloading ? "text-gray-300" : ""
-                    )}
-                    disabled={downloading}
-                    value={
-                      downloading
-                        ? "Downloading..."
-                        : uploading
-                        ? "Uploading..."
-                        : text
-                    }
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </div>
+                ) : null}
+              </div>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <textarea
+                  name="text"
+                  id="text"
+                  rows={20}
+                  readOnly={readOnly}
+                  className={classNames(
+                    "font-mono block w-full min-w-0 flex-1 rounded-md text-xs",
+                    "border-gray-300",
+                    readOnly
+                      ? "focus:border-gray-300 focus:ring-0"
+                      : "focus:border-action-500 focus:ring-action-500",
+                    downloading ? "text-gray-300" : ""
+                  )}
+                  disabled={downloading}
+                  value={
+                    downloading
+                      ? "Downloading..."
+                      : uploading
+                      ? "Uploading..."
+                      : text
+                  }
+                  onChange={(e) => setText(e.target.value)}
+                />
               </div>
             </div>
           </div>
+
+          {!readOnly && loadDocumentId && (
+            <div className="flex pt-16">
+              <div className="flex">
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      variant="secondaryWarning"
+                      icon={TrashIcon}
+                      label={"Delete this Document"}
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items width={280}>
+                    <div className="flex flex-col gap-y-4 px-4 py-4">
+                      <div className="flex flex-col gap-y-2">
+                        <div className="grow text-sm font-medium text-element-800">
+                          Are you sure you want to delete?
+                        </div>
+
+                        <div className="text-sm font-normal text-element-700">
+                          This will delete the Document for everyone.
+                        </div>
+                      </div>
+                      <div className="flex justify-center">
+                        <Button
+                          variant="primaryWarning"
+                          size="sm"
+                          label={"Delete for Everyone"}
+                          disabled={loading}
+                          icon={TrashIcon}
+                          onClick={async () => {
+                            setLoading(true);
+                            await handleDelete();
+                            setLoading(false);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+            </div>
+          )}
         </div>
-        {!readOnly ? (
-          <div className="flex flex-row py-6">
-            <div className="flex-1"></div>
-            <Button
-              variant="tertiary"
-              disabled={loading || readOnly}
-              onClick={async () => {
-                void router.push(
-                  `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
-                );
-              }}
-              label="Cancel"
-            />
-            <Button
-              variant="secondary"
-              disabled={disabled || loading || readOnly}
-              onClick={async () => {
-                await handleUpsert();
-              }}
-              label={loading ? "Embeding..." : "Upsert"}
-            />
-          </div>
-        ) : null}
       </div>
     </AppLayout>
   );
