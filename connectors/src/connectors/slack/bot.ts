@@ -19,6 +19,8 @@ import {
   getUserName,
 } from "./temporal/activities";
 
+const { DUST_API = "https://dust.tt" } = process.env;
+
 class SlackExternalUserError extends Error {}
 
 export async function botAnswerMessageWithErrorHandling(
@@ -101,8 +103,6 @@ async function botAnswerMessage(
   slackMessageTs: string,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
-  const { DUST_API = "https://dust.tt" } = process.env;
-
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
     message: message,

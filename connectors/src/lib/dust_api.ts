@@ -540,25 +540,6 @@ export class DustAPI {
     return new Ok(json.data_sources as DataSourceType[]);
   }
 
-  async newChatStreamed(userMessage: string, timezone: string) {
-    const url = `${DUST_API}/api/v1/w/${this.workspaceId()}/chats`;
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-    };
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({
-        user_message: userMessage,
-        timezone: timezone,
-      }),
-    });
-
-    return processStreamedChatResponse(res);
-  }
-
   async createConversation(
     title: string | null,
     visibility: ConversationVisibility,
