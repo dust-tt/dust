@@ -125,6 +125,7 @@ export default function AssistantConversation({
     >
       <Conversation
         owner={owner}
+        user={user}
         conversationId={conversationId}
         onStickyMentionsChange={setStickyMentions}
       />

@@ -16,14 +16,16 @@ import {
   isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
   owner,
+  user,
   conversationId,
   onStickyMentionsChange,
 }: {
   owner: WorkspaceType;
+  user: UserType;
   conversationId: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
 }) {
@@ -48,11 +50,16 @@ export default function Conversation({
   }, [conversation?.content.length]);
 
   useEffect(() => {
+    if (!onStickyMentionsChange) {
+      return;
+    }
     const lastUserMessageContent = conversation?.content.findLast(
       (versionedMessages) =>
         versionedMessages.some(
           (message) =>
-            isUserMessageType(message) && message.visibility !== "deleted"
+            isUserMessageType(message) &&
+            message.visibility !== "deleted" &&
+            message.user?.id === user.id
         )
     );
 
@@ -69,11 +76,12 @@ export default function Conversation({
 
     const mentions = lastUserMessage.mentions;
     const agentMentions = mentions.filter(isAgentMention);
-    onStickyMentionsChange?.(agentMentions);
+    onStickyMentionsChange(agentMentions);
   }, [
     conversation?.content,
     conversation?.content.length,
     onStickyMentionsChange,
+    user.id,
   ]);
 
   const buildEventSourceURL = useCallback(

@@ -269,13 +269,17 @@ export function AssistantInputBar({
       return;
     }
 
+    const mentionedAgentConfigurationIds = new Set(
+      stickyMentions?.map((m) => m.configurationId)
+    );
+
     const contentEditable = document.getElementById("dust-input-bar");
     if (contentEditable) {
       const textContent = contentEditable.textContent;
       if (
         textContent &&
         textContent.trim() !== "" &&
-        !textContent.match(/(@\w+\s)+/g)
+        !textContent.match(/(@[\w-.]+\s)+/g)
       ) {
         // if the inputBar isn't empty, and doesn't contain only "@something @somethingElse "
         // we don't clear it (we preserve whatever the user typed)
@@ -286,9 +290,9 @@ export function AssistantInputBar({
       // that was added by this effect for a different conversation / message
       contentEditable.innerHTML = "";
       let lastTextNode = null;
-      for (const mention of stickyMentions) {
-        const agentConfiguration = activeAgents.find(
-          (agent) => agent.sId === mention.configurationId
+      for (const configurationId of mentionedAgentConfigurationIds) {
+        const agentConfiguration = agentConfigurations.find(
+          (agent) => agent.sId === configurationId
         );
         if (!agentConfiguration) {
           continue;
@@ -317,7 +321,7 @@ export function AssistantInputBar({
         }
       }
     }
-  }, [activeAgents, stickyMentions]);
+  }, [stickyMentions, agentConfigurations]);
 
   return (
     <>
