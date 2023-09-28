@@ -18,7 +18,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { MentionType } from "@app/types/assistant/conversation";
+import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
 // AGENT MENTION
@@ -183,9 +183,11 @@ const AgentList = forwardRef(AgentListImpl);
 export function AssistantInputBar({
   owner,
   onSubmit,
+  stickyMentions,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
+  stickyMentions?: AgentMention[];
 }) {
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
@@ -261,6 +263,61 @@ export function AssistantInputBar({
       setTimeout(() => setIsAnimating(false), 1500);
     }
   }, [animate, isAnimating]);
+
+  useEffect(() => {
+    if (!stickyMentions) {
+      return;
+    }
+
+    const contentEditable = document.getElementById("dust-input-bar");
+    if (contentEditable) {
+      const textContent = contentEditable.textContent;
+      if (
+        textContent &&
+        textContent.trim() !== "" &&
+        !textContent.match(/(@\w+\s)+/g)
+      ) {
+        // if the inputBar isn't empty, and doesn't contain only "@something @somethingElse "
+        // we don't clear it (we preserve whatever the user typed)
+        return;
+      }
+      // we clear the content of the input bar -- at this point, it's either already empty,
+      // or contains only "@something @somethingElse ", which is most likely a list of mentions
+      // that was added by this effect for a different conversation / message
+      contentEditable.innerHTML = "";
+      let lastTextNode = null;
+      for (const mention of stickyMentions) {
+        const agentConfiguration = activeAgents.find(
+          (agent) => agent.sId === mention.configurationId
+        );
+        if (!agentConfiguration) {
+          continue;
+        }
+        const htmlString = ReactDOMServer.renderToStaticMarkup(
+          <AgentMention agentConfiguration={agentConfiguration} />
+        );
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = htmlString.trim();
+        if (!wrapper.firstChild) {
+          continue;
+        }
+        contentEditable.appendChild(wrapper.firstChild);
+        lastTextNode = document.createTextNode(" ");
+        contentEditable.appendChild(lastTextNode);
+      }
+      // move the cursor to the end of the input bar
+      if (lastTextNode) {
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.setStart(lastTextNode, lastTextNode.length);
+          range.setEnd(lastTextNode, lastTextNode.length);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    }
+  }, [activeAgents, stickyMentions]);
 
   return (
     <>
@@ -631,14 +688,20 @@ export function AssistantInputBar({
 export function FixedAssistantInputBar({
   owner,
   onSubmit,
+  stickyMentions,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
+  stickyMentions?: AgentMention[];
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
       <div className="mx-auto max-w-4xl pb-12">
-        <AssistantInputBar owner={owner} onSubmit={onSubmit} />
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={onSubmit}
+          stickyMentions={stickyMentions}
+        />
       </div>
     </div>
   );
