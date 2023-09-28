@@ -3,7 +3,7 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -159,6 +159,8 @@ function StandardDataSourceSettings({
   }) => Promise<void>;
   gaTrackingId: string;
 }) {
+  const { mutate } = useSWRConfig();
+
   const dataSourceConfig = JSON.parse(dataSource.config || "{}");
 
   const [dataSourceDescription, setDataSourceDescription] = useState(

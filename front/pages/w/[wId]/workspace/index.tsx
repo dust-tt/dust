@@ -9,7 +9,7 @@ import { Listbox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useCallback, useEffect, useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -56,6 +56,8 @@ export default function WorkspaceAdmin({
   gaTrackingId,
   url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { mutate } = useSWRConfig();
+
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
 

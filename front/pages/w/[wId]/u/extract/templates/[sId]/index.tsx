@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { Fragment } from "react";
 import { useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -78,6 +78,8 @@ export default function AppExtractEventsReadData({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
+
   const [isProcessing, setIsProcessing] = useState(false);
   const { events, isEventsLoading } = useExtractedEvents({
     owner,

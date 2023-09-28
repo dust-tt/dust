@@ -2,7 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Tab } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Router, { useRouter } from "next/router";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
@@ -71,6 +71,8 @@ export default function NewDatasetView({
   datasets,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [dataset, setDataset] = useState(null as DatasetType | null);
@@ -86,7 +88,7 @@ export default function NewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      void Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      void router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinishedEditing]);
@@ -118,8 +120,6 @@ export default function NewDatasetView({
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };
-
-  const router = useRouter();
 
   return (
     <AppLayout
