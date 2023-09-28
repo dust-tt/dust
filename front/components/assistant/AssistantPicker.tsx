@@ -1,7 +1,6 @@
 import {
   Button,
   DropdownMenu,
-  MagnifyingGlassStrokeIcon,
   PlusIcon,
   RobotIcon,
   Searchbar,
