@@ -1,7 +1,7 @@
 import React from "react";
 
-import { classNames } from "@sparkle/lib/utils";
 import { MagnifyingGlass } from "@sparkle/icons/stroke";
+import { classNames } from "@sparkle/lib/utils";
 
 export function Searchbar({
   placeholder,
