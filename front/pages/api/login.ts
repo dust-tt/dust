@@ -73,15 +73,10 @@ async function handler(
           }
 
           if (allowedDomain !== session.user.email.split("@")[1]) {
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "workspace_auth_error",
-                message: `You are not authorized to join this workspace (your domain: ${
-                  session.user.email.split("@")[1]
-                }), contact us at team@dust.tt for assistance.`,
-              },
-            });
+            res.redirect(
+              `/login-error?domain=${session.user.email.split("@")[1]}`
+            );
+            return;
           }
         }
       }
