@@ -12,11 +12,14 @@ import {
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
+import {
+  FixedAssistantInputBar,
+  InputBarContext,
+} from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { compareAgentsForSort } from "@app/lib/assistant";
@@ -134,198 +137,219 @@ export default function AssistantNew({
     void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
   };
 
-  return (
-    <AppLayout
-      user={user}
-      owner={owner}
-      isWideMode={conversation ? true : false}
-      gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant"
-      titleChildren={
-        conversation && (
-          <ConversationTitle
-            owner={owner}
-            conversationId={conversation.sId}
-            shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
-          />
-        )
-      }
-      navChildren={<AssistantSidebarMenu owner={owner} />}
-    >
-      {!conversation ? (
-        <div className="text-sm font-normal text-element-800">
-          <Page.Vertical gap="md" align="left">
-            <Page.Header
-              title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
-              icon={ChatBubbleLeftRightIcon}
-            />
-            {/* FEATURED AGENTS */}
-            <Page.Vertical gap="lg" align="left">
-              <Page.Vertical gap="xs" align="left">
-                <Page.SectionHeader title="Meet your team" />
-                {isBuilder && (
-                  <>
-                    <Page.P variant="secondary">
-                      Dust comes with multiple assistants, each with a specific
-                      set of skills.
-                      <br />
-                      Create assistants tailored for your needs.
-                    </Page.P>
-                  </>
-                )}
-                {!isBuilder && (
-                  <>
-                    <Page.P variant="secondary">
-                      Dust is not just a single assistant, it’s a full team at
-                      your service.
-                      <br />
-                      Each member has a set of specific set skills.
-                    </Page.P>
-                    <Page.P variant="secondary">
-                      Meet some of your assistants team:
-                    </Page.P>
-                  </>
-                )}
-              </Page.Vertical>
-              <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {displayedAgents.map((agent) => (
-                    <a
-                      key={agent.sId}
-                      className="cursor-pointer"
-                      onClick={() => {
-                        void handleSubmit(
-                          `Hi :mention[${agent.name}]{sId=${agent.sId}}, how can you help me with?`,
-                          [
-                            {
-                              configurationId: agent.sId,
-                            },
-                          ]
-                        );
-                      }}
-                    >
-                      <AvatarListItem agent={agent} />
-                    </a>
-                  ))}
-                </div>
-              </div>
-              <Button.List isWrapping={true}>
-                {activeAgents.length > 4 && (
-                  <Button
-                    variant="primary"
-                    icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
-                    size="xs"
-                    label={
-                      showAllAgents
-                        ? "Hide All assistants"
-                        : "See all assistants"
-                    }
-                    onClick={() => {
-                      setShowAllAgents(!showAllAgents);
-                    }}
-                  />
-                )}
+  const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
 
-                {isBuilder && (
-                  <>
+  const triggerInputAnimation = () => {
+    setShouldAnimateInput(true);
+  };
+
+  useEffect(() => {
+    if (shouldAnimateInput) {
+      setShouldAnimateInput(false);
+    }
+  }, [shouldAnimateInput]);
+
+  return (
+    <InputBarContext.Provider value={{ animate: shouldAnimateInput }}>
+      <AppLayout
+        user={user}
+        owner={owner}
+        isWideMode={conversation ? true : false}
+        gaTrackingId={gaTrackingId}
+        topNavigationCurrent="assistant"
+        titleChildren={
+          conversation && (
+            <ConversationTitle
+              owner={owner}
+              conversationId={conversation.sId}
+              shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
+            />
+          )
+        }
+        navChildren={
+          <AssistantSidebarMenu
+            owner={owner}
+            triggerInputAnimation={triggerInputAnimation}
+          />
+        }
+      >
+        {!conversation ? (
+          <div className="text-sm font-normal text-element-800">
+            <Page.Vertical gap="md" align="left">
+              <Page.Header
+                title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
+                icon={ChatBubbleLeftRightIcon}
+              />
+              {/* FEATURED AGENTS */}
+              <Page.Vertical gap="lg" align="left">
+                <Page.Vertical gap="xs" align="left">
+                  <Page.SectionHeader title="Meet your team" />
+                  {isBuilder && (
+                    <>
+                      <Page.P variant="secondary">
+                        Dust comes with multiple assistants, each with a
+                        specific set of skills.
+                        <br />
+                        Create assistants tailored for your needs.
+                      </Page.P>
+                    </>
+                  )}
+                  {!isBuilder && (
+                    <>
+                      <Page.P variant="secondary">
+                        Dust is not just a single assistant, it’s a full team at
+                        your service.
+                        <br />
+                        Each member has a set of specific set skills.
+                      </Page.P>
+                      <Page.P variant="secondary">
+                        Meet some of your assistants team:
+                      </Page.P>
+                    </>
+                  )}
+                </Page.Vertical>
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    {displayedAgents.map((agent) => (
+                      <a
+                        key={agent.sId}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          void handleSubmit(
+                            `Hi :mention[${agent.name}]{sId=${agent.sId}}, how can you help me with?`,
+                            [
+                              {
+                                configurationId: agent.sId,
+                              },
+                            ]
+                          );
+                        }}
+                      >
+                        <AvatarListItem agent={agent} />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <Button.List isWrapping={true}>
+                  {activeAgents.length > 4 && (
                     <Button
                       variant="primary"
-                      icon={PlusIcon}
-                      label="Create an assistant"
-                      hasMagnifying={false}
+                      icon={showAllAgents ? ChevronUpIcon : ChevronDownIcon}
                       size="xs"
+                      label={
+                        showAllAgents
+                          ? "Hide All assistants"
+                          : "See all assistants"
+                      }
                       onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/assistants/new`
-                        );
+                        setShowAllAgents(!showAllAgents);
                       }}
                     />
-                    <Button
-                      variant="secondary"
-                      icon={WrenchIcon}
-                      label="Manage assistants"
-                      hasMagnifying={false}
-                      size="xs"
-                      onClick={() => {
-                        void router.push(`/w/${owner.sId}/builder/assistants`);
-                      }}
-                    />
-                  </>
-                )}
-                <StartHelperConversationButton
-                  content="Hey @helper, how can I use an assistant?"
-                  handleSubmit={handleSubmit}
-                />
-              </Button.List>
-            </Page.Vertical>
-            <Page.Separator />
-            {/* FAQ */}
-            <Page.Vertical gap="xs" align="left">
-              <Page.SectionHeader title="Frequently asked questions" />
-              <Button.List className="flex-wrap">
-                {isBuilder ? (
-                  <div className="flex flex-wrap gap-2">
-                    <StartHelperConversationButton
-                      content="Hey @helper, how can I interact with an assistant?"
-                      handleSubmit={handleSubmit}
-                      variant="secondary"
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, what can I use the assistants for?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, what are custom assistants?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, what customized assistants should I create?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, how can I make assistant smarter with my own data?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, what's the level of security and privacy dust offers?"
-                      handleSubmit={handleSubmit}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    <StartHelperConversationButton
-                      content="Hey @helper, how can I interact with an assistant?"
-                      handleSubmit={handleSubmit}
-                      variant="secondary"
-                    />
-                    <StartHelperConversationButton
-                      content="Hey @helper, What can I use an assistant for?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, who creates assistants?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, how do assistants work exactly?"
-                      handleSubmit={handleSubmit}
-                    />
-                    <StartHelperConversationButton
-                      content="@helper, what are the limitations of assistants?"
-                      handleSubmit={handleSubmit}
-                    />
-                  </div>
-                )}
-              </Button.List>
-            </Page.Vertical>
-          </Page.Vertical>
-        </div>
-      ) : (
-        <Conversation owner={owner} conversationId={conversation.sId} />
-      )}
+                  )}
 
-      <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
-    </AppLayout>
+                  {isBuilder && (
+                    <>
+                      <Button
+                        variant="primary"
+                        icon={PlusIcon}
+                        label="Create an assistant"
+                        hasMagnifying={false}
+                        size="xs"
+                        onClick={() => {
+                          void router.push(
+                            `/w/${owner.sId}/builder/assistants/new`
+                          );
+                        }}
+                      />
+                      <Button
+                        variant="secondary"
+                        icon={WrenchIcon}
+                        label="Manage assistants"
+                        hasMagnifying={false}
+                        size="xs"
+                        onClick={() => {
+                          void router.push(
+                            `/w/${owner.sId}/builder/assistants`
+                          );
+                        }}
+                      />
+                    </>
+                  )}
+                  <StartHelperConversationButton
+                    content="Hey @helper, how can I use an assistant?"
+                    handleSubmit={handleSubmit}
+                  />
+                </Button.List>
+              </Page.Vertical>
+              <Page.Separator />
+              {/* FAQ */}
+              <Page.Vertical gap="xs" align="left">
+                <Page.SectionHeader title="Frequently asked questions" />
+                <Button.List className="flex-wrap">
+                  {isBuilder ? (
+                    <div className="flex flex-wrap gap-2">
+                      <StartHelperConversationButton
+                        content="Hey @helper, how can I interact with an assistant?"
+                        handleSubmit={handleSubmit}
+                        variant="secondary"
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, what can I use the assistants for?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, what are custom assistants?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, what customized assistants should I create?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, how can I make assistant smarter with my own data?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, what's the level of security and privacy dust offers?"
+                        handleSubmit={handleSubmit}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <StartHelperConversationButton
+                        content="Hey @helper, how can I interact with an assistant?"
+                        handleSubmit={handleSubmit}
+                        variant="secondary"
+                      />
+                      <StartHelperConversationButton
+                        content="Hey @helper, What can I use an assistant for?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, who creates assistants?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, how do assistants work exactly?"
+                        handleSubmit={handleSubmit}
+                      />
+                      <StartHelperConversationButton
+                        content="@helper, what are the limitations of assistants?"
+                        handleSubmit={handleSubmit}
+                      />
+                    </div>
+                  )}
+                </Button.List>
+              </Page.Vertical>
+            </Page.Vertical>
+          </div>
+        ) : (
+          <Conversation owner={owner} conversationId={conversation.sId} />
+        )}
+
+        <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
+      </AppLayout>
+    </InputBarContext.Provider>
   );
 }
 

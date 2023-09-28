@@ -11,9 +11,11 @@ import {
 import { Transition } from "@headlessui/react";
 import Link from "next/link";
 import {
+  createContext,
   ForwardedRef,
   forwardRef,
   Fragment,
+  useContext,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -260,6 +262,15 @@ export function AssistantInputBar({
     }
   };
 
+  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const { animate } = useContext(InputBarContext);
+  useEffect(() => {
+    if (animate && !isAnimating) {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 1500);
+    }
+  }, [animate, isAnimating]);
+
   return (
     <>
       <AgentList
@@ -275,7 +286,10 @@ export function AssistantInputBar({
             className={classNames(
               "flex flex-1 flex-row items-end items-stretch px-2",
               "border-2 border-action-200 bg-white focus-within:border-action-300",
-              "rounded-sm rounded-xl drop-shadow-2xl  "
+              "rounded-sm rounded-xl drop-shadow-2xl",
+              isAnimating
+                ? "animate-shake border-action-800 focus-within:border-action-800"
+                : ""
             )}
           >
             <div
@@ -666,3 +680,5 @@ export function FixedAssistantInputBar({
     </div>
   );
 }
+
+export const InputBarContext = createContext({ animate: false });
