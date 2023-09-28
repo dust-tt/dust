@@ -17,13 +17,13 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
-  manageButtons,
+  showBuilderButtons,
 }: {
   owner: WorkspaceType;
   assistants: AgentConfigurationType[];
   onItemClick: (assistant: AgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
-  manageButtons?: boolean;
+  showBuilderButtons?: boolean;
 }) {
   const [searchText, setSearchText] = useState("");
   const searchedAssistants = assistants.filter((a) =>
@@ -56,7 +56,6 @@ export function AssistantPicker({
                 onChange={(e) => {
                   setSearchText(e.target.value);
                 }}
-                autoFocus={true}
               />
               <MagnifyingGlassStrokeIcon className="absolute right-3 top-2 h-5 w-5" />
             </div>
@@ -76,7 +75,7 @@ export function AssistantPicker({
           ))}
         </div>
         {(owner.role === "admin" || owner.role === "builder") &&
-          manageButtons && (
+          showBuilderButtons && (
             <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
               <Link href={`/w/${owner.sId}/builder/assistants/new`}>
                 <Button

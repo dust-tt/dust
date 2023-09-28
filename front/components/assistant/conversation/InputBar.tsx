@@ -610,7 +610,7 @@ export function AssistantInputBar({
                     }
                   }}
                   assistants={activeAgents}
-                  manageButtons={true}
+                  showBuilderButtons={true}
                 />
               </div>
               <IconButton
