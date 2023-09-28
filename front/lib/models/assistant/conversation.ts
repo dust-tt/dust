@@ -430,6 +430,81 @@ Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
 });
 
+export class MessageReaction extends Model<
+  InferAttributes<MessageReaction>,
+  InferCreationAttributes<MessageReaction>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare messageId: ForeignKey<Message["id"]>;
+
+  // User is nullable so that we can store reactions from a Slackbot message
+  declare userId: ForeignKey<User["id"]> | null;
+  declare userContextUsername: string;
+  declare userContextFullName: string | null;
+
+  declare reaction: string;
+}
+
+MessageReaction.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    userContextUsername: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    userContextFullName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    reaction: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "message_reaction",
+    sequelize: front_sequelize,
+    indexes: [
+      {
+        unique: true,
+        fields: ["messageId", "reaction", "userContextUsername"], // Not perfect as that means that a user and slack user with the same username can't react with the same emoji, but that's an edge case.
+      },
+      { fields: ["messageId"] },
+    ],
+  }
+);
+
+Message.hasMany(MessageReaction, {
+  foreignKey: { name: "messageId", allowNull: false },
+  onDelete: "CASCADE",
+});
+MessageReaction.belongsTo(Message, {
+  foreignKey: { name: "messageId", allowNull: false },
+});
+User.hasMany(MessageReaction, {
+  foreignKey: { name: "userId", allowNull: true }, // null = mention is from a user using a Slackbot
+});
+MessageReaction.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
+});
+
 export class Mention extends Model<
   InferAttributes<Mention>,
   InferCreationAttributes<Mention>

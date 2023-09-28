@@ -19,6 +19,7 @@ import {
   MembershipInvitation,
   Mention,
   Message,
+  MessageReaction,
   Provider,
   RetrievalDocument,
   RetrievalDocumentChunk,
@@ -66,6 +67,7 @@ async function main() {
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
   await Message.sync({ alter: true });
+  await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
 
   await XP1User.sync({ alter: true });
