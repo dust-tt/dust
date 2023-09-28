@@ -1,0 +1,340 @@
+export const description =
+  "On this page, we’ll dive into the Conversations endpoints you can use to programatically interact with Dust assistants.";
+
+# Conversations
+
+On this page we'll dive into the Conversations endpoints you can use to programatically start
+conversations and post messages to interact with Dust assistants. We'll look into how to create a
+converstaion, post a message, retrieve a conversation and stream events about it. {{ className:
+'lead' }}
+
+## Authentication
+
+All requests to the Dust API must be authenticated using an `Authentication` header. The value of
+this header must be the string _Bearer_ followed by a space and your API key. You can find your API
+key in your account's **Developers Tools** panel.
+
+## Conversations
+
+A conversation is consituted of `UserMessage` and `AgentMessages`. A `UserMessage` is a message sent
+by a human to interact with one or more assistants. An `AgentMessage` is an assistant response.
+`AgentMessages` can potentially include an action. Currently the only action supported is a
+`RetrievalAction` which triggers for agents that are configured to perform a retrieval before
+streaming their response.
+
+## The UserMessage model
+
+The `UserMessage` model contains all the information and data related to a user message.
+
+### Properties
+
+<Properties>
+  <Property name="sId" type="string">
+    Unique identifier for the message.
+  </Property>
+  <Property name="visibility" type="string">
+    One of `visible` or `deleted`.
+  </Property>
+  <Property name="version" type="integer">
+    The version number of the message.
+  </Property>
+  <Property name="user" type="object | null">
+    Information about the user that created that message. Only set if the
+    message was created through the Dust interface by a logged in user.
+  </Property>
+  <Property name="mentions" type="[]object">
+    A list of `AgentMentions` objects. An `AgentMention` is an object with a
+    single `configurationId` field which points the assistant being mentioned.
+  </Property>
+  <Property name="content" type="string">
+    The content of the message. In this content, mentions to assistants are
+    rendered as markdown directives `:cite[assistantName]{configurationId}`.
+  </Property>
+  <Property name="context" type="object">
+    Context about the user who sent the message. This will be based on the user
+    profile if the message was created by a logged in user, or on the `context`
+    provided when the message was created by API.
+  </Property>
+</Properties>
+
+## The AgentMessage model
+
+The `AgentMessage` model contains all the information and data related to an agent message.
+
+### Properties
+
+<Properties>
+  <Property name="sId" type="string">
+    Unique identifier for the message.
+  </Property>
+  <Property name="visibility" type="string">
+    One of `visible` or `deleted`.
+  </Property>
+  <Property name="version" type="integer">
+    The version number of the message.
+  </Property>
+  <Property name="parentMessageId" type="string">
+    The unique identifier of the `UserMessage` this `AgentMessage` is a response
+    to.
+  </Property>
+  <Property name="configurtion" type="object">
+    The configuration of the assistant that generated this message.
+  </Property>
+  <Property name="status" type="string">
+    One of `created`, `succeeded` or `failed`. A message will remain in
+    `created` status until the assistant has finished processing it.
+  </Property>
+  <Property name="action" type="object | null">
+    An object representing the potential action that the assistant took before
+    generating an answer. Currently only `RetrievalAction` are supported.
+  </Property>
+  <Property name="content" type="string">
+    The content of the message.
+  </Property>
+  <Property name="error" type="object | null">
+    If an error occured this object will be set with a `code` and a `message`.
+  </Property>
+</Properties>
+
+## The Conversation model
+
+The Conversation model contains all the information and data related to a conversation.
+
+### Properties
+
+<Properties>
+  <Property name="sId" type="string">
+    Unique identifier for the conversation.
+  </Property>
+  <Property name="created" type="integer">
+    Epoch of the creation of the conversation.
+  </Property>
+  <Property name="owner" type="object">
+    Information about the workspace owning this conversation.
+  </Property>
+  <Property name="title" type="string | null">
+    The title of the conversation if set.
+  </Property>
+  <Property name="visibility" type="string">
+    One of `deleted` or `unlisted`.
+  </Property>
+  <Property name="content" type="(UserMessage[] | AgentMessage[])[]">
+    A list (the converation) of either `UserMessage` or `AgentMessage` lists
+    (the versions for each message of the conversations).
+  </Property>
+</Properties>
+
+---
+
+## Create a Conversation {{ tag: 'POST', label: '/v1/w/:workspace_id/assistant/conversations' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to create a Conversation potentially posting an initial user message at
+    the same time. If you specify an initial user message, the conversation objet returned will be
+    returned upon creation before posting the user message to it.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace to use (can be found in any of the workspace's URL)
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+    Attributes are passed as a JSON object in the request body.
+
+    <Properties>
+      <Property name="visibility" type="string">
+        Only "unlisted" is supported.
+      </Property>
+      <Property name="title" type="string | null">
+        A title for the conversation. If none is provided, one will be generated automatically.
+      </Property>
+    </Properties>
+
+    ### Optional JSON body attributes
+
+    <Properties>
+      <Property name="message" type="object">
+        An initial user message object. See the curl command for an example of a message object
+        mentioning the `@dust` assistant. Available global assistant `configurationId` are:
+        `helper`, `dust`, `gpt-3.5-turbo`, `gpt-4`, `claude-2`, `claude-instant-1`, `slack`,
+        `google_drive`, `notion`, `github`. To mention custom assistants, you can find the assistant
+        `configurationId` in the URL of the assistant page.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/assistant/conversations">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/b809011d38/assistant/conversations \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "visibility": "unlisted",
+        "title": null,
+        "message": {
+          "content": "Hi :cite[dust]{dust}!",
+          "mentions": [{
+            "configurationId": "dust"
+          }],
+          "context": {
+            "timezone": "Europe/Paris",
+            "username": "peter",
+            "email": null,
+            "fullName": "Peter Parker",
+            "profilePictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
+          }
+        }
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "conversation": {
+        "owner": {
+          "sId":"b809011d38",
+          "name":"dust",
+          "role":"builder",
+          "plan":{...},
+        },
+        "created":1695901958406,
+        "sId":"7b6396245c",
+        "title":null,
+        "visibility":
+        "unlisted",
+        "content": [],
+        "participants": {
+          "users": [],
+          "agents": []
+        }
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Retrieve a Conversation {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to retrieve a Conversation. It will render the conversation in its
+    current state (potetial agent messages will still be in `created` state).
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace to use (can be found in any of the workspace's URL)
+      </Property>
+      <Property name="conversation_id" type="string">
+        The `sId` of the conversation object to retrieve.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/apps/:app_id/runs/:run_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c \
+      -H "Authorization: Bearer sk-..." \
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "conversation": {
+        "created": 1695901958406,
+        "sId": "7b6396245c",
+        "owner": {...},
+        "title": "Dust Assistance",
+        "visibility": "unlisted",
+        "content": [
+          [{
+            "sId":"f635e9996a",
+            "type":"user_message",
+            "visibility":"visible",
+            "version":0,
+            "user":null,
+            "mentions": [{"configurationId":"dust"}],
+            "content":"Hi :cite[dust]{dust}!",
+            "context": {
+              "username": "peter",
+              "timezone": "Europe/Paris",
+              "fullName": "Peter Parker",
+              "email": null,
+              "profilePictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
+            }
+          }], [{
+            "sId": "b960910cdb",
+            "type": "agent_message",
+            "visibility": "visible",
+            "version": 0,
+            "parentMessageId": "f635e9996a",
+            "status": "succeeded",
+            "action": {
+              "type": "retrieval_action",
+              "params": {
+                "query": "Hi",
+                "relativeTimeFrame": null,
+                "topK": 32
+              },
+              "documents": [{
+                "dataSourceId": "managed-slack",
+                "sourceUrl": "https://dust4ai.slack.com/...",
+                "documentId": "slack-C050S7TE50T-thread-1690811107.286489",
+                "reference": "e3",
+                "timestamp": 1690811107000,
+                "tags": [
+                  "channelId:C050S7TE50T",
+                  "channelName:admin",
+                  "threadId:1690811107.286489",
+                  "title:admin-thread-2023-07-31_13h45"
+                ],
+                "score": 0.8278559,
+                "chunks":[...]
+              },
+              ...
+              ]
+            },
+            "content": "Hello Peter! How can I assist you today?",
+            "error": null,
+            "configuration":{
+              "sId": "dust",
+              "version": 0,
+              "name": "dust",
+              "description": "An assistant with context on your company data.",
+              "pictureUrl": "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+              "status": "active",
+              "scope": "global",
+              "generation": {...}
+              "action": {...}
+            }
+          }]
+        ],
+        "participants":{
+          "users":[...],
+          "agents":[...]
+        }
+      }
+    }
+    ```
+
+  </Col>
+</Row>
