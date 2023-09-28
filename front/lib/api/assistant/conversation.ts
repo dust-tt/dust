@@ -631,22 +631,6 @@ export async function* postUserMessage(
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await front_sequelize.transaction(async (t) => {
-      // TODO: if no agentMentions, we want to use the auto-reply enabled agents
-      if (agentMentions.length) {
-        // disable auto-reply for all `conversation_agents` for this conversation
-        await ConversationAgent.update(
-          {
-            autoReplyEnabled: false,
-          },
-          {
-            where: {
-              conversationId: conversation.id,
-            },
-            transaction: t,
-          }
-        );
-      }
-
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -728,16 +712,65 @@ export async function* postUserMessage(
         context: context,
       };
 
+      let agentConfigurationIdsToPing: string[] = agentMentions.map(
+        (m) => m.configurationId
+      );
+
+      if (agentMentions.length) {
+        // for each agent mention, we upsert a "replyEnabled" conversation_agent
+        // and we turn of auto-reply for all other agents
+        await Promise.all([
+          ...agentMentions.map(async (mention) =>
+            ConversationAgent.upsert(
+              {
+                conversationId: conversation.id,
+                agentConfigurationId: mention.configurationId,
+                autoReplyEnabled: true,
+              },
+              {
+                transaction: t,
+              }
+            )
+          ),
+          ConversationAgent.update(
+            {
+              autoReplyEnabled: false,
+            },
+            {
+              where: {
+                conversationId: conversation.id,
+                agentConfigurationId: {
+                  [Op.notIn]: agentConfigurationIdsToPing,
+                },
+              },
+              transaction: t,
+            }
+          ),
+        ]);
+      } else {
+        // if no agent mentions, we want to use the auto-reply enabled agents
+        const autoReplyEnabledAgents = await ConversationAgent.findAll({
+          where: {
+            conversationId: conversation.id,
+            autoReplyEnabled: true,
+          },
+          transaction: t,
+        });
+        agentConfigurationIdsToPing = autoReplyEnabledAgents.map(
+          (a) => a.agentConfigurationId
+        );
+      }
+
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
-          agentMentions.map((mention) => {
-            // For each assistant/agent mention, create an "empty" agent message and upsert a "replyEnabled" conversation_agent row.
+          agentConfigurationIdsToPing.map((agentConfigurationId) => {
+            // For each assistant/agent mention, create an "empty" agent message.
             return (async () => {
               // `getAgentConfiguration` checks that we're only pulling a configuration from the
               // same workspace or a global one.
               const configuration = await getAgentConfiguration(
                 auth,
-                mention.configurationId
+                agentConfigurationId
               );
               if (!configuration) {
                 return null;
@@ -766,17 +799,6 @@ export async function* postUserMessage(
                   conversationId: conversation.id,
                   parentId: userMessage.id,
                   agentMessageId: agentMessageRow.id,
-                },
-                {
-                  transaction: t,
-                }
-              );
-
-              await ConversationAgent.upsert(
-                {
-                  conversationId: conversation.id,
-                  agentConfigurationId: configuration.sId,
-                  autoReplyEnabled: true,
                 },
                 {
                   transaction: t,
