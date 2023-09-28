@@ -164,8 +164,8 @@ export function useDocuments(
   return {
     documents: data ? data.documents : [],
     total: data ? data.total : 0,
-    isRunsLoading: !error && !data,
-    isRunsError: error,
+    isDocumentsLoading: !error && !data,
+    isDocumentsError: error,
   };
 }
 

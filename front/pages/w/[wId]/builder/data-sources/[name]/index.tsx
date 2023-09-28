@@ -126,7 +126,8 @@ function StandardDataSourceView({
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
-  const { documents, total } = useDocuments(owner, dataSource, limit, offset);
+  const { documents, total, isDocumentsLoading, isDocumentsError } =
+    useDocuments(owner, dataSource, limit, offset);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
@@ -136,8 +137,8 @@ function StandardDataSourceView({
 
   const router = useRouter();
 
-  useEffect(
-    () =>
+  useEffect(() => {
+    if (!isDocumentsLoading && !isDocumentsError) {
       setDisplayNameByDocId(
         documents.reduce(
           (acc, doc) =>
@@ -146,9 +147,12 @@ function StandardDataSourceView({
             }),
           {}
         )
-      ),
-    [documents]
-  );
+      );
+    }
+    if (isDocumentsError) {
+      setDisplayNameByDocId({});
+    }
+  }, [documents, isDocumentsLoading, isDocumentsError]);
 
   let last = offset + limit;
   if (offset + limit > total) {

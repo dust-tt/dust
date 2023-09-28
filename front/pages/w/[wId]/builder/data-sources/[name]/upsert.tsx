@@ -423,7 +423,7 @@ export default function DataSourceUpsert({
             </div>
           </div>
 
-          {!readOnly && (
+          {!readOnly && loadDocumentId && (
             <div className="flex pt-16">
               <div className="flex">
                 <DropdownMenu>

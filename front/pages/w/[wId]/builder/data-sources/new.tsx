@@ -61,8 +61,8 @@ export default function DataSourceNew({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isSaving, setIsSaving] = useState(false);
-  const [edited, setEdited] = useState(false);
-  const [valid, setValid] = useState(true);
+  const [isEdited, setIsEdited] = useState(false);
+  const [isValid, setIsValid] = useState(true);
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
@@ -111,8 +111,8 @@ export default function DataSourceNew({
       edited = true;
     }
 
-    setEdited(edited);
-    setValid(valid);
+    setIsEdited(edited);
+    setIsValid(valid);
   }, [
     dataSourceName,
     dataSourceDescription,
@@ -160,7 +160,7 @@ export default function DataSourceNew({
         <AppLayoutSimpleSaveCancelTitle
           title="Create a Data Source"
           onSave={
-            valid && edited && !isSaving
+            isValid && isEdited && !isSaving
               ? async () => {
                   await handleCreate();
                 }

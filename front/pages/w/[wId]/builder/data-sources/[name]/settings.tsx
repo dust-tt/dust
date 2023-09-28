@@ -169,7 +169,7 @@ function StandardDataSourceSettings({
   );
 
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
-  const [edited, setEdited] = useState(false);
+  const [isEdited, setIsEdited] = useState(false);
 
   const router = useRouter();
 
@@ -181,7 +181,7 @@ function StandardDataSourceSettings({
     if (assistantDefaultSelected === !dataSource.assistantDefaultSelected) {
       edited = true;
     }
-    setEdited(edited);
+    setIsEdited(edited);
   }, [dataSource, dataSourceDescription, assistantDefaultSelected]);
 
   useEffect(() => {
@@ -228,7 +228,7 @@ function StandardDataSourceSettings({
             );
           }}
           onSave={
-            edited
+            isEdited
               ? async () => {
                   setIsSavingOrDeleting(true);
                   await handleUpdate({
@@ -444,7 +444,7 @@ function ManagedDataSourceSettings({
 }) {
   const router = useRouter();
 
-  const [edited, setEdited] = useState(false);
+  const [isEdited, setIsEdited] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
 
   const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
@@ -456,7 +456,7 @@ function ManagedDataSourceSettings({
     if (assistantDefaultSelected === !dataSource.assistantDefaultSelected) {
       edited = true;
     }
-    setEdited(edited);
+    setIsEdited(edited);
   }, [dataSource, assistantDefaultSelected]);
 
   useEffect(() => {
@@ -482,7 +482,7 @@ function ManagedDataSourceSettings({
             );
           }}
           onSave={
-            edited
+            isEdited
               ? async () => {
                   setIsSavingOrDeleting(true);
                   await handleUpdate({
