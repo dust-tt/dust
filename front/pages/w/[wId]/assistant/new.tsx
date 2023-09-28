@@ -216,7 +216,7 @@ export default function AssistantNew({
                         className="cursor-pointer"
                         onClick={() => {
                           void handleSubmit(
-                            `Hi :mention[${agent.name}]{sId=${agent.sId}}, how can you help me with?`,
+                            `Hi :mention[${agent.name}]{sId=${agent.sId}}, what can you help me with?`,
                             [
                               {
                                 configurationId: agent.sId,
