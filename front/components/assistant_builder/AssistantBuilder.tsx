@@ -14,7 +14,6 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
-import { useSWRConfig } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -173,7 +172,6 @@ export default function AssistantBuilder({
   agentConfigurationId,
 }: AssistantBuilderProps) {
   const router = useRouter();
-  const { mutate } = useSWRConfig();
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
@@ -479,8 +477,6 @@ export default function AssistantBuilder({
       setIsSavingOrDeleting(false);
       return;
     }
-
-    await mutate(`/api/w/${owner.sId}/assistant/agent_configurations`);
     await router.push(`/w/${owner.sId}/builder/assistants`);
     setIsSavingOrDeleting(false);
   };
@@ -556,9 +552,6 @@ export default function AssistantBuilder({
                       setIsSavingOrDeleting(true);
                       submitForm()
                         .then(async () => {
-                          await mutate(
-                            `/api/w/${owner.sId}/assistant/agent_configurations`
-                          );
                           await router.push(
                             `/w/${owner.sId}/builder/assistants`
                           );

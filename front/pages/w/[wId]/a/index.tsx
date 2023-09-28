@@ -10,7 +10,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
@@ -77,6 +77,8 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export function APIKeys({ owner }: { owner: WorkspaceType }) {
+  const { mutate } = useSWRConfig();
+
   const { keys } = useKeys(owner);
   const [isRevealed, setIsRevealed] = useState(
     {} as { [key: string]: boolean }

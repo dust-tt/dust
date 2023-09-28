@@ -1,7 +1,7 @@
 import { Checkbox, Modal } from "@dust-tt/sparkle";
 import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
@@ -63,6 +63,8 @@ export default function ConnectorPermissionsModal({
   setOpen: (open: boolean) => void;
   onEditPermission: () => void;
 }) {
+  const { mutate } = useSWRConfig();
+
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
     useState<Record<string, ConnectorPermission>>({});
 
