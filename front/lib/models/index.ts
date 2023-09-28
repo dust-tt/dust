@@ -14,6 +14,7 @@ import {
 import {
   AgentMessage,
   Conversation,
+  ConversationAgent,
   ConversationParticipant,
   Mention,
   Message,
@@ -44,6 +45,7 @@ export {
   App,
   Clone,
   Conversation,
+  ConversationAgent,
   ConversationParticipant,
   Dataset,
   DataSource,

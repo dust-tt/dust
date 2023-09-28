@@ -8,6 +8,7 @@ import {
   App,
   Clone,
   Conversation,
+  ConversationAgent,
   ConversationParticipant,
   Dataset,
   DataSource,
@@ -62,6 +63,7 @@ async function main() {
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
+  await ConversationAgent.sync({ alter: true });
   await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });

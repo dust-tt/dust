@@ -154,6 +154,64 @@ ConversationParticipant.belongsTo(User, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
+export class ConversationAgent extends Model<
+  InferAttributes<ConversationAgent>,
+  InferCreationAttributes<ConversationAgent>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare conversationId: ForeignKey<Conversation["id"]>;
+  // Not a relation as global agents are not in the DB
+  declare agentConfigurationId: string;
+  declare autoReplyEnabled: boolean;
+}
+
+ConversationAgent.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    conversationId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    autoReplyEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "conversation_agent",
+    sequelize: front_sequelize,
+    indexes: [
+      { fields: ["conversationId", "agentConfigurationId"], unique: true },
+    ],
+  }
+);
+
+Conversation.hasMany(ConversationAgent, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+
 export class UserMessage extends Model<
   InferAttributes<UserMessage>,
   InferCreationAttributes<UserMessage>
