@@ -16,7 +16,6 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
@@ -227,19 +226,6 @@ async function handler(
       // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
       // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
       if (owner.plan.limits.dataSources.documents.count != -1) {
-        logger.info(
-          {
-            requestWid: req.query.wId as string,
-            requestDataSourceName: req.query.name as string,
-            requestDocumentId: req.query.documentId as string,
-            planDocumentCount: owner.plan.limits.dataSources.documents.count,
-            planDocumentCountTypeOf:
-              typeof owner.plan.limits.dataSources.documents.count,
-            ownerPlan: JSON.stringify(owner.plan),
-            owner: owner.sId,
-          },
-          "Checking documents count limit"
-        );
         const documents = await CoreAPI.getDataSourceDocuments({
           projectId: dataSource.dustAPIProjectId,
           dataSourceName: dataSource.name,
