@@ -1,6 +1,7 @@
-import { Button, DropdownMenu, RobotIcon } from "@dust-tt/sparkle";
+import { Button, RobotIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -48,34 +49,25 @@ export function AgentSuggestion({
             />
           ))}
         </Button.List>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <AssistantPicker
+          owner={owner}
+          assistants={agents.slice(3)}
+          onItemClick={async (agent) => {
+            if (!loading) {
+              setLoading(true);
+              await selectSuggestionHandler(agent);
+              setLoading(false);
+            }
+          }}
+          pickerButton={
             <Button
               variant="tertiary"
               size="xs"
               icon={RobotIcon}
               label="Select another"
             />
-          </DropdownMenu.Button>
-          <div className="relative bottom-6 z-30">
-            <DropdownMenu.Items origin="auto" width={240}>
-              {agents.slice(3).map((agent) => (
-                <DropdownMenu.Item
-                  key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
-                  label={agent.name}
-                  visual={agent.pictureUrl}
-                  onClick={async () => {
-                    if (!loading) {
-                      setLoading(true);
-                      await selectSuggestionHandler(agent);
-                      setLoading(false);
-                    }
-                  }}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </div>
-        </DropdownMenu>
+          }
+        />
       </div>
     </div>
   );

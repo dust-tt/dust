@@ -1,15 +1,5 @@
-import {
-  Avatar,
-  Button,
-  DropdownMenu,
-  IconButton,
-  PaperAirplaneIcon,
-  PlusIcon,
-  RobotIcon,
-  WrenchIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, IconButton, PaperAirplaneIcon } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
-import Link from "next/link";
 import {
   createContext,
   ForwardedRef,
@@ -23,6 +13,7 @@ import {
 } from "react";
 import * as ReactDOMServer from "react-dom/server";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -598,57 +589,29 @@ export function AssistantInputBar({
 
             <div className={classNames("z-10 flex flex-row space-x-4 pr-2")}>
               <div className="flex flex-col justify-center">
-                <DropdownMenu>
-                  <DropdownMenu.Button icon={RobotIcon} />
-                  <DropdownMenu.Items origin="bottomRight" width={240}>
-                    {activeAgents.map((c) => (
-                      <DropdownMenu.Item
-                        key={c.sId}
-                        label={"@" + c.name}
-                        visual={c.pictureUrl}
-                        onClick={() => {
-                          // We construct the HTML for an AgentMention and inject it in the content
-                          // editable with an extra space after it.
-                          const htmlString =
-                            ReactDOMServer.renderToStaticMarkup(
-                              <AgentMention agentConfiguration={c} />
-                            );
-                          const wrapper = document.createElement("div");
-                          wrapper.innerHTML = htmlString.trim();
-                          const mentionNode = wrapper.firstChild;
-                          const contentEditable =
-                            document.getElementById("dust-input-bar");
-                          if (contentEditable && mentionNode) {
-                            // Add mentionNode as last childe of contentEditable.
-                            contentEditable.appendChild(mentionNode);
-                            const afterTextNode = document.createTextNode(" ");
-                            contentEditable.appendChild(afterTextNode);
-                          }
-                        }}
-                      />
-                    ))}
-                    {(owner.role === "admin" || owner.role === "builder") && (
-                      <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
-                        <Link href={`/w/${owner.sId}/builder/assistants/new`}>
-                          <Button
-                            label="Create"
-                            size="xs"
-                            variant="secondary"
-                            icon={PlusIcon}
-                          />
-                        </Link>
-                        <Link href={`/w/${owner.sId}/builder/assistants`}>
-                          <Button
-                            label="Manage"
-                            size="xs"
-                            variant="tertiary"
-                            icon={WrenchIcon}
-                          />
-                        </Link>
-                      </div>
-                    )}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                <AssistantPicker
+                  owner={owner}
+                  onItemClick={(c) => {
+                    // We construct the HTML for an AgentMention and inject it in the content
+                    // editable with an extra space after it.
+                    const htmlString = ReactDOMServer.renderToStaticMarkup(
+                      <AgentMention agentConfiguration={c} />
+                    );
+                    const wrapper = document.createElement("div");
+                    wrapper.innerHTML = htmlString.trim();
+                    const mentionNode = wrapper.firstChild;
+                    const contentEditable =
+                      document.getElementById("dust-input-bar");
+                    if (contentEditable && mentionNode) {
+                      // Add mentionNode as last childe of contentEditable.
+                      contentEditable.appendChild(mentionNode);
+                      const afterTextNode = document.createTextNode(" ");
+                      contentEditable.appendChild(afterTextNode);
+                    }
+                  }}
+                  assistants={activeAgents}
+                  showBuilderButtons={true}
+                />
               </div>
               <IconButton
                 variant="primary"

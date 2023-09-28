@@ -240,7 +240,7 @@ export async function* runGeneration(
 > {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+    throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
   const c = configuration.generation;
