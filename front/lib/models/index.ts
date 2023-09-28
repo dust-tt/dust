@@ -17,6 +17,7 @@ import {
   ConversationParticipant,
   Mention,
   Message,
+  MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { DataSource } from "@app/lib/models/data_source";
@@ -56,6 +57,7 @@ export {
   MembershipInvitation,
   Mention,
   Message,
+  MessageReaction,
   Provider,
   RetrievalDocument,
   RetrievalDocumentChunk,
