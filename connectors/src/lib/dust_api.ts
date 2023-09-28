@@ -604,7 +604,7 @@ export class DustAPI {
     };
 
     const streamRes = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/${
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
         conv.sId
       }/messages/${agentMessageRes.value.sId}/events`,
       {
