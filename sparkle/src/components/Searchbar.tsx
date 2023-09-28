@@ -49,7 +49,12 @@ export function Searchbar({
         />
         <MagnifyingGlass className="s-absolute s-right-3 s-top-2 s-h-5 s-w-5" />
       </div>
-      <div className="s-ml-2 s-h-4 s-text-red-500">
+      <div
+        className={classNames(
+          "s-ml-2 s-h-4 s-text-red-500",
+          showErrorLabel ? "" : "hidden"
+        )}
+      >
         {showErrorLabel && error ? error : null}
       </div>
     </div>
