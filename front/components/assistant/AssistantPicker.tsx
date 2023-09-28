@@ -4,6 +4,7 @@ import {
   MagnifyingGlassStrokeIcon,
   PlusIcon,
   RobotIcon,
+  Searchbar,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -40,25 +41,19 @@ export function AssistantPicker({
       </div>
       <DropdownMenu.Items origin="auto" width={240}>
         {assistants.length > 7 && (
-          <div className="border-b border-structure-100 p-2">
-            <div className="relative text-sm font-medium text-element-800">
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchText}
-                className="h-9 w-full rounded-full border-structure-200 pr-8"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchedAssistants.length > 0) {
-                    onItemClick(searchedAssistants[0]);
-                    setSearchText("");
-                  }
-                }}
-                onChange={(e) => {
-                  setSearchText(e.target.value);
-                }}
-              />
-              <MagnifyingGlassStrokeIcon className="absolute right-3 top-2 h-5 w-5" />
-            </div>
+          <div className="border-b border-structure-100 p-2 pb-0">
+            <Searchbar
+              placeholder="Search"
+              name="input"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchedAssistants.length > 0) {
+                  onItemClick(searchedAssistants[0]);
+                  setSearchText("");
+                }
+              }}
+            />
           </div>
         )}
         <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
