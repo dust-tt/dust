@@ -71,6 +71,9 @@ export { Modal };
 import { Input } from "./components/Input";
 export { Input };
 
+import { Searchbar } from "./components/Searchbar";
+export { Searchbar };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
