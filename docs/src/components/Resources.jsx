@@ -2,15 +2,16 @@ import Link from "next/link";
 import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
 
 import { Heading } from "@/components/Heading";
-import { UserIcon } from "@/components/icons/UserIcon";
+import { CogIcon } from "@/components/icons/CogIcon";
 import { PaperClipIcon } from "./icons/PaperClipIcon";
+import { ChatBubbleIcon } from "./icons/ChatBubbleIcon";
 
 const resources = [
   {
     href: "/runs",
     name: "Runs",
     description: "Learn about how to call a Dust app by API.",
-    icon: UserIcon,
+    icon: CogIcon,
     pattern: {
       y: 16,
     },
@@ -18,8 +19,18 @@ const resources = [
   {
     href: "/documents",
     name: "Documents",
-    description: "Learn about how to call manage Dust data sources by API.",
+    description: "Learn about how to manage Dust data sources by API.",
     icon: PaperClipIcon,
+    pattern: {
+      y: 16,
+    },
+  },
+  {
+    href: "/conversations",
+    name: "Conversations",
+    description:
+      "Learn about how to create conversations and interact with Dust assistatns.",
+    icon: ChatBubbleIcon,
     pattern: {
       y: 16,
     },

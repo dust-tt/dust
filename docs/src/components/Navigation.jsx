@@ -207,6 +207,7 @@ export const navigation = [
     links: [
       { title: "Runs", href: "/runs" },
       { title: "Documents", href: "/documents" },
+      { title: "Conversations", href: "/conversations" },
     ],
   },
 ];
