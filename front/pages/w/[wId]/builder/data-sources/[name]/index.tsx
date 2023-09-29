@@ -44,6 +44,8 @@ const {
   GITHUB_APP_URL = "",
 } = process.env;
 
+const GOOGLE_OAUTH_WORKSPACE_IDS = ["17fd918e1d", "2f151df544"];
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
@@ -515,6 +517,17 @@ function ManagedDataSourceView({
         <div className="flex flex-row">
           <div className="flex flex-1"></div>
           <Button.List>
+            {GOOGLE_OAUTH_WORKSPACE_IDS.includes(owner.sId) && (
+              <Button
+                label="View documents"
+                variant="secondary"
+                onClick={() => {
+                  void router.push(
+                    `/w/${owner.sId}/builder/data-sources/${dataSource.name}?standardView=true`
+                  );
+                }}
+              />
+            )}
             <Button
               label="Search"
               variant="secondary"
