@@ -153,16 +153,3 @@ export function compareAgentsForSort(
 
   return 0; // Default: keep the original order
 }
-
-export function isOnAssistantV2(owner?: WorkspaceType): boolean {
-  // UNCOMMENT THIS TO ROLLBACK TO V1
-  // const V2_ROLLED_OUT_WORKSPACES = [
-  //   "0ec9852c2f", // Dust
-  //   "76e5b694df", // dust-test
-  // ];
-  // return (
-  //   isDevelopmentOrDustWorkspace(owner) ||
-  //   V2_ROLLED_OUT_WORKSPACES.includes(owner.sId)
-  // );
-  return owner !== null;
-}
