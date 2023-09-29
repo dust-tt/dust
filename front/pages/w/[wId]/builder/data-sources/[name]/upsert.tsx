@@ -116,6 +116,14 @@ export default function DataSourceUpsert({
     }
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
+  const alertDataSourcesLimit = () => {
+    window.alert(
+      "DataSource document upload size is limited to " +
+        `${owner.plan.limits.dataSources.documents.sizeMb}MB (of raw text)` +
+        ". Contact team@dust.tt if you want to increase this limit."
+    );
+  };
+
   const handleFileLoadedText = (e: any) => {
     const content = e.target.result;
     setUploading(false);
@@ -125,9 +133,7 @@ export default function DataSourceUpsert({
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
       text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
     ) {
-      window.alert(
-        "DataSource document upload size is limited to 1MB (of raw text). Contact team@dust.tt if you want to increase this limit."
-      );
+      alertDataSourcesLimit();
       return;
     }
     setText(content);
@@ -152,9 +158,7 @@ export default function DataSourceUpsert({
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
       text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
     ) {
-      window.alert(
-        "DataSource document upload size is limited to 1MB (of raw text). Contact team@dust.tt if you want to increase this limit."
-      );
+      alertDataSourcesLimit();
       return;
     }
     setText(text);
