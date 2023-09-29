@@ -340,18 +340,18 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-center">
           <div
             className={classNames(
-              "flex flex-1 flex-row items-end items-stretch px-2",
-              "border-2 border-action-200 bg-white focus-within:border-action-300",
-              "rounded-sm rounded-xl drop-shadow-2xl",
+              "flex flex-1 flex-row items-end items-stretch px-4",
+              "border-2 border-action-300 bg-white focus-within:border-action-400",
+              "rounded-xl drop-shadow-2xl transition-all duration-300",
               isAnimating
-                ? "animate-shake border-action-800 focus-within:border-action-800"
+                ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
             )}
           >
             <div
               className={classNames(
                 "inline-block w-full",
-                "border-0 px-3 py-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+                "border-0 px-3 py-4 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
                 "whitespace-pre-wrap font-normal "
               )}
               contentEditable={true}
@@ -671,6 +671,7 @@ export function AssistantInputBar({
               <IconButton
                 variant="primary"
                 icon={PaperAirplaneIcon}
+                size="md"
                 onClick={() => {
                   void handleSubmit();
                 }}
@@ -694,7 +695,7 @@ export function FixedAssistantInputBar({
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
-      <div className="mx-auto max-w-4xl pb-12">
+      <div className="mx-auto max-w-4xl pb-8">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
