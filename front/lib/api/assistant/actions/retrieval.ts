@@ -625,6 +625,7 @@ export async function* runRetrieval(
           documentId: d.documentId,
           reference: d.reference,
           timestamp: d.timestamp,
+          documentTimestamp: new Date(d.timestamp),
           tags: d.tags,
           score: d.score,
           retrievalActionId: action.id,
