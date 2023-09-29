@@ -38,76 +38,14 @@ type DustAPICredentials = {
   workspaceId: string;
 };
 
-type ChatRetrievedDocumentType = {
-  dataSourceId: string;
-  sourceUrl: string;
-  documentId: string;
-  timestamp: string;
-  tags: string[];
-  score: number;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number;
-  }[];
-};
-
-type MessageFeedbackStatus = "positive" | "negative" | null;
-
-type MessageRole = "user" | "retrieval" | "assistant" | "error";
-type ChatMessageType = {
-  sId: string;
-  role: MessageRole;
-  message?: string; // for `user`, `assistant` and `error` messages
-  retrievals?: ChatRetrievedDocumentType[]; // for `retrieval` messages
-  query?: string; // for `retrieval` messages (not persisted)
-  feedback?: MessageFeedbackStatus;
-};
-
-type ChatSessionType = {
-  id: number;
-  userId: number;
+export type AgentActionSuccessEvent = {
+  type: "agent_action_success";
   created: number;
-  sId: string;
-  title?: string;
-  messages?: ChatMessageType[];
-  visibility: string;
-};
-
-// Event sent when the session is initially created.
-type ChatSessionCreateEvent = {
-  type: "chat_session_create";
-  session: ChatSessionType;
-};
-
-// Event sent when we know what will be the type of the next message. It is sent initially when the
-// user message is created for consistency and then each time we know we're going for a retrieval or
-// an assistant response.
-type ChatMessageTriggerEvent = {
-  type: "chat_message_trigger";
-  role: MessageRole;
-  // We might want to add some data here in the future e.g including
-  // information about the query being used in the case of retrieval.
-};
-
-// Event sent once the message is fully constructed.
-type ChatMessageCreateEvent = {
-  type: "chat_message_create";
-  message: ChatMessageType;
-};
-
-// Event sent when receiving streamed response from the model.
-type ChatMessageTokensEvent = {
-  type: "chat_message_tokens";
+  configurationId: string;
   messageId: string;
-  text: string;
+  action: AgentActionType;
 };
 
-// Event sent when the session is updated (eg title is set).
-export type ChatSessionUpdateEvent = {
-  type: "chat_session_update";
-  session: ChatSessionType;
-};
 // Event sent when tokens are streamed as the the agent is generating a message.
 export type GenerationTokensEvent = {
   type: "generation_tokens";
@@ -279,7 +217,55 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
 };
+
+/**
+ * Agent messages
+ */
+
+export type AgentActionType = RetrievalActionType;
+
+export type RetrievalActionType = {
+  type: "retrieval_action";
+  params: {
+    relativeTimeFrame: TimeFrame | null;
+    query: string | null;
+    topK: number;
+  };
+  documents: RetrievalDocumentType[] | null;
+};
+
+export type RetrievalDocumentType = {
+  dataSourceId: string;
+  sourceUrl: string | null;
+  documentId: string;
+  reference: string; // Short random string so that the model can refer to the document.
+  timestamp: number;
+  tags: string[];
+  score: number;
+  chunks: {
+    text: string;
+    offset: number;
+    score: number;
+  }[];
+};
+
+export type TimeFrame = {
+  duration: number;
+  unit: TimeframeUnit;
+};
+
+export const TIME_FRAME_UNITS = [
+  "hour",
+  "day",
+  "week",
+  "month",
+  "year",
+] as const;
+
+export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
+
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -297,14 +283,17 @@ export type AgentMessageType = {
 
   // configuration: AgentConfigurationType;
   status: AgentMessageStatus;
-  // action: AgentActionType | null;
+  action: AgentActionType | null;
   content: string | null;
-  // feedbacks: UserFeedbackType[];
   error: {
     code: string;
     message: string;
   } | null;
 };
+
+/**
+ * Conversation
+ */
 
 export type ConversationType = {
   id: ModelId;
@@ -322,103 +311,7 @@ export type ConversationType = {
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-export async function processStreamedChatResponse(res: Response) {
-  if (!res.ok || !res.body) {
-    return new Err({
-      type: "dust_api_error",
-      message: `Error running streamed app: status_code=${
-        res.status
-      }  - message=${await res.text()}`,
-    });
-  }
-
-  let pendingEvents: (
-    | ChatMessageTriggerEvent
-    | ChatSessionCreateEvent
-    | ChatMessageCreateEvent
-    | ChatMessageTokensEvent
-    | ChatSessionUpdateEvent
-  )[] = [];
-
-  const parser = createParser((event) => {
-    if (event.type === "event") {
-      if (event.data) {
-        try {
-          const data = JSON.parse(event.data);
-
-          switch (data.type) {
-            case "chat_session_create": {
-              pendingEvents.push(data as ChatSessionCreateEvent);
-              break;
-            }
-            case "chat_message_trigger": {
-              pendingEvents.push(data as ChatMessageTriggerEvent);
-              break;
-            }
-            case "chat_message_create": {
-              pendingEvents.push(data as ChatMessageCreateEvent);
-              break;
-            }
-            case "chat_message_tokens": {
-              pendingEvents.push(data as ChatMessageTokensEvent);
-              break;
-            }
-            case "chat_session_update": {
-              pendingEvents.push(data as ChatSessionUpdateEvent);
-              break;
-            }
-          }
-        } catch (err) {
-          logger.error({ error: err }, "Failed parsing chunk from Dust API");
-        }
-      }
-    }
-  });
-
-  const reader = res.body.getReader();
-
-  const streamEvents = async function* () {
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        parser.feed(new TextDecoder().decode(value));
-        for (const event of pendingEvents) {
-          yield event;
-        }
-        pendingEvents = [];
-      }
-    } catch (e) {
-      yield {
-        type: "error",
-        content: {
-          code: "stream_error",
-          message: "Error streaming chunks",
-        },
-      } as DustAppRunErrorEvent;
-      logger.error(
-        {
-          error: e,
-        },
-        "Error streaming chunks."
-      );
-    } finally {
-      reader.releaseLock();
-    }
-  };
-
-  return new Ok({ eventStream: streamEvents() });
-}
-
-/**
- * This help functions process a streamed response in the format of the Dust API for running
- * streamed apps.
- *
- * @param res an HTTP response ready to be consumed as a stream
- */
-export async function processCreateConversationEvents(res: Response) {
+export async function processStreamedMessageEvents(res: Response) {
   if (!res.ok || !res.body) {
     return new Err({
       type: "dust_api_error",
@@ -431,6 +324,7 @@ export async function processCreateConversationEvents(res: Response) {
   let pendingEvents: (
     | UserMessageErrorEvent
     | AgentErrorEvent
+    | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
   )[] = [];
@@ -447,6 +341,10 @@ export async function processCreateConversationEvents(res: Response) {
             }
             case "agent_error": {
               pendingEvents.push(data as AgentErrorEvent);
+              break;
+            }
+            case "agent_action_success": {
+              pendingEvents.push(data as AgentActionSuccessEvent);
               break;
             }
             case "generation_tokens": {
@@ -544,9 +442,9 @@ export class DustAPI {
     title: string | null,
     visibility: ConversationVisibility,
     message: PostMessagesRequestBodySchema
-  ) {
+  ): Promise<Result<ConversationType, DustAPIErrorResponse>> {
     const requestPayload: PostConversationsRequestBodySchema = {
-      title: null,
+      title,
       visibility,
       message,
     };
@@ -567,6 +465,12 @@ export class DustAPI {
     if (json.error) {
       return new Err(json.error as DustAPIErrorResponse);
     }
+
+    return new Ok(json.conversation as ConversationType);
+  }
+
+
+
     const conv = json.conversation as { sId: string };
     const agentMessageRes: Result<AgentMessageType, Error> =
       await (async () => {
@@ -614,7 +518,7 @@ export class DustAPI {
     );
 
     return new Ok({
-      stream: processCreateConversationEvents(streamRes),
+      stream: processStreamedMessageEvents(streamRes),
       conversation: conv,
     });
   }
