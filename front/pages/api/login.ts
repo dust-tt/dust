@@ -20,7 +20,10 @@ const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
 // List of emails for which all worksapces should be upgraded
 // at sign-up time.
-const EMAILS_TO_AUTO_UPGRADE = ["oauthtest121@gmail.com"];
+const EMAILS_TO_AUTO_UPGRADE = [
+  "oauthtest121@gmail.com",
+  "oauthtest222@gmail.com",
+];
 
 async function handler(
   req: NextApiRequest,

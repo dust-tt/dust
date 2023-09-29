@@ -1,10 +1,10 @@
-import React, { ReactNode, useState } from "react";
+import React, { useState } from "react";
 
 import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
-  size: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
   name?: string;
   visual?: string | React.ReactNode;
   clickable?: boolean;
@@ -158,20 +158,25 @@ export function Avatar({
 }
 
 interface AvatarStackProps {
-  children: ReactNode;
+  children: React.ReactElement<AvatarProps> | React.ReactElement<AvatarProps>[];
   nbMoreItems?: number;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
+  isRounded?: boolean;
+  hasMagnifier?: boolean;
 }
 
-const SIZE_SETTINGS = {
-  sm: { widthHovered: "44px", width: "32px" },
-  md: { widthHovered: "52px", width: "40px" }, // Adjust these values as needed for the 'md' size
+const sizeClassesPx = {
+  xs: 24,
+  sm: 32,
+  md: 40,
 };
 
 Avatar.Stack = function ({
   children,
   nbMoreItems,
   size = "sm",
+  isRounded = false,
+  hasMagnifier = true,
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
   const childrenArray = React.Children.toArray(children);
@@ -188,7 +193,22 @@ Avatar.Stack = function ({
     }
   };
 
-  const sizeSetting = SIZE_SETTINGS[size];
+  const sizeSetting = {
+    marginLeft: 0,
+    widthHovered: sizeClassesPx[size] * 0.6,
+    width: sizeClassesPx[size] * 0.25,
+  };
+
+  const collapsedWidth =
+    sizeSetting.width * (childrenArray.length + Number(Boolean(nbMoreItems))) +
+    (sizeClassesPx[size] - sizeSetting.width);
+
+  const openedWidth =
+    sizeSetting.widthHovered *
+      (childrenArray.length + Number(Boolean(nbMoreItems))) +
+    (sizeClassesPx[size] - sizeSetting.widthHovered);
+
+  const transitionSettings = "width 200ms ease-out";
 
   return (
     <div
@@ -196,35 +216,59 @@ Avatar.Stack = function ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
-        marginLeft: "20px",
+        width: `${isHovered ? openedWidth : collapsedWidth}px`,
+        transition: transitionSettings,
       }}
     >
-      {childrenArray.map((child, i) => (
-        <div
-          key={i}
-          className="s-cursor-pointer s-drop-shadow-md"
-          style={{
-            width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-            transition: "width 200ms ease-out",
-            marginLeft: "-20px",
-          }}
-        >
-          {child}
-        </div>
-      ))}
+      {childrenArray.map((child, i) => {
+        if (React.isValidElement<AvatarProps>(child)) {
+          return (
+            <div
+              key={i}
+              className="s-cursor-pointer s-drop-shadow-md"
+              style={{
+                width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
+                transition: transitionSettings,
+              }}
+            >
+              {hasMagnifier ? (
+                <div
+                  style={{
+                    transform: `scale(${
+                      1 - (childrenArray.length - i) * 0.06
+                    })`,
+                  }}
+                >
+                  {React.cloneElement(child, {
+                    size: size,
+                    isRounded: isRounded,
+                  })}
+                </div>
+              ) : (
+                <>
+                  {React.cloneElement(child, {
+                    size: size,
+                    isRounded: isRounded,
+                  })}
+                </>
+              )}
+            </div>
+          );
+        }
+        return null;
+      })}
       {Boolean(nbMoreItems) && (
         <div
           className="s-cursor-pointer s-drop-shadow-md"
           style={{
             width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-            transition: "width 200ms ease-out",
-            marginLeft: "-20px",
+            transition: transitionSettings,
           }}
         >
           <Avatar
             size={size}
             name={"+" + String(Number(nbMoreItems) < 10 ? nbMoreItems : "")}
-            isRounded
+            isRounded={isRounded}
             clickable
           />
         </div>
