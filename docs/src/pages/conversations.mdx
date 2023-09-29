@@ -259,10 +259,11 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
 
 <Row>
   <Col>
-
     This endpoint allows you to create a Conversation potentially posting an initial user message at
     the same time. If you specify an initial user message, the conversation objet returned will be
-    returned upon creation before posting the user message to it.
+    returned including the user message and potential assistant response messages as they got added
+    (`created` status). Knowing their `sId` will enable you to stream their events without having to
+    retrieve the conversation object again.
 
     ### URL attributes
 
@@ -338,7 +339,35 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         "title":null,
         "visibility":
         "unlisted",
-        "content": []
+        "content": [
+          [{
+            "sId": "1651e51da4",
+            "type": "user_message",
+            "visibility": "visible",
+            "version": 0,
+            "user": null,
+            "mentions": [{"configurationId":"dust"}],
+            "content": "Hi :cite[dust]{dust}!",
+            "context": {
+              "username": "peter",
+              "timezone": "Europe/Paris",
+              "fullName": "Peter Parker",
+              "email": null,
+              "profilePictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
+           }
+          }] , [{
+            "sId": "fa72419067",
+            "type": "agent_message",
+            "visibility": "visible",
+            "version": 0,
+            "parentMessageId": "1651e51da4",
+            "status": "created",
+            "action": null,
+            "content": null,
+            "error":null,
+            "configuration":{...}
+          }]
+        ]
       }
       "message": {...}
     }
