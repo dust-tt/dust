@@ -248,14 +248,6 @@ const WorkspacePage = ({
     (ds) => !!ds.connectorProvider
   );
 
-  // @todo remove fallback on workspace plan
-  const isFullyUpgraded =
-    workspace.upgradedAt !== null ||
-    (workspace.plan?.limits.dataSources.count === -1 &&
-      workspace.plan?.limits.dataSources.documents.count === -1 &&
-      workspace.plan?.limits.dataSources.documents.sizeMb === -1 &&
-      workspace.plan?.limits.dataSources.managed === true);
-
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
@@ -275,7 +267,7 @@ const WorkspacePage = ({
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
-            {isFullyUpgraded ? (
+            {workspace.upgradedAt ? (
               <p className="mb-4 text-green-600">
                 This workspace was fully upgraded
                 {workspace.upgradedAt &&
@@ -294,18 +286,20 @@ const WorkspacePage = ({
                   label="Downgrade"
                   variant="secondaryWarning"
                   onClick={onDowngrade}
-                  disabled={!isFullyUpgraded || workspaceHasManagedDataSources}
+                  disabled={
+                    !workspace.upgradedAt || workspaceHasManagedDataSources
+                  }
                 />
 
                 <Button
                   label="Upgrade"
                   variant="secondary"
                   onClick={onUpgrade}
-                  disabled={isFullyUpgraded}
+                  disabled={!!workspace.upgradedAt}
                 />
               </div>
             </div>
-            {isFullyUpgraded && workspaceHasManagedDataSources && (
+            {workspace.upgradedAt && workspaceHasManagedDataSources && (
               <span className="mx-2 w-1/3">
                 <p className="text-warning mb-4 text-sm ">
                   Delete managed data sources before downgrading.
