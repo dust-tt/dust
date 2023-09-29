@@ -1,7 +1,7 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { mutate } from "swr";
 import { useState } from "react";
+import { mutate } from "swr";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
