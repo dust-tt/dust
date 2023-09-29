@@ -1,6 +1,5 @@
 import { GetServerSideProps } from "next";
 
-import { isOnAssistantV2 } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
@@ -18,14 +17,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  const isOnV2 = isOnAssistantV2(owner);
-  const redirectRoute = isOnV2
-    ? `/w/${context.query.wId}/assistant/new`
-    : `/w/${context.query.wId}/u/chat`;
-
   return {
     redirect: {
-      destination: redirectRoute,
+      destination: `/w/${context.query.wId}/assistant/new`,
       permanent: false,
     },
   };

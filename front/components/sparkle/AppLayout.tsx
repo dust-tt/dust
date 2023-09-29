@@ -15,7 +15,6 @@ import { signOut } from "next-auth/react";
 import { Fragment, useState } from "react";
 
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { isOnAssistantV2 } from "@app/lib/assistant";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -56,9 +55,7 @@ function NavigationBar({
                   workspace={owner}
                   readOnly={false}
                   onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = isOnAssistantV2(owner)
-                      ? `/w/${workspace.sId}/assistant/new`
-                      : `/w/${workspace.sId}/u/chat`;
+                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
                     if (workspace.id !== owner.id) {
                       void router
                         .push(assistantRoute)
