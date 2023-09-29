@@ -4,7 +4,7 @@ import React, { Fragment } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
-import { ButtonProps } from "./Button";
+import { Button, ButtonProps } from "./Button";
 
 interface ModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ interface ModalProps {
 export function Modal({
   isOpen,
   onClose,
+  action,
   children,
   hasChanged,
   onSave,
@@ -78,6 +79,7 @@ export function Modal({
               >
                 <BarHeader
                   title={title || ""}
+                  leftActions={action ? <Button {...action} /> : undefined}
                   rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
                 />
                 <div
