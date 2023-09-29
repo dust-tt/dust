@@ -124,6 +124,135 @@ The Conversation model contains all the information and data related to a conver
   </Property>
 </Properties>
 
+## Conversation events
+
+A conversation will emit the following events that can be streamed by API (see below):
+
+The `user_message_new` event is sent when a new UserMessage is received.
+
+```
+{
+  type: "user_message_new";
+  created: number;
+  messageId: string;
+  message: UserMessage;
+}
+```
+
+The `agent_message_new` event is sent when a new AgentMessage is received. The agent message status
+will initially be `created`.
+
+```
+{
+  type: "agent_message_new";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessage;
+}
+```
+
+The `conversation_title` event is sent when the title of the conversation is updated (manually or
+automatically after the first user assistant interaction).
+
+```
+{
+  type: "conversation_title";
+  created: number;
+  title: string;
+}
+```
+
+## AgentMessage events
+
+AgentMessages have a complex lifecycle going from possibly running an action, to streaming tokens
+and finally being marked as `succeeded`. These events can be streamed by API (see below).
+
+### Action events
+
+The `retrieval_params` is sent during retrieval (if applicable) with the finalized query used to
+retrieve documents.
+
+```
+{
+  type: "retrieval_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  dataSources: "all" | DataSourceConfiguration[];
+  action: RetrievalActionType;
+}
+```
+
+The `agent_action_success` event is sent once the assistant action is completed (if applicable), as
+we're moving to generating a message if applicable. The currently supported action is `retrieval`.
+If the assistant is configured to not perform any retrieval, these events won't be emitted.
+
+```
+{
+  type: "agent_action_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: AgentActionType;
+}
+```
+
+### Generation events
+
+The `generation_tokens` event is sent when tokens are streamed as the the assistant is generating a message.
+
+```
+{
+  type: "generation_tokens";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  text: string;
+}
+```
+
+The `agent_generation_success` event is sent once the generation has completed.
+
+```
+{
+  type: "agent_generation_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  text: string;
+}
+```
+
+### Other events
+
+The `agent_message_success` event is sent once the message is fully completed and successful.
+
+```
+{
+  type: "agent_message_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+}
+```
+
+The `agent_error` event is sent whenever an error occured durint the AgentMessage lifecycle.
+
+```
+{
+  type: "agent_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+}
+```
+
 ---
 
 ## Create a Conversation {{ tag: 'POST', label: '/v1/w/:workspace_id/assistant/conversations' }}
@@ -212,11 +341,7 @@ The Conversation model contains all the information and data related to a conver
         "title":null,
         "visibility":
         "unlisted",
-        "content": [],
-        "participants": {
-          "users": [],
-          "agents": []
-        }
+        "content": []
       }
     }
     ```
@@ -232,7 +357,7 @@ The Conversation model contains all the information and data related to a conver
   <Col>
 
     This endpoint allows you to retrieve a Conversation. It will render the conversation in its
-    current state (potetial agent messages will still be in `created` state).
+    current state (potential agent messages will still be in `created` state).
 
     ### URL attributes
 
@@ -248,7 +373,7 @@ The Conversation model contains all the information and data related to a conver
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/apps/:app_id/runs/:run_id">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id">
 
     ```bash {{ title: 'cURL' }}
     curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c \
@@ -327,11 +452,153 @@ The Conversation model contains all the information and data related to a conver
               "action": {...}
             }
           }]
-        ],
-        "participants":{
-          "users":[...],
-          "agents":[...]
-        }
+        ]
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Stream Conversation Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id/events' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to stream a Conversation's event (see event definitions above). Events
+    are streamed using Server Side Rendering and wrapped in the structure:
+    ```
+    {
+      "eventId": ${INTERNAL_ID},
+      "data": ${EVENT_DATA}
+    }
+    ```
+
+    Note that events can be repeated across API calls.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace to use (can be found in any of the workspace's URL)
+      </Property>
+      <Property name="conversation_id" type="string">
+        The `sId` of the conversation to stream events from.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id/events">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c/events \
+      -H "Authorization: Bearer sk-..." \
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "eventId":"1695991686152-0",
+      "data": {
+        "type": "user_message_new",
+        "created": 1695991686151,
+        "messageId": "343756bed1",
+        "message": {...}
+      }
+    }
+    {
+      "eventId": "1695991727206-0",
+      "data": {
+        "type": "agent_message_new",
+        "created": 1695991727204,
+        "configurationId": "helper",
+        "messageId": "d349842779",
+        "message": {...}
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Stream Message Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id/messages/:message_id/events' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to stream a Message's event (see event definitions above). Events
+    are streamed using Server Side Rendering and wrapped in the structure:
+    ```
+    {
+      "eventId": ${INTERNAL_ID},
+      "data": ${EVENT_DATA}
+    }
+    ```
+
+    Note that events can be repeated across API calls.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace to use (can be found in any of the workspace's URL)
+      </Property>
+      <Property name="conversation_id" type="string">
+        The `sId` of the conversation of the message to stream events from.
+      </Property>
+      <Property name="message_id" type="string">
+        The `sId` of the message to stream events from.
+      </Property>
+    </Properties>
+
+    ### Query parameters
+
+    Query attributes are passed as GET parameters.
+
+    <Properties>
+      <Property name="lastEventId" type="string">
+        If provided, the stream will start at the event with the provided ID.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id/messages/:message_id/events">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c/messages/d349842779/events \
+      -H "Authorization: Bearer sk-..." \
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "eventId":"1695991686152-0",
+      "data": {
+        "type": "generation_token",
+        "created": 1695991686151,
+        "configurationId": "helper",
+        "messageId": "d349842779",
+        "text": "World"
+      }
+    }
+    {
+      "eventId": "1695991727206-0",
+      "data": {
+        "type": "generation_tokens",
+        "created": 1695991727204,
+        "configurationId": "helper",
+        "messageId": "d349842779",
+        "text": "World"
       }
     }
     ```
