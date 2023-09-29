@@ -1,5 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -7,7 +8,7 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/I
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { MentionType } from "@app/types/assistant/conversation";
+import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -55,6 +56,7 @@ export default function AssistantConversation({
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
@@ -121,8 +123,17 @@ export default function AssistantConversation({
         <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
-      <Conversation owner={owner} conversationId={conversationId} />
-      <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
+      <Conversation
+        owner={owner}
+        user={user}
+        conversationId={conversationId}
+        onStickyMentionsChange={setStickyMentions}
+      />
+      <FixedAssistantInputBar
+        owner={owner}
+        onSubmit={handleSubmit}
+        stickyMentions={stickyMentions}
+      />
     </AppLayout>
   );
 }

@@ -10,17 +10,24 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { useConversation, useConversations } from "@app/lib/swr";
 import {
+  AgentMention,
   AgentMessageType,
+  isAgentMention,
+  isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export default function Conversation({
   owner,
+  user,
   conversationId,
+  onStickyMentionsChange,
 }: {
   owner: WorkspaceType;
+  user: UserType;
   conversationId: string;
+  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
 }) {
   const {
     conversation,
@@ -41,6 +48,41 @@ export default function Conversation({
       window.scrollTo(0, document.body.scrollHeight);
     }
   }, [conversation?.content.length]);
+
+  useEffect(() => {
+    if (!onStickyMentionsChange) {
+      return;
+    }
+    const lastUserMessageContent = conversation?.content.findLast(
+      (versionedMessages) =>
+        versionedMessages.some(
+          (message) =>
+            isUserMessageType(message) &&
+            message.visibility !== "deleted" &&
+            message.user?.id === user.id
+        )
+    );
+
+    if (!lastUserMessageContent) {
+      return;
+    }
+
+    const lastUserMessage =
+      lastUserMessageContent[lastUserMessageContent.length - 1];
+
+    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+      return;
+    }
+
+    const mentions = lastUserMessage.mentions;
+    const agentMentions = mentions.filter(isAgentMention);
+    onStickyMentionsChange(agentMentions);
+  }, [
+    conversation?.content,
+    conversation?.content.length,
+    onStickyMentionsChange,
+    user.id,
+  ]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {

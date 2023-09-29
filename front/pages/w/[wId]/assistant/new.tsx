@@ -344,7 +344,11 @@ export default function AssistantNew({
             </Page.Vertical>
           </div>
         ) : (
-          <Conversation owner={owner} conversationId={conversation.sId} />
+          <Conversation
+            owner={owner}
+            user={user}
+            conversationId={conversation.sId}
+          />
         )}
 
         <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
