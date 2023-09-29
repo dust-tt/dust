@@ -1,4 +1,5 @@
 import { ModelId } from "@app/lib/databases";
+import { MessageReaction } from "@app/lib/models";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
@@ -33,6 +34,14 @@ export function isUserMention(arg: MentionType): arg is UserMention {
   );
 }
 
+export type MessageReactionType = {
+  emoji: string;
+  users: {
+    username: string;
+    fullName: string | null;
+  }[];
+};
+
 /**
  * User messages
  */
@@ -55,6 +64,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  reactions: MessageReactionType[];
 };
 
 export function isUserMessageType(
@@ -66,12 +76,6 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-
-export type UserFeedbackType = {
-  user: UserType;
-  value: "positive" | "negative" | null;
-  comment: string | null;
-};
 
 export type AgentActionType = RetrievalActionType;
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
@@ -95,11 +99,11 @@ export type AgentMessageType = {
   status: AgentMessageStatus;
   action: AgentActionType | null;
   content: string | null;
-  feedbacks: UserFeedbackType[];
   error: {
     code: string;
     message: string;
   } | null;
+  reactions: MessageReactionType[];
 };
 
 export function isAgentMessageType(

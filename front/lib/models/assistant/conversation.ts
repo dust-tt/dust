@@ -336,6 +336,7 @@ export class Message extends Model<
 
   declare userMessage?: NonAttribute<UserMessage>;
   declare agentMessage?: NonAttribute<AgentMessage>;
+  declare reactions?: NonAttribute<MessageReaction[]>;
 }
 
 Message.init(
@@ -492,6 +493,7 @@ MessageReaction.init(
 );
 
 Message.hasMany(MessageReaction, {
+  as: "reactions",
   foreignKey: { name: "messageId", allowNull: false },
   onDelete: "CASCADE",
 });

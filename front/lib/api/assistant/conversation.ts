@@ -18,6 +18,7 @@ import {
   GenerationTokensEvent,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
+import { renderMessageReactions } from "@app/lib/api/assistant/reaction";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -26,6 +27,7 @@ import {
   ConversationParticipant,
   Mention,
   Message,
+  MessageReaction,
   User,
   UserMessage,
 } from "@app/lib/models";
@@ -242,6 +244,9 @@ async function renderUserMessage(
       email: userMessage.userContextEmail,
       profilePictureUrl: userMessage.userContextProfilePictureUrl,
     },
+    reactions: message.reactions
+      ? renderMessageReactions(message.reactions)
+      : [],
   };
 }
 
@@ -293,7 +298,9 @@ async function renderAgentMessage(
     status: agentMessage.status,
     action: agentRetrievalAction,
     content: agentMessage.content,
-    feedbacks: [],
+    reactions: message.reactions
+      ? renderMessageReactions(message.reactions)
+      : [],
     error,
     configuration: agentConfiguration,
   };
@@ -395,6 +402,11 @@ export async function getConversation(
       {
         model: AgentMessage,
         as: "agentMessage",
+        required: false,
+      },
+      {
+        model: MessageReaction,
+        as: "reactions",
         required: false,
       },
     ],
@@ -707,6 +719,7 @@ export async function* postUserMessage(
         mentions: mentions,
         content,
         context: context,
+        reactions: [],
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -765,7 +778,7 @@ export async function* postUserMessage(
                   status: "created",
                   action: null,
                   content: null,
-                  feedbacks: [],
+                  reactions: [],
                   error: null,
                   configuration,
                 },
@@ -1087,6 +1100,7 @@ export async function* editUserMessage(
         mentions,
         content,
         context: message.context,
+        reactions: [],
       };
 
       // For now agent messages are appended at the end of conversation
@@ -1155,7 +1169,7 @@ export async function* editUserMessage(
                   status: "created",
                   action: null,
                   content: null,
-                  feedbacks: [],
+                  reactions: [],
                   error: null,
                   configuration,
                 },
@@ -1336,7 +1350,7 @@ export async function* retryAgentMessage(
       status: "created",
       action: null,
       content: null,
-      feedbacks: [],
+      reactions: [],
       error: null,
       configuration: message.configuration,
     };
