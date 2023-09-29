@@ -1,6 +1,5 @@
 import { ExtractSpecificKeys } from "@app/lib/api/typescipt_utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { WorkspaceType } from "@app/types/user";
 
 /**
  * Supported models
