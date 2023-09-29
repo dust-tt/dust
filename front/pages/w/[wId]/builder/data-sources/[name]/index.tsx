@@ -536,7 +536,7 @@ function ManagedDataSourceView({
                   `/w/${owner.sId}/builder/data-sources/${dataSource.name}/search`
                 );
               }}
-            />{" "}
+            />
             {isAdmin && (
               <Button
                 label="Edit permissions"
