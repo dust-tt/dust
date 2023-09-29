@@ -1,5 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { mutate } from "swr";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -81,6 +82,9 @@ export default function AssistantConversation({
       window.alert(`Error creating message: ${data.error.message}`);
       return;
     }
+    await mutate(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`
+    );
   };
 
   const handdleDeleteConversation = async () => {
