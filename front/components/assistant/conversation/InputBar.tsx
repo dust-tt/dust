@@ -302,15 +302,11 @@ export function AssistantInputBar({
         if (!agentConfiguration) {
           continue;
         }
-        const htmlString = ReactDOMServer.renderToStaticMarkup(
-          <AgentMention agentConfiguration={agentConfiguration} />
-        );
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = htmlString.trim();
-        if (!wrapper.firstChild) {
+        const mentionNode = getAgentMentionNode(agentConfiguration);
+        if (!mentionNode) {
           continue;
         }
-        contentEditable.appendChild(wrapper.firstChild);
+        contentEditable.appendChild(mentionNode);
         lastTextNode = document.createTextNode(" ");
         contentEditable.appendChild(lastTextNode);
 
@@ -525,12 +521,7 @@ export function AssistantInputBar({
                       // contenteditable and inject an AgentMention component.
                       if (selected) {
                         // Construct an AgentMention component and inject it as HTML.
-                        const htmlString = ReactDOMServer.renderToStaticMarkup(
-                          <AgentMention agentConfiguration={selected} />
-                        );
-                        const wrapper = document.createElement("div");
-                        wrapper.innerHTML = htmlString.trim();
-                        const mentionNode = wrapper.firstChild;
+                        const mentionNode = getAgentMentionNode(selected);
 
                         // This is mainly to please TypeScript.
                         if (!mentionNode || !mentionSelectNode.parentNode) {
@@ -663,12 +654,7 @@ export function AssistantInputBar({
                   onItemClick={(c) => {
                     // We construct the HTML for an AgentMention and inject it in the content
                     // editable with an extra space after it.
-                    const htmlString = ReactDOMServer.renderToStaticMarkup(
-                      <AgentMention agentConfiguration={c} />
-                    );
-                    const wrapper = document.createElement("div");
-                    wrapper.innerHTML = htmlString.trim();
-                    const mentionNode = wrapper.firstChild;
+                    const mentionNode = getAgentMentionNode(c);
                     const contentEditable =
                       document.getElementById("dust-input-bar");
                     if (contentEditable && mentionNode) {
@@ -720,3 +706,14 @@ export function FixedAssistantInputBar({
 }
 
 export const InputBarContext = createContext({ animate: false });
+
+function getAgentMentionNode(
+  agentConfiguration: AgentConfigurationType
+): ChildNode | null {
+  const htmlString = ReactDOMServer.renderToStaticMarkup(
+    <AgentMention agentConfiguration={agentConfiguration} />
+  );
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = htmlString.trim();
+  return wrapper.firstChild;
+}
