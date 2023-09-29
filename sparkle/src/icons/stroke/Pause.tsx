@@ -9,7 +9,7 @@ const SvgPause = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#000" d="M7 5h2v14H7V5Zm8 0h2v14h-2V5Z" />
+    <path fill="currentColor" d="M7 5h2v14H7V5Zm8 0h2v14h-2V5Z" />
   </svg>
 );
 export default SvgPause;
