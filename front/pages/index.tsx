@@ -78,11 +78,9 @@ export default function Home({
       <Head>
         <title>Dust - Secure AI assistant with your company's knowledge</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
-        <link rel="apple-touch-icon" sizes="60x60" href="static/AppIcon.png" />
-
-        <link rel="manifest" href="static/manifest.json" />
 
         <meta name="apple-mobile-web-app-title" content="Dust" />
+        <link rel="apple-touch-icon" href="static/AppIcon.png" />
         <link
           rel="apple-touch-icon"
           sizes="60x60"
