@@ -190,15 +190,10 @@ function MentionBlock({
       : agentConfiguration?.status === "active"
       ? ""
       : "(This assistant is deactivated for this workspace)";
-  const tooltipContent = (
-    <div className="flex w-64 flex-col gap-2">
-      <span>{agentConfiguration?.description}</span>
-      <span>{statusText}</span>
-    </div>
-  );
+  const tooltipLabel = agentConfiguration?.description || "" + " " + statusText;
   return (
     <span className="inline-block cursor-default font-medium text-brand">
-      <Tooltip contentChildren={tooltipContent} position="below">
+      <Tooltip label={tooltipLabel} position="below">
         @{agentName}
       </Tooltip>
     </span>
