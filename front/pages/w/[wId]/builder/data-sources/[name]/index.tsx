@@ -51,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
   isAdmin: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType | null;
+  standardView: boolean;
   nangoConfig: {
     publicKey: string;
     slackConnectorId: string;
@@ -94,6 +95,10 @@ export const getServerSideProps: GetServerSideProps<{
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
 
+  // `standardView` is used to force the presentation of a managed data source as a standard one so
+  // that it can be explored.
+  const standardView = !!context.query?.standardView;
+
   return {
     props: {
       user,
@@ -102,6 +107,7 @@ export const getServerSideProps: GetServerSideProps<{
       isAdmin,
       dataSource,
       connector,
+      standardView,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
@@ -557,6 +563,7 @@ export default function DataSourceView({
   isAdmin,
   dataSource,
   connector,
+  standardView,
   nangoConfig,
   githubAppUrl,
   gaTrackingId,
@@ -583,7 +590,7 @@ export default function DataSourceView({
       }
       hideSidebar={true}
     >
-      {dataSource.connectorId && connector ? (
+      {!standardView && dataSource.connectorId && connector ? (
         <ManagedDataSourceView
           {...{
             owner,
@@ -596,7 +603,9 @@ export default function DataSourceView({
           }}
         />
       ) : (
-        <StandardDataSourceView {...{ owner, readOnly, dataSource }} />
+        <StandardDataSourceView
+          {...{ owner, readOnly: readOnly || standardView, dataSource }}
+        />
       )}
     </AppLayout>
   );

@@ -55,7 +55,6 @@ export const getServerSideProps: GetServerSideProps<{
   // `wIdTarget` is used to change the workspace owning the runs of the apps we're looking at.
   // Mostly useful for debugging as an example our use of `dust-apps` as `dust`.
   const wIdTarget = (context.query?.wIdTarget as string) || null;
-  console.log("WIDTARGET", wIdTarget);
 
   return {
     props: {
