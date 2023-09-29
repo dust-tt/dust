@@ -216,7 +216,7 @@ export default function AssistantNew({
                         className="cursor-pointer"
                         onClick={() => {
                           void handleSubmit(
-                            `Hi :mention[${agent.name}]{sId=${agent.sId}}, how can you help me with?`,
+                            `Hi :mention[${agent.name}]{sId=${agent.sId}}, what can you help me with?`,
                             [
                               {
                                 configurationId: agent.sId,
@@ -344,7 +344,11 @@ export default function AssistantNew({
             </Page.Vertical>
           </div>
         ) : (
-          <Conversation owner={owner} conversationId={conversation.sId} />
+          <Conversation
+            owner={owner}
+            user={user}
+            conversationId={conversation.sId}
+          />
         )}
 
         <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />

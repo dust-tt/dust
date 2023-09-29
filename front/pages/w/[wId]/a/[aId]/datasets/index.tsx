@@ -1,7 +1,7 @@
 import { Button, PlusIcon, Tab, TrashIcon } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import Router, { useRouter } from "next/router";
+import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -73,6 +73,8 @@ export default function DatasetsView({
   datasets,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+
   const handleDelete = async (datasetName: string) => {
     if (confirm("Are you sure you want to delete this dataset entirely?")) {
       await fetch(
@@ -84,11 +86,9 @@ export default function DatasetsView({
           },
         }
       );
-      await Router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      await router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
     }
   };
-
-  const router = useRouter();
 
   return (
     <AppLayout

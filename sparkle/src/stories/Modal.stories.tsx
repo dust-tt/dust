@@ -31,6 +31,12 @@ export const ModalExample = () => {
       <Modal
         isOpen={isOpenWithActionAndChange}
         onClose={() => setIsOpenWithActionAndChange(false)}
+        action={{
+          labelVisible: true,
+          label: "An action",
+          variant: "tertiary",
+          size: "xs",
+        }}
         hasChanged={true}
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>

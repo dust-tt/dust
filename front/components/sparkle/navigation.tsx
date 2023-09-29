@@ -1,6 +1,5 @@
 import {
   ArrowUpOnSquareIcon,
-  ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   CloudArrowDownIcon,
   Cog6ToothIcon,
@@ -12,7 +11,6 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 
-import { isOnAssistantV2 } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
 import { WorkspaceType } from "@app/types/user";
@@ -62,41 +60,25 @@ export const topNavigation = ({
   owner: WorkspaceType;
   current: TopNavigationId;
 }) => {
-  const isOnV2 = isOnAssistantV2(owner);
   const nav: SparkleAppLayoutNavigation[] = [];
 
-  if (isOnV2) {
-    nav.push({
-      id: "assistant",
-      label: "Conversations",
-      href: `/w/${owner.sId}/assistant/new`,
-      icon: ChatBubbleLeftRightIcon,
-      sizing: "hug",
-      current: current === "assistant",
-      hasSeparator: true,
-    });
-  } else {
-    nav.push({
-      id: "assistant",
-      label: "Assistant",
-      href: `/w/${owner.sId}/u/chat`,
-      icon: ChatBubbleBottomCenterTextIcon,
-      sizing: "hug",
-      current: current === "assistant",
-      hasSeparator: true,
-    });
-  }
+  nav.push({
+    id: "assistant",
+    label: "Conversations",
+    href: `/w/${owner.sId}/assistant/new`,
+    icon: ChatBubbleLeftRightIcon,
+    sizing: "hug",
+    current: current === "assistant",
+    hasSeparator: true,
+  });
 
   if (owner.role === "admin" || owner.role === "builder") {
-    const defaultSettingsRoute = isOnV2
-      ? `/w/${owner.sId}/builder/assistants`
-      : `/w/${owner.sId}/builder/data-sources`;
     nav.push({
       id: "settings",
       label: "Settings",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: defaultSettingsRoute,
+      href: `/w/${owner.sId}/builder/assistants`,
       current: current === "settings",
     });
   }
@@ -118,17 +100,15 @@ export const subNavigationAdmin = ({
   const nav: SparkleAppLayoutNavigation[] = [];
 
   if (owner.role === "admin" || owner.role === "builder") {
-    if (isOnAssistantV2(owner)) {
-      nav.push({
-        id: "assistants",
-        label: "Assistants Manager",
-        icon: RobotIcon,
-        href: `/w/${owner.sId}/builder/assistants`,
-        current: current === "assistants",
-        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
-        subMenu: current === "assistants" ? subMenu : undefined,
-      });
-    }
+    nav.push({
+      id: "assistants",
+      label: "Assistants Manager",
+      icon: RobotIcon,
+      href: `/w/${owner.sId}/builder/assistants`,
+      current: current === "assistants",
+      subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
+      subMenu: current === "assistants" ? subMenu : undefined,
+    });
   }
 
   nav.push({

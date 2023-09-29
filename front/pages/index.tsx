@@ -78,50 +78,48 @@ export default function Home({
       <Head>
         <title>Dust - Secure AI assistant with your company's knowledge</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
-        <link rel="apple-touch-icon" sizes="60x60" href="static/AppIcon.png" />
-
-        <link rel="manifest" href="static/manifest.json" />
 
         <meta name="apple-mobile-web-app-title" content="Dust" />
+        <link rel="apple-touch-icon" href="/static/AppIcon.png" />
         <link
           rel="apple-touch-icon"
           sizes="60x60"
-          href="static/AppIcon_60.png"
+          href="/static/AppIcon_60.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="76x76"
-          href="static/AppIcon_76.png"
+          href="/static/AppIcon_76.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="120x120"
-          href="static/AppIcon_120.png"
+          href="/static/AppIcon_120.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="152x152"
-          href="static/AppIcon_152.png"
+          href="/static/AppIcon_152.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="167x167"
-          href="static/AppIcon_167.png"
+          href="/static/AppIcon_167.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="180x180"
-          href="static/AppIcon_180.png"
+          href="/static/AppIcon_180.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="192x192"
-          href="static/AppIcon_192.png"
+          href="/static/AppIcon_192.png"
         />
         <link
           rel="apple-touch-icon"
           sizes="228x228"
-          href="static/AppIcon_228.png"
+          href="/static/AppIcon_228.png"
         />
 
         <meta

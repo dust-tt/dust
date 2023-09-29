@@ -9,7 +9,7 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import Deploy from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
@@ -147,6 +147,8 @@ export default function AppView({
   url,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { mutate } = useSWRConfig();
+
   const [spec, setSpec] = useState(
     JSON.parse(app.savedSpecification || `[]`) as SpecificationType
   );

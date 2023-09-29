@@ -44,6 +44,8 @@ const {
   GITHUB_APP_URL = "",
 } = process.env;
 
+const GOOGLE_OAUTH_WORKSPACE_IDS = ["17fd918e1d", "2f151df544"];
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
@@ -51,6 +53,7 @@ export const getServerSideProps: GetServerSideProps<{
   isAdmin: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType | null;
+  standardView: boolean;
   nangoConfig: {
     publicKey: string;
     slackConnectorId: string;
@@ -94,6 +97,10 @@ export const getServerSideProps: GetServerSideProps<{
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
 
+  // `standardView` is used to force the presentation of a managed data source as a standard one so
+  // that it can be explored.
+  const standardView = !!context.query?.standardView;
+
   return {
     props: {
       user,
@@ -102,6 +109,7 @@ export const getServerSideProps: GetServerSideProps<{
       isAdmin,
       dataSource,
       connector,
+      standardView,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
@@ -509,6 +517,17 @@ function ManagedDataSourceView({
         <div className="flex flex-row">
           <div className="flex flex-1"></div>
           <Button.List>
+            {GOOGLE_OAUTH_WORKSPACE_IDS.includes(owner.sId) && (
+              <Button
+                label="View documents"
+                variant="secondary"
+                onClick={() => {
+                  void router.push(
+                    `/w/${owner.sId}/builder/data-sources/${dataSource.name}?standardView=true`
+                  );
+                }}
+              />
+            )}
             <Button
               label="Search"
               variant="secondary"
@@ -557,6 +576,7 @@ export default function DataSourceView({
   isAdmin,
   dataSource,
   connector,
+  standardView,
   nangoConfig,
   githubAppUrl,
   gaTrackingId,
@@ -583,7 +603,7 @@ export default function DataSourceView({
       }
       hideSidebar={true}
     >
-      {dataSource.connectorId && connector ? (
+      {!standardView && dataSource.connectorId && connector ? (
         <ManagedDataSourceView
           {...{
             owner,
@@ -596,7 +616,9 @@ export default function DataSourceView({
           }}
         />
       ) : (
-        <StandardDataSourceView {...{ owner, readOnly, dataSource }} />
+        <StandardDataSourceView
+          {...{ owner, readOnly: readOnly || standardView, dataSource }}
+        />
       )}
     </AppLayout>
   );

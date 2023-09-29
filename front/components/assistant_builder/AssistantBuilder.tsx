@@ -10,11 +10,10 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
-import router from "next/router";
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
-import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -172,6 +171,8 @@ export default function AssistantBuilder({
   initialBuilderState,
   agentConfigurationId,
 }: AssistantBuilderProps) {
+  const router = useRouter();
+
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
@@ -476,7 +477,6 @@ export default function AssistantBuilder({
       setIsSavingOrDeleting(false);
       return;
     }
-
     await router.push(`/w/${owner.sId}/builder/assistants`);
     setIsSavingOrDeleting(false);
   };
@@ -552,10 +552,7 @@ export default function AssistantBuilder({
                       setIsSavingOrDeleting(true);
                       submitForm()
                         .then(async () => {
-                          await mutate(
-                            `/api/w/${owner.sId}/assistant/agent_configurations`
-                          );
-                          void router.push(
+                          await router.push(
                             `/w/${owner.sId}/builder/assistants`
                           );
                           setIsSavingOrDeleting(false);

@@ -18,7 +18,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { MentionType } from "@app/types/assistant/conversation";
+import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
 // AGENT MENTION
@@ -183,9 +183,11 @@ const AgentList = forwardRef(AgentListImpl);
 export function AssistantInputBar({
   owner,
   onSubmit,
+  stickyMentions,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
+  stickyMentions?: AgentMention[];
 }) {
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
@@ -262,6 +264,69 @@ export function AssistantInputBar({
     }
   }, [animate, isAnimating]);
 
+  const stickyMentionsTextContent = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!stickyMentions) {
+      return;
+    }
+
+    const mentionedAgentConfigurationIds = new Set(
+      stickyMentions?.map((m) => m.configurationId)
+    );
+
+    const contentEditable = document.getElementById("dust-input-bar");
+    if (contentEditable) {
+      const textContent = contentEditable.textContent?.trim();
+
+      if (textContent?.length && !stickyMentionsTextContent.current) {
+        return;
+      }
+
+      if (
+        textContent?.length &&
+        textContent !== stickyMentionsTextContent.current
+      ) {
+        // content has changed, we don't clear it (we preserve whatever the user typed)
+        return;
+      }
+
+      // we clear the content of the input bar -- at this point, it's either already empty,
+      // or contains only the sticky mentions added by this hook
+      contentEditable.innerHTML = "";
+      let lastTextNode = null;
+      for (const configurationId of mentionedAgentConfigurationIds) {
+        const agentConfiguration = agentConfigurations.find(
+          (agent) => agent.sId === configurationId
+        );
+        if (!agentConfiguration) {
+          continue;
+        }
+        const mentionNode = getAgentMentionNode(agentConfiguration);
+        if (!mentionNode) {
+          continue;
+        }
+        contentEditable.appendChild(mentionNode);
+        lastTextNode = document.createTextNode(" ");
+        contentEditable.appendChild(lastTextNode);
+
+        stickyMentionsTextContent.current =
+          contentEditable.textContent?.trim() || null;
+      }
+      // move the cursor to the end of the input bar
+      if (lastTextNode) {
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.setStart(lastTextNode, lastTextNode.length);
+          range.setEnd(lastTextNode, lastTextNode.length);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    }
+  }, [stickyMentions, agentConfigurations, stickyMentionsTextContent]);
+
   return (
     <>
       <AgentList
@@ -275,18 +340,18 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-center">
           <div
             className={classNames(
-              "flex flex-1 flex-row items-end items-stretch px-2",
-              "border-2 border-action-200 bg-white focus-within:border-action-300",
-              "rounded-sm rounded-xl drop-shadow-2xl",
+              "flex flex-1 flex-row items-end items-stretch px-4",
+              "border-2 border-action-300 bg-white focus-within:border-action-400",
+              "rounded-xl drop-shadow-2xl transition-all duration-300",
               isAnimating
-                ? "animate-shake border-action-800 focus-within:border-action-800"
+                ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
             )}
           >
             <div
               className={classNames(
                 "inline-block w-full",
-                "border-0 px-3 py-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+                "border-0 px-3 py-4 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
                 "whitespace-pre-wrap font-normal "
               )}
               contentEditable={true}
@@ -456,12 +521,7 @@ export function AssistantInputBar({
                       // contenteditable and inject an AgentMention component.
                       if (selected) {
                         // Construct an AgentMention component and inject it as HTML.
-                        const htmlString = ReactDOMServer.renderToStaticMarkup(
-                          <AgentMention agentConfiguration={selected} />
-                        );
-                        const wrapper = document.createElement("div");
-                        wrapper.innerHTML = htmlString.trim();
-                        const mentionNode = wrapper.firstChild;
+                        const mentionNode = getAgentMentionNode(selected);
 
                         // This is mainly to please TypeScript.
                         if (!mentionNode || !mentionSelectNode.parentNode) {
@@ -594,12 +654,7 @@ export function AssistantInputBar({
                   onItemClick={(c) => {
                     // We construct the HTML for an AgentMention and inject it in the content
                     // editable with an extra space after it.
-                    const htmlString = ReactDOMServer.renderToStaticMarkup(
-                      <AgentMention agentConfiguration={c} />
-                    );
-                    const wrapper = document.createElement("div");
-                    wrapper.innerHTML = htmlString.trim();
-                    const mentionNode = wrapper.firstChild;
+                    const mentionNode = getAgentMentionNode(c);
                     const contentEditable =
                       document.getElementById("dust-input-bar");
                     if (contentEditable && mentionNode) {
@@ -616,6 +671,7 @@ export function AssistantInputBar({
               <IconButton
                 variant="primary"
                 icon={PaperAirplaneIcon}
+                size="md"
                 onClick={() => {
                   void handleSubmit();
                 }}
@@ -631,17 +687,34 @@ export function AssistantInputBar({
 export function FixedAssistantInputBar({
   owner,
   onSubmit,
+  stickyMentions,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
+  stickyMentions?: AgentMention[];
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
-      <div className="mx-auto max-w-4xl pb-12">
-        <AssistantInputBar owner={owner} onSubmit={onSubmit} />
+      <div className="mx-auto max-w-4xl pb-8">
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={onSubmit}
+          stickyMentions={stickyMentions}
+        />
       </div>
     </div>
   );
 }
 
 export const InputBarContext = createContext({ animate: false });
+
+function getAgentMentionNode(
+  agentConfiguration: AgentConfigurationType
+): ChildNode | null {
+  const htmlString = ReactDOMServer.renderToStaticMarkup(
+    <AgentMention agentConfiguration={agentConfiguration} />
+  );
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = htmlString.trim();
+  return wrapper.firstChild;
+}

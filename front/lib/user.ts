@@ -1,4 +1,4 @@
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { UserMetadataType } from "@app/types/user";
@@ -31,6 +31,8 @@ export async function getUserMetadataFromClient(key: string) {
  * @param metadata MetadataType the metadata to set for the current user.
  */
 export function setUserMetadataFromClient(metadata: UserMetadataType) {
+  const { mutate } = useSWRConfig();
+
   void (async () => {
     try {
       const res = await fetch(
