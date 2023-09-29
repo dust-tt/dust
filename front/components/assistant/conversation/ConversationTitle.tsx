@@ -49,10 +49,10 @@ export function ConversationTitle({
         <span className="font-bold">{conversation?.title || ""}</span>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex items-center gap-6">
         <div className="hidden lg:flex">
           <Avatar.Stack
-            size="md"
+            size="sm"
             nbMoreItems={
               conversation.participants.agents.length > 4
                 ? conversation.participants.agents.length - 4
@@ -71,7 +71,7 @@ export function ConversationTitle({
         </div>
         <div className="hidden lg:flex">
           <Avatar.Stack
-            size="md"
+            size="sm"
             nbMoreItems={
               conversation.participants.users.length > 4
                 ? conversation.participants.users.length - 4
