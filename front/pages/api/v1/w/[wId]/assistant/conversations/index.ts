@@ -3,7 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  getConversation,
+} from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -109,7 +112,18 @@ async function handler(
           return apiError(req, res, messageRes.error);
         }
 
-        res.status(200).json({ conversation, message: messageRes.value });
+        // If we got the user message we know that the agent messages have been created as well, so
+        // we pull the conversation again to have the created agent message included so that the
+        // user of the API can start streaming events from these agent messages directly.
+        const updated = await getConversation(auth, conversation.sId);
+
+        if (!updated) {
+          throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
+        }
+
+        res
+          .status(200)
+          .json({ conversation: updated, message: messageRes.value });
       } else {
         // Otherwise we simply return the conversation created.
         res.status(200).json({ conversation });
