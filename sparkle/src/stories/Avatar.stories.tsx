@@ -86,124 +86,121 @@ export const AvatarExample = () => (
 export const AvatarStackExample = () => (
   <div className="s-flex s-flex-col s-gap-6">
     <div className="s-flex s-flex-row s-gap-2">
-      <Avatar.Stack nbMoreItems={0}>
+      <Avatar.Stack size="xs" nbMoreItems={0} isRounded>
         <Avatar
-          size="sm"
           name="Isabelle Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
-          isRounded
         />
         <Avatar
-          size="sm"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
         <Avatar
-          size="sm"
           name="Aria Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
-          isRounded
         />
         <Avatar
-          size="sm"
           name="Omar Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
-          isRounded
         />
       </Avatar.Stack>
 
-      <Avatar.Stack nbMoreItems={8}>
+      <Avatar.Stack size="xs" nbMoreItems={8}>
         <Avatar
-          size="sm"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
-        <Avatar size="sm" name="Mason Johnson" isRounded />
+        <Avatar size="sm" name="Mason Johnson" />
         <Avatar
           size="sm"
           name="Omar Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
-          isRounded
         />
-        <Avatar size="sm" name="Eleanor Wright" isRounded />
+        <Avatar size="sm" name="Eleanor Wright" />
       </Avatar.Stack>
-      <Avatar.Stack nbMoreItems={0}>
+      <Avatar.Stack size="xs" nbMoreItems={0}>
         <Avatar
-          size="sm"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
-        />
-      </Avatar.Stack>
-      <Avatar.Stack nbMoreItems={0}>
-        <Avatar
-          size="sm"
-          name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
       </Avatar.Stack>
     </div>
     <div className="s-flex s-flex-row s-gap-2">
-      <Avatar.Stack nbMoreItems={0} size="md">
+      <Avatar.Stack size="sm" nbMoreItems={0} isRounded>
         <Avatar
-          size="md"
           name="Isabelle Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
-          isRounded
         />
         <Avatar
-          size="md"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
         <Avatar
-          size="md"
           name="Aria Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
-          isRounded
         />
         <Avatar
-          size="md"
           name="Omar Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
-          isRounded
+        />
+      </Avatar.Stack>
+
+      <Avatar.Stack size="sm" nbMoreItems={8}>
+        <Avatar
+          name="Rafael Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        />
+        <Avatar size="sm" name="Mason Johnson" />
+        <Avatar
+          size="sm"
+          name="Omar Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+        />
+        <Avatar size="sm" name="Eleanor Wright" />
+      </Avatar.Stack>
+      <Avatar.Stack nbMoreItems={0}>
+        <Avatar
+          name="Rafael Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        />
+      </Avatar.Stack>
+    </div>
+    <div className="s-flex s-flex-row s-gap-4">
+      <Avatar.Stack nbMoreItems={0} size="md">
+        <Avatar
+          name="Isabelle Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        />
+        <Avatar
+          name="Rafael Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        />
+        <Avatar
+          name="Aria Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+        />
+        <Avatar
+          name="Omar Doe"
+          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
         />
       </Avatar.Stack>
 
       <Avatar.Stack nbMoreItems={8} size="md">
         <Avatar
-          size="md"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
-        <Avatar size="md" name="Mason Johnson" isRounded />
+        <Avatar size="md" name="Mason Johnson" />
         <Avatar
-          size="md"
           name="Omar Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
-          isRounded
         />
-        <Avatar size="md" name="Eleanor Wright" isRounded />
+        <Avatar size="md" name="Eleanor Wright" />
       </Avatar.Stack>
       <Avatar.Stack nbMoreItems={0} size="md">
         <Avatar
-          size="md"
           name="Rafael Doe"
           visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
-        />
-      </Avatar.Stack>
-      <Avatar.Stack nbMoreItems={0} size="md">
-        <Avatar
-          size="md"
-          name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
-          isRounded
         />
       </Avatar.Stack>
     </div>
