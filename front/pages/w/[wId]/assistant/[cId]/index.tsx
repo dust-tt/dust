@@ -1,5 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -55,6 +56,9 @@ export default function AssistantConversation({
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [lastMessageSentTs, setLastMessageSentTs] = useState<
+    number | undefined
+  >(undefined);
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
@@ -81,6 +85,7 @@ export default function AssistantConversation({
       window.alert(`Error creating message: ${data.error.message}`);
       return;
     }
+    setLastMessageSentTs(new Date().getTime());
   };
 
   const handdleDeleteConversation = async () => {
@@ -121,7 +126,11 @@ export default function AssistantConversation({
         <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
-      <Conversation owner={owner} conversationId={conversationId} />
+      <Conversation
+        owner={owner}
+        conversationId={conversationId}
+        lastMessageSentTs={lastMessageSentTs}
+      />
       <FixedAssistantInputBar owner={owner} onSubmit={handleSubmit} />
     </AppLayout>
   );

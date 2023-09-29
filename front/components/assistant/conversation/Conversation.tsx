@@ -18,9 +18,11 @@ import { WorkspaceType } from "@app/types/user";
 export default function Conversation({
   owner,
   conversationId,
+  lastMessageSentTs,
 }: {
   owner: WorkspaceType;
   conversationId: string;
+  lastMessageSentTs?: number;
 }) {
   const {
     conversation,
@@ -37,8 +39,11 @@ export default function Conversation({
   });
 
   const lastConversationTs = (() => {
-    const allTs = conversation?.content.flat().map((m) => m.created);
-    if (!allTs) {
+    const allTs = conversation?.content.flat().map((m) => m.created) || [];
+    if (lastMessageSentTs) {
+      allTs.push(lastMessageSentTs);
+    }
+    if (allTs.length === 0) {
       return null;
     }
     return Math.max(...allTs);
@@ -55,9 +60,11 @@ export default function Conversation({
       if (!lastConversationTs) {
         return null;
       }
-      if (lastConversationTs + 60 * 1000 * 10 < Date.now()) {
+
+      if (lastConversationTs + 60 * 1000 < Date.now()) {
         console.log(
-          "No need to poll for events if the last message is older than 10 minutes"
+          "No need to poll for events if the last message is older than 10 minutes",
+          lastConversationTs
         );
         return null;
       }
