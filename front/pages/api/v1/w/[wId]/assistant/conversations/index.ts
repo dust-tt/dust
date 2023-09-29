@@ -9,7 +9,10 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages";
-import { ConversationType } from "@app/types/assistant/conversation";
+import {
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 
 const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
@@ -23,6 +26,7 @@ const PostConversationsRequestBodySchema = t.type({
 
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
+  message?: UserMessageType;
 };
 
 async function handler(
@@ -86,10 +90,9 @@ async function handler(
       });
 
       if (message) {
-        // Not awaiting this promise on purpose. We want to answer "OK" to the client ASAP and
-        // process the events in the background. So that the client gets updated as soon as
-        // possible.
-        void postUserMessageWithPubSub(auth, {
+        // If a message was provided we do await for the message to be posted before returning the
+        // conversation along with the message.
+        const messageRes = await postUserMessageWithPubSub(auth, {
           conversation,
           content: message.content,
           mentions: message.mentions,
@@ -101,9 +104,16 @@ async function handler(
             profilePictureUrl: message.context.profilePictureUrl,
           },
         });
-      }
 
-      res.status(200).json({ conversation });
+        if (messageRes.isErr()) {
+          return apiError(req, res, messageRes.error);
+        }
+
+        res.status(200).json({ conversation, message: messageRes.value });
+      } else {
+        // Otherwise we simply return the conversation created.
+        res.status(200).json({ conversation });
+      }
       return;
 
     default:
