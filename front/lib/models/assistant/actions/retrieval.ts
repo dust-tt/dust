@@ -313,7 +313,7 @@ export class RetrievalDocument extends Model<
   declare documentId: string;
   declare reference: string;
   declare timestamp: number;
-  declare retrievedAt: Date | null;
+  declare documentTimestamp: Date | null;
   declare tags: string[];
   declare score: number;
 
@@ -357,7 +357,7 @@ RetrievalDocument.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    retrievedAt: {
+    documentTimestamp: {
       type: DataTypes.DATE,
       allowNull: true,
     },
