@@ -352,11 +352,6 @@ RetrievalDocument.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // @ts-expect-error deprecated
-    timestamp: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-    },
     documentTimestamp: {
       type: DataTypes.DATE,
       allowNull: false,
