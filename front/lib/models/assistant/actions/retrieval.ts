@@ -312,8 +312,7 @@ export class RetrievalDocument extends Model<
   declare sourceUrl: string | null;
   declare documentId: string;
   declare reference: string;
-  declare timestamp: number;
-  declare documentTimestamp: Date | null;
+  declare documentTimestamp: Date;
   declare tags: string[];
   declare score: number;
 
@@ -353,13 +352,14 @@ RetrievalDocument.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    // @ts-expect-error deprecated
     timestamp: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     documentTimestamp: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: false,
     },
     tags: {
       type: DataTypes.ARRAY(DataTypes.STRING),
