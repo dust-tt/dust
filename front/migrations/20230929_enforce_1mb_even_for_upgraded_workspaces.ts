@@ -37,7 +37,7 @@ async function main() {
 
 async function set1MBLimit(live: boolean, workspace: Workspace) {
   const plan = planForWorkspace(workspace);
-  plan.limits.dataSources.documents.sizeMb = 1;
+  plan.limits.dataSources.documents.sizeMb = 4;
   if (live) {
     await workspace.update({
       plan: JSON.stringify(plan),
