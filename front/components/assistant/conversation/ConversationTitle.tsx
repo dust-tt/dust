@@ -49,7 +49,7 @@ export function ConversationTitle({
         <span className="font-bold">{conversation?.title || ""}</span>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-6">
         <div className="hidden lg:flex">
           <Avatar.Stack
             size="md"
@@ -65,7 +65,6 @@ export function ConversationTitle({
                 visual={agent.pictureUrl}
                 size="md"
                 key={agent.configurationId}
-                isRounded
               />
             ))}
           </Avatar.Stack>
@@ -85,83 +84,83 @@ export function ConversationTitle({
                 visual={user.pictureUrl}
                 size="md"
                 key={i}
-                isRounded
               />
             ))}
           </Avatar.Stack>
         </div>
 
-        <div className="hidden lg:flex">
-          {onDelete && (
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  size="sm"
-                  labelVisible={false}
-                  tooltipPosition="below"
-                  variant="secondaryWarning"
-                  label="Delete Conversation"
-                  icon={TrashIcon}
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={280}>
-                <div className="flex flex-col gap-y-4 px-4 py-4">
-                  <div className="flex flex-col gap-y-2">
-                    <div className="grow text-sm font-medium text-element-800">
-                      Are you sure you want to delete?
-                    </div>
+        <Button.List>
+          <div className="hidden lg:flex">
+            {onDelete && (
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    size="sm"
+                    labelVisible={false}
+                    tooltipPosition="below"
+                    variant="secondaryWarning"
+                    label="Delete Conversation"
+                    icon={TrashIcon}
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={280}>
+                  <div className="flex flex-col gap-y-4 px-4 py-4">
+                    <div className="flex flex-col gap-y-2">
+                      <div className="grow text-sm font-medium text-element-800">
+                        Are you sure you want to delete?
+                      </div>
 
-                    <div className="text-sm font-normal text-element-700">
-                      This will delete the conversation for everyone.
+                      <div className="text-sm font-normal text-element-700">
+                        This will delete the conversation for everyone.
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <Button
+                        variant="primaryWarning"
+                        size="sm"
+                        label={"Delete for Everyone"}
+                        icon={TrashIcon}
+                        onClick={onDelete}
+                      />
                     </div>
                   </div>
-                  <div className="flex justify-center">
-                    <Button
-                      variant="primaryWarning"
-                      size="sm"
-                      label={"Delete for Everyone"}
-                      icon={TrashIcon}
-                      onClick={onDelete}
-                    />
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            )}
+          </div>
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                size="sm"
+                label="Share"
+                icon={ArrowUpOnSquareIcon}
+                variant="secondary"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items width={280}>
+              <div className="flex flex-col gap-y-4 p-4">
+                <div className="flex flex-col gap-y-2">
+                  <div className="grow text-sm font-medium text-element-800">
+                    Share this conversation with others
+                  </div>
+                  <div className="text-sm font-normal text-element-700">
+                    Share the conversation link with other members of your
+                    workspace to invite them to contribute.
                   </div>
                 </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          )}
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenu.Button>
-            <Button
-              size="sm"
-              label="Share"
-              icon={ArrowUpOnSquareIcon}
-              variant="secondary"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={280}>
-            <div className="flex flex-col gap-y-4 p-4">
-              <div className="flex flex-col gap-y-2">
-                <div className="grow text-sm font-medium text-element-800">
-                  Share this conversation with others
-                </div>
-                <div className="text-sm font-normal text-element-700">
-                  Share the conversation link with other members of your
-                  workspace to invite them to contribute.
+                <div className="flex justify-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    label={copyLinkSuccess ? "Copied!" : "Copy the link"}
+                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon}
+                    onClick={handleClick}
+                  />
                 </div>
               </div>
-              <div className="flex justify-center">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                  icon={copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon}
-                  onClick={handleClick}
-                />
-              </div>
-            </div>
-          </DropdownMenu.Items>
-        </DropdownMenu>
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </Button.List>
       </div>
     </div>
   );
