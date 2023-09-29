@@ -127,7 +127,8 @@ export async function upgradeWorkspace(workspaceId: number) {
 
   plan.limits.dataSources.count = -1;
   plan.limits.dataSources.documents.count = -1;
-  plan.limits.dataSources.documents.sizeMb = -1;
+  // Enforce 1MB limitation even for upgraded workspaces.
+  plan.limits.dataSources.documents.sizeMb = 1;
   plan.limits.dataSources.managed = true;
   plan.limits.largeModels = true;
 

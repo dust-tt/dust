@@ -118,8 +118,19 @@ export default function DataSourceUpsert({
 
   const handleFileLoadedText = (e: any) => {
     const content = e.target.result;
-    setText(content);
     setUploading(false);
+
+    // Enforce plan limits: DataSource documents size.
+    if (
+      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
+      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+    ) {
+      window.alert(
+        "DataSource document upload size is limited to 1MB (of raw text). Contact team@dust.tt if you want to increase this limit."
+      );
+      return;
+    }
+    setText(content);
   };
 
   const handleFileLoadedPDF = async (e: any) => {
@@ -133,21 +144,23 @@ export default function DataSourceUpsert({
       const strings = content.items.map((item: any) => item.str);
       text += strings.join(" ") + "\n";
     }
-    setText(text);
-    setUploading(false);
-  };
 
-  const handleFileUpload = async (file: File) => {
+    setUploading(false);
+
     // Enforce plan limits: DataSource documents size.
     if (
       owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      file.size > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
     ) {
       window.alert(
-        "DataSource document upload size is limited to 1MB on our free plan. Contact team@dust.tt if you want to increase this limit."
+        "DataSource document upload size is limited to 1MB (of raw text). Contact team@dust.tt if you want to increase this limit."
       );
       return;
     }
+    setText(text);
+  };
+
+  const handleFileUpload = async (file: File) => {
     setUploading(true);
     if (file.type === "application/pdf") {
       const fileReader = new FileReader();
