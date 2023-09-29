@@ -289,11 +289,8 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
 
     <Properties>
       <Property name="message" type="object">
-        An initial user message object. See the curl command for an example of a message object
-        mentioning the `@dust` assistant. Available global assistant `configurationId` are:
-        `helper`, `dust`, `gpt-3.5-turbo`, `gpt-4`, `claude-2`, `claude-instant-1`, `slack`,
-        `google_drive`, `notion`, `github`. To mention custom assistants, you can find the assistant
-        `configurationId` in the URL of the assistant page.
+        An initial user message object. See "Create a New User Message" endpoint body attributes for
+        more details.
       </Property>
     </Properties>
 
@@ -342,6 +339,100 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         "visibility":
         "unlisted",
         "content": []
+      }
+      "message": {...}
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Create a new User Message {{ tag: 'POST', label: '/v1/w/:workspace_id/assistant/conversations/:conversation_id/messages' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to post a new user message in a conversation, potentially triggering an assistant response.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace to use (can be found in any of the workspace's URL)
+      </Property>
+      <Property name="conversation_id" type="string">
+        The `sId` of the conversation object to retrieve.
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+    <Properties>
+      <Property name="content" type="string">
+        The textual content of the message. Mentions to assistants in the message content should be
+        sent as markdown directives `:cite[assistantName]{configurationId}` so that they can be
+        properly rendered in the Dust interface.
+      </Property>
+      <Property name="mentions" type="[]{configurationId}">
+        Mentions are a way to trigger the response of an assistant in a message. They are an array
+        of objects with a single `configurationId` field which points the assistant being mentioned.
+        Available global assistant `configurationId` are: `helper`, `dust`, `gpt-3.5-turbo`,
+        `gpt-4`, `claude-2`, `claude-instant-1`, `slack`, `google_drive`, `notion`, `github`. To
+        mention custom assistants, you can find the assistant `configurationId` in the URL of the
+        assistant page.
+      </Property>
+      <Property name="context" type="object">
+        An object with attributes about the user posting the message. Required attributes are
+        `timezone` (in the format of Javascript `Intl.DateTimeFormat().resolvedOptions().timeZone`,
+        eg: `Europe/Paris`), and `username`. Optional attributes are `email`, `fullName` and
+        `profilePictureUrl`.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/assistant/conversations/:conversation_id/messages">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/b809011d38/assistant/conversations/7b6396245c/messages \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "content": "Hi :cite[dust]{dust}!",
+        "mentions": [{
+          "configurationId": "dust"
+        }],
+        "context": {
+          "timezone": "Europe/Paris",
+          "username": "peter",
+          "email": null,
+          "fullName": "Peter Parker",
+          "profilePictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
+        }
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "message": {
+        "sId": "e20e7b5aac",
+        "type": "user_message",
+        "visibility": "visible",
+        "version": 0,"user": null,
+        "mentions": [{ "configurationId":"dust" }],
+        "content": "Hi :cite[dust]{dust}!",
+        "context": {
+          "timezone": "Europe/Paris",
+          "username": "peter",
+          "fullName": "Peter Parker",
+          "email":null,
+          "profilePictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
+        }
       }
     }
     ```
