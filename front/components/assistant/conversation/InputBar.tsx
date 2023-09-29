@@ -264,6 +264,8 @@ export function AssistantInputBar({
     }
   }, [animate, isAnimating]);
 
+  const stickyMentionsTextContent = useRef<string | null>(null);
+
   useEffect(() => {
     if (!stickyMentions) {
       return;
@@ -275,19 +277,22 @@ export function AssistantInputBar({
 
     const contentEditable = document.getElementById("dust-input-bar");
     if (contentEditable) {
-      const textContent = contentEditable.textContent;
-      if (
-        textContent &&
-        textContent.trim() !== "" &&
-        !textContent.match(/(@[\w-.]+\s)+/g)
-      ) {
-        // if the inputBar isn't empty, and doesn't contain only "@something @somethingElse "
-        // we don't clear it (we preserve whatever the user typed)
+      const textContent = contentEditable.textContent?.trim();
+
+      if (textContent?.length && !stickyMentionsTextContent.current) {
         return;
       }
+
+      if (
+        textContent?.length &&
+        textContent !== stickyMentionsTextContent.current
+      ) {
+        // content has changed, we don't clear it (we preserve whatever the user typed)
+        return;
+      }
+
       // we clear the content of the input bar -- at this point, it's either already empty,
-      // or contains only "@something @somethingElse ", which is most likely a list of mentions
-      // that was added by this effect for a different conversation / message
+      // or contains only the sticky mentions added by this hook
       contentEditable.innerHTML = "";
       let lastTextNode = null;
       for (const configurationId of mentionedAgentConfigurationIds) {
@@ -308,6 +313,9 @@ export function AssistantInputBar({
         contentEditable.appendChild(wrapper.firstChild);
         lastTextNode = document.createTextNode(" ");
         contentEditable.appendChild(lastTextNode);
+
+        stickyMentionsTextContent.current =
+          contentEditable.textContent?.trim() || null;
       }
       // move the cursor to the end of the input bar
       if (lastTextNode) {
@@ -321,7 +329,7 @@ export function AssistantInputBar({
         }
       }
     }
-  }, [stickyMentions, agentConfigurations]);
+  }, [stickyMentions, agentConfigurations, stickyMentionsTextContent]);
 
   return (
     <>
