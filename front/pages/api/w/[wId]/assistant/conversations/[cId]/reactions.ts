@@ -1,28 +1,16 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import {
-  createMessageReaction,
-  deleteMessageReaction,
-} from "@app/lib/api/assistant/reaction";
+import { getMessageReactions } from "@app/lib/api/assistant/reaction";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { MessageReactionType } from "@app/types/assistant/conversation";
-
-export const MessageReactionRequestBodySchema = t.type({
-  reaction: t.string,
-});
+import { ConversationMessageReactions } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | { reactions: MessageReactionType[] }
-    | { success: boolean }
-    | ReturnedAPIErrorType
+    { reactions: ConversationMessageReactions } | ReturnedAPIErrorType
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -84,72 +72,18 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
-  const messageId = req.query.mId;
-  const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
-      },
-    });
-  }
-
   switch (req.method) {
-    case "POST":
-      const created = await createMessageReaction(auth, {
-        messageId,
-        userId: user.id,
-        context: {
-          username: user.username,
-          fullName: user.name,
-        },
-        reaction: bodyValidation.right.reaction,
-      });
-
-      if (created) {
-        res.status(200).json({ success: true });
+    case "GET":
+      const reactions = await getMessageReactions(auth, conversation.id);
+      if (reactions) {
+        res.status(200).json({ reactions });
         return;
       }
       return apiError(req, res, {
         status_code: 500,
         api_error: {
           type: "message_reaction_error",
-          message: "Message reaction not created.",
-        },
-      });
-
-    case "DELETE":
-      const deleted = await deleteMessageReaction(auth, {
-        messageId,
-        userId: user.id,
-        context: {
-          username: user.username,
-          fullName: user.name,
-        },
-        reaction: bodyValidation.right.reaction,
-      });
-
-      if (deleted) {
-        res.status(200).json({ success: true });
-      }
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "message_reaction_error",
-          message: "Message reaction not deleted.",
+          message: "Couldn't load message reactions.",
         },
       });
 
@@ -158,8 +92,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, POST or DELETE is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
   }

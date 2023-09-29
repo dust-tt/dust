@@ -34,6 +34,11 @@ export function isUserMention(arg: MentionType): arg is UserMention {
   );
 }
 
+export type ConversationMessageReactions = {
+  messageId: string;
+  reactions: MessageReactionType[];
+}[];
+
 export type MessageReactionType = {
   emoji: string;
   users: {
@@ -64,7 +69,6 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
-  reactions: MessageReactionType[];
 };
 
 export function isUserMessageType(
@@ -103,7 +107,6 @@ export type AgentMessageType = {
     code: string;
     message: string;
   } | null;
-  reactions: MessageReactionType[];
 };
 
 export function isAgentMessageType(
