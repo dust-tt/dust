@@ -47,7 +47,9 @@ export function Tooltip({
   const tooltipPositionClasses =
     position === "above" ? "s-bottom-full s-mb-2" : "s-top-full s-mt-2";
 
-  const labelClasses = "s-whitespace-nowrap";
+  // if tooltip text is too long we need to wrap it
+  const labelLength = label?.length || 0;
+  const labelClasses = labelLength > 80 ? "w-[38em]" : "s-whitespace-nowrap";
 
   return (
     <div
