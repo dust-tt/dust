@@ -97,9 +97,10 @@ export default function Conversation({
       if (!lastConversationTs) {
         return null;
       }
-      if (lastConversationTs + 60 * 1000 * 10 < Date.now()) {
+      if (lastConversationTs + 10 * 1000 < Date.now()) {
         console.log(
-          "No need to poll for events if the last message is older than 10 minutes"
+          "No need to poll for events if the last message is older than 10 minutes",
+          new Date()
         );
         return null;
       }

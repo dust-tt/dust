@@ -1,7 +1,7 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -58,6 +58,7 @@ export default function AssistantConversation({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const { mutate } = useSWRConfig();
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
@@ -85,7 +86,7 @@ export default function AssistantConversation({
       return;
     }
     await mutate(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
     );
   };
 
