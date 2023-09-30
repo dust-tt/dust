@@ -37,34 +37,34 @@ export async function createGithubConnector(
     return new Err(new Error("Github installation id is invalid"));
   }
 
-  const transaction = await sequelize_conn.transaction();
-  try {
-    const connector = await Connector.create(
-      {
-        type: "github",
-        connectionId: githubInstallationId,
-        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
-        defaultNewResourcePermission: "read_write",
-      },
-      { transaction }
-    );
-    await GithubConnectorState.create(
-      {
-        connectorId: connector.id,
-        webhooksEnabledAt: new Date(),
-      },
-      { transaction }
-    );
-    await transaction.commit();
-    await launchGithubFullSyncWorkflow(connector.id.toString());
-    return new Ok(connector.id.toString());
-  } catch (err) {
-    logger.error({ error: err }, "Error creating github connector");
-    await transaction.rollback();
-    return new Err(err as Error);
-  }
+  return await sequelize_conn.transaction(async (transaction) => {
+    try {
+      const connector = await Connector.create(
+        {
+          type: "github",
+          connectionId: githubInstallationId,
+          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
+          defaultNewResourcePermission: "read_write",
+        },
+        { transaction }
+      );
+      await GithubConnectorState.create(
+        {
+          connectorId: connector.id,
+          webhooksEnabledAt: new Date(),
+        },
+        { transaction }
+      );
+      await launchGithubFullSyncWorkflow(connector.id.toString());
+      return new Ok(connector.id.toString());
+    } catch (err) {
+      logger.error({ error: err }, "Error creating github connector");
+
+      return new Err(err as Error);
+    }
+  });
 }
 
 export async function updateGithubConnector(
