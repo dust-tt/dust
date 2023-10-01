@@ -180,6 +180,17 @@ function AgentListImpl(
 
 const AgentList = forwardRef(AgentListImpl);
 
+function moveCursorToEnd(el: HTMLElement) {
+  const range = document.createRange();
+  const sel = window.getSelection();
+  if (sel) {
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
 export function AssistantInputBar({
   owner,
   onSubmit,
@@ -319,14 +330,7 @@ export function AssistantInputBar({
       }
       // move the cursor to the end of the input bar
       if (lastTextNode) {
-        const selection = window.getSelection();
-        if (selection) {
-          const range = document.createRange();
-          range.setStart(lastTextNode, lastTextNode.length);
-          range.setEnd(lastTextNode, lastTextNode.length);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
+        moveCursorToEnd(contentEditable);
       }
     }
   }, [stickyMentions, agentConfigurations, stickyMentionsTextContent]);
@@ -335,7 +339,6 @@ export function AssistantInputBar({
     "border-0 px-3 py-4 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal"
   );
-
   return (
     <>
       <AgentList
@@ -359,7 +362,7 @@ export function AssistantInputBar({
           >
             <div
               className={classNames(
-                // Placeholder text for the contenteditable
+                // This div is placeholder text for the contenteditable
                 contentEditableClasses,
                 "absolute text-element-600 dark:text-element-600-dark",
                 empty ? "" : "hidden"
@@ -682,6 +685,8 @@ export function AssistantInputBar({
                       contentEditable.appendChild(mentionNode);
                       const afterTextNode = document.createTextNode(" ");
                       contentEditable.appendChild(afterTextNode);
+                      contentEditable.focus();
+                      moveCursorToEnd(contentEditable);
                     }
                   }}
                   assistants={activeAgents}
