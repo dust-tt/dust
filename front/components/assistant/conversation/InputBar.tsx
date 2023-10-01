@@ -631,6 +631,13 @@ export function AssistantInputBar({
                           agentListRef.current?.reset();
                           inputNode.setAttribute("ignore", "backspace");
                           inputNode.blur();
+                          setEmpty(
+                            !inputRef.current?.textContent ||
+                              inputRef.current?.textContent?.replace(
+                                /\u200B/g,
+                                ""
+                              ).length === 0
+                          );
                           e.preventDefault();
                         }
                       }
