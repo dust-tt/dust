@@ -219,8 +219,9 @@ export function AssistantInputBar({
     noMatch: () => boolean;
     perfectMatch: () => boolean;
   }>(null);
-
-  const [empty, setEmpty] = useState<boolean>(true);
+  const [empty, setEmpty] = useState<boolean>(
+    !stickyMentions || stickyMentions?.length === 0
+  );
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -267,6 +268,7 @@ export function AssistantInputBar({
 
       onSubmit(content, mentions);
       contentEditable.innerHTML = "";
+      setEmpty(true);
     }
   };
 
@@ -327,6 +329,8 @@ export function AssistantInputBar({
 
         stickyMentionsTextContent.current =
           contentEditable.textContent?.trim() || null;
+        // since a mention was added, the inputbar isn't empty
+        setEmpty(false);
       }
       // move the cursor to the end of the input bar
       if (lastTextNode) {
