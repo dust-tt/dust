@@ -364,7 +364,7 @@ export function AssistantInputBar({
               className={classNames(
                 // This div is placeholder text for the contenteditable
                 contentEditableClasses,
-                "absolute text-element-600 dark:text-element-600-dark",
+                "absolute -z-10 text-element-600 dark:text-element-600-dark",
                 empty ? "" : "hidden"
               )}
             >
