@@ -61,6 +61,7 @@ export type UserMessageContext = {
 
 export type UserMessageType = {
   id: ModelId;
+  created: number;
   type: "user_message";
   sId: string;
   visibility: MessageVisibility;
@@ -93,6 +94,7 @@ export type AgentMessageStatus = "created" | "succeeded" | "failed";
  */
 export type AgentMessageType = {
   id: ModelId;
+  created: number;
   type: "agent_message";
   sId: string;
   visibility: MessageVisibility;

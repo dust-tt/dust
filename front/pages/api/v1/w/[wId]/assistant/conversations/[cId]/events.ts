@@ -54,6 +54,9 @@ async function handler(
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }
+      res.write("data: done\n\n");
+      // @ts-expect-error - We need it for streaming but it does not exists in the types.
+      res.flush();
 
       res.end();
       return;

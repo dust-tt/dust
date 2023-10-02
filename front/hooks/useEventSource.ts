@@ -25,18 +25,27 @@ export function useEventSource(
     };
 
     es.onmessage = (event: MessageEvent<string>) => {
+      if (event.data === "done") {
+        setReconnectCounter((c) => c + 1);
+        es.close();
+        return;
+      }
       onEventCallback(event.data);
       lastEvent.current = event.data;
     };
 
-    es.onerror = () => {
+    es.onerror = (event) => {
+      console.error("useEventSource.onerror()", event);
+      errorCount.current += 1;
+      if (errorCount.current >= 3) {
+        console.log("too many errors, not reconnecting..");
+        setIsError(new Error("Too many errors, closing connection."));
+        es.close();
+        return;
+      }
       reconnectTimeout = setTimeout(() => {
         setReconnectCounter((c) => c + 1);
-      }, Math.min(1000 * errorCount.current, 3000));
-      errorCount.current += 1;
-      if (errorCount.current > 1) {
-        setIsError(new Error("Error connecting to the events stream"));
-      }
+      }, 1000);
     };
 
     return () => {

@@ -207,6 +207,7 @@ async function renderUserMessage(
     type: "user_message",
     visibility: message.visibility,
     version: message.version,
+    created: message.createdAt.getTime(),
     user: user
       ? {
           id: user.id,
@@ -285,6 +286,7 @@ async function renderAgentMessage(
   return {
     id: message.id,
     sId: message.sId,
+    created: message.createdAt.getTime(),
     type: "agent_message",
     visibility: message.visibility,
     version: message.version,
@@ -729,6 +731,7 @@ export async function* postUserMessage(
       const m = result[0];
       const userMessage: UserMessageType = {
         id: m.id,
+        created: m.createdAt.getTime(),
         sId: m.sId,
         type: "user_message",
         visibility: "visible",
@@ -787,6 +790,7 @@ export async function* postUserMessage(
                 row: agentMessageRow,
                 m: {
                   id: messageRow.id,
+                  created: agentMessageRow.createdAt.getTime(),
                   sId: messageRow.sId,
                   type: "agent_message",
                   visibility: "visible",
@@ -1108,6 +1112,7 @@ export async function* editUserMessage(
       const m = result[0];
       const userMessage: UserMessageType = {
         id: m.id,
+        created: m.createdAt.getTime(),
         sId: m.sId,
         type: "user_message",
         visibility: m.visibility,
@@ -1176,6 +1181,7 @@ export async function* editUserMessage(
                 row: agentMessageRow,
                 m: {
                   id: messageRow.id,
+                  created: agentMessageRow.createdAt.getTime(),
                   sId: messageRow.sId,
                   type: "agent_message",
                   visibility: "visible",
@@ -1356,6 +1362,7 @@ export async function* retryAgentMessage(
     );
     const agentMessage: AgentMessageType = {
       id: m.id,
+      created: m.createdAt.getTime(),
       sId: m.sId,
       type: "agent_message",
       visibility: m.visibility,

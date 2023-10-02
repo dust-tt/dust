@@ -133,6 +133,9 @@ async function handler(
         // @ts-expect-error - We need it for streaming but it does not exists in the types.
         res.flush();
       }
+      res.write("data: done\n\n");
+      // @ts-expect-error - We need it for streaming but it does not exists in the types.
+      res.flush();
 
       res.status(200).end();
       return;
