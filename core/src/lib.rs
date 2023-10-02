@@ -30,6 +30,7 @@ pub mod providers {
         pub mod tiktoken;
     }
     pub mod anthropic;
+    pub mod textsynth;
 }
 pub mod http {
     pub mod request;

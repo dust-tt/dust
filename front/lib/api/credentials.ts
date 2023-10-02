@@ -1,7 +1,10 @@
 import { CredentialsType, ProviderType } from "@app/types/provider";
 
-const { DUST_MANAGED_OPENAI_API_KEY = "", DUST_MANAGED_ANTHROPIC_API_KEY } =
-  process.env;
+const {
+  DUST_MANAGED_OPENAI_API_KEY = "",
+  DUST_MANAGED_ANTHROPIC_API_KEY = "",
+  DUST_MANAGED_TEXTSYNTH_API_KEY = "",
+} = process.env;
 
 export const credentialsFromProviders = (
   providers: ProviderType[]
@@ -31,6 +34,9 @@ export const credentialsFromProviders = (
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
         break;
+      case "textsynth":
+        credentials["TEXTSYNTH_API_KEY"] = config.api_key;
+        break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
         break;
@@ -49,5 +55,6 @@ export const dustManagedCredentials = (): CredentialsType => {
   return {
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
+    TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
   };
 };
