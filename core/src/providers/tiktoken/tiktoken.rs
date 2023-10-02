@@ -145,10 +145,8 @@ pub async fn encode_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<us
     Ok(r)
 }
 
-pub async fn tokenize_async(
-    bpe: Arc<Mutex<CoreBPE>>,
-    text: String,
-) -> Result<Vec<(usize, String)>> {
+pub async fn tokenize_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<(usize, String)>> {
+    let text = text.to_string();
     let r = task::spawn_blocking(move || bpe.lock().tokenize(&text)).await?;
     Ok(r)
 }
@@ -643,7 +641,7 @@ impl CoreBPE {
         self._encode_native(text, &allowed_special).0
     }
 
-    pub fn tokenize(&self, text: &String) -> Vec<(usize, String)> {
+    pub fn tokenize(&self, text: &str) -> Vec<(usize, String)> {
         let allowed_special = self
             .special_tokens_encoder
             .keys()
@@ -842,7 +840,7 @@ mod tests {
 
     #[tokio::test]
     async fn tokenize_test() {
-        async fn run_tokenize_test(soupinou: String, expected_soupinou: Vec<(usize, String)>) {
+        async fn run_tokenize_test(soupinou: &str, expected_soupinou: Vec<(usize, String)>) {
             let bpe = p50k_base_singleton();
             let res = tokenize_async(bpe, soupinou).await;
             assert_eq!(res.unwrap(), expected_soupinou);
@@ -857,7 +855,7 @@ mod tests {
             (259, "in".to_string()),
             (280, "ou".to_string()),
         ];
-        run_tokenize_test(regular, expected_regular).await;
+        run_tokenize_test(&regular, expected_regular).await;
 
         let unicode = "Soupinou 🤗".to_string();
         let expected_unicode: Vec<(usize, String)> = vec![
@@ -870,7 +868,7 @@ mod tests {
             (245, "�".to_string()),
         ];
 
-        run_tokenize_test(unicode, expected_unicode).await;
+        run_tokenize_test(&unicode, expected_unicode).await;
 
         let japanese = "ほこり".to_string();
         let expected_japanese: Vec<(usize, String)> = vec![
@@ -880,6 +878,6 @@ mod tests {
             (28255, "り".to_string()),
         ];
 
-        run_tokenize_test(japanese, expected_japanese).await;
+        run_tokenize_test(&japanese, expected_japanese).await;
     }
 }

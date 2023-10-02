@@ -167,11 +167,10 @@ function extractMaxTokens({
 export async function getTokenizedText(
   text: string
 ): Promise<{ tokens: CoreAPITokenType[] }> {
-  console.log("computeNbTokens4");
   const tokenizeResponse = await CoreAPI.tokenize({
     text: text,
-    modelId: "text-embedding-ada-002",
     providerId: "openai",
+    modelId: "gpt-4",
   });
   if (tokenizeResponse.isErr()) {
     {
