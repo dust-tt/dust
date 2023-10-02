@@ -1,8 +1,7 @@
 import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
-import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import { ComponentType, MouseEventHandler } from "react";
+import { ComponentType, MouseEventHandler, useEffect, useState } from "react";
 import React from "react";
 import { mutate } from "swr";
 
@@ -42,6 +41,18 @@ export function ConversationMessage({
   reactions: MessageReactionType[];
   avatarBusy?: boolean;
 }) {
+  const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
+
+  useEffect(() => {
+    async function loadEmojiData() {
+      const mod = await import("@emoji-mart/data");
+      const data: EmojiMartData = mod.default as EmojiMartData;
+      setEmojiData(data);
+    }
+
+    void loadEmojiData();
+  }, []);
+
   const handleSelectEmoji = async ({
     emoji,
     isToRemove,
@@ -94,7 +105,10 @@ export function ConversationMessage({
             {reactions.map((reaction) => {
               const hasReacted =
                 reaction.users.find((u) => u.userId === user.id) !== undefined;
-
+              const emoji = emojiData?.emojis[reaction.emoji];
+              if (!emoji) {
+                return null;
+              }
               return (
                 <React.Fragment key={reaction.emoji}>
                   <a
@@ -107,10 +121,10 @@ export function ConversationMessage({
                     }}
                   >
                     <Reacji
-                      id={reaction.emoji}
                       key={reaction.emoji}
                       count={reaction.users.length}
                       isHighlighted={hasReacted}
+                      emoji={emoji}
                     ></Reacji>
                   </a>
                 </React.Fragment>
@@ -145,12 +159,12 @@ export function ConversationMessage({
                 type="menu"
                 variant="tertiary"
                 size="xs"
-                label="🔥&nbsp;&nbsp;👎&nbsp;&nbsp;🤩"
+                label="🔥&nbsp;&nbsp;❌&nbsp;&nbsp;🤩"
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items width={280}>
               <Picker
-                data={data}
+                data={emojiData}
                 onEmojiSelect={async (emojiData: Emoji) => {
                   const reaction = reactions.find(
                     (r) => r.emoji === emojiData.id
@@ -175,30 +189,28 @@ export function ConversationMessage({
 }
 
 function Reacji({
-  id,
   count,
   isHighlighted,
+  emoji,
 }: {
-  id: string;
   count: number;
   isHighlighted: boolean;
+  emoji: Emoji;
 }) {
-  const allEmojisData: EmojiMartData = data as EmojiMartData;
-  const emojiData = allEmojisData.emojis[id];
-  const emoji = emojiData.skins[0].native;
-  if (!emoji) {
+  const nativeEmoji = emoji.skins[0].native;
+  if (!nativeEmoji) {
     return null;
   }
   return (
-    <span className="pr-2">
-      {emoji}{" "}
+    <span className="whitespace-nowrap pr-2">
+      {nativeEmoji}&nbsp;
       <span
         className={classNames(
           "text-xs",
           isHighlighted ? "font-bold text-action-500" : ""
         )}
       >
-        &nbsp;{count}
+        {count}
       </span>
     </span>
   );
