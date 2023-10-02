@@ -54,6 +54,14 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
+    providerId: "textsynth",
+    name: "TextSynth",
+    built: true,
+    enabled: false,
+    chat: false,
+    embed: false,
+  },
+  {
     providerId: "hugging_face",
     name: "Hugging Face",
     built: false,

@@ -10,6 +10,7 @@ export type CredentialsType = {
   AZURE_OPENAI_API_KEY?: string;
   AZURE_OPENAI_ENDPOINT?: string;
   ANTHROPIC_API_KEY?: string;
+  TEXTSYNTH_API_KEY?: string;
   SERP_API_KEY?: string;
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;

@@ -200,6 +200,27 @@ async function handler(
           res.status(200).json({ models: anthropic_models });
           return;
 
+        case "textsynth":
+          if (chat) {
+            res.status(200).json({
+              models: [
+                //  { id: "mistral_7B_instruct" },
+                //  { id: "falcon_40B-chat" },
+              ],
+            });
+            return;
+          }
+          res.status(200).json({
+            models: [
+              { id: "mistral_7B" },
+              { id: "mistral_7B_instruct" },
+              { id: "falcon_7B" },
+              { id: "falcon_40B" },
+              { id: "llama2_7B" },
+            ],
+          });
+          return;
+
         default:
           res.status(404).json({ error: "Provider not found" });
           return;
