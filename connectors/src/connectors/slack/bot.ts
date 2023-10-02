@@ -280,12 +280,12 @@ async function botAnswerMessage(
       case "agent_generation_success": {
         fullAnswer = event.text;
 
-        let processedText = _processCiteMention(fullAnswer, action);
-        processedText += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+        let finalAnswer = _processCiteMention(fullAnswer, action);
+        finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
           channel: slackChannel,
-          text: processedText,
+          text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
