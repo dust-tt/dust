@@ -3,7 +3,7 @@ import React, { useRef } from "react";
 import { Icon } from "@sparkle/components/Icon";
 import { classNames } from "@sparkle/lib/utils";
 
-import { MagnifyingGlassStrokeIcon, XCircleIcon } from "..";
+import { MagnifyingGlassStrokeIcon, XMarkIcon } from "..";
 import { IconButton } from "./IconButton";
 
 export function Searchbar({
@@ -60,18 +60,16 @@ export function Searchbar({
           onKeyDown={onKeyDown}
           disabled={disabled}
         />
-        <div className="s-absolute s-right-0 s-top-0 s-flex s-h-full s-items-center s-pr-1.5">
+        <div className="s-absolute s-right-0 s-top-0 s-flex s-h-full s-items-center s-pr-3">
           {value && onChange ? (
             <IconButton
-              icon={XCircleIcon}
-              variant="tertiary"
-              size="md"
+              icon={XMarkIcon}
+              variant="secondary"
+              size="sm"
               onClick={clearInputField}
             />
           ) : (
-            <div className="s-pr-1">
-              <Icon visual={MagnifyingGlassStrokeIcon} size="sm" />
-            </div>
+            <Icon visual={MagnifyingGlassStrokeIcon} size="sm" />
           )}
         </div>
       </div>
