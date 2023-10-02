@@ -163,7 +163,7 @@ async function botAnswerMessage(
   });
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
-    text: "_I am thinking..._",
+    text: "_Thinking..._",
     thread_ts: slackMessageTs,
     mrkdwn: true,
   });
@@ -261,13 +261,17 @@ async function botAnswerMessage(
       }
       case "generation_tokens": {
         fullAnswer += event.text;
-        if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
+        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
           continue;
         }
         lastSentDate = new Date();
+
+        let finalAnswer = _processCiteMention(fullAnswer, action);
+        finalAnswer += `...\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+
         await slackClient.chat.update({
           channel: slackChannel,
-          text: _processCiteMention(fullAnswer, action),
+          text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
@@ -313,14 +317,19 @@ function _processCiteMention(
 
   if (references) {
     let counter = 0;
-    return content.replace(/:cite\[[a-zA-Z0-9,]+\]/g, (match) => {
+    const refCounter: { [key: string]: number } = {};
+    return content.replace(/:cite\[[a-zA-Z0-9, ]+\]/g, (match) => {
       const keys = match.slice(6, -1).split(","); // slice off ":cite[" and "]" then split by comma
       return keys
         .map((key) => {
-          const ref = references[key];
+          const k = key.trim();
+          const ref = references[k];
           if (ref && ref.sourceUrl) {
-            counter++;
-            return `<${ref.sourceUrl}|${counter}>`;
+            if (!refCounter[k]) {
+              counter++;
+              refCounter[k] = counter;
+            }
+            return `[<${ref.sourceUrl}|${refCounter[k]}>]`;
           }
           return "";
         })
@@ -332,7 +341,7 @@ function _processCiteMention(
 }
 
 function _removeCiteMention(message: string): string {
-  const regex = /:cite\[[a-zA-Z0-9,]+\]/g;
+  const regex = /:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
 
