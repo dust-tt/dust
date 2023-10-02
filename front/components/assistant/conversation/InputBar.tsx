@@ -180,6 +180,17 @@ function AgentListImpl(
 
 const AgentList = forwardRef(AgentListImpl);
 
+function moveCursorToEnd(el: HTMLElement) {
+  const range = document.createRange();
+  const sel = window.getSelection();
+  if (sel) {
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
 export function AssistantInputBar({
   owner,
   onSubmit,
@@ -198,7 +209,6 @@ export function AssistantInputBar({
     bottom: 0,
     left: 0,
   });
-
   const inputRef = useRef<HTMLDivElement>(null);
   const agentListRef = useRef<{
     prev: () => void;
@@ -213,6 +223,30 @@ export function AssistantInputBar({
     inputRef.current?.focus();
   }, []);
 
+  // Empty bar detection logic
+  const [empty, setEmpty] = useState<boolean>(
+    !inputRef.current?.textContent ||
+      inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+  );
+  // MutationObserver is only defined after window is defined so observer cannot
+  // be defined in the useRef below
+  const observer = useRef<MutationObserver | null>(null);
+  useEffect(() => {
+    if (!observer.current && inputRef.current) {
+      observer.current = new MutationObserver(function () {
+        setEmpty(
+          !inputRef.current?.textContent ||
+            inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+        );
+      });
+      observer.current.observe(inputRef.current, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+  }, []);
+
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
@@ -221,6 +255,9 @@ export function AssistantInputBar({
   activeAgents.sort(compareAgentsForSort);
 
   const handleSubmit = async () => {
+    if (empty) {
+      return;
+    }
     const contentEditable = document.getElementById("dust-input-bar");
     if (contentEditable) {
       const mentions: MentionType[] = [];
@@ -315,18 +352,15 @@ export function AssistantInputBar({
       }
       // move the cursor to the end of the input bar
       if (lastTextNode) {
-        const selection = window.getSelection();
-        if (selection) {
-          const range = document.createRange();
-          range.setStart(lastTextNode, lastTextNode.length);
-          range.setEnd(lastTextNode, lastTextNode.length);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
+        moveCursorToEnd(contentEditable);
       }
     }
   }, [stickyMentions, agentConfigurations, stickyMentionsTextContent]);
-
+  const contentEditableClasses = classNames(
+    "inline-block w-full",
+    "border-0 px-3 py-4 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "whitespace-pre-wrap font-normal"
+  );
   return (
     <>
       <AgentList
@@ -340,7 +374,7 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-center">
           <div
             className={classNames(
-              "flex flex-1 flex-row items-end items-stretch px-4",
+              "relative flex flex-1 flex-row items-end items-stretch px-4",
               "border-2 border-action-300 bg-white focus-within:border-action-400",
               "rounded-xl drop-shadow-2xl transition-all duration-300",
               isAnimating
@@ -350,10 +384,16 @@ export function AssistantInputBar({
           >
             <div
               className={classNames(
-                "inline-block w-full",
-                "border-0 px-3 py-4 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
-                "whitespace-pre-wrap font-normal "
+                // This div is placeholder text for the contenteditable
+                contentEditableClasses,
+                "absolute -z-10 text-element-600 dark:text-element-600-dark",
+                empty ? "" : "hidden"
               )}
+            >
+              Ask a question
+            </div>
+            <div
+              className={contentEditableClasses}
               contentEditable={true}
               ref={inputRef}
               id={"dust-input-bar"}
@@ -662,6 +702,8 @@ export function AssistantInputBar({
                       contentEditable.appendChild(mentionNode);
                       const afterTextNode = document.createTextNode(" ");
                       contentEditable.appendChild(afterTextNode);
+                      contentEditable.focus();
+                      moveCursorToEnd(contentEditable);
                     }
                   }}
                   assistants={activeAgents}
@@ -672,6 +714,7 @@ export function AssistantInputBar({
                 variant="primary"
                 icon={PaperAirplaneIcon}
                 size="md"
+                disabled={empty}
                 onClick={() => {
                   void handleSubmit();
                 }}
