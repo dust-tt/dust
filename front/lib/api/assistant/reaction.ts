@@ -1,17 +1,19 @@
 import { Authenticator } from "@app/lib/auth";
-import { ModelId } from "@app/lib/databases";
 import { Message, MessageReaction } from "@app/lib/models";
 import {
   ConversationMessageReactions,
+  ConversationType,
+  ConversationWithoutContentType,
   MessageReactionType,
 } from "@app/types/assistant/conversation";
+import { UserType } from "@app/types/user";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.
  */
 export async function getMessageReactions(
   auth: Authenticator,
-  conversationId: ModelId
+  conversation: ConversationType | ConversationWithoutContentType
 ): Promise<ConversationMessageReactions | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -20,7 +22,7 @@ export async function getMessageReactions(
 
   const messages = await Message.findAll({
     where: {
-      conversationId: conversationId,
+      conversationId: conversation.id,
     },
     include: [
       {
@@ -40,26 +42,31 @@ export async function getMessageReactions(
 function _renderMessageReactions(
   reactions: MessageReaction[]
 ): MessageReactionType[] {
-  return reactions.reduce<MessageReactionType[]>((acc, r) => {
-    const reaction = acc.find((r2) => r2.emoji === r.reaction);
-    if (reaction) {
-      reaction.users.push({
-        username: r.userContextUsername,
-        fullName: r.userContextFullName,
-      });
-    } else {
-      acc.push({
-        emoji: r.reaction,
-        users: [
-          {
-            username: r.userContextUsername,
-            fullName: r.userContextFullName,
-          },
-        ],
-      });
-    }
-    return acc;
-  }, []);
+  return reactions.reduce<MessageReactionType[]>(
+    (acc: MessageReactionType[], r: MessageReaction) => {
+      const reaction = acc.find((r2) => r2.emoji === r.reaction);
+      if (reaction) {
+        reaction.users.push({
+          userId: r.userId,
+          username: r.userContextUsername,
+          fullName: r.userContextFullName,
+        });
+      } else {
+        acc.push({
+          emoji: r.reaction,
+          users: [
+            {
+              userId: r.userId,
+              username: r.userContextUsername,
+              fullName: r.userContextFullName,
+            },
+          ],
+        });
+      }
+      return acc;
+    },
+    []
+  );
 }
 
 /**
@@ -70,12 +77,14 @@ export async function createMessageReaction(
   auth: Authenticator,
   {
     messageId,
-    userId,
+    conversation,
+    user,
     context,
     reaction,
   }: {
     messageId: string;
-    userId: ModelId | null;
+    conversation: ConversationType | ConversationWithoutContentType;
+    user: UserType | null;
     context: {
       username: string;
       fullName: string | null;
@@ -91,6 +100,7 @@ export async function createMessageReaction(
   const message = await Message.findOne({
     where: {
       sId: messageId,
+      conversationId: conversation.id,
     },
   });
 
@@ -100,7 +110,7 @@ export async function createMessageReaction(
 
   const newReaction = await MessageReaction.create({
     messageId: message.id,
-    userId,
+    userId: user ? user.id : null,
     userContextUsername: context.username,
     userContextFullName: context.fullName,
     reaction,
@@ -116,12 +126,14 @@ export async function deleteMessageReaction(
   auth: Authenticator,
   {
     messageId,
-    userId,
+    conversation,
+    user,
     context,
     reaction,
   }: {
     messageId: string;
-    userId: ModelId | null;
+    conversation: ConversationType | ConversationWithoutContentType;
+    user: UserType | null;
     context: {
       username: string;
       fullName: string | null;
@@ -137,6 +149,7 @@ export async function deleteMessageReaction(
   const message = await Message.findOne({
     where: {
       sId: messageId,
+      conversationId: conversation.id,
     },
   });
 
@@ -147,7 +160,7 @@ export async function deleteMessageReaction(
   const deletedReaction = await MessageReaction.destroy({
     where: {
       messageId: message.id,
-      userId,
+      userId: user ? user.id : null,
       userContextUsername: context.username,
       userContextFullName: context.fullName,
       reaction,

@@ -410,7 +410,7 @@ export function useConversationReactions({
   );
 
   return {
-    reactions: data ? data.reactions : null,
+    reactions: data ? data.reactions : [],
     isReactionsLoading: !error && !data,
     isReactionsError: error,
     mutateReactions: mutate,

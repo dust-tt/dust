@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { getMessageReactions } from "@app/lib/api/assistant/reaction";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -61,7 +61,10 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -74,7 +77,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const reactions = await getMessageReactions(auth, conversation.id);
+      const reactions = await getMessageReactions(auth, conversation);
       if (reactions) {
         res.status(200).json({ reactions });
         return;

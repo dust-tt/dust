@@ -473,6 +473,37 @@ export async function getConversation(
   };
 }
 
+export async function getConversationWithoutContent(
+  auth: Authenticator,
+  conversationId: string,
+  includeDeleted?: boolean
+): Promise<ConversationWithoutContentType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: owner.id,
+      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+    },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  return {
+    id: conversation.id,
+    created: conversation.createdAt.getTime(),
+    sId: conversation.sId,
+    owner,
+    title: conversation.title,
+  };
+}
+
 /**
  * Title generation
  */

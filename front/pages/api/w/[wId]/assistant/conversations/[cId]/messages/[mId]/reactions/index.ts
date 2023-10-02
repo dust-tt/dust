@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import {
   createMessageReaction,
   deleteMessageReaction,
@@ -73,7 +73,10 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -111,7 +114,8 @@ async function handler(
     case "POST":
       const created = await createMessageReaction(auth, {
         messageId,
-        userId: user.id,
+        conversation,
+        user: user,
         context: {
           username: user.username,
           fullName: user.name,
@@ -134,7 +138,8 @@ async function handler(
     case "DELETE":
       const deleted = await deleteMessageReaction(auth, {
         messageId,
-        userId: user.id,
+        conversation,
+        user: user,
         context: {
           username: user.username,
           fullName: user.name,

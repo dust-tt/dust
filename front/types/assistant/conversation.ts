@@ -1,5 +1,4 @@
 import { ModelId } from "@app/lib/databases";
-import { MessageReaction } from "@app/lib/models";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import { RetrievalActionType } from "./actions/retrieval";
@@ -42,6 +41,7 @@ export type ConversationMessageReactions = {
 export type MessageReactionType = {
   emoji: string;
   users: {
+    userId: ModelId | null;
     username: string;
     fullName: string | null;
   }[];
