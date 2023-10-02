@@ -6,13 +6,19 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use eventsource_client as es;
+use eventsource_client::Client as ESClient;
+use futures::stream::SplitSink;
+use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
 use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio_util::codec::{FramedRead, LinesCodec};
 
 use super::embedder::EmbedderVector;
 use super::llm::ChatFunction;
@@ -92,8 +98,9 @@ async fn api_tokenize(api_key: &str, engine: &str, text: &str) -> Result<Vec<usi
 pub struct Completion {
     pub text: String,
     pub reached_end: bool,
-    pub input_tokens: usize,
-    pub output_tokens: usize,
+    pub input_tokens: Option<usize>,
+    pub output_tokens: Option<usize>,
+    pub finish_reason: Option<String>,
 }
 
 pub struct TextSynthLLM {
@@ -118,8 +125,7 @@ impl TextSynthLLM {
     //     Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
     // }
 
-    async fn completion(
-        &self,
+    fn build_json_body(
         prompt: &str,
         max_tokens: Option<i32>,
         temperature: f32,
@@ -130,12 +136,7 @@ impl TextSynthLLM {
         presence_penalty: Option<f32>,
         repetition_penalty: Option<f32>,
         typical_p: Option<f32>,
-    ) -> Result<Completion> {
-        assert!(self.api_key.is_some());
-
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
+    ) -> Value {
         let mut body = json!({
             "prompt": prompt,
                     "temperature": temperature,
@@ -164,6 +165,40 @@ impl TextSynthLLM {
         if typical_p.is_some() {
             body["typical_p"] = json!(typical_p.unwrap());
         }
+
+        body
+    }
+
+    async fn completion(
+        &self,
+        prompt: &str,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+    ) -> Result<Completion> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let body = Self::build_json_body(
+            prompt,
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
 
         let req = Request::builder()
             .method(Method::POST)
@@ -217,7 +252,143 @@ impl TextSynthLLM {
                 })
             }
         }?;
+
         Ok(response)
+    }
+
+    pub async fn streamed_completion(
+        &self,
+        prompt: &str,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<Completion> {
+        let url = self.uri()?.to_string();
+
+        let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
+            Ok(builder) => builder,
+            Err(e) => {
+                return Err(anyhow!(
+                    "Error creating TextSynth streaming client: {:?}",
+                    e
+                ))
+            }
+        };
+
+        builder = builder.method(String::from("POST"));
+        builder = match builder.header("Content-Type", "application/json") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+        builder = match builder.header(
+            "Authorization",
+            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
+        ) {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+
+        let mut body = Self::build_json_body(
+            prompt,
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
+        body["stream"] = json!(true);
+
+        let client = builder
+            .body(body.to_string())
+            .reconnect(
+                es::ReconnectOptions::reconnect(true)
+                    .retry_initial(false)
+                    .delay(Duration::from_secs(1))
+                    .backoff_factor(2)
+                    .delay_max(Duration::from_secs(8))
+                    .build(),
+            )
+            .build();
+
+        let mut stream = client.stream();
+
+        let mut final_completion: Option<Completion> = None;
+        let mut completion = String::new();
+        'stream: loop {
+            match stream.try_next().await {
+                Ok(stream_next) => match stream_next {
+                    Some(es::SSE::Comment(comment)) => {
+                        println!("UNEXPECTED COMMENT {}", comment);
+                    }
+                    Some(es::SSE::Event(event)) => {
+                        // println!("RESPONSE {} {}", event.event_type, event.data)
+                        let c: Completion = match serde_json::from_str(event.data.as_str()) {
+                            Ok(response) => response,
+                            Err(error) => {
+                                Err(anyhow!(
+                                    "Error parsing response from TextSynth: {:?} {:?}",
+                                    error,
+                                    event.data
+                                ))?;
+                                break 'stream;
+                            }
+                        };
+
+                        match c.finish_reason {
+                            Some(stop_reason) => {
+                                final_completion = Some(Completion {
+                                    text: completion,
+                                    finish_reason: Some(stop_reason),
+                                    output_tokens: c.output_tokens,
+                                    input_tokens: c.input_tokens,
+                                    reached_end: c.reached_end,
+                                });
+                                break 'stream;
+                            }
+                            None => (),
+                        }
+
+                        completion.push_str(c.text.as_str());
+
+                        if c.text.len() > 0 {
+                            let _ = event_sender.send(json!({
+                                "type":"tokens",
+                                "content": {
+                                    "text":c.text,
+                                }
+
+                            }));
+                        }
+
+                        final_completion = Some(c.clone());
+                    }
+                    None => {
+                        println!("UNEXPECTED NONE");
+                        break 'stream;
+                    }
+                },
+                Err(error) => {
+                    Err(anyhow!("Error streaming from TextSynth: {:?}", error))?;
+                    break 'stream;
+                }
+            }
+        }
+
+        return match final_completion {
+            Some(response) => Ok(response),
+            None => Err(anyhow!("No response from TextSynth")),
+        };
     }
 }
 
@@ -290,7 +461,7 @@ impl LLM for TextSynthLLM {
         top_p: Option<f32>,
         _top_logprobs: Option<i32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(self.api_key.is_some());
 
@@ -301,22 +472,46 @@ impl LLM for TextSynthLLM {
             }
         }
 
-        // println!("STOP: {:?}", stop);
-
-        let c = self
-            .completion(
-                prompt,
-                max_tokens,
-                temperature,
-                stop,
-                None,
-                top_p,
-                frequency_penalty,
-                presence_penalty,
-                None,
-                None,
-            )
-            .await?;
+        let c: Completion = match event_sender {
+            Some(es) => {
+                match self
+                    .streamed_completion(
+                        prompt,
+                        max_tokens,
+                        temperature,
+                        stop,
+                        None,
+                        top_p,
+                        frequency_penalty,
+                        presence_penalty,
+                        None,
+                        None,
+                        es,
+                    )
+                    .await
+                {
+                    Ok(c) => c,
+                    Err(error) => {
+                        return Err(anyhow!("Error streaming from TextSynth: {:?}", error))?;
+                    }
+                }
+            }
+            None => {
+                self.completion(
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    stop,
+                    None,
+                    top_p,
+                    frequency_penalty,
+                    presence_penalty,
+                    None,
+                    None,
+                )
+                .await?
+            }
+        };
 
         // println!("COMPLETION: {:?}", c);
 

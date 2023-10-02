@@ -944,6 +944,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tokio-stream",
+ "tokio-util",
  "tower-http 0.4.0",
  "tracing",
  "tracing-subscriber",
