@@ -209,7 +209,6 @@ export function AssistantInputBar({
     bottom: 0,
     left: 0,
   });
-
   const inputRef = useRef<HTMLDivElement>(null);
   const agentListRef = useRef<{
     prev: () => void;
@@ -219,11 +218,33 @@ export function AssistantInputBar({
     noMatch: () => boolean;
     perfectMatch: () => boolean;
   }>(null);
-  const [empty, setEmpty] = useState<boolean>(
-    !stickyMentions || stickyMentions?.length === 0
-  );
+
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  // Empty bar detection logic
+  const [empty, setEmpty] = useState<boolean>(
+    !inputRef.current?.textContent ||
+      inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+  );
+  // MutationObserver is only defined after window is defined so observer cannot
+  // be defined in the useRef below
+  const observer = useRef<MutationObserver | null>(null);
+  useEffect(() => {
+    if (!observer.current && inputRef.current) {
+      observer.current = new MutationObserver(function () {
+        setEmpty(
+          !inputRef.current?.textContent ||
+            inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+        );
+      });
+      observer.current.observe(inputRef.current, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
   }, []);
 
   const { agentConfigurations } = useAgentConfigurations({
@@ -268,7 +289,6 @@ export function AssistantInputBar({
 
       onSubmit(content, mentions);
       contentEditable.innerHTML = "";
-      setEmpty(true);
     }
   };
 
@@ -329,8 +349,6 @@ export function AssistantInputBar({
 
         stickyMentionsTextContent.current =
           contentEditable.textContent?.trim() || null;
-        // since a mention was added, the inputbar isn't empty
-        setEmpty(false);
       }
       // move the cursor to the end of the input bar
       if (lastTextNode) {
@@ -447,11 +465,6 @@ export function AssistantInputBar({
                 }
               }}
               onInput={() => {
-                setEmpty(
-                  !inputRef.current?.textContent ||
-                    inputRef.current?.textContent.replace(/\u200B/g, "")
-                      .length === 0
-                );
                 const selection = window.getSelection();
                 if (
                   selection &&
@@ -635,13 +648,6 @@ export function AssistantInputBar({
                           agentListRef.current?.reset();
                           inputNode.setAttribute("ignore", "backspace");
                           inputNode.blur();
-                          setEmpty(
-                            !inputRef.current?.textContent ||
-                              inputRef.current?.textContent?.replace(
-                                /\u200B/g,
-                                ""
-                              ).length === 0
-                          );
                           e.preventDefault();
                         }
                       }
