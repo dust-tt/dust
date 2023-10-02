@@ -49,7 +49,7 @@ export function Tooltip({
 
   // if tooltip text is too long we need to wrap it
   const labelLength = label?.length || 0;
-  const labelClasses = labelLength > 80 ? "w-[38em]" : "s-whitespace-nowrap";
+  const labelClasses = labelLength > 80 ? "s-w-[38em]" : "s-whitespace-nowrap";
 
   return (
     <div
