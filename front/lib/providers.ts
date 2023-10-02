@@ -58,7 +58,7 @@ export const modelProviders: ModelProvider[] = [
     name: "TextSynth",
     built: true,
     enabled: false,
-    chat: true,
+    chat: false,
     embed: false,
   },
   {

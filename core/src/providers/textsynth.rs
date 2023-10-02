@@ -114,9 +114,9 @@ impl TextSynthLLM {
         .parse::<Uri>()?)
     }
 
-    fn chat_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
-    }
+    // fn chat_uri(&self) -> Result<Uri> {
+    //     Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
+    // }
 
     async fn completion(
         &self,

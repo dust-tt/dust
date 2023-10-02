@@ -204,8 +204,8 @@ async function handler(
           if (chat) {
             res.status(200).json({
               models: [
-                { id: "mistral_7B_instruct" },
-                { id: "falcon_40B-chat" },
+                //  { id: "mistral_7B_instruct" },
+                //  { id: "falcon_40B-chat" },
               ],
             });
             return;
