@@ -43,14 +43,6 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
-  const lastConversationTs = (() => {
-    const allTs = conversation?.content.flat().map((m) => m.created);
-    if (!allTs) {
-      return null;
-    }
-    return Math.max(...allTs);
-  })();
-
   useEffect(() => {
     if (window && window.scrollTo) {
       window.scrollTo(0, document.body.scrollHeight);
@@ -94,16 +86,6 @@ export default function Conversation({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!lastConversationTs) {
-        return null;
-      }
-      if (lastConversationTs + 10 * 1000 < Date.now()) {
-        console.log(
-          "No need to poll for events if the last message is older than 10 minutes",
-          new Date()
-        );
-        return null;
-      }
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
@@ -116,7 +98,7 @@ export default function Conversation({
 
       return url;
     },
-    [conversationId, lastConversationTs, owner.sId]
+    [conversationId, owner.sId]
   );
 
   const onEventCallback = useCallback(

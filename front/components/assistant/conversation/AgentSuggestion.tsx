@@ -1,6 +1,5 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
@@ -26,7 +25,6 @@ export function AgentSuggestion({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
-  const { mutate } = useSWRConfig();
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
   agents.sort((a, b) => compareAgentSuggestions(a, b));
@@ -99,10 +97,6 @@ export function AgentSuggestion({
       const data = await mRes.json();
       window.alert(`Error adding mention to message: ${data.error.message}`);
     }
-
-    await mutate(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`
-    );
   }
 
   /**
