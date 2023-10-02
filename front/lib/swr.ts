@@ -18,7 +18,10 @@ import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import { AppType } from "@app/types/app";
-import { ConversationType } from "@app/types/assistant/conversation";
+import {
+  ConversationMessageReactions,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 import { DataSourceType } from "@app/types/data_source";
 import { RunRunType } from "@app/types/run";
 import { WorkspaceType } from "@app/types/user";
@@ -387,6 +390,30 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
+  };
+}
+
+export function useConversationReactions({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const conversationReactionsFetcher: Fetcher<{
+    reactions: ConversationMessageReactions;
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/reactions`,
+    conversationReactionsFetcher
+  );
+
+  return {
+    reactions: data ? data.reactions : [],
+    isReactionsLoading: !error && !data,
+    isReactionsError: error,
+    mutateReactions: mutate,
   };
 }
 

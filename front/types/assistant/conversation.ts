@@ -33,6 +33,20 @@ export function isUserMention(arg: MentionType): arg is UserMention {
   );
 }
 
+export type ConversationMessageReactions = {
+  messageId: string;
+  reactions: MessageReactionType[];
+}[];
+
+export type MessageReactionType = {
+  emoji: string;
+  users: {
+    userId: ModelId | null;
+    username: string;
+    fullName: string | null;
+  }[];
+};
+
 /**
  * User messages
  */
@@ -67,12 +81,6 @@ export function isUserMessageType(
  * Agent messages
  */
 
-export type UserFeedbackType = {
-  user: UserType;
-  value: "positive" | "negative" | null;
-  comment: string | null;
-};
-
 export type AgentActionType = RetrievalActionType;
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
@@ -95,7 +103,6 @@ export type AgentMessageType = {
   status: AgentMessageStatus;
   action: AgentActionType | null;
   content: string | null;
-  feedbacks: UserFeedbackType[];
   error: {
     code: string;
     message: string;

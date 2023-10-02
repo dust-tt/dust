@@ -293,7 +293,6 @@ async function renderAgentMessage(
     status: agentMessage.status,
     action: agentRetrievalAction,
     content: agentMessage.content,
-    feedbacks: [],
     error,
     configuration: agentConfiguration,
   };
@@ -471,6 +470,37 @@ export async function getConversation(
       users: Array.from(userParticipants.values()),
       agents: Array.from(agentParticipants.values()),
     },
+  };
+}
+
+export async function getConversationWithoutContent(
+  auth: Authenticator,
+  conversationId: string,
+  includeDeleted?: boolean
+): Promise<ConversationWithoutContentType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: owner.id,
+      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+    },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  return {
+    id: conversation.id,
+    created: conversation.createdAt.getTime(),
+    sId: conversation.sId,
+    owner,
+    title: conversation.title,
   };
 }
 
@@ -765,7 +795,6 @@ export async function* postUserMessage(
                   status: "created",
                   action: null,
                   content: null,
-                  feedbacks: [],
                   error: null,
                   configuration,
                 },
@@ -1155,7 +1184,6 @@ export async function* editUserMessage(
                   status: "created",
                   action: null,
                   content: null,
-                  feedbacks: [],
                   error: null,
                   configuration,
                 },
@@ -1336,7 +1364,6 @@ export async function* retryAgentMessage(
       status: "created",
       action: null,
       content: null,
-      feedbacks: [],
       error: null,
       configuration: message.configuration,
     };

@@ -42,6 +42,7 @@ export type APIErrorType =
   | "conversation_not_found"
   | "agent_configuration_not_found"
   | "message_not_found"
+  | "message_reaction_error"
   | "global_agent_error";
 
 export type APIError = {
