@@ -184,8 +184,6 @@ impl TextSynthLLM {
 
         let response = match status {
             hyper::StatusCode::OK => {
-                // print content of c
-                println!("RESPONSE: {}", String::from_utf8_lossy(c));
                 let completion: Completion = serde_json::from_slice(c)?;
                 Ok(completion)
             }
@@ -296,7 +294,6 @@ impl LLM for TextSynthLLM {
             if m == -1 {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some((self.context_size() - tokens.len()) as i32);
-                // println!("Using max_tokens = {}", max_tokens.unwrap());
             }
         }
 
