@@ -1,7 +1,7 @@
 import {
   AgentGenerationSuccessEvent,
+  AgentMessageType,
   DustAPI,
-  PostMessagesRequestBodySchema,
 } from "@connectors/lib/dust_api";
 import {
   Connector,
@@ -188,38 +188,58 @@ async function botAnswerMessage(
     }
   }
 
-  const messagePayload: PostMessagesRequestBodySchema = {
-    content: message,
-    mentions: [{ configurationId: "dust" }],
-    context: {
-      timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
-      username: slackChatBotMessage.slackUserName,
-      fullName:
-        slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
-      email: slackChatBotMessage.slackEmail,
-      profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+  const convRes = await dustAPI.createConversation({
+    title: null,
+    visibility: "unlisted",
+    message: {
+      content: message,
+      mentions: [{ configurationId: "dust" }],
+      context: {
+        timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+        username: slackChatBotMessage.slackUserName,
+        fullName:
+          slackChatBotMessage.slackFullName ||
+          slackChatBotMessage.slackUserName,
+        email: slackChatBotMessage.slackEmail,
+        profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+      },
     },
-  };
-  const convRes = await dustAPI.createConversation(
-    null,
-    "unlisted",
-    messagePayload
-  );
+  });
+
   if (convRes.isErr()) {
     return new Err(new Error(convRes.error.message));
   }
 
-  const conv = convRes.value;
-  const stream = await conv.stream;
-  if (stream.isErr()) {
-    return new Err(new Error(stream.error.message));
-  }
-  slackChatBotMessage.conversationId = conv.conversation.sId;
+  const conversation = convRes.value;
+
+  slackChatBotMessage.conversationId = conversation.sId;
   await slackChatBotMessage.save();
+
+  const agentMessages = conversation.content
+    .map((versions) => {
+      const m = versions[versions.length - 1];
+      return m;
+    })
+    .filter((m) => {
+      return m && m.type === "agent_message";
+    });
+  if (agentMessages.length === 0) {
+    return new Err(new Error("Failed to retrieve agent message"));
+  }
+  const agentMessage = agentMessages[0] as AgentMessageType;
+
+  const streamRes = await dustAPI.streamAgentMessageEvents({
+    conversation,
+    message: agentMessage,
+  });
+
+  if (streamRes.isErr()) {
+    return new Err(new Error(streamRes.error.message));
+  }
 
   let fullAnswer = "";
   let lastSentDate = new Date();
-  for await (const event of stream.value.eventStream) {
+  for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "user_message_error": {
         return new Err(
@@ -254,7 +274,7 @@ async function botAnswerMessage(
         const finalAnswer = `${_removeCiteMention(
           event.text
         )}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${
-          conv.conversation.sId
+          conversation.sId
         }|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({

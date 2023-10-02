@@ -305,101 +305,6 @@ export type ConversationType = {
   content: (UserMessageType[] | AgentMessageType[])[];
 };
 
-/**
- * This help functions process a streamed response in the format of the Dust API for running
- * streamed apps.
- *
- * @param res an HTTP response ready to be consumed as a stream
- */
-export async function processStreamedMessageEvents(res: Response) {
-  if (!res.ok || !res.body) {
-    return new Err({
-      type: "dust_api_error",
-      message: `Error running streamed app: status_code=${
-        res.status
-      }  - message=${await res.text()}`,
-    });
-  }
-
-  let pendingEvents: (
-    | UserMessageErrorEvent
-    | AgentErrorEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationSuccessEvent
-  )[] = [];
-
-  const parser = createParser((event) => {
-    if (event.type === "event") {
-      if (event.data) {
-        try {
-          const data = JSON.parse(event.data).data;
-          switch (data.type) {
-            case "user_message_error": {
-              pendingEvents.push(data as UserMessageErrorEvent);
-              break;
-            }
-            case "agent_error": {
-              pendingEvents.push(data as AgentErrorEvent);
-              break;
-            }
-            case "agent_action_success": {
-              pendingEvents.push(data as AgentActionSuccessEvent);
-              break;
-            }
-            case "generation_tokens": {
-              pendingEvents.push(data as GenerationTokensEvent);
-              break;
-            }
-            case "agent_generation_success": {
-              pendingEvents.push(data as AgentGenerationSuccessEvent);
-              break;
-            }
-          }
-        } catch (err) {
-          logger.error({ error: err }, "Failed parsing chunk from Dust API");
-        }
-      }
-    }
-  });
-
-  const reader = res.body.getReader();
-
-  const streamEvents = async function* () {
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        parser.feed(new TextDecoder().decode(value));
-        for (const event of pendingEvents) {
-          yield event;
-        }
-        pendingEvents = [];
-      }
-    } catch (e) {
-      yield {
-        type: "error",
-        content: {
-          code: "stream_error",
-          message: "Error streaming chunks",
-        },
-      } as DustAppRunErrorEvent;
-      logger.error(
-        {
-          error: e,
-        },
-        "Error streaming chunks."
-      );
-    } finally {
-      reader.releaseLock();
-    }
-  };
-
-  return new Ok({ eventStream: streamEvents() });
-}
-
 export class DustAPI {
   _credentials: DustAPICredentials;
 
@@ -438,17 +343,15 @@ export class DustAPI {
     return new Ok(json.data_sources as DataSourceType[]);
   }
 
-  async createConversation(
-    title: string | null,
-    visibility: ConversationVisibility,
-    message: PostMessagesRequestBodySchema
-  ): Promise<Result<ConversationType, DustAPIErrorResponse>> {
-    const requestPayload: PostConversationsRequestBodySchema = {
-      title,
-      visibility,
-      message,
-    };
-
+  // When creating a conversation with a user message, the API returns only after the user message
+  // was created (and if applicable the assocaited agent messages).
+  async createConversation({
+    title,
+    visibility,
+    message,
+  }: PostConversationsRequestBodySchema): Promise<
+    Result<ConversationType, DustAPIErrorResponse>
+  > {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
       {
@@ -457,7 +360,11 @@ export class DustAPI {
           Authorization: `Bearer ${this._credentials.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestPayload),
+        body: JSON.stringify({
+          title,
+          visibility,
+          message,
+        }),
       }
     );
 
@@ -469,63 +376,119 @@ export class DustAPI {
     return new Ok(json.conversation as ConversationType);
   }
 
-
-
-    const conv = json.conversation as { sId: string };
-    const agentMessageRes: Result<AgentMessageType, Error> =
-      await (async () => {
-        // looping 10 times to get the first agent message, we should listen on conversation stream
-        // but this works for now as we have only one answer and are under time pressure.
-        for (let i = 0; i < 10; i++) {
-          const conversation = await this.getConversation(conv.sId);
-          if (conversation.isOk()) {
-            const agentMessage = conversation.value.content
-              .flat()
-              .filter((m) => {
-                return m.type === "agent_message";
-              });
-            if (agentMessage.length > 0) {
-              return new Ok(agentMessage[0] as AgentMessageType);
-            }
-          }
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-
-        return new Err(
-          new Error(
-            `Timeout waiting for agent message for conversation ${conv.sId}`
-          )
-        );
-      })();
-
-    if (agentMessageRes.isErr()) {
-      return agentMessageRes;
-    }
-
+  async streamAgentMessageEvents({
+    conversation,
+    message,
+  }: {
+    conversation: ConversationType;
+    message: AgentMessageType;
+  }) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
 
-    const streamRes = await fetch(
+    const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
-        conv.sId
-      }/messages/${agentMessageRes.value.sId}/events`,
+        conversation.sId
+      }/messages/${message.sId}/events`,
       {
         method: "GET",
         headers: headers,
       }
     );
 
-    return new Ok({
-      stream: processStreamedMessageEvents(streamRes),
-      conversation: conv,
+    if (!res.ok || !res.body) {
+      return new Err({
+        type: "dust_api_error",
+        message: `Error running streamed app: status_code=${
+          res.status
+        }  - message=${await res.text()}`,
+      });
+    }
+
+    let pendingEvents: (
+      | UserMessageErrorEvent
+      | AgentErrorEvent
+      | AgentActionSuccessEvent
+      | GenerationTokensEvent
+      | AgentGenerationSuccessEvent
+    )[] = [];
+
+    const parser = createParser((event) => {
+      if (event.type === "event") {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data).data;
+            switch (data.type) {
+              case "user_message_error": {
+                pendingEvents.push(data as UserMessageErrorEvent);
+                break;
+              }
+              case "agent_error": {
+                pendingEvents.push(data as AgentErrorEvent);
+                break;
+              }
+              case "agent_action_success": {
+                pendingEvents.push(data as AgentActionSuccessEvent);
+                break;
+              }
+              case "generation_tokens": {
+                pendingEvents.push(data as GenerationTokensEvent);
+                break;
+              }
+              case "agent_generation_success": {
+                pendingEvents.push(data as AgentGenerationSuccessEvent);
+                break;
+              }
+            }
+          } catch (err) {
+            logger.error({ error: err }, "Failed parsing chunk from Dust API");
+          }
+        }
+      }
     });
+
+    const reader = res.body.getReader();
+
+    const streamEvents = async function* () {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          parser.feed(new TextDecoder().decode(value));
+          for (const event of pendingEvents) {
+            yield event;
+          }
+          pendingEvents = [];
+        }
+      } catch (e) {
+        yield {
+          type: "error",
+          content: {
+            code: "stream_error",
+            message: "Error streaming chunks",
+          },
+        } as DustAppRunErrorEvent;
+        logger.error(
+          {
+            error: e,
+          },
+          "Error streaming chunks."
+        );
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    return new Ok({ eventStream: streamEvents() });
   }
 
-  async getConversation(conversationid: string) {
+  async getConversation(conversationId: string) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationid}`,
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
         method: "GET",
         headers: {
