@@ -109,7 +109,7 @@ export default function SettingsView({
         method: "DELETE",
       });
       if (res.ok) {
-        await router.push(`/w/${owner.sId}/`);
+        await router.push(`/w/${owner.sId}/a`);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };

@@ -1,3 +1,4 @@
+use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
@@ -265,13 +266,15 @@ impl LLM for AzureOpenAILLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
-        Ok(tokens)
+        encode_async(self.tokenizer(), text).await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        let str = { self.tokenizer().lock().decode(tokens)? };
-        Ok(str)
+        decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(self.tokenizer(), text).await
     }
 
     async fn generate(
@@ -598,10 +601,6 @@ impl Embedder for AzureOpenAIEmbedder {
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         let str = { self.tokenizer().lock().decode(tokens)? };
         Ok(str)
-    }
-
-    async fn tokenize(&self, _text: String) -> Result<Vec<(usize, String)>> {
-        Err(anyhow!("Tokenize not implemented for provider `anthropic`"))
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

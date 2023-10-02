@@ -1160,6 +1160,10 @@ impl LLM for OpenAILLM {
         decode_async(self.tokenizer(), tokens).await
     }
 
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(self.tokenizer(), text).await
+    }
+
     async fn generate(
         &self,
         prompt: &str,
@@ -1573,10 +1577,6 @@ impl Embedder for OpenAIEmbedder {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(self.tokenizer(), tokens).await
-    }
-
-    async fn tokenize(&self, text: String) -> Result<Vec<(usize, String)>> {
-        tokenize_async(self.tokenizer(), text).await
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

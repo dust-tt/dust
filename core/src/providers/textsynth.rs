@@ -260,18 +260,22 @@ impl LLM for TextSynthLLM {
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         assert!(self.api_key.is_some());
 
-        api_tokenize(
-            self.api_key.clone().unwrap().as_str(),
-            self.id.as_str(),
-            text,
-        )
-        .await
+        api_tokenize(self.api_key.as_ref().unwrap(), self.id.as_str(), text).await
     }
 
     async fn decode(&self, _tokens: Vec<usize>) -> Result<String> {
         Err(anyhow!(
             "Encode/Decode not implemented for provider `textsynth`"
         ))
+    }
+
+    // We return empty strings in place of tokens strings to partially support the endpoint.
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        api_tokenize(self.api_key.as_ref().unwrap(), self.id.as_str(), text)
+            .await?
+            .into_iter()
+            .map(|t| Ok((t, String::from(""))))
+            .collect()
     }
 
     async fn generate(
@@ -393,10 +397,6 @@ impl Embedder for TextSynthEmbedder {
         Err(anyhow!(
             "Encode/Decode not implemented for provider `textsynth`"
         ))
-    }
-
-    async fn tokenize(&self, _text: String) -> Result<Vec<(usize, String)>> {
-        Err(anyhow!("Tokenize not implemented for provider `textsynth`"))
     }
 
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

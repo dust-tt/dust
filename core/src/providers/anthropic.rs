@@ -572,6 +572,10 @@ impl LLM for AnthropicLLM {
         decode_async(anthropic_base_singleton(), tokens).await
     }
 
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(anthropic_base_singleton(), text).await
+    }
+
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
@@ -663,10 +667,6 @@ impl Embedder for AnthropicEmbedder {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(anthropic_base_singleton(), tokens).await
-    }
-
-    async fn tokenize(&self, text: String) -> Result<Vec<(usize, String)>> {
-        tokenize_async(anthropic_base_singleton(), text).await
     }
 
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
