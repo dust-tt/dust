@@ -4,6 +4,8 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
+import { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 import {
@@ -24,11 +26,14 @@ export default function RetrievalAction({
   retrievalAction: RetrievalActionType;
 }) {
   const { query, relativeTimeFrame } = retrievalAction.params;
+  const [docListVisible, setDocListVisible] = useState(false);
+
   function shortText(text: string, maxLength = 20) {
     return text.length > maxLength
       ? text.substring(0, maxLength) + "..."
       : text;
   }
+
   return (
     <div>
       <div className="text-xs font-bold text-element-600">
@@ -66,12 +71,52 @@ export default function RetrievalAction({
         </div>
       ) : (
         <div className="mt-2 text-xs font-bold text-element-600">
-          Retrieved:
-          <Chip color="violet" className="ml-2">
-            {retrievalAction.documents.length > 0
-              ? RetrievedDocumentsInfo(retrievalAction.documents)
-              : "No documents found"}
-          </Chip>
+          <div className="flex items-center">
+            <span>Retrieved:</span>
+            <div
+              onClick={() => setDocListVisible(!docListVisible)}
+              className="ml-2"
+            >
+              <Chip color="violet">
+                {retrievalAction.documents.length > 0
+                  ? RetrievedDocumentsInfo(retrievalAction.documents)
+                  : "No documents found"}
+              </Chip>
+            </div>
+          </div>
+          <Transition
+            show={docListVisible}
+            enter="transition ease-out duration-200 transform"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="transition ease-in duration-75 transform"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+            className={"pt-4"}
+          >
+            <ul className="space-y-2">
+              {retrievalAction.documents.map((document, i) => {
+                const provider = providerFromDocument(document);
+                return (
+                  <li key={i}>
+                    <a href={document.sourceUrl || ""}>
+                      {provider === "none" ? (
+                        <DocumentDuplicateStrokeIcon className="mr-1 inline-block h-4 w-4 text-slate-500" />
+                      ) : (
+                        <img
+                          src={
+                            PROVIDER_LOGO_PATH[providerFromDocument(document)]
+                          }
+                          className="mr-1 inline-block h-4 w-4"
+                        />
+                      )}
+                      {titleFromDocument(document)}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </Transition>
         </div>
       )}
     </div>
