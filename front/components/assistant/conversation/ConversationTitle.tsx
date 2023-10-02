@@ -2,12 +2,17 @@ import {
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
+  CheckIcon,
   ClipboardCheckIcon,
   DropdownMenu,
+  IconButton,
   LinkStrokeIcon,
+  PencilSquareIcon,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { MouseEvent, useRef, useState } from "react";
+import { useSWRConfig } from "swr";
 
 import { useConversation } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
@@ -23,7 +28,14 @@ export function ConversationTitle({
   shareLink: string;
   onDelete?: () => void;
 }) {
+  const { mutate } = useSWRConfig();
+
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(true);
+  const [editedTitle, setEditedTitle] = useState<string>("");
+
+  const titleInputFocused = useRef(false);
+  const saveButtonFocused = useRef(false);
 
   const handleClick = async () => {
     await navigator.clipboard.writeText(shareLink || "");
@@ -39,16 +51,116 @@ export function ConversationTitle({
       workspaceId: owner.sId,
     });
 
+  const onTitleChange = async (title: string) => {
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            visibility: conversation?.visibility,
+          }),
+        }
+      );
+      await mutate(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
+      );
+      if (!res.ok) {
+        throw new Error("Failed to update title");
+      }
+      setIsEditingTitle(false);
+      setEditedTitle("");
+    } catch (e) {
+      alert("Failed to update title");
+    }
+  };
+
   if (isConversationLoading || isConversationError || !conversation) {
     return null;
   }
 
   return (
-    <div className="grid h-full max-w-full grid-cols-[1fr,auto] items-center gap-4">
-      <div className="overflow-hidden truncate">
-        <span className="font-bold">{conversation?.title || ""}</span>
-      </div>
+    <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+      <div className="flex min-w-0 flex-row items-center gap-4">
+        {!isEditingTitle ? (
+          <div className="min-w-0 overflow-hidden truncate">
+            <span className="font-bold">{conversation?.title || ""}</span>
+          </div>
+        ) : (
+          <div className="flex-grow">
+            <input
+              className="w-full rounded-md font-bold"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              // this is to make sure the save button click
+              // is registered before the onBlur event
+              onFocus={() => (titleInputFocused.current = true)}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (!saveButtonFocused.current) {
+                    setIsEditingTitle(false);
+                  }
+                  titleInputFocused.current = false;
+                }, 0);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  return onTitleChange(editedTitle);
+                }
+              }}
+              autoFocus
+            />
+          </div>
+        )}
 
+        <div>
+          {isEditingTitle ? (
+            <div className="flex flex-row">
+              <div
+                onClick={(e: MouseEvent<HTMLDivElement>) => {
+                  e.preventDefault();
+                  return onTitleChange(editedTitle);
+                }}
+                // this is to make sure the save button click
+                // is registered before the onBlur event
+                onFocus={() => (saveButtonFocused.current = true)}
+                onBlur={() => {
+                  setTimeout(() => {
+                    if (!titleInputFocused.current) {
+                      setIsEditingTitle(false);
+                    }
+                    saveButtonFocused.current = false;
+                  }, 0);
+                }}
+              >
+                <IconButton icon={CheckIcon} />
+              </div>
+              <div>
+                <IconButton
+                  icon={XMarkIcon}
+                  onClick={() => {
+                    setIsEditingTitle(false);
+                    setEditedTitle("");
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <IconButton
+              icon={PencilSquareIcon}
+              onClick={() => {
+                setEditedTitle(conversation?.title || "");
+                setIsEditingTitle(true);
+              }}
+              size="sm"
+            />
+          )}
+        </div>
+      </div>
       <div className="flex items-center gap-6">
         <div className="hidden lg:flex">
           <Avatar.Stack
