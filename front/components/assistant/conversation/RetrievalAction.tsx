@@ -136,8 +136,8 @@ export default function RetrievalAction({
 function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
   const summary = documentsSummary(documents);
   return (
-    <>
-      <span>{documents.length} results</span>
+    <div className="flex flex-row items-center">
+      <span className="hidden lg:block">{documents.length} results</span>
       {Object.keys(summary).map((k) => {
         return (
           <div key={k} className="ml-3 flex flex-initial flex-row items-center">
@@ -152,7 +152,7 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
           </div>
         );
       })}
-    </>
+    </div>
   );
 }
 
