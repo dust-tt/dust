@@ -77,7 +77,10 @@ export default function RetrievalAction({
         </div>
         <div className="row-span-1">
           {retrievalAction.documents && (
-            <div onClick={() => setDocListVisible(!docListVisible)}>
+            <div
+              onClick={() => setDocListVisible(!docListVisible)}
+              className="cursor-pointer"
+            >
               <Chip color="violet">
                 {retrievalAction.documents.length > 0
                   ? RetrievedDocumentsInfo(retrievalAction.documents)
