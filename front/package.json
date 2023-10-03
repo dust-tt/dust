@@ -45,7 +45,7 @@
     "jsonwebtoken": "^9.0.0",
     "minimist": "^1.2.8",
     "moment-timezone": "^0.5.43",
-    "next": "^13.1.5",
+    "next": "^13.5.4",
     "next-auth": "^4.18.10",
     "next-remove-imports": "^1.0.8",
     "pdfjs-dist": "^3.7.107",
