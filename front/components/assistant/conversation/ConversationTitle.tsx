@@ -96,8 +96,9 @@ export function ConversationTitle({
               className="w-full rounded-md font-bold"
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
-              // this is to make sure the save button click
-              // is registered before the onBlur event
+              // We need to make sure the click on the save button below
+              // is registered before the onBlur event, so we keep track of the
+              // focus state of both the input and the save button.
               onFocus={() => (titleInputFocused.current = true)}
               onBlur={() => {
                 setTimeout(() => {
@@ -125,8 +126,7 @@ export function ConversationTitle({
                   e.preventDefault();
                   return onTitleChange(editedTitle);
                 }}
-                // this is to make sure the save button click
-                // is registered before the onBlur event
+                // See comment on the input above.
                 onFocus={() => (saveButtonFocused.current = true)}
                 onBlur={() => {
                   setTimeout(() => {
