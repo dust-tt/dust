@@ -6,19 +6,14 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use eventsource_client as es;
-use eventsource_client::Client as ESClient;
-use futures::stream::SplitSink;
-use futures::TryStreamExt;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
 use std::time::Duration;
-use tokio::net::TcpStream;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio_util::codec::{FramedRead, LinesCodec};
 
 use super::embedder::EmbedderVector;
 use super::llm::ChatFunction;
@@ -215,15 +210,14 @@ impl TextSynthLLM {
         let body = hyper::body::aggregate(res).await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
 
         let response = match status {
             hyper::StatusCode::OK => {
-                let completion: Completion = serde_json::from_slice(c)?;
+                let completion: Completion = serde_json::from_slice(&b)?;
                 Ok(completion)
             }
             hyper::StatusCode::TOO_MANY_REQUESTS => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
                     error: "Too many requests".to_string(),
                 });
                 Err(ModelError {
@@ -236,7 +230,7 @@ impl TextSynthLLM {
                 })
             }
             hyper::StatusCode::BAD_REQUEST => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
                     error: "Unknown error".to_string(),
                 });
                 Err(ModelError {
@@ -245,7 +239,7 @@ impl TextSynthLLM {
                 })
             }
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: Error = serde_json::from_slice(&b)?;
                 Err(ModelError {
                     message: format!("TextSynthAPIError: {}", error.error),
                     retryable: None,
@@ -270,30 +264,10 @@ impl TextSynthLLM {
         typical_p: Option<f32>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<Completion> {
-        let url = self.uri()?.to_string();
+        assert!(self.api_key.is_some());
 
-        let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
-            Ok(builder) => builder,
-            Err(e) => {
-                return Err(anyhow!(
-                    "Error creating TextSynth streaming client: {:?}",
-                    e
-                ))
-            }
-        };
-
-        builder = builder.method(String::from("POST"));
-        builder = match builder.header("Content-Type", "application/json") {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
-        builder = match builder.header(
-            "Authorization",
-            format!("Bearer {}", self.api_key.clone().unwrap()).as_str(),
-        ) {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
 
         let mut body = Self::build_json_body(
             prompt,
@@ -309,83 +283,119 @@ impl TextSynthLLM {
         );
         body["stream"] = json!(true);
 
-        let client = builder
-            .body(body.to_string())
-            .reconnect(
-                es::ReconnectOptions::reconnect(true)
-                    .retry_initial(false)
-                    .delay(Duration::from_secs(1))
-                    .backoff_factor(2)
-                    .delay_max(Duration::from_secs(8))
-                    .build(),
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
             )
-            .build();
+            .body(Body::from(body.to_string()))?;
 
-        let mut stream = client.stream();
+        let res = cli.request(req).await?;
+        let status = res.status();
 
-        let mut final_completion: Option<Completion> = None;
-        let mut completion = String::new();
-        'stream: loop {
-            match stream.try_next().await {
-                Ok(stream_next) => match stream_next {
-                    Some(es::SSE::Comment(comment)) => {
-                        println!("UNEXPECTED COMMENT {}", comment);
-                    }
-                    Some(es::SSE::Event(event)) => {
-                        // println!("RESPONSE {} {}", event.event_type, event.data)
-                        let c: Completion = match serde_json::from_str(event.data.as_str()) {
-                            Ok(response) => response,
-                            Err(error) => {
-                                Err(anyhow!(
-                                    "Error parsing response from TextSynth: {:?} {:?}",
-                                    error,
-                                    event.data
-                                ))?;
-                                break 'stream;
+        let mut completion: Option<Completion> = None;
+        let mut completion_text = String::new();
+
+        match status {
+            hyper::StatusCode::OK => {
+                let mut b = res.into_body();
+                let mut buf: Vec<u8> = vec![];
+
+                while let Some(chunk) = b.data().await {
+                    let chunk = chunk?;
+                    buf.extend_from_slice(&chunk);
+
+                    if buf.contains(&b'\n') {
+                        let last_newline = buf.iter().rposition(|&b| b == b'\n').unwrap();
+                        let split_buf: Vec<&[u8]> =
+                            buf[0..last_newline].split(|&i| i == b'\n').collect();
+
+                        for item in split_buf {
+                            if item.len() == 0 {
+                                continue;
                             }
-                        };
-
-                        match c.finish_reason {
-                            Some(stop_reason) => {
-                                final_completion = Some(Completion {
-                                    text: completion,
-                                    finish_reason: Some(stop_reason),
-                                    output_tokens: c.output_tokens,
-                                    input_tokens: c.input_tokens,
-                                    reached_end: c.reached_end,
-                                });
-                                break 'stream;
-                            }
-                            None => (),
-                        }
-
-                        completion.push_str(c.text.as_str());
-
-                        if c.text.len() > 0 {
-                            let _ = event_sender.send(json!({
-                                "type":"tokens",
-                                "content": {
-                                    "text":c.text,
+                            match serde_json::from_slice::<Completion>(item) {
+                                Ok(c) => {
+                                    match c.finish_reason {
+                                        Some(stop_reason) => {
+                                            completion = Some(Completion {
+                                                text: completion_text.clone(),
+                                                finish_reason: Some(stop_reason),
+                                                output_tokens: c.output_tokens,
+                                                input_tokens: c.input_tokens,
+                                                reached_end: c.reached_end,
+                                            });
+                                        }
+                                        None => (),
+                                    }
+                                    completion_text.push_str(c.text.as_str());
+                                    if c.text.len() > 0 {
+                                        let _ = event_sender.send(json!({
+                                            "type":"tokens",
+                                            "content": {
+                                                "text": c.text,
+                                            }
+                                        }));
+                                    }
                                 }
-
-                            }));
+                                Err(e) => Err(anyhow!(
+                                    "Error parsing response from TextSynth: error={:?}",
+                                    e,
+                                ))?,
+                            }
                         }
 
-                        final_completion = Some(c.clone());
+                        // Keep the part after the last '\n' in the buffer
+                        buf = buf[last_newline + 1..].to_vec();
                     }
-                    None => {
-                        println!("UNEXPECTED NONE");
-                        break 'stream;
+                }
+                // The last slice should be empty since we have two \n at the end of the stream.
+            }
+            _ => {
+                let body = hyper::body::aggregate(res).await?;
+                let mut b: Vec<u8> = vec![];
+                body.reader().read_to_end(&mut b)?;
+
+                match status {
+                    hyper::StatusCode::TOO_MANY_REQUESTS => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Too many requests".to_string(),
+                        });
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(2000),
+                                factor: 2,
+                                retries: 8,
+                            }),
+                        })?
                     }
-                },
-                Err(error) => {
-                    Err(anyhow!("Error streaming from TextSynth: {:?}", error))?;
-                    break 'stream;
+                    hyper::StatusCode::BAD_REQUEST => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Bad request".to_string(),
+                        });
+
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
+                    }
+                    _ => {
+                        let error: Error = serde_json::from_slice(&b)?;
+
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
+                    }
                 }
             }
-        }
+        };
 
-        return match final_completion {
+        return match completion {
             Some(response) => Ok(response),
             None => Err(anyhow!("No response from TextSynth")),
         };
@@ -512,8 +522,6 @@ impl LLM for TextSynthLLM {
                 .await?
             }
         };
-
-        // println!("COMPLETION: {:?}", c);
 
         Ok(LLMGeneration {
             created: utils::now(),
