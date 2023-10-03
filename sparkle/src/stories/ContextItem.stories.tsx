@@ -18,7 +18,6 @@ import {
 const meta = {
   title: "Molecule/ContextItem",
   component: ContextItem,
-  tags: ["autodocs"],
 } satisfies Meta<typeof ContextItem>;
 
 export default meta;

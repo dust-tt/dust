@@ -6,7 +6,6 @@ import { Chip } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Chip",
   component: Chip,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Chip>;
 
 export default meta;

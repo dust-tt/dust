@@ -10,7 +10,6 @@ import {
 const meta = {
   title: "Atoms/Tab",
   component: Tab,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Tab>;
 
 export default meta;

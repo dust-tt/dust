@@ -6,7 +6,6 @@ import { Input } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Input",
   component: Input,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Input>;
 
 export default meta;

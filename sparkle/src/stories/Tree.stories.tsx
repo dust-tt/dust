@@ -6,7 +6,6 @@ import { Tree } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Tree",
   component: Tree,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Tree>;
 
 export default meta;

@@ -6,7 +6,6 @@ import { Avatar } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Avatar",
   component: Avatar,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Avatar>;
 
 export default meta;

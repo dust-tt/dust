@@ -8,7 +8,6 @@ import {
 const meta = {
   title: "DEPRECATED/SectionHeader",
   component: SectionHeader,
-  tags: ["autodocs"],
 } satisfies Meta<typeof SectionHeader>;
 
 export default meta;

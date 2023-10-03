@@ -8,7 +8,6 @@ import { Avatar, BarHeader, PageHeader } from "../index_with_tw_base";
 const meta = {
   title: "Molecule/BarHeader",
   component: BarHeader,
-  tags: ["autodocs"],
 } satisfies Meta<typeof BarHeader>;
 
 export default meta;

@@ -6,7 +6,6 @@ import { Collapsible } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Collapsible",
   component: Collapsible,
-  tags: ["autodocs"],
 } satisfies Meta<typeof Collapsible>;
 
 export default meta;
