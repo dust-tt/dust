@@ -26,17 +26,24 @@ import {
   isRetrievalActionType,
   RetrievalDocumentType,
 } from "@app/types/assistant/actions/retrieval";
-import { AgentMessageType } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
+import {
+  AgentMessageType,
+  MessageReactionType,
+} from "@app/types/assistant/conversation";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export function AgentMessage({
   message,
   owner,
+  user,
   conversationId,
+  reactions,
 }: {
   message: AgentMessageType;
   owner: WorkspaceType;
+  user: UserType;
   conversationId: string;
+  reactions: MessageReactionType[];
 }) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -163,6 +170,7 @@ export function AgentMessage({
       ? []
       : [
           {
+            label: "Copy to clipboard",
             icon: ClipboardIcon,
             onClick: () => {
               void navigator.clipboard.writeText(
@@ -171,6 +179,7 @@ export function AgentMessage({
             },
           },
           {
+            label: "Retry",
             icon: ArrowPathIcon,
             onClick: () => {
               void retryHandler(agentMessageToRender);
@@ -180,11 +189,15 @@ export function AgentMessage({
 
   return (
     <ConversationMessage
+      owner={owner}
+      user={user}
+      conversationId={conversationId}
+      messageId={agentMessageToRender.sId}
       pictureUrl={agentMessageToRender.configuration.pictureUrl}
       name={`@${agentMessageToRender.configuration.name}`}
-      messageId={agentMessageToRender.sId}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
+      reactions={reactions}
     >
       {renderMessage(agentMessageToRender, shouldStream)}
     </ConversationMessage>

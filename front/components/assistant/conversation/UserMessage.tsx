@@ -3,9 +3,10 @@ import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMa
 import { useAgentConfigurations } from "@app/lib/swr";
 import {
   ConversationType,
+  MessageReactionType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 import { AgentSuggestion } from "./AgentSuggestion";
 
@@ -13,10 +14,14 @@ export function UserMessage({
   message,
   conversation,
   owner,
+  user,
+  reactions,
 }: {
   message: UserMessageType;
   conversation: ConversationType;
   owner: WorkspaceType;
+  user: UserType;
+  reactions: MessageReactionType[];
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -24,9 +29,13 @@ export function UserMessage({
 
   return (
     <ConversationMessage
+      owner={owner}
+      user={user}
+      conversationId={conversation.sId}
+      messageId={message.sId}
       pictureUrl={message.context.profilePictureUrl}
       name={message.context.fullName}
-      messageId={message.sId}
+      reactions={reactions}
     >
       <div className="flex flex-col gap-4">
         <div>

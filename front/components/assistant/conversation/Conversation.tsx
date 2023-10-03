@@ -8,7 +8,11 @@ import {
   ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/lib/api/assistant/conversation";
-import { useConversation, useConversations } from "@app/lib/swr";
+import {
+  useConversation,
+  useConversationReactions,
+  useConversations,
+} from "@app/lib/swr";
 import {
   AgentMention,
   AgentMessageType,
@@ -41,6 +45,11 @@ export default function Conversation({
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+  });
+
+  const { reactions } = useConversationReactions({
+    workspaceId: owner.sId,
+    conversationId,
   });
 
   useEffect(() => {
@@ -159,6 +168,9 @@ export default function Conversation({
           ) => (cur.version > acc.version ? cur : acc)
         ) as UserMessageType | AgentMessageType;
 
+        const convoReactions = reactions.find((r) => r.messageId === m.sId);
+        const messageReactions = convoReactions?.reactions || [];
+
         if (m.visibility === "deleted") {
           return null;
         }
@@ -174,6 +186,8 @@ export default function Conversation({
                     message={m}
                     conversation={conversation}
                     owner={owner}
+                    user={user}
+                    reactions={messageReactions}
                   />
                 </div>
               </div>
@@ -188,7 +202,9 @@ export default function Conversation({
                   <AgentMessage
                     message={m}
                     owner={owner}
+                    user={user}
                     conversationId={conversationId}
+                    reactions={messageReactions}
                   />
                 </div>
               </div>
