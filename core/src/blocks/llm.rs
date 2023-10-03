@@ -425,7 +425,7 @@ impl Block for LLM {
         };
 
         // if model_id starts with gpt-3.5-turbo or gpt-4 use the chat interface (except for
-        // gpt-3.5-turbo-instruc)
+        // gpt-3.5-turbo-instruct)
         match (model_id.starts_with("gpt-3.5-turbo")
             && !model_id.starts_with("gpt-3.5-turbo-instruct"))
             || model_id.starts_with("gpt-4")
