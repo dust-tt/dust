@@ -35,6 +35,7 @@ export function ConversationMessage({
   name: string | null;
   pictureUrl?: string | null;
   buttons?: {
+    label: string;
     icon: ComponentType;
     onClick: MouseEventHandler<HTMLButtonElement>;
   }[];
@@ -144,7 +145,7 @@ export function ConversationMessage({
                 <Button
                   variant="tertiary"
                   size="xs"
-                  label={""}
+                  label={button.label}
                   labelVisible={false}
                   icon={button.icon}
                   onClick={button.onClick}

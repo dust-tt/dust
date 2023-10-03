@@ -170,6 +170,7 @@ export function AgentMessage({
       ? []
       : [
           {
+            label: "Copy to clipboard",
             icon: ClipboardIcon,
             onClick: () => {
               void navigator.clipboard.writeText(
@@ -178,6 +179,7 @@ export function AgentMessage({
             },
           },
           {
+            label: "Retry",
             icon: ArrowPathIcon,
             onClick: () => {
               void retryHandler(agentMessageToRender);
