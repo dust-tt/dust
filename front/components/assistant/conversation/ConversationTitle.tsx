@@ -31,7 +31,7 @@ export function ConversationTitle({
   const { mutate } = useSWRConfig();
 
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
-  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(true);
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [editedTitle, setEditedTitle] = useState<string>("");
 
   const titleInputFocused = useRef(false);
