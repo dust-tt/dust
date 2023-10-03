@@ -197,6 +197,8 @@ export function ConversationMessage({
             </DropdownMenu.Button>
             <DropdownMenu.Items width={280}>
               <Picker
+                theme="light"
+                previewPosition="none"
                 data={emojiData}
                 onEmojiSelect={async (emojiData: Emoji) => {
                   const reaction = reactions.find(
