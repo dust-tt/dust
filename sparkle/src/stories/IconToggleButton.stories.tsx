@@ -9,6 +9,7 @@ import {
 const meta = {
   title: "Atoms/IconToggleButton",
   component: IconToggleButton,
+  tags: ["autodocs"],
 } satisfies Meta<typeof IconToggleButton>;
 
 export default meta;

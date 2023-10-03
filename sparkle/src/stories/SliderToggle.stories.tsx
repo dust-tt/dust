@@ -5,6 +5,7 @@ import { SliderToggle } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/SliderToggle",
   component: SliderToggle,
+  tags: ["autodocs"],
 } satisfies Meta<typeof SliderToggle>;
 
 export default meta;

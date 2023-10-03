@@ -6,6 +6,7 @@ import { Tooltip } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Tooltip",
   component: Tooltip,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Tooltip>;
 
 export default meta;

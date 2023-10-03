@@ -6,6 +6,7 @@ import { Button, Modal } from "../index_with_tw_base";
 const meta = {
   title: "Molecule/Modal",
   component: Modal,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Modal>;
 
 export default meta;

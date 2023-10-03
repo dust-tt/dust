@@ -7,6 +7,7 @@ import { Cog6ToothIcon } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Item",
   component: Item,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Item>;
 
 export default meta;

@@ -5,6 +5,7 @@ import { Checkbox } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Checkbox",
   component: Checkbox,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Checkbox>;
 
 export default meta;

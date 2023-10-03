@@ -6,6 +6,7 @@ import { Searchbar } from "../index_with_tw_base";
 const meta = {
   title: "Atoms/Searchbar",
   component: Searchbar,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Searchbar>;
 
 export default meta;
