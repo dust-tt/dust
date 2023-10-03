@@ -1,6 +1,9 @@
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
   Chip,
   DocumentDuplicateStrokeIcon,
+  Icon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -79,6 +82,9 @@ export default function RetrievalAction({
                 {retrievalAction.documents.length > 0
                   ? RetrievedDocumentsInfo(retrievalAction.documents)
                   : "No documents found"}
+                <Icon
+                  visual={docListVisible ? ChevronDownIcon : ChevronRightIcon}
+                />
               </Chip>
             </div>
           )}
@@ -101,7 +107,7 @@ export default function RetrievalAction({
                     <li key={i}>
                       <a
                         href={document.sourceUrl || ""}
-                        className="front-bold text-element-800"
+                        className="front-bold text-xs text-element-800"
                       >
                         {provider === "none" ? (
                           <DocumentDuplicateStrokeIcon className="mr-1 inline-block h-4 w-4 text-element-500" />
