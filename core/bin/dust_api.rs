@@ -505,7 +505,7 @@ async fn run_helper(
             None => Err(error_response(
                 StatusCode::BAD_REQUEST,
                 "missing_specification_error",
-                "No specification provided, either `specification` or 
+                "No specification provided, either `specification` or
                 `specification_hash` must be provided",
                 None,
             ))?,
@@ -1610,8 +1610,8 @@ struct TokenizePayload {
 async fn tokenize(
     extract::Json(payload): extract::Json<TokenizePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let embedder = provider(payload.provider_id).embedder(payload.model_id);
-    match embedder.tokenize(payload.text).await {
+    let embedder = provider(payload.provider_id).llm(payload.model_id);
+    match embedder.tokenize(&payload.text).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",

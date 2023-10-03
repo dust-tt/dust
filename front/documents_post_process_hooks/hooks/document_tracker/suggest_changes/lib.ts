@@ -226,8 +226,8 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const tokensInDiff = await CoreAPI.tokenize({
     text: diffText,
-    modelId: "text-embedding-ada-002",
     providerId: "openai",
+    modelId: "gpt-3.5-turbo",
   });
   if (tokensInDiff.isErr()) {
     throw tokensInDiff.error;

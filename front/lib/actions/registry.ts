@@ -78,87 +78,6 @@ export const DustProdActionRegistry = createActionRegistry({
     },
   },
 
-  "chat-retrieval": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "0d7ab66fd2",
-      appHash:
-        "63d4bea647370f23fa396dc59347cfbd92354bced26783c9a99812a8b1b14371",
-    },
-    config: {
-      DATASOURCE: {
-        data_sources: [],
-        top_k: 16,
-        filter: { tags: null, timestamp: null },
-        use_cache: false,
-      },
-    },
-  },
-  "chat-assistant": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "ab43ff2450",
-      appHash:
-        "5ba93a4b1750336ff15614b16d2f735de444e63ff22ec03f8c6e8b48392e0ea5",
-    },
-    config: {
-      MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
-        use_cache: true,
-        use_stream: true,
-      },
-    },
-  },
-  "chat-assistant-wfn": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "0052be4be7",
-      appHash:
-        "e2291ceaa774bf3a05d1c3a20db6b6de613070ae683704d6e3076d2711755d81",
-    },
-    config: {
-      MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-4-0613",
-        function_call: "auto",
-        use_cache: true,
-        use_stream: true,
-      },
-    },
-  },
-  "chat-message-e2e-eval": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "201e6de608",
-      appHash:
-        "f676a2de5b83bdbd02b55beaefddafb0bb16f53715d9d7ba3c219ec09b6b0588",
-    },
-    config: {
-      RULE_VALIDITY: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
-        function_call: "send_rule_validity",
-        use_cache: true,
-      },
-    },
-  },
-  "chat-title": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "8fe968eef3",
-      appHash:
-        "528251ebc7b5bc59027877842ca6ff05c64c08765c3ab1f5e1b799395cdb3b57",
-    },
-    config: {
-      TITLE_CHAT: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo-0613",
-        function_call: "post_title",
-        use_cache: true,
-      },
-    },
-  },
   "doc-tracker-retrieval": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -192,7 +111,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       SUGGEST_CHANGES: {
         provider_id: "openai",
-        model_id: "gpt-4-0613",
+        model_id: "gpt-4",
         use_cache: false,
         function_call: "suggest_changes",
       },
@@ -208,7 +127,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-4-0613",
+        model_id: "gpt-4",
         use_cache: false,
         function_call: "extract_events",
       },

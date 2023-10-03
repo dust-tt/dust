@@ -1,7 +1,9 @@
 import {
+  AgentActionType,
   AgentGenerationSuccessEvent,
   AgentMessageType,
   DustAPI,
+  RetrievalDocumentType,
 } from "@connectors/lib/dust_api";
 import {
   Connector,
@@ -161,7 +163,7 @@ async function botAnswerMessage(
   });
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
-    text: "_I am thinking..._",
+    text: "_Thinking..._",
     thread_ts: slackMessageTs,
     mrkdwn: true,
   });
@@ -238,6 +240,7 @@ async function botAnswerMessage(
   }
 
   let fullAnswer = "";
+  let action: AgentActionType | null = null;
   let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -258,24 +261,31 @@ async function botAnswerMessage(
       }
       case "generation_tokens": {
         fullAnswer += event.text;
-        if (lastSentDate.getTime() + 1000 > new Date().getTime()) {
+        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
           continue;
         }
         lastSentDate = new Date();
+
+        let finalAnswer = _processCiteMention(fullAnswer, action);
+        finalAnswer += `...\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+
         await slackClient.chat.update({
           channel: slackChannel,
-          text: fullAnswer,
+          text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
         });
         break;
       }
+      case "agent_action_success": {
+        action = event.action;
+        break;
+      }
       case "agent_generation_success": {
-        const finalAnswer = `${_removeCiteMention(
-          event.text
-        )}\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${
-          conversation.sId
-        }|Continue this conversation on Dust>`;
+        fullAnswer = event.text;
+
+        let finalAnswer = _processCiteMention(fullAnswer, action);
+        finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
           channel: slackChannel,
@@ -293,11 +303,45 @@ async function botAnswerMessage(
   return new Err(new Error("Failed to get the final answer from Dust"));
 }
 
-/*
- * Temp > until I have a PR to properly handle mentions
- */
-function _removeCiteMention(message: string) {
-  const regex = /:cite\[[a-zA-Z0-9,]+\]/g;
+function _processCiteMention(
+  content: string,
+  action: AgentActionType | null
+): string {
+  const references: { [key: string]: RetrievalDocumentType } = {};
+
+  if (action && action.type === "retrieval_action" && action.documents) {
+    action.documents.forEach((d) => {
+      references[d.reference] = d;
+    });
+  }
+
+  if (references) {
+    let counter = 0;
+    const refCounter: { [key: string]: number } = {};
+    return content.replace(/:cite\[[a-zA-Z0-9, ]+\]/g, (match) => {
+      const keys = match.slice(6, -1).split(","); // slice off ":cite[" and "]" then split by comma
+      return keys
+        .map((key) => {
+          const k = key.trim();
+          const ref = references[k];
+          if (ref && ref.sourceUrl) {
+            if (!refCounter[k]) {
+              counter++;
+              refCounter[k] = counter;
+            }
+            return `[<${ref.sourceUrl}|${refCounter[k]}>]`;
+          }
+          return "";
+        })
+        .join("");
+    });
+  }
+
+  return _removeCiteMention(content);
+}
+
+function _removeCiteMention(message: string): string {
+  const regex = /:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
 

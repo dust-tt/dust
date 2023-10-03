@@ -49,3 +49,14 @@ export const ToolTipWithContent = () => (
     </Tooltip>
   </div>
 );
+
+export const TooltipLongLabel = () => (
+  <div className="s-pl-64">
+    <Tooltip
+      label="This is a tooltip with a very long label that should wrap onto multiple lines. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor."
+      position="below"
+    >
+      Hover me
+    </Tooltip>
+  </div>
+);

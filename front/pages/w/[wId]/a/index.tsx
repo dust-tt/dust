@@ -20,6 +20,7 @@ import CohereSetup from "@app/components/providers/CohereSetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
+import TextSynthSetup from "@app/components/providers/TextSynthSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
@@ -203,6 +204,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [ai21Open, setAI21Open] = useState(false);
   const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [anthropicOpen, setAnthropicOpen] = useState(false);
+  const [textSynthOpen, setTextSynthOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
@@ -254,6 +256,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setAnthropicOpen}
         enabled={configs["anthropic"] ? true : false}
         config={configs["anthropic"] ? configs["anthropic"] : null}
+      />
+      <TextSynthSetup
+        owner={owner}
+        open={textSynthOpen}
+        setOpen={setTextSynthOpen}
+        enabled={configs["textsynth"] ? true : false}
+        config={configs["textsynth"] ? configs["textsynth"] : null}
       />
       <SerpAPISetup
         owner={owner}
@@ -332,6 +341,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "anthropic":
                           setAnthropicOpen(true);
+                          break;
+                        case "textsynth":
+                          setTextSynthOpen(true);
                           break;
                       }
                     }}
