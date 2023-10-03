@@ -36,19 +36,18 @@ export function AgentSuggestion({
       <div className="text-xs font-bold text-element-600">
         Which Assistant would you like to talk with?
       </div>
-      <div className="mt-3 flex items-center gap-2">
-        <Button.List>
-          {agents.slice(0, 3).map((agent) => (
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        {agents.slice(0, 3).map((agent) => (
+          <div key={`message-${userMessage.sId}-suggestion-${agent.sId}`}>
             <Button
-              key={`message-${userMessage.sId}-suggestion-${agent.sId}`}
               size="xs"
               variant="avatar"
               label={`@${agent.name}`}
               onClick={() => selectSuggestionHandler(agent)}
               avatar={agent.pictureUrl}
             />
-          ))}
-        </Button.List>
+          </div>
+        ))}
         <AssistantPicker
           owner={owner}
           assistants={agents.slice(3)}
