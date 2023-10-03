@@ -393,8 +393,12 @@ export function AssistantInputBar({
               Ask a question
             </div>
             <div
-              className={contentEditableClasses}
-              style={{ overflowY: "auto", maxHeight: "500px" }}
+              className={classNames(
+                contentEditableClasses,
+                "scrollbar-hide",
+                "overflow-y-auto",
+                "max-h-96"
+              )}
               contentEditable={true}
               ref={inputRef}
               id={"dust-input-bar"}
