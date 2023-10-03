@@ -138,7 +138,7 @@ export function ConversationTitle({
               }}
               className="flex items-center"
             >
-              <IconButton icon={CheckIcon} />
+              <IconButton icon={CheckIcon} variant="secondary" />
             </div>
             <IconButton
               icon={XMarkIcon}
@@ -146,6 +146,7 @@ export function ConversationTitle({
                 setIsEditingTitle(false);
                 setEditedTitle("");
               }}
+              variant="secondary"
             />
           </div>
         ) : (
@@ -156,6 +157,7 @@ export function ConversationTitle({
               setIsEditingTitle(true);
             }}
             size="sm"
+            variant="secondary"
           />
         )}
       </div>
