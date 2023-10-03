@@ -14,7 +14,7 @@ Dust is a platform powered by GPT4 and Claude. It's designed to help teams work 
 
 ### Assistant
 
-Dust assistants are AI-powered agents that employ advanced models like GPT-4 and Claude. Their purpose is to assist teams by expanding comprehension, boosting productivity and creativity, and refining workflows. Each assistant possesses unique capabilities to answer questions, assist with company processes, draft emails and memos, unravel complex topics, and perform many other customized functions created by builders. For example while @dust handles organizational questions, @helper provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
+Dust assistants are AI-powered agents that employ advanced models like GPT-4 and Claude. Their purpose is to assist teams by expanding comprehension, boosting productivity and creativity, and optimizing and simplifying the processes by which a task or job is accomplished. Each assistant possesses unique capabilities to answer questions, assist with company processes, draft emails and memos, unravel complex topics, and perform many other customized functions created by builders. For example while @dust handles organizational questions, @helper provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
 
 ### Conversation
 
