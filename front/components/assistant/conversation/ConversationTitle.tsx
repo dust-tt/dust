@@ -69,6 +69,7 @@ export function ConversationTitle({
       await mutate(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
       );
+      void mutate(`/api/w/${owner.sId}/assistant/conversations`);
       if (!res.ok) {
         throw new Error("Failed to update title");
       }
@@ -118,48 +119,45 @@ export function ConversationTitle({
           </div>
         )}
 
-        <div>
-          {isEditingTitle ? (
-            <div className="flex flex-row">
-              <div
-                onClick={(e: MouseEvent<HTMLDivElement>) => {
-                  e.preventDefault();
-                  return onTitleChange(editedTitle);
-                }}
-                // See comment on the input above.
-                onFocus={() => (saveButtonFocused.current = true)}
-                onBlur={() => {
-                  setTimeout(() => {
-                    if (!titleInputFocused.current) {
-                      setIsEditingTitle(false);
-                    }
-                    saveButtonFocused.current = false;
-                  }, 0);
-                }}
-              >
-                <IconButton icon={CheckIcon} />
-              </div>
-              <div>
-                <IconButton
-                  icon={XMarkIcon}
-                  onClick={() => {
-                    setIsEditingTitle(false);
-                    setEditedTitle("");
-                  }}
-                />
-              </div>
-            </div>
-          ) : (
-            <IconButton
-              icon={PencilSquareIcon}
-              onClick={() => {
-                setEditedTitle(conversation?.title || "");
-                setIsEditingTitle(true);
+        {isEditingTitle ? (
+          <div className="flex flex-row">
+            <div
+              onClick={(e: MouseEvent<HTMLDivElement>) => {
+                e.preventDefault();
+                return onTitleChange(editedTitle);
               }}
-              size="sm"
+              // See comment on the input above.
+              onFocus={() => (saveButtonFocused.current = true)}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (!titleInputFocused.current) {
+                    setIsEditingTitle(false);
+                  }
+                  saveButtonFocused.current = false;
+                }, 0);
+              }}
+              className="flex items-center"
+            >
+              <IconButton icon={CheckIcon} />
+            </div>
+            <IconButton
+              icon={XMarkIcon}
+              onClick={() => {
+                setIsEditingTitle(false);
+                setEditedTitle("");
+              }}
             />
-          )}
-        </div>
+          </div>
+        ) : (
+          <IconButton
+            icon={PencilSquareIcon}
+            onClick={() => {
+              setEditedTitle(conversation?.title || "");
+              setIsEditingTitle(true);
+            }}
+            size="sm"
+          />
+        )}
       </div>
       <div className="flex items-center gap-6">
         <div className="hidden lg:flex">
