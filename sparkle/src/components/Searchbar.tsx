@@ -27,18 +27,18 @@ export function Searchbar({
   disabled?: boolean;
   className?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const clearInputField = () => {
     onChange?.("");
-    if (inputRef.current) {
-      inputRef.current.blur();
-    }
   };
 
   return (
     <div className="flex flex-col">
-      <div className="s-relative s-text-sm s-font-normal s-text-element-900">
+      <div
+        className={classNames(
+          "s-relative s-text-sm s-font-normal",
+          disabled ? "s-text-element-600" : "s-text-element-900"
+        )}
+      >
         <input
           type="text"
           name={name}
@@ -50,7 +50,10 @@ export function Searchbar({
             className ?? "",
             !error
               ? "focus:s-ring-action-300"
-              : "s-ring-red-200 focus:s-ring-red-200"
+              : "s-ring-red-200 focus:s-ring-red-200",
+            disabled
+              ? "s-cursor-default s-text-element-600"
+              : "s-text-element-900"
           )}
           placeholder={placeholder}
           value={value ?? ""}
@@ -75,7 +78,7 @@ export function Searchbar({
       </div>
       <div
         className={classNames(
-          "s-ml-0.5 s-h-4 s-pl-2 s-pt-2 s-text-xs s-text-red-500",
+          "s-ml-0.5 s-h-4 s-pl-2 s-pt-2 s-text-xs s-font-normal s-text-red-500",
           showErrorLabel ? "" : "hidden"
         )}
       >
