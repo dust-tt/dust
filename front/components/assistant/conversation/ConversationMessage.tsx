@@ -53,7 +53,7 @@ export function ConversationMessage({
     void loadEmojiData();
   }, []);
 
-  const handleSelectEmoji = async ({
+  const handleEmoji = async ({
     emoji,
     isToRemove,
   }: {
@@ -114,7 +114,7 @@ export function ConversationMessage({
                   <a
                     className="cursor-pointer"
                     onClick={async () => {
-                      await handleSelectEmoji({
+                      await handleEmoji({
                         emoji: reaction.emoji,
                         isToRemove: hasReacted,
                       });
@@ -174,7 +174,7 @@ export function ConversationMessage({
                       reaction.users.find((u) => u.userId === user.id) !==
                         undefined) ||
                     false;
-                  await handleSelectEmoji({
+                  await handleEmoji({
                     emoji: emojiData.id,
                     isToRemove: hasReacted,
                   });
