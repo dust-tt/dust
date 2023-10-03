@@ -374,7 +374,7 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-center">
           <div
             className={classNames(
-              "relative flex flex-1 flex-row items-end items-stretch px-4",
+              "relative flex flex-1 flex-row items-stretch px-4",
               "border-2 border-action-300 bg-white focus-within:border-action-400",
               "rounded-xl drop-shadow-2xl transition-all duration-300",
               isAnimating
@@ -393,7 +393,12 @@ export function AssistantInputBar({
               Ask a question
             </div>
             <div
-              className={contentEditableClasses}
+              className={classNames(
+                contentEditableClasses,
+                "scrollbar-hide",
+                "overflow-y-auto",
+                "max-h-96"
+              )}
               contentEditable={true}
               ref={inputRef}
               id={"dust-input-bar"}
@@ -442,14 +447,24 @@ export function AssistantInputBar({
                     node.textContent?.slice(0, offset) +
                     text +
                     node.textContent?.slice(offset);
-
-                  // Move the cursor to the end of the past.
-                  const newRange = document.createRange();
-                  newRange.setStart(node, offset + text.length);
-                  newRange.setEnd(node, offset + text.length);
-                  selection.removeAllRanges();
-                  selection.addRange(newRange);
                 }
+
+                // Scroll to the end of the input
+                if (inputRef.current) {
+                  setTimeout(() => {
+                    const element = inputRef.current;
+                    if (element) {
+                      element.scrollTop = element.scrollHeight;
+                    }
+                  }, 0);
+                }
+
+                // Move the cursor to the end of the paste.
+                const newRange = document.createRange();
+                newRange.setStart(node, offset + text.length);
+                newRange.setEnd(node, offset + text.length);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
               }}
               onKeyDown={(e) => {
                 // We prevent the content editable from creating italics, bold and underline.
@@ -687,38 +702,45 @@ export function AssistantInputBar({
               }}
             ></div>
 
-            <div className={classNames("z-10 flex flex-row space-x-4 pr-2")}>
-              <div className="flex flex-col justify-center">
-                <AssistantPicker
-                  owner={owner}
-                  onItemClick={(c) => {
-                    // We construct the HTML for an AgentMention and inject it in the content
-                    // editable with an extra space after it.
-                    const mentionNode = getAgentMentionNode(c);
-                    const contentEditable =
-                      document.getElementById("dust-input-bar");
-                    if (contentEditable && mentionNode) {
-                      // Add mentionNode as last childe of contentEditable.
-                      contentEditable.appendChild(mentionNode);
-                      const afterTextNode = document.createTextNode(" ");
-                      contentEditable.appendChild(afterTextNode);
-                      contentEditable.focus();
-                      moveCursorToEnd(contentEditable);
-                    }
-                  }}
-                  assistants={activeAgents}
-                  showBuilderButtons={true}
-                />
+            <div
+              className={classNames(
+                "z-10 flex flex-row items-end space-x-4 pb-4 pl-2 pr-2"
+              )}
+            >
+              <div className="flex h-full flex-col justify-end">
+                <div className="flex flex-row items-center space-x-4 pr-2">
+                  <AssistantPicker
+                    owner={owner}
+                    onItemClick={(c) => {
+                      // We construct the HTML for an AgentMention and inject it in the content
+                      // editable with an extra space after it.
+                      const mentionNode = getAgentMentionNode(c);
+                      const contentEditable =
+                        document.getElementById("dust-input-bar");
+                      if (contentEditable && mentionNode) {
+                        // Add mentionNode as last childe of contentEditable.
+                        contentEditable.appendChild(mentionNode);
+                        const afterTextNode = document.createTextNode(" ");
+                        contentEditable.appendChild(afterTextNode);
+                        contentEditable.focus();
+                        moveCursorToEnd(contentEditable);
+                      }
+                    }}
+                    assistants={activeAgents}
+                    showBuilderButtons={true}
+                  />
+
+                  <IconButton
+                    variant="primary"
+                    icon={PaperAirplaneIcon}
+                    size="md"
+                    disabled={empty}
+                    onClick={() => {
+                      void handleSubmit();
+                    }}
+                  />
+                </div>
               </div>
-              <IconButton
-                variant="primary"
-                icon={PaperAirplaneIcon}
-                size="md"
-                disabled={empty}
-                onClick={() => {
-                  void handleSubmit();
-                }}
-              />
             </div>
           </div>
         </div>
