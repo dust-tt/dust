@@ -1,4 +1,10 @@
-import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  DropdownMenu,
+  IconButton,
+  PlusIcon,
+} from "@dust-tt/sparkle";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { ComponentType, MouseEventHandler, useEffect, useState } from "react";
@@ -80,6 +86,18 @@ export function ConversationMessage({
     }
   };
 
+  const handleEmojiClick = async (emojiCode: string) => {
+    const reaction = reactions.find((r) => r.emoji === emojiCode);
+    const hasReacted =
+      (reaction &&
+        reaction.users.find((u) => u.userId === user.id) !== undefined) ||
+      false;
+    await handleEmoji({
+      emoji: emojiCode,
+      isToRemove: hasReacted,
+    });
+  };
+
   let hasMoreReactions = null;
   if (reactions.length > MAX_REACTIONS_TO_SHOW) {
     hasMoreReactions = reactions.length - MAX_REACTIONS_TO_SHOW;
@@ -153,15 +171,29 @@ export function ConversationMessage({
               </div>
             ))}
         </div>
-        <div>
+
+        <div className="duration-400 active:s-border-action-500 box-border inline-flex scale-100 cursor-pointer items-center gap-x-1 whitespace-nowrap rounded-full border border-structure-200 bg-structure-0 px-2 text-xs text-element-800 ">
+          <a
+            className="cursor-pointer px-1 py-1.5 hover:border-action-200 hover:bg-action-50 hover:drop-shadow-md active:scale-95 active:bg-action-100 active:drop-shadow-none"
+            onClick={async () => await handleEmojiClick("+1")}
+          >
+            👍
+          </a>
+          <a
+            className="cursor-pointer px-1 py-1.5 hover:border-action-200 hover:bg-action-50 hover:drop-shadow-md active:scale-95 active:bg-action-100 active:drop-shadow-none"
+            onClick={async () => await handleEmojiClick("-1")}
+          >
+            👎
+          </a>
+          <a
+            className="cursor-pointer px-1 py-1.5 hover:border-action-200 hover:bg-action-50 hover:drop-shadow-md active:scale-95 active:bg-action-100 active:drop-shadow-none"
+            onClick={async () => await handleEmojiClick("heart")}
+          >
+            ❤️
+          </a>
           <DropdownMenu>
             <DropdownMenu.Button>
-              <Button
-                type="menu"
-                variant="tertiary"
-                size="xs"
-                label="🔥&nbsp;&nbsp;❌&nbsp;&nbsp;🤩"
-              />
+              <IconButton variant="tertiary" size="xs" icon={PlusIcon} />
             </DropdownMenu.Button>
             <DropdownMenu.Items width={280}>
               <Picker
