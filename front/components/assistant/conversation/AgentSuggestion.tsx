@@ -37,36 +37,38 @@ export function AgentSuggestion({
         Which Assistant would you like to talk with?
       </div>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        {agents.slice(0, 3).map((agent) => (
-          <div key={`message-${userMessage.sId}-suggestion-${agent.sId}`}>
-            <Button
-              size="xs"
-              variant="avatar"
-              label={`@${agent.name}`}
-              onClick={() => selectSuggestionHandler(agent)}
-              avatar={agent.pictureUrl}
-            />
-          </div>
-        ))}
-        <AssistantPicker
-          owner={owner}
-          assistants={agents.slice(3)}
-          onItemClick={async (agent) => {
-            if (!loading) {
-              setLoading(true);
-              await selectSuggestionHandler(agent);
-              setLoading(false);
+        <Button.List isWrapping={true}>
+          {agents.slice(0, 3).map((agent) => (
+            <div key={`message-${userMessage.sId}-suggestion-${agent.sId}`}>
+              <Button
+                size="xs"
+                variant="avatar"
+                label={`@${agent.name}`}
+                onClick={() => selectSuggestionHandler(agent)}
+                avatar={agent.pictureUrl}
+              />
+            </div>
+          ))}
+          <AssistantPicker
+            owner={owner}
+            assistants={agents.slice(3)}
+            onItemClick={async (agent) => {
+              if (!loading) {
+                setLoading(true);
+                await selectSuggestionHandler(agent);
+                setLoading(false);
+              }
+            }}
+            pickerButton={
+              <Button
+                variant="tertiary"
+                size="xs"
+                icon={RobotIcon}
+                label="Select another"
+              />
             }
-          }}
-          pickerButton={
-            <Button
-              variant="tertiary"
-              size="xs"
-              icon={RobotIcon}
-              label="Select another"
-            />
-          }
-        />
+          />
+        </Button.List>
       </div>
     </div>
   );
