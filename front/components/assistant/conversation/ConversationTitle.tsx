@@ -1,6 +1,5 @@
 import {
   ArrowUpOnSquareIcon,
-  Avatar,
   Button,
   CheckIcon,
   ClipboardCheckIcon,
@@ -14,6 +13,7 @@ import {
 import React, { MouseEvent, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { useConversation } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
 
@@ -161,46 +161,10 @@ export function ConversationTitle({
           />
         )}
       </div>
-      <div className="flex items-center gap-6">
-        <div className="hidden lg:flex">
-          <Avatar.Stack
-            size="sm"
-            nbMoreItems={
-              conversation.participants.agents.length > 4
-                ? conversation.participants.agents.length - 4
-                : 0
-            }
-          >
-            {conversation.participants.agents.slice(0, 4).map((agent) => (
-              <Avatar
-                name={agent.name}
-                visual={agent.pictureUrl}
-                size="md"
-                key={agent.configurationId}
-              />
-            ))}
-          </Avatar.Stack>
+      <div className="flex items-center">
+        <div className="hidden pr-6 lg:flex">
+          <ConversationParticipants conversation={conversation} />
         </div>
-        <div className="hidden lg:flex">
-          <Avatar.Stack
-            size="sm"
-            nbMoreItems={
-              conversation.participants.users.length > 4
-                ? conversation.participants.users.length - 4
-                : 0
-            }
-          >
-            {conversation.participants.users.slice(0, 4).map((user, i) => (
-              <Avatar
-                name={user.fullName || user.username}
-                visual={user.pictureUrl}
-                size="md"
-                key={i}
-              />
-            ))}
-          </Avatar.Stack>
-        </div>
-
         <Button.List>
           <div className="hidden lg:flex">
             {onDelete && (
