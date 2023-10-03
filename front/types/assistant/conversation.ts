@@ -135,10 +135,6 @@ export type ConversationType = {
   title: string | null;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
-  participants: {
-    users: UserParticipant[];
-    agents: AgentParticipant[];
-  };
 };
 
 export type UserParticipant = {

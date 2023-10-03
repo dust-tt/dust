@@ -82,7 +82,6 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
-    participants: { users: [], agents: [] },
   };
 }
 
@@ -401,23 +400,11 @@ export async function getConversation(
     ],
   });
 
-  const userParticipants = new Map();
-  const agentParticipants = new Map();
-
   const render = await Promise.all(
     messages.map((message) => {
       return (async () => {
         if (message.userMessage) {
           const m = await renderUserMessage(message, message.userMessage);
-
-          const key = `${m.context.username}-${m.context.profilePictureUrl}`;
-          if (!userParticipants.has(key)) {
-            userParticipants.set(key, {
-              username: m.context.username,
-              fullName: m.context.fullName,
-              pictureUrl: m.context.profilePictureUrl,
-            });
-          }
           return { m, rank: message.rank, version: message.version };
         }
         if (message.agentMessage) {
@@ -426,14 +413,6 @@ export async function getConversation(
             agentMessage: message.agentMessage,
             messages,
           });
-          const configurationId = m.configuration.sId;
-          if (!agentParticipants.has(configurationId)) {
-            agentParticipants.set(configurationId, {
-              configurationId: configurationId,
-              name: m.configuration.name,
-              pictureUrl: m.configuration.pictureUrl,
-            });
-          }
           return { m, rank: message.rank, version: message.version };
         }
         throw new Error("Unreachable: message must be either user or agent");
@@ -468,10 +447,6 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-    participants: {
-      users: Array.from(userParticipants.values()),
-      agents: Array.from(agentParticipants.values()),
-    },
   };
 }
 
