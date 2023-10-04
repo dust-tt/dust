@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetProvidersCheckResponseBody =
   | { ok: true }
@@ -19,13 +19,24 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "provider_not_found",
+        message: "The provider you're trying to update was not found.",
+      },
+    });
   }
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "provider_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can check providers.",
+      },
+    });
   }
 
   switch (req.method) {
@@ -233,12 +244,23 @@ async function handler(
           return;
 
         default:
-          res.status(404).json({ ok: false, error: "Provider not built" });
-          return;
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "provider_not_found",
+              message: "The provider you're trying to check was not found.",
+            },
+          });
       }
 
     default:
-      res.status(405).end();
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
       break;
   }
 }

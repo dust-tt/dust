@@ -166,6 +166,5 @@ export default async function handler(
           message: "The method passed is not supported, GET is expected.",
         },
       });
-      break;
   }
 }
