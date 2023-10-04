@@ -36,7 +36,7 @@ confd:
     init_config:
     instances:
       - prometheus_url: https://gmnlm.tmprl.cloud/prometheus
-        namespace: "dust-front-prod.gmnlm"
+        namespace: "default"
         metrics:
           - temporal_cloud_v0_workflow_failed_count
           - temporal_cloud_v0_workflow_timeout_count
