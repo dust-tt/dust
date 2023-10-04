@@ -14,7 +14,18 @@ Dust is a platform powered by GPT4 and Claude. It's designed to help teams work 
 
 ### Assistant
 
-Dust assistants are AI-powered agents that employ advanced models like GPT-4 and Claude. Their purpose is to assist teams by expanding comprehension, boosting productivity and creativity, and optimizing and simplifying the processes by which a task or job is accomplished. Each assistant possesses unique capabilities to answer questions, assist with company processes, draft emails and memos, unravel complex topics, and perform many other customized functions created by builders. For example while @dust handles organizational questions, @helper provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
+Dust assistants are AI-powered agents that employ frontier models like GPT-4 and Claude. You can use two types of assistants inside Dust. 
+
+- Frontier models assistants: Frontier models are large-scale models that exceed the capabilities currently present in the most advanced existing models created by providers such as **OpenAI, Google DeepMind,** **Anthropic, Meta, Mistral** or **Microsoft;**
+    
+    Frontier models assistants like @gpt4, for example, can be used for completing general tasks like recognizing, summarizing, translating, and generating text and other forms of content. 
+    
+- Custom assistants: assistants created by Dust or builders from your company workspace to answer specific use cases. Custom assistants can be augmented with retrieval or see their instructions customized.
+    
+    Custom assistants can be used for completing specific tasks defined by Dust or the builders. Dust created custom assistants like @notion or @slack to help you interact directly with your Notion or Slack synchronized documents. Builders at your company can also create custom assistants to help you complete many tasks like improving SQL queries, supporting the customer success team, giving feedback on UX writing content, or writing specific memos or reports. 
+    
+
+To illustrate, while @dust handles organizational questions, @helper provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
 
 ### Conversation
 
