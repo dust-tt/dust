@@ -55,6 +55,7 @@ export { default as Play } from "./Play";
 export { default as Plus } from "./Plus";
 export { default as PlusCircle } from "./PlusCircle";
 export { default as QuestionMarkCircle } from "./QuestionMarkCircle";
+export { default as Reaction } from "./Reaction";
 export { default as Robot } from "./Robot";
 export { default as Server } from "./Server";
 export { default as ShakeHands } from "./ShakeHands";
