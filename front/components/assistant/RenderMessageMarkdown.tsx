@@ -402,7 +402,11 @@ function LiBlock({ children }: { children: React.ReactNode }) {
   return <li className="py-2 first:pt-0 last:pb-0">{children}</li>;
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
-  return <div className="py-2 first:pt-0 last:pb-0">{children}</div>;
+  return (
+    <div className="whitespace-pre-wrap py-2 first:pt-0 last:pb-0">
+      {children}
+    </div>
+  );
 }
 
 function CodeBlock({
