@@ -28,7 +28,7 @@ export default function RetrievalAction({
 }: {
   retrievalAction: RetrievalActionType;
 }) {
-  const { query, relativeTimeFrame } = retrievalAction.params;
+  const { query, relativeTimeFrame, topK } = retrievalAction.params;
   const [docListVisible, setDocListVisible] = useState(false);
 
   function shortText(text: string, maxLength = 20) {
@@ -55,9 +55,26 @@ export default function RetrievalAction({
               }
             />
           </Tooltip>
-          <Tooltip label={`Query used for semantic search: ${query}`}>
-            <Chip color="slate" label={query ? shortText(query) : "No query"} />
-          </Tooltip>
+          {query && (
+            <Tooltip label={`Query used for semantic search: ${query}`}>
+              <Chip
+                color="slate"
+                label={query ? shortText(query) : "No query"}
+              />
+            </Tooltip>
+          )}
+          {!query && // exhaustive retrieval, checks whether all documents could be read
+            retrievalAction.documents &&
+            retrievalAction.documents.length === topK && (
+              <Tooltip
+                label={`Too much data to read in one go. Only part of the data was read.`}
+              >
+                <Chip
+                  color="warning"
+                  label={`Too much data, retrieved only the first ${topK} documents`}
+                />
+              </Tooltip>
+            )}
         </Chip.List>
       </div>
       <div className="grid grid-cols-[auto,1fr] gap-2">
