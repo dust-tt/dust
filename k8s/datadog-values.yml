@@ -36,6 +36,8 @@ confd:
         metrics:
           - temporal_cloud_v0_workflow_failed_count
           - temporal_cloud_v0_workflow_timeout_count
+          - temporal_cloud_v0_workflow_cancel_count
+        ssl_ca_cert: /etc/certs/temporal-datadog-cert
 
 clusterAgent:
   enabled: true
@@ -63,10 +65,15 @@ agents:
       volumeMounts:
         - name: confd
           mountPath: /confd
+        - name: cert-volume
+          mountPath: /etc/certs
   volumes:
     - name: confd
       configMap:
         name: datadog-confd
+    - name: cert-volume
+      secret:
+        secretName: temporal-datadog-cert
 
 providers:
   gke:
