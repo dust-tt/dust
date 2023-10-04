@@ -1466,47 +1466,59 @@ export async function postNewContentFragment(
   auth: Authenticator,
   conversation: ConversationType,
   content: string
-): Promise<ContentFragmentType> {
+): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
 
   if (!owner || owner.id !== conversation.owner.id) {
-    throw new Error("Invalid `auth` for `conversation`.");
+    return new Err(new Error("The conversation does not exist."));
   }
 
-  const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
-    async (t) => {
-      const contentFragmentRow = await ContentFragment.create(
-        { content },
-        { transaction: t }
-      );
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
+  try {
+    const { contentFragmentRow, messageRow } =
+      await front_sequelize.transaction(async (t) => {
+        const contentFragmentRow = await ContentFragment.create(
+          { content },
+          { transaction: t }
+        );
+        const nextMessageRank =
+          ((await Message.max<number | null, Message>("rank", {
+            where: {
+              conversationId: conversation.id,
+            },
+            transaction: t,
+          })) ?? -1) + 1;
+        const messageRow = await Message.create(
+          {
+            sId: generateModelSId(),
+            rank: nextMessageRank,
             conversationId: conversation.id,
+            contentFragmentId: contentFragmentRow.id,
           },
-          transaction: t,
-        })) ?? -1) + 1;
-      const messageRow = await Message.create(
-        {
-          sId: generateModelSId(),
-          rank: nextMessageRank,
-          conversationId: conversation.id,
-          contentFragmentId: contentFragmentRow.id,
-        },
-        {
-          transaction: t,
-        }
-      );
-      return { contentFragmentRow, messageRow };
-    }
-  );
+          {
+            transaction: t,
+          }
+        );
+        return { contentFragmentRow, messageRow };
+      });
 
-  const contentFragment = renderContentFragment({
-    message: messageRow,
-    contentFragment: contentFragmentRow,
-  });
+    const contentFragment = renderContentFragment({
+      message: messageRow,
+      contentFragment: contentFragmentRow,
+    });
 
-  return contentFragment;
+    return new Ok(contentFragment);
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        workspaceId: auth.workspace()?.sId,
+        conversationId: conversation.sId,
+      },
+      "Error posting new content fragment"
+    );
+
+    return new Err(new Error("Error posting new content fragment"));
+  }
 }
 
 async function* streamRunAgentEvents(
