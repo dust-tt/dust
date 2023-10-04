@@ -217,7 +217,7 @@ export default function Conversation({
               </div>
             );
           case "content_fragment":
-            return null; // TODO: should we display content fragments?
+            return null;
           default:
             ((message: never) => {
               console.error("Unknown message type", message);
