@@ -139,6 +139,7 @@ export default function NewDatasetView({
           }}
         />
       }
+      hideSidebar
     >
       <div className="flex w-full flex-col">
         <div className="mt-2">
