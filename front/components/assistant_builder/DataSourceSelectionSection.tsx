@@ -13,8 +13,8 @@ import { AssistantBuilderDataSourceConfiguration } from "@app/components/assista
 import {
   CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
   FILTERING_MODE_TO_LABEL,
-  TIME_FRAME_UNIT_TO_LABEL,
   FilteringMode,
+  TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames } from "@app/lib/utils";
