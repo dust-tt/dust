@@ -51,7 +51,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const { content } = req.body;
-      // check that content is a non-null, non-empty string of less than 64kb
+
       if (
         typeof content !== "string" ||
         content.length === 0 ||
