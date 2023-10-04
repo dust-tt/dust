@@ -17,11 +17,20 @@ export const GPT_4_DEFAULT_MODEL_CONFIG = {
   recommendedTopK: 32,
 } as const;
 
+export const GPT_4_MODEL_CONFIG = {
+  providerId: "openai",
+  modelId: GPT_4_MODEL_ID,
+  displayName: "GPT 4",
+  contextSize: 8192,
+  largeModel: true,
+  recommendedTopK: 16,
+};
+
 export const GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG = {
   providerId: "openai",
   modelId: "gpt-3.5-turbo",
   displayName: "GPT 3.5 Turbo",
-  contextSize: 4096,
+  contextSize: 16384,
   largeModel: false,
   recommendedTopK: 16,
 } as const;
@@ -44,14 +53,14 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   recommendedTopK: 32,
 } as const;
 
-export const GPT_4_MODEL_CONFIG = {
-  providerId: "openai",
-  modelId: GPT_4_MODEL_ID,
-  displayName: "GPT 4",
-  contextSize: 8192,
-  largeModel: true,
-  recommendedTopK: 16,
-};
+export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
+  providerId: "textsynth",
+  modelId: "mistral_7B_instruct",
+  displayName: "Mistral 7B",
+  contextSize: 4096,
+  largeModel: false,
+  recommendedTopK: 8,
+} as const;
 
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
@@ -59,6 +68,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 ] as const;
 
 // this creates a union type of all the {providerId: string, modelId: string}
@@ -102,6 +112,7 @@ export enum GLOBAL_AGENTS_SID {
   GPT35_TURBO = "gpt-3.5-turbo",
   CLAUDE = "claude-2",
   CLAUDE_INSTANT = "claude-instant-1",
+  MISTRAL = "mistral",
 }
 
 const CUSTOM_ORDER: string[] = [
@@ -115,6 +126,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.MISTRAL,
 ];
 
 // This function implements our general strategy to sort agents to users (input bar, assistant list,

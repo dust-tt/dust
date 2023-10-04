@@ -10,6 +10,7 @@ import {
   getSupportedModelConfig,
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -118,7 +119,8 @@ async function _getGPT35TurboGlobalAgent({
     sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
     version: 0,
     name: "gpt3.5-turbo",
-    description: "OpenAI's cost-effective and high throughput model.",
+    description:
+      "OpenAI's cost-effective and high throughput model (16k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
@@ -145,7 +147,7 @@ async function _getGPT4GlobalAgent({
     sId: GLOBAL_AGENTS_SID.GPT4,
     version: 0,
     name: "gpt4",
-    description: "OpenAI's most powerful model.",
+    description: "OpenAI's most powerful model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
@@ -172,7 +174,8 @@ async function _getClaudeInstantGlobalAgent({
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
     version: 0,
     name: "claude-instant",
-    description: "Anthropic's low-latency and high throughput model.",
+    description:
+      "Anthropic's low-latency and high throughput model (100k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
@@ -199,7 +202,7 @@ async function _getClaudeGlobalAgent({
     sId: GLOBAL_AGENTS_SID.CLAUDE,
     version: 0,
     name: "claude",
-    description: "Anthropic's superior performance model.",
+    description: "Anthropic's superior performance model (100k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
@@ -209,6 +212,33 @@ async function _getClaudeGlobalAgent({
       model: {
         providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getMistralGlobalAgent({
+  settings,
+}: {
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.MISTRAL,
+    version: 0,
+    name: "mistral",
+    description: "Mistral latest model (7B Instruct, 4k context).",
+    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    status: settings ? settings.status : "disabled_by_admin",
+    scope: "global",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -529,6 +559,9 @@ export async function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.CLAUDE:
       agentConfiguration = await _getClaudeGlobalAgent({ settings });
+      break;
+    case GLOBAL_AGENTS_SID.MISTRAL:
+      agentConfiguration = await _getMistralGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = await _getSlackGlobalAgent(auth, { settings });

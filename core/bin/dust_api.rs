@@ -1605,13 +1605,33 @@ struct TokenizePayload {
     text: String,
     provider_id: ProviderID,
     model_id: String,
+    credentials: Option<run::Credentials>,
 }
 
 async fn tokenize(
     extract::Json(payload): extract::Json<TokenizePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let embedder = provider(payload.provider_id).llm(payload.model_id);
-    match embedder.tokenize(&payload.text).await {
+    let mut llm = provider(payload.provider_id).llm(payload.model_id);
+
+    // If we received credentials we initialize the llm with them.
+    match payload.credentials {
+        Some(c) => {
+            match llm.initialize(c.clone()).await {
+                Err(e) => {
+                    return error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to initialize LLM",
+                        Some(e),
+                    );
+                }
+                Ok(()) => (),
+            };
+        }
+        None => (),
+    }
+
+    match llm.tokenize(&payload.text).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
