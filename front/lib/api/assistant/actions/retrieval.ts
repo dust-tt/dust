@@ -371,6 +371,24 @@ export function retrievalMetaPrompt() {
  * Action execution.
  */
 
+let REFS: string[] | null = null;
+
+const getRefs = () => {
+  if (REFS === null) {
+    REFS = "abcdefghijklmnopqrstuvwxyz"
+      .split("")
+      .map((c) => {
+        return "123456789".split("").map((n) => {
+          return `${c}${n}`;
+        });
+      })
+      .flat();
+    // randomize
+    REFS.sort(() => Math.random() - 0.5);
+  }
+  return REFS;
+};
+
 // Event sent during retrieval with the finalized query used to retrieve documents.
 export type RetrievalParamsEvent = {
   type: "retrieval_params";
@@ -591,11 +609,9 @@ export async function* runRetrieval(
         token_count: number;
       }[];
 
-      documents = v.map((d) => {
-        const reference = `${String.fromCharCode(
-          97 + Math.floor(Math.random() * 26)
-        )}${Math.floor(Math.random() * 9) + 1}`;
-
+      const refs = getRefs();
+      documents = v.map((d, i) => {
+        const reference = refs[i % refs.length];
         return {
           id: 0, // dummy pending database insertion
           dataSourceId: d.data_source_id,
