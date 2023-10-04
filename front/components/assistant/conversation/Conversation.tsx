@@ -158,8 +158,6 @@ export default function Conversation({
   }
 
   const messages = conversation.content.map((versionedMessages) => {
-    // Lots of typing because of the reduce which Typescript
-    // doesn't handle well on union types
     let m: UserMessageType | AgentMessageType | ContentFragmentType | null =
       null;
     for (const x of versionedMessages) {
