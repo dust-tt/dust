@@ -217,20 +217,23 @@ export type GenerationSuccessEvent = {
 
 // Construct the full prompt from the agent configuration.
 // - Meta data about the agent and current time.
-function constructPrompt(
+// - Insructions from the agent configuration (in case of generation)
+// - Meta data about the retrieval action (in case of retrieval)
+export function constructPrompt(
   userMessage: UserMessageType,
-  configuration: AgentConfigurationType
+  configuration: AgentConfigurationType,
+  fallbackPrompt?: string
 ) {
-  if (!configuration.generation) {
-    return "";
-  }
-
   const d = moment(new Date()).tz(userMessage.context.timezone);
 
   let meta = "";
   meta += `ASSISTANT: @${configuration.name}\n`;
-  meta += `LOCAL_TIME: ${d.format("YYYY-MM-DD HH:mm")}\n`;
-  meta += `INSTRUCTIONS:\n${configuration.generation.prompt}`;
+  meta += `LOCAL_TIME: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
+  if (configuration.generation) {
+    meta += `INSTRUCTIONS:\n${configuration.generation.prompt}`;
+  } else if (fallbackPrompt) {
+    meta += `INSTRUCTIONS:\n${fallbackPrompt}`;
+  }
 
   if (isRetrievalConfiguration(configuration.action)) {
     meta += "\n" + retrievalMetaPrompt();

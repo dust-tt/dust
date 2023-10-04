@@ -228,7 +228,8 @@ export async function generateRetrievalParams(
       auth,
       configuration,
       spec,
-      conversation
+      conversation,
+      userMessage
     );
 
     if (rawInputsRes.isOk()) {

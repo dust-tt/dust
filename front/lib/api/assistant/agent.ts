@@ -8,6 +8,7 @@ import {
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
+  constructPrompt,
   GenerationTokensEvent,
   renderConversationForModel,
   runGeneration,
@@ -36,13 +37,17 @@ export async function generateActionInputs(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   specification: AgentActionSpecification,
-  conversation: ConversationType
+  conversation: ConversationType,
+  userMessage: UserMessageType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
   // We inject the prompt of the model so that its input generation behavior can be modified by its
-  // instructions. If there is no genration phase we default to a generic prompt.
-  const prompt = configuration.generation
-    ? configuration.generation.prompt
-    : "You are a conversational assistant with access to function calling.";
+  // instructions. It also injects context about the local time. If there is no generation phase we
+  // default to a generic prompt.
+  const prompt = constructPrompt(
+    userMessage,
+    configuration,
+    "You are a conversational assistant with access to function calling."
+  );
 
   const model = {
     providerId: "openai",
