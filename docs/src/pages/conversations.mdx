@@ -16,11 +16,12 @@ key in your account's **Developers Tools** panel.
 
 ## Conversations
 
-A conversation is consituted of `UserMessage` and `AgentMessages`. A `UserMessage` is a message sent
+A conversation is consituted of `UserMessages`, `AgentMessages` and `ContentFragments`. A `UserMessage` is a message sent
 by a human to interact with one or more assistants. An `AgentMessage` is an assistant response.
 `AgentMessages` can potentially include an action. Currently the only action supported is a
 `RetrievalAction` which triggers for agents that are configured to perform a retrieval before
 streaming their response.
+`ContentFragments` are pieces of information that can be inserted in conversations and are passed to assistants as part of the context.
 
 ## The UserMessage model
 
@@ -719,6 +720,67 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         "configurationId": "helper",
         "messageId": "d349842779",
         "text": "World"
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Add a new Content Fragment {{ tag: 'POST', label: '/v1/w/:workspace_id/assistant/conversations/:conversation_id/content_fragments' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to create a new content fragment in a conversation. Content fragments are pieces of information that can be inserted in conversations and are passed to assistants as part of the context.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of the workspace (can be found in the workspace's URL)
+      </Property>
+      <Property name="conversation_id" type="string">
+        The ID of the conversation where you want to create a content fragment.
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+
+    <Properties>
+      <Property name="content" type="string">
+        A string representing the content of the fragment. It must be a non-empty string of less than 64kb.
+      </Property>
+      <Property name="title" type="string">
+        A string representing the title of the fragment. It must be a non-empty string.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/assistant/conversations/:conversation_id/content_fragments">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/workspace1/assistant/conversations/conversation1/content_fragments \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "content": "This is a content fragment.",
+        "title": "Content Fragment Title"
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "contentFragment": {
+        "title": "Content Fragment Title",
+        "content": "This is a content fragment."
       }
     }
     ```
