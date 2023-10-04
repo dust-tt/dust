@@ -15,11 +15,8 @@ import {
 } from "@app/lib/swr";
 import {
   AgentMention,
-  AgentMessageType,
-  ContentFragmentType,
   isAgentMention,
   isUserMessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -157,24 +154,10 @@ export default function Conversation({
     return <div>No conversation here</div>;
   }
 
-  const messages = conversation.content.map((versionedMessages) => {
-    let m: UserMessageType | AgentMessageType | ContentFragmentType | null =
-      null;
-    for (const x of versionedMessages) {
-      if (!m || x.version > m.version) {
-        m = x;
-      }
-    }
-    if (!m) {
-      throw new Error("Found empty array in conversation content");
-    }
-
-    return m;
-  });
-
   return (
     <div className="pb-24">
-      {messages.map((m) => {
+      {conversation.content.map((versionedMessages) => {
+        const m = versionedMessages[versionedMessages.length - 1];
         const convoReactions = reactions.find((r) => r.messageId === m.sId);
         const messageReactions = convoReactions?.reactions || [];
 
