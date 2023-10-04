@@ -31,7 +31,7 @@ confd:
   prometheus.yaml: |
     init_config:
     instances:
-      - temporal_prometheus_url: https://gmnlm.tmprl.cloud/prometheus
+      - prometheus_url: https://gmnlm.tmprl.cloud/prometheus
         namespace: "temporal"
         metrics:
           - temporal_cloud_v0_workflow_failed_count
