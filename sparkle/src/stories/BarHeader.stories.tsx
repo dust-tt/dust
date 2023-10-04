@@ -3,7 +3,7 @@ import React from "react";
 
 import { ChatBubbleBottomCenterText } from "@sparkle/icons/solid";
 
-import { Avatar, BarHeader, PageHeader } from "../index_with_tw_base";
+import { BarHeader, PageHeader } from "../index_with_tw_base";
 
 const meta = {
   title: "Molecule/BarHeader",
@@ -23,7 +23,7 @@ export const BasicBarHeaderValidate = () => {
   const [isSaving, setIsSaving] = React.useState(false);
 
   return (
-    <div className="s-mt-16 s-h-full s-w-full">
+    <div className="s-h-full s-w-full">
       <BarHeader
         title="Knowledge Base"
         rightActions={
@@ -40,13 +40,13 @@ export const BasicBarHeaderValidate = () => {
           />
         }
       />
-      <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
+      <div className="s-mt-16 s-h-full s-w-full s-overflow-y-auto">
         <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
         <div className="s-flex s-flex-col s-gap-y-96">
-          <Avatar visual="https://source.unsplash.com/random" size="xl" />
-          <Avatar visual="https://source.unsplash.com/random" size="xl" />
-          <Avatar visual="https://source.unsplash.com/random" size="xl" />
-          <Avatar visual="https://source.unsplash.com/random" size="xl" />
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
         </div>
       </div>
     </div>
@@ -62,10 +62,10 @@ export const BasicBarHeaderValidateSaveDisabled = () => (
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
       <div className="s-flex s-flex-col s-gap-y-96">
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
       </div>
     </div>
   </div>
@@ -80,10 +80,10 @@ export const BasicBarHeaderBack = () => (
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
       <div className="s-flex s-flex-col s-gap-y-96">
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
       </div>
     </div>
   </div>
@@ -98,10 +98,10 @@ export const BasicBarHeaderClose = () => (
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
       <div className="s-flex s-flex-col s-gap-y-96">
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
       </div>
     </div>
   </div>
@@ -116,10 +116,10 @@ export const BasicBarHeaderConversation = () => (
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
       <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
       <div className="s-flex s-flex-col s-gap-y-96">
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
-        <Avatar visual="https://source.unsplash.com/random" size="xl" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
       </div>
     </div>
   </div>
