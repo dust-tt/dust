@@ -67,23 +67,13 @@ async function handler(
         });
       }
 
-      const contentFragmentRes = await postNewContentFragment(
+      const contentFragment = await postNewContentFragment(
         auth,
         conversation,
         content
       );
 
-      if (contentFragmentRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "An internal server error occurred.",
-          },
-        });
-      }
-
-      res.status(200).json({ contentFragment: contentFragmentRes.value });
+      res.status(200).json({ contentFragment });
       return;
 
     default:
