@@ -28,6 +28,15 @@ export const GPT_4_MODEL_CONFIG = {
 
 export const GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG = {
   providerId: "openai",
+  modelId: "gpt-3.5-turbo-16k",
+  displayName: "GPT 3.5 Turbo",
+  contextSize: 16384,
+  largeModel: false,
+  recommendedTopK: 16,
+} as const;
+
+export const GPT_3_5_TURBO_MODEL_CONFIG = {
+  providerId: "openai",
   modelId: "gpt-3.5-turbo",
   displayName: "GPT 3.5 Turbo",
   contextSize: 4096,
@@ -64,6 +73,7 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
 
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_DEFAULT_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
