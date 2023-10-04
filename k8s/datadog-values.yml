@@ -27,6 +27,10 @@ datadog:
 
   kubeStateMetricsEnabled: false
 
+prometheusScrape:
+    enabled: true
+    serviceEndpoints: true
+
 confd:
   prometheus.yaml: |
     init_config:
