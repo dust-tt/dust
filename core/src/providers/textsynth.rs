@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::embedder::EmbedderVector;
-use super::llm::ChatFunction;
+use super::llm::{ChatFunction, ChatMessageRole};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
@@ -116,12 +116,165 @@ impl TextSynthLLM {
         .parse::<Uri>()?)
     }
 
-    // fn chat_uri(&self) -> Result<Uri> {
-    //     Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
-    // }
+    fn chat_uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
+    }
+
+    // This function is in charge of formatting the messages for the chat TextSynth interface by
+    // injecting the role and name as context to the model. As a result the model will echo that
+    // structure. We use `extract_name_and_role` to clean it up.
+    fn format_chat_messages(&self, messages: &Vec<ChatMessage>) -> (Option<String>, Vec<String>) {
+        let mut system: Option<String> = None;
+        let mut messages = messages.clone();
+
+        // If the first message is a system message, remove it and return a system string.
+        if messages.len() > 0 && messages[0].role == ChatMessageRole::System {
+            system = match messages[0].content {
+                Some(ref c) => Some(c.clone()),
+                None => None,
+            };
+            messages.remove(0);
+        }
+
+        let formatted = messages
+            .iter()
+            .map(|m| {
+                let content = match m.content {
+                    Some(ref c) => c.clone(),
+                    None => String::from(""),
+                };
+
+                match m.name {
+                    Some(ref n) => format!("role={} name={} {}", m.role.to_string(), n, content),
+                    None => format!("role={} {}", m.role.to_string(), content),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        (system, formatted)
+    }
+
+    // Cleans up output of the model by removing the injected role and name pieces. We run this in
+    // non streamed mode on the final response. In streamed mode we run it on the first chunk
+    // (textsynth returned more than one token at a time and this will fall into it with high
+    // likelihood; this is not perfect but usage will tell if we need to be more elaboratde).
+    fn extract_name_and_role(text: &str) -> (Option<ChatMessageRole>, Option<String>, String) {
+        let mut response_text = text.trim().to_string();
+        let mut role: Option<ChatMessageRole> = None;
+        let mut name: Option<String> = None;
+
+        // Extract and remove `role=...` at the beginning of the message if it exists.
+        let re = regex::Regex::new(r"^role=(\w+) ").unwrap();
+        response_text = match re.captures(response_text.as_str()) {
+            Some(c) => {
+                let r = c.get(1).unwrap().as_str().to_string();
+                match r.as_str() {
+                    "assistant" => role = Some(ChatMessageRole::Assistant),
+                    "user" => role = Some(ChatMessageRole::User),
+                    "system" => role = Some(ChatMessageRole::System),
+                    _ => (),
+                }
+                response_text[6 + r.len()..].to_string().trim().to_string()
+            }
+            None => response_text,
+        };
+
+        // Extract and remove `name=...` at the beginning of the message if it exists.
+        let re = regex::Regex::new(r"^name=(\w+) ").unwrap();
+        response_text = match re.captures(response_text.as_str()) {
+            Some(c) => {
+                let n = c.get(1).unwrap().as_str().to_string();
+                let t = response_text[6 + n.len()..].to_string().trim().to_string();
+                name = Some(n);
+                t
+            }
+            None => response_text,
+        };
+
+        (role, name, response_text)
+    }
+
+    async fn stream_events(
+        &self,
+        mut b: Body,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<Completion> {
+        let mut completion: Option<Completion> = None;
+        let mut completion_text = String::new();
+
+        let mut buf: Vec<u8> = vec![];
+
+        while let Some(chunk) = b.data().await {
+            let chunk = chunk?;
+            buf.extend_from_slice(&chunk);
+
+            if buf.contains(&b'\n') {
+                let last_newline = buf.iter().rposition(|&b| b == b'\n').unwrap();
+                let split_buf: Vec<&[u8]> = buf[0..last_newline].split(|&i| i == b'\n').collect();
+
+                let mut first_chunk = true;
+
+                for item in split_buf {
+                    if item.len() == 0 {
+                        continue;
+                    }
+                    match serde_json::from_slice::<Completion>(item) {
+                        Ok(c) => {
+                            match c.finish_reason {
+                                Some(stop_reason) => {
+                                    completion = Some(Completion {
+                                        text: completion_text.clone(),
+                                        finish_reason: Some(stop_reason),
+                                        output_tokens: c.output_tokens,
+                                        input_tokens: c.input_tokens,
+                                        reached_end: c.reached_end,
+                                    });
+                                }
+                                None => (),
+                            }
+
+                            // We push the full text so that it can be re-extracted to render the
+                            // final completion.
+                            completion_text.push_str(c.text.as_str());
+
+                            // But we emit the clean-ed version.
+                            let text = match first_chunk {
+                                true => {
+                                    first_chunk = true;
+                                    let (_, _, text) = Self::extract_name_and_role(c.text.as_str());
+                                    text
+                                }
+                                false => c.text.clone(),
+                            };
+
+                            if c.text.len() > 0 {
+                                let _ = event_sender.send(json!({
+                                    "type":"tokens",
+                                    "content": {
+                                        "text": text,
+                                    }
+                                }));
+                            }
+                        }
+                        Err(e) => Err(anyhow!(
+                            "Error parsing response from TextSynth: error={:?}",
+                            e,
+                        ))?,
+                    }
+                }
+
+                // Keep the part after the last '\n' in the buffer
+                buf = buf[last_newline + 1..].to_vec();
+            }
+        }
+        // The last slice should be empty since we have two \n at the end of the stream.
+        return match completion {
+            Some(response) => Ok(response),
+            None => Err(anyhow!("No response from TextSynth")),
+        };
+    }
 
     fn build_json_body(
-        prompt: &str,
         max_tokens: Option<i32>,
         temperature: f32,
         stop: &Vec<String>,
@@ -133,8 +286,7 @@ impl TextSynthLLM {
         typical_p: Option<f32>,
     ) -> Value {
         let mut body = json!({
-            "prompt": prompt,
-                    "temperature": temperature,
+            "temperature": temperature,
         });
         if max_tokens.is_some() {
             body["max_tokens"] = json!(max_tokens.unwrap());
@@ -167,7 +319,7 @@ impl TextSynthLLM {
     async fn completion(
         &self,
         prompt: &str,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         temperature: f32,
         stop: &Vec<String>,
         top_k: Option<usize>,
@@ -179,11 +331,17 @@ impl TextSynthLLM {
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self.encode(prompt).await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
+        }
+
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
-        let body = Self::build_json_body(
-            prompt,
+        let mut body = Self::build_json_body(
             max_tokens,
             temperature,
             stop,
@@ -194,6 +352,7 @@ impl TextSynthLLM {
             repetition_penalty,
             typical_p,
         );
+        body["prompt"] = json!(prompt);
 
         let req = Request::builder()
             .method(Method::POST)
@@ -253,7 +412,7 @@ impl TextSynthLLM {
     pub async fn streamed_completion(
         &self,
         prompt: &str,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         temperature: f32,
         stop: &Vec<String>,
         top_k: Option<usize>,
@@ -266,11 +425,17 @@ impl TextSynthLLM {
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self.encode(prompt).await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
+        }
+
         let https = HttpsConnector::new();
         let cli = Client::builder().build::<_, hyper::Body>(https);
 
         let mut body = Self::build_json_body(
-            prompt,
             max_tokens,
             temperature,
             stop,
@@ -281,6 +446,7 @@ impl TextSynthLLM {
             repetition_penalty,
             typical_p,
         );
+        body["prompt"] = json!(prompt);
         body["stream"] = json!(true);
 
         let req = Request::builder()
@@ -296,63 +462,245 @@ impl TextSynthLLM {
         let res = cli.request(req).await?;
         let status = res.status();
 
-        let mut completion: Option<Completion> = None;
-        let mut completion_text = String::new();
-
         match status {
             hyper::StatusCode::OK => {
-                let mut b = res.into_body();
-                let mut buf: Vec<u8> = vec![];
+                let b = res.into_body();
+                self.stream_events(b, event_sender).await
+            }
+            _ => {
+                let body = hyper::body::aggregate(res).await?;
+                let mut b: Vec<u8> = vec![];
+                body.reader().read_to_end(&mut b)?;
 
-                while let Some(chunk) = b.data().await {
-                    let chunk = chunk?;
-                    buf.extend_from_slice(&chunk);
+                match status {
+                    hyper::StatusCode::TOO_MANY_REQUESTS => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Too many requests".to_string(),
+                        });
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(2000),
+                                factor: 2,
+                                retries: 8,
+                            }),
+                        })?
+                    }
+                    hyper::StatusCode::BAD_REQUEST => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Bad request".to_string(),
+                        });
 
-                    if buf.contains(&b'\n') {
-                        let last_newline = buf.iter().rposition(|&b| b == b'\n').unwrap();
-                        let split_buf: Vec<&[u8]> =
-                            buf[0..last_newline].split(|&i| i == b'\n').collect();
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
+                    }
+                    _ => {
+                        let error: Error = serde_json::from_slice(&b)?;
 
-                        for item in split_buf {
-                            if item.len() == 0 {
-                                continue;
-                            }
-                            match serde_json::from_slice::<Completion>(item) {
-                                Ok(c) => {
-                                    match c.finish_reason {
-                                        Some(stop_reason) => {
-                                            completion = Some(Completion {
-                                                text: completion_text.clone(),
-                                                finish_reason: Some(stop_reason),
-                                                output_tokens: c.output_tokens,
-                                                input_tokens: c.input_tokens,
-                                                reached_end: c.reached_end,
-                                            });
-                                        }
-                                        None => (),
-                                    }
-                                    completion_text.push_str(c.text.as_str());
-                                    if c.text.len() > 0 {
-                                        let _ = event_sender.send(json!({
-                                            "type":"tokens",
-                                            "content": {
-                                                "text": c.text,
-                                            }
-                                        }));
-                                    }
-                                }
-                                Err(e) => Err(anyhow!(
-                                    "Error parsing response from TextSynth: error={:?}",
-                                    e,
-                                ))?,
-                            }
-                        }
-
-                        // Keep the part after the last '\n' in the buffer
-                        buf = buf[last_newline + 1..].to_vec();
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
                     }
                 }
-                // The last slice should be empty since we have two \n at the end of the stream.
+            }
+        }
+    }
+
+    pub async fn chat(
+        &self,
+        messages: &Vec<ChatMessage>,
+        mut max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+    ) -> Result<LLMChatGeneration> {
+        assert!(self.api_key.is_some());
+
+        let (system, messages) = self.format_chat_messages(messages);
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self
+                    .encode(
+                        format!(
+                            "{} {}",
+                            system.as_ref().unwrap_or(&String::from("")),
+                            messages.join("\n")
+                        )
+                        .as_str(),
+                    )
+                    .await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
+        }
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = Self::build_json_body(
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
+        match system.as_ref() {
+            Some(s) => body["system"] = json!(s.clone()),
+            None => (),
+        }
+        body["messages"] = json!(messages);
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.chat_uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            .body(Body::from(body.to_string()))?;
+
+        let res = cli.request(req).await?;
+        let status = res.status();
+        let body = hyper::body::aggregate(res).await?;
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+
+        let response = match status {
+            hyper::StatusCode::OK => {
+                let completion: Completion = serde_json::from_slice(&b)?;
+                Ok(completion)
+            }
+            hyper::StatusCode::TOO_MANY_REQUESTS => {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                    error: "Too many requests".to_string(),
+                });
+                Err(ModelError {
+                    message: format!("TextSynthAPIError: {}", error.error),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(2000),
+                        factor: 2,
+                        retries: 8,
+                    }),
+                })
+            }
+            hyper::StatusCode::BAD_REQUEST => {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                    error: "Unknown error".to_string(),
+                });
+                Err(ModelError {
+                    message: format!("TextSynthAPIError: {}", error.error),
+                    retryable: None,
+                })
+            }
+            _ => {
+                let error: Error = serde_json::from_slice(&b)?;
+                Err(ModelError {
+                    message: format!("TextSynthAPIError: {}", error.error),
+                    retryable: None,
+                })
+            }
+        }?;
+
+        let (_, name, response_text) = Self::extract_name_and_role(response.text.as_str());
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::TextSynth.to_string(),
+            model: self.id.clone(),
+            completions: vec![ChatMessage {
+                role: ChatMessageRole::Assistant,
+                name,
+                content: Some(response_text),
+                function_call: None,
+            }],
+        })
+    }
+
+    pub async fn streamed_chat(
+        &self,
+        messages: &Vec<ChatMessage>,
+        mut max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<LLMChatGeneration> {
+        assert!(self.api_key.is_some());
+
+        let (system, messages) = self.format_chat_messages(messages);
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self
+                    .encode(
+                        format!(
+                            "{} {}",
+                            system.as_ref().unwrap_or(&String::from("")),
+                            messages.join("\n")
+                        )
+                        .as_str(),
+                    )
+                    .await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
+        }
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = Self::build_json_body(
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
+        match system.as_ref() {
+            Some(s) => body["system"] = json!(s.clone()),
+            None => (),
+        }
+        body["messages"] = json!(messages);
+        body["stream"] = json!(true);
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.chat_uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            .body(Body::from(body.to_string()))?;
+
+        let res = cli.request(req).await?;
+        let status = res.status();
+
+        let response = match status {
+            hyper::StatusCode::OK => {
+                let b = res.into_body();
+                self.stream_events(b, event_sender).await?
             }
             _ => {
                 let body = hyper::body::aggregate(res).await?;
@@ -395,10 +743,19 @@ impl TextSynthLLM {
             }
         };
 
-        return match completion {
-            Some(response) => Ok(response),
-            None => Err(anyhow!("No response from TextSynth")),
-        };
+        let (_, name, response_text) = Self::extract_name_and_role(response.text.as_str());
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::TextSynth.to_string(),
+            model: self.id.clone(),
+            completions: vec![ChatMessage {
+                role: ChatMessageRole::Assistant,
+                name,
+                content: Some(response_text.clone()),
+                function_call: None,
+            }],
+        })
     }
 }
 
@@ -462,9 +819,9 @@ impl LLM for TextSynthLLM {
     async fn generate(
         &self,
         prompt: &str,
-        mut max_tokens: Option<i32>,
+        max_tokens: Option<i32>,
         temperature: f32,
-        _n: usize,
+        n: usize,
         stop: &Vec<String>,
         frequency_penalty: Option<f32>,
         presence_penalty: Option<f32>,
@@ -475,11 +832,10 @@ impl LLM for TextSynthLLM {
     ) -> Result<LLMGeneration> {
         assert!(self.api_key.is_some());
 
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                let tokens = self.encode(prompt).await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+        if n > 1 {
+            return Err(anyhow!(
+                "TextSynth only supports generating one sample at a time."
+            ))?;
         }
 
         let c: Completion = match event_sender {
@@ -544,22 +900,72 @@ impl LLM for TextSynthLLM {
 
     async fn chat(
         &self,
-        _messages: &Vec<ChatMessage>,
-        _functions: &Vec<ChatFunction>,
-        _function_call: Option<String>,
-        _temperature: f32,
-        _top_p: Option<f32>,
-        _n: usize,
-        _stop: &Vec<String>,
-        _max_tokens: Option<i32>,
-        _presence_penalty: Option<f32>,
-        _frequency_penalty: Option<f32>,
+        messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        max_tokens: Option<i32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        Err(anyhow!(
-            "Chat capabilties are not implemented for provider `textsynth`"
-        ))
+        assert!(self.api_key.is_some());
+
+        if n > 1 {
+            return Err(anyhow!(
+                "TextSynth only supports generating one sample at a time."
+            ))?;
+        }
+        if functions.len() > 0 || function_call.is_some() {
+            return Err(anyhow!("TextSynth does not support chat functions."));
+        }
+
+        let g = match event_sender {
+            Some(es) => {
+                match self
+                    .streamed_chat(
+                        messages,
+                        max_tokens,
+                        temperature,
+                        stop,
+                        None,
+                        top_p,
+                        frequency_penalty,
+                        presence_penalty,
+                        None,
+                        None,
+                        es,
+                    )
+                    .await
+                {
+                    Ok(c) => c,
+                    Err(error) => {
+                        return Err(anyhow!("Error streaming from TextSynth: {:?}", error))?;
+                    }
+                }
+            }
+            None => {
+                self.chat(
+                    messages,
+                    max_tokens,
+                    temperature,
+                    stop,
+                    None,
+                    top_p,
+                    frequency_penalty,
+                    presence_penalty,
+                    None,
+                    None,
+                )
+                .await?
+            }
+        };
+
+        Ok(g)
     }
 }
 
