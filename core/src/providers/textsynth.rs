@@ -220,6 +220,10 @@ impl TextSynthLLM {
                     }
                     match serde_json::from_slice::<Completion>(item) {
                         Ok(c) => {
+                            // We push the full text so that it can be re-extracted to render the
+                            // final completion.
+                            completion_text.push_str(c.text.as_str());
+
                             match c.finish_reason {
                                 Some(stop_reason) => {
                                     completion = Some(Completion {
@@ -233,11 +237,7 @@ impl TextSynthLLM {
                                 None => (),
                             }
 
-                            // We push the full text so that it can be re-extracted to render the
-                            // final completion.
-                            completion_text.push_str(c.text.as_str());
-
-                            // But we emit the clean-ed version.
+                            // But we emit only the clean-ed version (first-chunk only).
                             let text = match first_chunk {
                                 true => {
                                     first_chunk = true;
