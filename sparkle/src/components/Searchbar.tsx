@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { classNames } from "@sparkle/lib/utils";
