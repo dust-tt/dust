@@ -37,7 +37,8 @@ confd:
           - temporal_cloud_v0_workflow_failed_count
           - temporal_cloud_v0_workflow_timeout_count
           - temporal_cloud_v0_workflow_cancel_count
-        ssl_ca_cert: /etc/certs/temporal-datadog-cert
+        ssl_cert: /etc/certs/temporal-datadog.crt
+        ssl_private_key: /etc/certs/temporal-datadog-cert.key
 
 clusterAgent:
   enabled: true
