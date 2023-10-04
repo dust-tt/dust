@@ -73,7 +73,7 @@ export type UserMessageType = {
 };
 
 export function isUserMessageType(
-  arg: UserMessageType | AgentMessageType
+  arg: UserMessageType | AgentMessageType | ContentFragmentType
 ): arg is UserMessageType {
   return arg.type === "user_message";
 }
@@ -112,9 +112,31 @@ export type AgentMessageType = {
 };
 
 export function isAgentMessageType(
-  arg: UserMessageType | AgentMessageType
+  arg: UserMessageType | AgentMessageType | ContentFragmentType
 ): arg is AgentMessageType {
   return arg.type === "agent_message";
+}
+
+/**
+ * Content Fragments
+ */
+
+export type ContentFragmentType = {
+  id: ModelId;
+  sId: string;
+  created: number;
+  type: "content_fragment";
+  visibility: MessageVisibility;
+  version: number;
+
+  title: string;
+  content: string;
+};
+
+export function isContentFragmentType(
+  arg: UserMessageType | AgentMessageType | ContentFragmentType
+): arg is ContentFragmentType {
+  return arg.type === "content_fragment";
 }
 
 /**
@@ -134,7 +156,7 @@ export type ConversationType = {
   owner: WorkspaceType;
   title: string | null;
   visibility: ConversationVisibility;
-  content: (UserMessageType[] | AgentMessageType[])[];
+  content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
 export type UserParticipant = {

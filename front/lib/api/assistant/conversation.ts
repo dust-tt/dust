@@ -29,11 +29,13 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   AgentMessageType,
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -299,6 +301,25 @@ async function renderAgentMessage(
   };
 }
 
+function renderContentFragment({
+  message,
+  contentFragment,
+}: {
+  message: Message;
+  contentFragment: ContentFragment;
+}): ContentFragmentType {
+  return {
+    id: message.id,
+    sId: message.sId,
+    created: message.createdAt.getTime(),
+    type: "content_fragment",
+    visibility: message.visibility,
+    version: message.version,
+    title: contentFragment.title,
+    content: contentFragment.content,
+  };
+}
+
 export async function getUserConversations(
   auth: Authenticator,
   includeDeleted?: boolean
@@ -397,6 +418,11 @@ export async function getConversation(
         as: "agentMessage",
         required: false,
       },
+      {
+        model: ContentFragment,
+        as: "contentFragment",
+        required: false,
+      },
     ],
   });
 
@@ -415,7 +441,16 @@ export async function getConversation(
           });
           return { m, rank: message.rank, version: message.version };
         }
-        throw new Error("Unreachable: message must be either user or agent");
+        if (message.contentFragment) {
+          const m = await renderContentFragment({
+            message: message,
+            contentFragment: message.contentFragment,
+          });
+          return { m, rank: message.rank, version: message.version };
+        }
+        throw new Error(
+          "Unreachable: message must be either user, agent or content fragment"
+        );
       })();
     })
   );
@@ -427,7 +462,7 @@ export async function getConversation(
   });
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
-  // the versions of each User/Assistant message. The lenght of that array is by definition the
+  // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
   // maximal rank of the conversation messages we just retrieved. In the case there is no message
   // the rank is -1 and the array length is 0 as expected.
   const content: any[] = Array.from(
@@ -1425,6 +1460,57 @@ export async function* retryAgentMessage(
   );
 
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
+}
+
+// Injects a new content fragment in the conversation.
+export async function postNewContentFragment(
+  auth: Authenticator,
+  {
+    conversation,
+    title,
+    content,
+  }: { conversation: ConversationType; title: string; content: string }
+): Promise<ContentFragmentType> {
+  const owner = auth.workspace();
+
+  if (!owner || owner.id !== conversation.owner.id) {
+    throw new Error("Invalid auth for conversation.");
+  }
+
+  const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
+    async (t) => {
+      const contentFragmentRow = await ContentFragment.create(
+        { content, title },
+        { transaction: t }
+      );
+      const nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
+            conversationId: conversation.id,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+      const messageRow = await Message.create(
+        {
+          sId: generateModelSId(),
+          rank: nextMessageRank,
+          conversationId: conversation.id,
+          contentFragmentId: contentFragmentRow.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      return { contentFragmentRow, messageRow };
+    }
+  );
+
+  const contentFragment = renderContentFragment({
+    message: messageRow,
+    contentFragment: contentFragmentRow,
+  });
+
+  return contentFragment;
 }
 
 async function* streamRunAgentEvents(

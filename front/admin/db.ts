@@ -33,6 +33,7 @@ import {
   XP1User,
 } from "@app/lib/models";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { ContentFragment } from "@app/lib/models/assistant/conversation";
 
 async function main() {
   await User.sync({ alter: true });
@@ -66,6 +67,7 @@ async function main() {
   await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
+  await ContentFragment.sync({ alter: true });
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });

@@ -15,10 +15,8 @@ import {
 } from "@app/lib/swr";
 import {
   AgentMention,
-  AgentMessageType,
   isAgentMention,
   isUserMessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -159,15 +157,7 @@ export default function Conversation({
   return (
     <div className="pb-24">
       {conversation.content.map((versionedMessages) => {
-        // Lots of typing because of the reduce which Typescript
-        // doesn't handle well on union types
-        const m = (versionedMessages as any[]).reduce(
-          (
-            acc: UserMessageType | AgentMessageType,
-            cur: UserMessageType | AgentMessageType
-          ) => (cur.version > acc.version ? cur : acc)
-        ) as UserMessageType | AgentMessageType;
-
+        const m = versionedMessages[versionedMessages.length - 1];
         const convoReactions = reactions.find((r) => r.messageId === m.sId);
         const messageReactions = convoReactions?.reactions || [];
 
@@ -209,6 +199,8 @@ export default function Conversation({
                 </div>
               </div>
             );
+          case "content_fragment":
+            return null;
           default:
             ((message: never) => {
               console.error("Unknown message type", message);
