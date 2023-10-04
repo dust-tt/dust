@@ -6,6 +6,7 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
@@ -92,8 +93,9 @@ async fn api_tokenize(api_key: &str, engine: &str, text: &str) -> Result<Vec<usi
 pub struct Completion {
     pub text: String,
     pub reached_end: bool,
-    pub input_tokens: usize,
-    pub output_tokens: usize,
+    pub input_tokens: Option<usize>,
+    pub output_tokens: Option<usize>,
+    pub finish_reason: Option<String>,
 }
 
 pub struct TextSynthLLM {
@@ -118,8 +120,7 @@ impl TextSynthLLM {
     //     Ok(format!("https://api.textsynth.com/v1/engines/{}/chat", self.id).parse::<Uri>()?)
     // }
 
-    async fn completion(
-        &self,
+    fn build_json_body(
         prompt: &str,
         max_tokens: Option<i32>,
         temperature: f32,
@@ -130,12 +131,7 @@ impl TextSynthLLM {
         presence_penalty: Option<f32>,
         repetition_penalty: Option<f32>,
         typical_p: Option<f32>,
-    ) -> Result<Completion> {
-        assert!(self.api_key.is_some());
-
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
+    ) -> Value {
         let mut body = json!({
             "prompt": prompt,
                     "temperature": temperature,
@@ -165,6 +161,40 @@ impl TextSynthLLM {
             body["typical_p"] = json!(typical_p.unwrap());
         }
 
+        body
+    }
+
+    async fn completion(
+        &self,
+        prompt: &str,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+    ) -> Result<Completion> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let body = Self::build_json_body(
+            prompt,
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
+
         let req = Request::builder()
             .method(Method::POST)
             .uri(self.uri()?)
@@ -180,15 +210,14 @@ impl TextSynthLLM {
         let body = hyper::body::aggregate(res).await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
 
         let response = match status {
             hyper::StatusCode::OK => {
-                let completion: Completion = serde_json::from_slice(c)?;
+                let completion: Completion = serde_json::from_slice(&b)?;
                 Ok(completion)
             }
             hyper::StatusCode::TOO_MANY_REQUESTS => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
                     error: "Too many requests".to_string(),
                 });
                 Err(ModelError {
@@ -201,7 +230,7 @@ impl TextSynthLLM {
                 })
             }
             hyper::StatusCode::BAD_REQUEST => {
-                let error: Error = serde_json::from_slice(c).unwrap_or(Error {
+                let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
                     error: "Unknown error".to_string(),
                 });
                 Err(ModelError {
@@ -210,14 +239,166 @@ impl TextSynthLLM {
                 })
             }
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: Error = serde_json::from_slice(&b)?;
                 Err(ModelError {
                     message: format!("TextSynthAPIError: {}", error.error),
                     retryable: None,
                 })
             }
         }?;
+
         Ok(response)
+    }
+
+    pub async fn streamed_completion(
+        &self,
+        prompt: &str,
+        max_tokens: Option<i32>,
+        temperature: f32,
+        stop: &Vec<String>,
+        top_k: Option<usize>,
+        top_p: Option<f32>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        repetition_penalty: Option<f32>,
+        typical_p: Option<f32>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<Completion> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let cli = Client::builder().build::<_, hyper::Body>(https);
+
+        let mut body = Self::build_json_body(
+            prompt,
+            max_tokens,
+            temperature,
+            stop,
+            top_k,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            typical_p,
+        );
+        body["stream"] = json!(true);
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.uri()?)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            )
+            .body(Body::from(body.to_string()))?;
+
+        let res = cli.request(req).await?;
+        let status = res.status();
+
+        let mut completion: Option<Completion> = None;
+        let mut completion_text = String::new();
+
+        match status {
+            hyper::StatusCode::OK => {
+                let mut b = res.into_body();
+                let mut buf: Vec<u8> = vec![];
+
+                while let Some(chunk) = b.data().await {
+                    let chunk = chunk?;
+                    buf.extend_from_slice(&chunk);
+
+                    if buf.contains(&b'\n') {
+                        let last_newline = buf.iter().rposition(|&b| b == b'\n').unwrap();
+                        let split_buf: Vec<&[u8]> =
+                            buf[0..last_newline].split(|&i| i == b'\n').collect();
+
+                        for item in split_buf {
+                            if item.len() == 0 {
+                                continue;
+                            }
+                            match serde_json::from_slice::<Completion>(item) {
+                                Ok(c) => {
+                                    match c.finish_reason {
+                                        Some(stop_reason) => {
+                                            completion = Some(Completion {
+                                                text: completion_text.clone(),
+                                                finish_reason: Some(stop_reason),
+                                                output_tokens: c.output_tokens,
+                                                input_tokens: c.input_tokens,
+                                                reached_end: c.reached_end,
+                                            });
+                                        }
+                                        None => (),
+                                    }
+                                    completion_text.push_str(c.text.as_str());
+                                    if c.text.len() > 0 {
+                                        let _ = event_sender.send(json!({
+                                            "type":"tokens",
+                                            "content": {
+                                                "text": c.text,
+                                            }
+                                        }));
+                                    }
+                                }
+                                Err(e) => Err(anyhow!(
+                                    "Error parsing response from TextSynth: error={:?}",
+                                    e,
+                                ))?,
+                            }
+                        }
+
+                        // Keep the part after the last '\n' in the buffer
+                        buf = buf[last_newline + 1..].to_vec();
+                    }
+                }
+                // The last slice should be empty since we have two \n at the end of the stream.
+            }
+            _ => {
+                let body = hyper::body::aggregate(res).await?;
+                let mut b: Vec<u8> = vec![];
+                body.reader().read_to_end(&mut b)?;
+
+                match status {
+                    hyper::StatusCode::TOO_MANY_REQUESTS => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Too many requests".to_string(),
+                        });
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(2000),
+                                factor: 2,
+                                retries: 8,
+                            }),
+                        })?
+                    }
+                    hyper::StatusCode::BAD_REQUEST => {
+                        let error: Error = serde_json::from_slice(&b).unwrap_or(Error {
+                            error: "Bad request".to_string(),
+                        });
+
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
+                    }
+                    _ => {
+                        let error: Error = serde_json::from_slice(&b)?;
+
+                        Err(ModelError {
+                            message: format!("TextSynthAPIError: {}", error.error),
+                            retryable: None,
+                        })?
+                    }
+                }
+            }
+        };
+
+        return match completion {
+            Some(response) => Ok(response),
+            None => Err(anyhow!("No response from TextSynth")),
+        };
     }
 }
 
@@ -290,7 +471,7 @@ impl LLM for TextSynthLLM {
         top_p: Option<f32>,
         _top_logprobs: Option<i32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(self.api_key.is_some());
 
@@ -301,24 +482,46 @@ impl LLM for TextSynthLLM {
             }
         }
 
-        // println!("STOP: {:?}", stop);
-
-        let c = self
-            .completion(
-                prompt,
-                max_tokens,
-                temperature,
-                stop,
-                None,
-                top_p,
-                frequency_penalty,
-                presence_penalty,
-                None,
-                None,
-            )
-            .await?;
-
-        // println!("COMPLETION: {:?}", c);
+        let c: Completion = match event_sender {
+            Some(es) => {
+                match self
+                    .streamed_completion(
+                        prompt,
+                        max_tokens,
+                        temperature,
+                        stop,
+                        None,
+                        top_p,
+                        frequency_penalty,
+                        presence_penalty,
+                        None,
+                        None,
+                        es,
+                    )
+                    .await
+                {
+                    Ok(c) => c,
+                    Err(error) => {
+                        return Err(anyhow!("Error streaming from TextSynth: {:?}", error))?;
+                    }
+                }
+            }
+            None => {
+                self.completion(
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    stop,
+                    None,
+                    top_p,
+                    frequency_penalty,
+                    presence_penalty,
+                    None,
+                    None,
+                )
+                .await?
+            }
+        };
 
         Ok(LLMGeneration {
             created: utils::now(),
