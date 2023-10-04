@@ -111,6 +111,7 @@ export default function RetrievalAction({
                       <a
                         href={document.sourceUrl || ""}
                         className="front-bold text-xs text-element-800"
+                        target="_blank"
                       >
                         {provider === "none" ? (
                           <DocumentDuplicateStrokeIcon className="mr-1 inline-block h-4 w-4 text-element-500" />
