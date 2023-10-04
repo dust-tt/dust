@@ -17,7 +17,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "f4816b1e13",
       appHash:
-        "ee76c3a205ae832dfedc178b263f375a6cd91e7387ccb32827d811948415fd2b",
+        "0d84ff37404c33b94005b4eff24bd34f9a9bda85a6a9e74076faedc8a92854df",
     },
     config: {
       MODEL: {
@@ -33,7 +33,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "84dfc1d4f7",
       appHash:
-        "2c9e4cb1a2772d77c88590bd81d2ae578c9c5a6016fde8c37ffd0b0e2b124638",
+        "cddc215f2cc07e4a1bdd9c253524ac09667de629420af2570ab1e715fa4ee2b2",
     },
     config: {
       MODEL: {
@@ -65,7 +65,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "6a27050429",
       appHash:
-        "00fed4ea8d869d185c88d6518447bc54ba5466d8c75c2cae006194fc2fc3e287",
+        "e0b00417afae51adc7e23c1365850fab154d9b945364c47074ef907915cf8c2c",
     },
     config: {
       MODEL: {

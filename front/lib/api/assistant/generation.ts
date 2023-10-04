@@ -109,7 +109,7 @@ export async function renderConversationForModel({
     } else if (isContentFragmentType(m)) {
       messages.unshift({
         role: "content_fragment" as const,
-        name: "content_fragment",
+        name: "inject_content_fragment",
         content: m.content,
       });
     } else {
