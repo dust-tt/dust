@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Provider } from "@app/lib/models";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { ProviderType } from "@app/types/provider";
 
 export type GetProvidersResponseBody = {
@@ -21,13 +21,24 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to access was not found.",
+      },
+    });
   }
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "provider_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can list providers.",
+      },
+    });
   }
 
   switch (req.method) {
@@ -49,7 +60,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
       return;
   }
 }

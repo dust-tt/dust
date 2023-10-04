@@ -21,6 +21,8 @@ export type APIErrorType =
   | "run_error"
   | "app_not_found"
   | "app_auth_error"
+  | "provider_auth_error"
+  | "provider_not_found"
   | "dataset_not_found"
   | "workspace_not_found"
   | "workspace_auth_error"

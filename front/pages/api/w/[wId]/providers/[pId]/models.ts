@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Provider } from "@app/lib/models";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;
@@ -25,13 +25,25 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "provider_not_found",
+        message:
+          "The provider you're trying to list models from was not found.",
+      },
+    });
   }
 
   if (!auth.isUser()) {
-    res.status(401).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "provider_auth_error",
+        message:
+          "Only the users of a workspace can list models from providers.",
+      },
+    });
   }
 
   const [provider] = await Promise.all([
@@ -44,8 +56,14 @@ async function handler(
   ]);
 
   if (!provider) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "provider_not_found",
+        message:
+          "The provider you're trying to list models from was not found.",
+      },
+    });
   }
 
   switch (req.method) {
@@ -222,13 +240,23 @@ async function handler(
           return;
 
         default:
-          res.status(404).json({ error: "Provider not found" });
-          return;
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "provider_not_found",
+              message: "The provider you're trying to check was not found.",
+            },
+          });
       }
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
   }
 }
 
