@@ -314,6 +314,45 @@ AgentMessage.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
 });
 
+export class ContentFragment extends Model<
+  InferAttributes<ContentFragment>,
+  InferCreationAttributes<ContentFragment>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare content: string;
+}
+
+ContentFragment.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "content_fragment",
+    sequelize: front_sequelize,
+  }
+);
+
 export class Message extends Model<
   InferAttributes<Message>,
   InferCreationAttributes<Message>
@@ -333,9 +372,11 @@ export class Message extends Model<
   declare parentId: ForeignKey<Message["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
   declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare contentFragmentId: ForeignKey<ContentFragment["id"]> | null;
 
   declare userMessage?: NonAttribute<UserMessage>;
   declare agentMessage?: NonAttribute<AgentMessage>;
+  declare contentFragment?: NonAttribute<ContentFragment>;
   declare reactions?: NonAttribute<MessageReaction[]>;
 }
 
@@ -391,9 +432,16 @@ Message.init(
     ],
     hooks: {
       beforeValidate: (message) => {
-        if (!message.userMessageId === !message.agentMessageId) {
+        if (
+          (!message.userMessageId &&
+            !message.agentMessageId &&
+            !message.contentFragmentId) ||
+          (message.userMessageId &&
+            message.agentMessageId &&
+            message.contentFragmentId)
+        ) {
           throw new Error(
-            "Exactly one of userMessageId, agentMessageId must be non-null"
+            "Exactly one of userMessageId, agentMessageId, contentFragmentId must be non-null"
           );
         }
       },
@@ -429,6 +477,14 @@ Message.belongsTo(AgentMessage, {
 
 Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
+});
+ContentFragment.hasOne(Message, {
+  as: "contentFragment",
+  foreignKey: { name: "contentFragmentId", allowNull: true },
+});
+Message.belongsTo(ContentFragment, {
+  as: "contentFragment",
+  foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 
 export class MessageReaction extends Model<

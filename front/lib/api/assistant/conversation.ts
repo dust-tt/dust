@@ -29,11 +29,13 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   AgentMessageType,
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -299,6 +301,24 @@ async function renderAgentMessage(
   };
 }
 
+async function renderContentFragment({
+  message,
+  contentFragment,
+}: {
+  message: Message;
+  contentFragment: ContentFragment;
+}): Promise<ContentFragmentType> {
+  return {
+    id: message.id,
+    sId: message.sId,
+    created: message.createdAt.getTime(),
+    type: "content_fragment",
+    visibility: message.visibility,
+    version: message.version,
+    content: contentFragment.content,
+  };
+}
+
 export async function getUserConversations(
   auth: Authenticator,
   includeDeleted?: boolean
@@ -397,6 +417,11 @@ export async function getConversation(
         as: "agentMessage",
         required: false,
       },
+      {
+        model: ContentFragment,
+        as: "contentFragment",
+        required: false,
+      },
     ],
   });
 
@@ -415,7 +440,16 @@ export async function getConversation(
           });
           return { m, rank: message.rank, version: message.version };
         }
-        throw new Error("Unreachable: message must be either user or agent");
+        if (message.contentFragment) {
+          const m = await renderContentFragment({
+            message: message,
+            contentFragment: message.contentFragment,
+          });
+          return { m, rank: message.rank, version: message.version };
+        }
+        throw new Error(
+          "Unreachable: message must be either user, agent or content fragment"
+        );
       })();
     })
   );
@@ -427,7 +461,7 @@ export async function getConversation(
   });
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
-  // the versions of each User/Assistant message. The lenght of that array is by definition the
+  // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
   // maximal rank of the conversation messages we just retrieved. In the case there is no message
   // the rank is -1 and the array length is 0 as expected.
   const content: any[] = Array.from(

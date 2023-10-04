@@ -27,6 +27,7 @@ import {
   AgentMessageType,
   ConversationType,
   isAgentMessageType,
+  isContentFragmentType,
   isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -92,8 +93,7 @@ export async function renderConversationForModel({
           content: m.content,
         });
       }
-    }
-    if (isUserMessageType(m)) {
+    } else if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.
       const content = m.content.replace(
         /:mention\[(.+)\]\{.+\}/g,
@@ -106,6 +106,16 @@ export async function renderConversationForModel({
         name: m.context.username,
         content,
       });
+    } else if (isContentFragmentType(m)) {
+      messages.unshift({
+        role: "action" as const,
+        name: "content_fragment",
+        content: m.content,
+      });
+    } else {
+      ((x: never) => {
+        throw new Error(`Unexpected message type: ${x}`);
+      })(m);
     }
   }
 

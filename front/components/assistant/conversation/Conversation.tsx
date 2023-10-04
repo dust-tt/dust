@@ -16,6 +16,7 @@ import {
 import {
   AgentMention,
   AgentMessageType,
+  ContentFragmentType,
   isAgentMention,
   isUserMessageType,
   UserMessageType,
@@ -156,18 +157,26 @@ export default function Conversation({
     return <div>No conversation here</div>;
   }
 
+  const messages = conversation.content.map((versionedMessages) => {
+    // Lots of typing because of the reduce which Typescript
+    // doesn't handle well on union types
+    let m: UserMessageType | AgentMessageType | ContentFragmentType | null =
+      null;
+    for (const x of versionedMessages) {
+      if (!m || x.version > m.version) {
+        m = x;
+      }
+    }
+    if (!m) {
+      throw new Error("Found empty array in conversation content");
+    }
+
+    return m;
+  });
+
   return (
     <div className="pb-24">
-      {conversation.content.map((versionedMessages) => {
-        // Lots of typing because of the reduce which Typescript
-        // doesn't handle well on union types
-        const m = (versionedMessages as any[]).reduce(
-          (
-            acc: UserMessageType | AgentMessageType,
-            cur: UserMessageType | AgentMessageType
-          ) => (cur.version > acc.version ? cur : acc)
-        ) as UserMessageType | AgentMessageType;
-
+      {messages.map((m) => {
         const convoReactions = reactions.find((r) => r.messageId === m.sId);
         const messageReactions = convoReactions?.reactions || [];
 
@@ -209,6 +218,8 @@ export default function Conversation({
                 </div>
               </div>
             );
+          case "content_fragment":
+            return null; // TODO: should we display content fragments?
           default:
             ((message: never) => {
               console.error("Unknown message type", message);
