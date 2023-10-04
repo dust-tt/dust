@@ -113,19 +113,22 @@ export async function renderConversationForModel({
     message: ModelMessageType,
     model: { providerId: string; modelId: string }
   ): Promise<Result<number, Error>> {
-    const res = await CoreAPI.tokenize({
-      text: message.content,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
+    try {
+      const res = await CoreAPI.tokenize({
+        text: message.content,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
+      if (res.isErr()) {
+        return new Err(
+          new Error(`Error tokenizing model message: ${res.error.message}`)
+        );
+      }
 
-    if (res.isErr()) {
-      return new Err(
-        new Error(`Error tokenizing model message: ${res.error.message}`)
-      );
+      return new Ok(res.value.tokens.length);
+    } catch (err) {
+      return new Err(new Error(`Error tokenizing model message: ${err}`));
     }
-
-    return new Ok(res.value.tokens.length);
   }
 
   const now = Date.now();

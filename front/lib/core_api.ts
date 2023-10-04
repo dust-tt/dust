@@ -1,6 +1,7 @@
 import tracer from "dd-trace";
 import { createParser } from "eventsource-parser";
 
+import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { Project } from "@app/types/project";
@@ -785,6 +786,7 @@ export const CoreAPI = {
     modelId: string;
     providerId: string;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+    const credentials = dustManagedCredentials();
     const response = await fetch(`${CORE_API}/tokenize`, {
       method: "POST",
       headers: {
@@ -794,6 +796,7 @@ export const CoreAPI = {
         text,
         model_id: modelId,
         provider_id: providerId,
+        credentials,
       }),
     });
 
