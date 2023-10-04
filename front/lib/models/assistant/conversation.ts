@@ -433,12 +433,10 @@ Message.init(
     hooks: {
       beforeValidate: (message) => {
         if (
-          (!message.userMessageId &&
-            !message.agentMessageId &&
-            !message.contentFragmentId) ||
-          (message.userMessageId &&
-            message.agentMessageId &&
-            message.contentFragmentId)
+          Number(!!message.userMessageId) +
+            Number(!!message.agentMessageId) +
+            Number(!!message.contentFragmentId) !==
+          1
         ) {
           throw new Error(
             "Exactly one of userMessageId, agentMessageId, contentFragmentId must be non-null"
