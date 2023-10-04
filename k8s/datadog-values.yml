@@ -27,6 +27,16 @@ datadog:
 
   kubeStateMetricsEnabled: false
 
+confd:
+  prometheus.yaml: |
+    init_config:
+    instances:
+      - temporal_prometheus_url: https://gmnlm.tmprl.cloud/prometheus
+        namespace: "temporal"
+        metrics:
+          - temporal_cloud_v0_workflow_failed_count
+          - temporal_cloud_v0_workflow_timeout_count
+
 clusterAgent:
   enabled: true
   resources:
@@ -47,6 +57,16 @@ agents:
         limits:
           cpu: 200m
           memory: 512Mi
+      env:
+        - name: DD_ADDITIONAL_CONFIG_PROVIDERS
+          value: "confd"
+      volumeMounts:
+        - name: confd
+          mountPath: /confd
+  volumes:
+    - name: confd
+      configMap:
+        name: datadog-confd
 
 providers:
   gke:
