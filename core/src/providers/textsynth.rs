@@ -190,7 +190,6 @@ impl TextSynthLLM {
             }
             None => response_text,
         };
-        println!("FINAL {:?} {:?} / {}", role, name, response_text);
 
         (role, name, response_text)
     }
