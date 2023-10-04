@@ -301,13 +301,13 @@ async function renderAgentMessage(
   };
 }
 
-async function renderContentFragment({
+function renderContentFragment({
   message,
   contentFragment,
 }: {
   message: Message;
   contentFragment: ContentFragment;
-}): Promise<ContentFragmentType> {
+}): ContentFragmentType {
   return {
     id: message.id,
     sId: message.sId,
@@ -1459,6 +1459,54 @@ export async function* retryAgentMessage(
   );
 
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
+}
+
+// Injects a new content fragment in the conversation.
+export async function postNewContentFragment(
+  auth: Authenticator,
+  conversation: ConversationType,
+  content: string
+): Promise<ContentFragmentType> {
+  const owner = auth.workspace();
+
+  if (!owner || owner.id !== conversation.owner.id) {
+    throw new Error("Invalid `auth` for `conversation`.");
+  }
+
+  const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
+    async (t) => {
+      const contentFragmentRow = await ContentFragment.create(
+        { content },
+        { transaction: t }
+      );
+      const nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
+            conversationId: conversation.id,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+      const messageRow = await Message.create(
+        {
+          sId: generateModelSId(),
+          rank: nextMessageRank,
+          conversationId: conversation.id,
+          contentFragmentId: contentFragmentRow.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      return { contentFragmentRow, messageRow };
+    }
+  );
+
+  const contentFragment = renderContentFragment({
+    message: messageRow,
+    contentFragment: contentFragmentRow,
+  });
+
+  return contentFragment;
 }
 
 async function* streamRunAgentEvents(
