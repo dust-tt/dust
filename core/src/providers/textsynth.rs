@@ -331,11 +331,9 @@ impl TextSynthLLM {
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                let tokens = self.encode(prompt).await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let https = HttpsConnector::new();
@@ -425,11 +423,9 @@ impl TextSynthLLM {
     ) -> Result<Completion> {
         assert!(self.api_key.is_some());
 
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                let tokens = self.encode(prompt).await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self.encode(prompt).await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let https = HttpsConnector::new();
@@ -526,20 +522,18 @@ impl TextSynthLLM {
 
         let (system, messages) = self.format_chat_messages(messages);
 
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                let tokens = self
-                    .encode(
-                        format!(
-                            "{} {}",
-                            system.as_ref().unwrap_or(&String::from("")),
-                            messages.join("\n")
-                        )
-                        .as_str(),
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self
+                .encode(
+                    format!(
+                        "{} {}",
+                        system.as_ref().unwrap_or(&String::from("")),
+                        messages.join("\n")
                     )
-                    .await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+                    .as_str(),
+                )
+                .await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let https = HttpsConnector::new();
@@ -647,20 +641,18 @@ impl TextSynthLLM {
 
         let (system, messages) = self.format_chat_messages(messages);
 
-        if let Some(m) = max_tokens {
-            if m == -1 {
-                let tokens = self
-                    .encode(
-                        format!(
-                            "{} {}",
-                            system.as_ref().unwrap_or(&String::from("")),
-                            messages.join("\n")
-                        )
-                        .as_str(),
+        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
+            let tokens = self
+                .encode(
+                    format!(
+                        "{} {}",
+                        system.as_ref().unwrap_or(&String::from("")),
+                        messages.join("\n")
                     )
-                    .await?;
-                max_tokens = Some((self.context_size() - tokens.len()) as i32);
-            }
+                    .as_str(),
+                )
+                .await?;
+            max_tokens = Some((self.context_size() - tokens.len()) as i32);
         }
 
         let https = HttpsConnector::new();
