@@ -37,7 +37,7 @@ import {
  */
 
 export type ModelMessageType = {
-  role: "action" | "agent" | "user";
+  role: "action" | "agent" | "user" | "content_fragment";
   name: string;
   content: string;
 };
@@ -62,7 +62,7 @@ export async function renderConversationForModel({
     Error
   >
 > {
-  const messages = [];
+  const messages: ModelMessageType[] = [];
 
   let retrievalFound = false;
 
@@ -108,7 +108,7 @@ export async function renderConversationForModel({
       });
     } else if (isContentFragmentType(m)) {
       messages.unshift({
-        role: "action" as const,
+        role: "content_fragment" as const,
         name: "content_fragment",
         content: m.content,
       });
