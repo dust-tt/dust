@@ -315,6 +315,7 @@ function renderContentFragment({
     type: "content_fragment",
     visibility: message.visibility,
     version: message.version,
+    title: contentFragment.title,
     content: contentFragment.content,
   };
 }
@@ -1464,8 +1465,11 @@ export async function* retryAgentMessage(
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  conversation: ConversationType,
-  content: string
+  {
+    conversation,
+    title,
+    content,
+  }: { conversation: ConversationType; title: string; content: string }
 ): Promise<ContentFragmentType> {
   const owner = auth.workspace();
 
@@ -1476,7 +1480,7 @@ export async function postNewContentFragment(
   const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
     async (t) => {
       const contentFragmentRow = await ContentFragment.create(
-        { content },
+        { content, title },
         { transaction: t }
       );
       const nextMessageRank =

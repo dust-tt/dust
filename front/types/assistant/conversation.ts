@@ -129,6 +129,7 @@ export type ContentFragmentType = {
   visibility: MessageVisibility;
   version: number;
 
+  title: string;
   content: string;
 };
 

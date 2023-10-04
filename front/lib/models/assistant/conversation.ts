@@ -322,6 +322,7 @@ export class ContentFragment extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare title: string;
   declare content: string;
 }
 
@@ -341,6 +342,10 @@ ContentFragment.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
     },
     content: {
       type: DataTypes.TEXT,

@@ -110,7 +110,7 @@ export async function renderConversationForModel({
       messages.unshift({
         role: "content_fragment" as const,
         name: "inject_content_fragment",
-        content: m.content,
+        content: `${m.title}\nCONTENT:\n${m.content}`,
       });
     } else {
       ((x: never) => {

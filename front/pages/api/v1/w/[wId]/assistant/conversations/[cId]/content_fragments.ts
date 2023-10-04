@@ -50,7 +50,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const { content } = req.body;
+      const { content, title } = req.body;
 
       if (
         typeof content !== "string" ||
@@ -67,11 +67,21 @@ async function handler(
         });
       }
 
-      const contentFragment = await postNewContentFragment(
-        auth,
+      if (typeof title !== "string" || title.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The title must be a non-empty string.",
+          },
+        });
+      }
+
+      const contentFragment = await postNewContentFragment(auth, {
         conversation,
-        content
-      );
+        title,
+        content,
+      });
 
       res.status(200).json({ contentFragment });
       return;
