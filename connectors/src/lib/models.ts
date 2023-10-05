@@ -255,6 +255,7 @@ export class SlackChannel extends Model<
   declare slackChannelName: string;
 
   declare permission: ConnectorPermission;
+  declare agentConfigurationId: CreationOptional<string | null>;
 }
 
 SlackChannel.init(
@@ -290,6 +291,10 @@ SlackChannel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "read_write",
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
