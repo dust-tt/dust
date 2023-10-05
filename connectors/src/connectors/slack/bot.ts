@@ -1,3 +1,5 @@
+import levenshtein from "fast-levenshtein";
+
 import {
   AgentActionType,
   AgentGenerationSuccessEvent,
@@ -5,7 +7,6 @@ import {
   DustAPI,
   RetrievalDocumentType,
 } from "@connectors/lib/dust_api";
-import { editDistance } from "@connectors/lib/edit_distance";
 import {
   Connector,
   ModelId,
@@ -191,7 +192,7 @@ async function botAnswerMessage(
     }
   }
   // Extract all ~mentions.
-  const mentionCandidates = message.match(/~(\S+)/g) || [];
+  const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
   let mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 0) {
@@ -201,31 +202,36 @@ async function botAnswerMessage(
     }
     const agentConfigurations = agentConfigurationsRes.value;
     for (const mc of mentionCandidates) {
-      const scores: {
-        assistantId: string;
-        assistantName: string;
-        distance: number;
-      }[] = [];
+      let bestCandidate:
+        | {
+            assistantId: string;
+            assistantName: string;
+            distance: number;
+          }
+        | undefined = undefined;
       for (const agentConfiguration of agentConfigurations) {
-        const distance = editDistance(
-          mc.slice(1).toLocaleLowerCase(),
+        const distance = levenshtein.get(
+          mc.slice(1).toLowerCase(),
           agentConfiguration.name.toLowerCase()
         );
-        scores.push({
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        });
+        if (bestCandidate === undefined || bestCandidate.distance > distance) {
+          bestCandidate = {
+            assistantId: agentConfiguration.sId,
+            assistantName: agentConfiguration.name,
+            distance: distance,
+          };
+        }
       }
-      scores.sort((a, b) => {
-        return a.distance - b.distance;
-      });
-      const bestScore = scores[0];
-      if (bestScore) {
+
+      if (bestCandidate) {
         mentions.push({
-          assistantId: bestScore.assistantId,
-          assistantName: bestScore.assistantName,
+          assistantId: bestCandidate.assistantId,
+          assistantName: bestCandidate.assistantName,
         });
+        message = message.replace(
+          mc,
+          `:metion[${bestCandidate.assistantName}]{${bestCandidate.assistantId}}`
+        );
       }
     }
   }
