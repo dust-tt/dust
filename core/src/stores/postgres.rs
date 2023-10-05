@@ -1452,6 +1452,8 @@ impl Store for PostgresStore {
             }
         }
 
+        where_clauses.push("status = 'latest'".to_string());
+
         let serialized_where_clauses = where_clauses.join(" AND ");
 
         // compute the total count
