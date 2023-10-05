@@ -340,6 +340,7 @@ export async function renderRetrievalActionByModelId(
 
     return {
       id: d.id,
+      dataSourceWorkspaceId: d.dataSourceWorkspaceId,
       dataSourceId: d.dataSourceId,
       sourceUrl: d.sourceUrl,
       documentId: d.documentId,
@@ -598,6 +599,11 @@ export async function* runRetrieval(
   const run = res.value;
   let documents: RetrievalDocumentType[] = [];
 
+  const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
+  for (const ds of c.dataSources) {
+    dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
+  }
+
   for (const t of run.traces) {
     if (t[1][0][0].error) {
       yield {
@@ -633,6 +639,7 @@ export async function* runRetrieval(
         const reference = refs[i % refs.length];
         return {
           id: 0, // dummy pending database insertion
+          dataSourceWorkspaceId: dataSourcesIdToWorkspaceId[d.data_source_id],
           dataSourceId: d.data_source_id,
           documentId: d.document_id,
           reference,
@@ -656,6 +663,7 @@ export async function* runRetrieval(
     for (const d of documents) {
       const document = await RetrievalDocument.create(
         {
+          dataSourceWorkspaceId: d.dataSourceWorkspaceId,
           dataSourceId: d.dataSourceId,
           sourceUrl: d.sourceUrl,
           documentId: d.documentId,

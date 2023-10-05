@@ -324,12 +324,19 @@ function _processCiteMention(
         .map((key) => {
           const k = key.trim();
           const ref = references[k];
-          if (ref && ref.sourceUrl) {
+          if (ref) {
             if (!refCounter[k]) {
               counter++;
               refCounter[k] = counter;
             }
-            return `[<${ref.sourceUrl}|${refCounter[k]}>]`;
+            const link = ref.sourceUrl
+              ? ref.sourceUrl
+              : `${DUST_API}/w/${
+                  ref.dataSourceWorkspaceId
+                }/builder/data-sources/${
+                  ref.dataSourceId
+                }/upsert?documentId=${encodeURIComponent(ref.documentId)}`;
+            return `[<${link}|${refCounter[k]}>]`;
           }
           return "";
         })

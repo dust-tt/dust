@@ -86,6 +86,7 @@ export function isRetrievalConfiguration(
 
 export type RetrievalDocumentType = {
   id: ModelId;
+  dataSourceWorkspaceId: string;
   dataSourceId: string;
   sourceUrl: string | null;
   documentId: string;

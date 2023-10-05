@@ -235,6 +235,7 @@ export type RetrievalActionType = {
 };
 
 export type RetrievalDocumentType = {
+  dataSourceWorkspaceId: string;
   dataSourceId: string;
   sourceUrl: string | null;
   documentId: string;

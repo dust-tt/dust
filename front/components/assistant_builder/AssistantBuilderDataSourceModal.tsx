@@ -1,6 +1,5 @@
 import {
   CloudArrowDownIcon,
-  DocumentDuplicateIcon,
   Item,
   Modal,
   PageHeader,
@@ -165,7 +164,7 @@ function PickDataSource({
               icon={
                 ds.connectorProvider
                   ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                  : DocumentDuplicateIcon
+                  : CloudArrowDownIcon
               }
               key={ds.name}
               size="md"
