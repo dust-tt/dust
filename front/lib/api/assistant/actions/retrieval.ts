@@ -331,7 +331,7 @@ export async function renderRetrievalActionByModelId(
         return a.offset - b.offset;
       }
       if (a.score !== null && b.score !== null) {
-        b.score - a.score;
+        return b.score - a.score;
       }
       throw new Error(
         "Unexpected comparison of null and non-null scored chunks."
@@ -356,7 +356,7 @@ export async function renderRetrievalActionByModelId(
       return b.timestamp - a.timestamp;
     }
     if (a.score !== null && b.score !== null) {
-      b.score - a.score;
+      return b.score - a.score;
     }
     throw new Error(
       "Unexpected comparison of null and non-null scored documents."
