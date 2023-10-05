@@ -1,7 +1,7 @@
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
-  DocumentDuplicateStrokeIcon,
+  DocumentTextIcon,
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -27,6 +27,7 @@ import { RetrievalDocumentType } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 import {
+  linkFromDocument,
   PROVIDER_LOGO_PATH,
   providerFromDocument,
   titleFromDocument,
@@ -77,7 +78,6 @@ function citeDirective() {
             .map((ref: string) => ({
               counter: counter(ref),
               ref,
-              link: "https://dust.tt",
             }));
 
           // `sup` will then be mapped to a custom component `CiteBlock`.
@@ -215,7 +215,6 @@ function CiteBlockWrapper(references: {
         JSON.parse(props.references) as {
           counter: number;
           ref: string;
-          link: string;
         }[]
       ).filter((r) => r.ref in references);
 
@@ -226,6 +225,8 @@ function CiteBlockWrapper(references: {
 
             const provider = providerFromDocument(document);
             const title = titleFromDocument(document);
+            const link = linkFromDocument(document);
+
             const citeClassNames = classNames(
               "rounded-md bg-structure-100 px-1",
               "text-xs font-semibold text-action-500",
@@ -241,7 +242,7 @@ function CiteBlockWrapper(references: {
                         {provider !== "none" ? (
                           <img src={PROVIDER_LOGO_PATH[provider]}></img>
                         ) : (
-                          <DocumentDuplicateStrokeIcon className="h-4 w-4 text-slate-500" />
+                          <DocumentTextIcon className="h-4 w-4 text-slate-500" />
                         )}
                       </div>
                       <div className="text-md flex whitespace-nowrap">
@@ -251,19 +252,15 @@ function CiteBlockWrapper(references: {
                   }
                   position="below"
                 >
-                  {document.sourceUrl ? (
-                    <a
-                      // TODO(spolu): for custom data source add data source name to title
-                      href={document.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={citeClassNames}
-                    >
-                      {r.counter}
-                    </a>
-                  ) : (
-                    <span className={citeClassNames}>{r.counter}</span>
-                  )}
+                  <a
+                    // TODO(spolu): for custom data source add data source name to title
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={citeClassNames}
+                  >
+                    {r.counter}
+                  </a>
                 </Tooltip>
               </sup>
             );
