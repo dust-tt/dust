@@ -241,11 +241,11 @@ export type RetrievalDocumentType = {
   reference: string; // Short random string so that the model can refer to the document.
   timestamp: number;
   tags: string[];
-  score: number | null;
+  score: number;
   chunks: {
     text: string;
     offset: number;
-    score: number | null;
+    score: number;
   }[];
 };
 
