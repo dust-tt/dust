@@ -195,7 +195,13 @@ async function botAnswerMessage(
   const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
   let mentions: { assistantName: string; assistantId: string }[] = [];
-  if (mentionCandidates.length > 0) {
+  if (mentionCandidates.length > 1) {
+    return new Err(
+      new SlackExternalUserError(
+        "Only one assistant at a time can be called through Slack."
+      )
+    );
+  } else if (mentionCandidates.length === 1) {
     const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
     if (agentConfigurationsRes.isErr()) {
       return new Err(new Error(agentConfigurationsRes.error.message));
