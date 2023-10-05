@@ -5,6 +5,7 @@ import {
   DustAPI,
   RetrievalDocumentType,
 } from "@connectors/lib/dust_api";
+import { editDistance } from "@connectors/lib/edit_distance";
 import {
   Connector,
   ModelId,
@@ -189,13 +190,59 @@ async function botAnswerMessage(
       }
     }
   }
+  // Extract all ~mentions.
+  const mentionCandidates = message.match(/~(\S+)/g) || [];
 
+  let mentions: { assistantName: string; assistantId: string }[] = [];
+  if (mentionCandidates.length > 0) {
+    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+    if (agentConfigurationsRes.isErr()) {
+      return new Err(new Error(agentConfigurationsRes.error.message));
+    }
+    const agentConfigurations = agentConfigurationsRes.value;
+    for (const mc of mentionCandidates) {
+      const scores: {
+        assistantId: string;
+        assistantName: string;
+        distance: number;
+      }[] = [];
+      for (const agentConfiguration of agentConfigurations) {
+        const distance = editDistance(
+          mc.slice(1).toLocaleLowerCase(),
+          agentConfiguration.name.toLowerCase()
+        );
+        scores.push({
+          assistantId: agentConfiguration.sId,
+          assistantName: agentConfiguration.name,
+          distance: distance,
+        });
+      }
+      scores.sort((a, b) => {
+        return a.distance - b.distance;
+      });
+      const bestScore = scores[0];
+      if (bestScore) {
+        mentions.push({
+          assistantId: bestScore.assistantId,
+          assistantName: bestScore.assistantName,
+        });
+      }
+    }
+  }
+
+  if (mentions.length === 0) {
+    mentions.push({ assistantId: "dust", assistantName: "dust" });
+  }
+  // for now we support only one mention.
+  mentions = mentions.slice(0, 1);
   const convRes = await dustAPI.createConversation({
     title: null,
     visibility: "unlisted",
     message: {
       content: message,
-      mentions: [{ configurationId: "dust" }],
+      mentions: mentions.map((m) => {
+        return { configurationId: m.assistantId };
+      }),
       context: {
         timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
         username: slackChatBotMessage.slackUserName,
@@ -239,7 +286,8 @@ async function botAnswerMessage(
     return new Err(new Error(streamRes.error.message));
   }
 
-  let fullAnswer = "";
+  const botIdentity = `@${mentions[0]?.assistantName}:\n`;
+  let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
   let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
@@ -282,7 +330,7 @@ async function botAnswerMessage(
         break;
       }
       case "agent_generation_success": {
-        fullAnswer = event.text;
+        fullAnswer = `${botIdentity}${event.text}`;
 
         let finalAnswer = _processCiteMention(fullAnswer, action);
         finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
