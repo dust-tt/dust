@@ -36,9 +36,8 @@ export async function createGithubConnector(
   if (!(await validateInstallationId(githubInstallationId))) {
     return new Err(new Error("Github installation id is invalid"));
   }
-
-  return await sequelize_conn.transaction(async (transaction) => {
-    try {
+  try {
+    const connector = await sequelize_conn.transaction(async (transaction) => {
       const connector = await Connector.create(
         {
           type: "github",
@@ -57,14 +56,16 @@ export async function createGithubConnector(
         },
         { transaction }
       );
-      await launchGithubFullSyncWorkflow(connector.id.toString());
-      return new Ok(connector.id.toString());
-    } catch (err) {
-      logger.error({ error: err }, "Error creating github connector");
 
-      return new Err(err as Error);
-    }
-  });
+      return connector;
+    });
+    await launchGithubFullSyncWorkflow(connector.id.toString());
+    return new Ok(connector.id.toString());
+  } catch (err) {
+    logger.error({ error: err }, "Error creating github connector");
+
+    return new Err(err as Error);
+  }
 }
 
 export async function updateGithubConnector(
