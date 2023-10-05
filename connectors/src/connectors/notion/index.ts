@@ -55,7 +55,7 @@ export async function createNotionConnector(
   }
 
   try {
-    return await sequelize_conn.transaction(async (transaction) => {
+    const connector = await sequelize_conn.transaction(async (transaction) => {
       const connector = await Connector.create(
         {
           type: "notion",
@@ -73,9 +73,11 @@ export async function createNotionConnector(
         },
         { transaction }
       );
-      await launchNotionSyncWorkflow(connector.id.toString());
-      return new Ok(connector.id.toString());
+
+      return connector;
     });
+    await launchNotionSyncWorkflow(connector.id.toString());
+    return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
     return new Err(e as Error);
