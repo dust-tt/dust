@@ -314,7 +314,7 @@ export class RetrievalDocument extends Model<
   declare reference: string;
   declare documentTimestamp: Date;
   declare tags: string[];
-  declare score: number;
+  declare score: number | null;
 
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
 }
@@ -362,7 +362,7 @@ RetrievalDocument.init(
     },
     score: {
       type: DataTypes.REAL,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
@@ -390,7 +390,7 @@ export class RetrievalDocumentChunk extends Model<
 
   declare text: string;
   declare offset: number;
-  declare score: number;
+  declare score: number | null;
 
   declare retrievalDocumentId: ForeignKey<RetrievalDocument["id"]>;
 }
@@ -422,7 +422,7 @@ RetrievalDocumentChunk.init(
     },
     score: {
       type: DataTypes.REAL,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
