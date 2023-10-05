@@ -120,7 +120,7 @@ export function ConversationTitle({
         )}
 
         {isEditingTitle ? (
-          <div className="flex flex-row">
+          <div className="flex flex-row gap-1">
             <div
               onClick={(e: MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
