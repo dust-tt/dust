@@ -6,6 +6,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import {
   createConversation,
   getConversation,
+  postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
@@ -13,9 +14,12 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages";
 import {
+  ContentFragmentType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+import { PostContentFragmentRequestBodySchema } from "./[cId]/content_fragments";
 
 const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
@@ -24,12 +28,14 @@ const PostConversationsRequestBodySchema = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PostMessagesRequestBodySchema, t.null]),
+  message: t.union([PostMessagesRequestBodySchema, t.undefined]),
+  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
 });
 
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
+  contentFragment?: ContentFragmentType;
 };
 
 async function handler(
@@ -85,12 +91,42 @@ async function handler(
         });
       }
 
-      const { title, visibility, message } = bodyValidation.right;
+      const { title, visibility, message, contentFragment } =
+        bodyValidation.right;
 
-      const conversation = await createConversation(auth, {
+      if (contentFragment) {
+        if (
+          contentFragment.content.length === 0 ||
+          contentFragment.content.length > 64 * 1024
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The content must be a non-empty string of less than 64kb.",
+            },
+          });
+        }
+      }
+
+      let conversation = await createConversation(auth, {
         title,
         visibility,
       });
+
+      let newContentFragment: ContentFragmentType | null = null;
+      let newMessage: UserMessageType | null = null;
+
+      if (contentFragment) {
+        const cf = await postNewContentFragment(auth, {
+          conversation,
+          title: contentFragment.title,
+          content: contentFragment.content,
+        });
+
+        newContentFragment = cf;
+      }
 
       if (message) {
         // If a message was provided we do await for the message to be posted before returning the
@@ -112,22 +148,29 @@ async function handler(
           return apiError(req, res, messageRes.error);
         }
 
-        // If we got the user message we know that the agent messages have been created as well, so
-        // we pull the conversation again to have the created agent message included so that the
-        // user of the API can start streaming events from these agent messages directly.
+        newMessage = messageRes.value;
+      }
+
+      if (newContentFragment || newMessage) {
+        // If we created a user message or a content fragment (or both) we retrieve the
+        // conversation. If a user message was posted, we know that the agent messages have been
+        // created as well, so pulling the conversation again will allow to have an up to date view
+        // of the conversation with agent messages included so that the user of the API can start
+        // streaming events from these agent messages directly.
         const updated = await getConversation(auth, conversation.sId);
 
         if (!updated) {
           throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
         }
 
-        res
-          .status(200)
-          .json({ conversation: updated, message: messageRes.value });
-      } else {
-        // Otherwise we simply return the conversation created.
-        res.status(200).json({ conversation });
+        conversation = updated;
       }
+
+      res.status(200).json({
+        conversation,
+        message: newMessage ?? undefined,
+        contentFragment: newContentFragment ?? undefined,
+      });
       return;
 
     default:
