@@ -599,6 +599,10 @@ export async function* runRetrieval(
   const run = res.value;
   let documents: RetrievalDocumentType[] = [];
 
+  // This is not perfect and will be erroneous in case of two data sources with the same id from two
+  // different workspaces. We don't support cross workspace data sources right now. But we'll likely
+  // want `core` to return the `workspace_id` that was used eventualy.
+  // TODO(spolu): make `core` return data source workspace id.
   const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
   for (const ds of c.dataSources) {
     dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;

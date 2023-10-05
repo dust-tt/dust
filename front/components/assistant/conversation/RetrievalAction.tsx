@@ -225,7 +225,9 @@ export function linkFromDocument(document: RetrievalDocumentType): string {
   if (document.sourceUrl) {
     return document.sourceUrl;
   } else {
-    return `https://dust.tt/w/${document.dataSourceWorkspaceId}/builder/data-sources/${
+    return `https://dust.tt/w/${
+      document.dataSourceWorkspaceId
+    }/builder/data-sources/${
       document.dataSourceId
     }/upsert?documentId=${encodeURIComponent(document.documentId)}`;
   }
