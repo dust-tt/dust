@@ -362,7 +362,7 @@ RetrievalDocument.init(
     },
     score: {
       type: DataTypes.REAL,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
@@ -422,7 +422,7 @@ RetrievalDocumentChunk.init(
     },
     score: {
       type: DataTypes.REAL,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
