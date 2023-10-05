@@ -326,8 +326,17 @@ export async function renderRetrievalActionByModelId(
         offset: c.offset,
         score: c.score,
       }));
-
-    chunks.sort((a, b) => b.score - a.score);
+    chunks.sort((a, b) => {
+      if (a.score === null && b.score === null) {
+        return a.offset - b.offset;
+      }
+      if (a.score !== null && b.score !== null) {
+        b.score - a.score;
+      }
+      throw new Error(
+        "Unexpected comparison of null and non-null scored chunks."
+      );
+    });
 
     return {
       id: d.id,
@@ -342,7 +351,17 @@ export async function renderRetrievalActionByModelId(
     };
   });
 
-  documents.sort((a, b) => b.score - a.score);
+  documents.sort((a, b) => {
+    if (a.score === null && b.score === null) {
+      return b.timestamp - a.timestamp;
+    }
+    if (a.score !== null && b.score !== null) {
+      b.score - a.score;
+    }
+    throw new Error(
+      "Unexpected comparison of null and non-null scored documents."
+    );
+  });
 
   return {
     id: action.id,
