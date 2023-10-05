@@ -64,7 +64,7 @@ export default function RetrievalAction({
         <div className="grid-cols-auto grid items-center">
           {!retrievalAction.documents ? (
             <div>
-              <div className="text-xs font-bold text-element-600">
+              <div className="pb-2 text-xs font-bold text-element-600">
                 Retrieving...
               </div>
               <Spinner size="sm" />
