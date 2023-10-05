@@ -208,6 +208,7 @@ export const navigation = [
       { title: "Runs", href: "/runs" },
       { title: "Documents", href: "/documents" },
       { title: "Conversations", href: "/conversations" },
+      { title: "Agents", href: "/agents" },
     ],
   },
 ];
