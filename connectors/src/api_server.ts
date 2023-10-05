@@ -22,6 +22,7 @@ import { authMiddleware } from "@connectors/middleware/auth";
 
 import { getResourcesParentsAPIHandler } from "./api/get_resources_parents";
 import { getResourcesTitlesAPIHandler } from "./api/get_resources_titles";
+import { linkSlackChannelWithAgentHandler } from "./api/slack_channel_link_with_agent";
 
 export function startServer(port: number) {
   const app = express();
@@ -69,6 +70,11 @@ export function startServer(port: number) {
   app.post(
     "/connectors/:connector_id/permissions",
     setConnectorPermissionsAPIHandler
+  );
+
+  app.post(
+    "/slack/channels/:slackChannelId/link_with_agent",
+    linkSlackChannelWithAgentHandler
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
