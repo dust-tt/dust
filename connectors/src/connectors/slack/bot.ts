@@ -1,3 +1,5 @@
+import levenshtein from "fast-levenshtein";
+
 import {
   AgentActionType,
   AgentGenerationSuccessEvent,
@@ -189,13 +191,70 @@ async function botAnswerMessage(
       }
     }
   }
+  // Extract all ~mentions.
+  const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
+  let mentions: { assistantName: string; assistantId: string }[] = [];
+  if (mentionCandidates.length > 1) {
+    return new Err(
+      new SlackExternalUserError(
+        "Only one assistant at a time can be called through Slack."
+      )
+    );
+  } else if (mentionCandidates.length === 1) {
+    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+    if (agentConfigurationsRes.isErr()) {
+      return new Err(new Error(agentConfigurationsRes.error.message));
+    }
+    const agentConfigurations = agentConfigurationsRes.value;
+    for (const mc of mentionCandidates) {
+      let bestCandidate:
+        | {
+            assistantId: string;
+            assistantName: string;
+            distance: number;
+          }
+        | undefined = undefined;
+      for (const agentConfiguration of agentConfigurations) {
+        const distance = levenshtein.get(
+          mc.slice(1).toLowerCase(),
+          agentConfiguration.name.toLowerCase()
+        );
+        if (bestCandidate === undefined || bestCandidate.distance > distance) {
+          bestCandidate = {
+            assistantId: agentConfiguration.sId,
+            assistantName: agentConfiguration.name,
+            distance: distance,
+          };
+        }
+      }
+
+      if (bestCandidate) {
+        mentions.push({
+          assistantId: bestCandidate.assistantId,
+          assistantName: bestCandidate.assistantName,
+        });
+        message = message.replace(
+          mc,
+          `:metion[${bestCandidate.assistantName}]{${bestCandidate.assistantId}}`
+        );
+      }
+    }
+  }
+
+  if (mentions.length === 0) {
+    mentions.push({ assistantId: "dust", assistantName: "dust" });
+  }
+  // for now we support only one mention.
+  mentions = mentions.slice(0, 1);
   const convRes = await dustAPI.createConversation({
     title: null,
     visibility: "unlisted",
     message: {
       content: message,
-      mentions: [{ configurationId: "dust" }],
+      mentions: mentions.map((m) => {
+        return { configurationId: m.assistantId };
+      }),
       context: {
         timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
         username: slackChatBotMessage.slackUserName,
@@ -239,7 +298,8 @@ async function botAnswerMessage(
     return new Err(new Error(streamRes.error.message));
   }
 
-  let fullAnswer = "";
+  const botIdentity = `@${mentions[0]?.assistantName}:\n`;
+  let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
   let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
@@ -282,7 +342,7 @@ async function botAnswerMessage(
         break;
       }
       case "agent_generation_success": {
-        fullAnswer = event.text;
+        fullAnswer = `${botIdentity}${event.text}`;
 
         let finalAnswer = _processCiteMention(fullAnswer, action);
         finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;

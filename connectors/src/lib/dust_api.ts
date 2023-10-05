@@ -305,6 +305,11 @@ export type ConversationType = {
   content: (UserMessageType[] | AgentMessageType[])[];
 };
 
+type AgentConfigurationType = {
+  sId: string;
+  name: string;
+};
+
 export class DustAPI {
   _credentials: DustAPICredentials;
 
@@ -504,5 +509,25 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.conversation as ConversationType);
+  }
+
+  async getAgentConfigurations() {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.agentConfigurations as AgentConfigurationType[]);
   }
 }
