@@ -28,8 +28,8 @@ const PostConversationsRequestBodySchema = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PostMessagesRequestBodySchema, t.null]),
-  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.null]),
+  message: t.union([PostMessagesRequestBodySchema, t.undefined]),
+  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
 });
 
 export type PostConversationsResponseBody = {
