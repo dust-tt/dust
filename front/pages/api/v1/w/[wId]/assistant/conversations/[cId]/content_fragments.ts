@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -12,6 +15,11 @@ import { ContentFragmentType } from "@app/types/assistant/conversation";
 export type PostContentFragmentsResponseBody = {
   contentFragment: ContentFragmentType;
 };
+
+export const PostContentFragmentRequestBodySchema = t.type({
+  title: t.string,
+  content: t.string,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -50,29 +58,31 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const { content, title } = req.body;
+      const bodyValidation = PostContentFragmentRequestBodySchema.decode(
+        req.body
+      );
 
-      if (
-        typeof content !== "string" ||
-        content.length === 0 ||
-        content.length > 64 * 1024
-      ) {
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { content, title } = bodyValidation.right;
+
+      if (content.length === 0 || content.length > 64 * 1024) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
               "The content must be a non-empty string of less than 64kb.",
-          },
-        });
-      }
-
-      if (typeof title !== "string" || title.length === 0) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The title must be a non-empty string.",
           },
         });
       }
