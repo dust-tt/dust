@@ -340,7 +340,7 @@ export default function SettingsView({
                 </div>
               </div>
             </div>
-            <div className="flex pt-6">
+            <div className="flex py-6">
               <Button
                 disabled={disable || isUpdating || isDeleting}
                 onClick={handleUpdate}
