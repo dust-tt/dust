@@ -91,7 +91,7 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PostMessagesRequestBodySchemaIoTs, t.null]),
+  message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<

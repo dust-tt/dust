@@ -4,6 +4,7 @@ import {
   AgentActionType,
   AgentGenerationSuccessEvent,
   AgentMessageType,
+  ConversationType,
   DustAPI,
   RetrievalDocumentType,
 } from "@connectors/lib/dust_api";
@@ -278,18 +279,22 @@ async function botAnswerMessage(
     },
   };
 
-  let conversationId: string | undefined = undefined;
+  let conversation: ConversationType | undefined = undefined;
   if (lastSlackChatBotMessage?.conversationId) {
-    conversationId = lastSlackChatBotMessage.conversationId;
-    slackChatBotMessage.conversationId = conversationId;
-    await slackChatBotMessage.save();
     const mesasgeRes = await dustAPI.postUserMessage({
-      conversationId: conversationId,
+      conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
     });
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
     }
+    const conversationRes = await dustAPI.getConversation({
+      conversationId: lastSlackChatBotMessage.conversationId,
+    });
+    if (conversationRes.isErr()) {
+      return new Err(new Error(conversationRes.error.message));
+    }
+    conversation = conversationRes.value;
   } else {
     const convRes = await dustAPI.createConversation({
       title: null,
@@ -300,17 +305,11 @@ async function botAnswerMessage(
       return new Err(new Error(convRes.error.message));
     }
 
-    const conversation = convRes.value;
-    conversationId = conversation.sId;
-    slackChatBotMessage.conversationId = conversationId;
-    await slackChatBotMessage.save();
+    conversation = convRes.value;
   }
+  slackChatBotMessage.conversationId = conversation.sId;
+  await slackChatBotMessage.save();
 
-  const conversationRes = await dustAPI.getConversation({ conversationId });
-  if (conversationRes.isErr()) {
-    return new Err(new Error(conversationRes.error.message));
-  }
-  const conversation = conversationRes.value;
   const agentMessages = conversation.content
     .map((versions) => {
       const m = versions[versions.length - 1];
