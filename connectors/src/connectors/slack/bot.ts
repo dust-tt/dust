@@ -324,8 +324,8 @@ async function botAnswerMessage(
   const agentMessage = agentMessages[0] as AgentMessageType;
 
   const streamRes = await dustAPI.streamAgentMessageEvents({
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
+    conversation: conversation,
+    message: agentMessage,
   });
 
   if (streamRes.isErr()) {

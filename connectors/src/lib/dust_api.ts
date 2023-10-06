@@ -411,11 +411,11 @@ export class DustAPI {
   }
 
   async streamAgentMessageEvents({
-    conversationId,
-    messageId,
+    conversation,
+    message,
   }: {
-    conversationId: string;
-    messageId: string;
+    conversation: ConversationType;
+    message: AgentMessageType;
   }) {
     const headers = {
       "Content-Type": "application/json",
@@ -423,7 +423,9 @@ export class DustAPI {
     };
 
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages/${messageId}/events`,
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
+        conversation.sId
+      }/messages/${message.sId}/events`,
       {
         method: "GET",
         headers: headers,
