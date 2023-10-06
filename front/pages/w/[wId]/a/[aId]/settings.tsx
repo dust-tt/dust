@@ -174,7 +174,7 @@ export default function SettingsView({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-scroll">
+        <div className="mt-2 overflow-x-auto scrollbar-hide">
           <Tab tabs={subNavigationApp({ owner, app, current: "settings" })} />
         </div>
         <div className="mt-8 flex flex-1">
