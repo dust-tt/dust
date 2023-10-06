@@ -56,6 +56,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/blog-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
