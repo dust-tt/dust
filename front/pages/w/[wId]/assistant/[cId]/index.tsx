@@ -1,6 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -57,6 +57,21 @@ export default function AssistantConversation({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleNewConvoShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleNewConvoShortcut);
+    };
+  }, []);
+
+  function handleNewConvoShortcut(event: KeyboardEvent) {
+    // Check for Command on Mac or Ctrl on others
+    const isModifier = event.metaKey || event.ctrlKey;
+    if (isModifier && event.key === "/") {
+      void router.push(`/w/${owner.sId}/assistant/new`);
+    }
+  }
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
