@@ -32,7 +32,8 @@ export async function botAnswerMessageWithErrorHandling(
   slackTeamId: string,
   slackChannel: string,
   slackUserId: string,
-  slackMessageTs: string
+  slackMessageTs: string,
+  slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
@@ -57,6 +58,7 @@ export async function botAnswerMessageWithErrorHandling(
     slackChannel,
     slackUserId,
     slackMessageTs,
+    slackThreadTs,
     connector
   );
   if (res.isErr()) {
@@ -105,8 +107,21 @@ async function botAnswerMessage(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string,
+  slackThreadTs: string | null,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+  let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
+  if (slackThreadTs) {
+    lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
+      where: {
+        connectorId: connector.id,
+        channelId: slackChannel,
+        threadTs: slackThreadTs,
+      },
+      order: [["createdAt", "DESC"]],
+      limit: 1,
+    });
+  }
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
     message: message,
@@ -118,6 +133,8 @@ async function botAnswerMessage(
     slackAvatar: null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
+    threadTs: lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
   const accessToken = await getAccessToken(connector.connectionId);
@@ -194,7 +211,7 @@ async function botAnswerMessage(
   // Extract all ~mentions.
   const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
-  let mentions: { assistantName: string; assistantId: string }[] = [];
+  const mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 1) {
     return new Err(
       new SlackExternalUserError(
@@ -245,37 +262,55 @@ async function botAnswerMessage(
   if (mentions.length === 0) {
     mentions.push({ assistantId: "dust", assistantName: "dust" });
   }
-  // for now we support only one mention.
-  mentions = mentions.slice(0, 1);
-  const convRes = await dustAPI.createConversation({
-    title: null,
-    visibility: "unlisted",
-    message: {
-      content: message,
-      mentions: mentions.map((m) => {
-        return { configurationId: m.assistantId };
-      }),
-      context: {
-        timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
-        username: slackChatBotMessage.slackUserName,
-        fullName:
-          slackChatBotMessage.slackFullName ||
-          slackChatBotMessage.slackUserName,
-        email: slackChatBotMessage.slackEmail,
-        profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      },
-    },
-  });
 
-  if (convRes.isErr()) {
-    return new Err(new Error(convRes.error.message));
+  const messageReqBody = {
+    content: message,
+    mentions: mentions.map((m) => {
+      return { configurationId: m.assistantId };
+    }),
+    context: {
+      timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+      username: slackChatBotMessage.slackUserName,
+      fullName:
+        slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
+      email: slackChatBotMessage.slackEmail,
+      profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+    },
+  };
+
+  let conversationId: string | undefined = undefined;
+  if (lastSlackChatBotMessage?.conversationId) {
+    conversationId = lastSlackChatBotMessage.conversationId;
+    slackChatBotMessage.conversationId = conversationId;
+    await slackChatBotMessage.save();
+    const mesasgeRes = await dustAPI.postUserMessage({
+      conversationId: conversationId,
+      message: messageReqBody,
+    });
+    if (mesasgeRes.isErr()) {
+      return new Err(new Error(mesasgeRes.error.message));
+    }
+  } else {
+    const convRes = await dustAPI.createConversation({
+      title: null,
+      visibility: "unlisted",
+      message: messageReqBody,
+    });
+    if (convRes.isErr()) {
+      return new Err(new Error(convRes.error.message));
+    }
+
+    const conversation = convRes.value;
+    conversationId = conversation.sId;
+    slackChatBotMessage.conversationId = conversationId;
+    await slackChatBotMessage.save();
   }
 
-  const conversation = convRes.value;
-
-  slackChatBotMessage.conversationId = conversation.sId;
-  await slackChatBotMessage.save();
-
+  const conversationRes = await dustAPI.getConversation({ conversationId });
+  if (conversationRes.isErr()) {
+    return new Err(new Error(conversationRes.error.message));
+  }
+  const conversation = conversationRes.value;
   const agentMessages = conversation.content
     .map((versions) => {
       const m = versions[versions.length - 1];
@@ -290,8 +325,8 @@ async function botAnswerMessage(
   const agentMessage = agentMessages[0] as AgentMessageType;
 
   const streamRes = await dustAPI.streamAgentMessageEvents({
-    conversation,
-    message: agentMessage,
+    conversationId: conversation.sId,
+    messageId: agentMessage.sId,
   });
 
   if (streamRes.isErr()) {

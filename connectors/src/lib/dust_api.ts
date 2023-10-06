@@ -91,7 +91,7 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: PostMessagesRequestBodySchemaIoTs,
+  message: t.union([PostMessagesRequestBodySchemaIoTs, t.null]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -381,12 +381,41 @@ export class DustAPI {
     return new Ok(json.conversation as ConversationType);
   }
 
-  async streamAgentMessageEvents({
-    conversation,
+  async postUserMessage({
+    conversationId,
     message,
   }: {
-    conversation: ConversationType;
-    message: AgentMessageType;
+    conversationId: string;
+    message: PostMessagesRequestBodySchema;
+  }) {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...message,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+
+    return new Ok(json.message as UserMessageType);
+  }
+
+  async streamAgentMessageEvents({
+    conversationId,
+    messageId,
+  }: {
+    conversationId: string;
+    messageId: string;
   }) {
     const headers = {
       "Content-Type": "application/json",
@@ -394,9 +423,7 @@ export class DustAPI {
     };
 
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
-        conversation.sId
-      }/messages/${message.sId}/events`,
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages/${messageId}/events`,
       {
         method: "GET",
         headers: headers,
@@ -491,7 +518,7 @@ export class DustAPI {
     return new Ok({ eventStream: streamEvents() });
   }
 
-  async getConversation(conversationId: string) {
+  async getConversation({ conversationId }: { conversationId: string }) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
