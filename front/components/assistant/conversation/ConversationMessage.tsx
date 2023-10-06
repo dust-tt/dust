@@ -2,13 +2,7 @@ import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { FaceSmileIcon } from "@heroicons/react/24/outline";
-import {
-  ComponentType,
-  MouseEvent,
-  MouseEventHandler,
-  useEffect,
-  useState,
-} from "react";
+import { ComponentType, MouseEventHandler, useEffect, useState } from "react";
 import React from "react";
 import { mutate } from "swr";
 
@@ -121,12 +115,22 @@ export function ConversationMessage({
     <div className="flex w-full gap-4">
       {/* COLUMN 1: AVATAR - in small size if small layout */}
       <div>
-        <Avatar
-          visual={pictureUrl}
-          name={name || undefined}
-          size="md"
-          busy={avatarBusy}
-        />
+        <div className="sm:hidden">
+          <Avatar
+            visual={pictureUrl}
+            name={name || undefined}
+            size="xs"
+            busy={avatarBusy}
+          />
+        </div>
+        <div className="hidden sm:block">
+          <Avatar
+            visual={pictureUrl}
+            name={name || undefined}
+            size="md"
+            busy={avatarBusy}
+          />
+        </div>
       </div>
 
       {/* COLUMN 2: CONTENT */}
@@ -244,7 +248,7 @@ interface ButtonEmojiProps {
   variant?: "selected" | "unselected";
   count?: string;
   emoji?: string;
-  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onClick?: () => void;
 }
 
 export function ButtonEmoji({
