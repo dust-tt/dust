@@ -534,6 +534,7 @@ export async function generateConversationTitle(
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
+    prompt: "", // There is no prompt for title generation.
     allowedTokenCount,
   });
 
