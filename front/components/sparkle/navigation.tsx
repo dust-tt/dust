@@ -53,6 +53,12 @@ export type SparkleAppLayoutNavigation = {
   subMenu?: SparkleAppLayoutNavigation[];
 };
 
+export type SidebarNavigation = {
+  id: "conversation" | "workspace" | "developers" | "lab";
+  label: string;
+  menus: SparkleAppLayoutNavigation[];
+};
+
 export const topNavigation = ({
   owner,
   current,
@@ -75,9 +81,8 @@ export const topNavigation = ({
   if (owner.role === "admin" || owner.role === "builder") {
     nav.push({
       id: "settings",
-      label: "Settings",
-      hideLabel: true,
-      icon: Cog6ToothIcon,
+      label: "Admin",
+      icon: KeyIcon,
       href: `/w/${owner.sId}/builder/assistants`,
       current: current === "settings",
     });
@@ -97,61 +102,82 @@ export const subNavigationAdmin = ({
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
 }) => {
-  const nav: SparkleAppLayoutNavigation[] = [];
+  const nav: SidebarNavigation[] = [];
 
-  if (owner.role === "admin" || owner.role === "builder") {
-    nav.push({
-      id: "assistants",
-      label: "Assistants Manager",
-      icon: RobotIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
-      current: current === "assistants",
-      subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
-      subMenu: current === "assistants" ? subMenu : undefined,
-    });
+  if (owner.role !== "admin" && owner.role !== "builder") {
+    return nav;
   }
 
   nav.push({
-    id: "data_sources",
-    label: "Data Sources",
-    icon: CloudArrowDownIcon,
-    href: `/w/${owner.sId}/builder/data-sources`,
-    current: current === "data_sources",
-    subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
-    subMenu: current === "data_sources" ? subMenu : undefined,
+    id: "conversation",
+    label: "Conversations",
+    menus: [
+      {
+        id: "assistants",
+        label: "Assistants Manager",
+        icon: RobotIcon,
+        href: `/w/${owner.sId}/builder/assistants`,
+        current: current === "assistants",
+        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
+        subMenu: current === "assistants" ? subMenu : undefined,
+      },
+      {
+        id: "data_sources",
+        label: "Data Sources",
+        icon: CloudArrowDownIcon,
+        href: `/w/${owner.sId}/builder/data-sources`,
+        current: current === "data_sources",
+        subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
+        subMenu: current === "data_sources" ? subMenu : undefined,
+      },
+    ],
   });
 
-  if (owner.role === "admin") {
-    nav.push({
-      id: "workspace",
-      label: "Workspace Settings",
-      icon: KeyIcon,
-      href: `/w/${owner.sId}/workspace`,
-      current: current === "workspace",
-      subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-      subMenu: current === "workspace" ? subMenu : undefined,
-    });
-  }
+  nav.push({
+    id: "workspace",
+    label: "Workspace",
+    menus: [
+      {
+        id: "workspace",
+        label: "Settings",
+        icon: KeyIcon,
+        href: `/w/${owner.sId}/workspace`,
+        current: current === "workspace",
+        subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+        subMenu: current === "workspace" ? subMenu : undefined,
+      },
+    ],
+  });
 
-  if (owner.role === "admin" || owner.role === "builder") {
-    nav.push({
-      id: "developers",
-      label: "Developers Tools",
-      icon: CommandLineIcon,
-      href: `/w/${owner.sId}/a`,
-      current: current === "developers",
-      subMenuLabel: current === "developers" ? subMenuLabel : undefined,
-      subMenu: current === "developers" ? subMenu : undefined,
-    });
-  }
+  nav.push({
+    id: "developers",
+    label: "Developers",
+    menus: [
+      {
+        id: "developers",
+        label: "Tools",
+        icon: CommandLineIcon,
+        href: `/w/${owner.sId}/a`,
+        current: current === "developers",
+        subMenuLabel: current === "developers" ? subMenuLabel : undefined,
+        subMenu: current === "developers" ? subMenu : undefined,
+      },
+    ],
+  });
 
   if (isDevelopmentOrDustWorkspace(owner)) {
     nav.push({
-      id: "extract",
-      label: "Extract (Beta - Dust only)",
-      icon: ArrowUpOnSquareIcon,
-      href: `/w/${owner.sId}/u/extract`,
-      current: current === "extract",
+      id: "lab",
+      label: "Lab (Dust Only)",
+      menus: [
+        {
+          id: "extract",
+          label: "Extract",
+          icon: ArrowUpOnSquareIcon,
+          href: `/w/${owner.sId}/u/extract`,
+          current: current === "extract",
+        },
+      ],
     });
   }
 
