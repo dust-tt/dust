@@ -104,7 +104,7 @@ export default function AssistantNew({
       message: {
         content: input,
         context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           profilePictureUrl: user.image,
         },
         mentions,
