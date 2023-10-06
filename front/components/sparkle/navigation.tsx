@@ -133,21 +133,23 @@ export const subNavigationAdmin = ({
     ],
   });
 
-  nav.push({
-    id: "workspace",
-    label: "Workspace",
-    menus: [
-      {
-        id: "workspace",
-        label: "Settings",
-        icon: KeyIcon,
-        href: `/w/${owner.sId}/workspace`,
-        current: current === "workspace",
-        subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-        subMenu: current === "workspace" ? subMenu : undefined,
-      },
-    ],
-  });
+  if (owner.role === "admin") {
+    nav.push({
+      id: "workspace",
+      label: "Workspace",
+      menus: [
+        {
+          id: "workspace",
+          label: "Settings",
+          icon: KeyIcon,
+          href: `/w/${owner.sId}/workspace`,
+          current: current === "workspace",
+          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+          subMenu: current === "workspace" ? subMenu : undefined,
+        },
+      ],
+    });
+  }
 
   nav.push({
     id: "developers",
