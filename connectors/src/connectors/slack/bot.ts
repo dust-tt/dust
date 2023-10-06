@@ -236,7 +236,7 @@ async function botAnswerMessage(
         });
         message = message.replace(
           mc,
-          `:mention[${bestCandidate.assistantName}]{${bestCandidate.assistantId}}`
+          `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
         );
       }
     }
