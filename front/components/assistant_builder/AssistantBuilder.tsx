@@ -33,8 +33,8 @@ import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   getSupportedModelConfig,
-  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
-  GPT_4_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/assistant";
 import { ConnectorProvider } from "@app/lib/connectors_api";
@@ -46,8 +46,8 @@ import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const usedModelConfigs = [
-  GPT_4_DEFAULT_MODEL_CONFIG,
-  GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
+  GPT_3_5_TURBO_16K_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
 ];
@@ -178,8 +178,8 @@ export default function AssistantBuilder({
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
       modelSettings: owner.plan.limits.largeModels
-        ? GPT_4_DEFAULT_MODEL_CONFIG
-        : GPT_3_5_TURBO_DEFAULT_MODEL_CONFIG,
+        ? GPT_4_32K_MODEL_CONFIG
+        : GPT_3_5_TURBO_16K_MODEL_CONFIG,
     },
   });
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);

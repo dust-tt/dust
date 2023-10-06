@@ -309,11 +309,12 @@ export async function* runGeneration(
     return;
   }
 
-  // if model is gpt4-32k but tokens used is less than 4k,
-  // then we override the model to gpt4 standard (cheaper)
+  // If model is gpt4-32k but tokens used is less than GPT_4_CONTEXT_SIZE-MIN_GENERATION_TOKENS,
+  // then we override the model to gpt4 standard (8k context, cheaper).
   if (
     model.modelId === GPT_4_32K_MODEL_ID &&
-    modelConversationRes.value.tokensUsed < 4000
+    modelConversationRes.value.tokensUsed <
+      GPT_4_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS
   ) {
     model = {
       modelId: GPT_4_MODEL_CONFIG.modelId,
