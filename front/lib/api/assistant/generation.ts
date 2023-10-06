@@ -51,10 +51,12 @@ export type ModelConversationType = {
 export async function renderConversationForModel({
   conversation,
   model,
+  prompt,
   allowedTokenCount,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
+  prompt: string;
   allowedTokenCount: number;
 }): Promise<
   Result<
@@ -119,13 +121,13 @@ export async function renderConversationForModel({
     }
   }
 
-  async function tokenCountForMessage(
-    message: ModelMessageType,
+  async function tokenCountForText(
+    text: string,
     model: { providerId: string; modelId: string }
   ): Promise<Result<number, Error>> {
     try {
       const res = await CoreAPI.tokenize({
-        text: message.content,
+        text,
         providerId: model.providerId,
         modelId: model.modelId,
       });
@@ -143,18 +145,29 @@ export async function renderConversationForModel({
 
   const now = Date.now();
 
-  // This is a bit aggressive but fuck it.
-  const tokenCountRes = await Promise.all(
-    messages.map((m) => {
-      return tokenCountForMessage(m, model);
-    })
-  );
+  // Compute in parallel the token count for each message and the prompt.
+  const [messagesCountRes, promptCountRes] = await Promise.all([
+    // This is a bit aggressive but fuck it.
+    Promise.all(
+      messages.map((m) => {
+        return tokenCountForText(`${m.role} ${m.name} ${m.content}`, model);
+      })
+    ),
+    tokenCountForText(prompt, model),
+  ]);
+
+  if (promptCountRes.isErr()) {
+    return new Err(promptCountRes.error);
+  }
+
+  // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
+  // approximations, 64 tokens seems small enough and ample enough.
+  let tokensUsed = promptCountRes.value + 64;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected = [];
-  let tokensUsed = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
-    const r = tokenCountRes[i];
+    const r = messagesCountRes[i];
     if (r.isErr()) {
       return new Err(r.error);
     }
@@ -168,6 +181,7 @@ export async function renderConversationForModel({
   logger.info(
     {
       messageCount: messages.length,
+      promptToken: promptCountRes.value,
       tokensUsed,
       messageSelected: selected.length,
       elapsed: Date.now() - now,
@@ -288,10 +302,13 @@ export async function* runGeneration(
     );
   }
 
+  const prompt = constructPrompt(userMessage, configuration);
+
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
+    prompt,
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
 
@@ -333,7 +350,7 @@ export async function* runGeneration(
   // console.log(
   //   JSON.stringify({
   //     conversation: modelConversationRes.value,
-  //     prompt: constructPrompt(userMessage, configuration),
+  //     prompt,
   //   })
   // );
 
@@ -348,7 +365,7 @@ export async function* runGeneration(
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
     {
       conversation: modelConversationRes.value.modelConversation,
-      prompt: constructPrompt(userMessage, configuration),
+      prompt,
     },
   ]);
 

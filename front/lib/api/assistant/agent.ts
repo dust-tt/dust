@@ -74,6 +74,7 @@ export async function generateActionInputs(
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
+    prompt,
     allowedTokenCount:
       GPT_4_32K_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS,
   });
