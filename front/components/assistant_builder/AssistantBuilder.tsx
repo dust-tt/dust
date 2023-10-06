@@ -291,7 +291,11 @@ export default function AssistantBuilder({
       valid = false;
     } else {
       if (!assistantHandleIsValid(builderState.handle)) {
-        setAssistantHandleError("Only letters, numbers, _ and - allowed");
+        if (builderState.handle.length > 20) {
+          setAssistantHandleError("The name must be 20 characters or less");
+        } else {
+          setAssistantHandleError("Only letters, numbers, _ and - allowed");
+        }
         valid = false;
       } else if (!assistantHandleIsAvailable(builderState.handle)) {
         setAssistantHandleError("Assistant handle is already taken");
