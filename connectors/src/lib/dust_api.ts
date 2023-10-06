@@ -84,6 +84,11 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
   }),
 });
 
+const PostContentFragmentRequestBodySchemaIoTs = t.type({
+  title: t.string,
+  content: t.string,
+});
+
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
@@ -92,6 +97,10 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("deleted"),
   ]),
   message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
+  contentFragment: t.union([
+    PostContentFragmentRequestBodySchemaIoTs,
+    t.undefined,
+  ]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -354,6 +363,7 @@ export class DustAPI {
     title,
     visibility,
     message,
+    contentFragment,
   }: PostConversationsRequestBodySchema): Promise<
     Result<
       { conversation: ConversationType; message: UserMessageType },
@@ -372,6 +382,7 @@ export class DustAPI {
           title,
           visibility,
           message,
+          contentFragment,
         }),
       }
     );

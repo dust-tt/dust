@@ -1,3 +1,6 @@
+import { WebClient } from "@slack/web-api";
+import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
 
 import {
@@ -21,6 +24,7 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {
+  formatMessagesForUpsert,
   getAccessToken,
   getBotUserIdMemoized,
   getSlackClient,
@@ -143,6 +147,14 @@ async function botAnswerMessage(
 
   const accessToken = await getAccessToken(connector.connectionId);
   const slackClient = getSlackClient(accessToken);
+  const contentFragmentPromise = getMessagesForThread(
+    slackClient,
+    slackChannel,
+    lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackMessageTs,
+    connector
+  );
+  // console.log("contentFragmentPromise", await contentFragmentPromise);
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
@@ -309,6 +321,10 @@ async function botAnswerMessage(
     },
   };
 
+  const contentFragmentRes = await contentFragmentPromise;
+  if (contentFragmentRes.isErr()) {
+    return new Err(new Error(contentFragmentRes.error.message));
+  }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
@@ -333,6 +349,10 @@ async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
+      contentFragment: {
+        title: "Slack conversation",
+        content: contentFragmentRes.value,
+      },
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
@@ -522,4 +542,85 @@ export async function toggleSlackbot(
   await slackConfig.save();
 
   return new Ok(void 0);
+}
+
+async function getMessagesForThread(
+  slackClient: WebClient,
+  channelId: string,
+  threadTs: string,
+  startingAtTs: string | null,
+  connector: Connector
+) {
+  console.log("getting messages for ", threadTs);
+  let allMessages: Message[] = [];
+
+  let next_cursor = undefined;
+
+  let shouldTake = false;
+  do {
+    const replies: ConversationsRepliesResponse =
+      await slackClient.conversations.replies({
+        channel: channelId,
+        ts: threadTs,
+        cursor: next_cursor,
+        limit: 100,
+      });
+    // Despite the typing, in practice `replies` can be undefined at times.
+    if (!replies) {
+      return new Err(
+        new Error(
+          "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
+        )
+      );
+    }
+    if (replies.error) {
+      throw new Error(replies.error);
+    }
+    if (!replies.messages) {
+      break;
+    }
+    for (const m of replies.messages) {
+      if (m.ts === startingAtTs) {
+        console.log(
+          "[yes] should take yes because",
+          m.ts,
+          startingAtTs,
+          m.text
+        );
+        shouldTake = true;
+      } else {
+        // console.log("[no] should take no because", m.ts, threadTs, m.text, m);
+      }
+      if (!m.user) {
+        continue;
+      }
+      if (shouldTake) {
+        const slackChatBotMessage = await SlackChatBotMessage.findOne({
+          where: {
+            connectorId: connector.id,
+            messageTs: m.ts,
+            channelId: channelId,
+          },
+        });
+        if (slackChatBotMessage) {
+          continue;
+        }
+        allMessages.push(m);
+      }
+    }
+
+    next_cursor = replies.response_metadata?.next_cursor;
+  } while (next_cursor);
+
+  const botUserId = await getBotUserIdMemoized(slackClient);
+  allMessages = allMessages.filter((m) => m.user !== botUserId);
+
+  const text = await formatMessagesForUpsert(
+    channelId,
+    allMessages,
+    connector.id.toString(),
+    slackClient
+  );
+
+  return new Ok(text);
 }
