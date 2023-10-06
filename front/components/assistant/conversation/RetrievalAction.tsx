@@ -28,7 +28,7 @@ export default function RetrievalAction({
 }: {
   retrievalAction: RetrievalActionType;
 }) {
-  const { query, relativeTimeFrame } = retrievalAction.params;
+  const { query, relativeTimeFrame, topK } = retrievalAction.params;
   const [docListVisible, setDocListVisible] = useState(false);
 
   function shortText(text: string, maxLength = 20) {
@@ -36,6 +36,25 @@ export default function RetrievalAction({
       ? text.substring(0, maxLength) + "..."
       : text;
   }
+  // exhaustive retrieval, checks whether max chunks was reached
+  const tooManyChunks =
+    retrievalAction.documents &&
+    retrievalAction.documents
+      .map((d) => d.chunks.length)
+      .reduce((a, b) => a + b, 0) === topK;
+
+  // retrieval date limit given the last document's timestamp
+  const retrievalTsLimit =
+    retrievalAction.documents &&
+    retrievalAction.documents.length > 0 &&
+    retrievalAction.documents[retrievalAction.documents.length - 1].timestamp;
+  // turn the timestamp into a date (e.g. Oct 1st)
+  const date = retrievalTsLimit && new Date(retrievalTsLimit);
+  const retrievalDateLimit =
+    date &&
+    `${date.toLocaleString("default", {
+      month: "short",
+    })} ${date.getDate()}`;
 
   return (
     <>
@@ -55,9 +74,24 @@ export default function RetrievalAction({
               }
             />
           </Tooltip>
-          <Tooltip label={`Query used for semantic search: ${query}`}>
-            <Chip color="slate" label={query ? shortText(query) : "No query"} />
-          </Tooltip>
+          {query && (
+            <Tooltip label={`Query used for semantic search: ${query}`}>
+              <Chip
+                color="slate"
+                label={query ? shortText(query) : "No query"}
+              />
+            </Tooltip>
+          )}
+          {!query && tooManyChunks && (
+            <Tooltip
+              label={`Too much data to retrieve in one go. Retrieved only ${topK} excerpts from the most recent ${retrievalAction.documents?.length} documents, up to ${retrievalDateLimit}`}
+            >
+              <Chip
+                color="warning"
+                label={`Warning: limited data retrieval (from now to ${retrievalDateLimit})`}
+              />
+            </Tooltip>
+          )}
         </Chip.List>
       </div>
       <div className="grid grid-cols-[auto,1fr] gap-2">
