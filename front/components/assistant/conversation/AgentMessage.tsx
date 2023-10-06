@@ -187,6 +187,28 @@ export function AgentMessage({
           },
         ];
 
+  const [references, setReferences] = useState<{
+    [key: string]: RetrievalDocumentType;
+  }>({});
+
+  useEffect(() => {
+    if (
+      agentMessageToRender.action &&
+      isRetrievalActionType(agentMessageToRender.action) &&
+      agentMessageToRender.action.documents
+    ) {
+      setReferences(
+        agentMessageToRender.action.documents.reduce((acc, d) => {
+          acc[d.reference] = d;
+          return acc;
+        }, {} as { [key: string]: RetrievalDocumentType })
+      );
+    }
+  }, [
+    agentMessageToRender.action,
+    agentMessageToRender.action?.documents?.length,
+  ]);
+
   return (
     <ConversationMessage
       owner={owner}
@@ -199,11 +221,15 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       reactions={reactions}
     >
-      {renderMessage(agentMessageToRender, shouldStream)}
+      {renderMessage(agentMessageToRender, references, shouldStream)}
     </ConversationMessage>
   );
 
-  function renderMessage(agentMessage: AgentMessageType, streaming: boolean) {
+  function renderMessage(
+    agentMessage: AgentMessageType,
+    references: { [key: string]: RetrievalDocumentType },
+    streaming: boolean
+  ) {
     // Display the error to the user so they can report it to us (or some can be
     // understandable directly to them)
     if (agentMessage.status === "failed") {
@@ -247,17 +273,6 @@ export function AgentMessage({
     }
     // Messages with action
     if (agentMessage.action) {
-      const references: { [key: string]: RetrievalDocumentType } = {};
-      if (
-        message.action &&
-        isRetrievalActionType(message.action) &&
-        message.action.documents
-      ) {
-        message.action.documents.forEach((d) => {
-          references[d.reference] = d;
-        });
-      }
-
       return (
         <>
           <div

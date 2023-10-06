@@ -121,6 +121,10 @@ function addClosingBackticks(str: string): string {
   return str;
 }
 
+export const ReferencesContext = React.createContext<{
+  [key: string]: RetrievalDocumentType;
+}>({});
+
 export function RenderMessageMarkdown({
   content,
   blinkingCursor,
@@ -134,45 +138,47 @@ export function RenderMessageMarkdown({
 }) {
   return (
     <div className={blinkingCursor ? "blinking-cursor" : ""}>
-      <ReactMarkdown
-        linkTarget="_blank"
-        components={{
-          pre: PreBlock,
-          code: CodeBlock,
-          a: LinkBlock,
-          ul: UlBlock,
-          ol: OlBlock,
-          li: LiBlock,
-          p: ParagraphBlock,
-          sup: CiteBlockWrapper(references || {}),
-          table: TableBlock,
-          thead: TableHeadBlock,
-          tbody: TableBodyBlock,
-          th: TableHeaderBlock,
-          td: TableDataBlock,
-          // @ts-expect-error - `mention` is a custom tag, currently refused by
-          // react-markdown types although the functionality is supported
-          mention: ({ agentName, agentSId }) => {
-            const agentConfiguration = agentConfigurations?.find(
-              (agentConfiguration) => agentConfiguration.sId === agentSId
-            );
-            return (
-              <MentionBlock
-                agentConfiguration={agentConfiguration}
-                agentName={agentName}
-              />
-            );
-          },
-        }}
-        remarkPlugins={[
-          remarkDirective,
-          mentionDirective,
-          citeDirective(),
-          remarkGfm,
-        ]}
-      >
-        {addClosingBackticks(content)}
-      </ReactMarkdown>
+      <ReferencesContext.Provider value={references || {}}>
+        <ReactMarkdown
+          linkTarget="_blank"
+          components={{
+            pre: PreBlock,
+            code: CodeBlock,
+            a: LinkBlock,
+            ul: UlBlock,
+            ol: OlBlock,
+            li: LiBlock,
+            p: ParagraphBlock,
+            sup: CiteBlock,
+            table: TableBlock,
+            thead: TableHeadBlock,
+            tbody: TableBodyBlock,
+            th: TableHeaderBlock,
+            td: TableDataBlock,
+            // @ts-expect-error - `mention` is a custom tag, currently refused by
+            // react-markdown types although the functionality is supported
+            mention: ({ agentName, agentSId }) => {
+              const agentConfiguration = agentConfigurations?.find(
+                (agentConfiguration) => agentConfiguration.sId === agentSId
+              );
+              return (
+                <MentionBlock
+                  agentConfiguration={agentConfiguration}
+                  agentName={agentName}
+                />
+              );
+            },
+          }}
+          remarkPlugins={[
+            remarkDirective,
+            mentionDirective,
+            citeDirective(),
+            remarkGfm,
+          ]}
+        >
+          {addClosingBackticks(content)}
+        </ReactMarkdown>
+      </ReferencesContext.Provider>
     </div>
   );
 }
@@ -206,73 +212,70 @@ function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
   return Object.prototype.hasOwnProperty.call(props, "references");
 }
 
-function CiteBlockWrapper(references: {
-  [key: string]: RetrievalDocumentType;
-}) {
-  const CiteBlock = (props: ReactMarkdownProps) => {
-    if (isCiteProps(props) && props.references) {
-      const refs = (
-        JSON.parse(props.references) as {
-          counter: number;
-          ref: string;
-        }[]
-      ).filter((r) => r.ref in references);
+function CiteBlock(props: ReactMarkdownProps) {
+  const references = React.useContext(ReferencesContext);
 
-      return (
-        <>
-          {refs.map((r, i) => {
-            const document = references[r.ref];
+  if (isCiteProps(props) && props.references) {
+    const refs = (
+      JSON.parse(props.references) as {
+        counter: number;
+        ref: string;
+      }[]
+    ).filter((r) => r.ref in references);
 
-            const provider = providerFromDocument(document);
-            const title = titleFromDocument(document);
-            const link = linkFromDocument(document);
+    return (
+      <>
+        {refs.map((r, i) => {
+          const document = references[r.ref];
 
-            const citeClassNames = classNames(
-              "rounded-md bg-structure-100 px-1",
-              "text-xs font-semibold text-action-500",
-              "hover:bg-structure-200 hover:text-action-600"
-            );
+          const provider = providerFromDocument(document);
+          const title = titleFromDocument(document);
+          const link = linkFromDocument(document);
 
-            return (
-              <sup key={`${r.ref}-${i}`}>
-                <Tooltip
-                  contentChildren={
-                    <div className="flex flex-row items-center gap-x-1">
-                      <div className={classNames("mr-1 flex h-4 w-4")}>
-                        {provider !== "none" ? (
-                          <img src={PROVIDER_LOGO_PATH[provider]}></img>
-                        ) : (
-                          <DocumentTextIcon className="h-4 w-4 text-slate-500" />
-                        )}
-                      </div>
-                      <div className="text-md flex whitespace-nowrap">
-                        {title}
-                      </div>
+          const citeClassNames = classNames(
+            "rounded-md bg-structure-100 px-1",
+            "text-xs font-semibold text-action-500",
+            "hover:bg-structure-200 hover:text-action-600"
+          );
+
+          return (
+            <sup key={`${r.ref}-${i}`}>
+              <Tooltip
+                contentChildren={
+                  <div className="flex flex-row items-center gap-x-1">
+                    <div className={classNames("mr-1 flex h-4 w-4")}>
+                      {provider !== "none" ? (
+                        <img src={PROVIDER_LOGO_PATH[provider]}></img>
+                      ) : (
+                        <DocumentTextIcon className="h-4 w-4 text-slate-500" />
+                      )}
                     </div>
-                  }
-                  position="below"
+                    <div className="text-md flex whitespace-nowrap">
+                      {title}
+                    </div>
+                  </div>
+                }
+                position="below"
+              >
+                <a
+                  // TODO(spolu): for custom data source add data source name to title
+                  href={link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={citeClassNames}
                 >
-                  <a
-                    // TODO(spolu): for custom data source add data source name to title
-                    href={link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={citeClassNames}
-                  >
-                    {r.counter}
-                  </a>
-                </Tooltip>
-              </sup>
-            );
-          })}
-        </>
-      );
-    } else {
-      const { children } = props;
-      return <sup>{children}</sup>;
-    }
-  };
-  return CiteBlock;
+                  {r.counter}
+                </a>
+              </Tooltip>
+            </sup>
+          );
+        })}
+      </>
+    );
+  } else {
+    const { children } = props;
+    return <sup>{children}</sup>;
+  }
 }
 
 function TableBlock({ children }: { children: React.ReactNode }) {
