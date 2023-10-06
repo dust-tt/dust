@@ -22,7 +22,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: "gpt-3.5-turbo-16k",
+        model_id: "gpt-4-32k",
         function_call: "auto",
         use_cache: false,
       },

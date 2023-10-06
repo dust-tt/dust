@@ -13,6 +13,11 @@ import {
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
+import {
+  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
@@ -49,21 +54,45 @@ export async function generateActionInputs(
     "You are a conversational assistant with access to function calling."
   );
 
-  const model = {
-    providerId: "openai",
-    modelId: "gpt-3.5-turbo-16k",
-  };
-  const allowedTokenCount = 12288; // for 16k model.
+  const MIN_GENERATION_TOKENS = 2048;
+
+  const useLargeModels = auth.workspace()?.plan.limits.largeModels
+    ? true
+    : false;
+
+  let model: { providerId: string; modelId: string } = useLargeModels
+    ? {
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+      }
+    : {
+        providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+      };
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
-    allowedTokenCount,
+    allowedTokenCount:
+      GPT_4_32K_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {
     return modelConversationRes;
+  }
+
+  // If we use gpt-4-32k but tokens used is less than GPT_4_CONTEXT_SIZE-MIN_GENERATION_TOKENS then
+  // switch the model back to GPT_4 standard (8k context, cheaper).
+  if (
+    model.modelId === GPT_4_32K_MODEL_CONFIG.modelId &&
+    modelConversationRes.value.tokensUsed <
+      GPT_4_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS
+  ) {
+    model = {
+      providerId: GPT_4_MODEL_CONFIG.providerId,
+      modelId: GPT_4_MODEL_CONFIG.modelId,
+    };
   }
 
   const config = cloneBaseConfig(

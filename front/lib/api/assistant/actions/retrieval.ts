@@ -161,7 +161,8 @@ export async function retrievalActionSpecification(
       name: "query",
       description:
         "The string used to retrieve relevant chunks of information using semantic similarity" +
-        " based on the user request and conversation context.",
+        " based on the user request and conversation context." +
+        " Include as much semantic signal based on the entire conversation history, paraphrasing if necessary. longer queries are generally better.",
       type: "string" as const,
     });
   }
@@ -169,8 +170,8 @@ export async function retrievalActionSpecification(
     inputs.push({
       name: "relativeTimeFrame",
       description:
-        "The time frame (relative to now) to restrict the search based on the user request and past conversation context." +
-        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number.",
+        "The time frame (relative to LOCAL_TIME) to restrict the search based on the user request and past conversation context." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number. Be strict, do not invent invalid values.",
       type: "string" as const,
     });
   }
