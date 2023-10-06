@@ -97,6 +97,7 @@ apply_deployment connectors-edge-deployment
 apply_deployment blog-deployment
 apply_deployment docs-deployment
 apply_deployment metabase-deployment
+apply_deployment alerting-temporal-deployment
 
 
 echo "-----------------------------------"

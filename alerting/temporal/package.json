@@ -1,0 +1,18 @@
+{
+  "name": "temporal-promql-to-dd.ts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  },
+  "devDependencies": {
+    "@tsconfig/node16": "^16.1.1",
+    "@types/node": "^20.8.2",
+    "ts-node": "^10.9.1"
+  },
+  "dependencies": {
+    "@datadog/datadog-api-client": "^1.17.0",
+    "axios": "^1.5.1",
+    "zod": "^3.22.4"
+  }
+}

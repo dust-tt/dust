@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alerting-temporal-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alerting-temporal
+  template:
+    metadata:
+      labels:
+        app: alerting-temporal
+        name: alerting-temporal-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "alerting-temporal","service": "alerting-temporal","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/alerting-temporal-image:latest
+          command: ["npm", "run", "start"]
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: alerting-temporal-config
+            - secretRef:
+                name: alerting-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+      volumes:
+          - name: cert-volume
+            secret:
+              secretName: temporal-datadog-cert
