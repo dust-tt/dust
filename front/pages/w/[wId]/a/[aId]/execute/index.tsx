@@ -585,7 +585,7 @@ export default function ExecuteView({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2">
+        <div className="mt-2 overflow-x-auto scrollbar-hide">
           <Tab tabs={subNavigationApp({ owner, app, current: "execute" })} />
         </div>
         <div className="mt-8 flex flex-col">
