@@ -11,6 +11,7 @@ import {
 import {
   Connector,
   ModelId,
+  SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models";
@@ -258,10 +259,38 @@ async function botAnswerMessage(
         );
       }
     }
-  }
-
-  if (mentions.length === 0) {
-    mentions.push({ assistantId: "dust", assistantName: "dust" });
+  } else {
+    // If no mention is found, we look at channel-based routing rules.
+    const channel = await SlackChannel.findOne({
+      where: {
+        connectorId: connector.id,
+        slackChannelId: slackChannel,
+      },
+    });
+    if (channel && channel.agentConfigurationId) {
+      const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+      if (agentConfigurationsRes.isErr()) {
+        return new Err(new Error(agentConfigurationsRes.error.message));
+      }
+      const agentConfigurations = agentConfigurationsRes.value;
+      const agentConfiguration = agentConfigurations.find(
+        (ac) => ac.sId === channel.agentConfigurationId
+      );
+      if (!agentConfiguration) {
+        return new Err(
+          new Error(
+            `Failed to find agent configuration ${channel.agentConfigurationId}`
+          )
+        );
+      }
+      mentions.push({
+        assistantId: channel.agentConfigurationId,
+        assistantName: agentConfiguration.name,
+      });
+    } else {
+      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
+      mentions.push({ assistantId: "dust", assistantName: "dust" });
+    }
   }
 
   const messageReqBody = {
@@ -388,7 +417,6 @@ async function botAnswerMessage(
           thread_ts: slackMessageTs,
         });
         return new Ok(event);
-        break;
       }
       default:
       // Nothing to do on unsupported events
