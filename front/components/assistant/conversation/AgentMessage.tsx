@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   EyeIcon,
   Spinner,
-  StopIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -220,21 +219,6 @@ export function AgentMessage({
     }
   }, [agentMessageToRender.action]);
 
-  const handleStopGeneration = async () => {
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-        }),
-      }
-    );
-  };
-
   return (
     <ConversationMessage
       owner={owner}
@@ -296,15 +280,6 @@ export function AgentMessage({
             content={agentMessage.content}
             blinkingCursor={streaming}
           />
-          {streaming && (
-            <Button
-              className="mt-4"
-              variant="tertiary"
-              label="Stop generation"
-              icon={StopIcon}
-              onClick={handleStopGeneration}
-            />
-          )}
         </>
       );
     }
@@ -330,15 +305,6 @@ export function AgentMessage({
                   references={references}
                 />
               </div>
-              {streaming && (
-                <Button
-                  className="mt-4"
-                  variant="tertiary"
-                  label="Stop generation"
-                  icon={StopIcon}
-                  onClick={handleStopGeneration}
-                />
-              )}
             </>
           )}
         </>

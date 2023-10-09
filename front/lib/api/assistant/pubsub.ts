@@ -313,12 +313,11 @@ export async function* getConversationEvents(
   }
 }
 
-export async function cancelMessageGenerationEvent(
-  conversationId: string,
-  messageId: string
+export async function cancelConversationGenerationEvent(
+  conversationId: string
 ): Promise<void> {
   const redis = await redisClient();
-  await redis.set(`assistant:generation:cancelled:${messageId}`, 1);
+  await redis.set(`assistant:generation:cancelled:${conversationId}`, 1);
   await redis.quit();
 }
 
