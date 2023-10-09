@@ -3,10 +3,12 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import AssistantBuilder, {
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/AssistantBuilder";
+import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
+import { AppType } from "@app/types/app";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
@@ -24,6 +26,7 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dataSourceConfigurations: Record<string, DataSourceConfig>;
+  dustApps: AppType[];
   agentConfiguration: AgentConfigurationType;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -41,6 +44,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const allDataSources = await getDataSources(auth);
+
   const dataSourceByName = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
@@ -112,6 +116,8 @@ export const getServerSideProps: GetServerSideProps<{
     {} as Record<string, DataSourceConfig>
   );
 
+  const allDustApps = await getApps(auth);
+
   return {
     props: {
       user,
@@ -119,6 +125,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
       dataSourceConfigurations,
+      dustApps: allDustApps,
       agentConfiguration: config,
     },
   };
@@ -130,6 +137,7 @@ export default function EditAssistant({
   gaTrackingId,
   dataSources,
   dataSourceConfigurations,
+  dustApps,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
@@ -162,7 +170,8 @@ export default function EditAssistant({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      dataSources={Object.values(dataSources)}
+      dataSources={dataSources}
+      dustApps={dustApps}
       initialBuilderState={{
         dataSourceMode,
         filteringMode,
