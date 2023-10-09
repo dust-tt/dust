@@ -115,7 +115,7 @@ export function ConversationMessage({
     <>
       {/* SMALL SIZE SCREEN*/}
       <div className="flex w-full gap-4 xl:hidden">
-        <div className="flex flex-grow flex-col gap-4">
+        <div className="flex w-full flex-grow flex-col gap-4">
           <div className="flex items-start gap-2">
             <div className="flex h-8 flex-grow items-center gap-2">
               <Avatar
