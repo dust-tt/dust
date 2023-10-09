@@ -1063,39 +1063,41 @@ function SlackIntegration({
           />
         )}
       </div>
-      <div className="mt-6 text-sm text-element-700">
-        Your assistant will answer by default when @dust is mentioned in the
-        following channels:
-      </div>
       {existingSelection.length ? (
-        <ContextItem.List className="mt-2 border-b border-t border-structure-200">
-          {existingSelection.map(({ channelId, channelName }) => {
-            return (
-              <ContextItem
-                key={channelId}
-                title={channelName}
-                visual={<ContextItem.Visual visual={SlackLogo} />}
-                action={
-                  <Button.List>
-                    <Button
-                      icon={TrashIcon}
-                      variant="secondaryWarning"
-                      label="Remove"
-                      labelVisible={false}
-                      onClick={() => {
-                        onSave(
-                          existingSelection.filter(
-                            (channel) => channel.channelId !== channelId
-                          )
-                        );
-                      }}
-                    />
-                  </Button.List>
-                }
-              />
-            );
-          })}
-        </ContextItem.List>
+        <>
+          <div className="mt-6 text-sm text-element-700">
+            Your assistant will answer by default when @dust is mentioned in the
+            following channels:
+          </div>
+          <ContextItem.List className="mt-2 border-b border-t border-structure-200">
+            {existingSelection.map(({ channelId, channelName }) => {
+              return (
+                <ContextItem
+                  key={channelId}
+                  title={channelName}
+                  visual={<ContextItem.Visual visual={SlackLogo} />}
+                  action={
+                    <Button.List>
+                      <Button
+                        icon={TrashIcon}
+                        variant="secondaryWarning"
+                        label="Remove"
+                        labelVisible={false}
+                        onClick={() => {
+                          onSave(
+                            existingSelection.filter(
+                              (channel) => channel.channelId !== channelId
+                            )
+                          );
+                        }}
+                      />
+                    </Button.List>
+                  }
+                />
+              );
+            })}
+          </ContextItem.List>
+        </>
       ) : null}
     </>
   );
