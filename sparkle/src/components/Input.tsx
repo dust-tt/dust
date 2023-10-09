@@ -2,42 +2,52 @@ import React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  placeholder: string;
-  error?: string | null;
-  showErrorLabel?: boolean;
-  isPassword?: boolean;
-  className?: string;
-}
-
-export const Input: React.FC<InputProps> = ({
+export function Input({
   placeholder,
+  value,
+  onChange,
   error,
   showErrorLabel = false,
+  name,
   isPassword = false,
+  disabled = false,
   className = "",
-  ...props
-}) => {
+}: {
+  placeholder: string;
+  value: string | null;
+  onChange?: (value: string) => void;
+  error?: string | null;
+  showErrorLabel?: boolean;
+  name: string;
+  isPassword?: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
   return (
-    <div>
+    <div className="flex flex-col">
       <input
         type={isPassword ? "password" : "text"}
+        name={name}
+        id={name}
         className={classNames(
-          "s-border-0 s-outline-none s-ring-1 s-ring-structure-200 focus:s-outline-none focus:s-ring-2",
-          "s-w-full s-rounded-md  s-bg-structure-50 s-py-1.5 s-pl-4 s-pr-8 s-placeholder-element-600",
-          "s-transition-all s-duration-300 s-ease-out",
+          "s-w-full s-rounded-md",
           className ?? "",
           !error
-            ? "focus:s-ring-action-300"
-            : "s-ring-red-200 focus:s-ring-red-200"
+            ? "focus:ring-action-500 s-border-gray-300 focus:s-border-action-500"
+            : "focus:border-red-500 focus:ring-red-500 s-border-red-500",
+          "s-bg-structure-50 s-stroke-structure-50"
         )}
         placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(e) => {
+          onChange?.(e.target.value);
+        }}
         data-1p-ignore={!isPassword}
-        {...props}
+        disabled={disabled}
       />
       <div className="s-ml-2 s-h-4 s-text-red-500">
         {showErrorLabel && error ? error : null}
       </div>
     </div>
   );
-};
+}
