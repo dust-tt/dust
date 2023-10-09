@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   EyeIcon,
   Spinner,
+  StopIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -18,6 +19,7 @@ import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
@@ -52,6 +54,7 @@ export function AgentMessage({
     switch (streamedAgentMessage.status) {
       case "succeeded":
       case "failed":
+      case "cancelled":
         return false;
       case "created":
         return true;
@@ -92,6 +95,7 @@ export function AgentMessage({
         | AgentActionSuccessEvent
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
+        | AgentGenerationCancelledEvent
         | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
@@ -116,6 +120,13 @@ export function AgentMessage({
           return { ...m, content: event.text };
         });
         break;
+
+      case "agent_generation_cancelled":
+        setStreamedAgentMessage((m) => {
+          return { ...m, status: "cancelled" };
+        });
+        break;
+
       case "agent_message_success": {
         setStreamedAgentMessage(event.message);
         break;
@@ -141,6 +152,7 @@ export function AgentMessage({
     switch (message.status) {
       case "succeeded":
       case "failed":
+      case "cancelled":
         return message;
       case "created":
         return streamedAgentMessage;
@@ -208,6 +220,21 @@ export function AgentMessage({
     }
   }, [agentMessageToRender.action]);
 
+  const handleStopGeneration = async () => {
+    await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "cancel",
+        }),
+      }
+    );
+  };
+
   return (
     <ConversationMessage
       owner={owner}
@@ -264,10 +291,21 @@ export function AgentMessage({
     // Messages with no action and text
     if (agentMessage.action === null && agentMessage.content) {
       return (
-        <RenderMessageMarkdown
-          content={agentMessage.content}
-          blinkingCursor={streaming}
-        />
+        <>
+          <RenderMessageMarkdown
+            content={agentMessage.content}
+            blinkingCursor={streaming}
+          />
+          {streaming && (
+            <Button
+              className="mt-4"
+              variant="tertiary"
+              label="Stop generation"
+              icon={StopIcon}
+              onClick={handleStopGeneration}
+            />
+          )}
+        </>
       );
     }
     // Messages with action
@@ -292,6 +330,15 @@ export function AgentMessage({
                   references={references}
                 />
               </div>
+              {streaming && (
+                <Button
+                  className="mt-4"
+                  variant="tertiary"
+                  label="Stop generation"
+                  icon={StopIcon}
+                  onClick={handleStopGeneration}
+                />
+              )}
             </>
           )}
         </>

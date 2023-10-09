@@ -2,6 +2,7 @@ import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
@@ -87,6 +88,7 @@ async function handleUserMessageEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
+    | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
     | ConversationTitleEvent,
     void
@@ -147,6 +149,13 @@ async function handleUserMessageEvents(
                 );
                 break;
               }
+              case "agent_generation_cancelled":
+                const pubsubChannel = getMessageChannelId(event.messageId);
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                return;
 
               default:
                 ((event: never) => {
@@ -226,6 +235,14 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
+              case "agent_generation_cancelled":
+                const pubsubChannel = getMessageChannelId(event.messageId);
+                await redis.xAdd(pubsubChannel, "*", {
+                  payload: JSON.stringify(event),
+                });
+                await redis.expire(pubsubChannel, 60 * 10);
+                return;
+
               default:
                 ((event: never) => {
                   logger.error("Unknown event type", event);
@@ -296,6 +313,39 @@ export async function* getConversationEvents(
   }
 }
 
+export async function saveTemporaryMessageTokens(
+  messageId: string,
+  tokens: string
+): Promise<void> {
+  const redis = await redisClient();
+
+  const current = await redis.get(`assistant:generation:tokens:${messageId}`);
+  if (current) {
+    await redis.set(
+      `assistant:generation:tokens:${messageId}`,
+      `${current}${tokens}`
+    );
+  } else {
+    await redis.set(`assistant:generation:tokens:${messageId}`, tokens);
+  }
+}
+
+export async function getTemporaryMessageTokens(
+  messageId: string
+): Promise<string> {
+  const redis = await redisClient();
+  return (await redis.get(`assistant:generation:tokens:${messageId}`)) || "";
+}
+
+export async function cancelMessageGenerationEvent(
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  const redis = await redisClient();
+  await redis.set(`assistant:generation:cancelled:${messageId}`, 1);
+  await redis.quit();
+}
+
 export async function* getMessagesEvents(
   messageId: string,
   lastEventId: string | null
@@ -306,6 +356,7 @@ export async function* getMessagesEvents(
       | AgentErrorEvent
       | AgentActionEvent
       | AgentActionSuccessEvent
+      | AgentGenerationCancelledEvent
       | GenerationTokensEvent
       | AgentGenerationSuccessEvent;
   },

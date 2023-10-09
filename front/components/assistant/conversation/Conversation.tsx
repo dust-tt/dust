@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { AgentGenerationCancelledEvent } from "@app/lib/api/assistant/agent";
 import {
   AgentMessageNewEvent,
   ConversationTitleEvent,
@@ -115,6 +116,7 @@ export default function Conversation({
         data:
           | UserMessageNewEvent
           | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
           | ConversationTitleEvent;
       } = JSON.parse(eventStr);
 
@@ -125,6 +127,7 @@ export default function Conversation({
         switch (event.type) {
           case "user_message_new":
           case "agent_message_new":
+          case "agent_generation_cancelled":
             void mutateConversation();
             break;
           case "conversation_title": {

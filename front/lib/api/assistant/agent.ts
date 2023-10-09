@@ -188,6 +188,14 @@ export type AgentGenerationSuccessEvent = {
   text: string;
 };
 
+// Event sent to stop the generation.
+export type AgentGenerationCancelledEvent = {
+  type: "agent_generation_cancelled";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};
+
 // Event sent once the message is completed and successful.
 export type AgentMessageSuccessEvent = {
   type: "agent_message_success";
@@ -211,6 +219,7 @@ export async function* runAgent(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent,
   void
 > {
@@ -346,6 +355,15 @@ export async function* runAgent(
               code: event.error.code,
               message: event.error.message,
             },
+          };
+          return;
+
+        case "generation_cancel":
+          yield {
+            type: "agent_generation_cancelled",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
           };
           return;
 
