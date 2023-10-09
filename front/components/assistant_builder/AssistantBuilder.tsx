@@ -873,17 +873,6 @@ export default function AssistantBuilder({
                     setSelectedSlackChannels(channels);
                   }}
                   existingSelection={selectedSlackChannels}
-                  alreadyLinkedChannelIds={
-                    new Set(
-                      slackChannelsLinkedWithAgent
-                        .filter(
-                          (channel) =>
-                            channel.agentConfigurationId !==
-                            agentConfigurationId
-                        )
-                        .map((channel) => channel.slackChannelId)
-                    )
-                  }
                 />
               )}
             </div>
@@ -936,13 +925,11 @@ function SlackIntegration({
   owner,
   onSave,
   existingSelection,
-  alreadyLinkedChannelIds,
 }: {
   slackDataSource: DataSourceType;
   owner: WorkspaceType;
   onSave: (channels: { channelId: string; channelName: string }[]) => void;
   existingSelection: { channelId: string; channelName: string }[];
-  alreadyLinkedChannelIds: Set<string>;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChannelTitleById, setSelectedChannelTitleById] = useState<
@@ -1027,7 +1014,6 @@ function SlackIntegration({
               }}
               expandable={false}
               fullySelected={false}
-              disabledParentIds={alreadyLinkedChannelIds}
             />
           </div>
         </div>

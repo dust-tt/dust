@@ -23,7 +23,6 @@ export default function DataSourceResourceSelectorTree({
   onSelectChange,
   parentsById,
   fullySelected,
-  disabledParentIds,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -35,7 +34,6 @@ export default function DataSourceResourceSelectorTree({
   ) => void;
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
-  disabledParentIds?: Set<string>;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -50,7 +48,6 @@ export default function DataSourceResourceSelectorTree({
         parents={[]}
         isChecked={false}
         fullySelected={fullySelected}
-        disabledParentIds={disabledParentIds}
       />
     </div>
   );
@@ -90,7 +87,6 @@ function DataSourceResourceSelectorChildren({
   parentsById,
   parents,
   fullySelected,
-  disabledParentIds,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -105,7 +101,6 @@ function DataSourceResourceSelectorChildren({
   ) => void;
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
-  disabledParentIds?: Set<string>;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -210,11 +205,7 @@ function DataSourceResourceSelectorChildren({
                           checked
                         )
                       }
-                      disabled={
-                        isChecked ||
-                        fullySelected ||
-                        disabledParentIds?.has(r.internalId)
-                      }
+                      disabled={isChecked || fullySelected}
                     />
                   </div>
                 </div>
@@ -232,7 +223,6 @@ function DataSourceResourceSelectorChildren({
                       parentsById={parentsById}
                       parents={[...parents, r.internalId]}
                       fullySelected={fullySelected}
-                      disabledParentIds={disabledParentIds}
                     />
                   </div>
                 )}
