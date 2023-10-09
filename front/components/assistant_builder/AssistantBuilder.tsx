@@ -21,7 +21,7 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/DataSo
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
-  TimeFrameMode,
+  FilteringMode,
 } from "@app/components/assistant_builder/shared";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -84,7 +84,7 @@ type AssistantBuilderState = {
     string,
     AssistantBuilderDataSourceConfiguration
   >;
-  timeFrameMode: TimeFrameMode;
+  filteringMode: FilteringMode;
   timeFrame: {
     value: number;
     unit: TimeframeUnit;
@@ -108,7 +108,7 @@ export type AssistantBuilderInitialState = {
   dataSourceConfigurations:
     | AssistantBuilderState["dataSourceConfigurations"]
     | null;
-  timeFrameMode: TimeFrameMode | null;
+  filteringMode: FilteringMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   handle: string;
   description: string;
@@ -132,7 +132,7 @@ type AssistantBuilderProps = {
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   dataSourceMode: "GENERIC",
   dataSourceConfigurations: {},
-  timeFrameMode: "AUTO",
+  filteringMode: "SEARCH",
   timeFrame: {
     value: 1,
     unit: "month",
@@ -241,9 +241,9 @@ export default function AssistantBuilder({
           initialBuilderState.dataSourceConfigurations ?? {
             ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
           },
-        timeFrameMode:
-          initialBuilderState.timeFrameMode ??
-          DEFAULT_ASSISTANT_STATE.timeFrameMode,
+        filteringMode:
+          initialBuilderState.filteringMode ??
+          DEFAULT_ASSISTANT_STATE.filteringMode,
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
@@ -320,7 +320,7 @@ export default function AssistantBuilder({
       }
     }
 
-    if (builderState.timeFrameMode === "CUSTOM") {
+    if (builderState.filteringMode === "TIMEFRAME") {
       if (!builderState.timeFrame.value) {
         valid = false;
         setTimeFrameError("Timeframe must be a number");
@@ -336,7 +336,7 @@ export default function AssistantBuilder({
     builderState.instructions,
     builderState.dataSourceMode,
     configuredDataSourceCount,
-    builderState.timeFrameMode,
+    builderState.filteringMode,
     builderState.timeFrame.value,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
@@ -381,12 +381,10 @@ export default function AssistantBuilder({
         break;
       case "SELECTED":
         const tfParam = (() => {
-          switch (builderState.timeFrameMode) {
-            case "AUTO":
+          switch (builderState.filteringMode) {
+            case "SEARCH":
               return "auto";
-            case "ALL_TIME":
-              return "none";
-            case "CUSTOM":
+            case "TIMEFRAME":
               if (!builderState.timeFrame.value) {
                 // unreachable
                 // we keep this for TS
@@ -399,13 +397,13 @@ export default function AssistantBuilder({
             default:
               ((x: never) => {
                 throw new Error(`Unknown time frame mode ${x}`);
-              })(builderState.timeFrameMode);
+              })(builderState.filteringMode);
           }
         })();
 
         actionParam = {
           type: "retrieval_configuration",
-          query: "auto", // TODO ?
+          query: builderState.filteringMode === "SEARCH" ? "auto" : "none",
           timeframe: tfParam,
           topK: "auto",
           dataSources: Object.values(builderState.dataSourceConfigurations).map(
@@ -782,12 +780,12 @@ export default function AssistantBuilder({
                     setShowDataSourcesModal(true);
                   }}
                   onDelete={deleteDataSource}
-                  timeFrameMode={builderState.timeFrameMode}
-                  setTimeFrameMode={(timeFrameMode: TimeFrameMode) => {
+                  filteringMode={builderState.filteringMode}
+                  setFilteringMode={(filteringMode: FilteringMode) => {
                     setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
-                      timeFrameMode,
+                      filteringMode,
                     }));
                   }}
                   timeFrame={builderState.timeFrame}

@@ -12,9 +12,9 @@ import { Transition } from "@headlessui/react";
 import { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import {
   CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
-  TIME_FRAME_MODE_TO_LABEL,
+  FILTERING_MODE_TO_LABEL,
+  FilteringMode,
   TIME_FRAME_UNIT_TO_LABEL,
-  TimeFrameMode,
 } from "@app/components/assistant_builder/shared";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames } from "@app/lib/utils";
@@ -27,8 +27,8 @@ export default function DataSourceSelectionSection({
   canAddDataSource,
   onManageDataSource,
   onDelete,
-  timeFrameMode,
-  setTimeFrameMode,
+  filteringMode,
+  setFilteringMode,
   timeFrame,
   setTimeFrame,
   timeFrameError,
@@ -42,8 +42,8 @@ export default function DataSourceSelectionSection({
   canAddDataSource: boolean;
   onManageDataSource: (name: string) => void;
   onDelete?: (name: string) => void;
-  timeFrameMode: TimeFrameMode;
-  setTimeFrameMode: (timeFrameMode: TimeFrameMode) => void;
+  filteringMode: FilteringMode;
+  setFilteringMode: (filteringMode: FilteringMode) => void;
   timeFrame: { value: number; unit: TimeframeUnit };
   setTimeFrame: (timeframe: { value: number; unit: TimeframeUnit }) => void;
   timeFrameError: string | null;
@@ -175,25 +175,25 @@ export default function DataSourceSelectionSection({
       <div>
         <div className="flex flex-row items-center space-x-2 pt-4">
           <div className="text-sm font-semibold text-element-900">
-            Timeframe:
+            Filtering:
           </div>
           <DropdownMenu>
             <DropdownMenu.Button>
               <Button
                 type="select"
                 labelVisible={true}
-                label={TIME_FRAME_MODE_TO_LABEL[timeFrameMode]}
+                label={FILTERING_MODE_TO_LABEL[filteringMode]}
                 variant="secondary"
                 size="sm"
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="bottomRight">
-              {Object.entries(TIME_FRAME_MODE_TO_LABEL).map(([key, value]) => (
+              {Object.entries(FILTERING_MODE_TO_LABEL).map(([key, value]) => (
                 <DropdownMenu.Item
                   key={key}
                   label={value}
                   onClick={() => {
-                    setTimeFrameMode(key as TimeFrameMode);
+                    setFilteringMode(key as FilteringMode);
                   }}
                 />
               ))}
@@ -202,7 +202,7 @@ export default function DataSourceSelectionSection({
         </div>
         <div className="mt-4">
           <Transition
-            show={timeFrameMode === "CUSTOM"}
+            show={filteringMode === "TIMEFRAME"}
             enterFrom="opacity-0"
             enterTo="opacity-100"
             leave="transition-all duration-300"
@@ -220,7 +220,7 @@ export default function DataSourceSelectionSection({
           >
             <div className={"flex flex-row items-center gap-4 pb-4"}>
               <div className="text-sm font-semibold text-element-900">
-                Focus on the last
+                Collect data from the last
               </div>
               <input
                 type="text"
@@ -273,12 +273,20 @@ export default function DataSourceSelectionSection({
           </Transition>
         </div>
         <div className="text-sm font-normal text-element-700">
-          You can filter the documents retrieved for a&nbsp;specific
-          time&nbsp;period.
-          <br />
-          When <span className="italic">“Auto”</span> is selected,
-          the&nbsp;assistant will determine the&nbsp;timeframe from
-          the&nbsp;instructions and the&nbsp;question being&nbsp;asked.
+          {filteringMode === "TIMEFRAME" ? (
+            <>
+              The assistant will look exhaustively at all data in the data
+              sources, in reverse chronological order, for the specified
+              timeframe. It will take as much data as it can in its context, and
+              warn you if it could not process all of it.
+            </>
+          ) : (
+            <>
+              The assistant will search the data sources for data that best
+              matches the user query, to retrieve information related to the
+              question.
+            </>
+          )}
         </div>
       </div>
     </Transition>
