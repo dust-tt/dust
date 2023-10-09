@@ -361,7 +361,7 @@ export default function AppLayout({
           >
             <div
               className={classNames(
-                "mx-auto h-full",
+                "mx-auto h-full overflow-x-hidden",
                 isWideMode ? "w-full" : "max-w-4xl px-6"
               )}
             >

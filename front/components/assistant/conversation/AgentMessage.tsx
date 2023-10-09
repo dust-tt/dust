@@ -372,8 +372,8 @@ function Citations({
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return (
-    <div className="w-[110%] overflow-x-auto scrollbar-hide sm:w-[120%]">
-      <div className="mt-9 flex gap-2">
+    <div className="-mx-[100%] mt-9 overflow-x-auto px-[100%] scrollbar-hide">
+      <div className="flex gap-2">
         {activeReferences.map(({ document, index }) => {
           const provider = providerFromDocument(document);
           return (
@@ -410,6 +410,7 @@ function Citations({
             </div>
           );
         })}
+        <div className="h-1 w-[100%] flex-none" />
       </div>
     </div>
   );
