@@ -147,14 +147,15 @@ async function botAnswerMessage(
 
   const accessToken = await getAccessToken(connector.connectionId);
   const slackClient = getSlackClient(accessToken);
-  const contentFragmentPromise = getMessagesForThread(
+  // Start computing the content fragment as early as possible since it's independent from all the other I/O operations
+  // and a lot of the subsequent I/O operations can only be done sequentially.
+  const contentFragmentPromise = makeContentFragment(
     slackClient,
     slackChannel,
     lastSlackChatBotMessage?.threadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackMessageTs,
     connector
   );
-  // console.log("contentFragmentPromise", await contentFragmentPromise);
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
@@ -559,7 +560,7 @@ export async function toggleSlackbot(
   return new Ok(void 0);
 }
 
-async function getMessagesForThread(
+async function makeContentFragment(
   slackClient: WebClient,
   channelId: string,
   threadTs: string,
@@ -596,15 +597,8 @@ async function getMessagesForThread(
     }
     for (const m of replies.messages) {
       if (m.ts === startingAtTs) {
-        console.log(
-          "[yes] should take yes because",
-          m.ts,
-          startingAtTs,
-          m.text
-        );
+        // Signal that we must take all the messages starting from this one.
         shouldTake = true;
-      } else {
-        // console.log("[no] should take no because", m.ts, threadTs, m.text, m);
       }
       if (!m.user) {
         continue;
@@ -618,6 +612,7 @@ async function getMessagesForThread(
           },
         });
         if (slackChatBotMessage) {
+          // If this message is a mention to the bot, we don't send it as a content fragment
           continue;
         }
         allMessages.push(m);
