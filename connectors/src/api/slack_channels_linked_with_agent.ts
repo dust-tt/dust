@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models";
+import { sequelize_conn, SlackChannel } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
@@ -78,20 +78,23 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     });
   }
 
-  await SlackChannel.update(
-    { agentConfigurationId: null },
-    {
-      where: {
-        connectorId,
-        agentConfigurationId,
-      },
-    }
-  );
-  await Promise.all(
-    slackChannels.map((slackChannel) =>
-      slackChannel.update({ agentConfigurationId })
-    )
-  );
+  await sequelize_conn.transaction(async (t) => {
+    await SlackChannel.update(
+      { agentConfigurationId: null },
+      {
+        where: {
+          connectorId,
+          agentConfigurationId,
+        },
+        transaction: t,
+      }
+    );
+    await Promise.all(
+      slackChannels.map((slackChannel) =>
+        slackChannel.update({ agentConfigurationId }, { transaction: t })
+      )
+    );
+  });
 
   res.status(200).json({
     success: true,
