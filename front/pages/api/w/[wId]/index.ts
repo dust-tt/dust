@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -9,6 +12,17 @@ import { WorkspaceType } from "@app/types/user";
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
+
+const WorkspaceNameUpdateBodySchema = t.type({
+  name: t.string,
+});
+const WorkspaceAllowedDomainUpdateBodySchema = t.type({
+  allowedDomain: t.union([t.string, t.null]),
+});
+const PostWorkspaceRequestBodySchema = t.union([
+  WorkspaceNameUpdateBodySchema,
+  WorkspaceAllowedDomainUpdateBodySchema,
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -44,21 +58,14 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !(typeof req.body.name == "string") ||
-        !(
-          req.body.allowedDomain === null ||
-          typeof req.body.allowedDomain == "string"
-        )
-      ) {
+      const bodyValidation = PostWorkspaceRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects \
-               { name: string, allowedDomain: string }.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
@@ -76,13 +83,17 @@ async function handler(
         });
       }
 
-      await w.update({
-        name: req.body.name,
-        allowedDomain: req.body.allowedDomain,
-      });
-
-      owner.name = req.body.name as string;
-      owner.allowedDomain = req.body.allowedDomain as string | null;
+      if (req.body.name) {
+        await w.update({
+          name: req.body.name,
+        });
+        owner.name = req.body.name as string;
+      } else {
+        await w.update({
+          allowedDomain: req.body.allowedDomain,
+        });
+        owner.allowedDomain = req.body.allowedDomain as string | null;
+      }
 
       res.status(200).json({ workspace: owner });
       return;

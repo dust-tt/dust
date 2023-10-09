@@ -10,6 +10,7 @@ import {
   PaperAirplaneIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
+import { UsersIcon } from "@heroicons/react/20/solid";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
@@ -25,6 +26,7 @@ export type TopNavigationId = "assistant" | "settings";
 export type SubNavigationAdminId =
   | "data_sources"
   | "workspace"
+  | "members"
   | "developers"
   | "assistants"
   | "extract";
@@ -133,23 +135,32 @@ export const subNavigationAdmin = ({
     ],
   });
 
+  const workspaceSubMenus: SparkleAppLayoutNavigation[] = [];
   if (owner.role === "admin") {
-    nav.push({
+    workspaceSubMenus.push({
       id: "workspace",
-      label: "Workspace",
-      menus: [
-        {
-          id: "workspace",
-          label: "Settings",
-          icon: KeyIcon,
-          href: `/w/${owner.sId}/workspace`,
-          current: current === "workspace",
-          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-          subMenu: current === "workspace" ? subMenu : undefined,
-        },
-      ],
+      label: "Settings",
+      icon: KeyIcon,
+      href: `/w/${owner.sId}/workspace`,
+      current: current === "workspace",
+      subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+      subMenu: current === "workspace" ? subMenu : undefined,
     });
   }
+  workspaceSubMenus.push({
+    id: "members",
+    label: "Members",
+    icon: UsersIcon,
+    href: `/w/${owner.sId}/members`,
+    current: current === "members",
+    subMenuLabel: current === "members" ? subMenuLabel : undefined,
+    subMenu: current === "members" ? subMenu : undefined,
+  });
+  nav.push({
+    id: "workspace",
+    label: "Workspace",
+    menus: workspaceSubMenus,
+  });
 
   nav.push({
     id: "developers",
