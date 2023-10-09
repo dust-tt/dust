@@ -164,8 +164,6 @@ export default function ViewDatasetView({
     setIsFinishedEditing(true);
   };
 
-  console.log(schema);
-
   return (
     <AppLayout
       user={user}

@@ -373,7 +373,6 @@ export default function DatasetView({
       datasetTypesValidation(),
       {
         name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-        // keys: datasetKeys,
         description: (datasetDescription || "").slice(
           0,
           MODELS_STRING_MAX_LENGTH
@@ -405,7 +404,6 @@ export default function DatasetView({
         valid,
         {
           name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-          // keys: datasetKeys,
           description: (datasetDescription || "").slice(
             0,
             MODELS_STRING_MAX_LENGTH
