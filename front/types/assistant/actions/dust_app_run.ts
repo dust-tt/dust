@@ -8,10 +8,8 @@ export type DustAppRunConfigurationType = {
 
   type: "dust_app_run_configuration";
 
-  app: {
-    workspaceId: string;
-    appId: string;
-  };
+  appWorkspaceId: string;
+  appId: string;
 };
 
 export function isDustAppRunConfiguration(
@@ -32,7 +30,7 @@ export type DatasetEntry = {
 
 export type DustAppParameters = {
   [key: string]: {
-    expectedType: "string" | "number" | "boolean" | "json";
+    expectedType: "string" | "number" | "boolean";
     value: unknown;
   };
 };
@@ -42,8 +40,8 @@ export type DustAppRunActionType = {
   type: "dust_app_run_action";
   app: {
     workspaceId: string;
-    appId: string;
-    appName: string;
+    sId: string;
+    name: string;
   };
   params: DustAppParameters;
   output: unknown | null;

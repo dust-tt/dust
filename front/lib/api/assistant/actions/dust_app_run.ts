@@ -158,45 +158,39 @@ export async function generateDustAppRunParams(
         "[ASSISTANT_TRACE] DustAppRun action inputs generation"
       );
 
-      if (c.query === "auto") {
-        if (!rawInputs.query || typeof rawInputs.query !== "string") {
+      const inputs: DustAppParameters = {};
+
+      for (const k of specRes.value.inputs) {
+        if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
+          inputs[k.name] = {
+            expectedType: k.type,
+            value: rawInputs[k.name],
+          };
+        } else {
           return new Err(
-            new Error("Failed to generate a valid retrieval query.")
+            new Error(
+              `Failed to generate input ${k.name} (expected type ${
+                k.type
+              }, got ${rawInputs[k.name]})`
+            )
           );
         }
-        query = rawInputs.query as string;
       }
 
-      if (c.relativeTimeFrame === "auto") {
-        if (
-          rawInputs.relativeTimeFrame &&
-          typeof rawInputs.relativeTimeFrame === "string"
-        ) {
-          relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
-        }
-      }
-    } else {
-      logger.info(
-        {
-          elapsed: Date.now() - now,
-          error: rawInputsRes.error,
-        },
-        "Error generating DustAppRun action inputs"
-      );
-
-      // We fail the rerieval only if we had to generate a query but failed to do so, if the
-      // relativeTimeFrame failed, we'll just use `null`.
-      if (c.query === "auto") {
-        return rawInputsRes;
-      }
+      return new Ok(inputs);
     }
+    logger.info(
+      {
+        elapsed: Date.now() - now,
+        error: rawInputsRes.error,
+      },
+      "Error generating DustAppRun action inputs"
+    );
+
+    return new Err(rawInputsRes.error);
   }
 
-  return new Ok({
-    query,
-    relativeTimeFrame,
-    topK: c.topK,
-  });
+  return new Ok({});
 }
 
 // Event sent during before the execution of a dust app run with the finalized params to be used.
@@ -217,6 +211,14 @@ export type DustAppRunErrorEvent = {
     code: string;
     message: string;
   };
+};
+
+export type DustAppRunBlockEvent = {
+  type: "dust_app_run_block";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  block: string;
 };
 
 export type DustAppRunSuccessEvent = {
@@ -253,7 +255,7 @@ export async function* runDustApp(
     throw new Error("Unexpected action configuration received in `runDustApp`");
   }
 
-  const paramsRes = await generateDustAppParams(
+  const paramsRes = await generateDustAppRunParams(
     auth,
     configuration,
     conversation,
@@ -262,13 +264,13 @@ export async function* runDustApp(
 
   if (paramsRes.isErr()) {
     yield {
-      type: "retrieval_error",
+      type: "dust_app_run_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "retrieval_parameters_generation_error",
-        message: `Error generating parameters for retrieval: ${paramsRes.error.message}`,
+        code: "dust_app_run_parameters_generation_error",
+        message: `Error generating parameters for Dust App run: ${paramsRes.error.message}`,
       },
     };
     return;
@@ -276,27 +278,10 @@ export async function* runDustApp(
 
   const params = paramsRes.value;
 
-  const model = configuration.generation?.model;
-
-  let topK = 16;
-
-  if (params.topK === "auto") {
-    if (!model) {
-      logger.warn(
-        "Retrieval topK mode is set to auto, but there is no model to infer it from. Defaulting to 16."
-      );
-    } else {
-      const supportedModel = getSupportedModelConfig(model);
-      topK = supportedModel.recommendedTopK;
-    }
-  } else {
-    topK = params.topK;
-  }
-
-  // Create the AgentRetrievalAction object in the database and yield an event for the generation of
-  // the params. We store the action here as the params have been generated, if an error occurs
-  // later on, the action won't have retrieved documents but the error will be stored on the parent
-  // agent message.
+  // Create the AgentDustAppRunAction object in the database and yield an event for the generation
+  // of the params. We store the action here as the params have been generated, if an error occurs
+  // later on, the action won't have an output but the error will be stored on the parent agent
+  // message.
   const action = await AgentRetrievalAction.create({
     query: params.query,
     relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
