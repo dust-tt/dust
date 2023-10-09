@@ -404,7 +404,24 @@ export async function* runGeneration(
   }
 
   const { eventStream } = res.value;
+
+  let shouldYieldCancel = false;
+  let lastCheckCancellation = Date.now();
   const redis = await redisClient();
+
+  const _checkCancellation = async () => {
+    try {
+      const cancelled = await redis.get(
+        `assistant:generation:cancelled:${agentMessage.sId}`
+      );
+      if (cancelled) {
+        shouldYieldCancel = true;
+      }
+    } catch (error) {
+      console.error("Error checking cancellation:", error);
+      return false;
+    }
+  };
 
   for await (const event of eventStream) {
     if (event.type === "error") {
@@ -421,11 +438,13 @@ export async function* runGeneration(
       return;
     }
 
-    // Check if there's a agent_generation_cancelled event on the redis channel. If so, we yield to stop the generation.
-    const cancelled = await redis.get(
-      `assistant:generation:cancelled:${agentMessage.sId}`
-    );
-    if (cancelled) {
+    const currentTimestamp = Date.now();
+    if (currentTimestamp - lastCheckCancellation >= 1000) {
+      void _checkCancellation(); // Trigger the async function without awaiting
+      lastCheckCancellation = currentTimestamp;
+    }
+
+    if (shouldYieldCancel) {
       yield {
         type: "generation_cancel",
         created: Date.now(),
