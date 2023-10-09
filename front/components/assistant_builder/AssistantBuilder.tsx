@@ -4,9 +4,14 @@ import {
   Avatar,
   Button,
   Collapsible,
+  ContextItem,
   DropdownMenu,
   Input,
+  Modal,
+  PageHeader,
   PencilSquareIcon,
+  PlusIcon,
+  SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -37,13 +42,19 @@ import {
   GPT_4_32K_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/assistant";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
-import { useAgentConfigurations } from "@app/lib/swr";
+import {
+  useAgentConfigurations,
+  useSlackChannelsLinkedWithAgent,
+} from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -173,6 +184,10 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
 
+  const slackDataSource = dataSources.find(
+    (ds) => ds.connectorProvider === "slack"
+  );
+
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
@@ -258,9 +273,33 @@ export default function AssistantBuilder({
     }
   }, [initialBuilderState]);
 
-  const removeLeadingAt = (handle: string) => {
-    return handle.startsWith("@") ? handle.slice(1) : handle;
-  };
+  const [selectedSlackChannels, setSelectedSlackChannels] = useState<
+    {
+      channelId: string;
+      channelName: string;
+    }[]
+  >([]);
+
+  const { slackChannels: slackChannelsLinkedWithAgent } =
+    useSlackChannelsLinkedWithAgent({
+      workspaceId: owner.sId,
+      dataSourceName: slackDataSource?.name ?? undefined,
+    });
+
+  useEffect(() => {
+    if (slackChannelsLinkedWithAgent && agentConfigurationId && !edited) {
+      setSelectedSlackChannels(
+        slackChannelsLinkedWithAgent
+          .filter(
+            (channel) => channel.agentConfigurationId === agentConfigurationId
+          )
+          .map((channel) => ({
+            channelId: channel.slackChannelId,
+            channelName: channel.slackChannelName,
+          }))
+      );
+    }
+  }, [slackChannelsLinkedWithAgent, agentConfigurationId, edited]);
 
   const assistantHandleIsValid = useCallback((handle: string) => {
     return /^[a-zA-Z0-9_-]{1,20}$/.test(removeLeadingAt(handle));
@@ -463,7 +502,31 @@ export default function AssistantBuilder({
       throw new Error("An error occurred while saving the configuration.");
     }
 
-    return res.json();
+    const newAgentConfiguration = await res.json();
+    const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
+
+    if (selectedSlackChannels.length) {
+      const slackLinkRes = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            slack_channel_ids: selectedSlackChannels.map(
+              ({ channelId }) => channelId
+            ),
+          }),
+        }
+      );
+
+      if (!slackLinkRes.ok) {
+        throw new Error("An error occurred while linking Slack channels.");
+      }
+    }
+
+    return newAgentConfiguration;
   };
 
   const handleDeleteAgent = async () => {
@@ -765,7 +828,7 @@ export default function AssistantBuilder({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-              <div className="pb-8">
+              <div className="pb-4">
                 <DataSourceSelectionSection
                   show={builderState.dataSourceMode === "SELECTED"}
                   dataSourceConfigurations={
@@ -801,10 +864,32 @@ export default function AssistantBuilder({
                   timeFrameError={timeFrameError}
                 />
               </div>
+              {slackDataSource && (
+                <SlackIntegration
+                  slackDataSource={slackDataSource}
+                  owner={owner}
+                  onSave={(channels) => {
+                    setEdited(true);
+                    setSelectedSlackChannels(channels);
+                  }}
+                  existingSelection={selectedSlackChannels}
+                  alreadyLinkedChannelIds={
+                    new Set(
+                      slackChannelsLinkedWithAgent
+                        .filter(
+                          (channel) =>
+                            channel.agentConfigurationId !==
+                            agentConfigurationId
+                        )
+                        .map((channel) => channel.slackChannelId)
+                    )
+                  }
+                />
+              )}
             </div>
           </div>
           {agentConfigurationId && (
-            <div className="flex w-full justify-center">
+            <div className="flex w-full justify-center pt-8">
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
@@ -842,6 +927,171 @@ export default function AssistantBuilder({
           )}
         </div>
       </AppLayout>
+    </>
+  );
+}
+
+function SlackIntegration({
+  slackDataSource,
+  owner,
+  onSave,
+  existingSelection,
+  alreadyLinkedChannelIds,
+}: {
+  slackDataSource: DataSourceType;
+  owner: WorkspaceType;
+  onSave: (channels: { channelId: string; channelName: string }[]) => void;
+  existingSelection: { channelId: string; channelName: string }[];
+  alreadyLinkedChannelIds: Set<string>;
+}) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedChannelTitleById, setSelectedChannelTitleById] = useState<
+    Record<string, string>
+  >({});
+  const [hasChanged, setHasChanged] = useState(false);
+
+  const selectedChannelIds = new Set(Object.keys(selectedChannelTitleById));
+
+  const resetSelection = useCallback(() => {
+    setSelectedChannelTitleById(
+      existingSelection.reduce(
+        (acc, { channelId, channelName }) => ({
+          ...acc,
+          [channelId]: channelName,
+        }),
+        {}
+      )
+    );
+  }, [existingSelection]);
+
+  const openModal = () => {
+    resetSelection();
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    resetSelection();
+  };
+
+  const save = () => {
+    onSave(
+      Object.entries(selectedChannelTitleById).map(
+        ([channelId, channelName]) => ({
+          channelId,
+          channelName,
+        })
+      )
+    );
+
+    setModalOpen(false);
+  };
+
+  return (
+    <>
+      <Modal
+        isOpen={modalOpen}
+        isFullScreen={true}
+        hasChanged={hasChanged}
+        onClose={closeModal}
+        title="Slack bot configuration"
+        onSave={save}
+      >
+        <div className="flex w-full pt-12">
+          <div className="mx-auto max-w-6xl pb-8">
+            <div className="mb-6">
+              <PageHeader
+                title={"Select Slack channels"}
+                icon={CONNECTOR_CONFIGURATIONS["slack"].logoComponent}
+                description="Select the channels in which your assistant will answer by default."
+              />
+            </div>
+            <DataSourceResourceSelectorTree
+              owner={owner}
+              dataSource={slackDataSource}
+              selectedParentIds={selectedChannelIds}
+              parentsById={{}}
+              onSelectChange={({ resourceId, resourceName }, selected) => {
+                setHasChanged(true);
+
+                const newSelectedChannelTitleById = {
+                  ...selectedChannelTitleById,
+                };
+                if (selected) {
+                  newSelectedChannelTitleById[resourceId] = resourceName;
+                } else {
+                  delete newSelectedChannelTitleById[resourceId];
+                }
+
+                setSelectedChannelTitleById(newSelectedChannelTitleById);
+              }}
+              expandable={false}
+              fullySelected={false}
+              disabledParentIds={alreadyLinkedChannelIds}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      <div className="text-xl font-bold text-element-900">
+        Slack Integration
+      </div>
+      <div className="text-sm text-element-700">
+        Assistants can be configured as default for Slack channels.
+      </div>
+      <div>
+        {existingSelection.length ? (
+          <Button
+            labelVisible={true}
+            label={"Manage channels"}
+            variant={"secondary"}
+            icon={PencilSquareIcon}
+            onClick={openModal}
+          />
+        ) : (
+          <Button
+            labelVisible={true}
+            label={"Add Slack channels"}
+            variant={"primary"}
+            icon={PlusIcon}
+            onClick={openModal}
+          />
+        )}
+      </div>
+      <div className="mt-6 text-sm text-element-700">
+        Your assistant will answer by default when @dust is mentioned in the
+        following channels:
+      </div>
+      {existingSelection.length ? (
+        <ContextItem.List className="mt-2 border-b border-t border-structure-200">
+          {existingSelection.map(({ channelId, channelName }) => {
+            return (
+              <ContextItem
+                key={channelId}
+                title={channelName}
+                visual={<ContextItem.Visual visual={SlackLogo} />}
+                action={
+                  <Button.List>
+                    <Button
+                      icon={TrashIcon}
+                      variant="secondaryWarning"
+                      label="Remove"
+                      labelVisible={false}
+                      onClick={() => {
+                        onSave(
+                          existingSelection.filter(
+                            (channel) => channel.channelId !== channelId
+                          )
+                        );
+                      }}
+                    />
+                  </Button.List>
+                }
+              />
+            );
+          })}
+        </ContextItem.List>
+      ) : null}
     </>
   );
 }
@@ -984,4 +1234,8 @@ function AdvancedSettings({
       </Collapsible.Panel>
     </Collapsible>
   );
+}
+
+function removeLeadingAt(handle: string) {
+  return handle.startsWith("@") ? handle.slice(1) : handle;
 }

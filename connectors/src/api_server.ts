@@ -9,8 +9,14 @@ import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
+import { getResourcesParentsAPIHandler } from "@connectors/api/get_resources_parents";
+import { getResourcesTitlesAPIHandler } from "@connectors/api/get_resources_titles";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
+import {
+  getSlackChannelsLinkedWithAgentHandler,
+  patchSlackChannelsLinkedWithAgentHandler,
+} from "@connectors/api/slack_channels_linked_with_agent";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
@@ -19,10 +25,6 @@ import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_g
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
-
-import { getResourcesParentsAPIHandler } from "./api/get_resources_parents";
-import { getResourcesTitlesAPIHandler } from "./api/get_resources_titles";
-import { linkSlackChannelWithAgentHandler } from "./api/slack_channel_link_with_agent";
 
 export function startServer(port: number) {
   const app = express();
@@ -72,9 +74,13 @@ export function startServer(port: number) {
     setConnectorPermissionsAPIHandler
   );
 
-  app.post(
-    "/slack/channels/:slackChannelId/link_with_agent",
-    linkSlackChannelWithAgentHandler
+  app.patch(
+    "/slack/channels/linked_with_agent",
+    patchSlackChannelsLinkedWithAgentHandler
+  );
+  app.get(
+    "/slack/channels/linked_with_agent",
+    getSlackChannelsLinkedWithAgentHandler
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);

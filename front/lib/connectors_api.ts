@@ -337,24 +337,49 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
-  async linkSlackChannelWithAgent({
+  async linkSlackChannelsWithAgent({
     connectorId,
-    slackChannelId,
+    slackChannelIds,
     agentConfigurationId,
   }: {
     connectorId: string;
-    slackChannelId: string;
+    slackChannelIds: string[];
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await fetch(
-      `${CONNECTORS_API}/slack/channels/${slackChannelId}/link_with_agent`,
+      `${CONNECTORS_API}/slack/channels/linked_with_agent`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: getDefaultHeaders(),
         body: JSON.stringify({
-          connectorId,
-          agentConfigurationId,
+          connector_id: connectorId,
+          agent_configuration_id: agentConfigurationId,
+          slack_channel_ids: slackChannelIds,
         }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async getSlackChannelsLinkedWithAgent({
+    connectorId,
+  }: {
+    connectorId: string;
+  }): Promise<
+    ConnectorsAPIResponse<{
+      slackChannels: {
+        slackChannelId: string;
+        slackChannelName: string;
+        agentConfigurationId: string;
+      }[];
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${connectorId}`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
       }
     );
 
