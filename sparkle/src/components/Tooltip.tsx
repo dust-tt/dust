@@ -17,6 +17,7 @@ export function Tooltip({
 }: TooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [timerId, setTimerId] = useState<number | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const handleMouseOver = () => {
     const id = window.setTimeout(() => {
@@ -33,10 +34,15 @@ export function Tooltip({
   };
 
   useEffect(() => {
+    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
     return () => {
       if (timerId) window.clearTimeout(timerId);
     };
   }, [timerId]);
+
+  if (isTouchDevice) {
+    return <>{children}</>;
+  }
 
   const baseClasses =
     "s-absolute s-z-10 s-px-3 s-py-2 s-text-sm s-rounded-xl s-border s-shadow-md s-transition-all s-duration-500 s-ease-out s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-text-element-700 dark:s-text-element-700-dark";
