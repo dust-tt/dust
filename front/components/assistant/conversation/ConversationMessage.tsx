@@ -112,54 +112,19 @@ export function ConversationMessage({
   }
 
   return (
-    <div className="flex w-full gap-4">
-      {/* COLUMN 1: AVATAR - in small size if small layout */}
-      <div>
-        <div className="sm:hidden">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="xs"
-            busy={avatarBusy}
-          />
-        </div>
-        <div className="hidden sm:block">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="md"
-            busy={avatarBusy}
-          />
-        </div>
-      </div>
-
-      {/* COLUMN 2: CONTENT
-       * min-w-0 prevents the content from overflowing the container
-       */}
-      <div className="flex min-w-0 flex-grow flex-col gap-4">
-        <div className="text-sm font-medium">{name}</div>
-        <div className="min-w-0 break-words text-base font-normal">
-          {children}
-        </div>
-      </div>
-
-      {/* COLUMN 3: BUTTONS */}
-      <div className="w-16  overflow-visible">
-        <div className="w-[8vw]">
-          {/* COPY / RETRY */}
-          {buttons && (
-            <div className="mb-6 flex flex-wrap gap-1">
-              {buttons.map((button, i) => (
-                <Button
-                  key={`message-${messageId}-button-${i}`}
-                  variant="tertiary"
-                  size="xs"
-                  label={button.label}
-                  labelVisible={false}
-                  icon={button.icon}
-                  onClick={button.onClick}
-                />
-              ))}
+    <>
+      {/* SMALL SIZE SCREEN*/}
+      <div className="flex w-full gap-4 xl:hidden">
+        <div className="flex flex-grow flex-col gap-4">
+          <div className="flex items-start gap-2">
+            <div className="flex h-8 flex-grow items-center gap-2">
+              <Avatar
+                visual={pictureUrl}
+                name={name || undefined}
+                size="xs"
+                busy={avatarBusy}
+              />
+              <div className="flex-grow text-sm font-medium">{name}</div>
             </div>
             <div className="flex flex-col items-end gap-2">
               {/* COPY / RETRY */}
@@ -274,7 +239,9 @@ export function ConversationMessage({
           busy={avatarBusy}
         />
 
-        {/* COLUMN 2: CONTENT */}
+        {/* COLUMN 2: CONTENT
+         * min-w-0 prevents the content from overflowing the container
+         */}
         <div className="flex min-w-0 flex-grow flex-col gap-4">
           <div className="text-sm font-medium">{name}</div>
           <div className="min-w-0 break-words text-base font-normal">
