@@ -1,3 +1,5 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
@@ -8,6 +10,8 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DatasetType } from "@app/types/dataset";
+
+import { PostDatasetRequestBodySchema } from "..";
 
 type GetDatasetResponseBody = { dataset: DatasetType };
 
@@ -76,25 +80,24 @@ async function handler(
         });
       }
 
-      if (
-        !req.body ||
-        !(typeof req.body.name == "string") ||
-        !(typeof req.body.description == "string") ||
-        !Array.isArray(req.body.data)
-      ) {
+      const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { name: string, description: string, data: any[] }.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
       // Check data validity.
       try {
-        checkDatasetData(req.body.data);
+        checkDatasetData({
+          data: bodyValidation.right.dataset.data,
+          schema: bodyValidation.right.schema,
+        });
       } catch (e) {
         return apiError(req, res, {
           status_code: 400,
@@ -106,7 +109,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      const data = req.body.data.map((d: any) => {
+      const data = bodyValidation.right.dataset.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -118,7 +121,7 @@ async function handler(
       // Register dataset with the Dust internal API.
       const d = await CoreAPI.createDataset({
         projectId: app.dustAPIProjectId,
-        datasetId: req.body.name,
+        datasetId: bodyValidation.right.dataset.name,
         data,
       });
       if (d.isErr()) {
@@ -132,16 +135,19 @@ async function handler(
         });
       }
 
-      const description = req.body.description ? req.body.description : null;
+      const description = bodyValidation.right.dataset.description
+        ? bodyValidation.right.dataset.description
+        : null;
 
       await dataset.update({
-        name: req.body.name,
+        name: bodyValidation.right.dataset.name,
         description,
+        schema: bodyValidation.right.schema,
       });
 
       res.status(200).json({
         dataset: {
-          name: typeof req.body.name == "string" ? req.body.name : null,
+          name: bodyValidation.right.dataset.name,
           description,
           data: null,
         },

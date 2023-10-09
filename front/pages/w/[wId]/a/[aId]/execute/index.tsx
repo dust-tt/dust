@@ -365,7 +365,7 @@ export default function ExecuteView({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [inputDatasetKeys] = useState(
-    inputDataset ? checkDatasetData(inputDataset.data) : []
+    inputDataset ? checkDatasetData({ data: inputDataset.data }) : []
   );
   const [datasetTypes] = useState(
     inputDatasetKeys.length
