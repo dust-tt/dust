@@ -13,11 +13,11 @@ import {
   subNavigationApp,
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
-import { getDatasetHash } from "@app/lib/api/datasets";
+import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { AppType } from "@app/types/app";
-import { DatasetType } from "@app/types/dataset";
+import { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -28,6 +28,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   app: AppType;
   dataset: DatasetType;
+  schema: DatasetSchema | null;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -67,6 +68,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const schema = await getDatasetSchema(auth, app, dataset.name);
+
   return {
     props: {
       user,
@@ -74,6 +77,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       app,
       dataset,
+      schema,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -85,6 +89,7 @@ export default function ViewDatasetView({
   readOnly,
   app,
   dataset,
+  schema,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -95,6 +100,9 @@ export default function ViewDatasetView({
   const [editorDirty, setEditorDirty] = useState(false);
   const [isFinishedEditing, setIsFinishedEditing] = useState(false);
   const [updatedDataset, setUpdatedDataset] = useState(dataset);
+  const [updatedSchema, setUpdatedSchema] = useState<DatasetSchema | null>(
+    schema
+  );
 
   useRegisterUnloadHandlers(editorDirty);
 
@@ -112,8 +120,12 @@ export default function ViewDatasetView({
   const onUpdate = (
     initializing: boolean,
     valid: boolean,
-    currentDatasetInEditor: DatasetType
+    currentDatasetInEditor: DatasetType,
+    schema: DatasetSchema
   ) => {
+    if (readOnly) {
+      return;
+    }
     setDisabled(!valid);
     if (
       !initializing &&
@@ -128,6 +140,7 @@ export default function ViewDatasetView({
     }
     if (valid) {
       setUpdatedDataset(currentDatasetInEditor);
+      setUpdatedSchema(schema);
     }
   };
 
@@ -140,7 +153,10 @@ export default function ViewDatasetView({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedDataset),
+        body: JSON.stringify({
+          dataset: updatedDataset,
+          schema: updatedSchema,
+        }),
       }
     );
     await res.json();
@@ -180,15 +196,8 @@ export default function ViewDatasetView({
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
                   dataset={updatedDataset}
-                  onUpdate={(
-                    initializing: boolean,
-                    valid: boolean,
-                    currentDatasetInEditor: DatasetType
-                  ) => {
-                    if (!readOnly) {
-                      onUpdate(initializing, valid, currentDatasetInEditor);
-                    }
-                  }}
+                  schema={schema}
+                  onUpdate={onUpdate}
                   nameDisabled={true}
                 />
 

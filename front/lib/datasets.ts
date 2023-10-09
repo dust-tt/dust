@@ -1,4 +1,4 @@
-import { DatasetEntry } from "@app/types/dataset";
+import { DatasetEntry, DatasetSchema } from "@app/types/dataset";
 
 function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   if (a.size !== b.size) {
@@ -12,7 +12,13 @@ function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   return true;
 }
 
-export function checkDatasetData(data?: Array<object> | null): string[] {
+export function checkDatasetData({
+  data,
+  schema,
+}: {
+  data?: Array<object> | null;
+  schema?: DatasetSchema;
+}): string[] {
   if (!data) {
     throw new Error("data must be defined");
   }
@@ -32,6 +38,15 @@ export function checkDatasetData(data?: Array<object> | null): string[] {
       );
     }
   }
+  if (schema) {
+    const schemaKeys = new Set(schema.map((s) => s.key));
+    if (!areSetsEqual(schemaKeys, new Set(Object.keys(data[0])))) {
+      throw new Error(
+        "Keys mismatch between schema and data entries: " +
+          `${schemaKeys} != ${Object.keys(data[0])}`
+      );
+    }
+  }
 
   return Object.keys(data[0]);
 }
@@ -39,15 +54,17 @@ export function checkDatasetData(data?: Array<object> | null): string[] {
 export function getDatasetTypes(
   datasetKeys: string[],
   entry: DatasetEntry
-): string[] {
+): ("string" | "number" | "boolean" | "json")[] {
   return datasetKeys.map((key) => getValueType(entry[key]));
 }
 
-export function getValueType(value: any): string {
+export function getValueType(
+  value: any
+): "string" | "number" | "boolean" | "json" {
   const type = typeof value;
 
   if (type === "object") {
-    return type;
+    return "json";
   }
 
   let parsed = null;
@@ -58,8 +75,13 @@ export function getValueType(value: any): string {
   }
 
   const parsedType = typeof parsed;
-  if (["number", "boolean", "object"].includes(parsedType)) {
-    return parsedType;
+  switch (parsedType) {
+    case "number":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "object":
+      return "json";
   }
 
   return "string";

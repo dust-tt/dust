@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
@@ -17,6 +20,26 @@ export type GetDatasetsResponseBody = {
 export type PostDatasetResponseBody = {
   dataset: DatasetType;
 };
+
+export const PostDatasetRequestBodySchema = t.type({
+  dataset: t.type({
+    name: t.string,
+    description: t.union([t.string, t.null]),
+    data: t.array(t.record(t.string, t.any)),
+  }),
+  schema: t.array(
+    t.type({
+      key: t.string,
+      type: t.union([
+        t.literal("string"),
+        t.literal("number"),
+        t.literal("boolean"),
+        t.literal("json"),
+      ]),
+      description: t.union([t.string, t.null]),
+    })
+  ),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -73,18 +96,14 @@ async function handler(
         });
       }
 
-      if (
-        !req.body ||
-        !(typeof req.body.name == "string") ||
-        !(typeof req.body.description == "string") ||
-        !Array.isArray(req.body.data)
-      ) {
+      const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { name: string, description: string, data: any[] }.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
@@ -100,7 +119,7 @@ async function handler(
 
       let exists = false;
       existing.forEach((e) => {
-        if (e.name == req.body.name) {
+        if (e.name == bodyValidation.right.dataset.name) {
           exists = true;
         }
       });
@@ -116,7 +135,10 @@ async function handler(
 
       // Check data validity.
       try {
-        checkDatasetData(req.body.data);
+        checkDatasetData({
+          data: bodyValidation.right.dataset.data,
+          schema: bodyValidation.right.schema,
+        });
       } catch (e) {
         return apiError(req, res, {
           status_code: 400,
@@ -128,7 +150,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      const data = req.body.data.map((d: any) => {
+      const data = bodyValidation.right.dataset.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -139,7 +161,7 @@ async function handler(
 
       const dataset = await CoreAPI.createDataset({
         projectId: app.dustAPIProjectId,
-        datasetId: req.body.name,
+        datasetId: bodyValidation.right.dataset.name,
         data,
       });
       if (dataset.isErr()) {
@@ -153,13 +175,16 @@ async function handler(
         });
       }
 
-      const description = req.body.description ? req.body.description : null;
+      const description = bodyValidation.right.dataset.description
+        ? bodyValidation.right.dataset.description
+        : null;
 
       await Dataset.create({
-        name: req.body.name,
+        name: bodyValidation.right.dataset.name,
         description,
         appId: app.id,
         workspaceId: owner.id,
+        schema: bodyValidation.right.schema,
       });
 
       res.status(201).json({

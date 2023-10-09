@@ -7,3 +7,9 @@ export type DatasetType = {
   description: string | null;
   data: Array<DatasetEntry> | null;
 };
+
+export type DatasetSchema = {
+  key: string;
+  type: "string" | "number" | "boolean" | "json";
+  description: string | null;
+}[];

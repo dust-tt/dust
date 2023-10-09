@@ -9,6 +9,7 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import { DatasetSchema } from "@app/types/dataset";
 
 export class App extends Model<
   InferAttributes<App>,
@@ -150,6 +151,7 @@ export class Dataset extends Model<
 
   declare name: string;
   declare description: string | null;
+  declare schema: DatasetSchema | null;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare appId: ForeignKey<App["id"]>;
@@ -177,6 +179,10 @@ Dataset.init(
     },
     description: {
       type: DataTypes.STRING,
+    },
+    schema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
   },
   {

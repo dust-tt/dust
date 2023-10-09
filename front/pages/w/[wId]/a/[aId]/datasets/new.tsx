@@ -17,7 +17,7 @@ import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { AppType } from "@app/types/app";
-import { DatasetType } from "@app/types/dataset";
+import { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -75,7 +75,8 @@ export default function NewDatasetView({
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [dataset, setDataset] = useState(null as DatasetType | null);
+  const [dataset, setDataset] = useState<DatasetType | null>(null);
+  const [schema, setSchema] = useState<DatasetSchema | null>(null);
 
   const [editorDirty, setEditorDirty] = useState(false);
   const [isFinishedEditing, setIsFinishedEditing] = useState(false);
@@ -96,7 +97,8 @@ export default function NewDatasetView({
   const onUpdate = (
     initializing: boolean,
     valid: boolean,
-    currentDatasetInEditor: DatasetType
+    currentDatasetInEditor: DatasetType,
+    schema: DatasetSchema
   ) => {
     setDisabled(!valid);
     if (!initializing) {
@@ -104,6 +106,7 @@ export default function NewDatasetView({
     }
     if (valid) {
       setDataset(currentDatasetInEditor);
+      setSchema(schema);
     }
   };
 
@@ -114,7 +117,10 @@ export default function NewDatasetView({
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(dataset),
+      body: JSON.stringify({
+        dataset,
+        schema,
+      }),
     });
     await res.json();
     setEditorDirty(false);
@@ -152,6 +158,7 @@ export default function NewDatasetView({
                 readOnly={false}
                 datasets={datasets}
                 dataset={dataset}
+                schema={schema}
                 onUpdate={onUpdate}
                 nameDisabled={false}
               />

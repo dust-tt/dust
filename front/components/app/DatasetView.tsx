@@ -16,7 +16,7 @@ import { checkDatasetData } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
-import { DatasetEntry, DatasetType } from "@app/types/dataset";
+import { DatasetEntry, DatasetSchema, DatasetType } from "@app/types/dataset";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -84,16 +84,19 @@ export default function DatasetView({
   readOnly,
   datasets,
   dataset,
+  schema,
   onUpdate,
   nameDisabled,
 }: {
   readOnly: boolean;
   datasets: DatasetType[];
   dataset: DatasetType | null;
+  schema: DatasetSchema | null;
   onUpdate: (
     initializing: boolean,
     valid: boolean,
-    dataset: DatasetType
+    dataset: DatasetType,
+    schema: DatasetSchema
   ) => void;
   nameDisabled: boolean;
 }) {
@@ -113,9 +116,13 @@ export default function DatasetView({
     dataset.description
   );
   const [datasetData, setDatasetData] = useState(dataset.data || []);
-
-  const [datasetKeys, setDatasetKeys] = useState(checkDatasetData(datasetData));
-  const [datasetTypes, setDatasetTypes] = useState([] as string[]);
+  const [datasetKeys, setDatasetKeys] = useState(
+    checkDatasetData({ data: datasetData })
+  );
+  const [datasetKeyDescriptions, setDatasetKeyDescriptions] = useState<
+    string[]
+  >((schema || []).map((s) => s.description || ""));
+  const [datasetTypes, setDatasetTypes] = useState<string[]>([]);
   const [datasetInitializing, setDatasetInitializing] = useState(true);
 
   const datasetNameValidation = () => {
@@ -200,6 +207,21 @@ export default function DatasetView({
     }
   };
 
+  const inferSchema = (): DatasetSchema => {
+    if (datasetData.length > 0) {
+      const types = getDatasetTypes(datasetKeys, datasetData[0]);
+      return types.map((t, i) => {
+        return {
+          key: datasetKeys[i],
+          type: t,
+          description: datasetKeyDescriptions[i] || null,
+        };
+      });
+    } else {
+      return [];
+    }
+  };
+
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
     const data = datasetData.map((d) => {
@@ -242,8 +264,12 @@ export default function DatasetView({
     setDatasetKeys(keys);
 
     const types = datasetTypes;
-    types[i + 1] = "string";
+    types.splice(i + 1, 0, "string");
     setDatasetTypes(types);
+
+    const descriptions = datasetKeyDescriptions;
+    descriptions.splice(i + 1, 0, "");
+    setDatasetKeyDescriptions(descriptions);
   };
 
   const handleDeleteKey = (i: number) => {
@@ -252,11 +278,25 @@ export default function DatasetView({
       return d;
     });
 
+    setDatasetData(data);
+
     const keys = datasetKeys.map((k) => k);
     keys.splice(i, 1);
-
-    setDatasetData(data);
     setDatasetKeys(keys);
+
+    const types = datasetTypes;
+    types.splice(i, 1);
+    setDatasetTypes(types);
+
+    const descriptions = datasetKeyDescriptions.map((d) => d);
+    descriptions.splice(i, 1);
+    setDatasetKeyDescriptions(descriptions);
+  };
+
+  const handleKeyDescriptionChange = (i: number, value: any) => {
+    const descriptions = [...datasetKeyDescriptions];
+    descriptions[i] = value;
+    setDatasetKeyDescriptions(descriptions);
   };
 
   const handleValueChange = (i: number, k: string, value: any) => {
@@ -316,23 +356,31 @@ export default function DatasetView({
     }
     let keys = [] as string[];
     try {
-      keys = checkDatasetData(data);
+      keys = checkDatasetData({
+        data,
+      });
     } catch (e) {
       window.alert(`${e}`);
     }
 
     setDatasetKeys(keys);
+    setDatasetKeyDescriptions(keys.map(() => ""));
     setDatasetData(data);
     setDatasetTypes([]);
-    onUpdate(datasetInitializing, datasetTypesValidation(), {
-      name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-      // keys: datasetKeys,
-      description: (datasetDescription || "").slice(
-        0,
-        MODELS_STRING_MAX_LENGTH
-      ),
-      data: datasetData,
-    });
+
+    onUpdate(
+      datasetInitializing,
+      datasetTypesValidation(),
+      {
+        name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
+        description: (datasetDescription || "").slice(
+          0,
+          MODELS_STRING_MAX_LENGTH
+        ),
+        data: datasetData,
+      },
+      inferSchema()
+    );
   };
 
   const handleFileUpload = (file: File) => {
@@ -351,18 +399,29 @@ export default function DatasetView({
 
     if (onUpdate) {
       // TODO(spolu): Optimize, as it might not be great to send the entire data on each update.
-      onUpdate(datasetInitializing, valid, {
-        name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-        // keys: datasetKeys,
-        description: (datasetDescription || "").slice(
-          0,
-          MODELS_STRING_MAX_LENGTH
-        ),
-        data: exportDataset(),
-      });
+      onUpdate(
+        datasetInitializing,
+        valid,
+        {
+          name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
+          description: (datasetDescription || "").slice(
+            0,
+            MODELS_STRING_MAX_LENGTH
+          ),
+          data: exportDataset(),
+        },
+        inferSchema()
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetName, datasetDescription, datasetData, datasetKeys, datasetTypes]);
+  }, [
+    datasetName,
+    datasetDescription,
+    datasetData,
+    datasetKeys,
+    datasetKeyDescriptions,
+    datasetTypes,
+  ]);
 
   return (
     <div>
@@ -420,13 +479,14 @@ export default function DatasetView({
           {!readOnly ? (
             <p className="mt-2 text-sm text-gray-500">
               Set the properties and types to ensure your dataset is valid when
-              you update it.
+              you update it. The properties descriptions are used to generate
+              the inputs to your app when run from an Assistant.
             </p>
           ) : null}
         </div>
 
         <div className="sm:col-span-5">
-          <div className="space-y-[1px]">
+          <div className="space-y-2">
             {datasetKeys.map((k, j) => (
               <div key={j} className="grid sm:grid-cols-10">
                 <div className="sm:col-span-3">
@@ -434,7 +494,7 @@ export default function DatasetView({
                     <div className="flex flex-1">
                       <input
                         className={classNames(
-                          "font-mono w-full border-0 bg-slate-300 px-1 py-1 text-[13px] font-normal outline-none focus:outline-none",
+                          "font-mono w-full border-0 bg-slate-300 px-1 py-1 text-[13px] font-bold outline-none focus:outline-none",
                           readOnly
                             ? "border-white ring-0 focus:border-white focus:ring-0"
                             : "border-white ring-0 focus:border-gray-300 focus:ring-0"
@@ -477,7 +537,7 @@ export default function DatasetView({
                     </span>
                   ) : (
                     <div className="inline-flex" role="group">
-                      {["string", "number", "boolean", "object"].map((type) => (
+                      {["string", "number", "boolean", "json"].map((type) => (
                         <button
                           key={type}
                           type="button"
@@ -494,11 +554,26 @@ export default function DatasetView({
                             setDatasetTypes(types);
                           }}
                         >
-                          {type == "object" ? "JSON" : type}
+                          {type == "json" ? "JSON" : type}
                         </button>
                       ))}
                     </div>
                   )}
+                </div>
+                <div className="bg-slate-100 sm:col-span-10">
+                  <TextareaAutosize
+                    minRows={1}
+                    className={classNames(
+                      "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
+                      readOnly ? "text-gray-500" : "text-gray-700"
+                    )}
+                    readOnly={readOnly}
+                    placeholder="Property description"
+                    value={datasetKeyDescriptions[j] || ""}
+                    onChange={(e) => {
+                      handleKeyDescriptionChange(j, e.target.value);
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -545,7 +620,7 @@ export default function DatasetView({
                               : "border-red-500"
                           )}
                         >
-                          {datasetTypes[datasetKeys.indexOf(k)] === "object" ? (
+                          {datasetTypes[datasetKeys.indexOf(k)] === "json" ? (
                             <CodeEditor
                               data-color-mode="light"
                               readOnly={readOnly}
