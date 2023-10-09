@@ -12,7 +12,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -238,7 +238,6 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: RetrievalDocumentType }[]
   >([]);
-
   function updateActiveReferences(
     document: RetrievalDocumentType,
     index: number
@@ -248,7 +247,9 @@ export function AgentMessage({
       setActiveReferences([...activeReferences, { index, document }]);
     }
   }
-
+  const [lastHoveredReference, setLastHoveredReference] = useState<
+    number | null
+  >(null);
   useEffect(() => {
     if (
       agentMessageToRender.action &&
@@ -335,8 +336,11 @@ export function AgentMessage({
             <RenderMessageMarkdown
               content={agentMessage.content}
               blinkingCursor={streaming}
-              references={references}
-              updateActiveReferences={updateActiveReferences}
+              citationsContext={{
+              references,
+              updateActiveReferences,
+              setHoveredReference: setLastHoveredReference,
+            }}
           />
             <Citations activeReferences={activeReferences} />
           </div>
@@ -363,57 +367,77 @@ export function AgentMessage({
       }
     );
   }
-}
+  function Citations({
+    activeReferences,
+  }: {
+    activeReferences: { index: number; document: RetrievalDocumentType }[];
+  }) {
+    const citationContainer = useRef<HTMLDivElement>(null);
 
-function Citations({
-  activeReferences,
-}: {
-  activeReferences: { index: number; document: RetrievalDocumentType }[];
-}) {
-  activeReferences.sort((a, b) => a.index - b.index);
-  return (
-    <div className="-mx-[100%] mt-9 overflow-x-auto px-[100%] scrollbar-hide">
-      <div className="flex gap-2">
-        {activeReferences.map(({ document, index }) => {
-          const provider = providerFromDocument(document);
-          return (
-            <div
-              className="flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64"
-              key={index}
-            >
-              <div className="flex items-center gap-1.5">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
-                  {index}
-                </div>
-                <div className="h-5 w-5">
-                  {provider === "none" ? (
-                    <DocumentTextIcon className="h-5 w-5 text-slate-500" />
-                  ) : (
-                    <img
-                      src={PROVIDER_LOGO_PATH[providerFromDocument(document)]}
-                      className="h-5 w-5"
+    useEffect(() => {
+      if (citationContainer.current && lastHoveredReference !== null) {
+        // get the offset of the first child in its container
+        const offset = (
+          citationContainer.current.firstElementChild
+            ?.firstElementChild as HTMLElement
+        ).offsetLeft;
+        const scrolling =
+          (citationContainer.current.firstElementChild?.firstElementChild
+            ?.scrollWidth || 0) *
+          (lastHoveredReference - 2);
+        citationContainer.current.scrollLeft = scrolling - offset;
+      }
+    });
+
+    activeReferences.sort((a, b) => a.index - b.index);
+    return (
+      <div
+        className="-mx-[100%] mt-9 overflow-x-auto px-[100%] scrollbar-hide"
+        id={`message-${message.sId}-citations`}
+        ref={citationContainer}
+      >
+        <div className="left-100 relative flex gap-2">
+          {activeReferences.map(({ document, index }) => {
+            const provider = providerFromDocument(document);
+            return (
+              <div
+                className="flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64"
+                key={index}
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
+                    {index}
+                  </div>
+                  <div className="h-5 w-5">
+                    {provider === "none" ? (
+                      <DocumentTextIcon className="h-5 w-5 text-slate-500" />
+                    ) : (
+                      <img
+                        src={PROVIDER_LOGO_PATH[providerFromDocument(document)]}
+                        className="h-5 w-5"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-grow text-xs" />
+                  <Link href={linkFromDocument(document)} target="_blank">
+                    <IconButton
+                      icon={LinkStrokeIcon}
+                      size="xs"
+                      variant="primary"
                     />
-                  )}
+                  </Link>
                 </div>
-                <div className="flex-grow text-xs" />
-                <Link href={linkFromDocument(document)} target="_blank">
-                  <IconButton
-                    icon={LinkStrokeIcon}
-                    size="xs"
-                    variant="primary"
-                  />
-                </Link>
+                <div className="text-xs font-bold text-element-900">
+                  {titleFromDocument(document)}
+                </div>
               </div>
-              <div className="text-xs font-bold text-element-900">
-                {titleFromDocument(document)}
-              </div>
-            </div>
-          );
-        })}
-        <div className="h-1 w-[100%] flex-none" />
+            );
+          })}
+          <div className="h-1 w-[100%] flex-none" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 function ErrorMessage({
