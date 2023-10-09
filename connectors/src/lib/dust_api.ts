@@ -111,6 +111,10 @@ export type PostMessagesRequestBodySchema = t.TypeOf<
   typeof PostMessagesRequestBodySchemaIoTs
 >;
 
+type PostContentFragmentRequestBody = t.TypeOf<
+  typeof PostContentFragmentRequestBodySchemaIoTs
+>;
+
 // Event sent when the user message is created.
 export type UserMessageErrorEvent = {
   type: "user_message_error";
@@ -317,6 +321,18 @@ export type ConversationType = {
 export type AgentConfigurationType = {
   sId: string;
   name: string;
+};
+
+export type ContentFragmentType = {
+  id: ModelId;
+  sId: string;
+  created: number;
+  type: "content_fragment";
+  visibility: MessageVisibility;
+  version: number;
+
+  title: string;
+  content: string;
 };
 
 export class DustAPI {
@@ -574,5 +590,34 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.agentConfigurations as AgentConfigurationType[]);
+  }
+
+  async postContentFragment({
+    conversationId,
+    contentFragment,
+  }: {
+    conversationId: string;
+    contentFragment: PostContentFragmentRequestBody;
+  }) {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...contentFragment,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.contentFragment as ContentFragmentType);
   }
 }

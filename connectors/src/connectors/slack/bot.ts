@@ -329,6 +329,18 @@ async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
+    if (contentFragmentRes.value.length > 0) {
+      const res = await dustAPI.postContentFragment({
+        conversationId: lastSlackChatBotMessage.conversationId,
+        contentFragment: {
+          title: "Slack thread messages",
+          content: contentFragmentRes.value,
+        },
+      });
+      if (res.isErr()) {
+        return new Err(new Error(res.error.message));
+      }
+    }
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
@@ -349,10 +361,13 @@ async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
-      contentFragment: {
-        title: "Slack conversation",
-        content: contentFragmentRes.value,
-      },
+      contentFragment:
+        contentFragmentRes.value.length > 0
+          ? {
+              title: "Slack thread messages",
+              content: contentFragmentRes.value,
+            }
+          : undefined,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
