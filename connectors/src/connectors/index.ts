@@ -97,7 +97,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   },
 };
 
-export const CLEAN_CONNECTOR_BY_TYPE: Record<
+export const DELETE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
 > = {
