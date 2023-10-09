@@ -7,6 +7,7 @@ import {
   ConversationType,
   DustAPI,
   RetrievalDocumentType,
+  UserMessageType,
 } from "@connectors/lib/dust_api";
 import {
   Connector,
@@ -309,6 +310,8 @@ async function botAnswerMessage(
   };
 
   let conversation: ConversationType | undefined = undefined;
+  let userMessage: UserMessageType | undefined = undefined;
+
   if (lastSlackChatBotMessage?.conversationId) {
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
@@ -317,6 +320,7 @@ async function botAnswerMessage(
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
     }
+    userMessage = mesasgeRes.value;
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
     });
@@ -334,7 +338,8 @@ async function botAnswerMessage(
       return new Err(new Error(convRes.error.message));
     }
 
-    conversation = convRes.value;
+    conversation = convRes.value.conversation;
+    userMessage = convRes.value.message;
   }
   slackChatBotMessage.conversationId = conversation.sId;
   await slackChatBotMessage.save();
@@ -345,7 +350,11 @@ async function botAnswerMessage(
       return m;
     })
     .filter((m) => {
-      return m && m.type === "agent_message";
+      return (
+        m &&
+        m.type === "agent_message" &&
+        m.parentMessageId === userMessage?.sId
+      );
     });
   if (agentMessages.length === 0) {
     return new Err(new Error("Failed to retrieve agent message"));
