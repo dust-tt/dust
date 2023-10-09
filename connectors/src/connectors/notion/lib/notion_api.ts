@@ -1268,8 +1268,7 @@ export async function* iteratePaginatedAPIWithRetries<
   retry: { retries: number; backoffFactor: number } = {
     retries: 5,
     backoffFactor: 2,
-  },
-  sleepMs = 1000
+  }
 ): AsyncIterableIterator<Item> {
   let nextCursor: string | null | undefined = firstPageArgs.start_cursor;
   let resultPageIdx = 0;
@@ -1322,9 +1321,5 @@ export async function* iteratePaginatedAPIWithRetries<
     yield* response.results;
     nextCursor = response.next_cursor;
     resultPageIdx += 1;
-
-    if (nextCursor && sleepMs) {
-      await new Promise((resolve) => setTimeout(resolve, sleepMs));
-    }
   } while (nextCursor);
 }
