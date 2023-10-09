@@ -274,6 +274,7 @@ export default function AssistantBuilder({
     }
   }, [initialBuilderState]);
 
+  // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<
     {
       channelId: string;
@@ -281,13 +282,14 @@ export default function AssistantBuilder({
     }[]
   >([]);
 
-  // retrieve all the slack channels that are linked with an agent
+  // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
       dataSourceName: slackDataSource?.name ?? undefined,
     });
 
+  // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
   useEffect(() => {
     if (slackChannelsLinkedWithAgent && agentConfigurationId && !edited) {
       setSelectedSlackChannels(
@@ -1030,6 +1032,7 @@ function SlackIntegration({
               }}
               expandable={false}
               fullySelected={false}
+              filterPermission="write"
             />
           </div>
         </div>

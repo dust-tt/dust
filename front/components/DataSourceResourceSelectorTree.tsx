@@ -9,7 +9,10 @@ import {
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
-import { ConnectorResourceType } from "@app/lib/connectors_api";
+import {
+  ConnectorPermission,
+  ConnectorResourceType,
+} from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
@@ -23,6 +26,7 @@ export default function DataSourceResourceSelectorTree({
   onSelectChange,
   parentsById,
   fullySelected,
+  filterPermission = "read",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -34,6 +38,7 @@ export default function DataSourceResourceSelectorTree({
   ) => void;
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
+  filterPermission?: ConnectorPermission;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -48,6 +53,7 @@ export default function DataSourceResourceSelectorTree({
         parents={[]}
         isChecked={false}
         fullySelected={fullySelected}
+        filterPermission={filterPermission}
       />
     </div>
   );
@@ -87,6 +93,7 @@ function DataSourceResourceSelectorChildren({
   parentsById,
   parents,
   fullySelected,
+  filterPermission,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -101,13 +108,14 @@ function DataSourceResourceSelectorChildren({
   ) => void;
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
+  filterPermission: ConnectorPermission;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       owner: owner,
       dataSource,
       parentId,
-      filterPermission: "read",
+      filterPermission,
       disabled: dataSource.connectorId === null,
     });
 
@@ -223,6 +231,7 @@ function DataSourceResourceSelectorChildren({
                       parentsById={parentsById}
                       parents={[...parents, r.internalId]}
                       fullySelected={fullySelected}
+                      filterPermission={filterPermission}
                     />
                   </div>
                 )}
