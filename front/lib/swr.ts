@@ -11,6 +11,7 @@ import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources"
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import { GetManagedDataSourceDefaultNewResourcePermissionResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions/default";
+import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -435,5 +436,30 @@ export function useAgentConfigurations({
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
+  };
+}
+
+export function useSlackChannelsLinkedWithAgent({
+  workspaceId,
+  dataSourceName,
+}: {
+  workspaceId: string;
+  dataSourceName?: string;
+}) {
+  const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`
+      : null,
+    slackChannelsLinkedWithAgentFetcher
+  );
+
+  return {
+    slackChannels: data ? data.slackChannels : [],
+    isSlackChannelsLoading: !error && !data,
+    isSlackChannelsError: error,
+    mutateSlackChannels: mutate,
   };
 }
