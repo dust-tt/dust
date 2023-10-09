@@ -19,10 +19,6 @@ import {
   GenerationTokensEvent,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
-import {
-  getTemporaryMessageTokens,
-  saveTemporaryMessageTokens,
-} from "@app/lib/api/assistant/pubsub";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -1546,6 +1542,7 @@ async function* streamRunAgentEvents(
   | AgentMessageSuccessEvent,
   void
 > {
+  let content = "";
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1599,9 +1596,7 @@ async function* streamRunAgentEvents(
         break;
 
       case "agent_generation_cancelled":
-        // Update status in database (and content from what was temporary saved in Redis ¯\_(ツ)_/¯ )
         if (agentMessageRow.status !== "cancelled") {
-          const content = await getTemporaryMessageTokens(agentMessage.sId);
           await agentMessageRow.update({
             status: "cancelled",
             content: content,
@@ -1616,7 +1611,7 @@ async function* streamRunAgentEvents(
       case "dust_app_run_params":
       case "dust_app_run_block":
       case "generation_tokens":
-        await saveTemporaryMessageTokens(agentMessage.sId, event.text);
+        content += event.text;
         yield event;
         break;
 

@@ -313,30 +313,6 @@ export async function* getConversationEvents(
   }
 }
 
-export async function saveTemporaryMessageTokens(
-  messageId: string,
-  tokens: string
-): Promise<void> {
-  const redis = await redisClient();
-
-  const current = await redis.get(`assistant:generation:tokens:${messageId}`);
-  if (current) {
-    await redis.set(
-      `assistant:generation:tokens:${messageId}`,
-      `${current}${tokens}`
-    );
-  } else {
-    await redis.set(`assistant:generation:tokens:${messageId}`, tokens);
-  }
-}
-
-export async function getTemporaryMessageTokens(
-  messageId: string
-): Promise<string> {
-  const redis = await redisClient();
-  return (await redis.get(`assistant:generation:tokens:${messageId}`)) || "";
-}
-
 export async function cancelMessageGenerationEvent(
   conversationId: string,
   messageId: string
