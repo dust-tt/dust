@@ -77,7 +77,6 @@ export const topNavigation = ({
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     current: current === "assistant",
-    hasSeparator: true,
   });
 
   if (owner.role === "admin" || owner.role === "builder") {
@@ -135,32 +134,32 @@ export const subNavigationAdmin = ({
     ],
   });
 
-  const workspaceSubMenus: SparkleAppLayoutNavigation[] = [];
   if (owner.role === "admin") {
-    workspaceSubMenus.push({
+    nav.push({
       id: "workspace",
-      label: "Settings",
-      icon: KeyIcon,
-      href: `/w/${owner.sId}/workspace`,
-      current: current === "workspace",
-      subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-      subMenu: current === "workspace" ? subMenu : undefined,
+      label: "Workspace",
+      menus: [
+        {
+          id: "workspace",
+          label: "Settings",
+          icon: KeyIcon,
+          href: `/w/${owner.sId}/workspace`,
+          current: current === "workspace",
+          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+          subMenu: current === "workspace" ? subMenu : undefined,
+        },
+        {
+          id: "members",
+          label: "Members",
+          icon: UsersIcon,
+          href: `/w/${owner.sId}/members`,
+          current: current === "members",
+          subMenuLabel: current === "members" ? subMenuLabel : undefined,
+          subMenu: current === "members" ? subMenu : undefined,
+        },
+      ],
     });
   }
-  workspaceSubMenus.push({
-    id: "members",
-    label: "Members",
-    icon: UsersIcon,
-    href: `/w/${owner.sId}/members`,
-    current: current === "members",
-    subMenuLabel: current === "members" ? subMenuLabel : undefined,
-    subMenu: current === "members" ? subMenu : undefined,
-  });
-  nav.push({
-    id: "workspace",
-    label: "Workspace",
-    menus: workspaceSubMenus,
-  });
 
   nav.push({
     id: "developers",
