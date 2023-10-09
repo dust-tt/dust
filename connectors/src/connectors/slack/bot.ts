@@ -2,6 +2,7 @@ import levenshtein from "fast-levenshtein";
 
 import {
   AgentActionType,
+  AgentConfigurationType,
   AgentGenerationSuccessEvent,
   AgentMessageType,
   ConversationType,
@@ -268,25 +269,24 @@ async function botAnswerMessage(
         slackChannelId: slackChannel,
       },
     });
+    let agentConfigurationToMention: AgentConfigurationType | null = null;
+
     if (channel && channel.agentConfigurationId) {
       const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
       if (agentConfigurationsRes.isErr()) {
         return new Err(new Error(agentConfigurationsRes.error.message));
       }
       const agentConfigurations = agentConfigurationsRes.value;
-      const agentConfiguration = agentConfigurations.find(
-        (ac) => ac.sId === channel.agentConfigurationId
-      );
-      if (!agentConfiguration) {
-        return new Err(
-          new Error(
-            `Failed to find agent configuration ${channel.agentConfigurationId}`
-          )
-        );
-      }
+      agentConfigurationToMention =
+        agentConfigurations.find(
+          (ac) => ac.sId === channel.agentConfigurationId
+        ) || null;
+    }
+
+    if (agentConfigurationToMention) {
       mentions.push({
-        assistantId: channel.agentConfigurationId,
-        assistantName: agentConfiguration.name,
+        assistantId: agentConfigurationToMention.sId,
+        assistantName: agentConfigurationToMention.name,
       });
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
