@@ -19,6 +19,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
+import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -280,6 +281,7 @@ export default function AssistantBuilder({
     }[]
   >([]);
 
+  // retrieve all the slack channels that are linked with an agent
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
@@ -505,7 +507,17 @@ export default function AssistantBuilder({
     const newAgentConfiguration = await res.json();
     const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
-    if (selectedSlackChannels.length) {
+    // PATCH the linked slack channels if either:
+    // - there were already linked channels
+    // - there are newly selected channels
+    // If the user selected channels that were already routed to a different assistant, the current behavior is to
+    // unlink them from the previous assistant and link them to the this one.
+    if (
+      selectedSlackChannels.length ||
+      slackChannelsLinkedWithAgent.filter(
+        (channel) => channel.agentConfigurationId === agentConfigurationId
+      ).length
+    ) {
       const slackLinkRes = await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
         {
@@ -524,6 +536,10 @@ export default function AssistantBuilder({
       if (!slackLinkRes.ok) {
         throw new Error("An error occurred while linking Slack channels.");
       }
+
+      await mutate(
+        `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
+      );
     }
 
     return newAgentConfiguration;
