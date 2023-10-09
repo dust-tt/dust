@@ -112,135 +112,242 @@ export function ConversationMessage({
   }
 
   return (
-    <div className="flex w-full gap-4">
-      {/* COLUMN 1: AVATAR - in small size if small layout */}
-      <div>
-        <div className="sm:hidden">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="xs"
-            busy={avatarBusy}
-          />
-        </div>
-        <div className="hidden sm:block">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="md"
-            busy={avatarBusy}
-          />
-        </div>
-      </div>
-
-      {/* COLUMN 2: CONTENT */}
-      <div className="flex flex-grow flex-col gap-4">
-        <div className="text-sm font-medium">{name}</div>
-        <div className="min-w-0 break-words text-base font-normal">
-          {children}
-        </div>
-      </div>
-
-      {/* COLUMN 3: BUTTONS */}
-      <div className="w-16  overflow-visible">
-        <div className="w-[8vw]">
-          {/* COPY / RETRY */}
-          {buttons && (
-            <div className="mb-6 flex flex-wrap gap-1">
-              {buttons.map((button, i) => (
-                <Button
-                  key={`message-${messageId}-button-${i}`}
-                  variant="tertiary"
-                  size="xs"
-                  label={button.label}
-                  labelVisible={false}
-                  icon={button.icon}
-                  onClick={button.onClick}
-                />
-              ))}
+    <>
+      {/* SMALL SIZE SCREEN*/}
+      <div className="flex w-full gap-4 xl:hidden">
+        <div className="flex flex-grow flex-col gap-4">
+          <div className="flex items-start gap-2">
+            <div className="flex h-8 flex-grow items-center gap-2">
+              <Avatar
+                visual={pictureUrl}
+                name={name || undefined}
+                size="xs"
+                busy={avatarBusy}
+              />
+              <div className="flex-grow text-sm font-medium">{name}</div>
             </div>
-          )}
-
-          {/* EMOJIS */}
-          <div className="flex flex-wrap gap-3 pl-2">
-            <ButtonEmoji
-              variant={hasReactedUp ? "selected" : "unselected"}
-              emoji="👍"
-              count={reactionUp ? reactionUp.users.length.toString() : ""}
-              onClick={async () => await handleEmojiClick("+1")}
-            />
-            <ButtonEmoji
-              variant={hasReactedDown ? "selected" : "unselected"}
-              emoji="👎"
-              count={reactionDown ? reactionDown.users.length.toString() : ""}
-              onClick={async () => await handleEmojiClick("-1")}
-            />
-            {otherReactions.map((reaction) => {
-              const hasReacted = reaction.users.some(
-                (u) => u.userId === user.id
-              );
-              const emoji = emojiData?.emojis[reaction.emoji];
-              const nativeEmoji = emoji?.skins[0].native;
-              if (!nativeEmoji) {
-                return null;
-              }
-              return (
+            <div className="flex flex-col items-end gap-2">
+              {/* COPY / RETRY */}
+              <div className="flex gap-1">
+                {buttons && (
+                  <>
+                    {buttons.map((button, i) => (
+                      <Button
+                        key={`message-${messageId}-button-${i}`}
+                        variant="tertiary"
+                        size="xs"
+                        label={button.label}
+                        labelVisible={false}
+                        icon={button.icon}
+                        onClick={button.onClick}
+                      />
+                    ))}
+                  </>
+                )}
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      variant="tertiary"
+                      size="xs"
+                      icon={FaceSmileIcon}
+                      labelVisible={false}
+                      label=" "
+                      type="menu"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items width={280} origin="topRight">
+                    <Picker
+                      theme="light"
+                      previewPosition="none"
+                      data={emojiData}
+                      onEmojiSelect={async (emojiData: Emoji) => {
+                        const reaction = reactions.find(
+                          (r) => r.emoji === emojiData.id
+                        );
+                        const hasReacted =
+                          (reaction &&
+                            reaction.users.find((u) => u.userId === user.id) !==
+                              undefined) ||
+                          false;
+                        await handleEmoji({
+                          emoji: emojiData.id,
+                          isToRemove: hasReacted,
+                        });
+                      }}
+                    />
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+              {/* EMOJIS */}
+              <div className="flex flex-wrap gap-3">
                 <ButtonEmoji
-                  key={reaction.emoji}
+                  variant={hasReactedUp ? "selected" : "unselected"}
+                  emoji="👍"
+                  count={reactionUp ? reactionUp.users.length.toString() : ""}
+                  onClick={async () => await handleEmojiClick("+1")}
+                />
+                <ButtonEmoji
                   variant={hasReactedDown ? "selected" : "unselected"}
-                  emoji={nativeEmoji}
-                  count={reaction.users.length.toString()}
-                  onClick={async () =>
-                    await handleEmoji({
-                      emoji: reaction.emoji,
-                      isToRemove: hasReacted,
-                    })
+                  emoji="👎"
+                  count={
+                    reactionDown ? reactionDown.users.length.toString() : ""
                   }
+                  onClick={async () => await handleEmojiClick("-1")}
                 />
-              );
-            })}
-            {hasMoreReactions && (
-              <span className="text-xs">+{hasMoreReactions}</span>
-            )}
+                {otherReactions.map((reaction) => {
+                  const hasReacted = reaction.users.some(
+                    (u) => u.userId === user.id
+                  );
+                  const emoji = emojiData?.emojis[reaction.emoji];
+                  const nativeEmoji = emoji?.skins[0].native;
+                  if (!nativeEmoji) {
+                    return null;
+                  }
+                  return (
+                    <ButtonEmoji
+                      key={reaction.emoji}
+                      variant={hasReactedDown ? "selected" : "unselected"}
+                      emoji={nativeEmoji}
+                      count={reaction.users.length.toString()}
+                      onClick={async () =>
+                        await handleEmoji({
+                          emoji: reaction.emoji,
+                          isToRemove: hasReacted,
+                        })
+                      }
+                    />
+                  );
+                })}
+                {hasMoreReactions && (
+                  <span className="text-xs">+{hasMoreReactions}</span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="mt-2">
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  variant="tertiary"
-                  size="xs"
-                  icon={FaceSmileIcon}
-                  labelVisible={false}
-                  label="Add another emoji"
-                  type="menu"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={280}>
-                <Picker
-                  theme="light"
-                  previewPosition="none"
-                  data={emojiData}
-                  onEmojiSelect={async (emojiData: Emoji) => {
-                    const reaction = reactions.find(
-                      (r) => r.emoji === emojiData.id
-                    );
-                    const hasReacted =
-                      (reaction &&
-                        reaction.users.find((u) => u.userId === user.id) !==
-                          undefined) ||
-                      false;
-                    await handleEmoji({
-                      emoji: emojiData.id,
-                      isToRemove: hasReacted,
-                    });
-                  }}
-                />
-              </DropdownMenu.Items>
-            </DropdownMenu>
+          <div className="min-w-0 break-words pl-8 text-base font-normal">
+            {children}
           </div>
         </div>
       </div>
-    </div>
+      {/* SIG SIZE SCREEN*/}
+      <div className="flex hidden w-full gap-4 xl:flex">
+        {/* COLUMN 1: AVATAR - in small size if small layout */}
+        <Avatar
+          visual={pictureUrl}
+          name={name || undefined}
+          size="md"
+          busy={avatarBusy}
+        />
+
+        {/* COLUMN 2: CONTENT */}
+        <div className="flex flex-grow flex-col gap-4">
+          <div className="text-sm font-medium">{name}</div>
+          <div className="min-w-0 break-words text-base font-normal">
+            {children}
+          </div>
+        </div>
+
+        {/* COLUMN 3: BUTTONS */}
+        <div className="w-16 overflow-visible">
+          <div className="w-32">
+            {/* COPY / RETRY */}
+            {buttons && (
+              <div className="mb-6 flex flex-wrap gap-1">
+                {buttons.map((button, i) => (
+                  <Button
+                    key={`message-${messageId}-button-${i}`}
+                    variant="tertiary"
+                    size="xs"
+                    label={button.label}
+                    labelVisible={false}
+                    icon={button.icon}
+                    onClick={button.onClick}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* EMOJIS */}
+            <div className="flex flex-wrap gap-3 pl-2">
+              <ButtonEmoji
+                variant={hasReactedUp ? "selected" : "unselected"}
+                emoji="👍"
+                count={reactionUp ? reactionUp.users.length.toString() : ""}
+                onClick={async () => await handleEmojiClick("+1")}
+              />
+              <ButtonEmoji
+                variant={hasReactedDown ? "selected" : "unselected"}
+                emoji="👎"
+                count={reactionDown ? reactionDown.users.length.toString() : ""}
+                onClick={async () => await handleEmojiClick("-1")}
+              />
+              {otherReactions.map((reaction) => {
+                const hasReacted = reaction.users.some(
+                  (u) => u.userId === user.id
+                );
+                const emoji = emojiData?.emojis[reaction.emoji];
+                const nativeEmoji = emoji?.skins[0].native;
+                if (!nativeEmoji) {
+                  return null;
+                }
+                return (
+                  <ButtonEmoji
+                    key={reaction.emoji}
+                    variant={hasReactedDown ? "selected" : "unselected"}
+                    emoji={nativeEmoji}
+                    count={reaction.users.length.toString()}
+                    onClick={async () =>
+                      await handleEmoji({
+                        emoji: reaction.emoji,
+                        isToRemove: hasReacted,
+                      })
+                    }
+                  />
+                );
+              })}
+              {hasMoreReactions && (
+                <span className="text-xs">+{hasMoreReactions}</span>
+              )}
+            </div>
+            <div className="mt-2">
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    variant="tertiary"
+                    size="xs"
+                    icon={FaceSmileIcon}
+                    labelVisible={false}
+                    label="Add another emoji"
+                    type="menu"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={280}>
+                  <Picker
+                    theme="light"
+                    previewPosition="none"
+                    data={emojiData}
+                    onEmojiSelect={async (emojiData: Emoji) => {
+                      const reaction = reactions.find(
+                        (r) => r.emoji === emojiData.id
+                      );
+                      const hasReacted =
+                        (reaction &&
+                          reaction.users.find((u) => u.userId === user.id) !==
+                            undefined) ||
+                        false;
+                      await handleEmoji({
+                        emoji: emojiData.id,
+                        isToRemove: hasReacted,
+                      });
+                    }}
+                  />
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
