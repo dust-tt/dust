@@ -1,7 +1,10 @@
+import levenshtein from "fast-levenshtein";
+
 import {
   AgentActionType,
   AgentGenerationSuccessEvent,
   AgentMessageType,
+  ConversationType,
   DustAPI,
   RetrievalDocumentType,
 } from "@connectors/lib/dust_api";
@@ -30,7 +33,8 @@ export async function botAnswerMessageWithErrorHandling(
   slackTeamId: string,
   slackChannel: string,
   slackUserId: string,
-  slackMessageTs: string
+  slackMessageTs: string,
+  slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
@@ -55,6 +59,7 @@ export async function botAnswerMessageWithErrorHandling(
     slackChannel,
     slackUserId,
     slackMessageTs,
+    slackThreadTs,
     connector
   );
   if (res.isErr()) {
@@ -103,8 +108,21 @@ async function botAnswerMessage(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string,
+  slackThreadTs: string | null,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+  let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
+  if (slackThreadTs) {
+    lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
+      where: {
+        connectorId: connector.id,
+        channelId: slackChannel,
+        threadTs: slackThreadTs,
+      },
+      order: [["createdAt", "DESC"]],
+      limit: 1,
+    });
+  }
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
     message: message,
@@ -116,6 +134,8 @@ async function botAnswerMessage(
     slackAvatar: null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
+    threadTs: lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
   const accessToken = await getAccessToken(connector.connectionId);
@@ -189,31 +209,104 @@ async function botAnswerMessage(
       }
     }
   }
+  // Extract all ~mentions.
+  const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
-  const convRes = await dustAPI.createConversation({
-    title: null,
-    visibility: "unlisted",
-    message: {
-      content: message,
-      mentions: [{ configurationId: "dust" }],
-      context: {
-        timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
-        username: slackChatBotMessage.slackUserName,
-        fullName:
-          slackChatBotMessage.slackFullName ||
-          slackChatBotMessage.slackUserName,
-        email: slackChatBotMessage.slackEmail,
-        profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      },
-    },
-  });
+  const mentions: { assistantName: string; assistantId: string }[] = [];
+  if (mentionCandidates.length > 1) {
+    return new Err(
+      new SlackExternalUserError(
+        "Only one assistant at a time can be called through Slack."
+      )
+    );
+  } else if (mentionCandidates.length === 1) {
+    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+    if (agentConfigurationsRes.isErr()) {
+      return new Err(new Error(agentConfigurationsRes.error.message));
+    }
+    const agentConfigurations = agentConfigurationsRes.value;
+    for (const mc of mentionCandidates) {
+      let bestCandidate:
+        | {
+            assistantId: string;
+            assistantName: string;
+            distance: number;
+          }
+        | undefined = undefined;
+      for (const agentConfiguration of agentConfigurations) {
+        const distance = levenshtein.get(
+          mc.slice(1).toLowerCase(),
+          agentConfiguration.name.toLowerCase()
+        );
+        if (bestCandidate === undefined || bestCandidate.distance > distance) {
+          bestCandidate = {
+            assistantId: agentConfiguration.sId,
+            assistantName: agentConfiguration.name,
+            distance: distance,
+          };
+        }
+      }
 
-  if (convRes.isErr()) {
-    return new Err(new Error(convRes.error.message));
+      if (bestCandidate) {
+        mentions.push({
+          assistantId: bestCandidate.assistantId,
+          assistantName: bestCandidate.assistantName,
+        });
+        message = message.replace(
+          mc,
+          `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
+        );
+      }
+    }
   }
 
-  const conversation = convRes.value;
+  if (mentions.length === 0) {
+    mentions.push({ assistantId: "dust", assistantName: "dust" });
+  }
 
+  const messageReqBody = {
+    content: message,
+    mentions: mentions.map((m) => {
+      return { configurationId: m.assistantId };
+    }),
+    context: {
+      timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
+      username: slackChatBotMessage.slackUserName,
+      fullName:
+        slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
+      email: slackChatBotMessage.slackEmail,
+      profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+    },
+  };
+
+  let conversation: ConversationType | undefined = undefined;
+  if (lastSlackChatBotMessage?.conversationId) {
+    const mesasgeRes = await dustAPI.postUserMessage({
+      conversationId: lastSlackChatBotMessage.conversationId,
+      message: messageReqBody,
+    });
+    if (mesasgeRes.isErr()) {
+      return new Err(new Error(mesasgeRes.error.message));
+    }
+    const conversationRes = await dustAPI.getConversation({
+      conversationId: lastSlackChatBotMessage.conversationId,
+    });
+    if (conversationRes.isErr()) {
+      return new Err(new Error(conversationRes.error.message));
+    }
+    conversation = conversationRes.value;
+  } else {
+    const convRes = await dustAPI.createConversation({
+      title: null,
+      visibility: "unlisted",
+      message: messageReqBody,
+    });
+    if (convRes.isErr()) {
+      return new Err(new Error(convRes.error.message));
+    }
+
+    conversation = convRes.value;
+  }
   slackChatBotMessage.conversationId = conversation.sId;
   await slackChatBotMessage.save();
 
@@ -231,7 +324,7 @@ async function botAnswerMessage(
   const agentMessage = agentMessages[0] as AgentMessageType;
 
   const streamRes = await dustAPI.streamAgentMessageEvents({
-    conversation,
+    conversation: conversation,
     message: agentMessage,
   });
 
@@ -239,7 +332,8 @@ async function botAnswerMessage(
     return new Err(new Error(streamRes.error.message));
   }
 
-  let fullAnswer = "";
+  const botIdentity = `@${mentions[0]?.assistantName}:\n`;
+  let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
   let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
@@ -282,7 +376,7 @@ async function botAnswerMessage(
         break;
       }
       case "agent_generation_success": {
-        fullAnswer = event.text;
+        fullAnswer = `${botIdentity}${event.text}`;
 
         let finalAnswer = _processCiteMention(fullAnswer, action);
         finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
@@ -324,12 +418,19 @@ function _processCiteMention(
         .map((key) => {
           const k = key.trim();
           const ref = references[k];
-          if (ref && ref.sourceUrl) {
+          if (ref) {
             if (!refCounter[k]) {
               counter++;
               refCounter[k] = counter;
             }
-            return `[<${ref.sourceUrl}|${refCounter[k]}>]`;
+            const link = ref.sourceUrl
+              ? ref.sourceUrl
+              : `${DUST_API}/w/${
+                  ref.dataSourceWorkspaceId
+                }/builder/data-sources/${
+                  ref.dataSourceId
+                }/upsert?documentId=${encodeURIComponent(ref.documentId)}`;
+            return `[<${link}|${refCounter[k]}>]`;
           }
           return "";
         })

@@ -12,6 +12,7 @@ export type SlackChannelType = {
   name: string;
   slackId: string;
   permission: ConnectorPermission;
+  agentConfigurationId: string | null;
 };
 
 export async function upsertSlackChannelInConnectorsDb({
@@ -70,6 +71,7 @@ export async function upsertSlackChannelInConnectorsDb({
       name: channel.slackChannelName,
       slackId: channel.slackChannelId,
       permission: channel.permission,
+      agentConfigurationId: channel.agentConfigurationId,
     };
   });
 }

@@ -131,18 +131,18 @@ export default function EditAssistant({
   const selectedDataSource =
     agentConfiguration.action?.type === "retrieval_configuration";
 
-  let timeFrameMode: AssistantBuilderInitialState["timeFrameMode"] = null;
+  let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
   if (selectedDataSource && agentConfiguration.action?.relativeTimeFrame) {
     switch (agentConfiguration.action.relativeTimeFrame) {
       case "auto":
-        timeFrameMode = "AUTO";
+        filteringMode = "SEARCH";
         break;
       case "none":
-        timeFrameMode = "ALL_TIME";
+        filteringMode = "SEARCH";
         break;
       default:
-        timeFrameMode = "CUSTOM";
+        filteringMode = "TIMEFRAME";
         timeFrame = {
           value: agentConfiguration.action.relativeTimeFrame.duration,
           unit: agentConfiguration.action.relativeTimeFrame.unit,
@@ -158,7 +158,7 @@ export default function EditAssistant({
       dataSources={Object.values(dataSources)}
       initialBuilderState={{
         dataSourceMode: selectedDataSource ? "SELECTED" : "GENERIC",
-        timeFrameMode,
+        filteringMode: filteringMode,
         timeFrame,
         dataSourceConfigurations, // TODO
         handle: agentConfiguration.name,

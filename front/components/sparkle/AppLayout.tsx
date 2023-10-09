@@ -13,13 +13,14 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
 import { Fragment, useState } from "react";
+import React from "react";
 
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
-  SparkleAppLayoutNavigation,
+  SidebarNavigation,
   topNavigation,
   TopNavigationId,
 } from "./navigation";
@@ -34,7 +35,7 @@ function NavigationBar({
   user: UserType | null;
   owner: WorkspaceType;
   topNavigationCurrent: TopNavigationId;
-  subNavigation?: SparkleAppLayoutNavigation[] | null;
+  subNavigation?: SidebarNavigation[] | null;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -104,38 +105,46 @@ function NavigationBar({
           <div>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="flex grow flex-col">
-                  <Item
-                    size="md"
-                    selected={nav.current}
-                    label={nav.label}
-                    icon={nav.icon}
-                    className="grow px-4"
-                    href={nav.href}
-                  />
-                  {nav.subMenuLabel && (
-                    <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
-                      {nav.subMenuLabel}
-                    </div>
-                  )}
-                  {nav.subMenu && (
-                    <div className="mb-2 flex flex-col">
-                      {nav.subMenu.map((nav) => {
-                        return (
-                          <div key={nav.id} className="flex grow">
-                            <Item
-                              size="sm"
-                              selected={nav.current}
-                              label={nav.label}
-                              icon={nav.icon}
-                              className="grow pl-14 pr-4"
-                              href={nav.href}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                <div key={nav.id} className="grow px-4 pb-4">
+                  <Item.List>
+                    <Item.SectionHeader label={nav.label} />
+                    {nav.menus.map((menu) => {
+                      return (
+                        <React.Fragment key={menu.id}>
+                          <Item
+                            size="md"
+                            selected={menu.current}
+                            label={menu.label}
+                            icon={menu.icon}
+                            href={menu.href}
+                          />
+                          {menu.subMenuLabel && (
+                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
+                              {menu.subMenuLabel}
+                            </div>
+                          )}
+                          {menu.subMenu && (
+                            <div className="mb-2 flex flex-col">
+                              {menu.subMenu.map((nav) => {
+                                return (
+                                  <div key={nav.id} className="flex grow">
+                                    <Item
+                                      size="sm"
+                                      selected={nav.current}
+                                      label={nav.label}
+                                      icon={nav.icon}
+                                      className="grow pl-14 pr-4"
+                                      href={nav.href}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </Item.List>
                 </div>
               );
             })}
@@ -164,7 +173,7 @@ export default function AppLayout({
   isWideMode?: boolean;
   hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
-  subNavigation?: SparkleAppLayoutNavigation[] | null;
+  subNavigation?: SidebarNavigation[] | null;
   gaTrackingId: string;
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;

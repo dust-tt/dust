@@ -7,7 +7,8 @@ export type APIErrorType =
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
-  | "not_found";
+  | "not_found"
+  | "slack_channel_not_found";
 
 export type APIError = {
   type: APIErrorType;

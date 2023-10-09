@@ -2,7 +2,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   Chip,
-  DocumentDuplicateStrokeIcon,
+  DocumentTextIcon,
   Icon,
   Spinner,
   Tooltip,
@@ -28,7 +28,7 @@ export default function RetrievalAction({
 }: {
   retrievalAction: RetrievalActionType;
 }) {
-  const { query, relativeTimeFrame } = retrievalAction.params;
+  const { query, relativeTimeFrame, topK } = retrievalAction.params;
   const [docListVisible, setDocListVisible] = useState(false);
 
   function shortText(text: string, maxLength = 20) {
@@ -36,6 +36,25 @@ export default function RetrievalAction({
       ? text.substring(0, maxLength) + "..."
       : text;
   }
+  // exhaustive retrieval, checks whether max chunks was reached
+  const tooManyChunks =
+    retrievalAction.documents &&
+    retrievalAction.documents
+      .map((d) => d.chunks.length)
+      .reduce((a, b) => a + b, 0) === topK;
+
+  // retrieval date limit given the last document's timestamp
+  const retrievalTsLimit =
+    retrievalAction.documents &&
+    retrievalAction.documents.length > 0 &&
+    retrievalAction.documents[retrievalAction.documents.length - 1].timestamp;
+  // turn the timestamp into a date (e.g. Oct 1st)
+  const date = retrievalTsLimit && new Date(retrievalTsLimit);
+  const retrievalDateLimit =
+    date &&
+    `${date.toLocaleString("default", {
+      month: "short",
+    })} ${date.getDate()}`;
 
   return (
     <>
@@ -55,16 +74,31 @@ export default function RetrievalAction({
               }
             />
           </Tooltip>
-          <Tooltip label={`Query used for semantic search: ${query}`}>
-            <Chip color="slate" label={query ? shortText(query) : "No query"} />
-          </Tooltip>
+          {query && (
+            <Tooltip label={`Query used for semantic search: ${query}`}>
+              <Chip
+                color="slate"
+                label={query ? shortText(query) : "No query"}
+              />
+            </Tooltip>
+          )}
+          {!query && tooManyChunks && (
+            <Tooltip
+              label={`Too much data to retrieve in one go. Retrieved only ${topK} excerpts from the most recent ${retrievalAction.documents?.length} documents, up to ${retrievalDateLimit}`}
+            >
+              <Chip
+                color="warning"
+                label={`Warning: limited data retrieval (from now to ${retrievalDateLimit})`}
+              />
+            </Tooltip>
+          )}
         </Chip.List>
       </div>
       <div className="grid grid-cols-[auto,1fr] gap-2">
         <div className="grid-cols-auto grid items-center">
           {!retrievalAction.documents ? (
             <div>
-              <div className="text-xs font-bold text-element-600">
+              <div className="pb-2 text-xs font-bold text-element-600">
                 Retrieving...
               </div>
               <Spinner size="sm" />
@@ -75,7 +109,7 @@ export default function RetrievalAction({
             </div>
           )}
         </div>
-        <div className="row-span-1">
+        <div className="row-span-1 select-none">
           {retrievalAction.documents && (
             <div
               onClick={() => setDocListVisible(!docListVisible)}
@@ -103,18 +137,18 @@ export default function RetrievalAction({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <ul className="ml-2 gap-2">
+              <ul className="ml-2 flex flex-col gap-y-2">
                 {retrievalAction.documents.map((document, i) => {
                   const provider = providerFromDocument(document);
                   return (
                     <li key={i}>
                       <a
-                        href={document.sourceUrl || ""}
-                        className="front-bold text-xs text-element-800"
+                        href={linkFromDocument(document)}
+                        className="front-bold flex flex-row items-center text-xs text-element-800"
                         target="_blank"
                       >
                         {provider === "none" ? (
-                          <DocumentDuplicateStrokeIcon className="mr-1 inline-block h-4 w-4 text-element-500" />
+                          <DocumentTextIcon className="mr-1 inline-block h-4 w-4 text-slate-500" />
                         ) : (
                           <img
                             src={
@@ -149,7 +183,7 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
               {summary[k].provider !== "none" ? (
                 <img src={PROVIDER_LOGO_PATH[summary[k].provider]}></img>
               ) : (
-                <DocumentDuplicateStrokeIcon className="h-4 w-4 text-slate-500" />
+                <DocumentTextIcon className="h-4 w-4 text-slate-500" />
               )}
             </div>
             <div className="flex-initial text-gray-700">{summary[k].count}</div>
@@ -219,4 +253,16 @@ export function titleFromDocument(document: RetrievalDocumentType): string {
   }
 
   return document.documentId;
+}
+
+export function linkFromDocument(document: RetrievalDocumentType): string {
+  if (document.sourceUrl) {
+    return document.sourceUrl;
+  } else {
+    return `https://dust.tt/w/${
+      document.dataSourceWorkspaceId
+    }/builder/data-sources/${
+      document.dataSourceId
+    }/upsert?documentId=${encodeURIComponent(document.documentId)}`;
+  }
 }

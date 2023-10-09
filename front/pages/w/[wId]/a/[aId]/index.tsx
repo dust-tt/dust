@@ -325,7 +325,7 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2">
+        <div className="mt-2 overflow-x-auto scrollbar-hide">
           <Tab
             tabs={subNavigationApp({ owner, app, current: "specification" })}
           />

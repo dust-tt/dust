@@ -325,41 +325,33 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const driveClient = await getDriveClient(authCredentials);
-
-      const resources: ConnectorResource[] = await Promise.all(
-        folders.map(async (f): Promise<ConnectorResource> => {
-          const folder = await driveClient.files.get({
-            fileId: f.folderId,
-            supportsAllDrives: true,
-            fields: "id, name, webViewLink, driveId",
-          });
-          const fd = folder.data;
-          if (fd.driveId === f.folderId) {
-            const d = await driveClient.drives.get({
-              driveId: f.folderId,
-            });
-            fd.name = d.data.name;
-          }
-          return {
-            provider: c.type,
-            internalId: f.folderId,
-            parentInternalId: null,
-            type: "folder",
-            title: fd.name || "",
-            sourceUrl: fd.webViewLink || null,
-            expandable:
-              (await GoogleDriveFiles.count({
-                where: {
-                  connectorId: connectorId,
-                  parentId: f.folderId,
-                  mimeType: "application/vnd.google-apps.folder",
-                },
-              })) > 0,
-            permission: "read",
-          };
-        })
-      );
+      const resources = (
+        await Promise.all(
+          folders.map(async (f): Promise<ConnectorResource | null> => {
+            const fd = await getGoogleDriveObject(authCredentials, f.folderId);
+            if (!fd) {
+              return null;
+            }
+            return {
+              provider: c.type,
+              internalId: f.folderId,
+              parentInternalId: null,
+              type: "folder",
+              title: fd.name || "",
+              sourceUrl: fd.webViewLink || null,
+              expandable:
+                (await GoogleDriveFiles.count({
+                  where: {
+                    connectorId: connectorId,
+                    parentId: f.folderId,
+                    mimeType: "application/vnd.google-apps.folder",
+                  },
+                })) > 0,
+              permission: "read",
+            };
+          })
+        )
+      ).flatMap((f) => (f ? [f] : []));
 
       return new Ok(resources);
     } else {

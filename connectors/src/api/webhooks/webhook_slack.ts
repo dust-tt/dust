@@ -52,6 +52,7 @@ async function handleChatBot(req: Request, res: Response) {
   const slackChannel = req.body.event.channel;
   const slackUserId = req.body.event.user;
   const slackMessageTs = req.body.event.ts;
+  const slackThreadTs = req.body.event.thread_ts || null;
   if (
     !slackMessage ||
     !slackTeamId ||
@@ -76,7 +77,8 @@ async function handleChatBot(req: Request, res: Response) {
     slackTeamId,
     slackChannel,
     slackUserId,
-    slackMessageTs
+    slackMessageTs,
+    slackThreadTs
   );
   if (botRes.isErr()) {
     logger.error(

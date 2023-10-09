@@ -78,6 +78,8 @@ export function AssistantSidebarMenu({
                   triggerInputAnimation
                 ) {
                   triggerInputAnimation();
+                  // input bar is bound to be there given the router check
+                  document.getElementById("dust-input-bar")?.focus();
                 }
               }}
             >

@@ -1,12 +1,11 @@
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
-export const TIME_FRAME_MODES = ["AUTO", "CUSTOM", "ALL_TIME"] as const;
-export type TimeFrameMode = (typeof TIME_FRAME_MODES)[number];
-export const TIME_FRAME_MODE_TO_LABEL: Record<TimeFrameMode, string> = {
-  AUTO: "Auto (default)",
-  CUSTOM: "Custom",
-  ALL_TIME: "All time",
+export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
+export type FilteringMode = (typeof FILTERING_MODES)[number];
+export const FILTERING_MODE_TO_LABEL: Record<FilteringMode, string> = {
+  SEARCH: "Search",
+  TIMEFRAME: "Timeframe",
 };
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",

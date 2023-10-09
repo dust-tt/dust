@@ -336,6 +336,30 @@ export const ConnectorsAPI = {
 
     return _resultFromResponse(res);
   },
+
+  async linkSlackChannelWithAgent({
+    connectorId,
+    slackChannelId,
+    agentConfigurationId,
+  }: {
+    connectorId: string;
+    slackChannelId: string;
+    agentConfigurationId: string;
+  }): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/slack/channels/${slackChannelId}/link_with_agent`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          connectorId,
+          agentConfigurationId,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
 };
 
 function getDefaultHeaders() {

@@ -91,7 +91,7 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: PostMessagesRequestBodySchemaIoTs,
+  message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -235,6 +235,7 @@ export type RetrievalActionType = {
 };
 
 export type RetrievalDocumentType = {
+  dataSourceWorkspaceId: string;
   dataSourceId: string;
   sourceUrl: string | null;
   documentId: string;
@@ -302,6 +303,11 @@ export type ConversationType = {
   title: string | null;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[])[];
+};
+
+type AgentConfigurationType = {
+  sId: string;
+  name: string;
 };
 
 export class DustAPI {
@@ -373,6 +379,35 @@ export class DustAPI {
     }
 
     return new Ok(json.conversation as ConversationType);
+  }
+
+  async postUserMessage({
+    conversationId,
+    message,
+  }: {
+    conversationId: string;
+    message: PostMessagesRequestBodySchema;
+  }) {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...message,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+
+    return new Ok(json.message as UserMessageType);
   }
 
   async streamAgentMessageEvents({
@@ -485,7 +520,7 @@ export class DustAPI {
     return new Ok({ eventStream: streamEvents() });
   }
 
-  async getConversation(conversationId: string) {
+  async getConversation({ conversationId }: { conversationId: string }) {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
@@ -503,5 +538,25 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.conversation as ConversationType);
+  }
+
+  async getAgentConfigurations() {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.agentConfigurations as AgentConfigurationType[]);
   }
 }

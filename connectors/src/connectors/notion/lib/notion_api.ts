@@ -1005,9 +1005,7 @@ async function parsePageBlock(
   };
 
   switch (block.type) {
-    case "column":
     case "breadcrumb":
-    case "column_list":
     case "link_to_page":
     case "divider":
     case "table_of_contents":
@@ -1224,6 +1222,8 @@ async function parsePageBlock(
         block
       );
 
+    case "column_list":
+    case "column":
     case "synced_block":
       return withPotentialChildren(NULL_BLOCK, block);
 

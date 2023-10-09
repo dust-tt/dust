@@ -161,7 +161,8 @@ export async function retrievalActionSpecification(
       name: "query",
       description:
         "The string used to retrieve relevant chunks of information using semantic similarity" +
-        " based on the user request and conversation context.",
+        " based on the user request and conversation context." +
+        " Include as much semantic signal based on the entire conversation history, paraphrasing if necessary. longer queries are generally better.",
       type: "string" as const,
     });
   }
@@ -169,8 +170,8 @@ export async function retrievalActionSpecification(
     inputs.push({
       name: "relativeTimeFrame",
       description:
-        "The time frame (relative to now) to restrict the search based on the user request and past conversation context." +
-        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number.",
+        "The time frame (relative to LOCAL_TIME) to restrict the search based on the user request and past conversation context." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number. Be strict, do not invent invalid values.",
       type: "string" as const,
     });
   }
@@ -340,6 +341,7 @@ export async function renderRetrievalActionByModelId(
 
     return {
       id: d.id,
+      dataSourceWorkspaceId: d.dataSourceWorkspaceId,
       dataSourceId: d.dataSourceId,
       sourceUrl: d.sourceUrl,
       documentId: d.documentId,
@@ -598,6 +600,15 @@ export async function* runRetrieval(
   const run = res.value;
   let documents: RetrievalDocumentType[] = [];
 
+  // This is not perfect and will be erroneous in case of two data sources with the same id from two
+  // different workspaces. We don't support cross workspace data sources right now. But we'll likely
+  // want `core` to return the `workspace_id` that was used eventualy.
+  // TODO(spolu): make `core` return data source workspace id.
+  const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
+  for (const ds of c.dataSources) {
+    dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
+  }
+
   for (const t of run.traces) {
     if (t[1][0][0].error) {
       yield {
@@ -633,6 +644,7 @@ export async function* runRetrieval(
         const reference = refs[i % refs.length];
         return {
           id: 0, // dummy pending database insertion
+          dataSourceWorkspaceId: dataSourcesIdToWorkspaceId[d.data_source_id],
           dataSourceId: d.data_source_id,
           documentId: d.document_id,
           reference,
@@ -656,6 +668,7 @@ export async function* runRetrieval(
     for (const d of documents) {
       const document = await RetrievalDocument.create(
         {
+          dataSourceWorkspaceId: d.dataSourceWorkspaceId,
           dataSourceId: d.dataSourceId,
           sourceUrl: d.sourceUrl,
           documentId: d.documentId,

@@ -255,6 +255,7 @@ export class SlackChannel extends Model<
   declare slackChannelName: string;
 
   declare permission: ConnectorPermission;
+  declare agentConfigurationId: CreationOptional<string | null>;
 }
 
 SlackChannel.init(
@@ -291,6 +292,10 @@ SlackChannel.init(
       allowNull: false,
       defaultValue: "read_write",
     },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
@@ -321,6 +326,7 @@ export class SlackChatBotMessage extends Model<
   declare slackAvatar: string | null;
   declare slackTimezone: string | null;
   declare messageTs: string | null;
+  declare threadTs: string | null;
   declare chatSessionSid: string | null;
   declare completedAt: Date | null;
   declare conversationId: string | null; // conversationId is set only for V2 conversations
@@ -349,6 +355,10 @@ SlackChatBotMessage.init(
       allowNull: false,
     },
     messageTs: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    threadTs: {
       type: DataTypes.STRING,
       allowNull: true,
     },
