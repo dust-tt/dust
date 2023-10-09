@@ -78,7 +78,7 @@ async function handler(
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can retrieve parents of connector resources.",
+          "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
       },
     });
   }
