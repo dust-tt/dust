@@ -15,6 +15,7 @@ import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { useConversation } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import { WorkspaceType } from "@app/types/user";
 
 export function ConversationTitle({
@@ -92,9 +93,13 @@ export function ConversationTitle({
             <span className="font-bold">{conversation?.title || ""}</span>
           </div>
         ) : (
-          <div className="flex-grow">
+          <div className="w-[84%]">
             <input
-              className="w-full rounded-md font-bold"
+              className={classNames(
+                "border-0 bg-transparent outline-none ring-1 ring-structure-200 focus:outline-none focus:ring-2",
+                "w-full rounded-md py-1.5 pl-4 pr-8 placeholder-element-600",
+                "transition-all duration-300 ease-out focus:ring-action-300"
+              )}
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
               // We need to make sure the click on the save button below
@@ -120,7 +125,7 @@ export function ConversationTitle({
         )}
 
         {isEditingTitle ? (
-          <div className="flex flex-row gap-1">
+          <div className="flex flex-row gap-2">
             <div
               onClick={(e: MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
@@ -157,7 +162,7 @@ export function ConversationTitle({
               setIsEditingTitle(true);
             }}
             size="sm"
-            variant="secondary"
+            variant="tertiary"
           />
         )}
       </div>
