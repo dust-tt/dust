@@ -1,7 +1,7 @@
 import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
+import { ReactionIcon } from "@dust-tt/sparkle";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import { FaceSmileIcon } from "@heroicons/react/24/outline";
 import { ComponentType, MouseEventHandler, useEffect, useState } from "react";
 import React from "react";
 import { mutate } from "swr";
@@ -149,7 +149,7 @@ export function ConversationMessage({
                     <Button
                       variant="tertiary"
                       size="xs"
-                      icon={FaceSmileIcon}
+                      icon={ReactionIcon}
                       labelVisible={false}
                       label=" "
                       type="menu"
@@ -315,7 +315,7 @@ export function ConversationMessage({
                   <Button
                     variant="tertiary"
                     size="xs"
-                    icon={FaceSmileIcon}
+                    icon={ReactionIcon}
                     labelVisible={false}
                     label="Add another emoji"
                     type="menu"
