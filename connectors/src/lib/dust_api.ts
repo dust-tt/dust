@@ -355,7 +355,10 @@ export class DustAPI {
     visibility,
     message,
   }: PostConversationsRequestBodySchema): Promise<
-    Result<ConversationType, DustAPIErrorResponse>
+    Result<
+      { conversation: ConversationType; message: UserMessageType },
+      DustAPIErrorResponse
+    >
   > {
     const res = await fetch(
       `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
@@ -378,7 +381,9 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
 
-    return new Ok(json.conversation as ConversationType);
+    return new Ok(
+      json as { conversation: ConversationType; message: UserMessageType }
+    );
   }
 
   async postUserMessage({
