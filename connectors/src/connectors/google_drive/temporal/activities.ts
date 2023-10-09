@@ -753,37 +753,28 @@ export async function garbageCollector(
   await Promise.all(
     files.map(async (file) => {
       return queue.add(async () => {
-        try {
-          const driveFile = await getGoogleDriveObject(
-            authCredentials,
-            file.driveFileId
-          );
-          if (!driveFile) {
-            throw new Error(
-              `File ${file.driveFileId} unexpectedly not found (got 404).`
-            );
-          }
-          const isInFolder = await objectIsInFolders(
-            connectorId,
-            authCredentials,
-            driveFile,
-            selectedFolders,
-            lastSeenTs
-          );
-          if (isInFolder === false || driveFile.trashed) {
-            await deleteOneFile(connectorId, driveFile);
-          } else {
-            await file.update({
-              lastSeenTs: new Date(),
-            });
-          }
-        } catch (e) {
-          if (e instanceof GaxiosError) {
-            if (e.response?.status === 404) {
-              // File not found, we can delete it.
-              await file.destroy();
-            }
-          }
+        const driveFile = await getGoogleDriveObject(
+          authCredentials,
+          file.driveFileId
+        );
+        if (!driveFile) {
+          // Could not find the file on Gdrive, deleting our local reference to it.
+          await file.destroy();
+          return null;
+        }
+        const isInFolder = await objectIsInFolders(
+          connectorId,
+          authCredentials,
+          driveFile,
+          selectedFolders,
+          lastSeenTs
+        );
+        if (isInFolder === false || driveFile.trashed) {
+          await deleteOneFile(connectorId, driveFile);
+        } else {
+          await file.update({
+            lastSeenTs: new Date(),
+          });
         }
       });
     })
