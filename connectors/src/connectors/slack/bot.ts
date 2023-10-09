@@ -567,7 +567,6 @@ async function makeContentFragment(
   startingAtTs: string | null,
   connector: Connector
 ) {
-  console.log("getting messages for ", threadTs);
   let allMessages: Message[] = [];
 
   let next_cursor = undefined;
