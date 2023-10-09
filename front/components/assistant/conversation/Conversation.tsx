@@ -1,4 +1,3 @@
-import { Button, StopIcon } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -146,21 +145,6 @@ export default function Conversation({
     [mutateConversation, mutateConversations]
   );
 
-  const handleStopGeneration = async () => {
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-        }),
-      }
-    );
-  };
-
   useEventSource(buildEventSourceURL, onEventCallback);
   const eventIds = useRef<string[]>([]);
 
@@ -174,70 +158,58 @@ export default function Conversation({
   }
 
   return (
-    <div className="flex h-full flex-col justify-between pb-24">
-      <div>
-        {conversation.content.map((versionedMessages) => {
-          const m = versionedMessages[versionedMessages.length - 1];
-          const convoReactions = reactions.find((r) => r.messageId === m.sId);
-          const messageReactions = convoReactions?.reactions || [];
+    <div className="pb-24">
+      {conversation.content.map((versionedMessages) => {
+        const m = versionedMessages[versionedMessages.length - 1];
+        const convoReactions = reactions.find((r) => r.messageId === m.sId);
+        const messageReactions = convoReactions?.reactions || [];
 
-          if (m.visibility === "deleted") {
+        if (m.visibility === "deleted") {
+          return null;
+        }
+        switch (m.type) {
+          case "user_message":
+            return (
+              <div
+                key={`message-id-${m.sId}`}
+                className="border-t border-structure-100 bg-structure-50 px-2 py-6"
+              >
+                <div className="mx-auto flex max-w-4xl flex-col gap-4">
+                  <UserMessage
+                    message={m}
+                    conversation={conversation}
+                    owner={owner}
+                    user={user}
+                    reactions={messageReactions}
+                  />
+                </div>
+              </div>
+            );
+          case "agent_message":
+            return (
+              <div
+                key={`message-id-${m.sId}`}
+                className="border-t border-structure-100 px-2 py-6"
+              >
+                <div className="mx-auto flex max-w-4xl gap-4">
+                  <AgentMessage
+                    message={m}
+                    owner={owner}
+                    user={user}
+                    conversationId={conversationId}
+                    reactions={messageReactions}
+                  />
+                </div>
+              </div>
+            );
+          case "content_fragment":
             return null;
-          }
-          switch (m.type) {
-            case "user_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="border-t border-structure-100 bg-structure-50 px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                    <UserMessage
-                      message={m}
-                      conversation={conversation}
-                      owner={owner}
-                      user={user}
-                      reactions={messageReactions}
-                    />
-                  </div>
-                </div>
-              );
-            case "agent_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="border-t border-structure-100 px-2 py-6"
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <AgentMessage
-                      message={m}
-                      owner={owner}
-                      user={user}
-                      conversationId={conversationId}
-                      reactions={messageReactions}
-                    />
-                  </div>
-                </div>
-              );
-            case "content_fragment":
-              return null;
-            default:
-              ((message: never) => {
-                console.error("Unknown message type", message);
-              })(m);
-          }
-        })}
-      </div>
-      <div className="flex justify-center pb-4">
-        {/* TODO daph display only when there is an agent generation in progress */}
-        <Button
-          className="mt-4"
-          variant="tertiary"
-          label="Stop generation"
-          icon={StopIcon}
-          onClick={handleStopGeneration}
-        />
-      </div>
+          default:
+            ((message: never) => {
+              console.error("Unknown message type", message);
+            })(m);
+        }
+      })}
     </div>
   );
 }

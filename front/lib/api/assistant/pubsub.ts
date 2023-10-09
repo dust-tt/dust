@@ -125,6 +125,7 @@ async function handleUserMessageEvents(
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_success":
+              case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -149,13 +150,6 @@ async function handleUserMessageEvents(
                 );
                 break;
               }
-              case "agent_generation_cancelled":
-                const pubsubChannel = getMessageChannelId(event.messageId);
-                await redis.xAdd(pubsubChannel, "*", {
-                  payload: JSON.stringify(event),
-                });
-                await redis.expire(pubsubChannel, 60 * 10);
-                return;
 
               default:
                 ((event: never) => {
@@ -227,6 +221,7 @@ export async function retryAgentMessageWithPubSub(
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_success":
+              case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -235,13 +230,6 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
-              case "agent_generation_cancelled":
-                const pubsubChannel = getMessageChannelId(event.messageId);
-                await redis.xAdd(pubsubChannel, "*", {
-                  payload: JSON.stringify(event),
-                });
-                await redis.expire(pubsubChannel, 60 * 10);
-                return;
 
               default:
                 ((event: never) => {
@@ -313,11 +301,13 @@ export async function* getConversationEvents(
   }
 }
 
-export async function cancelConversationGenerationEvent(
-  conversationId: string
+export async function cancelMessageGenerationEvent(
+  messageIds: string[]
 ): Promise<void> {
   const redis = await redisClient();
-  await redis.set(`assistant:generation:cancelled:${conversationId}`, 1);
+  messageIds.forEach(async (messageId) => {
+    await redis.set(`assistant:generation:cancelled:${messageId}`, 1);
+  });
   await redis.quit();
 }
 

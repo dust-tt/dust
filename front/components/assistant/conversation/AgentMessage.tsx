@@ -8,10 +8,11 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -64,6 +65,26 @@ export function AgentMessage({
         })(streamedAgentMessage.status);
     }
   })();
+
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "FixedAssistantInputBar must be used within a GenerationContextProvider"
+    );
+  }
+  useEffect(() => {
+    const isInArray = generationContext.generatingMessageIds.includes(
+      message.sId
+    );
+    if (agentMessageToRender.status === "created" && !isInArray) {
+      generationContext.setGeneratingMessageIds((s) => [...s, message.sId]);
+    } else if (agentMessageToRender.status !== "created" && isInArray) {
+      generationContext.setGeneratingMessageIds((s) =>
+        s.filter((id) => id !== message.sId)
+      );
+    }
+  });
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -275,12 +296,10 @@ export function AgentMessage({
     // Messages with no action and text
     if (agentMessage.action === null && agentMessage.content) {
       return (
-        <>
-          <RenderMessageMarkdown
-            content={agentMessage.content}
-            blinkingCursor={streaming}
-          />
-        </>
+        <RenderMessageMarkdown
+          content={agentMessage.content}
+          blinkingCursor={streaming}
+        />
       );
     }
     // Messages with action

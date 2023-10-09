@@ -412,12 +412,12 @@ export async function* runGeneration(
   const _checkCancellation = async () => {
     try {
       const cancelled = await redis.get(
-        `assistant:generation:cancelled:${conversation.sId}`
+        `assistant:generation:cancelled:${agentMessage.sId}`
       );
       if (cancelled === "1") {
         shouldYieldCancel = true;
         await redis.set(
-          `assistant:generation:cancelled:${conversation.sId}`,
+          `assistant:generation:cancelled:${agentMessage.sId}`,
           0
         );
       }

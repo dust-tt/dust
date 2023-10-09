@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -138,17 +139,20 @@ export default function AssistantConversation({
         <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
-      <Conversation
-        owner={owner}
-        user={user}
-        conversationId={conversationId}
-        onStickyMentionsChange={setStickyMentions}
-      />
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={handleSubmit}
-        stickyMentions={stickyMentions}
-      />
+      <GenerationContextProvider>
+        <Conversation
+          owner={owner}
+          user={user}
+          conversationId={conversationId}
+          onStickyMentionsChange={setStickyMentions}
+        />
+        <FixedAssistantInputBar
+          owner={owner}
+          onSubmit={handleSubmit}
+          stickyMentions={stickyMentions}
+          conversationId={conversationId}
+        />
+      </GenerationContextProvider>
     </AppLayout>
   );
 }

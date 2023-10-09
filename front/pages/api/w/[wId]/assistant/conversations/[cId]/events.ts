@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import {
-  cancelConversationGenerationEvent,
+  cancelMessageGenerationEvent,
   getConversationEvents,
 } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -17,6 +17,7 @@ export type PostMessageEventResponseBody = {
 };
 const PostMessageEventBodySchema = t.type({
   action: t.literal("cancel"),
+  messageIds: t.array(t.string),
 });
 
 async function handler(
@@ -130,7 +131,7 @@ async function handler(
           },
         });
       }
-      await cancelConversationGenerationEvent(conversation.sId);
+      await cancelMessageGenerationEvent(bodyValidation.right.messageIds);
       return res.status(200).json({ success: true });
 
     default:
