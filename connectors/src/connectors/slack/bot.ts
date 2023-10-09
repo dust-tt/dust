@@ -322,24 +322,24 @@ async function botAnswerMessage(
     },
   };
 
-  const contentFragmentRes = await contentFragmentPromise;
-  if (contentFragmentRes.isErr()) {
-    return new Err(new Error(contentFragmentRes.error.message));
+  const buildContentFragmentRes = await contentFragmentPromise;
+  if (buildContentFragmentRes.isErr()) {
+    return new Err(new Error(buildContentFragmentRes.error.message));
   }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
-    if (contentFragmentRes.value.length > 0) {
-      const res = await dustAPI.postContentFragment({
+    if (buildContentFragmentRes.value.length > 0) {
+      const contentFragmentRes = await dustAPI.postContentFragment({
         conversationId: lastSlackChatBotMessage.conversationId,
         contentFragment: {
           title: "Slack thread messages",
-          content: contentFragmentRes.value,
+          content: buildContentFragmentRes.value,
         },
       });
-      if (res.isErr()) {
-        return new Err(new Error(res.error.message));
+      if (contentFragmentRes.isErr()) {
+        return new Err(new Error(contentFragmentRes.error.message));
       }
     }
     const mesasgeRes = await dustAPI.postUserMessage({
@@ -363,10 +363,10 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment:
-        contentFragmentRes.value.length > 0
+        buildContentFragmentRes.value.length > 0
           ? {
               title: "Slack thread messages",
-              content: contentFragmentRes.value,
+              content: buildContentFragmentRes.value,
             }
           : undefined,
     });
