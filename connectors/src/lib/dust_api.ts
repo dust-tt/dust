@@ -305,7 +305,7 @@ export type ConversationType = {
   content: (UserMessageType[] | AgentMessageType[])[];
 };
 
-type AgentConfigurationType = {
+export type AgentConfigurationType = {
   sId: string;
   name: string;
 };
