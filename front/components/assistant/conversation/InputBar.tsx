@@ -767,6 +767,8 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
 }) {
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
   if (!generationContext) {
@@ -779,6 +781,7 @@ export function FixedAssistantInputBar({
     if (!conversationId) {
       return;
     }
+    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
       {
@@ -794,6 +797,12 @@ export function FixedAssistantInputBar({
     );
   };
 
+  useEffect(() => {
+    if (isProcessing && generationContext.generatingMessageIds.length === 0) {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, generationContext.generatingMessageIds.length]);
+
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
       {generationContext.generatingMessageIds.length > 0 && (
@@ -801,9 +810,10 @@ export function FixedAssistantInputBar({
           <Button
             className="mt-4"
             variant="tertiary"
-            label="Stop generation"
+            label={isProcessing ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
+            disabled={isProcessing}
           />
         </div>
       )}
