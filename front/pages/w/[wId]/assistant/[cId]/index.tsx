@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -118,37 +119,40 @@ export default function AssistantConversation({
   };
 
   return (
-    <AppLayout
-      user={user}
-      owner={owner}
-      isWideMode={true}
-      gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant"
-      titleChildren={
-        <ConversationTitle
-          owner={owner}
-          conversationId={conversationId}
-          shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-          onDelete={() => {
-            void handdleDeleteConversation();
-          }}
-        />
-      }
-      navChildren={
-        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-      }
-    >
-      <Conversation
-        owner={owner}
+    <GenerationContextProvider>
+      <AppLayout
         user={user}
-        conversationId={conversationId}
-        onStickyMentionsChange={setStickyMentions}
-      />
-      <FixedAssistantInputBar
         owner={owner}
-        onSubmit={handleSubmit}
-        stickyMentions={stickyMentions}
-      />
-    </AppLayout>
+        isWideMode={true}
+        gaTrackingId={gaTrackingId}
+        topNavigationCurrent="assistant"
+        titleChildren={
+          <ConversationTitle
+            owner={owner}
+            conversationId={conversationId}
+            shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
+            onDelete={() => {
+              void handdleDeleteConversation();
+            }}
+          />
+        }
+        navChildren={
+          <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
+        }
+      >
+        <Conversation
+          owner={owner}
+          user={user}
+          conversationId={conversationId}
+          onStickyMentionsChange={setStickyMentions}
+        />
+        <FixedAssistantInputBar
+          owner={owner}
+          onSubmit={handleSubmit}
+          stickyMentions={stickyMentions}
+          conversationId={conversationId}
+        />
+      </AppLayout>
+    </GenerationContextProvider>
   );
 }

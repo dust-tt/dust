@@ -2,6 +2,7 @@ import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
@@ -87,6 +88,7 @@ async function handleUserMessageEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
+    | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
     | ConversationTitleEvent,
     void
@@ -123,6 +125,7 @@ async function handleUserMessageEvents(
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_success":
+              case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -218,6 +221,7 @@ export async function retryAgentMessageWithPubSub(
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_success":
+              case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -226,6 +230,7 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
+
               default:
                 ((event: never) => {
                   logger.error("Unknown event type", event);
@@ -296,6 +301,16 @@ export async function* getConversationEvents(
   }
 }
 
+export async function cancelMessageGenerationEvent(
+  messageIds: string[]
+): Promise<void> {
+  const redis = await redisClient();
+  messageIds.forEach(async (messageId) => {
+    await redis.set(`assistant:generation:cancelled:${messageId}`, 1);
+  });
+  await redis.quit();
+}
+
 export async function* getMessagesEvents(
   messageId: string,
   lastEventId: string | null
@@ -306,6 +321,7 @@ export async function* getMessagesEvents(
       | AgentErrorEvent
       | AgentActionEvent
       | AgentActionSuccessEvent
+      | AgentGenerationCancelledEvent
       | GenerationTokensEvent
       | AgentGenerationSuccessEvent;
   },

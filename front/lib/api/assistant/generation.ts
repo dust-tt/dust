@@ -16,6 +16,7 @@ import {
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
+import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
@@ -34,6 +35,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
+const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
  * Model rendering of conversations.
@@ -236,6 +238,13 @@ export type GenerationSuccessEvent = {
   text: string;
 };
 
+export type GenerationCancelEvent = {
+  type: "generation_cancel";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};
+
 // Construct the full prompt from the agent configuration.
 // - Meta data about the agent and current time.
 // - Insructions from the agent configuration (in case of generation)
@@ -272,7 +281,10 @@ export async function* runGeneration(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
-  GenerationErrorEvent | GenerationTokensEvent | GenerationSuccessEvent,
+  | GenerationErrorEvent
+  | GenerationTokensEvent
+  | GenerationSuccessEvent
+  | GenerationCancelEvent,
   void
 > {
   const owner = auth.workspace();
@@ -394,17 +406,29 @@ export async function* runGeneration(
 
   const { eventStream } = res.value;
 
-  for await (const event of eventStream) {
-    if (event.type === "tokens") {
-      yield {
-        type: "generation_tokens",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        text: event.content.tokens.text,
-      };
-    }
+  let shouldYieldCancel = false;
+  let lastCheckCancellation = Date.now();
+  const redis = await redisClient();
 
+  const _checkCancellation = async () => {
+    try {
+      const cancelled = await redis.get(
+        `assistant:generation:cancelled:${agentMessage.sId}`
+      );
+      if (cancelled === "1") {
+        shouldYieldCancel = true;
+        await redis.set(
+          `assistant:generation:cancelled:${agentMessage.sId}`,
+          0
+        );
+      }
+    } catch (error) {
+      console.error("Error checking cancellation:", error);
+      return false;
+    }
+  };
+
+  for await (const event of eventStream) {
     if (event.type === "error") {
       yield {
         type: "generation_error",
@@ -417,6 +441,35 @@ export async function* runGeneration(
         },
       };
       return;
+    }
+
+    const currentTimestamp = Date.now();
+    if (
+      currentTimestamp - lastCheckCancellation >=
+      CANCELLATION_CHECK_INTERVAL
+    ) {
+      void _checkCancellation(); // Trigger the async function without awaiting
+      lastCheckCancellation = currentTimestamp;
+    }
+
+    if (shouldYieldCancel) {
+      yield {
+        type: "generation_cancel",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+      };
+      return;
+    }
+
+    if (event.type === "tokens") {
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        text: event.content.tokens.text,
+      };
     }
 
     if (event.type === "block_execution") {
@@ -451,4 +504,5 @@ export async function* runGeneration(
       }
     }
   }
+  await redis.quit();
 }

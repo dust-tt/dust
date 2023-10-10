@@ -1,4 +1,10 @@
-import { Avatar, IconButton, PaperAirplaneIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  IconButton,
+  PaperAirplaneIcon,
+  StopIcon,
+} from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import {
   createContext,
@@ -14,6 +20,7 @@ import {
 import * as ReactDOMServer from "react-dom/server";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -753,13 +760,64 @@ export function FixedAssistantInputBar({
   owner,
   onSubmit,
   stickyMentions,
+  conversationId,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
+  conversationId: string | null;
 }) {
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "FixedAssistantInputBar must be used within a GenerationContextProvider"
+    );
+  }
+
+  const handleStopGeneration = async () => {
+    if (!conversationId) {
+      return;
+    }
+    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "cancel",
+          messageIds: generationContext.generatingMessageIds,
+        }),
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (isProcessing && generationContext.generatingMessageIds.length === 0) {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, generationContext.generatingMessageIds.length]);
+
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
+      {generationContext.generatingMessageIds.length > 0 && (
+        <div className="flex justify-center pb-4">
+          <Button
+            className="mt-4"
+            variant="tertiary"
+            label={isProcessing ? "Stopping generation..." : "Stop generation"}
+            icon={StopIcon}
+            onClick={handleStopGeneration}
+            disabled={isProcessing}
+          />
+        </div>
+      )}
+
       <div className="mx-auto max-w-4xl pb-8">
         <AssistantInputBar
           owner={owner}

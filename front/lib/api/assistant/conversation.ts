@@ -9,6 +9,7 @@ import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   runAgent,
@@ -649,6 +650,7 @@ export async function* postUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | ConversationTitleEvent,
   void
@@ -981,6 +983,7 @@ export async function* editUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent,
   void
 > {
@@ -1324,6 +1327,7 @@ export async function* retryAgentMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent,
   void
 > {
@@ -1522,6 +1526,7 @@ async function* streamRunAgentEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
+    | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent,
     void
   >,
@@ -1533,9 +1538,11 @@ async function* streamRunAgentEvents(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent,
   void
 > {
+  let content = "";
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1588,12 +1595,25 @@ async function* streamRunAgentEvents(
         yield event;
         break;
 
+      case "agent_generation_cancelled":
+        if (agentMessageRow.status !== "cancelled") {
+          await agentMessageRow.update({
+            status: "cancelled",
+            content: content,
+          });
+          yield event;
+        }
+        break;
+
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
+        yield event;
+        break;
       case "generation_tokens":
+        content += event.text;
         yield event;
         break;
 

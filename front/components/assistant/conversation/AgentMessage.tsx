@@ -8,16 +8,18 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
@@ -52,6 +54,7 @@ export function AgentMessage({
     switch (streamedAgentMessage.status) {
       case "succeeded":
       case "failed":
+      case "cancelled":
         return false;
       case "created":
         return true;
@@ -92,6 +95,7 @@ export function AgentMessage({
         | AgentActionSuccessEvent
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
+        | AgentGenerationCancelledEvent
         | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
@@ -116,6 +120,13 @@ export function AgentMessage({
           return { ...m, content: event.text };
         });
         break;
+
+      case "agent_generation_cancelled":
+        setStreamedAgentMessage((m) => {
+          return { ...m, status: "cancelled" };
+        });
+        break;
+
       case "agent_message_success": {
         setStreamedAgentMessage(event.message);
         break;
@@ -141,6 +152,7 @@ export function AgentMessage({
     switch (message.status) {
       case "succeeded":
       case "failed":
+      case "cancelled":
         return message;
       case "created":
         return streamedAgentMessage;
@@ -166,6 +178,26 @@ export function AgentMessage({
       }
     }
   }, [agentMessageToRender.content, agentMessageToRender.status]);
+
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "AgentMessage must be used within a GenerationContextProvider"
+    );
+  }
+  useEffect(() => {
+    const isInArray = generationContext.generatingMessageIds.includes(
+      message.sId
+    );
+    if (agentMessageToRender.status === "created" && !isInArray) {
+      generationContext.setGeneratingMessageIds((s) => [...s, message.sId]);
+    } else if (agentMessageToRender.status !== "created" && isInArray) {
+      generationContext.setGeneratingMessageIds((s) =>
+        s.filter((id) => id !== message.sId)
+      );
+    }
+  }, [agentMessageToRender.status, generationContext, message.sId]);
 
   const buttons =
     message.status === "failed"
