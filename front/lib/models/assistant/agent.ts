@@ -160,6 +160,18 @@ AgentConfiguration.init(
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
     ],
+    hooks: {
+      beforeValidate: (agentConfiguration: AgentConfiguration) => {
+        if (
+          agentConfiguration.retrievalConfigurationId &&
+          agentConfiguration.dustAppRunConfigurationId
+        ) {
+          throw new Error(
+            "retrievalConfigurationId and dutappRunConfigurationId must be exclusive"
+          );
+        }
+      },
+    },
   }
 );
 

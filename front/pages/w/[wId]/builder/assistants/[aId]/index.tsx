@@ -185,8 +185,6 @@ export default function EditAssistant({
 
   let dustAppMode: AssistantBuilderInitialState["dustAppMode"] = "GENERIC";
 
-  console.log(agentConfiguration.action);
-
   if (isDustAppRunConfiguration(agentConfiguration.action)) {
     dustAppMode = "SELECTED";
   }
