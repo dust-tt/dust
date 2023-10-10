@@ -180,13 +180,15 @@ export async function renderConversationForModel({
 
   logger.info(
     {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
       messageCount: messages.length,
       promptToken: promptCountRes.value,
       tokensUsed,
       messageSelected: selected.length,
       elapsed: Date.now() - now,
     },
-    "[ASSISTANT_TRACE] message token counts for model conversation rendering"
+    "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
 
   return new Ok({
@@ -356,10 +358,12 @@ export async function* runGeneration(
 
   logger.info(
     {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
       model: model,
       temperature: c.temperature,
     },
-    "[ASSISTANT_TRACE] Running generation"
+    "[ASSISTANT_TRACE] Generation exection"
   );
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [

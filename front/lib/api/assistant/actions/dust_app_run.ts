@@ -108,15 +108,16 @@ export async function generateDustAppRunParams(
 
     if (rawInputsRes.isOk()) {
       const rawInputs = rawInputsRes.value;
-      // Check that all inputs are accounted for.
-
       logger.info(
         {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
           elapsed: Date.now() - now,
         },
         "[ASSISTANT_TRACE] DustAppRun action inputs generation"
       );
 
+      // Check that all inputs are accounted for.
       const inputs: DustAppParameters = {};
 
       for (const k of specRes.value.inputs) {
@@ -135,8 +136,10 @@ export async function generateDustAppRunParams(
 
       return new Ok(inputs);
     }
-    logger.info(
+    logger.error(
       {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
         elapsed: Date.now() - now,
         error: rawInputsRes.error,
       },
@@ -328,6 +331,7 @@ export async function* runDustApp(
   };
 
   // Let's run the app now.
+  const now = Date.now();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(prodCredentials);
@@ -407,6 +411,15 @@ export async function* runDustApp(
   await action.update({
     output: lastBlockOutput,
   });
+
+  logger.info(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_TRACE] DustAppRun acion run execution"
+  );
 
   yield {
     type: "dust_app_run_success",

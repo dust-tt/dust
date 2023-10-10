@@ -238,9 +238,11 @@ export async function generateRetrievalParams(
 
       logger.info(
         {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
           elapsed: Date.now() - now,
         },
-        "[ASSISTANT_TRACE] retrieval action inputs generation"
+        "[ASSISTANT_TRACE] Retrieval action inputs generation"
       );
 
       if (c.query === "auto") {
@@ -261,8 +263,10 @@ export async function generateRetrievalParams(
         }
       }
     } else {
-      logger.info(
+      logger.error(
         {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
           elapsed: Date.now() - now,
           error: rawInputsRes.error,
         },
@@ -497,6 +501,10 @@ export async function* runRetrieval(
   if (params.topK === "auto") {
     if (!model) {
       logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+        },
         "Retrieval topK mode is set to auto, but there is no model to infer it from. Defaulting to 16."
       );
     } else {
@@ -536,6 +544,8 @@ export async function* runRetrieval(
       documents: null,
     },
   };
+
+  const now = Date.now();
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-retrieval"].config
@@ -696,6 +706,15 @@ export async function* runRetrieval(
       }
     }
   });
+
+  logger.info(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_TRACE] Retrieval action execution"
+  );
 
   yield {
     type: "retrieval_success",
