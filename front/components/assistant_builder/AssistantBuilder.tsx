@@ -1197,7 +1197,8 @@ function SlackIntegration({
         Slack Integration
       </div>
       <div className="text-sm text-element-700">
-        Assistants can be configured as default for Slack channels.
+        Assistants can be configured to answer to messages mentioning @Dust
+        inside specific Slack channels.
       </div>
       <div>
         {existingSelection.length ? (
@@ -1221,7 +1222,7 @@ function SlackIntegration({
       {existingSelection.length ? (
         <>
           <div className="mt-6 text-sm text-element-700">
-            Your assistant will answer by default when @dust is mentioned in the
+            Your assistant will answer by default when @Dust is mentioned in the
             following channels:
           </div>
           <ContextItem.List className="mt-2 border-b border-t border-structure-200">
