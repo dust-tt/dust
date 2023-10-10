@@ -39,5 +39,9 @@ export type DustAppRunActionType = {
   appId: string;
   appName: string;
   params: DustAppParameters;
+  runningBlock: {
+    type: string;
+    name: string;
+  } | null;
   output: unknown | null;
 };

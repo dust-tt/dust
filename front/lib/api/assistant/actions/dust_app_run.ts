@@ -177,8 +177,7 @@ export type DustAppRunBlockEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  blockType: string;
-  blockName: string;
+  action: DustAppRunActionType;
 };
 
 export type DustAppRunSuccessEvent = {
@@ -326,6 +325,7 @@ export async function* runDustApp(
       appId: c.appId,
       appName: app.name,
       params,
+      runningBlock: null,
       output: null,
     },
   };
@@ -401,8 +401,19 @@ export async function* runDustApp(
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
-        blockType: event.content.block_type,
-        blockName: event.content.block_name,
+        action: {
+          id: action.id,
+          type: "dust_app_run_action",
+          appWorkspaceId: c.appWorkspaceId,
+          appId: c.appId,
+          appName: app.name,
+          params,
+          runningBlock: {
+            type: event.content.block_type,
+            name: event.content.block_name,
+          },
+          output: null,
+        },
       };
     }
   }
@@ -433,6 +444,7 @@ export async function* runDustApp(
       appId: c.appId,
       appName: app.name,
       params,
+      runningBlock: null,
       output: lastBlockOutput,
     },
   };
