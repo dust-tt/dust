@@ -121,6 +121,7 @@ export default function RetrievalAction({
                   : "No documents found"}
                 <Icon
                   visual={docListVisible ? ChevronDownIcon : ChevronRightIcon}
+                  size="xs"
                 />
               </Chip>
             </div>
