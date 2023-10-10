@@ -475,6 +475,14 @@ export async function* runRetrieval(
   );
 
   if (paramsRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        error: paramsRes.error,
+      },
+      "Error generating retrieval parameters"
+    );
     yield {
       type: "retrieval_error",
       created: Date.now(),
@@ -584,6 +592,14 @@ export async function* runRetrieval(
   ]);
 
   if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        error: res.error,
+      },
+      "Error running retrieval"
+    );
     yield {
       type: "retrieval_error",
       created: Date.now(),
@@ -611,6 +627,14 @@ export async function* runRetrieval(
 
   for (const t of run.traces) {
     if (t[1][0][0].error) {
+      logger.error(
+        {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          error: t[1][0][0].error,
+        },
+        "Error running retrieval"
+      );
       yield {
         type: "retrieval_error",
         created: Date.now(),
