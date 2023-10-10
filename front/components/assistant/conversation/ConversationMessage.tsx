@@ -240,7 +240,7 @@ export function ConversationMessage({
         />
 
         {/* COLUMN 2: CONTENT */}
-        <div className="flex flex-grow flex-col gap-4">
+        <div className="flex min-w-0 flex-grow flex-col gap-4">
           <div className="text-sm font-medium">{name}</div>
           <div className="min-w-0 break-words text-base font-normal">
             {children}
