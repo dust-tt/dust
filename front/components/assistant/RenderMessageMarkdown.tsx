@@ -6,7 +6,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import remarkDirective from "remark-directive";
@@ -125,59 +125,72 @@ export const ReferencesContext = React.createContext<{
   [key: string]: RetrievalDocumentType;
 }>({});
 
+export const UpdateActiveReferencesContext = React.createContext<
+  (doc: RetrievalDocumentType, index: number) => void
+>((d, i) => [d, i]); // dummy function that the linter accepts
+
 export function RenderMessageMarkdown({
   content,
   blinkingCursor,
   references,
   agentConfigurations,
+  updateActiveReferences,
 }: {
   content: string;
   blinkingCursor: boolean;
   references?: { [key: string]: RetrievalDocumentType };
   agentConfigurations?: AgentConfigurationType[];
+  updateActiveReferences?: (
+    document: RetrievalDocumentType,
+    index: number
+  ) => void;
 }) {
   return (
     <div className={blinkingCursor ? "blinking-cursor" : ""}>
       <ReferencesContext.Provider value={references || {}}>
-        <ReactMarkdown
-          linkTarget="_blank"
-          components={{
-            pre: PreBlock,
-            code: CodeBlock,
-            a: LinkBlock,
-            ul: UlBlock,
-            ol: OlBlock,
-            li: LiBlock,
-            p: ParagraphBlock,
-            sup: CiteBlock,
-            table: TableBlock,
-            thead: TableHeadBlock,
-            tbody: TableBodyBlock,
-            th: TableHeaderBlock,
-            td: TableDataBlock,
-            // @ts-expect-error - `mention` is a custom tag, currently refused by
-            // react-markdown types although the functionality is supported
-            mention: ({ agentName, agentSId }) => {
-              const agentConfiguration = agentConfigurations?.find(
-                (agentConfiguration) => agentConfiguration.sId === agentSId
-              );
-              return (
-                <MentionBlock
-                  agentConfiguration={agentConfiguration}
-                  agentName={agentName}
-                />
-              );
-            },
-          }}
-          remarkPlugins={[
-            remarkDirective,
-            mentionDirective,
-            citeDirective(),
-            remarkGfm,
-          ]}
+        <UpdateActiveReferencesContext.Provider
+          value={updateActiveReferences || ((d, i) => [d, i])}
         >
-          {addClosingBackticks(content)}
-        </ReactMarkdown>
+          <ReactMarkdown
+            linkTarget="_blank"
+            components={{
+              pre: PreBlock,
+              code: CodeBlock,
+              a: LinkBlock,
+              ul: UlBlock,
+              ol: OlBlock,
+              li: LiBlock,
+              p: ParagraphBlock,
+              sup: CiteBlock,
+              table: TableBlock,
+              thead: TableHeadBlock,
+              tbody: TableBodyBlock,
+              th: TableHeaderBlock,
+              td: TableDataBlock,
+              // @ts-expect-error - `mention` is a custom tag, currently refused by
+              // react-markdown types although the functionality is supported
+              mention: ({ agentName, agentSId }) => {
+                const agentConfiguration = agentConfigurations?.find(
+                  (agentConfiguration) => agentConfiguration.sId === agentSId
+                );
+                return (
+                  <MentionBlock
+                    agentConfiguration={agentConfiguration}
+                    agentName={agentName}
+                  />
+                );
+              },
+            }}
+            remarkPlugins={[
+              remarkDirective,
+              mentionDirective,
+              citeDirective(),
+              remarkGfm,
+            ]}
+          >
+            {addClosingBackticks(content)}
+          </ReactMarkdown>
+        </UpdateActiveReferencesContext.Provider>
       </ReferencesContext.Provider>
     </div>
   );
@@ -214,20 +227,33 @@ function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
 
 function CiteBlock(props: ReactMarkdownProps) {
   const references = React.useContext(ReferencesContext);
+  const updateActiveReferences = React.useContext(
+    UpdateActiveReferencesContext
+  );
+  const refs =
+    isCiteProps(props) && props.references
+      ? (
+          JSON.parse(props.references) as {
+            counter: number;
+            ref: string;
+          }[]
+        ).filter((r) => r.ref in references)
+      : undefined;
 
-  if (isCiteProps(props) && props.references) {
-    const refs = (
-      JSON.parse(props.references) as {
-        counter: number;
-        ref: string;
-      }[]
-    ).filter((r) => r.ref in references);
+  useEffect(() => {
+    if (refs) {
+      refs.forEach((r) => {
+        const document = references[r.ref];
+        updateActiveReferences(document, r.counter);
+      });
+    }
+  }, [refs, references, updateActiveReferences]);
 
+  if (refs) {
     return (
       <>
         {refs.map((r, i) => {
           const document = references[r.ref];
-
           const provider = providerFromDocument(document);
           const title = titleFromDocument(document);
           const link = linkFromDocument(document);

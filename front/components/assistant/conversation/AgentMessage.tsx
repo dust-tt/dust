@@ -4,10 +4,14 @@ import {
   Chip,
   ClipboardIcon,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   DropdownMenu,
   EyeIcon,
+  IconButton,
+  LinkStrokeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -33,6 +37,13 @@ import {
   MessageReactionType,
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
+
+import {
+  linkFromDocument,
+  PROVIDER_LOGO_PATH,
+  providerFromDocument,
+  titleFromDocument,
+} from "./RetrievalAction";
 
 export function AgentMessage({
   message,
@@ -224,6 +235,19 @@ export function AgentMessage({
   const [references, setReferences] = useState<{
     [key: string]: RetrievalDocumentType;
   }>({});
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: RetrievalDocumentType }[]
+  >([]);
+
+  function updateActiveReferences(
+    document: RetrievalDocumentType,
+    index: number
+  ) {
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document }]);
+    }
+  }
 
   useEffect(() => {
     if (
@@ -312,7 +336,9 @@ export function AgentMessage({
               content={agentMessage.content}
               blinkingCursor={streaming}
               references={references}
-            />
+              updateActiveReferences={updateActiveReferences}
+          />
+            <Citations activeReferences={activeReferences} />
           </div>
         )}
         {agentMessage.status === "cancelled" && (
@@ -337,6 +363,56 @@ export function AgentMessage({
       }
     );
   }
+}
+
+function Citations({
+  activeReferences,
+}: {
+  activeReferences: { index: number; document: RetrievalDocumentType }[];
+}) {
+  activeReferences.sort((a, b) => a.index - b.index);
+  return (
+    <div className="w-[110%] overflow-x-auto scrollbar-hide sm:w-[120%]">
+      <div className="mt-9 flex gap-2">
+        {activeReferences.map(({ document, index }) => {
+          const provider = providerFromDocument(document);
+          return (
+            <div
+              className="flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64"
+              key={index}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
+                  {index}
+                </div>
+                <div className="h-5 w-5">
+                  {provider === "none" ? (
+                    <DocumentTextIcon className="h-5 w-5 text-slate-500" />
+                  ) : (
+                    <img
+                      src={PROVIDER_LOGO_PATH[providerFromDocument(document)]}
+                      className="h-5 w-5"
+                    />
+                  )}
+                </div>
+                <div className="flex-grow text-xs" />
+                <Link href={linkFromDocument(document)} target="_blank">
+                  <IconButton
+                    icon={LinkStrokeIcon}
+                    size="xs"
+                    variant="primary"
+                  />
+                </Link>
+              </div>
+              <div className="text-xs font-bold text-element-900">
+                {titleFromDocument(document)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ErrorMessage({
