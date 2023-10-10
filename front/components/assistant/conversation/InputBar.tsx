@@ -780,7 +780,7 @@ export function FixedAssistantInputBar({
       return;
     }
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
       {
         method: "POST",
         headers: {

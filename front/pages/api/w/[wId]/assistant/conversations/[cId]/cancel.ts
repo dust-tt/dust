@@ -1,14 +1,25 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
+import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+export type PostMessageEventResponseBody = {
+  success: true;
+};
+const PostMessageEventBodySchema = t.type({
+  action: t.literal("cancel"),
+  messageIds: t.array(t.string),
+});
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<PostMessageEventResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -43,7 +54,7 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users of the current workspace can access chat sessions.",
+          "Only users of the current workspace can access conversations.",
       },
     });
   }
@@ -69,46 +80,29 @@ async function handler(
     });
   }
 
-  const lastEventId = req.query.lastEventId || null;
-  if (lastEventId && typeof lastEventId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Invalid query parameters, `lastEventId` should be string if specified.",
-      },
-    });
-  }
-
   switch (req.method) {
-    case "GET":
-      const eventStream = getConversationEvents(conversationId, lastEventId);
+    case "POST":
+      const bodyValidation = PostMessageEventBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
-      res.flushHeaders();
-
-      for await (const event of eventStream) {
-        res.write(`data: ${JSON.stringify(event)}\n\n`);
-        // @ts-expect-error - We need it for streaming but it does not exists in the types.
-        res.flush();
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
       }
-      res.write("data: done\n\n");
-      // @ts-expect-error - We need it for streaming but it does not exists in the types.
-      res.flush();
+      await cancelMessageGenerationEvent(bodyValidation.right.messageIds);
+      return res.status(200).json({ success: true });
 
-      res.status(200).end();
-      return;
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }
