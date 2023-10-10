@@ -46,7 +46,7 @@ AgentDustAppRunConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique:true,
+      unique: true,
     },
     appWorkspaceId: {
       type: DataTypes.STRING,
