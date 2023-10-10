@@ -1610,6 +1610,8 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
+        yield event;
+        break;
       case "generation_tokens":
         content += event.text;
         yield event;
