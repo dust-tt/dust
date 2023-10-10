@@ -276,7 +276,7 @@ export default function AssistantNew({
                     </>
                   )}
                   <StartHelperConversationButton
-                    content="Hey @helper, how can I use an assistant?"
+                    content="Hey @help, how can I use an assistant?"
                     handleSubmit={handleSubmit}
                   />
                 </Button.List>
@@ -289,52 +289,52 @@ export default function AssistantNew({
                   {isBuilder ? (
                     <div className="flex flex-wrap gap-2">
                       <StartHelperConversationButton
-                        content="Hey @helper, how can I interact with an assistant?"
+                        content="Hey @help, how can I interact with an assistant?"
                         handleSubmit={handleSubmit}
                         variant="secondary"
                       />
                       <StartHelperConversationButton
-                        content="@helper, what can I use the assistants for?"
+                        content="@help, what can I use the assistants for?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, what are custom assistants?"
+                        content="@help, what are custom assistants?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, what customized assistants should I create?"
+                        content="@help, what customized assistants should I create?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, how can I make assistant smarter with my own data?"
+                        content="@help, how can I make assistant smarter with my own data?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, what's the level of security and privacy dust offers?"
+                        content="@help, what's the level of security and privacy dust offers?"
                         handleSubmit={handleSubmit}
                       />
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       <StartHelperConversationButton
-                        content="Hey @helper, how can I interact with an assistant?"
+                        content="Hey @help, how can I interact with an assistant?"
                         handleSubmit={handleSubmit}
                         variant="secondary"
                       />
                       <StartHelperConversationButton
-                        content="Hey @helper, What can I use an assistant for?"
+                        content="Hey @help, What can I use an assistant for?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, who creates assistants?"
+                        content="@help, who creates assistants?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, how do assistants work exactly?"
+                        content="@help, how do assistants work exactly?"
                         handleSubmit={handleSubmit}
                       />
                       <StartHelperConversationButton
-                        content="@helper, what are the limitations of assistants?"
+                        content="@help, what are the limitations of assistants?"
                         handleSubmit={handleSubmit}
                       />
                     </div>
@@ -369,8 +369,8 @@ function StartHelperConversationButton({
   size?: "sm" | "xs";
 }) {
   const contentWithMarkdownMention = content.replace(
-    "@helper",
-    ":mention[helper]{sId=helper}"
+    "@help",
+    ":mention[help]{sId=helper}"
   );
 
   return (

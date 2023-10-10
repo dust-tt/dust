@@ -663,9 +663,8 @@ export default function AssistantBuilder({
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
                 Choose a name reflecting the expertise, knowledge access or
                 function of your&nbsp;assistant. Mentioning the&nbsp;assistant
-                in a conversation, like{" "}
-                <span className="italic">"@helper"</span> will prompt
-                a&nbsp;response from&nbsp;them.
+                in a conversation, like <span className="italic">"@help"</span>{" "}
+                will prompt a&nbsp;response from&nbsp;them.
               </div>
               <div className="text-sm">
                 <Input

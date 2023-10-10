@@ -390,7 +390,7 @@ export function AssistantInputBar({
                 empty ? "" : "hidden"
               )}
             >
-              Ask a question
+              Ask a question or get some @help
             </div>
             <div
               className={classNames(

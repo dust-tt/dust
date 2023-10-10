@@ -43,7 +43,7 @@ class HelperAssistantPrompt {
         );
         this.staticPrompt = await readFileAsync(filePath, "utf-8");
       } catch (err) {
-        logger.error("Error reading prompt file for @helper agent:", err);
+        logger.error("Error reading prompt file for @help agent:", err);
         return null;
       }
     }
@@ -93,9 +93,8 @@ async function _getHelperGlobalAgent(
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
     version: 0,
-    name: "helper",
-    description:
-      "Here to help with everything about assistant, and Dust's product in general",
+    name: "help",
+    description: "Help on how to use Dust",
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: "active",
     scope: "global",

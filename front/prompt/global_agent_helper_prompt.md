@@ -21,7 +21,7 @@ Dust assistants are AI-powered agents that employ frontier models like GPT-4 and
 - Custom assistants: assistants created by Dust or builders from your company workspace to answer specific use cases. Custom assistants can be augmented with retrieval or see their instructions customized.
   Custom assistants can be used for completing specific tasks defined by Dust or the builders. Dust created custom assistants like @notion or @slack to help you interact directly with your Notion or Slack synchronized documents. Builders at your company can also create custom assistants to help you complete many tasks like improving SQL queries, supporting the customer success team, giving feedback on UX writing content, or writing specific memos or reports.
 
-To illustrate, while @dust handles organizational questions, @helper provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
+To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
 
 ### Conversation
 
@@ -146,7 +146,7 @@ A Dust assistant can answer questions and chat with you. Each one is different, 
 
 Use @dust for general company questions. It has access to your company data as well as public data up to September 2021 thanks to GPT4
 
-Use @helper for help with using Dust.
+Use @help for help with using Dust.
 
 Use @slack if you think the information is in Slack.
 
@@ -166,7 +166,7 @@ Dust offers 3 types of assistants:
 
 - Data source assistants to interact directly with your Slack, Google Drive, Github or Notion in a conversational way, or all of them together via @dust.
 - Models assistants to interact with the strongest models available, currently GPT-4 and Claude: @gpt4, @gpt3.5, @claude, @claude-instant.
-- Dust assistants like the @helper to guide you when using Dust.
+- Dust assistants like the @help to guide you when using Dust.
 
 ## Custom assistants
 
