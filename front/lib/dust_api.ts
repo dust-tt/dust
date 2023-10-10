@@ -5,7 +5,7 @@ import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { RunType } from "@app/types/run";
 
-const { DUST_API = "https://dust.tt" } = process.env;
+const { DUST_API = "https://dust.tt", NODE_ENV } = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
@@ -276,16 +276,31 @@ export async function processStreamedRunResponse(res: Response) {
 
 export class DustAPI {
   _credentials: DustAPICredentials;
+  _useLocalInDev: boolean;
 
   /**
    * @param credentials DustAPICrededentials
    */
-  constructor(credentials: DustAPICredentials) {
+  constructor(
+    credentials: DustAPICredentials,
+    {
+      useLocalInDev,
+    }: {
+      useLocalInDev: boolean;
+    } = { useLocalInDev: false }
+  ) {
     this._credentials = credentials;
+    this._useLocalInDev = useLocalInDev;
   }
 
   workspaceId(): string {
     return this._credentials.workspaceId;
+  }
+
+  apiUrl() {
+    return this._useLocalInDev && NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : DUST_API;
   }
 
   /**
@@ -297,7 +312,7 @@ export class DustAPI {
    */
   async runApp(app: DustAppType, config: DustAppConfigType, inputs: unknown[]) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
+      `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
       {
         method: "POST",
         headers: {
@@ -334,7 +349,7 @@ export class DustAPI {
     inputs: any[]
   ) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
+      `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
       {
         method: "POST",
         headers: {
@@ -362,7 +377,7 @@ export class DustAPI {
    */
   async getDataSources(workspaceId: string) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${workspaceId}/data_sources`,
+      `${this.apiUrl()}/api/v1/w/${workspaceId}/data_sources`,
       {
         method: "GET",
         headers: {

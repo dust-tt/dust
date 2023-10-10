@@ -357,8 +357,12 @@ export async function* runDustApp(
   // Let's run the app now.
   const now = Date.now();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials);
+  const prodCredentials = await prodAPICredentialsForOwner(owner, {
+    useLocalInDev: true,
+  });
+  const api = new DustAPI(prodCredentials, {
+    useLocalInDev: true,
+  });
 
   const runRes = await api.runAppStreamed(
     {

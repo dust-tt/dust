@@ -528,13 +528,22 @@ export async function getOrCreateSystemApiKey(
  * @returns DustAPICredentials
  */
 export async function prodAPICredentialsForOwner(
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  {
+    useLocalInDev,
+  }: {
+    useLocalInDev: boolean;
+  } = { useLocalInDev: false }
 ): Promise<DustAPICredentials> {
   if (!NODE_ENV) {
     throw new Error("NODE_ENV is not defined");
   }
 
-  if (NODE_ENV === "development" && !DUST_API.startsWith("http://localhost")) {
+  if (
+    NODE_ENV === "development" &&
+    !DUST_API.startsWith("http://localhost") &&
+    !useLocalInDev
+  ) {
     if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
       throw new Error("DUST_DEVELOPMENT_SYSTEM_API_KEY is not defined");
     }
