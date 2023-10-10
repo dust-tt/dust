@@ -15,12 +15,14 @@ import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
+  AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
   DataSource,
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
+import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
 import {
   DataSourceConfiguration,
   isTemplatedQuery,
@@ -67,6 +69,10 @@ export async function getAgentConfiguration(
         model: AgentRetrievalConfiguration,
         as: "retrievalConfiguration",
       },
+      {
+        model: AgentDustAppRunConfiguration,
+        as: "dustAppRunConfiguration",
+      },
     ],
     limit: 1,
   });
@@ -75,7 +81,11 @@ export async function getAgentConfiguration(
     return null;
   }
 
-  let retrievalConfig: RetrievalConfigurationType | null = null;
+  let actionConfig:
+    | RetrievalConfigurationType
+    | DustAppRunConfigurationType
+    | null = null;
+
   if (agent.retrievalConfigurationId) {
     const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
       where: {
@@ -94,32 +104,32 @@ export async function getAgentConfiguration(
         },
       ],
     });
-    const actionConfig = agent.retrievalConfiguration;
+    const retrievalConfig = agent.retrievalConfiguration;
 
-    if (!actionConfig) {
+    if (!retrievalConfig) {
       throw new Error(
         `Couldn't find action configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
       );
     }
 
     let topK: number | "auto" = "auto";
-    if (actionConfig.topKMode === "custom") {
-      if (!actionConfig.topK) {
+    if (retrievalConfig.topKMode === "custom") {
+      if (!retrievalConfig.topK) {
         // unreachable
         throw new Error(
           `Couldn't find topK for retrieval configuration ${agent.retrievalConfigurationId}} with 'custom' topK mode`
         );
       }
 
-      topK = actionConfig.topK;
+      topK = retrievalConfig.topK;
     }
 
-    retrievalConfig = {
-      id: actionConfig.id,
-      sId: actionConfig.sId,
+    actionConfig = {
+      id: retrievalConfig.id,
+      sId: retrievalConfig.sId,
       type: "retrieval_configuration",
-      query: renderRetrievalQueryType(actionConfig),
-      relativeTimeFrame: renderRetrievalTimeframeType(actionConfig),
+      query: renderRetrievalQueryType(retrievalConfig),
+      relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
       topK,
       dataSources: dataSourcesConfig.map((dsConfig) => {
         return {
@@ -137,6 +147,24 @@ export async function getAgentConfiguration(
           },
         };
       }),
+    };
+  }
+
+  if (agent.dustAppRunConfigurationId) {
+    const dustAppRunConfig = agent.dustAppRunConfiguration;
+
+    if (!dustAppRunConfig) {
+      throw new Error(
+        `Couldn't find action configuration for DustAppRun configuration ${agent.dustAppRunConfigurationId}}`
+      );
+    }
+
+    actionConfig = {
+      id: dustAppRunConfig.id,
+      sId: dustAppRunConfig.sId,
+      type: "dust_app_run_configuration",
+      appWorkspaceId: dustAppRunConfig.appWorkspaceId,
+      appId: dustAppRunConfig.appId,
     };
   }
 
@@ -176,7 +204,7 @@ export async function getAgentConfiguration(
     pictureUrl: agent.pictureUrl,
     description: agent.description,
     status: agent.status,
-    action: retrievalConfig,
+    action: actionConfig,
     generation,
   };
 }
@@ -296,9 +324,12 @@ export async function createAgentConfiguration(
           pictureUrl: pictureUrl,
           workspaceId: owner.id,
           generationConfigurationId: generation?.id || null,
-          // We know here that the retrievalConfiguration is one that we created and not a "global
-          // virtual" one so we're good to set the foreign key.
-          retrievalConfigurationId: action?.id || null,
+          // We know here that these are one that we created and not a "global virtual" one so we're
+          // good to set the foreign key.
+          retrievalConfigurationId:
+            action?.type === "retrieval_configuration" ? action?.id : null,
+          dustAppRunConfigurationId:
+            action?.type === "dust_app_run_configuration" ? action?.id : null,
         },
         {
           transaction: t,
@@ -396,57 +427,81 @@ export async function createAgentGenerationConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  {
-    type,
-    query,
-    timeframe,
-    topK,
-    dataSources,
-  }: {
-    type: string;
-    query: RetrievalQuery;
-    timeframe: RetrievalTimeframe;
-    topK: number | "auto";
-    dataSources: DataSourceConfiguration[];
-  }
+  action:
+    | {
+        type: "retrieval_configuration";
+        query: RetrievalQuery;
+        timeframe: RetrievalTimeframe;
+        topK: number | "auto";
+        dataSources: DataSourceConfiguration[];
+      }
+    | {
+        type: "dust_app_run_configuration";
+        appWorkspaceId: string;
+        appId: string;
+      }
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  if (type !== "retrieval_configuration") {
-    throw new Error("Cannot create AgentActionConfiguration: unknow type");
-  }
+  if (action.type === "retrieval_configuration") {
+    return await front_sequelize.transaction(async (t) => {
+      const retrievalConfig = await AgentRetrievalConfiguration.create(
+        {
+          sId: generateModelSId(),
+          query: isTemplatedQuery(action.query) ? "templated" : action.query,
+          queryTemplate: isTemplatedQuery(action.query)
+            ? action.query.template
+            : null,
+          relativeTimeFrame: isTimeFrame(action.timeframe)
+            ? "custom"
+            : action.timeframe,
+          relativeTimeFrameDuration: isTimeFrame(action.timeframe)
+            ? action.timeframe.duration
+            : null,
+          relativeTimeFrameUnit: isTimeFrame(action.timeframe)
+            ? action.timeframe.unit
+            : null,
+          topK: action.topK !== "auto" ? action.topK : null,
+          topKMode: action.topK === "auto" ? "auto" : "custom",
+        },
+        { transaction: t }
+      );
+      await _createAgentDataSourcesConfigData(
+        t,
+        action.dataSources,
+        retrievalConfig.id
+      );
 
-  return await front_sequelize.transaction(async (t) => {
-    const retrievalConfig = await AgentRetrievalConfiguration.create(
-      {
-        sId: generateModelSId(),
-        query: isTemplatedQuery(query) ? "templated" : query,
-        queryTemplate: isTemplatedQuery(query) ? query.template : null,
-        relativeTimeFrame: isTimeFrame(timeframe) ? "custom" : timeframe,
-        relativeTimeFrameDuration: isTimeFrame(timeframe)
-          ? timeframe.duration
-          : null,
-        relativeTimeFrameUnit: isTimeFrame(timeframe) ? timeframe.unit : null,
-        topK: topK !== "auto" ? topK : null,
-        topKMode: topK === "auto" ? "auto" : "custom",
-      },
-      { transaction: t }
-    );
-    await _createAgentDataSourcesConfigData(t, dataSources, retrievalConfig.id);
+      return {
+        id: retrievalConfig.id,
+        sId: retrievalConfig.sId,
+        type: "retrieval_configuration",
+        query: action.query,
+        relativeTimeFrame: action.timeframe,
+        topK: action.topK,
+        dataSources: action.dataSources,
+      };
+    });
+  } else if (action.type === "dust_app_run_configuration") {
+    const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
+      sId: generateModelSId(),
+      appWorkspaceId: action.appWorkspaceId,
+      appId: action.appId,
+    });
 
     return {
-      id: retrievalConfig.id,
-      sId: retrievalConfig.sId,
-      type: "retrieval_configuration",
-      query,
-      relativeTimeFrame: timeframe,
-      topK,
-      dataSources,
+      id: dustAppRunConfig.id,
+      sId: dustAppRunConfig.sId,
+      type: "dust_app_run_configuration",
+      appWorkspaceId: action.appWorkspaceId,
+      appId: action.appId,
     };
-  });
+  } else {
+    throw new Error("Cannot create AgentActionConfiguration: unknow type");
+  }
 }
 
 function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {

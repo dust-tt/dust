@@ -57,6 +57,8 @@ import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
+import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
+import DustAppSelectionSection from "./DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -97,6 +99,10 @@ export type AssistantBuilderDataSourceConfiguration = {
 
 const DUST_APP_MODES = ["GENERIC", "SELECTED"] as const;
 type DustAppMode = (typeof DUST_APP_MODES)[number];
+const DUST_APP_MODE_TO_LABEL: Record<DataSourceMode, string> = {
+  GENERIC: "None (Generic model)",
+  SELECTED: "Selected Dust App",
+};
 
 export type AssistantBuilderDustAppConfiguration = {
   app: AppType;
@@ -223,6 +229,9 @@ export default function AssistantBuilder({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
+
+  const [showDustAppsModal, setShowDustAppsModal] = useState(false);
+
   const [edited, setEdited] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -387,6 +396,12 @@ export default function AssistantBuilder({
       }
     }
 
+    if (builderState.dustAppMode === "SELECTED") {
+      if (!builderState.dustAppConfiguration) {
+        valid = false;
+      }
+    }
+
     if (builderState.filteringMode === "TIMEFRAME") {
       if (!builderState.timeFrame.value) {
         valid = false;
@@ -405,6 +420,8 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.filteringMode,
     builderState.timeFrame.value,
+    builderState.dustAppMode,
+    builderState.dustAppConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -426,6 +443,13 @@ export default function AssistantBuilder({
     });
   };
 
+  const deleteDustApp = () => {
+    setEdited(true);
+    setBuilderState((state) => {
+      return { ...state, dustAppConfiguration: null };
+    });
+  };
+
   const submitForm = async () => {
     if (
       !builderState.handle ||
@@ -443,6 +467,7 @@ export default function AssistantBuilder({
     >;
 
     let actionParam: BodyType["assistant"]["action"] | null = null;
+
     switch (builderState.dataSourceMode) {
       case "GENERIC":
         break;
@@ -492,6 +517,25 @@ export default function AssistantBuilder({
         ((x: never) => {
           throw new Error(`Unknown data source mode ${x}`);
         })(builderState.dataSourceMode);
+    }
+
+    if (builderState.dustAppConfiguration) {
+      switch (builderState.dustAppMode) {
+        case "GENERIC":
+          break;
+        case "SELECTED":
+          actionParam = {
+            type: "dust_app_run_configuration",
+            appWorkspaceId: owner.sId,
+            appId: builderState.dustAppConfiguration.app.sId,
+          };
+          break;
+
+        default:
+          ((x: never) => {
+            throw new Error(`Unknown dust app mode ${x}`);
+          })(builderState.dustAppMode);
+      }
     }
 
     const body: t.TypeOf<
@@ -615,6 +659,25 @@ export default function AssistantBuilder({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
+      />
+      <AssistantBuilderDustAppModal
+        isOpen={showDustAppsModal}
+        setOpen={(isOpen) => {
+          setShowDustAppsModal(isOpen);
+          if (!isOpen) {
+            setDataSourceToManage(null);
+          }
+        }}
+        dustApps={dustApps}
+        onSave={({ app }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            dustAppConfiguration: {
+              app,
+            },
+          }));
+        }}
       />
       <AvatarPicker
         owner={owner}
@@ -841,6 +904,7 @@ export default function AssistantBuilder({
                     <Button
                       type="select"
                       labelVisible={true}
+                      disabled={builderState.dustAppMode !== "GENERIC"}
                       label={
                         DATA_SOURCE_MODE_TO_LABEL[builderState.dataSourceMode]
                       }
@@ -904,129 +968,74 @@ export default function AssistantBuilder({
                   timeFrameError={timeFrameError}
                 />
               </div>
-              {slackDataSource && (
-                <SlackIntegration
-                  slackDataSource={slackDataSource}
-                  owner={owner}
-                  onSave={(channels) => {
-                    setEdited(true);
-                    setSelectedSlackChannels(channels);
-                  }}
-                  existingSelection={selectedSlackChannels}
-                />
-              )}
             </div>
           </div>
 
+          {dustApps.length > 0 && (
+            <div className="flex flex-row items-start">
+              <div className="flex flex-col gap-4">
+                <div className="text-xl font-bold text-element-900">
+                  Dust App Execution
+                </div>
+                <div className="text-sm text-element-700">
+                  Your assistant can execute a Dust App of your design before
+                  answering. The output of the app (last block) is injeced in
+                  context for the model to generate an answer. The inputs of the
+                  app will be automatically infered from the context of the
+                  conversation based on the descriptions you provided in the app
+                  input block dataset.
+                </div>
+                <div className="flex flex-row items-center space-x-2 pt-6">
+                  <div className="text-sm font-semibold text-element-900">
+                    Dust App:
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenu.Button>
+                      <Button
+                        type="select"
+                        labelVisible={true}
+                        disabled={builderState.dataSourceMode !== "GENERIC"}
+                        label={DUST_APP_MODE_TO_LABEL[builderState.dustAppMode]}
+                        variant="secondary"
+                        hasMagnifying={false}
+                        size="sm"
+                      />
+                    </DropdownMenu.Button>
+                    <DropdownMenu.Items origin="bottomRight" width={260}>
+                      {Object.entries(DUST_APP_MODE_TO_LABEL).map(
+                        ([key, value]) => (
+                          <DropdownMenu.Item
+                            key={key}
+                            label={value}
+                            onClick={() => {
+                              setEdited(true);
+                              setBuilderState((state) => ({
+                                ...state,
+                                dustAppMode: key as DustAppMode,
+                              }));
+                            }}
+                          />
+                        )
+                      )}
+                    </DropdownMenu.Items>
+                  </DropdownMenu>
+                </div>
+                <div className="pb-4">
+                  <DustAppSelectionSection
+                    show={builderState.dustAppMode === "SELECTED"}
+                    dustAppConfiguration={builderState.dustAppConfiguration}
+                    openDustAppModal={() => {
+                      setShowDustAppsModal(true);
+                    }}
+                    onDelete={deleteDustApp}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
-              <div className="text-xl font-bold text-element-900">
-                Dust App Execution
-              </div>
-              <div className="text-sm text-element-700">
-                Aside from common knowledge, your&nbsp;assistant can retrieve
-                knowledge from&nbsp;selected sources
-                to&nbsp;answer&nbsp;questions. The Data&nbsp;Sources to pick
-                from are&nbsp;managed by&nbsp;administrators.
-              </div>
-              <ul role="list" className="flex flex-row gap-12">
-                <li className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-bold text-element-800">
-                      Only set data sources if they are necessary.
-                    </div>
-                    <div className="text-sm text-element-700">
-                      By default, the assistant will follow its instructions
-                      with common knowledge. It&nbsp;will answer faster when not
-                      using Data&nbsp;Sources.
-                    </div>
-                  </div>
-                </li>
-                <li className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-bold text-element-800">
-                      Select your Data Sources carefully.
-                    </div>
-                    <div className="text-sm text-element-700">
-                      More is not necessarily better. The quality of your
-                      assistant’s answers to specific questions will depend on
-                      the&nbsp;quality of&nbsp;the&nbsp;underlying&nbsp;data.
-                    </div>
-                  </div>
-                </li>
-              </ul>
-              <div className="flex flex-row items-center space-x-2 pt-6">
-                <div className="text-sm font-semibold text-element-900">
-                  Data Sources:
-                </div>
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={
-                        DATA_SOURCE_MODE_TO_LABEL[builderState.dataSourceMode]
-                      }
-                      variant="secondary"
-                      hasMagnifying={false}
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="bottomRight" width={260}>
-                    {Object.entries(DATA_SOURCE_MODE_TO_LABEL).map(
-                      ([key, value]) => (
-                        <DropdownMenu.Item
-                          key={key}
-                          label={value}
-                          onClick={() => {
-                            setEdited(true);
-                            setBuilderState((state) => ({
-                              ...state,
-                              dataSourceMode: key as DataSourceMode,
-                            }));
-                          }}
-                        />
-                      )
-                    )}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
-              <div className="pb-4">
-                <DataSourceSelectionSection
-                  show={builderState.dataSourceMode === "SELECTED"}
-                  dataSourceConfigurations={
-                    builderState.dataSourceConfigurations
-                  }
-                  openDataSourceModal={() => {
-                    setShowDataSourcesModal(true);
-                  }}
-                  canAddDataSource={configurableDataSources.length > 0}
-                  onManageDataSource={(name) => {
-                    setDataSourceToManage(
-                      builderState.dataSourceConfigurations[name]
-                    );
-                    setShowDataSourcesModal(true);
-                  }}
-                  onDelete={deleteDataSource}
-                  filteringMode={builderState.filteringMode}
-                  setFilteringMode={(filteringMode: FilteringMode) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      filteringMode,
-                    }));
-                  }}
-                  timeFrame={builderState.timeFrame}
-                  setTimeFrame={(timeFrame) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      timeFrame,
-                    }));
-                  }}
-                  timeFrameError={timeFrameError}
-                />
-              </div>
               {slackDataSource && (
                 <SlackIntegration
                   slackDataSource={slackDataSource}

@@ -76,6 +76,11 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
           })
         ),
       }),
+      t.type({
+        type: t.literal("dust_app_run_configuration"),
+        appWorkspaceId: t.string,
+        appId: t.string,
+      }),
     ]),
     generation: t.type({
       prompt: t.string,
@@ -205,13 +210,20 @@ export async function createOrUpgradeAgentConfiguration(
     });
 
   let actionConfig: AgentActionConfigurationType | null = null;
-  if (action) {
+  if (action && action.type === "retrieval_configuration") {
     actionConfig = await createAgentActionConfiguration(auth, {
       type: "retrieval_configuration",
       query: action.query,
       timeframe: action.timeframe,
       topK: action.topK,
       dataSources: action.dataSources,
+    });
+  }
+  if (action && action.type === "dust_app_run_configuration") {
+    actionConfig = await createAgentActionConfiguration(auth, {
+      type: "dust_app_run_configuration",
+      appWorkspaceId: action.appWorkspaceId,
+      appId: action.appId,
     });
   }
 
