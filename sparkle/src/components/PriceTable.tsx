@@ -63,9 +63,9 @@ const iconTable = {
 };
 
 const iconColorTable = {
-  check: "s-text-emerald-400",
-  dash: "s-text-amber-400",
-  xmark: "s-text-red-400",
+  check: "s-text-emerald-500",
+  dash: "s-text-amber-500",
+  xmark: "s-text-red-500",
 };
 
 interface PriceTableItemProps {
@@ -93,7 +93,12 @@ PriceTable.Item = function ({
           className={iconColorTable[variant]}
         />
       </div>
-      <div className="s-overflow-hidden s-overflow-ellipsis s-whitespace-nowrap">
+      <div
+        className={classNames(
+          variant === "xmark" ? "s-text-element-600" : "",
+          "s-overflow-hidden s-overflow-ellipsis s-whitespace-nowrap"
+        )}
+      >
         {label}
       </div>
     </div>
