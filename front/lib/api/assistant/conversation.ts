@@ -1591,6 +1591,8 @@ async function* streamRunAgentEvents(
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
       case "retrieval_params":
+      case "dust_app_run_params":
+      case "dust_app_run_block":
       case "generation_tokens":
         yield event;
         break;

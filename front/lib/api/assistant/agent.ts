@@ -21,6 +21,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
+import { isDustAppRunConfiguration } from "@app/types/assistant/actions/dust_app_run";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionSpecification,
@@ -32,6 +33,12 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+import {
+  DustAppRunBlockEvent,
+  DustAppRunParamsEvent,
+  runDustApp,
+} from "./actions/dust_app_run";
 
 /**
  * Action Inputs generation.
@@ -157,8 +164,11 @@ export type AgentErrorEvent = {
   };
 };
 
-// Event sent durint the execution of an action. These are action specific.
-export type AgentActionEvent = RetrievalParamsEvent;
+// Event sent during the execution of an action. These are action specific.
+export type AgentActionEvent =
+  | RetrievalParamsEvent
+  | DustAppRunParamsEvent
+  | DustAppRunBlockEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
@@ -233,6 +243,56 @@ export async function* runAgent(
             };
             return;
           case "retrieval_success":
+            yield {
+              type: "agent_action_success",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              action: event.action,
+            };
+
+            // We stitch the action into the agent message. The conversation is expected to include
+            // the agentMessage object, updating this object will update the conversation as well.
+            agentMessage.action = event.action;
+            break;
+
+          default:
+            ((event: never) => {
+              logger.error("Unknown `runAgent` event type", event);
+            })(event);
+            return;
+        }
+      }
+    } else if (isDustAppRunConfiguration(configuration.action)) {
+      const eventStream = runDustApp(
+        auth,
+        configuration,
+        conversation,
+        userMessage,
+        agentMessage
+      );
+
+      for await (const event of eventStream) {
+        switch (event.type) {
+          case "dust_app_run_params":
+            yield event;
+            break;
+          case "dust_app_run_error":
+            yield {
+              type: "agent_error",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: event.error.code,
+                message: event.error.message,
+              },
+            };
+            return;
+          case "dust_app_run_block":
+            yield event;
+            break;
+          case "dust_app_run_success":
             yield {
               type: "agent_action_success",
               created: event.created,

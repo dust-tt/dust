@@ -7,6 +7,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
+import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -61,12 +62,15 @@ export const getServerSideProps: GetServerSideProps<{
     resources: string[] | null;
     isSelectAll: boolean;
   }[] = [];
-  for (const ds of config.action?.dataSources ?? []) {
-    selectedResources.push({
-      dataSourceName: ds.dataSourceId,
-      resources: ds.filter.parents?.in ?? null,
-      isSelectAll: !ds.filter.parents,
-    });
+
+  if (isRetrievalConfiguration(config.action)) {
+    for (const ds of config.action.dataSources) {
+      selectedResources.push({
+        dataSourceName: ds.dataSourceId,
+        resources: ds.filter.parents?.in ?? null,
+        isSelectAll: !ds.filter.parents,
+      });
+    }
   }
 
   const dataSourceConfigurationsArray: DataSourceConfig[] = await Promise.all(
@@ -128,25 +132,28 @@ export default function EditAssistant({
   dataSourceConfigurations,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const selectedDataSource =
-    agentConfiguration.action?.type === "retrieval_configuration";
-
   let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
-  if (selectedDataSource && agentConfiguration.action?.relativeTimeFrame) {
-    switch (agentConfiguration.action.relativeTimeFrame) {
-      case "auto":
-        filteringMode = "SEARCH";
-        break;
-      case "none":
-        filteringMode = "SEARCH";
-        break;
-      default:
-        filteringMode = "TIMEFRAME";
-        timeFrame = {
-          value: agentConfiguration.action.relativeTimeFrame.duration,
-          unit: agentConfiguration.action.relativeTimeFrame.unit,
-        };
+  let dataSourceMode: AssistantBuilderInitialState["dataSourceMode"] =
+    "GENERIC";
+
+  if (isRetrievalConfiguration(agentConfiguration.action)) {
+    dataSourceMode = "SELECTED";
+    if (agentConfiguration.action?.relativeTimeFrame) {
+      switch (agentConfiguration.action.relativeTimeFrame) {
+        case "auto":
+          filteringMode = "SEARCH";
+          break;
+        case "none":
+          filteringMode = "SEARCH";
+          break;
+        default:
+          filteringMode = "TIMEFRAME";
+          timeFrame = {
+            value: agentConfiguration.action.relativeTimeFrame.duration,
+            unit: agentConfiguration.action.relativeTimeFrame.unit,
+          };
+      }
     }
   }
 
@@ -157,10 +164,10 @@ export default function EditAssistant({
       gaTrackingId={gaTrackingId}
       dataSources={Object.values(dataSources)}
       initialBuilderState={{
-        dataSourceMode: selectedDataSource ? "SELECTED" : "GENERIC",
-        filteringMode: filteringMode,
+        dataSourceMode,
+        filteringMode,
         timeFrame,
-        dataSourceConfigurations, // TODO
+        dataSourceConfigurations,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

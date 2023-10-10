@@ -117,6 +117,8 @@ async function handleUserMessageEvents(
                 break;
               }
               case "retrieval_params":
+              case "dust_app_run_params":
+              case "dust_app_run_block":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
@@ -210,6 +212,8 @@ export async function retryAgentMessageWithPubSub(
                 break;
               }
               case "retrieval_params":
+              case "dust_app_run_params":
+              case "dust_app_run_block":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":

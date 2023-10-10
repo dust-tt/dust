@@ -1,8 +1,8 @@
 import { ModelId } from "@app/lib/databases";
+import { DustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
+import { RetrievalActionType } from "@app/types/assistant/actions/retrieval";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType, WorkspaceType } from "@app/types/user";
-
-import { RetrievalActionType } from "./actions/retrieval";
-import { AgentConfigurationType } from "./agent";
 
 /**
  * Mentions
@@ -82,7 +82,7 @@ export function isUserMessageType(
  * Agent messages
  */
 
-export type AgentActionType = RetrievalActionType;
+export type AgentActionType = RetrievalActionType | DustAppRunActionType;
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
 /**

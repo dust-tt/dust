@@ -18,6 +18,7 @@ import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
+import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -31,6 +32,8 @@ import {
   isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
 
 /**
  * Model rendering of conversations.
@@ -80,6 +83,8 @@ export async function renderConversationForModel({
             messages.unshift(renderRetrievalActionForModel(m.action));
             retrievalFound = true;
           }
+        } else if (isDustAppRunActionType(m.action)) {
+          messages.unshift(renderDustAppRunActionForModel(m.action));
         } else {
           return new Err(
             new Error(
@@ -180,13 +185,15 @@ export async function renderConversationForModel({
 
   logger.info(
     {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
       messageCount: messages.length,
       promptToken: promptCountRes.value,
       tokensUsed,
       messageSelected: selected.length,
       elapsed: Date.now() - now,
     },
-    "[ASSISTANT_TRACE] message token counts for model conversation rendering"
+    "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
 
   return new Ok({
@@ -356,10 +363,12 @@ export async function* runGeneration(
 
   logger.info(
     {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
       model: model,
       temperature: c.temperature,
     },
-    "[ASSISTANT_TRACE] Running generation"
+    "[ASSISTANT_TRACE] Generation exection"
   );
 
   const res = await runActionStreamed(auth, "assistant-v2-generator", config, [

@@ -99,6 +99,8 @@ export function AgentMessage({
     switch (event.type) {
       case "agent_action_success":
       case "retrieval_params":
+      case "dust_app_run_params":
+      case "dust_app_run_block":
         setStreamedAgentMessage((m) => {
           return { ...m, action: event.action };
         });
@@ -204,10 +206,7 @@ export function AgentMessage({
         }, {} as { [key: string]: RetrievalDocumentType })
       );
     }
-  }, [
-    agentMessageToRender.action,
-    agentMessageToRender.action?.documents?.length,
-  ]);
+  }, [agentMessageToRender.action]);
 
   return (
     <ConversationMessage
