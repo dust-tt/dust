@@ -38,6 +38,9 @@ export { PageHeader };
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
 
+import { PriceTable } from "./components/PriceTable";
+export { PriceTable };
+
 import { Icon } from "./components/Icon";
 export { Icon };
 
