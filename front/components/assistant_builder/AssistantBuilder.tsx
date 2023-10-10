@@ -100,7 +100,7 @@ export type AssistantBuilderDataSourceConfiguration = {
 const DUST_APP_MODES = ["GENERIC", "SELECTED"] as const;
 type DustAppMode = (typeof DUST_APP_MODES)[number];
 const DUST_APP_MODE_TO_LABEL: Record<DataSourceMode, string> = {
-  GENERIC: "None (Generic model)",
+  GENERIC: "None",
   SELECTED: "Selected Dust App",
 };
 
