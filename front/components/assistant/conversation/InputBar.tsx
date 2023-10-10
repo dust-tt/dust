@@ -145,7 +145,7 @@ function AgentListImpl(
       leaveTo="transform opacity-0 scale-100 translate-y-0"
     >
       <div
-        className="fixed z-10 max-h-64 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
+        className="fixed z-10 max-h-96 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
         style={{
           bottom: position.bottom,
           left: position.left,
@@ -404,7 +404,7 @@ export function AssistantInputBar({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-64"
+                "max-h-96"
               )}
               contentEditable={true}
               ref={inputRef}

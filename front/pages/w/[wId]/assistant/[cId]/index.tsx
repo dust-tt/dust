@@ -146,7 +146,6 @@ export default function AssistantConversation({
           conversationId={conversationId}
           onStickyMentionsChange={setStickyMentions}
         />
-        <div className="h-48" />
         <FixedAssistantInputBar
           owner={owner}
           onSubmit={handleSubmit}
