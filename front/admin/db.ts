@@ -55,6 +55,9 @@ async function main() {
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
+  await AgentDustAppRunConfiguration.sync({ alter: true });
+  await AgentDustAppRunAction.sync({ alter: true });
+
   await AgentGenerationConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDataSourceConfiguration.sync({ alter: true });
@@ -64,9 +67,6 @@ async function main() {
   await AgentRetrievalAction.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
-
-  await AgentDustAppRunAction.sync({ alter: true });
-  await AgentDustAppRunConfiguration.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
   await ConversationParticipant.sync({ alter: true });
