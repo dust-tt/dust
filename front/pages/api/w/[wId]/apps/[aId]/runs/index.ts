@@ -269,10 +269,19 @@ async function handler(
         // If we have a `wIdTarget` query parameter, we are fetching runs that were created with an
         // API key coming from another workspace. So we override the `owner` variable and check that
         // the user is a user of that workspace.
-        const target = await Authenticator.fromSession(
+
+        // Dust super users can view runs of any workspace.
+        let target = await Authenticator.fromSuperUserSession(
           session,
           req.query.wIdTarget as string
         );
+        if (!target.isAdmin()) {
+          // If the user is not a super user, we check that the user is a user of the target
+          target = await Authenticator.fromSession(
+            session,
+            req.query.wIdTarget as string
+          );
+        }
 
         owner = target.workspace();
         if (!owner) {
