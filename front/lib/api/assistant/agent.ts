@@ -164,7 +164,7 @@ export type AgentErrorEvent = {
   };
 };
 
-// Event sent durint the execution of an action. These are action specific.
+// Event sent during the execution of an action. These are action specific.
 export type AgentActionEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
