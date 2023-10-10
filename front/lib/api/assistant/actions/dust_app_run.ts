@@ -176,7 +176,7 @@ export async function generateDustAppRunParams(
   return new Ok({});
 }
 
-// Event sent during before the execution of a dust app run with the finalized params to be used.
+// Event sent before the execution of a dust app run with the finalized params to be used.
 export type DustAppRunParamsEvent = {
   type: "dust_app_run_params";
   created: number;
