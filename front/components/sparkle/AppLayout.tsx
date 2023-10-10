@@ -355,13 +355,13 @@ export default function AppLayout({
 
           <main
             className={classNames(
-              "h-full pt-16",
+              "h-full overflow-x-hidden pt-16",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
             <div
               className={classNames(
-                "mx-auto h-full overflow-x-hidden",
+                "mx-auto h-full ",
                 isWideMode ? "w-full" : "max-w-4xl px-6"
               )}
             >
