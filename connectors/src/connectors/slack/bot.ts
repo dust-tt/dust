@@ -639,7 +639,7 @@ async function makeContentFragment(
   }
 
   return new Ok({
-    title: "Slack thread messages",
+    title: "Slack thread context",
     content: text,
     url: url,
   } as PostContentFragmentRequestBody);
