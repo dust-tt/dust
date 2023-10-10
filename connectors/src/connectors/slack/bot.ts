@@ -2,7 +2,6 @@ import { WebClient } from "@slack/web-api";
 import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
-import { start } from "repl";
 
 import {
   AgentActionType,
@@ -562,7 +561,6 @@ async function makeContentFragment(
   connector: Connector
 ) {
   let allMessages: Message[] = [];
-  const debugMessage: Message[] = [];
 
   let next_cursor = undefined;
 
