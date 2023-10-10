@@ -43,7 +43,8 @@ import {
   PROVIDER_LOGO_PATH,
   providerFromDocument,
   titleFromDocument,
-} from "./RetrievalAction";
+} from "@app/components/assistant/conversation/RetrievalAction";
+import { classNames } from "@app/lib/utils";
 
 export function AgentMessage({
   message,
@@ -375,19 +376,30 @@ export function AgentMessage({
     const citationContainer = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      if (citationContainer.current && lastHoveredReference !== null) {
-        // get the offset of the first child in its container
-        const offset = (
-          citationContainer.current.firstElementChild
-            ?.firstElementChild as HTMLElement
-        ).offsetLeft;
-        const scrolling =
-          (citationContainer.current.firstElementChild?.firstElementChild
-            ?.scrollWidth || 0) *
-          (lastHoveredReference - 2);
-        citationContainer.current.scrollLeft = scrolling - offset;
+      if (citationContainer.current) {
+        if (lastHoveredReference !== null) {
+          citationContainer.current.scrollTo({
+            left: citationsScrollOffset(lastHoveredReference),
+            behavior: "smooth",
+          });
+        }
       }
-    });
+    }, [lastHoveredReference]);
+
+    function citationsScrollOffset(reference: number | null) {
+      if (!citationContainer.current || reference === null) {
+        return 0;
+      }
+      const offset = (
+        citationContainer.current.firstElementChild
+          ?.firstElementChild as HTMLElement
+      ).offsetLeft;
+      const scrolling =
+        (citationContainer.current.firstElementChild?.firstElementChild
+          ?.scrollWidth || 0) *
+        (reference - 2);
+      return scrolling - offset;
+    }
 
     activeReferences.sort((a, b) => a.index - b.index);
     return (
@@ -401,7 +413,12 @@ export function AgentMessage({
             const provider = providerFromDocument(document);
             return (
               <div
-                className="flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64"
+                className={classNames(
+                  "flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64",
+                  lastHoveredReference === index
+                    ? "animate-[bgblink_500ms_3]"
+                    : ""
+                )}
                 key={index}
               >
                 <div className="flex items-center gap-1.5">
