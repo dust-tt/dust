@@ -119,27 +119,27 @@ export default function AssistantConversation({
   };
 
   return (
-    <AppLayout
-      user={user}
-      owner={owner}
-      isWideMode={true}
-      gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistant"
-      titleChildren={
-        <ConversationTitle
-          owner={owner}
-          conversationId={conversationId}
-          shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-          onDelete={() => {
-            void handdleDeleteConversation();
-          }}
-        />
-      }
-      navChildren={
-        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-      }
-    >
-      <GenerationContextProvider>
+    <GenerationContextProvider>
+      <AppLayout
+        user={user}
+        owner={owner}
+        isWideMode={true}
+        gaTrackingId={gaTrackingId}
+        topNavigationCurrent="assistant"
+        titleChildren={
+          <ConversationTitle
+            owner={owner}
+            conversationId={conversationId}
+            shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
+            onDelete={() => {
+              void handdleDeleteConversation();
+            }}
+          />
+        }
+        navChildren={
+          <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
+        }
+      >
         <Conversation
           owner={owner}
           user={user}
@@ -152,7 +152,7 @@ export default function AssistantConversation({
           stickyMentions={stickyMentions}
           conversationId={conversationId}
         />
-      </GenerationContextProvider>
-    </AppLayout>
+      </AppLayout>
+    </GenerationContextProvider>
   );
 }
