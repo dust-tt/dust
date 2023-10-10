@@ -706,15 +706,15 @@ export default function AssistantBuilder({
           !edited ? (
             <AppLayoutSimpleCloseTitle
               title="Create an assistant"
-              onClose={() => {
-                void router.push(`/w/${owner.sId}/builder/assistants`);
+              onClose={async () => {
+                await router.push(`/w/${owner.sId}/builder/assistants`);
               }}
             />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title="Edit an Assistant"
-              onCancel={() => {
-                void router.push(`/w/${owner.sId}/builder/assistants`);
+              onCancel={async () => {
+                await router.push(`/w/${owner.sId}/builder/assistants`);
               }}
               onSave={
                 submitEnabled
