@@ -323,9 +323,9 @@ export async function* runAgent(
         }
       }
     } else {
-      throw new Error(
-        "runAgent implementation missing for action configuration"
-      );
+      ((a: never) => {
+        throw new Error(`Unexpected action type: ${a}`);
+      })(configuration.action);
     }
   }
 

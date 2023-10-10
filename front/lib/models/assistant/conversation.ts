@@ -19,6 +19,8 @@ import {
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
 
+import { AgentDustAppRunAction } from "./actions/dust_app_run";
+
 export class Conversation extends Model<
   InferAttributes<Conversation>,
   InferCreationAttributes<Conversation>
@@ -243,6 +245,9 @@ export class AgentMessage extends Model<
   declare errorMessage: string | null;
 
   declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
+  declare agentDustAppRunActionId: ForeignKey<
+    AgentDustAppRunAction["id"]
+  > | null;
 
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
@@ -303,15 +308,35 @@ AgentMessage.init(
       },
     ],
     sequelize: front_sequelize,
+    hooks: {
+      beforeValidate: (agentMessage: AgentMessage) => {
+        if (
+          agentMessage.agentRetrievalActionId &&
+          agentMessage.agentDustAppRunActionId
+        ) {
+          throw new Error(
+            "agentRetrievalActionId and AgentDustAppRunActionId must be exclusive"
+          );
+        }
+      },
+    },
   }
 );
 
 AgentRetrievalAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
   onDelete: "CASCADE",
 });
 AgentMessage.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no retrieval action set for this Agent
+  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
+});
+
+AgentDustAppRunAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
+  onDelete: "CASCADE",
+});
+AgentMessage.belongsTo(AgentDustAppRunAction, {
+  foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
 });
 
 export class ContentFragment extends Model<

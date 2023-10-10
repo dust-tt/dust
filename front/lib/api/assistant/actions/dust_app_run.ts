@@ -280,10 +280,12 @@ export async function* runDustApp(
 
   let schema: DatasetSchema | null = null;
 
-  const input = appSpec.find((b) => b.type === "input");
-  if (input) {
-    // We have an input block, we need to find associated dataset and its schema.
-    const datasetName: string = appConfig.input?.dataset || "";
+  const inputSpec = appSpec.find((b) => b.type === "input");
+  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
+  const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
+
+  if (datasetName) {
+    // We have a dataset name we need to find associated schema.
     schema = await getDatasetSchema(auth, app, datasetName);
     if (!schema) {
       yield {
@@ -293,7 +295,9 @@ export async function* runDustApp(
         messageId: agentMessage.sId,
         error: {
           code: "dust_app_run_app_schema_error",
-          message: `Failed to retrieve schema for Dust app: ${c.appWorkspaceId}/${c.appId}/${datasetName}`,
+          message:
+            `Failed to retrieve schema for Dust app: ${c.appWorkspaceId}/${c.appId} dataset=${datasetName}` +
+            " (make sure you have set descriptions in your app input block dataset)",
         },
       };
       return;
@@ -357,8 +361,12 @@ export async function* runDustApp(
   // Let's run the app now.
   const now = Date.now();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials);
+  const prodCredentials = await prodAPICredentialsForOwner(owner, {
+    useLocalInDev: true,
+  });
+  const api = new DustAPI(prodCredentials, {
+    useLocalInDev: true,
+  });
 
   const runRes = await api.runAppStreamed(
     {

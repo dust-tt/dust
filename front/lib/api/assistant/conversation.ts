@@ -1571,10 +1571,17 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentRetrievalActionId: event.action.id,
           });
+        } else if (event.action.type === "dust_app_run_action") {
+          await agentMessageRow.update({
+            agentDustAppRunActionId: event.action.id,
+          });
         } else {
-          throw new Error(
-            `Action type ${event.action.type} agent_action_success handling not implemented`
-          );
+          ((action: never) => {
+            throw new Error(
+              "Unknown `type` for `agent_action_success` event",
+              action
+            );
+          })(event.action);
         }
         yield event;
         break;
