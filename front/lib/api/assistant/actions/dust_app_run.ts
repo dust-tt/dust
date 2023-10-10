@@ -24,6 +24,30 @@ import { DatasetSchema } from "@app/types/dataset";
 import { getApp } from "../../app";
 import { getDatasetSchema } from "../../datasets";
 import { generateActionInputs } from "../agent";
+import { ModelMessageType } from "../generation";
+
+/**
+ * Model rendering of DustAppRuns.
+ */
+
+export function renderDustAppRunActionForModel(
+  action: DustAppRunActionType
+): ModelMessageType {
+  let content = "";
+  if (!action.output) {
+    throw new Error(
+      "Output not set on DustAppRun action; execution is likely not finished."
+    );
+  }
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "action" as const,
+    name: action.appName,
+    content,
+  };
+}
 
 /**
  * Params generation.

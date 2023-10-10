@@ -18,6 +18,7 @@ import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
+import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -31,6 +32,8 @@ import {
   isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+
+import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
 
 /**
  * Model rendering of conversations.
@@ -80,6 +83,8 @@ export async function renderConversationForModel({
             messages.unshift(renderRetrievalActionForModel(m.action));
             retrievalFound = true;
           }
+        } else if (isDustAppRunActionType(m.action)) {
+          messages.unshift(renderDustAppRunActionForModel(m.action));
         } else {
           return new Err(
             new Error(
