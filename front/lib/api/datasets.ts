@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { Dataset } from "@app/lib/models";
-import logger from "@app/logger/logger";
 import { AppType } from "@app/types/app";
 import { DatasetSchema, DatasetType } from "@app/types/dataset";
 
@@ -68,15 +67,6 @@ export async function getDatasetSchema(
   if (!owner) {
     return null;
   }
-
-  logger.info(
-    {
-      workspaceId: owner.id,
-      appId: app.id,
-      name,
-    },
-    "Retrieving Schema"
-  );
 
   const dataset = await Dataset.findOne({
     where: {
