@@ -74,6 +74,6 @@ main {
     @apply bg-structure-0;
   }
   50% {
-    @apply bg-structure-200;
+    @apply bg-purple-100;
   }
 }
