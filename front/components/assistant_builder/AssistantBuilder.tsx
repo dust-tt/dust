@@ -1045,6 +1045,7 @@ export default function AssistantBuilder({
                     setSelectedSlackChannels(channels);
                   }}
                   existingSelection={selectedSlackChannels}
+                  assistantHandle={builderState.handle ?? undefined}
                 />
               )}
             </div>
@@ -1098,11 +1099,13 @@ function SlackIntegration({
   owner,
   onSave,
   existingSelection,
+  assistantHandle,
 }: {
   slackDataSource: DataSourceType;
   owner: WorkspaceType;
   onSave: (channels: { channelId: string; channelName: string }[]) => void;
   existingSelection: { channelId: string; channelName: string }[];
+  assistantHandle?: string;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChannelTitleById, setSelectedChannelTitleById] = useState<
@@ -1147,6 +1150,10 @@ function SlackIntegration({
     setModalOpen(false);
   };
 
+  const assistantName = assistantHandle
+    ? `@${assistantHandle}`
+    : "This assistant";
+
   return (
     <>
       <Modal
@@ -1157,13 +1164,13 @@ function SlackIntegration({
         title="Slack bot configuration"
         onSave={save}
       >
-        <div className="flex w-full pt-12">
+        <div className="pt-12">
           <div className="mx-auto max-w-6xl pb-8">
             <div className="mb-6">
               <PageHeader
                 title={"Select Slack channels"}
                 icon={CONNECTOR_CONFIGURATIONS["slack"].logoComponent}
-                description="Select the channels in which your assistant will answer by default."
+                description="Select the channels in which your assistant will automatically answer."
               />
             </div>
             <DataSourceResourceSelectorTree
@@ -1197,7 +1204,8 @@ function SlackIntegration({
         Slack Integration
       </div>
       <div className="text-sm text-element-700">
-        Assistants can be configured as default for Slack channels.
+        Assistants can be configured to answer to messages mentioning @Dust
+        inside specific Slack channels.
       </div>
       <div>
         {existingSelection.length ? (
@@ -1221,8 +1229,8 @@ function SlackIntegration({
       {existingSelection.length ? (
         <>
           <div className="mt-6 text-sm text-element-700">
-            Your assistant will answer by default when @dust is mentioned in the
-            following channels:
+            {assistantName} will answer by default when @Dust is mentioned in
+            the following channels:
           </div>
           <ContextItem.List className="mt-2 border-b border-t border-structure-200">
             {existingSelection.map(({ channelId, channelName }) => {
