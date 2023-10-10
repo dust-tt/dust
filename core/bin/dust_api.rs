@@ -482,31 +482,54 @@ async fn run_helper(
     let specification = match payload.specification {
         Some(spec) => spec,
         None => match payload.specification_hash {
-            Some(hash) => match state.store.load_specification(&project, &hash).await {
-                Err(e) => Err(error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to retrieve specification",
-                    Some(e),
-                ))?,
-                Ok(spec) => match spec {
-                    None => Err(error_response(
-                        StatusCode::NOT_FOUND,
-                        "specification_not_found",
-                        &format!("No specification found for hash `{}`", hash),
-                        None,
+            Some(hash) => {
+                let hash = match hash.as_str() {
+                    "latest" => match state.store.latest_specification_hash(&project).await {
+                        Err(e) => Err(error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to retrieve latest specification",
+                            Some(e),
+                        ))?,
+                        Ok(h) => match h {
+                            None => Err(error_response(
+                                StatusCode::NOT_FOUND,
+                                "specification_not_found",
+                                "Latest specification not found",
+                                None,
+                            ))?,
+                            Some(h) => h,
+                        },
+                    },
+                    _ => hash,
+                };
+
+                match state.store.load_specification(&project, &hash).await {
+                    Err(e) => Err(error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to retrieve specification",
+                        Some(e),
                     ))?,
-                    Some((_, s)) => {
-                        register_spec = false;
-                        s
-                    }
-                },
-            },
+                    Ok(spec) => match spec {
+                        None => Err(error_response(
+                            StatusCode::NOT_FOUND,
+                            "specification_not_found",
+                            &format!("No specification found for hash `{}`", hash),
+                            None,
+                        ))?,
+                        Some((_, s)) => {
+                            register_spec = false;
+                            s
+                        }
+                    },
+                }
+            }
             None => Err(error_response(
                 StatusCode::BAD_REQUEST,
                 "missing_specification_error",
-                "No specification provided, either `specification` or
-                `specification_hash` must be provided",
+                "No specification provided, either `specification` \
+                 or `specification_hash` must be provided",
                 None,
             ))?,
         },

@@ -29,20 +29,15 @@ export type DatasetEntry = {
 };
 
 export type DustAppParameters = {
-  [key: string]: {
-    expectedType: "string" | "number" | "boolean";
-    value: unknown;
-  };
+  [key: string]: string | number | boolean;
 };
 
 export type DustAppRunActionType = {
   id: ModelId; // AgentDustAppRun.
   type: "dust_app_run_action";
-  app: {
-    workspaceId: string;
-    sId: string;
-    name: string;
-  };
+  appWorkspaceId: string;
+  appId: string;
+  appName: string;
   params: DustAppParameters;
   output: unknown | null;
 };

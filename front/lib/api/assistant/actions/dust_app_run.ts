@@ -1,12 +1,13 @@
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
+import { DustAPI } from "@app/lib/dust_api";
+import { AgentDustAppRunAction } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { SpecificationType } from "@app/types/app";
+import { AppType, SpecificationType } from "@app/types/app";
 import {
   DustAppParameters,
   DustAppRunActionType,
-  DustAppRunConfigurationType,
   isDustAppRunConfiguration,
 } from "@app/types/assistant/actions/dust_app_run";
 import {
@@ -18,6 +19,7 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { DatasetSchema } from "@app/types/dataset";
 
 import { getApp } from "../../app";
 import { getDatasetSchema } from "../../datasets";
@@ -28,64 +30,19 @@ import { generateActionInputs } from "../agent";
  */
 
 export async function dustAppRunActionSpecification(
-  auth: Authenticator,
-  configuration: DustAppRunConfigurationType
+  app: AppType,
+  schema: DatasetSchema | null
 ): Promise<Result<AgentActionSpecification, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err(
-      new Error(
-        "Unexpected unauthenticated call to `dustAppRunActionSpecification`"
-      )
-    );
-  }
-
-  if (owner.sId !== configuration.app.workspaceId) {
-    return new Err(
-      new Error(
-        "Runing Dust apps that are not part of your own workspace is not supported yet."
-      )
-    );
-  }
-
-  const app = await getApp(auth, configuration.app.appId);
-  if (!app) {
-    return new Err(
-      new Error(
-        `Failed to retrieve Dust app with id: ${configuration.app.appId}`
-      )
-    );
-  }
-
   const appName = app.name;
   const appDescription = app.description;
 
-  // Parse the specifiaction of the app.
-  const appSpec = JSON.parse(
-    app.savedSpecification || `[]`
-  ) as SpecificationType;
-  const input = appSpec.find((b) => b.type === "input");
-
-  // If we have no input block there is no need to generate any input.
-  if (!input) {
+  // If we have no schema (aka no input block) there is no need to generate any input.
+  if (!schema) {
     return new Ok({
       name: appName,
       description: appDescription || "",
       inputs: [],
     });
-  }
-
-  // We have an input block, we need to find associated dataset and its schema.
-  const config = extractConfig(JSON.parse(app.savedSpecification || `{}`));
-  const datasetName: string = config.input?.dataset || "";
-
-  const schema = await getDatasetSchema(auth, app, datasetName);
-  if (!schema) {
-    return new Err(
-      new Error(
-        `Failed to retrieve schema for dataset: ${configuration.app.appId}/${datasetName}`
-      )
-    );
   }
 
   const inputs: {
@@ -122,7 +79,9 @@ export async function generateDustAppRunParams(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
-  userMessage: UserMessageType
+  userMessage: UserMessageType,
+  app: AppType,
+  schema: DatasetSchema | null
 ): Promise<Result<DustAppParameters, Error>> {
   const c = configuration.action;
   if (!isDustAppRunConfiguration(c)) {
@@ -131,7 +90,7 @@ export async function generateDustAppRunParams(
     );
   }
 
-  const specRes = await dustAppRunActionSpecification(auth, c);
+  const specRes = await dustAppRunActionSpecification(app, schema);
   if (specRes.isErr()) {
     return new Err(specRes.error);
   }
@@ -162,10 +121,7 @@ export async function generateDustAppRunParams(
 
       for (const k of specRes.value.inputs) {
         if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
-          inputs[k.name] = {
-            expectedType: k.type,
-            value: rawInputs[k.name],
-          };
+          inputs[k.name] = rawInputs[k.name];
         } else {
           return new Err(
             new Error(
@@ -218,7 +174,8 @@ export type DustAppRunBlockEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  block: string;
+  blockType: string;
+  blockName: string;
 };
 
 export type DustAppRunSuccessEvent = {
@@ -242,7 +199,10 @@ export async function* runDustApp(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
-  DustAppRunParamsEvent | DustAppRunSuccessEvent | DustAppRunErrorEvent,
+  | DustAppRunParamsEvent
+  | DustAppRunBlockEvent
+  | DustAppRunSuccessEvent
+  | DustAppRunErrorEvent,
   void
 > {
   const owner = auth.workspace();
@@ -255,11 +215,72 @@ export async function* runDustApp(
     throw new Error("Unexpected action configuration received in `runDustApp`");
   }
 
+  if (owner.sId !== c.appWorkspaceId) {
+    yield {
+      type: "dust_app_run_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "dust_app_run_workspace_error",
+        message:
+          "Runing Dust apps that are not part of your own workspace is not supported yet.",
+      },
+    };
+    return;
+  }
+
+  const app = await getApp(auth, c.appId);
+  if (!app) {
+    yield {
+      type: "dust_app_run_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "dust_app_run_app_error",
+        message: `Failed to retrieve Dust app ${c.appWorkspaceId}/${c.appId}`,
+      },
+    };
+    return;
+  }
+
+  // Parse the specifiaction of the app.
+  const appSpec = JSON.parse(
+    app.savedSpecification || `[]`
+  ) as SpecificationType;
+
+  const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
+
+  let schema: DatasetSchema | null = null;
+
+  const input = appSpec.find((b) => b.type === "input");
+  if (input) {
+    // We have an input block, we need to find associated dataset and its schema.
+    const datasetName: string = appConfig.input?.dataset || "";
+    schema = await getDatasetSchema(auth, app, datasetName);
+    if (!schema) {
+      yield {
+        type: "dust_app_run_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "dust_app_run_app_schema_error",
+          message: `Failed to retrieve schema for dataset: ${c.appId}/${datasetName}`,
+        },
+      };
+      return;
+    }
+  }
+
   const paramsRes = await generateDustAppRunParams(
     auth,
     configuration,
     conversation,
-    userMessage
+    userMessage,
+    app,
+    schema
   );
 
   if (paramsRes.isErr()) {
@@ -282,206 +303,124 @@ export async function* runDustApp(
   // of the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have an output but the error will be stored on the parent agent
   // message.
-  const action = await AgentRetrievalAction.create({
-    query: params.query,
-    relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
-    relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
-    topK,
-    retrievalConfigurationId: c.sId,
+  const action = await AgentDustAppRunAction.create({
+    dustAppRunConfigurationId: c.sId,
+    appWorkspaceId: c.appWorkspaceId,
+    appId: c.appId,
+    appName: app.name,
+    params,
   });
 
   yield {
-    type: "retrieval_params",
+    type: "dust_app_run_params",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    dataSources: c.dataSources,
     action: {
       id: action.id,
-      type: "retrieval_action",
-      params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
-        topK,
-      },
-      documents: null,
+      type: "dust_app_run_action",
+      appWorkspaceId: c.appWorkspaceId,
+      appId: c.appId,
+      appName: app.name,
+      params,
+      output: null,
     },
   };
 
-  const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-retrieval"].config
+  // Let's run the app now.
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const api = new DustAPI(prodCredentials);
+
+  const runRes = await api.runAppStreamed(
+    {
+      workspaceId: c.appWorkspaceId,
+      appId: c.appId,
+      appHash: "latest",
+    },
+    appConfig,
+    [params]
   );
 
-  // Handle data sources list and parents/tags filtering.
-  config.DATASOURCE.data_sources = c.dataSources.map((d) => ({
-    workspace_id: d.workspaceId,
-    data_source_id: d.dataSourceId,
-  }));
-
-  for (const ds of c.dataSources) {
-    if (ds.filter.tags) {
-      if (!config.DATASOURCE.filter.tags) {
-        config.DATASOURCE.filter.tags = { in: [], not: [] };
-      }
-
-      config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
-      config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
-    }
-
-    if (ds.filter.parents) {
-      if (!config.DATASOURCE.filter.parents) {
-        config.DATASOURCE.filter.parents = { in: [], not: [] };
-      }
-
-      config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
-      config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
-    }
-  }
-
-  // Handle timestamp filtering.
-  if (params.relativeTimeFrame) {
-    config.DATASOURCE.filter.timestamp = {
-      gt: timeFrameFromNow(params.relativeTimeFrame),
-    };
-  }
-
-  // Handle top k.
-  config.DATASOURCE.top_k = topK;
-
-  const res = await runAction(auth, "assistant-v2-retrieval", config, [
-    {
-      query: params.query,
-    },
-  ]);
-
-  if (res.isErr()) {
+  if (runRes.isErr()) {
     yield {
-      type: "retrieval_error",
+      type: "dust_app_run_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "retrieval_search_error",
-        message: `Error searching data sources: ${res.error.message}`,
+        code: "dust_app_run_error",
+        message: `Error running Dust app: ${runRes.error.message}`,
       },
     };
     return;
   }
 
-  const run = res.value;
-  let documents: RetrievalDocumentType[] = [];
+  const { eventStream } = runRes.value;
+  let lastBlockOutput: unknown | null = null;
 
-  // This is not perfect and will be erroneous in case of two data sources with the same id from two
-  // different workspaces. We don't support cross workspace data sources right now. But we'll likely
-  // want `core` to return the `workspace_id` that was used eventualy.
-  // TODO(spolu): make `core` return data source workspace id.
-  const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
-  for (const ds of c.dataSources) {
-    dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
-  }
-
-  for (const t of run.traces) {
-    if (t[1][0][0].error) {
+  for await (const event of eventStream) {
+    if (event.type === "error") {
       yield {
-        type: "retrieval_error",
+        type: "dust_app_run_error",
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "retrieval_search_error",
-          message: `Error searching data sources: ${t[1][0][0].error}`,
+          code: "dust_app_run_error",
+          message: `Error running Dust app: ${event.content.message}`,
         },
       };
       return;
     }
-    if (t[0][1] === "DATASOURCE") {
-      const v = t[1][0][0].value as {
-        data_source_id: string;
-        created: number;
-        document_id: string;
-        timestamp: number;
-        tags: string[];
-        parents: string[];
-        source_url: string | null;
-        hash: string;
-        text_size: number;
-        chunk_count: number;
-        chunks: { text: string; hash: string; offset: number; score: number }[];
-        token_count: number;
-      }[];
 
-      const refs = getRefs();
-      documents = v.map((d, i) => {
-        const reference = refs[i % refs.length];
-        return {
-          id: 0, // dummy pending database insertion
-          dataSourceWorkspaceId: dataSourcesIdToWorkspaceId[d.data_source_id],
-          dataSourceId: d.data_source_id,
-          documentId: d.document_id,
-          reference,
-          timestamp: d.timestamp,
-          tags: d.tags,
-          sourceUrl: d.source_url ?? null,
-          score: d.chunks.map((c) => c.score)[0],
-          chunks: d.chunks.map((c) => ({
-            text: c.text,
-            offset: c.offset,
-            score: c.score,
-          })),
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        yield {
+          type: "dust_app_run_error",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "dust_app_run_error",
+            message: `Error running Dust app: ${e.error}`,
+          },
         };
-      });
+        return;
+      }
+
+      lastBlockOutput = e.value;
+
+      yield {
+        type: "dust_app_run_block",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        blockType: event.content.block_type,
+        blockName: event.content.block_name,
+      };
     }
   }
 
-  // We are done, store documents and chunks in database and yield the final events.
-
-  await front_sequelize.transaction(async (t) => {
-    for (const d of documents) {
-      const document = await RetrievalDocument.create(
-        {
-          dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-          dataSourceId: d.dataSourceId,
-          sourceUrl: d.sourceUrl,
-          documentId: d.documentId,
-          reference: d.reference,
-          documentTimestamp: new Date(d.timestamp),
-          tags: d.tags,
-          score: d.score,
-          retrievalActionId: action.id,
-        },
-        { transaction: t }
-      );
-
-      d.id = document.id;
-
-      for (const c of d.chunks) {
-        await RetrievalDocumentChunk.create(
-          {
-            text: c.text,
-            offset: c.offset,
-            score: c.score,
-            retrievalDocumentId: document.id,
-          },
-          { transaction: t }
-        );
-      }
-    }
+  // Update DustAppRunAction with the output of the last block.
+  await action.update({
+    output: lastBlockOutput,
   });
 
   yield {
-    type: "retrieval_success",
+    type: "dust_app_run_success",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     action: {
       id: action.id,
-      type: "retrieval_action",
-      params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
-        topK,
-      },
-      documents,
+      type: "dust_app_run_action",
+      appWorkspaceId: c.appWorkspaceId,
+      appId: c.appId,
+      appName: app.name,
+      params,
+      output: lastBlockOutput,
     },
   };
 }
