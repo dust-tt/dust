@@ -293,19 +293,9 @@ export function AgentMessage({
       );
     }
 
-    // Messages with no action and text
-    if (agentMessage.action === null && agentMessage.content) {
-      return (
-        <RenderMessageMarkdown
-          content={agentMessage.content}
-          blinkingCursor={streaming}
-        />
-      );
-    }
-    // Messages with action
-    if (agentMessage.action) {
-      return (
-        <>
+    return (
+      <>
+        {agentMessage.action && (
           <div
             className={
               agentMessage.content && agentMessage.content !== ""
@@ -315,20 +305,25 @@ export function AgentMessage({
           >
             <AgentAction action={agentMessage.action} />
           </div>
-          {agentMessage.content && agentMessage.content !== "" && (
-            <>
-              <div className="pt-4">
-                <RenderMessageMarkdown
-                  content={agentMessage.content}
-                  blinkingCursor={streaming}
-                  references={references}
-                />
-              </div>
-            </>
-          )}
-        </>
-      );
-    }
+        )}
+        {agentMessage.content && agentMessage.content !== "" && (
+          <div className={agentMessage.action ? "pt-4" : ""}>
+            <RenderMessageMarkdown
+              content={agentMessage.content}
+              blinkingCursor={streaming}
+              references={references}
+            />
+          </div>
+        )}
+        {agentMessage.status === "cancelled" && (
+          <Chip
+            label="Message generation was cancelled"
+            size="xs"
+            className="mt-4"
+          />
+        )}
+      </>
+    );
   }
 
   async function retryHandler(agentMessage: AgentMessageType) {
