@@ -13,9 +13,11 @@ export function AgentAction({ action }: { action: AgentActionType }) {
     );
   }
   if (isDustAppRunActionType(action)) {
-    <div className="pb-4">
-      <span className="text-red">TODO(spolu) DUST APP RUN ACTION</span>
-    </div>;
+    return (
+      <div className="pb-4">
+        <span className="text-red">TODO(spolu) DUST APP RUN ACTION</span>
+      </div>
+    );
   }
   throw new Error(`Unhandled action ${action}`);
 }
