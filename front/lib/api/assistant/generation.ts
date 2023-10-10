@@ -35,6 +35,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
+const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
  * Model rendering of conversations.
@@ -443,7 +444,10 @@ export async function* runGeneration(
     }
 
     const currentTimestamp = Date.now();
-    if (currentTimestamp - lastCheckCancellation >= 1000) {
+    if (
+      currentTimestamp - lastCheckCancellation >=
+      CANCELLATION_CHECK_INTERVAL
+    ) {
       void _checkCancellation(); // Trigger the async function without awaiting
       lastCheckCancellation = currentTimestamp;
     }
@@ -500,4 +504,5 @@ export async function* runGeneration(
       }
     }
   }
+  await redis.quit();
 }

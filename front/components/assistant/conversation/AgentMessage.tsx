@@ -66,26 +66,6 @@ export function AgentMessage({
     }
   })();
 
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
-  if (!generationContext) {
-    throw new Error(
-      "FixedAssistantInputBar must be used within a GenerationContextProvider"
-    );
-  }
-  useEffect(() => {
-    const isInArray = generationContext.generatingMessageIds.includes(
-      message.sId
-    );
-    if (agentMessageToRender.status === "created" && !isInArray) {
-      generationContext.setGeneratingMessageIds((s) => [...s, message.sId]);
-    } else if (agentMessageToRender.status !== "created" && isInArray) {
-      generationContext.setGeneratingMessageIds((s) =>
-        s.filter((id) => id !== message.sId)
-      );
-    }
-  });
-
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       if (!shouldStream) {
@@ -198,6 +178,26 @@ export function AgentMessage({
       }
     }
   }, [agentMessageToRender.content, agentMessageToRender.status]);
+
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "AgentMessage must be used within a GenerationContextProvider"
+    );
+  }
+  useEffect(() => {
+    const isInArray = generationContext.generatingMessageIds.includes(
+      message.sId
+    );
+    if (agentMessageToRender.status === "created" && !isInArray) {
+      generationContext.setGeneratingMessageIds((s) => [...s, message.sId]);
+    } else if (agentMessageToRender.status !== "created" && isInArray) {
+      generationContext.setGeneratingMessageIds((s) =>
+        s.filter((id) => id !== message.sId)
+      );
+    }
+  }, [agentMessageToRender.status, generationContext, message.sId]);
 
   const buttons =
     message.status === "failed"
