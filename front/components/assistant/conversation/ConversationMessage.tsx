@@ -115,7 +115,7 @@ export function ConversationMessage({
     <>
       {/* SMALL SIZE SCREEN*/}
       <div className="flex w-full gap-4 xl:hidden">
-        <div className="flex flex-grow flex-col gap-4">
+        <div className="flex w-full flex-grow flex-col gap-4">
           <div className="flex items-start gap-2">
             <div className="flex h-8 flex-grow items-center gap-2">
               <Avatar
@@ -239,7 +239,9 @@ export function ConversationMessage({
           busy={avatarBusy}
         />
 
-        {/* COLUMN 2: CONTENT */}
+        {/* COLUMN 2: CONTENT
+         * min-w-0 prevents the content from overflowing the container
+         */}
         <div className="flex min-w-0 flex-grow flex-col gap-4">
           <div className="text-sm font-medium">{name}</div>
           <div className="min-w-0 break-words text-base font-normal">

@@ -67,3 +67,13 @@ main {
     transform: translate3d(8px, 3px, 0);
   }
 }
+
+@keyframes bgblink {
+  0%,
+  100% {
+    @apply bg-structure-0;
+  }
+  50% {
+    @apply bg-structure-200;
+  }
+}

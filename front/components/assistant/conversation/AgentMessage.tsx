@@ -4,15 +4,25 @@ import {
   Chip,
   ClipboardIcon,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   DropdownMenu,
+  ExternalLinkIcon,
   EyeIcon,
+  IconButton,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  linkFromDocument,
+  PROVIDER_LOGO_PATH,
+  providerFromDocument,
+  titleFromDocument,
+} from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -24,6 +34,7 @@ import {
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
+import { classNames } from "@app/lib/utils";
 import {
   isRetrievalActionType,
   RetrievalDocumentType,
@@ -224,7 +235,21 @@ export function AgentMessage({
   const [references, setReferences] = useState<{
     [key: string]: RetrievalDocumentType;
   }>({});
-
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: RetrievalDocumentType }[]
+  >([]);
+  function updateActiveReferences(
+    document: RetrievalDocumentType,
+    index: number
+  ) {
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document }]);
+    }
+  }
+  const [lastHoveredReference, setLastHoveredReference] = useState<
+    number | null
+  >(null);
   useEffect(() => {
     if (
       agentMessageToRender.action &&
@@ -311,7 +336,15 @@ export function AgentMessage({
             <RenderMessageMarkdown
               content={agentMessage.content}
               blinkingCursor={streaming}
-              references={references}
+              citationsContext={{
+                references,
+                updateActiveReferences,
+                setHoveredReference: setLastHoveredReference,
+              }}
+            />
+            <Citations
+              activeReferences={activeReferences}
+              lastHoveredReference={lastHoveredReference}
             />
           </div>
         )}
@@ -337,6 +370,95 @@ export function AgentMessage({
       }
     );
   }
+}
+
+function Citations({
+  activeReferences,
+  lastHoveredReference,
+}: {
+  activeReferences: { index: number; document: RetrievalDocumentType }[];
+  lastHoveredReference: number | null;
+}) {
+  const citationContainer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (citationContainer.current) {
+      if (lastHoveredReference !== null) {
+        citationContainer.current.scrollTo({
+          left: citationsScrollOffset(lastHoveredReference),
+          behavior: "smooth",
+        });
+      }
+    }
+  }, [lastHoveredReference]);
+
+  function citationsScrollOffset(reference: number | null) {
+    if (!citationContainer.current || reference === null) {
+      return 0;
+    }
+    const offset = (
+      citationContainer.current.firstElementChild
+        ?.firstElementChild as HTMLElement
+    ).offsetLeft;
+    const scrolling =
+      (citationContainer.current.firstElementChild?.firstElementChild
+        ?.scrollWidth || 0) *
+      (reference - 2);
+    return scrolling - offset;
+  }
+
+  activeReferences.sort((a, b) => a.index - b.index);
+  return (
+    <div
+      className="-mx-[100%] mt-9 overflow-x-auto px-[100%] scrollbar-hide"
+      ref={citationContainer}
+    >
+      <div className="left-100 relative flex gap-2">
+        {activeReferences.map(({ document, index }) => {
+          const provider = providerFromDocument(document);
+          return (
+            <div
+              className={classNames(
+                "flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64",
+                lastHoveredReference === index
+                  ? "animate-[bgblink_500ms_3]"
+                  : ""
+              )}
+              key={index}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
+                  {index}
+                </div>
+                <div className="h-5 w-5">
+                  {provider === "none" ? (
+                    <DocumentTextIcon className="h-5 w-5 text-slate-500" />
+                  ) : (
+                    <img
+                      src={PROVIDER_LOGO_PATH[providerFromDocument(document)]}
+                      className="h-5 w-5"
+                    />
+                  )}
+                </div>
+                <div className="flex-grow text-xs" />
+                <Link href={linkFromDocument(document)} target="_blank">
+                  <IconButton
+                    icon={ExternalLinkIcon}
+                    size="xs"
+                    variant="primary"
+                  />
+                </Link>
+              </div>
+              <div className="text-xs font-bold text-element-900">
+                {titleFromDocument(document)}
+              </div>
+            </div>
+          );
+        })}
+        <div className="h-1 w-[100%] flex-none" />
+      </div>
+    </div>
+  );
 }
 
 function ErrorMessage({
