@@ -1,4 +1,3 @@
-import { Transaction } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
@@ -299,33 +298,37 @@ export async function fullResyncNotionConnector(
 }
 
 export async function cleanupNotionConnector(
-  connectorId: string,
-  transaction: Transaction
+  connectorId: string
 ): Promise<Result<void, Error>> {
-  const connector = await Connector.findOne({
-    where: { type: "notion", id: connectorId },
-    transaction: transaction,
-  });
+  return sequelize_conn.transaction(async (transaction) => {
+    const connector = await Connector.findOne({
+      where: { type: "notion", id: connectorId },
+      transaction: transaction,
+    });
 
-  if (!connector) {
-    logger.error({ connectorId }, "Notion connector not found.");
-    return new Err(new Error("Connector not found"));
-  }
+    if (!connector) {
+      logger.error({ connectorId }, "Notion connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
 
-  await NotionPage.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-    transaction: transaction,
-  });
-  await NotionConnectorState.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-    transaction: transaction,
-  });
+    await NotionPage.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction: transaction,
+    });
+    await NotionConnectorState.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction: transaction,
+    });
+    await connector.destroy({
+      transaction: transaction,
+    });
 
-  return new Ok(undefined);
+    return new Ok(undefined);
+  });
 }
 
 export async function retrieveNotionConnectorPermissions({

@@ -1,5 +1,3 @@
-import { Transaction } from "sequelize";
-
 import { ModelId } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -29,7 +27,6 @@ export type ConnectorStopper = (
 // Should cleanup any state/resources associated with the connector
 export type ConnectorCleaner = (
   connectorId: string,
-  transaction: Transaction,
   force: boolean
 ) => Promise<Result<void, Error>>;
 

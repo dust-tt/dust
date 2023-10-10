@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 
 import {
-  CLEAN_CONNECTOR_BY_TYPE,
+  DELETE_CONNECTOR_BY_TYPE,
   STOP_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -24,61 +24,55 @@ const _deleteConnectorAPIHandler = async (
   res: Response<ConnectorDeleteResBody>
 ) => {
   const force = req.query.force === "true";
-  return await sequelize_conn.transaction(async (t) => {
-    const connector = await Connector.findByPk(req.params.connector_id, {
-      transaction: t,
+  const connector = await Connector.findByPk(req.params.connector_id);
+  if (!connector) {
+    return apiError(req, res, {
+      api_error: {
+        type: "connector_not_found",
+        message: "Connector not found",
+      },
+      status_code: 404,
     });
-    if (!connector) {
-      return apiError(req, res, {
-        api_error: {
-          type: "connector_not_found",
-          message: "Connector not found",
-        },
-        status_code: 404,
-      });
-    }
+  }
 
-    const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
+  const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
 
-    const stopRes = await connectorStopper(connector.id.toString());
+  const stopRes = await connectorStopper(connector.id.toString());
 
-    if (stopRes.isErr()) {
-      return apiError(req, res, {
-        api_error: {
-          type: "internal_server_error",
-          message: stopRes.error.message,
-        },
-        status_code: 500,
-      });
-    }
-
-    if (!connector) {
-      return apiError(req, res, {
-        api_error: {
-          type: "internal_server_error",
-          message: "Could not find the connector",
-        },
-        status_code: 500,
-      });
-    }
-
-    const connectorCleaner = CLEAN_CONNECTOR_BY_TYPE[connector.type];
-    const cleanRes = await connectorCleaner(connector.id.toString(), t, force);
-    if (cleanRes.isErr()) {
-      return apiError(req, res, {
-        api_error: {
-          type: "internal_server_error",
-          message: cleanRes.error.message,
-        },
-        status_code: 500,
-      });
-    }
-
-    await connector.destroy({ transaction: t });
-
-    return res.json({
-      success: true,
+  if (stopRes.isErr()) {
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: stopRes.error.message,
+      },
+      status_code: 500,
     });
+  }
+
+  if (!connector) {
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "Could not find the connector",
+      },
+      status_code: 500,
+    });
+  }
+
+  const connectorDeleter = DELETE_CONNECTOR_BY_TYPE[connector.type];
+  const cleanRes = await connectorDeleter(connector.id.toString(), force);
+  if (cleanRes.isErr()) {
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: cleanRes.error.message,
+      },
+      status_code: 500,
+    });
+  }
+
+  return res.json({
+    success: true,
   });
 };
 

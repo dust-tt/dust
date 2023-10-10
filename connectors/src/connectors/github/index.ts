@@ -1,5 +1,3 @@
-import { Transaction } from "sequelize";
-
 import {
   getReposPage,
   validateInstallationId,
@@ -223,42 +221,46 @@ export async function fullResyncGithubConnector(
 }
 
 export async function cleanupGithubConnector(
-  connectorId: string,
-  transaction: Transaction
+  connectorId: string
 ): Promise<Result<void, Error>> {
-  try {
-    const connector = await Connector.findOne({
-      where: {
-        id: connectorId,
-      },
-      transaction,
-    });
+  return sequelize_conn.transaction(async (transaction) => {
+    try {
+      const connector = await Connector.findOne({
+        where: {
+          id: connectorId,
+        },
+        transaction,
+      });
 
-    if (!connector) {
-      logger.error({ connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      if (!connector) {
+        logger.error({ connectorId }, "Connector not found");
+        return new Err(new Error("Connector not found"));
+      }
+
+      await GithubIssue.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      });
+      await GithubConnectorState.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      });
+      await connector.destroy({
+        transaction: transaction,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      logger.error(
+        { connectorId, error: err },
+        "Error cleaning up github connector"
+      );
+      return new Err(err as Error);
     }
-
-    await GithubIssue.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await GithubConnectorState.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      { connectorId, error: err },
-      "Error cleaning up github connector"
-    );
-    return new Err(err as Error);
-  }
+  });
 }
 
 export async function retrieveGithubConnectorPermissions({
