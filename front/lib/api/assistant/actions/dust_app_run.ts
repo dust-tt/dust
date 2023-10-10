@@ -284,6 +284,15 @@ export async function* runDustApp(
   if (input) {
     // We have an input block, we need to find associated dataset and its schema.
     const datasetName: string = appConfig.input?.dataset || "";
+    logger.info(
+      {
+        savedSpecification: app.savedSpecification,
+        appConfig,
+        datasetName,
+        app,
+      },
+      "Retrieving dataset schema"
+    );
     schema = await getDatasetSchema(auth, app, datasetName);
     if (!schema) {
       yield {
