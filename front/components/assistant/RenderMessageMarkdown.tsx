@@ -261,12 +261,6 @@ function CiteBlock(props: ReactMarkdownProps) {
           const title = titleFromDocument(document);
           const link = linkFromDocument(document);
 
-          const citeClassNames = classNames(
-            "rounded-md bg-structure-100 px-1",
-            "text-xs font-semibold text-action-500",
-            "hover:bg-structure-200 hover:text-action-600"
-          );
-
           return (
             <sup key={`${r.ref}-${i}`}>
               <Tooltip
@@ -291,10 +285,11 @@ function CiteBlock(props: ReactMarkdownProps) {
                   href={link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={citeClassNames}
                   onMouseEnter={() => setHoveredReference(r.counter)}
                 >
-                  {r.counter}
+                  <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
+                    {r.counter}
+                  </div>
                 </a>
               </Tooltip>
             </sup>
