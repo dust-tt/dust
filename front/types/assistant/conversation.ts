@@ -135,6 +135,7 @@ export type ContentFragmentType = {
 
   title: string;
   content: string;
+  url: string | null;
 };
 
 export function isContentFragmentType(

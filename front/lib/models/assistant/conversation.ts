@@ -349,6 +349,7 @@ export class ContentFragment extends Model<
 
   declare title: string;
   declare content: string;
+  declare url: string | null;
 }
 
 ContentFragment.init(
@@ -375,6 +376,10 @@ ContentFragment.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

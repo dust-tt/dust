@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
+import { S } from "@storybook/react/dist/types-0a347bb9";
 
 type AvatarProps = {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "auto";

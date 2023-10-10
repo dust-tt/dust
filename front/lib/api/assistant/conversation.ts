@@ -330,6 +330,7 @@ function renderContentFragment({
     version: message.version,
     title: contentFragment.title,
     content: contentFragment.content,
+    url: contentFragment.url,
   };
 }
 
@@ -1486,7 +1487,13 @@ export async function postNewContentFragment(
     conversation,
     title,
     content,
-  }: { conversation: ConversationType; title: string; content: string }
+    url,
+  }: {
+    conversation: ConversationType;
+    title: string;
+    content: string;
+    url: string | null;
+  }
 ): Promise<ContentFragmentType> {
   const owner = auth.workspace();
 
@@ -1497,7 +1504,7 @@ export async function postNewContentFragment(
   const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
     async (t) => {
       const contentFragmentRow = await ContentFragment.create(
-        { content, title },
+        { content, title, url },
         { transaction: t }
       );
       const nextMessageRank =

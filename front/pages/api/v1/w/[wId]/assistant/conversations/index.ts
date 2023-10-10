@@ -123,6 +123,7 @@ async function handler(
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
+          url: contentFragment.url,
         });
 
         newContentFragment = cf;

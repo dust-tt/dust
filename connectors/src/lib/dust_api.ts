@@ -84,9 +84,10 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
   }),
 });
 
-const PostContentFragmentRequestBodySchemaIoTs = t.type({
+export const PostContentFragmentRequestBodySchemaIoTs = t.type({
   title: t.string,
   content: t.string,
+  url: t.union([t.string, t.null]),
 });
 
 const PostConversationsRequestBodySchemaIoTs = t.type({
@@ -111,7 +112,7 @@ export type PostMessagesRequestBodySchema = t.TypeOf<
   typeof PostMessagesRequestBodySchemaIoTs
 >;
 
-type PostContentFragmentRequestBody = t.TypeOf<
+export type PostContentFragmentRequestBody = t.TypeOf<
   typeof PostContentFragmentRequestBodySchemaIoTs
 >;
 

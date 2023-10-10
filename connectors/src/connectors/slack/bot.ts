@@ -2,6 +2,7 @@ import { WebClient } from "@slack/web-api";
 import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
+import { start } from "repl";
 
 import {
   AgentActionType,
@@ -10,6 +11,7 @@ import {
   AgentMessageType,
   ConversationType,
   DustAPI,
+  PostContentFragmentRequestBody,
   RetrievalDocumentType,
   UserMessageType,
 } from "@connectors/lib/dust_api";
@@ -141,7 +143,8 @@ async function botAnswerMessage(
     slackAvatar: null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
-    threadTs: lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    threadTs:
+      slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
     conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
@@ -152,8 +155,8 @@ async function botAnswerMessage(
   const contentFragmentPromise = makeContentFragment(
     slackClient,
     slackChannel,
-    lastSlackChatBotMessage?.threadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackMessageTs,
+    lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
     connector
   );
   const slackUserInfo = await slackClient.users.info({
@@ -330,13 +333,10 @@ async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
-    if (buildContentFragmentRes.value.length > 0) {
+    if (buildContentFragmentRes.value) {
       const contentFragmentRes = await dustAPI.postContentFragment({
         conversationId: lastSlackChatBotMessage.conversationId,
-        contentFragment: {
-          title: "Slack thread messages",
-          content: buildContentFragmentRes.value,
-        },
+        contentFragment: buildContentFragmentRes.value,
       });
       if (contentFragmentRes.isErr()) {
         return new Err(new Error(contentFragmentRes.error.message));
@@ -362,13 +362,7 @@ async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
-      contentFragment:
-        buildContentFragmentRes.value.length > 0
-          ? {
-              title: "Slack thread messages",
-              content: buildContentFragmentRes.value,
-            }
-          : undefined,
+      contentFragment: buildContentFragmentRes.value || undefined,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
@@ -568,6 +562,7 @@ async function makeContentFragment(
   connector: Connector
 ) {
   let allMessages: Message[] = [];
+  const debugMessage: Message[] = [];
 
   let next_cursor = undefined;
 
@@ -623,6 +618,9 @@ async function makeContentFragment(
 
   const botUserId = await getBotUserIdMemoized(slackClient);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
+  if (allMessages.length === 0) {
+    return new Ok(null);
+  }
 
   const text = await formatMessagesForUpsert(
     channelId,
@@ -630,6 +628,21 @@ async function makeContentFragment(
     connector.id.toString(),
     slackClient
   );
+  let url: string | null = null;
+  if (allMessages[0]?.ts) {
+    const permalinkRes = await slackClient.chat.getPermalink({
+      channel: channelId,
+      message_ts: allMessages[0].ts,
+    });
+    if (!permalinkRes.ok || !permalinkRes.permalink) {
+      return new Err(new Error(permalinkRes.error));
+    }
+    url = permalinkRes.permalink;
+  }
 
-  return new Ok(text);
+  return new Ok({
+    title: "Slack thread messages",
+    content: text,
+    url: url,
+  } as PostContentFragmentRequestBody);
 }
