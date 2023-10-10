@@ -1,6 +1,8 @@
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
+  AgentDustAppRunAction,
+  AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentMessage,
   AgentRetrievalAction,
@@ -62,6 +64,9 @@ async function main() {
   await AgentRetrievalAction.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
+
+  await AgentDustAppRunAction.sync({ alter: true });
+  await AgentDustAppRunConfiguration.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
   await ConversationParticipant.sync({ alter: true });

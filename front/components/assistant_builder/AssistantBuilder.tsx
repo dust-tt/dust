@@ -51,11 +51,14 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
+import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
+import DustAppSelectionSection from "./DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -63,6 +66,8 @@ const usedModelConfigs = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
 ];
+
+// Retrieval Action
 
 const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
 type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
@@ -90,6 +95,21 @@ export type AssistantBuilderDataSourceConfiguration = {
   isSelectAll: boolean;
 };
 
+// DustAppRun Action
+
+const DUST_APP_MODES = ["GENERIC", "SELECTED"] as const;
+type DustAppMode = (typeof DUST_APP_MODES)[number];
+const DUST_APP_MODE_TO_LABEL: Record<DataSourceMode, string> = {
+  GENERIC: "None (Generic model)",
+  SELECTED: "Selected Dust App",
+};
+
+export type AssistantBuilderDustAppConfiguration = {
+  app: AppType;
+};
+
+// Builder State
+
 type AssistantBuilderState = {
   dataSourceMode: DataSourceMode;
   dataSourceConfigurations: Record<
@@ -101,6 +121,8 @@ type AssistantBuilderState = {
     value: number;
     unit: TimeframeUnit;
   };
+  dustAppMode: DustAppMode;
+  dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
   handle: string | null;
   description: string | null;
   instructions: string | null;
@@ -122,6 +144,8 @@ export type AssistantBuilderInitialState = {
     | null;
   filteringMode: FilteringMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
+  dustAppMode: AssistantBuilderState["dustAppMode"];
+  dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
   handle: string;
   description: string;
   instructions: string;
@@ -137,6 +161,7 @@ type AssistantBuilderProps = {
   owner: WorkspaceType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
+  dustApps: AppType[];
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
 };
@@ -149,6 +174,8 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     value: 1,
     unit: "month",
   },
+  dustAppMode: "GENERIC",
+  dustAppConfiguration: null,
   handle: null,
   description: null,
   instructions: null,
@@ -180,6 +207,7 @@ export default function AssistantBuilder({
   owner,
   gaTrackingId,
   dataSources,
+  dustApps,
   initialBuilderState,
   agentConfigurationId,
 }: AssistantBuilderProps) {
@@ -201,6 +229,9 @@ export default function AssistantBuilder({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
+
+  const [showDustAppsModal, setShowDustAppsModal] = useState(false);
+
   const [edited, setEdited] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -263,6 +294,8 @@ export default function AssistantBuilder({
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
+        dustAppMode: initialBuilderState.dustAppMode,
+        dustAppConfiguration: initialBuilderState.dustAppConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
@@ -363,6 +396,12 @@ export default function AssistantBuilder({
       }
     }
 
+    if (builderState.dustAppMode === "SELECTED") {
+      if (!builderState.dustAppConfiguration) {
+        valid = false;
+      }
+    }
+
     if (builderState.filteringMode === "TIMEFRAME") {
       if (!builderState.timeFrame.value) {
         valid = false;
@@ -381,6 +420,8 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.filteringMode,
     builderState.timeFrame.value,
+    builderState.dustAppMode,
+    builderState.dustAppConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -402,6 +443,13 @@ export default function AssistantBuilder({
     });
   };
 
+  const deleteDustApp = () => {
+    setEdited(true);
+    setBuilderState((state) => {
+      return { ...state, dustAppConfiguration: null };
+    });
+  };
+
   const submitForm = async () => {
     if (
       !builderState.handle ||
@@ -419,6 +467,7 @@ export default function AssistantBuilder({
     >;
 
     let actionParam: BodyType["assistant"]["action"] | null = null;
+
     switch (builderState.dataSourceMode) {
       case "GENERIC":
         break;
@@ -468,6 +517,25 @@ export default function AssistantBuilder({
         ((x: never) => {
           throw new Error(`Unknown data source mode ${x}`);
         })(builderState.dataSourceMode);
+    }
+
+    if (builderState.dustAppConfiguration) {
+      switch (builderState.dustAppMode) {
+        case "GENERIC":
+          break;
+        case "SELECTED":
+          actionParam = {
+            type: "dust_app_run_configuration",
+            appWorkspaceId: owner.sId,
+            appId: builderState.dustAppConfiguration.app.sId,
+          };
+          break;
+
+        default:
+          ((x: never) => {
+            throw new Error(`Unknown dust app mode ${x}`);
+          })(builderState.dustAppMode);
+      }
     }
 
     const body: t.TypeOf<
@@ -591,6 +659,25 @@ export default function AssistantBuilder({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
+      />
+      <AssistantBuilderDustAppModal
+        isOpen={showDustAppsModal}
+        setOpen={(isOpen) => {
+          setShowDustAppsModal(isOpen);
+          if (!isOpen) {
+            setDataSourceToManage(null);
+          }
+        }}
+        dustApps={dustApps}
+        onSave={({ app }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            dustAppConfiguration: {
+              app,
+            },
+          }));
+        }}
       />
       <AvatarPicker
         owner={owner}
@@ -770,6 +857,7 @@ export default function AssistantBuilder({
               />
             </div>
           </div>
+
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
               <div className="text-xl font-bold text-element-900">
@@ -816,6 +904,7 @@ export default function AssistantBuilder({
                     <Button
                       type="select"
                       labelVisible={true}
+                      disabled={builderState.dustAppMode !== "GENERIC"}
                       label={
                         DATA_SOURCE_MODE_TO_LABEL[builderState.dataSourceMode]
                       }
@@ -879,6 +968,74 @@ export default function AssistantBuilder({
                   timeFrameError={timeFrameError}
                 />
               </div>
+            </div>
+          </div>
+
+          {dustApps.length > 0 && (
+            <div className="flex flex-row items-start">
+              <div className="flex flex-col gap-4">
+                <div className="text-xl font-bold text-element-900">
+                  Dust App Execution
+                </div>
+                <div className="text-sm text-element-700">
+                  Your assistant can execute a Dust App of your design before
+                  answering. The output of the app (last block) is injeced in
+                  context for the model to generate an answer. The inputs of the
+                  app will be automatically infered from the context of the
+                  conversation based on the descriptions you provided in the app
+                  input block dataset.
+                </div>
+                <div className="flex flex-row items-center space-x-2 pt-6">
+                  <div className="text-sm font-semibold text-element-900">
+                    Dust App:
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenu.Button>
+                      <Button
+                        type="select"
+                        labelVisible={true}
+                        disabled={builderState.dataSourceMode !== "GENERIC"}
+                        label={DUST_APP_MODE_TO_LABEL[builderState.dustAppMode]}
+                        variant="secondary"
+                        hasMagnifying={false}
+                        size="sm"
+                      />
+                    </DropdownMenu.Button>
+                    <DropdownMenu.Items origin="bottomRight" width={260}>
+                      {Object.entries(DUST_APP_MODE_TO_LABEL).map(
+                        ([key, value]) => (
+                          <DropdownMenu.Item
+                            key={key}
+                            label={value}
+                            onClick={() => {
+                              setEdited(true);
+                              setBuilderState((state) => ({
+                                ...state,
+                                dustAppMode: key as DustAppMode,
+                              }));
+                            }}
+                          />
+                        )
+                      )}
+                    </DropdownMenu.Items>
+                  </DropdownMenu>
+                </div>
+                <div className="pb-4">
+                  <DustAppSelectionSection
+                    show={builderState.dustAppMode === "SELECTED"}
+                    dustAppConfiguration={builderState.dustAppConfiguration}
+                    openDustAppModal={() => {
+                      setShowDustAppsModal(true);
+                    }}
+                    onDelete={deleteDustApp}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-row items-start">
+            <div className="flex flex-col gap-4">
               {slackDataSource && (
                 <SlackIntegration
                   slackDataSource={slackDataSource}
@@ -892,6 +1049,7 @@ export default function AssistantBuilder({
               )}
             </div>
           </div>
+
           {agentConfigurationId && (
             <div className="flex w-full justify-center pt-8">
               <DropdownMenu>

@@ -293,7 +293,7 @@ export async function* runDustApp(
         messageId: agentMessage.sId,
         error: {
           code: "dust_app_run_app_schema_error",
-          message: `Failed to retrieve schema for dataset: ${c.appId}/${datasetName}`,
+          message: `Failed to retrieve schema for Dust app: ${c.appWorkspaceId}/${c.appId}/${datasetName}`,
         },
       };
       return;

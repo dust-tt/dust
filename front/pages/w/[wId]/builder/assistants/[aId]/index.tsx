@@ -3,10 +3,13 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import AssistantBuilder, {
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/AssistantBuilder";
+import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
+import { AppType } from "@app/types/app";
+import { isDustAppRunConfiguration } from "@app/types/assistant/actions/dust_app_run";
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
@@ -24,6 +27,8 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dataSourceConfigurations: Record<string, DataSourceConfig>;
+  dustApps: AppType[];
+  dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   agentConfiguration: AgentConfigurationType;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -41,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const allDataSources = await getDataSources(auth);
+
   const dataSourceByName = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
@@ -112,6 +118,22 @@ export const getServerSideProps: GetServerSideProps<{
     {} as Record<string, DataSourceConfig>
   );
 
+  const allDustApps = await getApps(auth);
+
+  let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
+    null;
+
+  if (isDustAppRunConfiguration(config.action)) {
+    for (const app of allDustApps) {
+      if (app.sId === config.action.appId) {
+        dustAppConfiguration = {
+          app,
+        };
+        break;
+      }
+    }
+  }
+
   return {
     props: {
       user,
@@ -119,6 +141,8 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
       dataSourceConfigurations,
+      dustApps: allDustApps,
+      dustAppConfiguration,
       agentConfiguration: config,
     },
   };
@@ -130,6 +154,8 @@ export default function EditAssistant({
   gaTrackingId,
   dataSources,
   dataSourceConfigurations,
+  dustApps,
+  dustAppConfiguration,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
@@ -157,17 +183,28 @@ export default function EditAssistant({
     }
   }
 
+  let dustAppMode: AssistantBuilderInitialState["dustAppMode"] = "GENERIC";
+
+  console.log(agentConfiguration.action);
+
+  if (isDustAppRunConfiguration(agentConfiguration.action)) {
+    dustAppMode = "SELECTED";
+  }
+
   return (
     <AssistantBuilder
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      dataSources={Object.values(dataSources)}
+      dataSources={dataSources}
+      dustApps={dustApps}
       initialBuilderState={{
         dataSourceMode,
         filteringMode,
         timeFrame,
         dataSourceConfigurations,
+        dustAppMode,
+        dustAppConfiguration,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

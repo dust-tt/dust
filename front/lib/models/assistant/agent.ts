@@ -11,7 +11,10 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
+import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
 import { AgentStatus, GlobalAgentStatus } from "@app/types/assistant/agent";
+
+import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
 
 /**
  * Configuration of Agent generation.
@@ -96,9 +99,13 @@ export class AgentConfiguration extends Model<
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
+  declare dustAppRunConfigurationId: ForeignKey<
+    AgentDustAppRunConfiguration["id"]
+  > | null;
 
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
+  declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
 }
 AgentConfiguration.init(
   {
@@ -183,6 +190,16 @@ AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
   as: "retrievalConfiguration",
   foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+
+// Agent config <> DustAppRun config
+AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
+  as: "dustAppRunConfiguration",
+  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
+  as: "dustAppRunConfiguration",
+  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
 });
 
 /**
