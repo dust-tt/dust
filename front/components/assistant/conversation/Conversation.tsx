@@ -52,8 +52,9 @@ export default function Conversation({
   });
 
   useEffect(() => {
-    if (window && window.scrollTo) {
-      window.scrollTo(0, document.body.scrollHeight);
+    const mainTag = document.getElementById("main-content");
+    if (mainTag) {
+      mainTag.scrollTo(0, mainTag.scrollHeight);
     }
   }, [conversation?.content.length]);
 

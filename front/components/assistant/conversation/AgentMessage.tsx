@@ -176,17 +176,12 @@ export function AgentMessage({
   })();
 
   useEffect(() => {
-    if (
-      window &&
-      window.scrollTo &&
-      agentMessageToRender.status === "created"
-    ) {
-      if (
-        document.body.offsetHeight + window.scrollY >=
-        document.body.scrollHeight - 200
-      ) {
+    const mainTag = document.getElementById("main-content");
+    if (mainTag && agentMessageToRender.status === "created") {
+      if (mainTag.offsetHeight + window.scrollY >= mainTag.scrollHeight - 200) {
         window.scrollTo(0, document.body.scrollHeight);
       }
+      mainTag.scrollTo(0, mainTag.scrollHeight);
     }
   }, [agentMessageToRender.content, agentMessageToRender.status]);
 
