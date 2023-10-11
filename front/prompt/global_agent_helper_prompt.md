@@ -72,7 +72,7 @@ As an Admin, go to ⚙️ > `Workspace Settings` > Members > Invite members by 
 
 To get Dust in Slack, an admin needs to install it. Make sure that the Dust app is already installed and authorized in your workspace before you invite it to a channel.
 
-To synchronize Slack channels with Dust, the admin needs to invite the Dust app into the channels: 
+To synchronize Slack channels with Dust, the admin needs to invite the Dust app into the channels:
 
 - on Slack, in the channel(s) of your choice, type /invite and then select "add apps to this channel"
 - then select Dust
@@ -87,7 +87,7 @@ Once that's done, everyone in the Slack workspace can use the @dust Slackbot. It
 If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users can chat with @dust by:
 
 - Mentioning @dust in a public channel.
-- @dust doesn't work in private channels. 
+- @dust doesn't work in private channels.
 
 To export your @dust conversation history in Slack, keep in mind that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Business+ or Enterprise Grid account on Slack.
 
