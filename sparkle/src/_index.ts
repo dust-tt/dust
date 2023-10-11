@@ -22,18 +22,14 @@ export { ContextItem };
 import { Chip } from "./components/Chip";
 export { Chip };
 
+import { Citation } from "./components/Citation";
+export { Citation };
+
 import { DropdownMenu } from "./components/DropdownMenu";
 export { DropdownMenu };
 
 import { Page } from "./components/Page";
 export { Page };
-
-//TO BE REMOVED SOON
-import { SectionHeader } from "./components/SectionHeader";
-export { SectionHeader };
-
-import { PageHeader } from "./components/PageHeader";
-export { PageHeader };
 
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
@@ -76,6 +72,13 @@ export { Input };
 
 import { Searchbar } from "./components/Searchbar";
 export { Searchbar };
+
+//TO BE REMOVED SOON
+import { SectionHeader } from "./components/SectionHeader";
+export { SectionHeader };
+
+import { PageHeader } from "./components/PageHeader";
+export { PageHeader };
 
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,

@@ -26,6 +26,11 @@ export const Pricing = () => {
           <PriceTable.Item label="20 messages a week" variant="dash" />
           <PriceTable.Item label="Static Data Sources (35Mo)" variant="dash" />
           <PriceTable.Item label="Connected Data Sources" variant="xmark" />
+          <PriceTable.ActionContainer>
+            <div className="s-h-9 s-text-base s-font-bold s-text-element-600">
+              Your current plan
+            </div>
+          </PriceTable.ActionContainer>
         </PriceTable>
         <PriceTable
           title="Business"
