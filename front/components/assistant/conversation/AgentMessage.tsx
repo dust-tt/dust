@@ -342,10 +342,12 @@ export function AgentMessage({
                 setHoveredReference: setLastHoveredReference,
               }}
             />
-            <Citations
-              activeReferences={activeReferences}
-              lastHoveredReference={lastHoveredReference}
-            />
+            <div className="overflow-x-hidden">
+              <Citations
+                activeReferences={activeReferences}
+                lastHoveredReference={lastHoveredReference}
+              />
+            </div>
           </div>
         )}
         {agentMessage.status === "cancelled" && (
