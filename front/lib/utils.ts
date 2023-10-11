@@ -130,3 +130,7 @@ export function ioTsEnum<EnumType>(
     t.identity
   );
 }
+
+export function assertNever(x: never): never {
+  throw new Error(`${x} is not of type never. This should never happen.`);
+}
