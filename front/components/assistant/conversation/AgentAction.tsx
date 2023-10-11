@@ -2,6 +2,7 @@ import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_ru
 import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import { AgentActionType } from "@app/types/assistant/conversation";
 
+import DustAppRunAction from "./DustAppRunAction";
 import RetrievalAction from "./RetrievalAction";
 
 export function AgentAction({ action }: { action: AgentActionType }) {
@@ -15,7 +16,7 @@ export function AgentAction({ action }: { action: AgentActionType }) {
   if (isDustAppRunActionType(action)) {
     return (
       <div className="pb-4">
-        <span className="text-red">TODO(spolu) DUST APP RUN ACTION</span>
+        <DustAppRunAction dustAppRunAction={action} />
       </div>
     );
   }
