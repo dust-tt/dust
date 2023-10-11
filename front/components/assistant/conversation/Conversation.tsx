@@ -212,12 +212,7 @@ export default function Conversation({
                 className="items-center border-t bg-structure-50 px-2 py-6"
               >
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                  <ContentFragment
-                    message={m}
-                    owner={owner}
-                    user={user}
-                    conversationId={conversationId}
-                  />
+                  <ContentFragment message={m} />
                 </div>
               </div>
             );

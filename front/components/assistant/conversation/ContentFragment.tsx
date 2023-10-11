@@ -13,5 +13,11 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     default:
       assertNever(message.contentType);
   }
-  return <Citation title={message.title} type={logoType} href={message.url} />;
+  return (
+    <Citation
+      title={message.title}
+      type={logoType}
+      href={message.url || undefined}
+    />
+  );
 }
