@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 html,
-body,
 main {
   @apply h-full;
 }
