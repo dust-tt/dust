@@ -48,27 +48,7 @@ export default function DustAppRunAction({
         <div className="flex flex-col items-start text-xs font-bold text-element-600">
           <div className="flex">Generated&nbsp;parameters:</div>
         </div>
-        <Chip.List>
-          {Object.keys(dustAppRunAction.params).map((k) => {
-            return (
-              <Tooltip key={k} label={`${k}: ${dustAppRunAction.params[k]}`}>
-                <Chip
-                  color="slate"
-                  label={shortText(`${k}: ${dustAppRunAction.params[k]}`)}
-                />
-              </Tooltip>
-            );
-          })}
-          {Object.keys(dustAppRunAction.params).map((k) => {
-            return (
-              <Tooltip key={k} label={`${k}: ${dustAppRunAction.params[k]}`}>
-                <Chip
-                  color="slate"
-                  label={shortText(`${k}: ${dustAppRunAction.params[k]}`)}
-                />
-              </Tooltip>
-            );
-          })}
+        <Chip.List isWrapping={true}>
           {Object.keys(dustAppRunAction.params).map((k) => {
             return (
               <Tooltip key={k} label={`${k}: ${dustAppRunAction.params[k]}`}>
