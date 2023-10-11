@@ -1,6 +1,6 @@
 import {
   Button,
-  CloudArrowDownIcon,
+  CommandLineIcon,
   ContextItem,
   PlusIcon,
   TrashIcon,
@@ -63,7 +63,7 @@ export default function DustAppSelectionSection({
             <ContextItem
               key={dustAppConfiguration.app.sId}
               title={dustAppConfiguration.app.name}
-              visual={<ContextItem.Visual visual={CloudArrowDownIcon} />}
+              visual={<ContextItem.Visual visual={CommandLineIcon} />}
               action={
                 <Button.List>
                   <Button
