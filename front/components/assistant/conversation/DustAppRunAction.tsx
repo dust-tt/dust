@@ -10,8 +10,6 @@ import { useState } from "react";
 
 import { DustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 
-import { RenderMessageMarkdown } from "../RenderMessageMarkdown";
-
 export default function DustAppRunAction({
   dustAppRunAction,
 }: {
@@ -42,25 +40,33 @@ export default function DustAppRunAction({
     return `1 record`;
   }
 
+  console.log(dustAppRunAction.params);
+
   return (
     <>
-      <div className="flex flex-row items-center gap-2 pb-2">
-        <div className="flex flex-col items-start text-xs font-bold text-element-600">
-          <div className="flex">Generated&nbsp;parameters:</div>
-        </div>
-        <Chip.List isWrapping={true}>
-          {Object.keys(dustAppRunAction.params).map((k) => {
-            return (
-              <Tooltip key={k} label={`${k}: ${dustAppRunAction.params[k]}`}>
-                <Chip
-                  color="slate"
-                  label={shortText(`${k}: ${dustAppRunAction.params[k]}`)}
-                />
-              </Tooltip>
-            );
-          })}
-        </Chip.List>
-      </div>
+      {dustAppRunAction.params &&
+        Object.keys(dustAppRunAction.params).length > 0 && (
+          <div className="flex flex-row items-center gap-2 pb-2">
+            <div className="flex flex-col items-start text-xs font-bold text-element-600">
+              <div className="flex">Generated&nbsp;parameters:</div>
+            </div>
+            <Chip.List isWrapping={true}>
+              {Object.keys(dustAppRunAction.params).map((k) => {
+                return (
+                  <Tooltip
+                    key={k}
+                    label={`${k}: ${dustAppRunAction.params[k]}`}
+                  >
+                    <Chip
+                      color="slate"
+                      label={shortText(`${k}: ${dustAppRunAction.params[k]}`)}
+                    />
+                  </Tooltip>
+                );
+              })}
+            </Chip.List>
+          </div>
+        )}
       <div className="grid grid-cols-[auto,1fr] gap-2">
         <div className="grid-cols-auto grid items-center">
           {!dustAppRunAction.output ? (
