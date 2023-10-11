@@ -642,5 +642,6 @@ async function makeContentFragment(
     title: "Slack thread context",
     content: text,
     url: url,
+    contentType: "slack_thread_content",
   } as PostContentFragmentRequestBody);
 }

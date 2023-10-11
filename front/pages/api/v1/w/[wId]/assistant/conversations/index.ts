@@ -124,6 +124,7 @@ async function handler(
           title: contentFragment.title,
           content: contentFragment.content,
           url: contentFragment.url,
+          contentType: contentFragment.contentType,
         });
 
         newContentFragment = cf;

@@ -88,6 +88,7 @@ export const PostContentFragmentRequestBodySchemaIoTs = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
+  contentType: t.literal("slack_thread_content"),
 });
 
 const PostConversationsRequestBodySchemaIoTs = t.type({
@@ -281,6 +282,8 @@ export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
 
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
+export type ContentFragmentContentType = "slack_thread_content";
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -334,6 +337,7 @@ export type ContentFragmentType = {
 
   title: string;
   content: string;
+  contentType: ContentFragmentContentType;
 };
 
 export class DustAPI {
