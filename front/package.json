@@ -12,7 +12,6 @@
     "coverage": "jest --coverage",
     "initdb": "env $(cat .env.local) npx tsx admin/db.ts"
   },
-
   "dependencies": {
     "@dust-tt/sparkle": "0.2.2",
     "@emoji-mart/data": "^1.1.2",
