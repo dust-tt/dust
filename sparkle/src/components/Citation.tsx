@@ -34,11 +34,11 @@ export function Citation({
   return (
     <div
       className={classNames(
-        "w-48 s-flex s-flex-none s-flex-col s-gap-2 s-rounded-xl s-border s-border-structure-100 s-p-3 s-shadow-sm sm:s-w-64",
+        "w-48 s-flex s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-p-3 s-shadow-sm sm:s-w-64",
         lastHoveredReference === index ? "animate-[bgblink_500ms_3]" : ""
       )}
     >
-      <div className="s-flex s-items-center s-gap-1.5">
+      <div className="s-flex s-items-center s-gap-2">
         {index && (
           <div className="s-flex s-h-5 s-w-5 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800">
             {index}
@@ -50,12 +50,12 @@ export function Citation({
           <IconButton icon={ExternalLinkIcon} size="sm" variant="primary" />
         </a>
       </div>
-      <div className="s-flex s-flex-col s-gap-1">
-        <div className="s-text-sm s-font-bold s-text-element-900">{title}</div>
+      <div className="s-text-sm s-font-bold s-text-element-900">{title}</div>
+      {description && (
         <div className="s-text-xs s-font-normal s-text-element-700">
           {description}
         </div>
-      </div>
+      )}
     </div>
   );
 }
