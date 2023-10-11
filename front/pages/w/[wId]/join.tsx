@@ -1,4 +1,4 @@
-import { GithubLogo, Logo } from "@dust-tt/sparkle";
+import { GoogleLogo, Logo } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
@@ -14,20 +14,16 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
  *   url = /w/[wId]/join?t=[token]
  *      -> you've been invited to a workspace by email from the member management page.
  *      -> we don't care if workspace has allowed domain.
- *      -> signup is both for Google and Github.
  *
  * Case 2: "domain_invite_link"
  *   url = /w/[wId]/join
  *      -> Workspace has activated onboarding with link for an allowed domain.
  *      -> the workspace needs to have allowed domain.
- *      -> signup is only for Google.
  *
  * Case 3: "domain_conversation_link"
  *   url = /w/[wId]/join?cId=[conversationId]
  *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has allowed domain.
- *      -> the workspace needs to have allowed domain.
- *      -> signup is only for Google. *
- *
+ *      -> the workspace needs to have allowed domain. *
  */
 
 type OnboardingType =
@@ -153,24 +149,13 @@ export default function Join({
           <div className="flex flex-col items-center justify-center gap-4">
             <SignInButton
               label="Sign up with Google"
-              //icon={GoogleLogo} waiting for Google logo to be added to sparkle
+              icon={GoogleLogo}
               onClick={() => {
                 void signIn("google", {
                   callbackUrl: signUpCallbackUrl,
                 });
               }}
             />
-            {onboardingType === "email_invite" && (
-              <SignInButton
-                label="Sign up with GitHub"
-                icon={GithubLogo}
-                onClick={() => {
-                  void signIn("github", {
-                    callbackUrl: signUpCallbackUrl,
-                  });
-                }}
-              />
-            )}
           </div>
         </div>
       </main>
