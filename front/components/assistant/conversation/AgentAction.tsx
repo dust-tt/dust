@@ -14,7 +14,6 @@ export function AgentAction({ action }: { action: AgentActionType }) {
     );
   }
   if (isDustAppRunActionType(action)) {
-    console.log(action);
     return (
       <div className="pb-4">
         <DustAppRunAction dustAppRunAction={action} />

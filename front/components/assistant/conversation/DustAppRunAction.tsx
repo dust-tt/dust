@@ -22,25 +22,18 @@ export default function DustAppRunAction({
     return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
   }
 
-  function formatOutput(output: unknown) {
-    if (!output) {
-      return `0 records`;
-    }
-    if (Array.isArray(output)) {
-      return `${output.length} record${
-        output.length > 1 || output.length === 0 ? "s" : ""
-      }`;
-    }
-    if (typeof output === "object") {
-      const keys = Object.keys(output);
-      return `${keys.length} record${
-        keys.length > 1 || keys.length === 0 ? "s" : ""
-      }`;
-    }
-    return `1 record`;
-  }
+  function formatOutput(output: unknown): string {
+    let nbRecords = 1;
 
-  console.log(dustAppRunAction.params);
+    if (!output) {
+      nbRecords = 0;
+    } else if (Array.isArray(output)) {
+      nbRecords = output.length;
+    } else if (typeof output === "object" && output !== null) {
+      nbRecords = Object.keys(output).length;
+    }
+    return `${nbRecords} record${nbRecords !== 1 ? "s" : ""}`;
+  }
 
   return (
     <>
