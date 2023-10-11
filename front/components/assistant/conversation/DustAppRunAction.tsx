@@ -66,7 +66,7 @@ export default function DustAppRunAction({
           {!dustAppRunAction.output ? (
             <div>
               <div className="pb-2 text-xs font-bold text-element-600">
-                Executing ${dustAppRunAction.appName}...
+                Executing {dustAppRunAction.appName}...
               </div>
               <Spinner size="sm" />
             </div>
@@ -76,22 +76,24 @@ export default function DustAppRunAction({
             </div>
           )}
         </div>
-        <div className="row-span-1 select-none">
-          <div
-            className="cursor-pointer"
-            onClick={() => {
-              setOutputVisible(!outputVisible);
-            }}
-          >
-            <Chip color="violet">
-              {formatOutput(dustAppRunAction.output)}
-              <Icon
-                visual={outputVisible ? ChevronDownIcon : ChevronRightIcon}
-                size="xs"
-              />
-            </Chip>
+        {!!dustAppRunAction.output && (
+          <div className="row-span-1 select-none">
+            <div
+              className="cursor-pointer"
+              onClick={() => {
+                setOutputVisible(!outputVisible);
+              }}
+            >
+              <Chip color="violet">
+                {formatOutput(dustAppRunAction.output)}
+                <Icon
+                  visual={outputVisible ? ChevronDownIcon : ChevronRightIcon}
+                  size="xs"
+                />
+              </Chip>
+            </div>
           </div>
-        </div>
+        )}
         {outputVisible && (
           <div className="col-start-2 row-span-1 max-h-48 overflow-y-auto rounded-md bg-structure-100">
             <pre className="font-mono whitespace-pre-wrap break-words px-2 py-2 text-xs text-element-700">
