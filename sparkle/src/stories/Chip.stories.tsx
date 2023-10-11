@@ -24,15 +24,22 @@ const colors = [
 
 export const ListChipsExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
-    <div className="s-flex s-gap-2">
+    <Chip.List>
       {colors.map((color) => (
         <Chip key={`xs-${color}`} size="xs" label={color} color={color} />
       ))}
-    </div>
-    <div className="s-flex s-gap-2">
+    </Chip.List>
+    <Chip.List>
       {colors.map((color) => (
-        <Chip key={`xs-${color}`} size="sm" label={color} color={color} />
+        <Chip key={`sm-${color}`} size="sm" label={color} color={color} />
       ))}
+    </Chip.List>
+    <div className="s-w-60">
+      <Chip.List isWrapping={true}>
+        {colors.map((color) => (
+          <Chip key={`xs-${color}`} size="xs" label={color} color={color} />
+        ))}
+      </Chip.List>
     </div>
   </div>
 );

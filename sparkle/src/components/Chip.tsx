@@ -69,12 +69,20 @@ export function Chip({
 interface ListChipProps {
   children: ReactNode;
   className?: string;
+  isWrapping?: boolean;
 }
 
-Chip.List = function ({ children, className }: ListChipProps) {
+Chip.List = function ({ children, className, isWrapping }: ListChipProps) {
   return (
     <div className={classNames(className ? className : "", "s-flex")}>
-      <div className={"s-flex s-flex-row s-gap-2"}>{children}</div>
+      <div
+        className={classNames(
+          "s-flex s-flex-row s-gap-2",
+          isWrapping ? "s-flex-wrap" : ""
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 };
