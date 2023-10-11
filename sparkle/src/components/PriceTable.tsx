@@ -20,6 +20,12 @@ const colorTable = {
   emerald: "s-bg-emerald-400",
 };
 
+const textColorTable = {
+  pink: "s-text-pink-900",
+  sky: "s-text-sky-900",
+  emerald: "s-text-emerald-900",
+};
+
 export function PriceTable({
   title,
   price,
@@ -31,7 +37,9 @@ export function PriceTable({
   return (
     <div
       className={classNames(
-        "s-flex s-flex-col s-rounded-xl s-p-1 s-shadow-xl",
+        "s-w-72",
+        "s-flex s-cursor-default s-flex-col s-rounded-xl s-p-1 s-shadow-xl",
+        "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100",
         colorTable[color],
         className
       )}
@@ -41,7 +49,12 @@ export function PriceTable({
           {title}
         </div>
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
-          <span className="s-text-element-950 s-text-3xl s-font-bold">
+          <span
+            className={classNames(
+              textColorTable[color],
+              "s-text-3xl s-font-bold"
+            )}
+          >
             {price}
           </span>
           <span className="s-text-base s-font-bold s-text-white/70">
@@ -124,5 +137,5 @@ interface PriceTableContainerProps {
 }
 
 PriceTable.Container = function ({ children }: PriceTableContainerProps) {
-  return <div className="s-flex s-w-full s-gap-5">{children}</div>;
+  return <div className="s-flex s-w-full s-gap-3">{children}</div>;
 };

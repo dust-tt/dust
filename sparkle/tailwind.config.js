@@ -1,6 +1,24 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors");
 
+const safeColorsArray = [
+  "emerald",
+  "amber",
+  "slate",
+  "violet",
+  "warning",
+  "sky",
+  "pink",
+  "indigo",
+  "action",
+];
+
+const safeColorlist = safeColorsArray.flatMap((color) => [
+  `s-bg-${color}-100`,
+  `s-border-${color}-200`,
+  `s-text-${color}-900`,
+]);
+
 module.exports = {
   theme: {
     fontFamily: {
@@ -146,6 +164,7 @@ module.exports = {
     },
   },
   plugins: [require("@tailwindcss/forms")],
-  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   prefix: "s-",
+  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
+  safelist: safeColorlist,
 };

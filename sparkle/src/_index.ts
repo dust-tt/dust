@@ -22,18 +22,14 @@ export { ContextItem };
 import { Chip } from "./components/Chip";
 export { Chip };
 
+import { Citation } from "./components/Citation";
+export { Citation };
+
 import { DropdownMenu } from "./components/DropdownMenu";
 export { DropdownMenu };
 
 import { Page } from "./components/Page";
 export { Page };
-
-//TO BE REMOVED SOON
-import { SectionHeader } from "./components/SectionHeader";
-export { SectionHeader };
-
-import { PageHeader } from "./components/PageHeader";
-export { PageHeader };
 
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
@@ -77,6 +73,13 @@ export { Input };
 import { Searchbar } from "./components/Searchbar";
 export { Searchbar };
 
+//TO BE REMOVED SOON
+import { SectionHeader } from "./components/SectionHeader";
+export { SectionHeader };
+
+import { PageHeader } from "./components/PageHeader";
+export { PageHeader };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
@@ -101,6 +104,7 @@ import {
   Cohere as CohereLogo,
   Drive as DriveLogo,
   Github as GithubLogo,
+  Google as GoogleLogo,
   Gpt3 as Gpt3Logo,
   Gpt4 as Gpt4Logo,
   HuggingFace as HuggingFaceLogo,
@@ -116,6 +120,7 @@ export {
   CohereLogo,
   DriveLogo,
   GithubLogo,
+  GoogleLogo,
   Gpt3Logo,
   Gpt4Logo,
   HuggingFaceLogo,
