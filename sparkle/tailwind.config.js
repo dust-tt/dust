@@ -165,10 +165,6 @@ module.exports = {
   },
   plugins: [require("@tailwindcss/forms")],
   prefix: "s-",
-  purge: {
-    content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
-    options: {
-      safelist: safeColorlist,
-    },
-  },
+  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
+  safelist: safeColorlist,
 };

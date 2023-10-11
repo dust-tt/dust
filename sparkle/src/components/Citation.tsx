@@ -1,45 +1,61 @@
-import React, { ComponentType, ReactNode } from "react";
+import React, { ReactNode } from "react";
 
+import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
+import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
 import { ExternalLinkIcon, Icon, IconButton } from "..";
 
 interface CitationProps {
+  type?: "slack" | "drive" | "github" | "notion" | "document";
   title: string;
+  description?: string;
   index?: ReactNode;
-  icon: ComponentType;
-  lastHoveredReference: number;
+  lastHoveredReference?: number;
   href: string;
-  document: Document;
 }
+
+const typeIcons = {
+  slack: Slack,
+  drive: Drive,
+  github: Github,
+  notion: Notion,
+  document: DocumentText,
+};
 
 export function Citation({
   title,
   index,
-  icon,
+  type = "document",
+  description,
   href,
   lastHoveredReference,
 }: CitationProps) {
   return (
     <div
       className={classNames(
-        "flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64",
+        "w-48 s-flex s-flex-none s-flex-col s-gap-2 s-rounded-xl s-border s-border-structure-100 s-p-3 s-shadow-sm sm:s-w-64",
         lastHoveredReference === index ? "animate-[bgblink_500ms_3]" : ""
       )}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="s-flex s-items-center s-gap-1.5">
         {index && (
-          <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
+          <div className="s-flex s-h-5 s-w-5 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800">
             {index}
           </div>
         )}
-        <Icon visual={icon} size="sm" />
-        <div className="flex-grow text-xs" />
+        <Icon visual={typeIcons[type]} size="sm" />
+        <div className="s-flex-grow s-text-xs" />
         <a target="_blank" rel="noopener noreferrer" href={href}>
           <IconButton icon={ExternalLinkIcon} size="sm" variant="primary" />
         </a>
       </div>
-      <div className="text-xs font-bold text-element-900">{title}</div>
+      <div className="s-flex s-flex-col s-gap-1">
+        <div className="s-text-sm s-font-bold s-text-element-900">{title}</div>
+        <div className="s-text-xs s-font-normal s-text-element-700">
+          {description}
+        </div>
+      </div>
     </div>
   );
 }

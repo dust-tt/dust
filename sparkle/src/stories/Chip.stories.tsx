@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { Chip } from "../index_with_tw_base";
@@ -9,7 +9,6 @@ const meta = {
 } satisfies Meta<typeof Chip>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 const colors = [
   "emerald",
@@ -37,40 +36,3 @@ export const ListChipsExample = () => (
     </div>
   </div>
 );
-
-export const ChipEmerald: Story = {
-  args: {
-    label: "Settings",
-    color: "emerald",
-  },
-};
-
-export const ChipSM: Story = {
-  args: {
-    label: "Settings",
-    color: "emerald",
-  },
-};
-
-export const ChipMD: Story = {
-  args: {
-    label: "Settings",
-    color: "emerald",
-    size: "xs",
-  },
-};
-
-export const ChipAmber: Story = {
-  args: {
-    label: "Settings",
-    size: "sm",
-    color: "amber",
-  },
-};
-
-export const ChipViolet: Story = {
-  args: {
-    label: "Conversation about Dust's origines",
-    color: "violet",
-  },
-};
