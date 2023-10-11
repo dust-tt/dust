@@ -136,7 +136,7 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
   }[]
 > {
   const drive = await getDriveClient(nangoConnectionId);
-  let nextPageToken = undefined;
+  let nextPageToken: string | undefined | null = undefined;
   const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
   const myDriveRes = await drive.files.get({ fileId: "root" });
   if (myDriveRes.status !== 200) {
@@ -149,10 +149,12 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
   }
   ids.push({ id: myDriveRes.data.id, name: "My Drive", sharedDrive: false });
   do {
-    const res = await drive.drives.list({
-      pageSize: 100,
-      fields: "nextPageToken, drives(id, name)",
-    });
+    const res: GaxiosResponse<drive_v3.Schema$DriveList> =
+      await drive.drives.list({
+        pageSize: 100,
+        fields: "nextPageToken, drives(id, name)",
+        pageToken: nextPageToken,
+      });
     if (res.status !== 200) {
       throw new Error(
         `Error getting drives. status_code: ${res.status}. status_text: ${res.statusText}`
