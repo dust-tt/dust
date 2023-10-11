@@ -1,41 +1,98 @@
-import { Logo } from "@dust-tt/sparkle";
+import { GoogleLogo, Logo } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
-import { GoogleSignInButton } from "@app/components/Button";
-import { isWorkspaceAllowedOnDomain } from "@app/lib/api/workspace";
+import { SignInButton } from "@app/components/Button";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
+/**
+ * 3 ways to end up here:
+ *
+ * Case 1: "email_invite"
+ *   url = /w/[wId]/join?t=[token]
+ *      -> you've been invited to a workspace by email from the member management page.
+ *      -> we don't care if workspace has allowed domain.
+ *
+ * Case 2: "domain_invite_link"
+ *   url = /w/[wId]/join
+ *      -> Workspace has activated onboarding with link for an allowed domain.
+ *      -> the workspace needs to have allowed domain.
+ *
+ * Case 3: "domain_conversation_link"
+ *   url = /w/[wId]/join?cId=[conversationId]
+ *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has allowed domain.
+ *      -> the workspace needs to have allowed domain. *
+ */
+
+type OnboardingType =
+  | "email_invite"
+  | "domain_invite_link"
+  | "domain_conversation_link";
+
 export const getServerSideProps: GetServerSideProps<{
-  wId: string;
-  cId: string;
+  onboardingType: OnboardingType;
+  workspaceName: string;
+  signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;
 }> = async (context) => {
   const wId = context.query.wId as string;
-  const cId = context.query.cId as string;
-
-  if (!wId || !cId) {
+  if (!wId) {
+    return {
+      notFound: true,
+    };
+  }
+  const workspace = await getWorkspaceInfos(wId);
+  if (!workspace) {
     return {
       notFound: true,
     };
   }
 
-  const isAllowedOnDomain = await isWorkspaceAllowedOnDomain(wId);
-  if (!isAllowedOnDomain) {
+  const cId = typeof context.query.cId === "string" ? context.query.cId : null;
+  const token = typeof context.query.t === "string" ? context.query.t : null;
+
+  const onboardingType: OnboardingType = cId
+    ? "domain_conversation_link"
+    : token
+    ? "email_invite"
+    : "domain_invite_link";
+
+  // Redirect to 404 if in a flow where we need allowed domain and domain is not allowed.
+  if (
+    !workspace.allowedDomain &&
+    (onboardingType === "domain_conversation_link" ||
+      onboardingType === "domain_invite_link")
+  ) {
     return {
-      redirect: {
-        destination: "/",
-        permanent: false,
-      },
+      notFound: true,
     };
+  }
+
+  let signUpCallbackUrl: string | undefined = undefined;
+  switch (onboardingType) {
+    case "domain_conversation_link":
+      signUpCallbackUrl = `/api/login?wId=${wId}&cId=${cId}&join=true`;
+      break;
+    case "email_invite":
+      signUpCallbackUrl = `/api/login?wId=${wId}&inviteToken=${token}`;
+      break;
+    case "domain_invite_link":
+      signUpCallbackUrl = `/api/login?wId=${wId}`;
+      break;
+    default:
+      return {
+        notFound: true,
+      };
   }
 
   return {
     props: {
-      wId: wId,
-      cId: cId,
+      onboardingType: onboardingType,
+      workspaceName: workspace.name,
+      signUpCallbackUrl: signUpCallbackUrl,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -43,8 +100,9 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function Join({
-  wId,
-  cId,
+  onboardingType,
+  workspaceName,
+  signUpCallbackUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <>
@@ -66,23 +124,38 @@ export default function Join({
             </p>
           </div>
           <div className="h-10"></div>
-          <div>
-            <p className="font-regular mb-16 text-slate-400">
-              Glad to see you!
-              <br />
-              Please log in or sign up with your company email to access this
-              page.
-            </p>
-            <GoogleSignInButton
-              onClick={() =>
-                signIn("google", {
-                  callbackUrl: `/api/login?wId=${wId}&cId=${cId}&join=true`,
-                })
-              }
-            >
-              <img src="/static/google_white_32x32.png" className="h-4 w-4" />
-              <span className="ml-2 mr-1">Sign in with Google</span>
-            </GoogleSignInButton>
+          <div className="font-regular text-lg text-slate-200">
+            <p>Glad to see you!</p>
+
+            {onboardingType === "domain_conversation_link" ? (
+              <p>
+                Please log in or sign up with your company email to access this
+                conversation.
+              </p>
+            ) : (
+              <p>
+                You've been invited to join the Dust workspace of{" "}
+                {workspaceName}.
+              </p>
+            )}
+
+            {onboardingType === "email_invite" && (
+              <p>How would you like to connect?</p>
+            )}
+          </div>
+
+          <div className="h-16" />
+
+          <div className="flex flex-col items-center justify-center gap-4">
+            <SignInButton
+              label="Sign up with Google"
+              icon={GoogleLogo}
+              onClick={() => {
+                void signIn("google", {
+                  callbackUrl: signUpCallbackUrl,
+                });
+              }}
+            />
           </div>
         </div>
       </main>

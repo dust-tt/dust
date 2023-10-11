@@ -90,12 +90,17 @@ async function handler(
         DUST_INVITE_TOKEN_SECRET
       );
 
+      const invitationUrl = `${URL}/w/${owner.sId}/join/?t=${invitationToken}`;
+
       // Send invite email
       const message = {
         to: invitation.inviteEmail,
-        from: "team@dust.tt",
-        subject: `[DUST] You have been invited to join the '${owner.name}' workspace`,
-        text: `Welcome to Dust!\n\nYou have been invited to join the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${URL}?inviteToken=${invitationToken}`,
+        from: {
+          name: "Dust team",
+          email: "team@dust.tt",
+        },
+        subject: `[Dust] You have been invited to join the '${owner.name}' workspace`,
+        text: `Welcome to Dust!\n\nYou have been invited to join the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${invitationUrl}`,
       };
       await sgMail.send(message);
       res.status(200).json({

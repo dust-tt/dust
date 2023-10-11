@@ -65,9 +65,7 @@ export default function WorkspaceAdmin({
   const [allowedDomainError, setAllowedDomainError] = useState("");
 
   const inviteLink =
-    owner.allowedDomain !== null
-      ? `${url}/?signIn=google&wId=${owner.sId}`
-      : null;
+    owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
