@@ -1,3 +1,5 @@
+import { Button } from "@dust-tt/sparkle";
+
 import { classNames } from "@app/lib/utils";
 
 export function GoogleSignInButton({
@@ -17,5 +19,24 @@ export function GoogleSignInButton({
     >
       {children}
     </button>
+  );
+}
+
+export function SignInButton({
+  label,
+  icon = null,
+  onClick = null,
+}: React.PropsWithChildren<{
+  label: string;
+  icon?: any;
+  onClick?: any;
+}>) {
+  return (
+    <Button
+      label={label}
+      variant="tertiary"
+      icon={icon}
+      onClick={onClick}
+    ></Button>
   );
 }

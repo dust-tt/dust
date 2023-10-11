@@ -1,4 +1,4 @@
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, planForWorkspace } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
 import {
   Membership,
@@ -7,15 +7,30 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
-import { UserType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
-export async function isWorkspaceAllowedOnDomain(wId: string) {
+export async function getWorkspaceInfos(
+  wId: string
+): Promise<WorkspaceType | null> {
   const workspace = await Workspace.findOne({
     where: {
       sId: wId,
     },
   });
-  return workspace && workspace.allowedDomain !== null;
+
+  if (!workspace) {
+    return null;
+  }
+
+  return {
+    id: workspace.id,
+    sId: workspace.sId,
+    name: workspace.name,
+    allowedDomain: workspace.allowedDomain,
+    role: "none",
+    plan: planForWorkspace(workspace),
+    upgradedAt: workspace.upgradedAt?.getTime() || null,
+  };
 }
 
 /**
