@@ -355,7 +355,7 @@ export default function AppLayout({
 
           <main
             className={classNames(
-              "h-full overflow-x-hidden pt-16",
+              "h-full pt-16",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
