@@ -1,10 +1,20 @@
 import {
+  Avatar,
   Button,
+  ChevronRightIcon,
   ChevronUpDownIcon,
+  Chip,
+  ClipboardIcon,
+  Cog6ToothIcon,
+  Input,
+  Modal,
+  Page,
   PageHeader,
+  PlusIcon,
+  Searchbar,
   SectionHeader,
 } from "@dust-tt/sparkle";
-import { Listbox } from "@headlessui/react";
+import { Dialog, Listbox } from "@headlessui/react";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -17,6 +27,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { Plus } from "@dust-tt/sparkle/dist/cjs/icons/solid";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
@@ -151,6 +162,40 @@ export default function WorkspaceAdmin({
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   };
+  const [inviteSettingsOpen, setInviteSettingsOpen] = useState(false);
+
+  function InviteSettings() {
+    return (
+      <Modal
+        isOpen={inviteSettingsOpen}
+        onClose={() => {
+          setInviteSettingsOpen(false);
+          setAllowedDomain(owner.allowedDomain);
+        }}
+        hasChanged={allowedDomain !== owner.allowedDomain}
+        title="Invitation link settings"
+        isFullScreen={true}
+        onSave={handleUpdateWorkspace}
+      >
+        <div className="mt-4 flex flex-col gap-3">
+          <div>
+            Any person with a Google Workspace email on corresponding domain
+            name will be allowed to join the workspace.
+          </div>
+          <div>
+            <div className="font-bold">Whitelisted email domain</div>
+            <Input
+              className="text-sm"
+              placeholder={"Company domain"}
+              value={allowedDomain || ""}
+              name={""}
+              onChange={setAllowedDomain}
+            />
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   const handleMemberRoleChange = async (member: UserType, role: string) => {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
@@ -169,6 +214,37 @@ export default function WorkspaceAdmin({
     }
   };
 
+  const fakeMembers = [
+    {
+      name: "John Doe",
+      email: "john@doe.com",
+      workspaces: [{ role: "admin" }],
+      image: null,
+    },
+    {
+      name: "Jane Doe",
+      email: "jane@doe.fr",
+      workspaces: [{ role: "builder" }],
+      image: null,
+    },
+    {
+      name: "Coucou Mec",
+      email: "coucou@mec.com",
+      workspaces: [{ role: "user" }],
+      image: null,
+    },
+    {
+      name: "Pas la",
+      email: "pas@la.com",
+      workspaces: [{ role: "none" }],
+      image: null,
+    },
+  ];
+  const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
+    admin: "warning",
+    builder: "amber",
+    user: "emerald",
+  };
   return (
     <AppLayout
       user={user}
@@ -177,89 +253,114 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <PageHeader
-        title="Member Management"
-        icon={UsersIcon}
-        description="Invite and remove members, manage their rights."
-      />
-
-      <SectionHeader
-        title="Invitation Link"
-        description="Allow any person with the right email domain name (@company.com) to signup and join your workspace."
-      />
-
-      <div className="flex flex-col">
-        <div className="space-y-8 pt-8">
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-5">
-            <div className="sm:col-span-3">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="appName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Whitelisted e-mail domain
-                </label>
-                <div className="text-sm font-normal text-gray-400">
-                  optional
-                </div>
-              </div>
-            </div>
-            <div className="sm:col-span-3">
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  name="alowedDomain"
-                  id="allowedDomain"
-                  className={classNames(
-                    "block w-full min-w-0 flex-1 rounded-md text-sm",
-                    allowedDomainError
-                      ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                  )}
-                  value={allowedDomain || ""}
-                  onChange={(e) => {
-                    if (e.target.value.length > 0) {
-                      setAllowedDomain(e.target.value);
-                    } else {
-                      setAllowedDomain(null);
-                    }
-                  }}
-                />
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Allow any user with an e-mail from the specified domain to join
-                this workspace.
-              </p>
-              {inviteLink ? (
-                <div className="mt-2">
-                  <div className="flex justify-between">
-                    <span className="block text-sm font-medium text-gray-700">
-                      Invite link:{" "}
-                      <a className="ml-1 text-action-600" href={inviteLink}>
-                        {inviteLink}
-                      </a>
-                    </span>
+      <Page>
+        <div className="flex flex-col gap-6">
+          <Page.Header
+            title="Member Management"
+            icon={UsersIcon}
+            description="Invite and remove members, manage their rights."
+          />
+          <div>
+            <Page.SectionHeader
+              title="Invitation Link"
+              description="Allow any person with the right email domain name (@company.com) to signup and join your workspace."
+            />
+            {inviteLink ? (
+              <div className="pt-1 text-element-700">
+                <Page.P>
+                  Invitation link is activated for domain{" "}
+                  <span className="font-bold">{`@${allowedDomain}`}</span>
+                </Page.P>
+                <div className="mt-3 flex justify-between gap-2">
+                  <div className="flex-grow">
+                    <Input
+                      className="text-sm"
+                      disabled
+                      placeholder={""}
+                      value={inviteLink}
+                      name={""}
+                    />
+                  </div>
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Copy"
+                      size="sm"
+                      icon={ClipboardIcon}
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteLink);
+                      }}
+                    />
+                  </div>
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Settings"
+                      size="sm"
+                      icon={Cog6ToothIcon}
+                      onClick={() => setInviteSettingsOpen(true)}
+                    />
+                    <InviteSettings />
                   </div>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <div></div>
+            )}
           </div>
-
-          <div className="mt-4 flex max-w-full flex-row">
-            <div className="flex flex-1"></div>
-            <div className="flex">
-              <Button
-                variant="secondary"
-                disabled={disable || updating}
-                onClick={handleUpdateWorkspace}
-                label={updating ? "Updating..." : "Update"}
-              />
-            </div>
-          </div>
+          <Page.SectionHeader title="Member list" />
         </div>
-
-        <SectionHeader
-          title="Members"
+        <div className="flex w-full items-stretch gap-2">
+          <div className="flex-grow">
+            <Searchbar
+              placeholder="Search members"
+              onChange={() => {}}
+              value={null}
+              name={""}
+            />
+          </div>
+          <Button
+            variant="primary"
+            label="Invite members"
+            size="sm"
+            icon={PlusIcon}
+            onClick={() => {}}
+          />
+        </div>
+        <div>
+          {fakeMembers.map((member) => (
+            <div className="flex items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm">
+              <div>
+                <Avatar visual={member.image} name={member.name} size="xs" />
+              </div>
+              <div className="font-medium text-element-900">{member.name}</div>
+              <div className="grow font-normal text-element-700">
+                {member.email || member.username}
+              </div>
+              <div>
+                <Chip
+                  size="xs"
+                  color={COLOR_FOR_ROLE[member.workspaces[0].role]}
+                >
+                  <span
+                    className={classNames(
+                      "capitalize",
+                      `text-${COLOR_FOR_ROLE[member.workspaces[0].role]}-800`
+                    )}
+                  >
+                    {member.workspaces[0].role}
+                  </span>
+                </Chip>
+              </div>
+              <div>
+                <ChevronRightIcon />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/********************** LEGACY **************/}
+        <Page.SectionHeader
+          title="Members LEGACY"
           description="Manage active members and invitations to your workspace."
         />
         <div className="mt-6 space-y-4 pb-8">
@@ -465,7 +566,7 @@ export default function WorkspaceAdmin({
             </div>
           </div>
         </div>
-      </div>
+      </Page>
     </AppLayout>
   );
 }
