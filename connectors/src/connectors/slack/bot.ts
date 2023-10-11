@@ -560,6 +560,9 @@ async function makeContentFragment(
   startingAtTs: string | null,
   connector: Connector
 ) {
+  const slackChannelPromise = slackClient.conversations.info({
+    channel: channelId,
+  });
   let allMessages: Message[] = [];
 
   let next_cursor = undefined;
@@ -637,9 +640,14 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
+  const channel = await slackChannelPromise;
+  console.log(channel);
+  if (channel.error) {
+    return new Err(new Error(channel.error));
+  }
 
   return new Ok({
-    title: "Slack thread context",
+    title: `Thread content from #${channel.channel?.name}`,
     content: text,
     url: url,
     contentType: "slack_thread_content",
