@@ -127,6 +127,13 @@ async function handler(
         });
 
         newContentFragment = cf;
+        const updatedConversation = await getConversation(
+          auth,
+          conversation.sId
+        );
+        if (updatedConversation) {
+          conversation = updatedConversation;
+        }
       }
 
       if (message) {
