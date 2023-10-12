@@ -12,7 +12,7 @@ interface CitationProps {
   description?: string;
   index?: ReactNode;
   isBlinking?: boolean;
-  href: string;
+  href?: string;
 }
 
 const typeIcons = {
@@ -34,7 +34,7 @@ export function Citation({
   return (
     <div
       className={classNames(
-        "w-48 s-flex s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-p-3 s-shadow-sm sm:s-w-64",
+        "w-48 s-flex s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3 s-shadow-sm sm:s-w-64",
         isBlinking ? "animate-[bgblink_500ms_3]" : ""
       )}
     >
@@ -46,9 +46,11 @@ export function Citation({
         )}
         <Icon visual={typeIcons[type]} size="sm" />
         <div className="s-flex-grow s-text-xs" />
-        <a target="_blank" rel="noopener noreferrer" href={href}>
-          <IconButton icon={ExternalLinkIcon} size="sm" variant="primary" />
-        </a>
+        {href && (
+          <a target="_blank" rel="noopener noreferrer" href={href}>
+            <IconButton icon={ExternalLinkIcon} size="sm" variant="primary" />
+          </a>
+        )}
       </div>
       <div className="s-text-sm s-font-bold s-text-element-900">{title}</div>
       {description && (

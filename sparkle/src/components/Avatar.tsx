@@ -11,6 +11,7 @@ type AvatarProps = {
   onClick?: () => void;
   busy?: boolean;
   isRounded?: boolean;
+  backgroundColor?: string;
 };
 
 const colors = [
@@ -86,6 +87,7 @@ export function Avatar({
   clickable = false,
   busy = false,
   isRounded = false,
+  backgroundColor,
 }: AvatarProps) {
   const getColor = (name: string) => {
     if (/\+/.test(name)) {
@@ -120,7 +122,11 @@ export function Avatar({
   const avatarClass = classNames(
     sizeClasses[size],
     isRounded ? "s-rounded-full" : roundedClasses[size],
-    name ? getColor(name) : "s-bg-slate-200",
+    backgroundColor
+      ? backgroundColor
+      : name
+      ? getColor(name)
+      : "s-bg-slate-200",
     "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
     clickableStyles,
     busyStyles
