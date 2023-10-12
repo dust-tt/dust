@@ -123,9 +123,18 @@ async function handler(
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
+          url: contentFragment.url,
+          contentType: contentFragment.contentType,
         });
 
         newContentFragment = cf;
+        const updatedConversation = await getConversation(
+          auth,
+          conversation.sId
+        );
+        if (updatedConversation) {
+          conversation = updatedConversation;
+        }
       }
 
       if (message) {

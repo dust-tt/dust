@@ -124,6 +124,7 @@ export function isAgentMessageType(
 /**
  * Content Fragments
  */
+export type ContentFragmentContentType = "slack_thread_content";
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -135,6 +136,8 @@ export type ContentFragmentType = {
 
   title: string;
   content: string;
+  url: string | null;
+  contentType: ContentFragmentContentType;
 };
 
 export function isContentFragmentType(

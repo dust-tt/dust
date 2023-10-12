@@ -14,6 +14,7 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import {
   AgentMessageStatus,
+  ContentFragmentContentType,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -349,6 +350,8 @@ export class ContentFragment extends Model<
 
   declare title: string;
   declare content: string;
+  declare url: string | null;
+  declare contentType: ContentFragmentContentType;
 }
 
 ContentFragment.init(
@@ -374,6 +377,14 @@ ContentFragment.init(
     },
     content: {
       type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    contentType: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
   },

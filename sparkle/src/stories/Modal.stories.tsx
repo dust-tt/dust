@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Button, Modal } from "../index_with_tw_base";
+import { Button, Input, Modal } from "../index_with_tw_base";
 
 const meta = {
   title: "Molecule/Modal",
@@ -17,7 +17,8 @@ export const ModalExample = () => {
   const [isFullScreenModalOpen, setIsFullScreenModalOpen] = useState(false);
   const [isFullScreenModalOverflowOpen, setIsFullScreenModalOverflowOpen] =
     useState(false);
-
+  const [isRightSideModalOpen, setIsRightSideModalOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("initial value");
   return (
     <>
       <Modal
@@ -27,6 +28,28 @@ export const ModalExample = () => {
         title="Modal title"
       >
         <div className="s-mt-4 s-h-72">I'm the modal content</div>
+      </Modal>
+      <Modal
+        isOpen={isRightSideModalOpen}
+        onClose={() => setIsRightSideModalOpen(false)}
+        type="right-side"
+        title="Modal title"
+        hasChanged={inputValue !== "initial value"}
+      >
+        <div className="s-flex s-flex-col s-gap-3 s-pl-2">
+          <div className="s-mt-4 s-flex-none s-text-left">
+            I'm the modal content
+          </div>
+          <div className="s-w-64">
+            <Input
+              placeholder="Input placeholder"
+              className="s-mt-4"
+              value={inputValue}
+              onChange={setInputValue}
+              name="input-name"
+            />
+          </div>
+        </div>
       </Modal>
       <Modal
         isOpen={isOpenWithActionAndChange}
@@ -45,7 +68,7 @@ export const ModalExample = () => {
         isOpen={isFullScreenModalOpen}
         onClose={() => setIsFullScreenModalOpen(false)}
         hasChanged={true}
-        isFullScreen={true}
+        type="full-screen"
         title="Modal title"
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
@@ -54,7 +77,7 @@ export const ModalExample = () => {
         isOpen={isFullScreenModalOverflowOpen}
         onClose={() => setIsFullScreenModalOverflowOpen(false)}
         hasChanged={true}
-        isFullScreen={true}
+        type="full-screen"
         title="Modal title"
       >
         <div className="s-mt-4 s-h-96 s-bg-red-300 s-text-left">
@@ -85,6 +108,10 @@ export const ModalExample = () => {
       <Button
         label="Modal full screen with overflowing content"
         onClick={() => setIsFullScreenModalOverflowOpen(true)}
+      />
+      <Button
+        label="Modal right side"
+        onClick={() => setIsRightSideModalOpen(true)}
       />
     </>
   );

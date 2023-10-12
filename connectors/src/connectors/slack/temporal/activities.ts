@@ -594,7 +594,7 @@ async function processMessageForMentions(
   return message;
 }
 
-async function formatMessagesForUpsert(
+export async function formatMessagesForUpsert(
   channelId: string,
   messages: Message[],
   connectorId: string,
@@ -649,8 +649,20 @@ export async function fetchUsers(
   } while (cursor);
 }
 
-export async function getBotUserId(slackAccessToken: string) {
-  const client = getSlackClient(slackAccessToken);
+export async function getBotUserId(
+  slackAccessToken: WebClient
+): Promise<string>;
+export async function getBotUserId(slackAccessToken: string): Promise<string>;
+export async function getBotUserId(
+  slackAccessToken: string | WebClient
+): Promise<string> {
+  let client: WebClient | undefined = undefined;
+  if (slackAccessToken instanceof WebClient) {
+    client = slackAccessToken;
+  } else {
+    client = getSlackClient(slackAccessToken);
+  }
+
   const authRes = await client.auth.test({});
   if (authRes.error) {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);

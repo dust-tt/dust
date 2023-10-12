@@ -84,6 +84,13 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
   }),
 });
 
+export const PostContentFragmentRequestBodySchemaIoTs = t.type({
+  title: t.string,
+  content: t.string,
+  url: t.union([t.string, t.null]),
+  contentType: t.literal("slack_thread_content"),
+});
+
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
@@ -92,6 +99,10 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("deleted"),
   ]),
   message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
+  contentFragment: t.union([
+    PostContentFragmentRequestBodySchemaIoTs,
+    t.undefined,
+  ]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -100,6 +111,10 @@ type PostConversationsRequestBodySchema = t.TypeOf<
 
 export type PostMessagesRequestBodySchema = t.TypeOf<
   typeof PostMessagesRequestBodySchemaIoTs
+>;
+
+export type PostContentFragmentRequestBody = t.TypeOf<
+  typeof PostContentFragmentRequestBodySchemaIoTs
 >;
 
 // Event sent when the user message is created.
@@ -267,6 +282,8 @@ export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
 
 export type AgentMessageStatus = "created" | "succeeded" | "failed";
 
+export type ContentFragmentContentType = "slack_thread_content";
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -308,6 +325,19 @@ export type ConversationType = {
 export type AgentConfigurationType = {
   sId: string;
   name: string;
+};
+
+export type ContentFragmentType = {
+  id: ModelId;
+  sId: string;
+  created: number;
+  type: "content_fragment";
+  visibility: MessageVisibility;
+  version: number;
+
+  title: string;
+  content: string;
+  contentType: ContentFragmentContentType;
 };
 
 export class DustAPI {
@@ -354,6 +384,7 @@ export class DustAPI {
     title,
     visibility,
     message,
+    contentFragment,
   }: PostConversationsRequestBodySchema): Promise<
     Result<
       { conversation: ConversationType; message: UserMessageType },
@@ -372,6 +403,7 @@ export class DustAPI {
           title,
           visibility,
           message,
+          contentFragment,
         }),
       }
     );
@@ -563,5 +595,34 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.agentConfigurations as AgentConfigurationType[]);
+  }
+
+  async postContentFragment({
+    conversationId,
+    contentFragment,
+  }: {
+    conversationId: string;
+    contentFragment: PostContentFragmentRequestBody;
+  }) {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...contentFragment,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.contentFragment as ContentFragmentType);
   }
 }
