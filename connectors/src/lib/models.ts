@@ -9,6 +9,10 @@ import {
 } from "sequelize";
 
 import {
+  NotionBlockType,
+  ParsedNotionPageProperty,
+} from "@connectors/connectors/notion/lib/types";
+import {
   type ConnectorProvider,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";
@@ -652,6 +656,129 @@ NotionDatabase.init(
 );
 
 Connector.hasMany(NotionDatabase);
+
+export class NotionConnectorPageCacheEntry extends Model<
+  InferAttributes<NotionConnectorPageCacheEntry>,
+  InferCreationAttributes<NotionConnectorPageCacheEntry>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare notionPageId: string;
+  declare pageProperties: ParsedNotionPageProperty[]; // JSON -- typed but not guaranteed
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionConnectorPageCacheEntry.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    notionPageId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    pageProperties: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "notion_connector_page_cache_entries",
+    indexes: [{ fields: ["notionPageId", "connectorId"], unique: true }],
+  }
+);
+
+Connector.hasMany(NotionConnectorPageCacheEntry);
+
+export class NotionConnectorBlockCacheEntry extends Model<
+  InferAttributes<NotionConnectorBlockCacheEntry>,
+  InferCreationAttributes<NotionConnectorBlockCacheEntry>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare notionPageId: string;
+  declare notionBlockId: string;
+  declare blockText: string | null;
+  declare blockType: NotionBlockType;
+  declare parentBlockId: string | null;
+  declare indexInParent: number;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionConnectorBlockCacheEntry.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    notionPageId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    notionBlockId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    blockText: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    blockType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentBlockId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    indexInParent: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "notion_connector_block_cache_entries",
+    indexes: [
+      {
+        fields: ["notionBlockId", "connectorId", "notionPageId"],
+        unique: true,
+      },
+    ],
+  }
+);
+
+Connector.hasMany(NotionConnectorBlockCacheEntry);
 
 export class GithubConnectorState extends Model<
   InferAttributes<GithubConnectorState>,

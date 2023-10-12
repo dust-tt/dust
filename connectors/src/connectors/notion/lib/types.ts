@@ -32,9 +32,11 @@ export type ParsedNotionPageProperty = {
   text: string | null;
 };
 
+export type NotionBlockType = BlockObjectResponse["type"];
+
 export type ParsedNotionBlock = {
   id: string;
-  type: BlockObjectResponse["type"];
+  type: NotionBlockType;
   text: string | null;
 };
 
