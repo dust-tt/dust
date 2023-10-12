@@ -7,7 +7,7 @@ import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 import { ExternalLinkIcon, Icon, IconButton } from "..";
 
 interface CitationProps {
-  type?: "slack" | "drive" | "github" | "notion" | "document";
+  type?: "slack" | "google_drive" | "github" | "notion" | "document";
   title: string;
   description?: string;
   index?: ReactNode;
@@ -17,7 +17,7 @@ interface CitationProps {
 
 const typeIcons = {
   slack: Slack,
-  drive: Drive,
+  google_drive: Drive,
   github: Github,
   notion: Notion,
   document: DocumentText,
