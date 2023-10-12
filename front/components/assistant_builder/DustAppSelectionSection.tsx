@@ -15,11 +15,13 @@ export default function DustAppSelectionSection({
   dustAppConfiguration,
   openDustAppModal,
   onDelete,
+  canSelectDustApp,
 }: {
   show: boolean;
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
   openDustAppModal: () => void;
   onDelete?: (sId: string) => void;
+  canSelectDustApp: boolean;
 }) {
   return (
     <Transition
@@ -50,6 +52,7 @@ export default function DustAppSelectionSection({
             )}
           >
             <Button
+              disabled={!canSelectDustApp}
               labelVisible={true}
               label="Select Dust App"
               variant="primary"
