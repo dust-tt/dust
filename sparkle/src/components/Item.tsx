@@ -206,11 +206,20 @@ export function Item({
 
 interface ItemSectionHeaderProps {
   label: string;
+  variant?: "primary" | "secondary";
 }
 
-Item.SectionHeader = function ({ label }: ItemSectionHeaderProps) {
+Item.SectionHeader = function ({
+  label,
+  variant = "primary",
+}: ItemSectionHeaderProps) {
   return (
-    <div className="s-py-2 s-text-xs s-font-medium s-uppercase s-text-element-800">
+    <div
+      className={classNames(
+        variant === "primary" ? "s-text-element-800" : "s-text-element-600",
+        "s-pb-2 s-pt-4 s-text-xs s-font-medium s-uppercase"
+      )}
+    >
       {label}
     </div>
   );

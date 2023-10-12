@@ -28,7 +28,7 @@ export const ListItemExample = () => (
     </Item.List>
     <div className="s-h-8" />
     <Item.List className="s-w-40">
-      <Item.SectionHeader label="Section Header" />
+      <Item.SectionHeader label="Section Header" variant="secondary" />
       <Item size="md" label="Item 1" icon={Cog6ToothIcon} />
       <Item size="md" label="Item 2" icon={Cog6ToothIcon} />
       <Item size="md" label="Item 3" icon={Cog6ToothIcon} />
