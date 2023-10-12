@@ -9,6 +9,7 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/I
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useConversation } from "@app/lib/swr";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -60,19 +61,24 @@ export default function AssistantConversation({
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
   useEffect(() => {
+    function handleNewConvoShortcut(event: KeyboardEvent) {
+      // Check for Command on Mac or Ctrl on others
+      const isModifier = event.metaKey || event.ctrlKey;
+      if (isModifier && event.key === "/") {
+        void router.push(`/w/${owner.sId}/assistant/new`);
+      }
+    }
+
     window.addEventListener("keydown", handleNewConvoShortcut);
     return () => {
       window.removeEventListener("keydown", handleNewConvoShortcut);
     };
-  }, []);
+  }, [owner.sId, router]);
 
-  function handleNewConvoShortcut(event: KeyboardEvent) {
-    // Check for Command on Mac or Ctrl on others
-    const isModifier = event.metaKey || event.ctrlKey;
-    if (isModifier && event.key === "/") {
-      void router.push(`/w/${owner.sId}/assistant/new`);
-    }
-  }
+  const { conversation } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
@@ -124,17 +130,24 @@ export default function AssistantConversation({
         user={user}
         owner={owner}
         isWideMode={true}
+        pageTitle={
+          conversation?.title
+            ? `Dust - ${conversation?.title}`
+            : `Dust - New Conversation`
+        }
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistant"
         titleChildren={
-          <ConversationTitle
-            owner={owner}
-            conversationId={conversationId}
-            shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-            onDelete={() => {
-              void handdleDeleteConversation();
-            }}
-          />
+          conversation && (
+            <ConversationTitle
+              owner={owner}
+              conversation={conversation}
+              shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
+              onDelete={() => {
+                void handdleDeleteConversation();
+              }}
+            />
+          )
         }
         navChildren={
           <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />

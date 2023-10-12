@@ -157,13 +157,14 @@ export default function AssistantNew({
           user={user}
           owner={owner}
           isWideMode={conversation ? true : false}
+          pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
           topNavigationCurrent="assistant"
           titleChildren={
             conversation && (
               <ConversationTitle
                 owner={owner}
-                conversationId={conversation.sId}
+                conversation={conversation}
                 shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
               />
             )
