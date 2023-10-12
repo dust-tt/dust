@@ -16,12 +16,18 @@ key in your account's **Developers Tools** panel.
 
 ## Conversations
 
-A conversation is consituted of `UserMessages`, `AgentMessages` and `ContentFragments`. A `UserMessage` is a message sent
-by a human to interact with one or more assistants. An `AgentMessage` is an assistant response.
-`AgentMessages` can potentially include an action. Currently the only action supported is a
-`RetrievalAction` which triggers for agents that are configured to perform a retrieval before
-streaming their response.
-`ContentFragments` are pieces of information that can be inserted in conversations and are passed to assistants as part of the context.
+A conversation is consituted of `UserMessages`, `AgentMessages` and `ContentFragments`.
+
+A `UserMessage` is a message sent by a human to interact with one or more assistants.
+
+An `AgentMessage` is an assistant response. `AgentMessages` can potentially include an action.
+Currently the only action supported are:
+
+- `RetrievalAction` which triggers for agents configured to perform a retrieval before streaming their response.
+- `DustAppRunAction` which triggers for agents configured to run a Dust App before streaming their response.
+
+`ContentFragments` are pieces of information that can be inserted in conversations and are passed to
+assistants as part of the context.
 
 ## The UserMessage model
 
@@ -87,7 +93,8 @@ The `AgentMessage` model contains all the information and data related to an age
   </Property>
   <Property name="action" type="object | null">
     An object representing the potential action that the assistant took before
-    generating an answer. Currently only `RetrievalAction` are supported.
+    generating an answer. Currently only `RetrievalAction` and
+    `DustAppRunAction` are supported.
   </Property>
   <Property name="content" type="string">
     The content of the message.
@@ -171,8 +178,10 @@ and finally being marked as `succeeded`. These events can be streamed by API (se
 
 ### Action events
 
-The `retrieval_params` is sent during retrieval (if applicable) with the finalized query used to
-retrieve documents.
+#### Retrieval Action events
+
+The `retrieval_params` event is sent during retrieval (if applicable) with the finalized query used
+to retrieve documents.
 
 ```
 {
@@ -185,9 +194,41 @@ retrieve documents.
 }
 ```
 
+#### DustAppRun Action events
+
+The `dust_app_run_params` event is sent during the preparation of the execution of the Dust app (if
+applicable) with the finalized inputs for the app infered by a model from the conversation context
+and the Dust app's input dataset schema.
+
+```
+{
+  type: "dust_app_run_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DustAppRunActionType;
+}
+```
+
+The `dust_app_run_block` event is sent during the execution of the Dust app as a block execution
+starts. The field `runningBlock` will be non-null on the action object.
+
+```
+{
+  type: "dust_app_run_block";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DustAppRunActionType;
+}
+```
+
+#### Generic Action events
+
 The `agent_action_success` event is sent once the assistant action is completed (if applicable), as
-we're moving to generating a message if applicable. The currently supported action is `retrieval`.
-If the assistant is configured to not perform any retrieval, these events won't be emitted.
+we're moving to generating a message if applicable. The currently supported actions are `retrieval`
+and `dust_app_run`. If the assistant is configured to not perform any action, these events won't be
+emitted.
 
 ```
 {
