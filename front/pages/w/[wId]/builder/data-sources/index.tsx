@@ -1,6 +1,7 @@
 import {
   Button,
   CloudArrowDownIcon,
+  CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   DropdownMenu,
   PageHeader,
@@ -457,7 +458,7 @@ export default function DataSourcesView({
                           : !isLoadingByProvider[
                               ds.connectorProvider as ConnectorProvider
                             ] && !ds.fetchConnectorError
-                          ? "Activate"
+                          ? "Connect"
                           : "Connecting...";
                         if (!ds || !ds.connector) {
                           return (
@@ -465,7 +466,7 @@ export default function DataSourcesView({
                               {ds.connectorProvider !== "google_drive" && (
                                 <Button
                                   variant="primary"
-                                  icon={CloudArrowDownIcon}
+                                  icon={CloudArrowLeftRightIcon}
                                   disabled={disabled}
                                   onClick={onclick}
                                   label={label}
@@ -478,7 +479,7 @@ export default function DataSourcesView({
                                       variant="primary"
                                       label={label}
                                       disabled={disabled}
-                                      icon={CloudArrowDownIcon}
+                                      icon={CloudArrowLeftRightIcon}
                                     />
                                   </DropdownMenu.Button>
                                   <DropdownMenu.Items
@@ -507,7 +508,7 @@ export default function DataSourcesView({
                                         <DropdownMenu.Button>
                                           <Button
                                             variant="secondary"
-                                            icon={CloudArrowDownIcon}
+                                            icon={CloudArrowLeftRightIcon}
                                             disabled={disabled}
                                             onClick={onclick}
                                             label={label}
