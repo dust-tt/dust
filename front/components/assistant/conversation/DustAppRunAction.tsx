@@ -64,9 +64,16 @@ export default function DustAppRunAction({
         <div className="grid-cols-auto grid items-center">
           {!dustAppRunAction.output ? (
             <div>
-              <div className="pb-2 text-xs font-bold text-element-600">
-                Executing {dustAppRunAction.appName}...
-              </div>
+              {dustAppRunAction.runningBlock ? (
+                <div className="pb-2 text-xs font-bold text-element-600">
+                  Executing app {dustAppRunAction.appName}: running block{" "}
+                  {dustAppRunAction.runningBlock.name}...
+                </div>
+              ) : (
+                <div className="pb-2 text-xs font-bold text-element-600">
+                  Executing app {dustAppRunAction.appName}...
+                </div>
+              )}
               <Spinner size="sm" />
             </div>
           ) : (
