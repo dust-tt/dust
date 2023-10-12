@@ -10,7 +10,6 @@ import {
   BlockObjectResponse,
   GetDatabaseResponse,
   GetPageResponse,
-  PageObjectResponse,
   PartialBlockObjectResponse,
   QueryDatabaseResponse,
   RichTextItemResponse,
@@ -19,53 +18,17 @@ import {
 import memoize from "lodash.memoize";
 import { Logger } from "pino";
 
+import {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
-
-// notion SDK types
-type PageObjectProperties = PageObjectResponse["properties"];
-type PropertyKeys = keyof PageObjectProperties;
-type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
-
-// Extractor types
-export interface ParsedPage {
-  id: string;
-  url: string;
-  title?: string;
-  properties: ParsedProperty[];
-  blocks: ParsedBlock[];
-  rendered: string;
-  createdTime: number;
-  updatedTime: number;
-  author: string;
-  lastEditor: string;
-  hasBody: boolean;
-  parentType: "database" | "page" | "block" | "workspace";
-  parentId: string;
-}
-
-export type ParsedProperty = {
-  key: string;
-  id: string;
-  type: PropertyTypes;
-  text: string | null;
-};
-
-type ParsedBlock = {
-  id: string;
-  type: BlockObjectResponse["type"];
-  text: string | null;
-};
-
-export interface ParsedDatabase {
-  id: string;
-  url: string;
-  title?: string;
-  parentType: "database" | "page" | "block" | "workspace";
-  parentId: string;
-}
 
 /**
  * @param notionAccessToken the access token to use to access the Notion API
@@ -482,7 +445,7 @@ export async function getParsedDatabase(
   notionAccessToken: string,
   databaseId: string,
   loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedDatabase | null> {
+): Promise<ParsedNotionDatabase | null> {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
   const notionClient = new Client({ auth: notionAccessToken });
@@ -558,7 +521,7 @@ export async function getParsedDatabase(
     url: database.url,
     title,
     parentId,
-    parentType: parentType as ParsedPage["parentType"],
+    parentType: parentType as ParsedNotionPage["parentType"],
   };
 }
 
@@ -566,7 +529,7 @@ export async function getParsedPage(
   notionAccessToken: string,
   pageId: string,
   loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedPage | null> {
+): Promise<ParsedNotionPage | null> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
   const notionClient = new Client({ auth: notionAccessToken });
@@ -629,7 +592,7 @@ export async function getParsedPage(
     }
   }
 
-  let parsedBlocks: ParsedBlock[] = [];
+  let parsedBlocks: ParsedNotionBlock[] = [];
   for (const block of blocks) {
     if (isFullBlock(block)) {
       parsedBlocks = parsedBlocks.concat(
@@ -718,7 +681,7 @@ export async function getParsedPage(
     lastEditor,
     hasBody: pageHasBody,
     parentId,
-    parentType: parentType as ParsedPage["parentType"],
+    parentType: parentType as ParsedNotionPage["parentType"],
   };
 }
 
@@ -904,7 +867,7 @@ async function parsePageBlock(
   notionClient: Client,
   pageLogger: Logger,
   parentsIds: Set<string> = new Set()
-): Promise<ParsedBlock[]> {
+): Promise<ParsedNotionBlock[]> {
   function parseRichText(text: RichTextItemResponse[]): string {
     const parsed = text.map((t) => t.plain_text).join(" ");
     return parsed;
@@ -937,8 +900,8 @@ async function parsePageBlock(
     return fileText;
   }
 
-  function indentBlocks(blocks: ParsedBlock[]): ParsedBlock[] {
-    const indentedBlocks: ParsedBlock[] = [];
+  function indentBlocks(blocks: ParsedNotionBlock[]): ParsedNotionBlock[] {
+    const indentedBlocks: ParsedNotionBlock[] = [];
     for (const { text, ...rest } of blocks) {
       const indentedText = text ? `- ${text}` : null;
       indentedBlocks.push({
@@ -950,15 +913,15 @@ async function parsePageBlock(
   }
 
   async function withPotentialChildren(
-    parsedBlock: ParsedBlock,
+    parsedBlock: ParsedNotionBlock,
     block: BlockObjectResponse
-  ): Promise<ParsedBlock[]> {
+  ): Promise<ParsedNotionBlock[]> {
     const parsedBlocks = [parsedBlock];
     if (!block.has_children) {
       return parsedBlocks;
     }
 
-    const parsedChildren: ParsedBlock[] = [];
+    const parsedChildren: ParsedNotionBlock[] = [];
     try {
       for await (const child of iteratePaginatedAPIWithRetries(
         notionClient.blocks.children.list,

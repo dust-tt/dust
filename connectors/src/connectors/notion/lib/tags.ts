@@ -1,6 +1,6 @@
-import type { ParsedPage } from "@connectors/connectors/notion/lib/notion_api";
+import { ParsedNotionPage } from "@connectors/connectors/notion/lib/types";
 
-export function getTagsForPage(page: ParsedPage): string[] {
+export function getTagsForPage(page: ParsedNotionPage): string[] {
   const tags: string[] = [];
   if (page.title) {
     tags.push(`title:${page.title}`);
