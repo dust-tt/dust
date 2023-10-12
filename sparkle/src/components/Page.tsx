@@ -27,17 +27,12 @@ interface PageHeaderProps {
 
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   const iconClasses = "s-text-brand";
-  const titleClasses =
-    "s-text-2xl s-font-bold s-text-element-900 s-self-stretch";
-  const descriptionClasses =
-    "s-text-sm s-font-normal s-text-element-700 s-self-stretch";
-
   return (
-    <div className="s-inline-flex s-w-full s-basis-0 s-flex-col s-items-start s-justify-start s-gap-1">
+    <Page.Vertical gap="xs">
       <Icon visual={icon} className={iconClasses} size="lg" />
-      <div className={titleClasses}>{title}</div>
-      {description && <div className={descriptionClasses}>{description}</div>}
-    </div>
+      <Page.H variant="h2">{title}</Page.H>
+      {description && <Page.P variant="secondary">{description}</Page.P>}
+    </Page.Vertical>
   );
 };
 
@@ -52,30 +47,24 @@ Page.SectionHeader = function ({
   description,
   action,
 }: PageSectionHeaderProps) {
-  const titleClasses =
-    "s-text-lg s-font-semibold s-text-element-900 s-self-stretch";
-  const descriptionClasses = " s-self-stretch s-text-element-700";
-
   return (
-    <div className="s-flex s-shrink s-grow s-basis-0 s-flex-col s-items-stretch s-justify-between s-gap-2 md:s-flex-row md:s-items-center">
-      <div className="s-flex s-flex-row s-gap-2">
-        <div className="s-flex s-flex-col s-gap-1">
-          <div className={titleClasses}>{title}</div>
-          <div className={descriptionClasses}>{description}</div>
-        </div>
-      </div>
+    <Page.Horizontal gap="md">
+      <Page.Vertical gap="xs" sizing="grow">
+        <Page.H variant="h4">{title}</Page.H>
+        <Page.P variant="secondary">{description}</Page.P>
+      </Page.Vertical>
       {action && (
-        <div className="s-flex">
+        <div>
           <Button {...action} />
         </div>
       )}
-    </div>
+    </Page.Horizontal>
   );
 };
 
 Page.Separator = function () {
   return (
-    <div className="s-w-full s-py-3">
+    <div className="s-w-full s-py-2">
       <div className="s-h-px s-w-full s-bg-structure-200" />
     </div>
   );
@@ -95,17 +84,20 @@ Page.P = function ({ children, variant }: PagePProps) {
 };
 
 interface PageHProps {
-  variant: "h1" | "h2" | "h3";
+  variant?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   children: React.ReactNode;
 }
 
-Page.H = function ({ children, variant }: PageHProps) {
+Page.H = function ({ children, variant = "h3" }: PageHProps) {
   const Component = variant;
 
   const hSizes = {
-    h1: "s-text-2xl s-font-bold s-text-element-900",
-    h2: "s-text-lg s-font-semibold s-text-element-900",
-    h3: "s-text-base s-font-bold s-text-element-900",
+    h1: "s-text-4xl s-font-bold s-text-element-900",
+    h2: "s-text-3xl s-font-bold s-text-element-900",
+    h3: "s-text-2xl s-font-bold s-text-element-900",
+    h4: "s-text-xl s-font-semibold s-text-element-900",
+    h5: "s-text-lg s-font-semibold s-text-element-900",
+    h6: "s-text-base s-font-bold s-text-element-900",
   };
 
   return <Component className={hSizes[variant]}>{children}</Component>;
@@ -115,15 +107,16 @@ interface PageDivProps {
   children: React.ReactNode;
   sizing?: "shrink" | "grow";
   align?: "stretch" | "left" | "center" | "right";
-  gap?: "xs" | "sm" | "md" | "lg" | "xl";
+  gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
 }
 
 const gapSizes = {
-  xs: "s-gap-2",
-  sm: "s-gap-3",
-  md: "s-gap-4",
-  lg: "s-gap-6",
+  xs: "s-gap-1",
+  sm: "s-gap-2",
+  md: "s-gap-3",
+  lg: "s-gap-5",
   xl: "s-gap-8",
+  none: "",
 };
 
 Page.Horizontal = function ({
