@@ -217,7 +217,7 @@ export default function WorkspaceAdmin({
     }
   };
 
-  const fakeMembers = [
+  const fakeMembers: UserType[] = [
     {
       name: "John Doe",
       email: "john@doe.com",
@@ -242,7 +242,25 @@ export default function WorkspaceAdmin({
       workspaces: [{ role: "none" }],
       image: null,
     },
+  ].map((m) => ({ ...members[0], ...m }));
+  const fakeInvitations: MembershipInvitationType[] = [
+    {
+      inviteEmail: "test@toto.com",
+      status: "pending",
+      id: 0,
+    },
+    {
+      inviteEmail: "dasfdsafdsafds@dafdasdfas.com",
+      status: "consumed",
+      id: 1,
+    },
+    {
+      inviteEmail: "thelast@lastone.com",
+      status: "revoked",
+      id: 2,
+    },
   ];
+
   return (
     <AppLayout
       user={user}
@@ -306,7 +324,7 @@ export default function WorkspaceAdmin({
               <div></div>
             )}
           </div>
-          <MemberList members={fakeMembers} />
+          <MemberList members={fakeMembers} invitations={fakeInvitations} />
         </div>
 
         {/********************** LEGACY **************/}
@@ -608,7 +626,7 @@ function MemberList({
             <div>
               {isInvitation(elt) ? (
                 <Chip size="xs" color="slate">
-                  <span className="capitalize">pending</span>
+                  <span className="capitalize">{elt.status}</span>
                 </Chip>
               ) : (
                 <Chip
@@ -630,11 +648,9 @@ function MemberList({
                 </Chip>
               )}
             </div>
-            {!isInvitation(elt) && (
-              <div>
-                <ChevronRightIcon />
-              </div>
-            )}
+            <div>
+              <ChevronRightIcon />
+            </div>
           </div>
         ))}
       </div>
