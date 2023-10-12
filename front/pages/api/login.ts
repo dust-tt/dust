@@ -11,6 +11,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -129,18 +130,33 @@ async function handler(
         user.username = session.user.username;
         user.email = session.user.email;
         user.name = session.user.name;
+
+        if (!user.firstName && !user.lastName) {
+          const { firstName, lastName } = guessFirstandLastNameFromFullName(
+            session.user.name
+          );
+          user.firstName = firstName;
+          user.lastName = lastName;
+        }
+
         await user.save();
       }
 
       // The user does not exist. We create it and create a personal workspace if there is no invite
       // associated with the login request.
       if (!user) {
+        const { firstName, lastName } = guessFirstandLastNameFromFullName(
+          session.user.name
+        );
+
         user = await User.create({
           provider: session.provider.provider,
           providerId: session.provider.id.toString(),
           username: session.user.username,
           email: session.user.email,
           name: session.user.name,
+          firstName,
+          lastName,
         });
 
         // If there is no invte, we create a personal workspace for the user, otherwise the user
