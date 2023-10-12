@@ -10,7 +10,7 @@ const meta = {
 
 export default meta;
 
-export const ListChipsExample = () => (
+export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
     <Citation
       title="Source: Thread on #general"
@@ -34,7 +34,7 @@ export const ListChipsExample = () => (
       />
       <Citation
         title="Title"
-        type="drive"
+        type="google_drive"
         index="3"
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."
