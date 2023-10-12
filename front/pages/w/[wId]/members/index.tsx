@@ -183,10 +183,10 @@ export default function WorkspaceAdmin({
           allowedDomain !== owner.allowedDomain && !allowedDomainError
         }
         title="Invitation link settings"
-        isFullScreen={false}
+        type="right-side"
         onSave={handleUpdateWorkspace}
       >
-        <div className="mt-4 flex flex-col gap-6">
+        <div className="mt-6 flex flex-col gap-6 px-2">
           <div>
             Any person with a Google Workspace email on corresponding domain
             name will be allowed to join the workspace.
@@ -268,6 +268,8 @@ export default function WorkspaceAdmin({
             description="Invite and remove members, manage their rights."
           />
           <div>
+            <InviteSettings />
+
             <Page.SectionHeader
               title="Invitation Link"
               description="Allow any person with the right email domain name (@company.com) to signup and join your workspace."
@@ -307,7 +309,6 @@ export default function WorkspaceAdmin({
                       icon={Cog6ToothIcon}
                       onClick={() => setInviteSettingsOpen(true)}
                     />
-                    <InviteSettings />
                   </div>
                 </div>
               </div>
@@ -529,6 +530,7 @@ export default function WorkspaceAdmin({
       </Page>
     </AppLayout>
   );
+
   function MemberList({
     members,
     invitations,
@@ -536,28 +538,6 @@ export default function WorkspaceAdmin({
     members: UserType[];
     invitations: MembershipInvitationType[];
   }) {
-    function isInvitation(
-      arg: MembershipInvitationType | UserType
-    ): arg is MembershipInvitationType {
-      return (arg as MembershipInvitationType).inviteEmail !== undefined;
-    }
-    const handleMemberRoleChange = async (member: UserType, role: string) => {
-      const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          role,
-        }),
-      });
-      if (!res.ok) {
-        window.alert("Failed to update membership.");
-      } else {
-        await mutate(`/api/w/${owner.sId}/members`);
-      }
-    };
-
     const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
       admin: "warning",
       builder: "amber",
@@ -568,6 +548,7 @@ export default function WorkspaceAdmin({
       null
     );
     const [searchText, setSearchText] = useState("");
+
     const displayList = [
       ...members
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -586,6 +567,7 @@ export default function WorkspaceAdmin({
           (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
         ),
     ];
+
     return (
       <>
         <Modal
@@ -593,14 +575,16 @@ export default function WorkspaceAdmin({
           onClose={() => setModalInviteEmailOpen(false)}
           hasChanged={false}
           title="Invite by email"
+          type="right-side"
         >
-          Hi
+          <div className="mt-6 px-2">Struff</div>
         </Modal>
         <Modal
           isOpen={changeRoleMember !== null}
           onClose={() => setChangeRoleMember(null)}
           hasChanged={false}
           title={changeRoleMember?.name || "Unreachable"}
+          type="right-side"
         >
           <ChangeMemberModal
             member={changeRoleMember}
@@ -684,6 +668,28 @@ export default function WorkspaceAdmin({
       </>
     );
   }
+  function isInvitation(
+    arg: MembershipInvitationType | UserType
+  ): arg is MembershipInvitationType {
+    return (arg as MembershipInvitationType).inviteEmail !== undefined;
+  }
+
+  async function handleMemberRoleChange(member: UserType, role: string) {
+    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to update membership.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/members`);
+    }
+  }
 }
 
 function ChangeMemberModal({
@@ -701,7 +707,7 @@ function ChangeMemberModal({
     user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
   };
   return (
-    <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
+    <div className="mt-6 flex flex-col gap-9 px-2 text-sm text-element-700">
       <div className="flex items-center gap-4">
         <Avatar size="lg" visual={member.image} name={member.name} />
         <div className="flex grow flex-col">
@@ -722,7 +728,7 @@ function ChangeMemberModal({
                 className="capitalize"
               />
             </DropdownMenu.Button>
-            <DropdownMenu.Items>
+            <DropdownMenu.Items origin="topLeft">
               {["admin", "builder", "user"].map((role) => (
                 <DropdownMenu.Item
                   key={role}
