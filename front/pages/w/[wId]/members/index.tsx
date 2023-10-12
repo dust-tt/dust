@@ -6,11 +6,14 @@ import {
   Chip,
   ClipboardIcon,
   Cog6ToothIcon,
+  DropdownMenu,
   Input,
   Modal,
   Page,
   PlusIcon,
   QuestionMarkCircleIcon,
+  QuestionMarkCircleStrokeIcon,
+  RobotIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
 import { Listbox } from "@headlessui/react";
@@ -22,7 +25,12 @@ import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import {
+  Authenticator,
+  RoleType,
+  getSession,
+  getUserFromSession,
+} from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -175,15 +183,15 @@ export default function WorkspaceAdmin({
           allowedDomain !== owner.allowedDomain && !allowedDomainError
         }
         title="Invitation link settings"
-        isFullScreen={true}
+        isFullScreen={false}
         onSave={handleUpdateWorkspace}
       >
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-6">
           <div>
             Any person with a Google Workspace email on corresponding domain
             name will be allowed to join the workspace.
           </div>
-          <div>
+          <div className="flex flex-col gap-1.5">
             <div className="font-bold">Whitelisted email domain</div>
             <Input
               className="text-sm"
@@ -199,23 +207,6 @@ export default function WorkspaceAdmin({
       </Modal>
     );
   }
-
-  const handleMemberRoleChange = async (member: UserType, role: string) => {
-    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        role,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to update membership.");
-    } else {
-      await mutate(`/api/w/${owner.sId}/members`);
-    }
-  };
 
   const fakeMembers: UserType[] = [
     {
@@ -457,7 +448,7 @@ export default function WorkspaceAdmin({
                         <Listbox
                           value={member.workspaces[0].role}
                           onChange={async (role) => {
-                            await handleMemberRoleChange(member, role);
+                            // await handleMemberRoleChange(member, role);
                           }}
                         >
                           {() => (
@@ -538,122 +529,231 @@ export default function WorkspaceAdmin({
       </Page>
     </AppLayout>
   );
-}
+  function MemberList({
+    members,
+    invitations,
+  }: {
+    members: UserType[];
+    invitations: MembershipInvitationType[];
+  }) {
+    function isInvitation(
+      arg: MembershipInvitationType | UserType
+    ): arg is MembershipInvitationType {
+      return (arg as MembershipInvitationType).inviteEmail !== undefined;
+    }
+    const handleMemberRoleChange = async (member: UserType, role: string) => {
+      const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          role,
+        }),
+      });
+      if (!res.ok) {
+        window.alert("Failed to update membership.");
+      } else {
+        await mutate(`/api/w/${owner.sId}/members`);
+      }
+    };
 
-function MemberList({
-  members,
-  invitations,
-}: {
-  members: UserType[];
-  invitations: MembershipInvitationType[];
-}) {
-  function isInvitation(
-    arg: MembershipInvitationType | UserType
-  ): arg is MembershipInvitationType {
-    return (arg as MembershipInvitationType).inviteEmail !== undefined;
-  }
-
-  const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
-    admin: "warning",
-    builder: "amber",
-    user: "emerald",
-  };
-  const [isInviteLinkOpen, setIsInviteLinkOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const displayList = [
-    ...members
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter(
-        (m) =>
-          !searchText ||
-          m.name.toLowerCase().includes(searchText) ||
-          m.email?.toLowerCase().includes(searchText) ||
-          m.username?.toLowerCase().includes(searchText)
-      ),
-    ...invitations
-      .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
-      .filter(
-        (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
-      ),
-  ];
-  return (
-    <>
-      <Modal
-        isOpen={isInviteLinkOpen}
-        onClose={() => setIsInviteLinkOpen(false)}
-        hasChanged={false}
-        title="Invite by email"
-      >
-        Hi
-      </Modal>
-      <Page.SectionHeader title="Member list" />
-      <div className="flex w-full items-stretch gap-2">
-        <div className="flex-grow">
-          <Searchbar
-            placeholder="Search members"
-            onChange={setSearchText}
-            value={searchText}
-            name={""}
+    const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
+      admin: "warning",
+      builder: "amber",
+      user: "emerald",
+    };
+    const [modalInviteEmailOpen, setModalInviteEmailOpen] = useState(false);
+    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
+      null
+    );
+    const [searchText, setSearchText] = useState("");
+    const displayList = [
+      ...members
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((m) => m.workspaces[0].role !== "none")
+        .filter(
+          (m) =>
+            !searchText ||
+            m.name.toLowerCase().includes(searchText) ||
+            m.email?.toLowerCase().includes(searchText) ||
+            m.username?.toLowerCase().includes(searchText)
+        ),
+      ...invitations
+        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+        .filter((i) => i.status === "pending")
+        .filter(
+          (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
+        ),
+    ];
+    return (
+      <>
+        <Modal
+          isOpen={modalInviteEmailOpen}
+          onClose={() => setModalInviteEmailOpen(false)}
+          hasChanged={false}
+          title="Invite by email"
+        >
+          Hi
+        </Modal>
+        <Modal
+          isOpen={changeRoleMember !== null}
+          onClose={() => setChangeRoleMember(null)}
+          hasChanged={false}
+          title={changeRoleMember?.name || "Unreachable"}
+        >
+          <ChangeMemberModal
+            member={changeRoleMember}
+            handleMemberRoleChange={handleMemberRoleChange}
+          />
+        </Modal>
+        <Page.SectionHeader title="Member list" />
+        <div className="flex w-full items-stretch gap-2">
+          <div className="flex-grow">
+            <Searchbar
+              placeholder="Search members"
+              onChange={setSearchText}
+              value={searchText}
+              name={""}
+            />
+          </div>
+          <Button
+            variant="primary"
+            label="Invite members"
+            size="sm"
+            icon={PlusIcon}
+            onClick={() => setModalInviteEmailOpen(true)}
           />
         </div>
-        <Button
-          variant="primary"
-          label="Invite members"
-          size="sm"
-          icon={PlusIcon}
-          onClick={() => setIsInviteLinkOpen(true)}
-        />
-      </div>
-      <div>
-        {displayList.map((elt, i) => (
-          <div
-            key={i}
-            className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm hover:bg-structure-100"
-          >
-            <div>
-              {isInvitation(elt) ? (
-                <QuestionMarkCircleIcon />
-              ) : (
-                <Avatar visual={elt.image} name={elt.name} size="xs" />
+        <div>
+          {displayList.map((elt, i) => (
+            <div
+              key={i}
+              className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm hover:bg-structure-100"
+              onClick={() => {
+                if (isInvitation(elt)) return;
+                setChangeRoleMember(elt);
+              }}
+            >
+              <div>
+                {isInvitation(elt) ? (
+                  <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
+                ) : (
+                  <Avatar visual={elt.image} name={elt.name} size="xs" />
+                )}
+              </div>
+              {!isInvitation(elt) && (
+                <div className="font-medium text-element-900">{elt.name}</div>
               )}
-            </div>
-            {!isInvitation(elt) && (
-              <div className="font-medium text-element-900">{elt.name}</div>
-            )}
-            <div className="grow font-normal text-element-700">
-              {isInvitation(elt) ? elt.inviteEmail : elt.email || elt.username}
-            </div>
-            <div>
-              {isInvitation(elt) ? (
-                <Chip size="xs" color="slate">
-                  <span className="capitalize">{elt.status}</span>
-                </Chip>
-              ) : (
-                <Chip
-                  size="xs"
-                  color={COLOR_FOR_ROLE[elt.workspaces[0].role]}
-                  className={
-                    /** Force tailwind to include classes we will need below */
-                    "text-amber-900 text-emerald-900 text-warning-900"
-                  }
-                >
-                  <span
-                    className={classNames(
-                      "capitalize",
-                      `text-${COLOR_FOR_ROLE[elt.workspaces[0].role]}-900`
-                    )}
+              <div className="grow font-normal text-element-700">
+                {isInvitation(elt)
+                  ? elt.inviteEmail
+                  : elt.email || elt.username}
+              </div>
+              <div>
+                {isInvitation(elt) ? (
+                  <Chip size="xs" color="slate">
+                    <span className="capitalize">{elt.status}</span>
+                  </Chip>
+                ) : (
+                  <Chip
+                    size="xs"
+                    color={COLOR_FOR_ROLE[elt.workspaces[0].role]}
+                    className={
+                      /** Force tailwind to include classes we will need below */
+                      "text-amber-900 text-emerald-900 text-warning-900"
+                    }
                   >
-                    {elt.workspaces[0].role}
-                  </span>
-                </Chip>
-              )}
+                    <span
+                      className={classNames(
+                        "capitalize",
+                        `text-${COLOR_FOR_ROLE[elt.workspaces[0].role]}-900`
+                      )}
+                    >
+                      {elt.workspaces[0].role}
+                    </span>
+                  </Chip>
+                )}
+              </div>
+              <div>
+                <ChevronRightIcon />
+              </div>
             </div>
-            <div>
-              <ChevronRightIcon />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </>
+    );
+  }
+}
+
+function ChangeMemberModal({
+  member,
+  handleMemberRoleChange,
+}: {
+  member: UserType | null;
+  handleMemberRoleChange: (member: UserType, role: RoleType) => void;
+}) {
+  if (!member) return null; // Unreachable
+  const roleTexts: { [k: string]: string } = {
+    admin: "Admins can manage members, in addition to builders' rights.",
+    builder:
+      "Builders can create custom assistants and use advanced dev tools.",
+    user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
+  };
+  return (
+    <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
+      <div className="flex items-center gap-4">
+        <Avatar size="lg" visual={member.image} name={member.name} />
+        <div className="flex grow flex-col">
+          <div className="font-semibold text-element-900">{member.name}</div>
+          <div className="font-normal">{member.email}</div>
+        </div>
       </div>
-    </>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <div className="font-bold text-element-900">Role:</div>
+          <DropdownMenu>
+            <DropdownMenu.Button type="select">
+              <Button
+                variant="secondary"
+                label={member.workspaces[0].role}
+                size="sm"
+                type="select"
+                className="capitalize"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items>
+              {["admin", "builder", "user"].map((role) => (
+                <DropdownMenu.Item
+                  key={role}
+                  onClick={() =>
+                    handleMemberRoleChange(member, role as RoleType)
+                  } // TODO
+                  label={role}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
+        <Page.P>
+          The role defines the rights of a member of the workspace.{" "}
+          {roleTexts[member.workspaces[0].role]}
+        </Page.P>
+      </div>
+      <div className="flex flex-none flex-col gap-2">
+        <div className="flex-none">
+          <Button
+            variant="primaryWarning"
+            label="Revoke member access"
+            size="sm"
+            onClick={() => handleMemberRoleChange(member, "none")}
+          />
+        </div>
+        <Page.P>
+          Deleting a member will remove them from the workspace. They will be
+          able to rejoin if they have an invitation link.
+        </Page.P>
+      </div>
+    </div>
   );
 }
