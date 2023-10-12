@@ -49,6 +49,7 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 
+import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 
 /**
@@ -256,23 +257,34 @@ async function renderAgentMessage(
     messages,
   }: { message: Message; agentMessage: AgentMessage; messages: Message[] }
 ): Promise<AgentMessageType> {
-  const [agentConfiguration, agentRetrievalAction] = await Promise.all([
-    getAgentConfiguration(auth, agentMessage.agentConfigurationId),
-    (async () => {
-      if (agentMessage.agentRetrievalActionId) {
-        return await renderRetrievalActionByModelId(
-          agentMessage.agentRetrievalActionId
-        );
-      }
-      return null;
-    })(),
-  ]);
+  const [agentConfiguration, agentRetrievalAction, agentDustAppRunAction] =
+    await Promise.all([
+      getAgentConfiguration(auth, agentMessage.agentConfigurationId),
+      (async () => {
+        if (agentMessage.agentRetrievalActionId) {
+          return await renderRetrievalActionByModelId(
+            agentMessage.agentRetrievalActionId
+          );
+        }
+        return null;
+      })(),
+      (async () => {
+        if (agentMessage.agentDustAppRunActionId) {
+          return await renderDustAppRunActionByModelId(
+            agentMessage.agentDustAppRunActionId
+          );
+        }
+        return null;
+      })(),
+    ]);
 
   if (!agentConfiguration) {
     throw new Error(
       `Configuration ${agentMessage.agentConfigurationId} not found`
     );
   }
+
+  const action = agentRetrievalAction ?? agentDustAppRunAction;
 
   let error: {
     code: string;
@@ -295,7 +307,7 @@ async function renderAgentMessage(
     parentMessageId:
       messages.find((m) => m.id === message.parentId)?.sId ?? null,
     status: agentMessage.status,
-    action: agentRetrievalAction,
+    action,
     content: agentMessage.content,
     error,
     configuration: agentConfiguration,

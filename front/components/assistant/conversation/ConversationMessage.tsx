@@ -229,7 +229,8 @@ export function ConversationMessage({
           </div>
         </div>
       </div>
-      {/* SIG SIZE SCREEN*/}
+
+      {/* BIG SIZE SCREEN*/}
       <div className="flex hidden w-full gap-4 xl:flex">
         {/* COLUMN 1: AVATAR - in small size if small layout */}
         <Avatar

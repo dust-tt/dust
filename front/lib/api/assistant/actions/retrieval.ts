@@ -292,7 +292,7 @@ export async function generateRetrievalParams(
  * Action rendering.
  */
 
-// Internal interface for the retrieval and rendering of a retrieval action. This should not be used
+// Internal interface for the retrieval and rendering of a Retrieval action. This should not be used
 // outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function renderRetrievalActionByModelId(
@@ -300,7 +300,7 @@ export async function renderRetrievalActionByModelId(
 ): Promise<RetrievalActionType> {
   const action = await AgentRetrievalAction.findByPk(id);
   if (!action) {
-    throw new Error(`No retrieval action found with id ${id}`);
+    throw new Error(`No Retrieval action found with id ${id}`);
   }
 
   const documentRows = await RetrievalDocument.findAll({
@@ -384,6 +384,7 @@ export async function renderRetrievalActionByModelId(
 /**
  * Retrieval meta-prompt
  */
+
 export function retrievalMetaPrompt() {
   return (
     "To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +

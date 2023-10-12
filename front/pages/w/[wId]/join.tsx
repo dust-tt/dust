@@ -134,8 +134,8 @@ export default function Join({
               </p>
             ) : (
               <p>
-                You've been invited to join the Dust workspace of{" "}
-                {workspaceName}.
+                You've been invited to join the {workspaceName} workspace on
+                Dust.
               </p>
             )}
 

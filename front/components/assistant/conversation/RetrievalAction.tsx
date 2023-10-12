@@ -59,8 +59,10 @@ export default function RetrievalAction({
   return (
     <>
       <div className="flex flex-row items-center gap-2 pb-2">
-        <div className="text-xs font-bold text-element-600">Searching for:</div>
-        <Chip.List>
+        <div className="text-xs font-bold text-element-600">
+          Searching&nbsp;for:
+        </div>
+        <Chip.List isWrapping={true}>
           <Tooltip label="Docs created or updated during that time are included in the search">
             <Chip
               color="amber"
@@ -176,7 +178,7 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
   const summary = documentsSummary(documents);
   return (
     <div className="flex flex-row items-center">
-      <span className="hidden lg:block">{documents.length} results</span>
+      <span className="hidden lg:block">{documents.length}&nbsp;results</span>
       {Object.keys(summary).map((k) => {
         return (
           <div key={k} className="ml-3 flex flex-initial flex-row items-center">
