@@ -574,30 +574,32 @@ export function parsePageProperties(page: PageObjectResponse) {
   return properties;
 }
 
-export async function retrievePageBlocksResultPage({
+export async function retrieveBlockChildrenResultPage({
   accessToken,
-  pageId,
+  blockOrPageId,
   cursor,
   loggerArgs,
 }: {
   accessToken: string;
-  pageId: string;
+  blockOrPageId: string;
   cursor: string | null;
   loggerArgs: Record<string, string | number>;
 }): Promise<ListBlockChildrenResponse | null> {
-  const localLogger = logger.child({ ...loggerArgs, pageId });
+  const localLogger = logger.child(loggerArgs);
 
   const notionClient = new Client({ auth: accessToken });
 
   try {
-    localLogger.info("Fetching page blocks result page from Notion API.");
+    localLogger.info(
+      "Fetching block or page children result page from Notion API."
+    );
     const resultPage = await notionClient.blocks.children.list({
-      block_id: pageId,
+      block_id: blockOrPageId,
       start_cursor: cursor ?? undefined,
     });
     localLogger.info(
       { count: resultPage.results.length },
-      "Received page blocks result page from Notion API."
+      "Received block or page children result page from Notion API."
     );
     return resultPage;
   } catch (e) {
@@ -612,7 +614,7 @@ export async function retrievePageBlocksResultPage({
             message: e.message,
           },
         },
-        "Couldn't get page blocks."
+        "Couldn't get block or page children."
       );
       return null;
     } else {

@@ -20,8 +20,8 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
+  retrieveBlockChildrenResultPage,
   retrievePage,
-  retrievePageBlocksResultPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import {
   getParents,
@@ -1019,8 +1019,6 @@ export async function updateParentsFieldsActivity(
   localLogger.info({ nbUpdated }, "Updated parents fields.");
 }
 
-// notion upsert page workflow
-
 export async function notionRetrievePageActivity({
   dataSourceConfig,
   accessToken,
@@ -1113,19 +1111,21 @@ export async function notionRetrievePageActivity({
   };
 }
 
-export async function notionRetrievePageBlocksResultPageActivity({
+export async function notionBlockChildrenResultPageActivity({
   dataSourceConfig,
   accessToken,
   pageId,
+  blockId,
   cursor,
-  currentIndexInPage,
+  currentIndexInParent,
   loggerArgs,
 }: {
   dataSourceConfig: DataSourceConfig;
   accessToken: string;
   pageId: string;
+  blockId: string | null;
   cursor: string | null;
-  currentIndexInPage: number;
+  currentIndexInParent: number;
   runTimestamp: number;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
@@ -1134,10 +1134,15 @@ export async function notionRetrievePageBlocksResultPageActivity({
   childDatabases: string[];
   blocksCount: number;
 }> {
-  const localLogger = logger.child({ ...loggerArgs, pageId });
+  const localLogger = logger.child({
+    ...loggerArgs,
+    pageId,
+    blockId,
+    currentIndexInParent,
+  });
 
   localLogger.info(
-    "notionRetrievePageBlocksResultPageActivity: Retrieving connector."
+    "notionBlockChildrenResultPageActivity: Retrieving connector."
   );
   const connector = await Connector.findOne({
     where: {
@@ -1152,11 +1157,11 @@ export async function notionRetrievePageBlocksResultPageActivity({
   }
 
   localLogger.info(
-    "notionRetrievePageBlocksResultPageActivity: Retrieving result page from Notion API."
+    "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
   );
-  const resultPage = await retrievePageBlocksResultPage({
+  const resultPage = await retrieveBlockChildrenResultPage({
     accessToken,
-    pageId,
+    blockOrPageId: blockId || pageId,
     cursor,
     loggerArgs,
   });
@@ -1171,16 +1176,34 @@ export async function notionRetrievePageBlocksResultPageActivity({
     };
   }
 
-  const parsedBlocks: ParsedNotionBlock[] = [];
+  let parsedBlocks: ParsedNotionBlock[] = [];
   for (const block of resultPage.results) {
     if (isFullBlock(block)) {
       parsedBlocks.push(parsePageBlock(block));
     }
   }
 
+  if (blockId) {
+    // remove blocks that are already in the cache, as Notion data structure can
+    // have cycles and we don't want to loop forever.
+    const existingBlocks = await NotionConnectorBlockCacheEntry.findAll({
+      where: {
+        notionPageId: pageId,
+        notionBlockId: parsedBlocks.map((b) => b.id),
+        connectorId: connector.id,
+      },
+      attributes: ["notionBlockId"],
+    });
+    const existingBlockIds = new Set(
+      existingBlocks.map((b) => b.notionBlockId)
+    );
+    parsedBlocks = parsedBlocks.filter((b) => !existingBlockIds.has(b.id));
+  }
+
   const blocksWithChildren = parsedBlocks
     .filter((b) => b.hasChildren)
     .map((b) => b.id);
+
   const childDatabases = parsedBlocks
     .filter((b) => b.type === "child_database")
     .map((b) => b.id);
@@ -1194,9 +1217,8 @@ export async function notionRetrievePageBlocksResultPageActivity({
   );
 
   localLogger.info(
-    "notionRetrievePageBlocksResultPageActivity: Saving blocks in cache."
+    "notionBlockChildrenResultPageActivity: Saving blocks in cache."
   );
-
   await Promise.all(
     parsedBlocks.map((block, i) =>
       NotionConnectorBlockCacheEntry.create({
@@ -1204,8 +1226,8 @@ export async function notionRetrievePageBlocksResultPageActivity({
         notionBlockId: block.id,
         blockType: block.type,
         blockText: block.text,
-        parentBlockId: null,
-        indexInParent: currentIndexInPage + i,
+        parentBlockId: blockId,
+        indexInParent: currentIndexInParent + i,
         childDatabaseTitle: block.childDatabaseTitle,
         connectorId: connector.id,
       })
