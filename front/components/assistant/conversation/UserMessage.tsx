@@ -36,6 +36,7 @@ export function UserMessage({
       pictureUrl={message.context.profilePictureUrl}
       name={message.context.fullName}
       reactions={reactions}
+      enableEmojis={true}
     >
       <div className="flex flex-col gap-4">
         <div>

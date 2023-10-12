@@ -19,6 +19,8 @@ export type PostContentFragmentsResponseBody = {
 export const PostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
+  url: t.union([t.string, t.null]),
+  contentType: t.literal("slack_thread_content"),
 });
 
 async function handler(
@@ -74,7 +76,7 @@ async function handler(
         });
       }
 
-      const { content, title } = bodyValidation.right;
+      const { content, title, url, contentType } = bodyValidation.right;
 
       if (content.length === 0 || content.length > 64 * 1024) {
         return apiError(req, res, {
@@ -91,6 +93,8 @@ async function handler(
         conversation,
         title,
         content,
+        url,
+        contentType,
       });
 
       res.status(200).json({ contentFragment });

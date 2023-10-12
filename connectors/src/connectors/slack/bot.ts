@@ -1,3 +1,6 @@
+import { WebClient } from "@slack/web-api";
+import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
 
 import {
@@ -7,6 +10,7 @@ import {
   AgentMessageType,
   ConversationType,
   DustAPI,
+  PostContentFragmentRequestBody,
   RetrievalDocumentType,
   UserMessageType,
 } from "@connectors/lib/dust_api";
@@ -21,6 +25,7 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {
+  formatMessagesForUpsert,
   getAccessToken,
   getBotUserIdMemoized,
   getSlackClient,
@@ -137,12 +142,22 @@ async function botAnswerMessage(
     slackAvatar: null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
-    threadTs: lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    threadTs:
+      slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
     conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
   const accessToken = await getAccessToken(connector.connectionId);
   const slackClient = getSlackClient(accessToken);
+  // Start computing the content fragment as early as possible since it's independent from all the other I/O operations
+  // and a lot of the subsequent I/O operations can only be done sequentially.
+  const contentFragmentPromise = makeContentFragment(
+    slackClient,
+    slackChannel,
+    lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector
+  );
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
@@ -309,10 +324,23 @@ async function botAnswerMessage(
     },
   };
 
+  const buildContentFragmentRes = await contentFragmentPromise;
+  if (buildContentFragmentRes.isErr()) {
+    return new Err(new Error(buildContentFragmentRes.error.message));
+  }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
+    if (buildContentFragmentRes.value) {
+      const contentFragmentRes = await dustAPI.postContentFragment({
+        conversationId: lastSlackChatBotMessage.conversationId,
+        contentFragment: buildContentFragmentRes.value,
+      });
+      if (contentFragmentRes.isErr()) {
+        return new Err(new Error(contentFragmentRes.error.message));
+      }
+    }
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
@@ -333,6 +361,7 @@ async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
+      contentFragment: buildContentFragmentRes.value || undefined,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
@@ -522,4 +551,105 @@ export async function toggleSlackbot(
   await slackConfig.save();
 
   return new Ok(void 0);
+}
+
+async function makeContentFragment(
+  slackClient: WebClient,
+  channelId: string,
+  threadTs: string,
+  startingAtTs: string | null,
+  connector: Connector
+) {
+  const slackChannelPromise = slackClient.conversations.info({
+    channel: channelId,
+  });
+  let allMessages: Message[] = [];
+
+  let next_cursor = undefined;
+
+  let shouldTake = false;
+  do {
+    const replies: ConversationsRepliesResponse =
+      await slackClient.conversations.replies({
+        channel: channelId,
+        ts: threadTs,
+        cursor: next_cursor,
+        limit: 100,
+      });
+    // Despite the typing, in practice `replies` can be undefined at times.
+    if (!replies) {
+      return new Err(
+        new Error(
+          "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
+        )
+      );
+    }
+    if (replies.error) {
+      throw new Error(replies.error);
+    }
+    if (!replies.messages) {
+      break;
+    }
+    for (const m of replies.messages) {
+      if (m.ts === startingAtTs) {
+        // Signal that we must take all the messages starting from this one.
+        shouldTake = true;
+      }
+      if (!m.user) {
+        continue;
+      }
+      if (shouldTake) {
+        const slackChatBotMessage = await SlackChatBotMessage.findOne({
+          where: {
+            connectorId: connector.id,
+            messageTs: m.ts,
+            channelId: channelId,
+          },
+        });
+        if (slackChatBotMessage) {
+          // If this message is a mention to the bot, we don't send it as a content fragment
+          continue;
+        }
+        allMessages.push(m);
+      }
+    }
+
+    next_cursor = replies.response_metadata?.next_cursor;
+  } while (next_cursor);
+
+  const botUserId = await getBotUserIdMemoized(slackClient);
+  allMessages = allMessages.filter((m) => m.user !== botUserId);
+  if (allMessages.length === 0) {
+    return new Ok(null);
+  }
+
+  const text = await formatMessagesForUpsert(
+    channelId,
+    allMessages,
+    connector.id.toString(),
+    slackClient
+  );
+  let url: string | null = null;
+  if (allMessages[0]?.ts) {
+    const permalinkRes = await slackClient.chat.getPermalink({
+      channel: channelId,
+      message_ts: allMessages[0].ts,
+    });
+    if (!permalinkRes.ok || !permalinkRes.permalink) {
+      return new Err(new Error(permalinkRes.error));
+    }
+    url = permalinkRes.permalink;
+  }
+  const channel = await slackChannelPromise;
+  console.log(channel);
+  if (channel.error) {
+    return new Err(new Error(channel.error));
+  }
+
+  return new Ok({
+    title: `Thread content from #${channel.channel?.name}`,
+    content: text,
+    url: url,
+    contentType: "slack_thread_content",
+  } as PostContentFragmentRequestBody);
 }

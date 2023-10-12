@@ -271,6 +271,7 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       reactions={reactions}
+      enableEmojis={true}
     >
       {renderMessage(agentMessageToRender, references, shouldStream)}
     </ConversationMessage>

@@ -36,6 +36,7 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import {
   AgentMessageType,
+  ContentFragmentContentType,
   ContentFragmentType,
   ConversationType,
   ConversationVisibility,
@@ -330,6 +331,8 @@ function renderContentFragment({
     version: message.version,
     title: contentFragment.title,
     content: contentFragment.content,
+    url: contentFragment.url,
+    contentType: contentFragment.contentType,
   };
 }
 
@@ -1486,7 +1489,15 @@ export async function postNewContentFragment(
     conversation,
     title,
     content,
-  }: { conversation: ConversationType; title: string; content: string }
+    url,
+    contentType,
+  }: {
+    conversation: ConversationType;
+    title: string;
+    content: string;
+    url: string | null;
+    contentType: ContentFragmentContentType;
+  }
 ): Promise<ContentFragmentType> {
   const owner = auth.workspace();
 
@@ -1497,7 +1508,7 @@ export async function postNewContentFragment(
   const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
     async (t) => {
       const contentFragmentRow = await ContentFragment.create(
-        { content, title },
+        { content, title, url, contentType },
         { transaction: t }
       );
       const nextMessageRank =

@@ -21,6 +21,8 @@ import {
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
+import { ContentFragment } from "./ContentFragment";
+
 export default function Conversation({
   owner,
   user,
@@ -204,7 +206,16 @@ export default function Conversation({
               </div>
             );
           case "content_fragment":
-            return null;
+            return (
+              <div
+                key={`message-id-${m.sId}`}
+                className="items-center border-t bg-structure-50 px-2 py-6"
+              >
+                <div className="mx-auto flex max-w-4xl flex-col gap-4">
+                  <ContentFragment message={m} />
+                </div>
+              </div>
+            );
           default:
             ((message: never) => {
               console.error("Unknown message type", message);
