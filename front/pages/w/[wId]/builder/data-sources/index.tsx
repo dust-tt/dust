@@ -2,6 +2,7 @@ import {
   Button,
   CloudArrowDownIcon,
   Cog6ToothIcon,
+  DropdownMenu,
   PageHeader,
   PlusIcon,
   SectionHeader,
@@ -433,42 +434,91 @@ export default function DataSourcesView({
                     <div className="flex flex-1"></div>
                     <div>
                       {(() => {
+                        const disabled =
+                          !ds.isBuilt ||
+                          isLoadingByProvider[
+                            ds.connectorProvider as ConnectorProvider
+                          ] ||
+                          !isAdmin;
+                        const onclick = canUseManagedDataSources
+                          ? async () => {
+                              await handleEnableManagedDataSource(
+                                ds.connectorProvider as ConnectorProvider,
+                                ds.setupWithSuffix
+                              );
+                            }
+                          : () => {
+                              window.alert(
+                                "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                              );
+                            };
+                        const label = !ds.isBuilt
+                          ? "Coming soon"
+                          : !isLoadingByProvider[
+                              ds.connectorProvider as ConnectorProvider
+                            ] && !ds.fetchConnectorError
+                          ? "Activate"
+                          : "Connecting...";
                         if (!ds || !ds.connector) {
                           return (
-                            <Button
-                              variant="primary"
-                              icon={CloudArrowDownIcon}
-                              disabled={
-                                !ds.isBuilt ||
-                                isLoadingByProvider[
-                                  ds.connectorProvider as ConnectorProvider
-                                ] ||
-                                !isAdmin
-                              }
-                              onClick={
-                                canUseManagedDataSources
-                                  ? async () => {
-                                      await handleEnableManagedDataSource(
-                                        ds.connectorProvider as ConnectorProvider,
-                                        ds.setupWithSuffix
-                                      );
-                                    }
-                                  : () => {
-                                      window.alert(
-                                        "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                                      );
-                                    }
-                              }
-                              label={
-                                !ds.isBuilt
-                                  ? "Coming soon"
-                                  : !isLoadingByProvider[
-                                      ds.connectorProvider as ConnectorProvider
-                                    ] && !ds.fetchConnectorError
-                                  ? "Activate"
-                                  : "Connecting..."
-                              }
-                            />
+                            <>
+                              {ds.connectorProvider !== "google_drive" && (
+                                <Button
+                                  variant="primary"
+                                  icon={CloudArrowDownIcon}
+                                  disabled={disabled}
+                                  onClick={onclick}
+                                  label={label}
+                                />
+                              )}
+                              {ds.connectorProvider === "google_drive" && (
+                                <DropdownMenu>
+                                  <DropdownMenu.Button>
+                                    <Button
+                                      variant="primary"
+                                      label={label}
+                                      disabled={disabled}
+                                      icon={CloudArrowDownIcon}
+                                    />
+                                  </DropdownMenu.Button>
+                                  <DropdownMenu.Items
+                                    origin="topRight"
+                                    width={350}
+                                  >
+                                    <div className="flex flex-col gap-y-4 p-4">
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
+                                          Disclosure
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          Dust use of information received from
+                                          Google APIs will adhere to{" "}
+                                          <Link
+                                            className="s-text-action-500"
+                                            href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+                                          >
+                                            Google API Services User Data Policy
+                                          </Link>
+                                          , including the Limited Use
+                                          requirements.
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-center">
+                                        <DropdownMenu.Button>
+                                          <Button
+                                            variant="secondary"
+                                            icon={CloudArrowDownIcon}
+                                            disabled={disabled}
+                                            onClick={onclick}
+                                            label={label}
+                                          />
+                                        </DropdownMenu.Button>
+                                      </div>
+                                    </div>
+                                  </DropdownMenu.Items>
+                                </DropdownMenu>
+                              )}
+                            </>
                           );
                         } else {
                           return (
