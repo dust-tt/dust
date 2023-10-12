@@ -30,7 +30,7 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   return (
     <Page.Vertical gap="xs">
       <Icon visual={icon} className={iconClasses} size="lg" />
-      <Page.H variant="h2">{title}</Page.H>
+      <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
   );
