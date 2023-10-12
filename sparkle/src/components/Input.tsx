@@ -24,20 +24,27 @@ export function Input({
   className?: string;
 }) {
   return (
-    <div className="flex flex-col">
+    <div className="s-flex s-flex-col s-gap-1">
       <input
         type={isPassword ? "password" : "text"}
         name={name}
         id={name}
         className={classNames(
-          "s-border-0 s-outline-none s-ring-1 s-ring-structure-200 focus:s-outline-none focus:s-ring-2",
-          "s-w-full s-rounded-md  s-bg-structure-50 s-py-1.5 s-pl-4 s-pr-8 s-placeholder-element-600",
+          "s-border-0 s-text-base s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2",
+          "s-bg-structure-50 s-text-element-900 s-placeholder-element-600",
+          "dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark",
+          "s-w-full s-rounded-md s-py-1.5 s-pl-4 s-pr-8",
           "s-transition-all s-duration-300 s-ease-out",
-          "s-placeholder-element-600-dark  dark:s-bg-structure-50-dark dark:s-ring-structure-200-dark",
           className ?? "",
           !error
-            ? "focus:s-ring-action-300"
-            : "s-ring-red-200 focus:s-ring-red-200"
+            ? classNames(
+                "s-ring-structure-200 focus:s-ring-action-300",
+                "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
+              )
+            : classNames(
+                "s-ring-warning-200 focus:s-ring-warning-300",
+                "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
+              )
         )}
         placeholder={placeholder}
         value={value ?? ""}
@@ -47,7 +54,7 @@ export function Input({
         data-1p-ignore={!isPassword}
         disabled={disabled}
       />
-      <div className="s-ml-2 s-mt-1 s-text-sm s-text-warning-500">
+      <div className="s-ml-2 s-text-sm s-text-warning-500">
         {showErrorLabel && error ? error : null}
       </div>
     </div>

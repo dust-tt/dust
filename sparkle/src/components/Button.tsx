@@ -64,15 +64,13 @@ const variantClasses = {
     base: "s-text-white s-bg-action-500 s-border-action-600",
     hover: "hover:s-bg-action-400 hover:s-border-action-500",
     active: "active:s-bg-action-600 active:s-border-action-700",
-    disabled: "s-text-white s-bg-element-500 s-border-element-500",
+    disabled: "s-text-white s-bg-action-200 s-border-action-300",
     dark: {
-      base: "dark:s-bg-action-500-dark dark:s-border-action-600-dark",
-      hover:
-        "dark:hover:s-bg-action-500-dark dark:hover:s-border-action-500-dark",
-      active:
-        "dark:active:s-bg-action-600-dark dark:active:s-border-action-700-dark",
+      base: "",
+      hover: "",
+      active: "",
       disabled:
-        "s-text-white dark:s-bg-element-600-dark dark:s-border-element-500-dark",
+        "dark:s-text-action-700-dark dark:s-bg-action-100-dark dark:s-border-action-200-dark",
     },
   },
   primaryWarning: {
@@ -81,64 +79,66 @@ const variantClasses = {
     active: "active:s-bg-warning-600 active:s-border-warning-700",
     disabled: "s-text-white s-bg-element-500 s-border-element-500",
     dark: {
-      base: "dark:s-bg-warning-500-dark dark:s-border-warning-600-dark",
-      hover:
-        "dark:hover:s-bg-warning-500-dark dark:hover:s-border-warning-500-dark",
-      active:
-        "dark:active:s-bg-warning-600-dark dark:active:s-border-warning-700-dark",
+      base: "",
+      hover: "",
+      active: "",
       disabled:
-        "s-text-white dark:s-bg-element-600-dark dark:s-border-element-500-dark",
+        "dark:s-text-warning-700-dark dark:s-bg-warning-100-dark dark:s-border-warning-200-dark",
     },
   },
   secondary: {
     base: "s-text-action-500 s-border-structure-200 s-bg-structure-0",
     hover: "hover:s-bg-action-50 hover:s-border-action-200",
     active: "active:s-bg-action-100 active:s-border-action-500",
-    disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
+    disabled: "s-text-action-300 s-border-structure-200 s-bg-structure-0",
     dark: {
-      base: "dark:s-text-action-500-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
+      base: "dark:s-text-action-600-dark dark:s-border-structure-200-dark dark:s-bg-structure-50-dark",
       hover:
-        "dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
+        "dark:hover:s-text-action-700-dark dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
       active:
         "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
       disabled:
-        "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
+        "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
     },
   },
   secondaryWarning: {
     base: "s-text-warning-500 s-border-structure-200 s-bg-structure-0",
     hover: "hover:s-bg-warning-50 hover:s-border-warning-200",
     active: "active:s-bg-warning-100 active:s-border-warning-500",
-    disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
+    disabled: "s-text-warning-300 s-border-structure-200 s-bg-structure-0",
     dark: {
-      base: "dark:s-text-warning-500-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
+      base: "dark:s-text-warning-600-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
       hover:
         "dark:hover:s-bg-warning-50-dark dark:hover:s-border-warning-300-dark",
       active:
         "dark:active:s-bg-warning-100-dark dark:active:s-border-warning-500-dark",
       disabled:
-        "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
+        "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
     },
   },
   tertiary: {
     base: "s-text-element-800 s-border-structure-200 s-bg-structure-0",
-    hover: "hover:s-bg-action-50 hover:s-border-action-200",
-    active: "active:s-bg-action-100 active:s-border-action-500",
+    hover:
+      "hover:s-bg-action-50 hover:s-text-action-500 hover:s-border-action-200",
+    active:
+      "active:s-bg-action-100 active:s-text-action-600 active:s-border-action-500",
     disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
     dark: {
-      base: "dark:s-text-element-700-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
+      base: "dark:s-text-element-800-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
       hover:
-        "dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
+        "dark:hover:s-text-action-300 dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
       active:
         "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
       disabled:
-        "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
+        "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
     },
   },
   avatar: {
     base: "s-text-element-800 s-border-structure-200 s-bg-structure-0",
-    hover: "hover:s-bg-action-50 hover:s-border-action-200",
-    active: "active:s-bg-action-100 active:s-border-action-500",
+    hover:
+      "hover:s-bg-action-50 hover:s-text-action-500 hover:s-border-action-200",
+    active:
+      "active:s-bg-action-100 active:s-text-action-600 active:s-border-action-500",
     disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
     dark: {
       base: "dark:s-text-element-700-dark dark:s-border-structure-300-dark dark:s-bg-structure-50-dark",
@@ -147,16 +147,16 @@ const variantClasses = {
       active:
         "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
       disabled:
-        "dark:s-text-action-500-dark dark:s-border-structure-200-dark dark:s-bg-structure-0-dark",
+        "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
     },
   },
 };
 
 const transitionClasses =
-  "s-transition-all s-ease-out s-duration-400 s-cursor-pointer";
+  "s-transition-all s-ease-out s-duration-200 s-cursor-pointer";
 
 const magnifyingClasses =
-  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-95 active:s-drop-shadow-none";
+  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-100 active:s-drop-shadow-none";
 
 export function Button({
   variant = "primary",
@@ -172,23 +172,33 @@ export function Button({
   hasMagnifying = true,
   avatar,
 }: ButtonProps) {
-  const buttonClasses = classNames(
+  let buttonClasses = classNames(
     "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-rounded-full s-whitespace-nowrap",
     !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
     textClasses[size],
-    hasMagnifying ? (!disabled ? magnifyingClasses : "") : "",
-    !disabled ? transitionClasses : "",
-    !disabled ? variantClasses[variant]?.base : "",
-    !disabled ? variantClasses[variant]?.hover : "",
-    !disabled ? variantClasses[variant]?.active : "",
-    disabled ? variantClasses[variant]?.disabled : "",
-    variantClasses[variant]?.dark?.base,
-    variantClasses[variant]?.dark?.hover,
-    variantClasses[variant]?.dark?.active,
-    variantClasses[variant]?.dark.disabled,
-    disabled ? "s-cursor-default" : "",
     className
   );
+  if (disabled) {
+    buttonClasses = classNames(
+      buttonClasses,
+      variantClasses[variant]?.disabled,
+      variantClasses[variant]?.dark.disabled,
+      disabled ? "s-cursor-default" : ""
+    );
+  } else {
+    buttonClasses = classNames(
+      buttonClasses,
+      transitionClasses,
+      !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
+      hasMagnifying ? magnifyingClasses : "",
+      variantClasses[variant]?.base,
+      variantClasses[variant]?.hover,
+      variantClasses[variant]?.active,
+      variantClasses[variant]?.dark?.base,
+      variantClasses[variant]?.dark?.hover,
+      variantClasses[variant]?.dark?.active
+    );
+  }
 
   const finalContainerClasses = classNames(containerClasses[size]);
 
@@ -236,7 +246,6 @@ interface ButtonListProps {
   isWrapping?: boolean;
   className?: string;
 }
-
 
 Button.List = function ({
   children,
