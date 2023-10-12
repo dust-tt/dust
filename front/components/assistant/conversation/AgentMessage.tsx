@@ -346,7 +346,7 @@ export function AgentMessage({
         )}
         {agentMessage.status === "cancelled" && (
           <Chip
-            label="Message generation was cancelled"
+            label="Message generation was interrupted"
             size="xs"
             className="mt-4"
           />
