@@ -77,7 +77,7 @@ export const getServerSideProps: GetServerSideProps<{
       signUpCallbackUrl = `/api/login?wId=${wId}&cId=${cId}&join=true`;
       break;
     case "email_invite":
-      signUpCallbackUrl = `/api/login?wId=${wId}&inviteToken=${token}`;
+      signUpCallbackUrl = `/api/login?inviteToken=${token}`;
       break;
     case "domain_invite_link":
       signUpCallbackUrl = `/api/login?wId=${wId}`;
