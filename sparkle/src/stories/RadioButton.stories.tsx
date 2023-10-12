@@ -9,7 +9,6 @@ const meta = {
 } satisfies Meta<typeof RadioButton>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const RadioButtonExamples = () => {
   const [value1, setValue1] = React.useState<string>("yes");
