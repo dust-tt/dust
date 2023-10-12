@@ -9,12 +9,11 @@ import {
   Input,
   Modal,
   Page,
-  PageHeader,
   PlusIcon,
+  QuestionMarkCircleIcon,
   Searchbar,
-  SectionHeader,
 } from "@dust-tt/sparkle";
-import { Dialog, Listbox } from "@headlessui/react";
+import { Listbox } from "@headlessui/react";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -27,7 +26,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { Plus } from "@dust-tt/sparkle/dist/cjs/icons/solid";
+import { MembershipInvitationType } from "@app/types/membership_invitation";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
@@ -69,7 +68,7 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
-  const [disable, setDisabled] = useState(true);
+  const [disabled, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   const [allowedDomain, setAllowedDomain] = useState(owner.allowedDomain);
@@ -172,7 +171,9 @@ export default function WorkspaceAdmin({
           setInviteSettingsOpen(false);
           setAllowedDomain(owner.allowedDomain);
         }}
-        hasChanged={allowedDomain !== owner.allowedDomain}
+        hasChanged={
+          allowedDomain !== owner.allowedDomain && !allowedDomainError
+        }
         title="Invitation link settings"
         isFullScreen={true}
         onSave={handleUpdateWorkspace}
@@ -189,6 +190,8 @@ export default function WorkspaceAdmin({
               placeholder={"Company domain"}
               value={allowedDomain || ""}
               name={""}
+              error={allowedDomainError}
+              showErrorLabel={true}
               onChange={setAllowedDomain}
             />
           </div>
@@ -240,11 +243,6 @@ export default function WorkspaceAdmin({
       image: null,
     },
   ];
-  const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
-    admin: "warning",
-    builder: "amber",
-    user: "emerald",
-  };
   return (
     <AppLayout
       user={user}
@@ -308,56 +306,9 @@ export default function WorkspaceAdmin({
               <div></div>
             )}
           </div>
-          <Page.SectionHeader title="Member list" />
+          <MemberList members={fakeMembers} />
         </div>
-        <div className="flex w-full items-stretch gap-2">
-          <div className="flex-grow">
-            <Searchbar
-              placeholder="Search members"
-              onChange={() => {}}
-              value={null}
-              name={""}
-            />
-          </div>
-          <Button
-            variant="primary"
-            label="Invite members"
-            size="sm"
-            icon={PlusIcon}
-            onClick={() => {}}
-          />
-        </div>
-        <div>
-          {fakeMembers.map((member) => (
-            <div className="flex items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm">
-              <div>
-                <Avatar visual={member.image} name={member.name} size="xs" />
-              </div>
-              <div className="font-medium text-element-900">{member.name}</div>
-              <div className="grow font-normal text-element-700">
-                {member.email || member.username}
-              </div>
-              <div>
-                <Chip
-                  size="xs"
-                  color={COLOR_FOR_ROLE[member.workspaces[0].role]}
-                >
-                  <span
-                    className={classNames(
-                      "capitalize",
-                      `text-${COLOR_FOR_ROLE[member.workspaces[0].role]}-800`
-                    )}
-                  >
-                    {member.workspaces[0].role}
-                  </span>
-                </Chip>
-              </div>
-              <div>
-                <ChevronRightIcon />
-              </div>
-            </div>
-          ))}
-        </div>
+
         {/********************** LEGACY **************/}
         <Page.SectionHeader
           title="Members LEGACY"
@@ -568,5 +519,125 @@ export default function WorkspaceAdmin({
         </div>
       </Page>
     </AppLayout>
+  );
+}
+
+function MemberList({
+  members,
+  invitations,
+}: {
+  members: UserType[];
+  invitations: MembershipInvitationType[];
+}) {
+  function isInvitation(
+    arg: MembershipInvitationType | UserType
+  ): arg is MembershipInvitationType {
+    return (arg as MembershipInvitationType).inviteEmail !== undefined;
+  }
+
+  const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
+    admin: "warning",
+    builder: "amber",
+    user: "emerald",
+  };
+  const [isInviteLinkOpen, setIsInviteLinkOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const displayList = [
+    ...members
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter(
+        (m) =>
+          !searchText ||
+          m.name.toLowerCase().includes(searchText) ||
+          m.email?.toLowerCase().includes(searchText) ||
+          m.username?.toLowerCase().includes(searchText)
+      ),
+    ...invitations
+      .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+      .filter(
+        (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
+      ),
+  ];
+  return (
+    <>
+      <Modal
+        isOpen={isInviteLinkOpen}
+        onClose={() => setIsInviteLinkOpen(false)}
+        hasChanged={false}
+        title="Invite by email"
+      >
+        Hi
+      </Modal>
+      <Page.SectionHeader title="Member list" />
+      <div className="flex w-full items-stretch gap-2">
+        <div className="flex-grow">
+          <Searchbar
+            placeholder="Search members"
+            onChange={setSearchText}
+            value={searchText}
+            name={""}
+          />
+        </div>
+        <Button
+          variant="primary"
+          label="Invite members"
+          size="sm"
+          icon={PlusIcon}
+          onClick={() => setIsInviteLinkOpen(true)}
+        />
+      </div>
+      <div>
+        {displayList.map((elt, i) => (
+          <div
+            key={i}
+            className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm hover:bg-structure-100"
+          >
+            <div>
+              {isInvitation(elt) ? (
+                <QuestionMarkCircleIcon />
+              ) : (
+                <Avatar visual={elt.image} name={elt.name} size="xs" />
+              )}
+            </div>
+            {!isInvitation(elt) && (
+              <div className="font-medium text-element-900">{elt.name}</div>
+            )}
+            <div className="grow font-normal text-element-700">
+              {isInvitation(elt) ? elt.inviteEmail : elt.email || elt.username}
+            </div>
+            <div>
+              {isInvitation(elt) ? (
+                <Chip size="xs" color="slate">
+                  <span className="capitalize">pending</span>
+                </Chip>
+              ) : (
+                <Chip
+                  size="xs"
+                  color={COLOR_FOR_ROLE[elt.workspaces[0].role]}
+                  className={
+                    /** Force tailwind to include classes we will need below */
+                    "text-amber-900 text-emerald-900 text-warning-900"
+                  }
+                >
+                  <span
+                    className={classNames(
+                      "capitalize",
+                      `text-${COLOR_FOR_ROLE[elt.workspaces[0].role]}-900`
+                    )}
+                  >
+                    {elt.workspaces[0].role}
+                  </span>
+                </Chip>
+              )}
+            </div>
+            {!isInvitation(elt) && (
+              <div>
+                <ChevronRightIcon />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
