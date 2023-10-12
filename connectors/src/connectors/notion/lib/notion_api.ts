@@ -10,6 +10,7 @@ import {
   BlockObjectResponse,
   GetDatabaseResponse,
   GetPageResponse,
+  ListBlockChildrenResponse,
   PageObjectResponse,
   PartialBlockObjectResponse,
   QueryDatabaseResponse,
@@ -573,6 +574,53 @@ export function parsePageProperties(page: PageObjectResponse) {
   return properties;
 }
 
+export async function retrievePageBlocksResultPage({
+  accessToken,
+  pageId,
+  cursor,
+  loggerArgs,
+}: {
+  accessToken: string;
+  pageId: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+}): Promise<ListBlockChildrenResponse | null> {
+  const localLogger = logger.child({ ...loggerArgs, pageId });
+
+  const notionClient = new Client({ auth: accessToken });
+
+  try {
+    localLogger.info("Fetching page blocks result page from Notion API.");
+    const resultPage = await notionClient.blocks.children.list({
+      block_id: pageId,
+      start_cursor: cursor ?? undefined,
+    });
+    localLogger.info(
+      { count: resultPage.results.length },
+      "Received page blocks result page from Notion API."
+    );
+    return resultPage;
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      (e.code === "object_not_found" || e.code === "validation_error")
+    ) {
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Couldn't get page blocks."
+      );
+      return null;
+    } else {
+      throw e;
+    }
+  }
+}
+
 // deprecated
 export async function getParsedPage(
   notionAccessToken: string,
@@ -629,7 +677,7 @@ export async function getParsedPage(
   for (const block of blocks) {
     if (isFullBlock(block)) {
       parsedBlocks = parsedBlocks.concat(
-        await parsePageBlock(block, notionClient, pageLogger)
+        await getParsedBlockWithChildren(block, notionClient, pageLogger)
       );
     }
   }
@@ -805,7 +853,7 @@ function parsePropertyText(
 }
 
 async function renderChildDatabase(
-  block: BlockObjectResponse & { type: "child_database" },
+  block: ParsedNotionBlock & { type: "child_database" },
   notionClient: Client,
   pageLogger: Logger
 ): Promise<string | null> {
@@ -844,7 +892,7 @@ async function renderChildDatabase(
       }
     }
 
-    return [block.child_database.title, ...rows].join("\n");
+    return [block.childDatabaseTitle, ...rows].join("\n");
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
@@ -895,12 +943,7 @@ async function getUserName(
   }
 }
 
-async function parsePageBlock(
-  block: BlockObjectResponse,
-  notionClient: Client,
-  pageLogger: Logger,
-  parentsIds: Set<string> = new Set()
-): Promise<ParsedNotionBlock[]> {
+export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
   function parseRichText(text: RichTextItemResponse[]): string {
     const parsed = text.map((t) => t.plain_text).join(" ");
     return parsed;
@@ -933,6 +976,231 @@ async function parsePageBlock(
     return fileText;
   }
 
+  const commonFields = {
+    id: block.id,
+    type: block.type,
+    hasChildren: false,
+    childDatabaseTitle: null,
+  };
+
+  const NULL_BLOCK = {
+    ...commonFields,
+    text: null,
+  };
+
+  switch (block.type) {
+    case "breadcrumb":
+    case "link_to_page":
+    case "divider":
+    case "table_of_contents":
+    case "unsupported":
+      // TODO: check if we want that ?
+      return NULL_BLOCK;
+
+    case "equation":
+      return {
+        ...commonFields,
+        text: block.equation.expression,
+      };
+
+    case "link_preview":
+      return {
+        ...commonFields,
+        text: block.link_preview.url,
+      };
+
+    case "table_row":
+      return {
+        ...commonFields,
+        text: `||${block.table_row.cells.map(parseRichText).join(" | ")}||`,
+      };
+
+    case "code":
+      return {
+        ...commonFields,
+        text: `\`\`\`${block.code.language} ${parseRichText(
+          block.code.rich_text
+        )} \`\`\``,
+      };
+
+    // child databases are a special case
+    // we need to fetch all the pages in the database to reconstruct the table
+    // this is handled by the caller
+    case "child_database":
+      return {
+        ...commonFields,
+        text: null,
+        childDatabaseTitle: block.child_database.title,
+      };
+
+    // URL blocks
+    case "bookmark":
+      return {
+        ...commonFields,
+        text: block.bookmark
+          ? renderUrl(block.bookmark.url, parseRichText(block.bookmark.caption))
+          : null,
+      };
+
+    case "embed":
+      return {
+        ...commonFields,
+        text: renderUrl(block.embed.url, parseRichText(block.embed.caption)),
+      };
+
+    // File blocks
+    case "file":
+      return {
+        ...commonFields,
+        text: renderFile(block.file),
+      };
+
+    case "image":
+      return {
+        ...commonFields,
+        text: renderFile(block.image),
+      };
+
+    case "pdf":
+      return {
+        ...commonFields,
+        text: renderFile(block.pdf),
+      };
+
+    case "video":
+      return {
+        ...commonFields,
+        text: renderFile(block.video),
+      };
+
+    case "audio":
+      return {
+        ...commonFields,
+        text: renderFile(block.audio),
+      };
+
+    // blocks that may have child blocks:
+    case "table":
+      return { ...NULL_BLOCK, hasChildren: block.has_children };
+
+    case "bulleted_list_item":
+      return {
+        ...commonFields,
+        text: `* ${parseRichText(block.bulleted_list_item.rich_text)}`,
+        hasChildren: block.has_children,
+      };
+
+    case "callout":
+      return {
+        ...commonFields,
+        text: parseRichText(block.callout.rich_text),
+        hasChildren: block.has_children,
+      };
+    case "heading_1":
+      return {
+        ...commonFields,
+        text: `# ${parseRichText(block.heading_1.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
+
+    case "heading_2":
+      return {
+        ...commonFields,
+        text: `## ${parseRichText(block.heading_2.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
+
+    case "heading_3":
+      return {
+        ...commonFields,
+        text: `### ${parseRichText(block.heading_3.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
+
+    case "numbered_list_item":
+      return {
+        ...commonFields,
+        text: parseRichText(block.numbered_list_item.rich_text),
+        hasChildren: block.has_children,
+      };
+
+    case "paragraph":
+      return {
+        ...commonFields,
+        text: parseRichText(block.paragraph.rich_text),
+        hasChildren: block.has_children,
+      };
+
+    case "quote":
+      return {
+        ...commonFields,
+        text: `> ${parseRichText(block.quote.rich_text)}`,
+        hasChildren: block.has_children,
+      };
+
+    case "template":
+      return {
+        ...commonFields,
+        text: parseRichText(block.template.rich_text),
+        hasChildren: block.has_children,
+      };
+
+    case "to_do":
+      return {
+        ...commonFields,
+        text: `[${block.to_do.checked ? "x" : " "}] ${parseRichText(
+          block.to_do.rich_text
+        )}`,
+        hasChildren: block.has_children,
+      };
+
+    case "toggle":
+      return {
+        ...commonFields,
+        text: parseRichText(block.toggle.rich_text),
+        hasChildren: block.has_children,
+      };
+
+    case "column_list":
+    case "column":
+    case "synced_block":
+      return { ...NULL_BLOCK, hasChildren: block.has_children };
+    // blocks that technically have children but we don't want to recursively parse them
+    // because the search endpoint returns them already
+    case "child_page":
+      return {
+        ...commonFields,
+        text: block.child_page.title,
+      };
+
+    default:
+      // `block` here is `never`
+      ((block: never) => {
+        logger.warn(
+          { type: (block as { type: string }).type },
+          "Unknown block type."
+        );
+      })(block);
+      return NULL_BLOCK;
+  }
+}
+
+async function getParsedBlockWithChildren(
+  block: BlockObjectResponse,
+  notionClient: Client,
+  pageLogger: Logger,
+  parentsIds: Set<string> = new Set(),
+  fetchChildren = true
+): Promise<ParsedNotionBlock[]> {
   function indentBlocks(blocks: ParsedNotionBlock[]): ParsedNotionBlock[] {
     const indentedBlocks: ParsedNotionBlock[] = [];
     for (const { text, ...rest } of blocks) {
@@ -945,11 +1213,14 @@ async function parsePageBlock(
     return indentedBlocks;
   }
 
-  async function withPotentialChildren(
+  async function withChildren(
     parsedBlock: ParsedNotionBlock,
     block: BlockObjectResponse
   ): Promise<ParsedNotionBlock[]> {
     const parsedBlocks = [parsedBlock];
+    if (!fetchChildren) {
+      return parsedBlocks;
+    }
     if (!block.has_children) {
       return parsedBlocks;
     }
@@ -966,7 +1237,7 @@ async function parsePageBlock(
         if (isFullBlock(child)) {
           if (!parentsIds.has(child.id)) {
             parsedChildren.push(
-              ...(await parsePageBlock(
+              ...(await getParsedBlockWithChildren(
                 child,
                 notionClient,
                 pageLogger,
@@ -990,259 +1261,19 @@ async function parsePageBlock(
     return parsedBlocks.concat(indentBlocks(parsedChildren));
   }
 
-  const commonFields = {
-    id: block.id,
-    type: block.type,
-  };
-
-  const NULL_BLOCK = {
-    ...commonFields,
-    text: null,
-  };
-
-  switch (block.type) {
-    case "breadcrumb":
-    case "link_to_page":
-    case "divider":
-    case "table_of_contents":
-    case "unsupported":
-      // TODO: check if we want that ?
-      return [NULL_BLOCK];
-
-    case "equation":
-      return [
-        {
-          ...commonFields,
-          text: block.equation.expression,
-        },
-      ];
-
-    case "link_preview":
-      return [
-        {
-          ...commonFields,
-          text: block.link_preview.url,
-        },
-      ];
-
-    case "table_row":
-      return [
-        {
-          ...commonFields,
-          text: `||${block.table_row.cells.map(parseRichText).join(" | ")}||`,
-        },
-      ];
-
-    case "code":
-      return [
-        {
-          ...commonFields,
-          text: `\`\`\`${block.code.language} ${parseRichText(
-            block.code.rich_text
-          )} \`\`\``,
-        },
-      ];
-
-    // child databases are a special case
-    // we need to fetch all the pages in the database to reconstruct the table
-    case "child_database":
-      return [
-        {
-          ...commonFields,
-          text: await renderChildDatabase(block, notionClient, pageLogger),
-        },
-      ];
-
-    // URL blocks
-    case "bookmark":
-      return [
-        {
-          ...commonFields,
-          text: block.bookmark
-            ? renderUrl(
-                block.bookmark.url,
-                parseRichText(block.bookmark.caption)
-              )
-            : null,
-        },
-      ];
-    case "embed":
-      return [
-        {
-          ...commonFields,
-          text: renderUrl(block.embed.url, parseRichText(block.embed.caption)),
-        },
-      ];
-
-    // File blocks
-    case "file":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.file),
-        },
-      ];
-    case "image":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.image),
-        },
-      ];
-    case "pdf":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.pdf),
-        },
-      ];
-    case "video":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.video),
-        },
-      ];
-
-    case "audio":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.audio),
-        },
-      ];
-
-    // blocks that may have child blocks:
-    case "table":
-      return withPotentialChildren(NULL_BLOCK, block);
-
-    case "bulleted_list_item":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `* ${parseRichText(block.bulleted_list_item.rich_text)}`,
-        },
-        block
-      );
-    case "callout":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.callout.rich_text),
-        },
-        block
-      );
-    case "heading_1":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `# ${parseRichText(block.heading_1.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
-
-    case "heading_2":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `## ${parseRichText(block.heading_2.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
-    case "heading_3":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `### ${parseRichText(block.heading_3.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
-    case "numbered_list_item":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.numbered_list_item.rich_text),
-        },
-        block
-      );
-    case "paragraph":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.paragraph.rich_text),
-        },
-        block
-      );
-    case "quote":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `> ${parseRichText(block.quote.rich_text)}`,
-        },
-        block
-      );
-    case "template":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.template.rich_text),
-        },
-        block
-      );
-    case "to_do":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `[${block.to_do.checked ? "x" : " "}] ${parseRichText(
-            block.to_do.rich_text
-          )}`,
-        },
-        block
-      );
-
-    case "toggle":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.toggle.rich_text),
-        },
-        block
-      );
-
-    case "column_list":
-    case "column":
-    case "synced_block":
-      return withPotentialChildren(NULL_BLOCK, block);
-
-    // blocks that technically have children but we don't want to recursively parse them
-    // because the search endpoint returns them already
-    case "child_page":
-      return [
-        {
-          ...commonFields,
-          text: block.child_page.title,
-        },
-      ];
-
-    default:
-      // `block` here is `never`
-      ((block: never) => {
-        logger.warn(
-          { type: (block as { type: string }).type },
-          "Unknown block type."
-        );
-      })(block);
-      return [NULL_BLOCK];
+  const parsedBlock = await parsePageBlock(block);
+  const blockType = parsedBlock.type;
+  if (blockType === "child_database") {
+    parsedBlock.text = await renderChildDatabase(
+      { ...parsedBlock, type: blockType },
+      notionClient,
+      pageLogger
+    );
   }
+  if (!parsedBlock.hasChildren) {
+    return [parsedBlock];
+  }
+  return withChildren(parsedBlock, block);
 }
 
 interface IPaginatedList<T> {

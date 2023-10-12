@@ -38,6 +38,8 @@ export type ParsedNotionBlock = {
   id: string;
   type: NotionBlockType;
   text: string | null;
+  hasChildren: boolean;
+  childDatabaseTitle: string | null;
 };
 
 export type ParsedNotionDatabase = {

@@ -1,3 +1,4 @@
+import { isFullBlock } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -17,8 +18,10 @@ import {
   getParsedDatabase,
   getParsedPage,
   isAccessibleAndUnarchived,
+  parsePageBlock,
   parsePageProperties,
   retrievePage,
+  retrievePageBlocksResultPage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import {
   getParents,
@@ -32,6 +35,7 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   Connector,
+  NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
   NotionConnectorState,
   NotionDatabase,
@@ -44,6 +48,8 @@ import {
   DataSourceConfig,
   DataSourceInfo,
 } from "@connectors/types/data_source_config";
+
+import { ParsedNotionBlock } from "../lib/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -1072,7 +1078,9 @@ export async function notionRetrievePageActivity({
     };
   }
 
-  localLogger.info("notionRetrievePageActivity: Retrieving page from Notion.");
+  localLogger.info(
+    "notionRetrievePageActivity: Retrieving page from Notion API."
+  );
   const notionPage = await retrievePage({
     accessToken,
     pageId,
@@ -1102,5 +1110,112 @@ export async function notionRetrievePageActivity({
 
   return {
     skipped: false,
+  };
+}
+
+export async function notionRetrievePageBlocksResultPageActivity({
+  dataSourceConfig,
+  accessToken,
+  pageId,
+  cursor,
+  currentIndexInPage,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  accessToken: string;
+  pageId: string;
+  cursor: string | null;
+  currentIndexInPage: number;
+  runTimestamp: number;
+  loggerArgs: Record<string, string | number>;
+}): Promise<{
+  nextCursor: string | null;
+  blocksWithChildren: string[];
+  childDatabases: string[];
+  blocksCount: number;
+}> {
+  const localLogger = logger.child({ ...loggerArgs, pageId });
+
+  localLogger.info(
+    "notionRetrievePageBlocksResultPageActivity: Retrieving connector."
+  );
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  localLogger.info(
+    "notionRetrievePageBlocksResultPageActivity: Retrieving result page from Notion API."
+  );
+  const resultPage = await retrievePageBlocksResultPage({
+    accessToken,
+    pageId,
+    cursor,
+    loggerArgs,
+  });
+
+  if (!resultPage) {
+    localLogger.info("Skipping result page not found.");
+    return {
+      nextCursor: null,
+      blocksWithChildren: [],
+      blocksCount: 0,
+      childDatabases: [],
+    };
+  }
+
+  const parsedBlocks: ParsedNotionBlock[] = [];
+  for (const block of resultPage.results) {
+    if (isFullBlock(block)) {
+      parsedBlocks.push(parsePageBlock(block));
+    }
+  }
+
+  const blocksWithChildren = parsedBlocks
+    .filter((b) => b.hasChildren)
+    .map((b) => b.id);
+  const childDatabases = parsedBlocks
+    .filter((b) => b.type === "child_database")
+    .map((b) => b.id);
+
+  localLogger.info(
+    {
+      blocksWithChildrenCount: blocksWithChildren.length,
+      childDatabasesCount: childDatabases.length,
+    },
+    "Found blocks with children and child databases."
+  );
+
+  localLogger.info(
+    "notionRetrievePageBlocksResultPageActivity: Saving blocks in cache."
+  );
+
+  await Promise.all(
+    parsedBlocks.map((block, i) =>
+      NotionConnectorBlockCacheEntry.create({
+        notionPageId: pageId,
+        notionBlockId: block.id,
+        blockType: block.type,
+        blockText: block.text,
+        parentBlockId: null,
+        indexInParent: currentIndexInPage + i,
+        childDatabaseTitle: block.childDatabaseTitle,
+        connectorId: connector.id,
+      })
+    )
+  );
+
+  return {
+    childDatabases,
+    blocksWithChildren,
+    blocksCount: parsedBlocks.length,
+    nextCursor: resultPage.next_cursor,
   };
 }

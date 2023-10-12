@@ -721,6 +721,9 @@ export class NotionConnectorBlockCacheEntry extends Model<
   declare parentBlockId: string | null;
   declare indexInParent: number;
 
+  // special case for child DBs
+  declare childDatabaseTitle?: string | null;
+
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 
@@ -764,6 +767,10 @@ NotionConnectorBlockCacheEntry.init(
     indexInParent: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    childDatabaseTitle: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
