@@ -68,8 +68,8 @@ export const guessFirstandLastNameFromFullName = (
 
   if (nameParts.length === 1) return { firstName: fullName, lastName: null };
 
-  const lastName = nameParts.pop() || null;
-  const firstName = nameParts.join(" ");
+  const firstName = nameParts.shift() || null;
+  const lastName = nameParts.join(" ");
 
   return { firstName, lastName };
 };
