@@ -42,6 +42,7 @@ export type DustAppRunActionType = {
   runningBlock: {
     type: string;
     name: string;
+    status: "running" | "succeeded" | "errored";
   } | null;
   output: unknown | null;
 };

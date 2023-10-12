@@ -442,6 +442,29 @@ export async function* runDustApp(
       return;
     }
 
+    if (event.type === "block_status") {
+      yield {
+        type: "dust_app_run_block",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        action: {
+          id: action.id,
+          type: "dust_app_run_action",
+          appWorkspaceId: c.appWorkspaceId,
+          appId: c.appId,
+          appName: app.name,
+          params,
+          runningBlock: {
+            type: event.content.block_type,
+            name: event.content.name,
+            status: event.content.status,
+          },
+          output: null,
+        },
+      };
+    }
+
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
@@ -459,26 +482,6 @@ export async function* runDustApp(
       }
 
       lastBlockOutput = e.value;
-
-      yield {
-        type: "dust_app_run_block",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        action: {
-          id: action.id,
-          type: "dust_app_run_action",
-          appWorkspaceId: c.appWorkspaceId,
-          appId: c.appId,
-          appName: app.name,
-          params,
-          runningBlock: {
-            type: event.content.block_type,
-            name: event.content.block_name,
-          },
-          output: null,
-        },
-      };
     }
   }
 
