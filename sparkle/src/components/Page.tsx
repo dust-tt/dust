@@ -77,7 +77,13 @@ interface PagePProps {
 
 Page.P = function ({ children, variant }: PagePProps) {
   return (
-    <p className={variant === "secondary" ? "s-text-element-700" : ""}>
+    <p
+      className={
+        variant === "secondary"
+          ? "s-text-element-700 dark:s-text-element-600-dark"
+          : "s-text-element-800 dark:s-text-element-800-dark"
+      }
+    >
       {children}
     </p>
   );
@@ -92,15 +98,24 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   const Component = variant;
 
   const hSizes = {
-    h1: "s-text-4xl s-font-bold s-text-element-900",
-    h2: "s-text-3xl s-font-bold s-text-element-900",
-    h3: "s-text-2xl s-font-bold s-text-element-900",
-    h4: "s-text-xl s-font-semibold s-text-element-900",
-    h5: "s-text-lg s-font-semibold s-text-element-900",
-    h6: "s-text-base s-font-bold s-text-element-900",
+    h1: "s-text-4xl s-font-bold",
+    h2: "s-text-3xl s-font-bold",
+    h3: "s-text-2xl s-font-bold",
+    h4: "s-text-xl s-font-semibold",
+    h5: "s-text-lg s-font-semibold",
+    h6: "s-text-base s-font-bold",
   };
 
-  return <Component className={hSizes[variant]}>{children}</Component>;
+  return (
+    <Component
+      className={classNames(
+        "s-text-element-900 dark:s-text-element-900-dark",
+        hSizes[variant]
+      )}
+    >
+      {children}
+    </Component>
+  );
 };
 
 interface PageDivProps {
