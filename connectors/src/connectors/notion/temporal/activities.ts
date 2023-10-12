@@ -17,6 +17,8 @@ import {
   getParsedDatabase,
   getParsedPage,
   isAccessibleAndUnarchived,
+  parsePageProperties,
+  retrievePage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import {
   getParents,
@@ -30,6 +32,7 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   Connector,
+  NotionConnectorPageCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -1008,4 +1011,96 @@ export async function updateParentsFieldsActivity(
   );
 
   localLogger.info({ nbUpdated }, "Updated parents fields.");
+}
+
+// notion upsert page workflow
+
+export async function notionRetrievePageActivity({
+  dataSourceConfig,
+  accessToken,
+  pageId,
+  runTimestamp,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  accessToken: string;
+  pageId: string;
+  runTimestamp: number;
+  loggerArgs: Record<string, string | number>;
+}): Promise<{
+  skipped: boolean;
+}> {
+  let localLogger = logger.child({ ...loggerArgs, pageId });
+
+  localLogger.info("notionRetrievePageActivity: Retrieving connector.");
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  localLogger.info(
+    "notionRetrievePageActivity: Retrieving page from connectors DB."
+  );
+  const notionPageInDb = await getNotionPageFromConnectorsDb(
+    dataSourceConfig,
+    pageId
+  );
+
+  const alreadySeenInRun =
+    notionPageInDb?.lastSeenTs?.getTime() === runTimestamp;
+  if (alreadySeenInRun) {
+    localLogger.info("Skipping page already seen in this run");
+    return {
+      skipped: true,
+    };
+  }
+
+  if (notionPageInDb?.skipReason) {
+    localLogger.info(
+      { skipReason: notionPageInDb.skipReason },
+      "Skipping page with skip reason"
+    );
+    return {
+      skipped: true,
+    };
+  }
+
+  localLogger.info("notionRetrievePageActivity: Retrieving page from Notion.");
+  const notionPage = await retrievePage({
+    accessToken,
+    pageId,
+    loggerArgs,
+  });
+
+  if (!notionPage) {
+    localLogger.info("Skipping page not found");
+    return {
+      skipped: true,
+    };
+  }
+
+  localLogger = localLogger.child({
+    pageUrl: notionPage.url,
+  });
+
+  localLogger.info("notionRetrievePageActivity: Parsing page properties.");
+  const properties = parsePageProperties(notionPage);
+
+  localLogger.info("notionRetrievePageActivity: Saving page in cache.");
+  await NotionConnectorPageCacheEntry.create({
+    notionPageId: pageId,
+    connectorId: connector.id,
+    pageProperties: properties,
+  });
+
+  return {
+    skipped: false,
+  };
 }

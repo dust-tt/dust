@@ -10,6 +10,7 @@ import {
   BlockObjectResponse,
   GetDatabaseResponse,
   GetPageResponse,
+  PageObjectResponse,
   PartialBlockObjectResponse,
   QueryDatabaseResponse,
   RichTextItemResponse,
@@ -525,17 +526,20 @@ export async function getParsedDatabase(
   };
 }
 
-export async function getParsedPage(
-  notionAccessToken: string,
-  pageId: string,
-  loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedNotionPage | null> {
+export async function retrievePage({
+  accessToken,
+  pageId,
+  loggerArgs,
+}: {
+  accessToken: string;
+  pageId: string;
+  loggerArgs: Record<string, string | number>;
+}): Promise<PageObjectResponse | null> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({ auth: accessToken });
 
   let page: GetPageResponse | null = null;
-
   try {
     localLogger.info("Fetching page from Notion API.");
     page = await notionClient.pages.retrieve({ page_id: pageId });
@@ -555,15 +559,44 @@ export async function getParsedPage(
     return null;
   }
 
-  const pageLogger = localLogger.child({ pageUrl: page.url });
+  return page;
+}
 
-  pageLogger.info("Parsing page.");
+export function parsePageProperties(page: PageObjectResponse) {
   const properties = Object.entries(page.properties).map(([key, value]) => ({
     key,
     id: value.id,
     type: value.type,
     text: parsePropertyText(value),
   }));
+
+  return properties;
+}
+
+// deprecated
+export async function getParsedPage(
+  notionAccessToken: string,
+  pageId: string,
+  loggerArgs: Record<string, string | number> = {}
+): Promise<ParsedNotionPage | null> {
+  const localLogger = logger.child({ ...loggerArgs, pageId });
+
+  const notionClient = new Client({ auth: notionAccessToken });
+
+  const page = await retrievePage({
+    accessToken: notionAccessToken,
+    pageId,
+    loggerArgs,
+  });
+
+  if (!page) {
+    return null;
+  }
+
+  const pageLogger = localLogger.child({ pageUrl: page.url });
+
+  pageLogger.info("Parsing page.");
+  const properties = parsePageProperties(page);
 
   let blocks: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
     null;
