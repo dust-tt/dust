@@ -310,24 +310,34 @@ export class DustAPI {
    * @param config DustAppConfigType the app config
    * @param inputs any[] the app inputs
    */
-  async runApp(app: DustAppType, config: DustAppConfigType, inputs: unknown[]) {
-    const res = await fetch(
-      `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-        },
-        body: JSON.stringify({
-          specification_hash: app.appHash,
-          config: config,
-          stream: false,
-          blocking: true,
-          inputs: inputs,
-        }),
-      }
-    );
+  async runApp(
+    app: DustAppType,
+    config: DustAppConfigType,
+    inputs: unknown[],
+    { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
+      useWorkspaceCredentials: false,
+    }
+  ) {
+    let url = `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${
+      app.appId
+    }/runs`;
+    if (useWorkspaceCredentials) {
+      url += "?use_workspace_credentials=true";
+    }
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+      body: JSON.stringify({
+        specification_hash: app.appHash,
+        config: config,
+        stream: false,
+        blocking: true,
+        inputs: inputs,
+      }),
+    });
 
     const json = await res.json();
     if (json.error) {
@@ -346,25 +356,31 @@ export class DustAPI {
   async runAppStreamed(
     app: DustAppType,
     config: DustAppConfigType,
-    inputs: any[]
+    inputs: any[],
+    { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
+      useWorkspaceCredentials: false,
+    }
   ) {
-    const res = await fetch(
-      `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${app.appId}/runs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-        },
-        body: JSON.stringify({
-          specification_hash: app.appHash,
-          config: config,
-          stream: true,
-          blocking: false,
-          inputs: inputs,
-        }),
-      }
-    );
+    let url = `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${
+      app.appId
+    }/runs`;
+    if (useWorkspaceCredentials) {
+      url += "?use_workspace_credentials=true";
+    }
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+      body: JSON.stringify({
+        specification_hash: app.appHash,
+        config: config,
+        stream: true,
+        blocking: false,
+        inputs: inputs,
+      }),
+    });
 
     return processStreamedRunResponse(res);
   }
