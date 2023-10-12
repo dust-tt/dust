@@ -1,5 +1,6 @@
 import {
   CloudArrowDownIcon,
+  CloudArrowLeftRightIcon,
   Item,
   Modal,
   PageHeader,
@@ -145,7 +146,7 @@ function PickDataSource({
         <div className="mb-6">
           <PageHeader
             title="Select Data Sources in:"
-            icon={CloudArrowDownIcon}
+            icon={CloudArrowLeftRightIcon}
           />
         </div>
 
