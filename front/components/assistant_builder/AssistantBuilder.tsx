@@ -1123,7 +1123,7 @@ function SlackIntegration({
     <>
       <Modal
         isOpen={modalOpen}
-        isFullScreen={true}
+        type="full-screen"
         hasChanged={hasChanged}
         onClose={closeModal}
         title="Slack bot configuration"
