@@ -14,7 +14,7 @@ interface ModalProps {
   hasChanged: boolean;
   onSave?: () => void;
   title?: string;
-  isFullScreen?: boolean;
+  type?: "full-screen" | "right-side" | "default";
 }
 
 export function Modal({
@@ -25,7 +25,7 @@ export function Modal({
   hasChanged,
   onSave,
   title,
-  isFullScreen = false,
+  type = "default",
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
@@ -56,25 +56,43 @@ export function Modal({
         <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
           <div
             className={classNames(
-              "s-flex s-items-center s-justify-center",
-              isFullScreen ? "s-h-full s-p-0" : "s-min-h-full s-p-4"
+              "s-flex s-items-center",
+              type === "right-side" ? "s-justify-end" : "s-justify-center",
+              type === "full-screen" || type === "right-side"
+                ? "s-h-full s-p-0"
+                : "s-min-h-full s-p-4"
             )}
           >
             <Transition.Child
               as={Fragment}
               enter="s-ease-out s-duration-300"
-              enterFrom="s-opacity-0 s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
-              enterTo="s-opacity-100 s-translate-y-0 sm:s-scale-100"
+              enterFrom={classNames(
+                "s-opacity-0",
+                type === "right-side"
+                  ? "s-translate-x-full"
+                  : "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95"
+              )}
+              enterTo="s-opacity-100 s-translate-y-0 s-translate-x-0 sm:s-scale-100"
               leave="s-ease-in s-duration-200"
               leaveFrom="s-opacity-100 s-translate-y-0 sm:s-scale-100"
-              leaveTo="s-opacity-0 s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
+              leaveTo={classNames(
+                "s-opacity-0",
+                type === "right-side"
+                  ? "s-translate-x-full"
+                  : "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95"
+              )}
             >
               <Dialog.Panel
                 className={classNames(
                   "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-transition-all sm:s-px-6",
-                  isFullScreen
-                    ? "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full"
-                    : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2"
+                  type === "full-screen" || type === "right-side"
+                    ? "s-m-0 s-h-full s-max-h-full"
+                    : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2",
+                  type === "full-screen"
+                    ? "s-w-full s-max-w-full"
+                    : type === "right-side"
+                    ? "s-w-full s-max-w-full sm:s-w-1/3"
+                    : ""
                 )}
               >
                 <BarHeader
@@ -84,7 +102,9 @@ export function Modal({
                 />
                 <div
                   className={`s-pb-6 s-pt-14 ${
-                    isFullScreen ? "s-h-full s-overflow-y-auto" : ""
+                    type === "full-screen" || type === "right-side"
+                      ? "s-h-full s-overflow-y-auto"
+                      : ""
                   }`}
                 >
                   {children}
