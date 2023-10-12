@@ -120,7 +120,7 @@ async function handler(
 
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
-  const useWorkspaceCredentials = !!req.query.useWorkspaceCredentials;
+  const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
 
   switch (req.method) {
     case "POST":

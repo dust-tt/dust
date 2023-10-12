@@ -400,6 +400,8 @@ export async function* runDustApp(
     useLocalInDev: true,
   });
 
+  // As we run the app (using a system API key here), we do force using the workspace credentials so
+  // that the app executes in the exact same conditions in which they were developed.
   const runRes = await api.runAppStreamed(
     {
       workspaceId: c.appWorkspaceId,
@@ -407,7 +409,8 @@ export async function* runDustApp(
       appHash: "latest",
     },
     appConfig,
-    [params]
+    [params],
+    { useWorkspaceCredentials: true }
   );
 
   if (runRes.isErr()) {

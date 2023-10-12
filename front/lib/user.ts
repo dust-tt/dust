@@ -58,3 +58,18 @@ export function setUserMetadataFromClient(metadata: UserMetadataType) {
     }
   })();
 }
+
+export const guessFirstandLastNameFromFullName = (
+  fullName: string
+): { firstName: string | null; lastName: string | null } => {
+  if (!fullName) return { firstName: null, lastName: null };
+
+  const nameParts = fullName.split(" ");
+
+  if (nameParts.length === 1) return { firstName: fullName, lastName: null };
+
+  const firstName = nameParts.shift() || null;
+  const lastName = nameParts.join(" ");
+
+  return { firstName, lastName };
+};
