@@ -33,6 +33,7 @@ export function Input({
           "s-border-0 s-outline-none s-ring-1 s-ring-structure-200 focus:s-outline-none focus:s-ring-2",
           "s-w-full s-rounded-md  s-bg-structure-50 s-py-1.5 s-pl-4 s-pr-8 s-placeholder-element-600",
           "s-transition-all s-duration-300 s-ease-out",
+          "s-placeholder-element-600-dark  dark:s-bg-structure-50-dark dark:s-ring-structure-200-dark",
           className ?? "",
           !error
             ? "focus:s-ring-action-300"
