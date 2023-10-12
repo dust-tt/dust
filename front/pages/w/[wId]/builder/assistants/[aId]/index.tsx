@@ -158,13 +158,13 @@ export default function EditAssistant({
   dustAppConfiguration,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
+
   let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
-  let dataSourceMode: AssistantBuilderInitialState["dataSourceMode"] =
-    "GENERIC";
 
   if (isRetrievalConfiguration(agentConfiguration.action)) {
-    dataSourceMode = "SELECTED";
+    actionMode = "RETRIEVAL";
     if (agentConfiguration.action?.relativeTimeFrame) {
       switch (agentConfiguration.action.relativeTimeFrame) {
         case "auto":
@@ -183,10 +183,8 @@ export default function EditAssistant({
     }
   }
 
-  let dustAppMode: AssistantBuilderInitialState["dustAppMode"] = "GENERIC";
-
   if (isDustAppRunConfiguration(agentConfiguration.action)) {
-    dustAppMode = "SELECTED";
+    actionMode = "DUST_APP_RUN";
   }
 
   return (
@@ -197,11 +195,10 @@ export default function EditAssistant({
       dataSources={dataSources}
       dustApps={dustApps}
       initialBuilderState={{
-        dataSourceMode,
+        actionMode,
         filteringMode,
         timeFrame,
         dataSourceConfigurations,
-        dustAppMode,
         dustAppConfiguration,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,

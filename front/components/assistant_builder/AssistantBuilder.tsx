@@ -67,14 +67,17 @@ const usedModelConfigs = [
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
 ];
 
-// Retrieval Action
+// Actions
 
-const DATA_SOURCE_MODES = ["GENERIC", "SELECTED"] as const;
-type DataSourceMode = (typeof DATA_SOURCE_MODES)[number];
-const DATA_SOURCE_MODE_TO_LABEL: Record<DataSourceMode, string> = {
-  GENERIC: "None (Generic model)",
-  SELECTED: "Selected Data Sources",
+const ACTION_MODES = ["GENERIC", "RETRIEVAL", "DUST_APP_RUN"] as const;
+type ActionMode = (typeof ACTION_MODES)[number];
+const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
+  GENERIC: "No action (Generic model)",
+  RETRIEVAL: "Search Data Sources",
+  DUST_APP_RUN: "Execute Dust App",
 };
+
+// Retrieval Action
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
@@ -97,13 +100,6 @@ export type AssistantBuilderDataSourceConfiguration = {
 
 // DustAppRun Action
 
-const DUST_APP_MODES = ["GENERIC", "SELECTED"] as const;
-type DustAppMode = (typeof DUST_APP_MODES)[number];
-const DUST_APP_MODE_TO_LABEL: Record<DataSourceMode, string> = {
-  GENERIC: "None",
-  SELECTED: "Selected Dust App",
-};
-
 export type AssistantBuilderDustAppConfiguration = {
   app: AppType;
 };
@@ -111,7 +107,7 @@ export type AssistantBuilderDustAppConfiguration = {
 // Builder State
 
 type AssistantBuilderState = {
-  dataSourceMode: DataSourceMode;
+  actionMode: ActionMode;
   dataSourceConfigurations: Record<
     string,
     AssistantBuilderDataSourceConfiguration
@@ -121,7 +117,6 @@ type AssistantBuilderState = {
     value: number;
     unit: TimeframeUnit;
   };
-  dustAppMode: DustAppMode;
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
   handle: string | null;
   description: string | null;
@@ -138,13 +133,12 @@ type AssistantBuilderState = {
 // - allows null timeFrame
 // - allows null dataSourceConfigurations
 export type AssistantBuilderInitialState = {
-  dataSourceMode: AssistantBuilderState["dataSourceMode"];
+  actionMode: AssistantBuilderState["actionMode"];
   dataSourceConfigurations:
     | AssistantBuilderState["dataSourceConfigurations"]
     | null;
   filteringMode: FilteringMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
-  dustAppMode: AssistantBuilderState["dustAppMode"];
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
   handle: string;
   description: string;
@@ -167,14 +161,13 @@ type AssistantBuilderProps = {
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
-  dataSourceMode: "GENERIC",
+  actionMode: "GENERIC",
   dataSourceConfigurations: {},
   filteringMode: "SEARCH",
   timeFrame: {
     value: 1,
     unit: "month",
   },
-  dustAppMode: "GENERIC",
   dustAppConfiguration: null,
   handle: null,
   description: null,
@@ -283,7 +276,7 @@ export default function AssistantBuilder({
   useEffect(() => {
     if (initialBuilderState) {
       setBuilderState({
-        dataSourceMode: initialBuilderState.dataSourceMode,
+        actionMode: initialBuilderState.actionMode,
         dataSourceConfigurations:
           initialBuilderState.dataSourceConfigurations ?? {
             ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
@@ -294,7 +287,6 @@ export default function AssistantBuilder({
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
-        dustAppMode: initialBuilderState.dustAppMode,
         dustAppConfiguration: initialBuilderState.dustAppConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
@@ -390,13 +382,13 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (builderState.dataSourceMode === "SELECTED") {
+    if (builderState.actionMode === "RETRIEVAL") {
       if (!configuredDataSourceCount) {
         valid = false;
       }
     }
 
-    if (builderState.dustAppMode === "SELECTED") {
+    if (builderState.actionMode === "DUST_APP_RUN") {
       if (!builderState.dustAppConfiguration) {
         valid = false;
       }
@@ -413,14 +405,13 @@ export default function AssistantBuilder({
 
     setSubmitEnabled(valid);
   }, [
+    builderState.actionMode,
     builderState.handle,
     builderState.description,
     builderState.instructions,
-    builderState.dataSourceMode,
     configuredDataSourceCount,
     builderState.filteringMode,
     builderState.timeFrame.value,
-    builderState.dustAppMode,
     builderState.dustAppConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
@@ -468,10 +459,10 @@ export default function AssistantBuilder({
 
     let actionParam: BodyType["assistant"]["action"] | null = null;
 
-    switch (builderState.dataSourceMode) {
+    switch (builderState.actionMode) {
       case "GENERIC":
         break;
-      case "SELECTED":
+      case "RETRIEVAL":
         const tfParam = (() => {
           switch (builderState.filteringMode) {
             case "SEARCH":
@@ -513,29 +504,20 @@ export default function AssistantBuilder({
         };
         break;
 
-      default:
-        ((x: never) => {
-          throw new Error(`Unknown data source mode ${x}`);
-        })(builderState.dataSourceMode);
-    }
-
-    if (builderState.dustAppConfiguration) {
-      switch (builderState.dustAppMode) {
-        case "GENERIC":
-          break;
-        case "SELECTED":
+      case "DUST_APP_RUN":
+        if (builderState.dustAppConfiguration) {
           actionParam = {
             type: "dust_app_run_configuration",
             appWorkspaceId: owner.sId,
             appId: builderState.dustAppConfiguration.app.sId,
           };
-          break;
+        }
+        break;
 
-        default:
-          ((x: never) => {
-            throw new Error(`Unknown dust app mode ${x}`);
-          })(builderState.dustAppMode);
-      }
+      default:
+        ((x: never) => {
+          throw new Error(`Unknown data source mode ${x}`);
+        })(builderState.actionMode);
     }
 
     const body: t.TypeOf<
@@ -744,90 +726,99 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex flex-col space-y-8 pb-8 pt-8">
-          <div className="flex flex-row items-start gap-8">
-            <div className="flex flex-col gap-4">
-              <div className="text-xl font-bold text-element-900">Name</div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Choose a name reflecting the expertise, knowledge access or
-                function of your&nbsp;assistant. Mentioning the&nbsp;assistant
-                in a conversation, like <span className="italic">"@help"</span>{" "}
-                will prompt a&nbsp;response from&nbsp;them.
-              </div>
-              <div className="text-sm">
-                <Input
-                  placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
-                  value={builderState.handle}
-                  onChange={(value) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      handle: value.trim(),
-                    }));
-                  }}
-                  error={assistantHandleError}
-                  name="assistantName"
-                  showErrorLabel
-                  className="text-sm"
-                />
-              </div>
-              <div className="text-xl font-bold text-element-900">
-                Description
-              </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Add a short description that will help Dust and other workspace
-                members understand the&nbsp;assistant’s&nbsp;purpose.
-              </div>
-              <div className="text-sm">
-                <Input
-                  placeholder="Anwser questions about sales, translate from English to French…"
-                  value={builderState.description}
-                  onChange={(value) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      description: value,
-                    }));
-                  }}
-                  error={null} // TODO ?
-                  name="assistantDescription"
-                  className="text-sm"
-                />
-              </div>
+          <div className="flex w-full flex-col gap-4">
+            <div className="text-2xl font-bold text-element-900">
+              Identity card
             </div>
-            <div className="flex flex-col items-center space-y-2">
-              <Avatar
-                size="xl"
-                visual={<img src={builderState.avatarUrl || ""} />}
-              />
-              <Button
-                labelVisible={true}
-                label={"Change"}
-                variant="tertiary"
-                size="xs"
-                icon={PencilSquareIcon}
-                onClick={() => {
-                  setIsAvatarModalOpen(true);
-                }}
-              />
+            <div className="flex flex-row items-start gap-8">
+              <div className="flex flex-col gap-4">
+                <div className="text-lg font-bold text-element-900">Name</div>
+                <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                  Choose a name reflecting the expertise, knowledge access or
+                  function of your&nbsp;assistant. Mentioning the&nbsp;assistant
+                  in a conversation, like{" "}
+                  <span className="italic">"@help"</span> will prompt
+                  a&nbsp;response from&nbsp;them.
+                </div>
+                <div className="text-sm">
+                  <Input
+                    placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
+                    value={builderState.handle}
+                    onChange={(value) => {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        handle: value.trim(),
+                      }));
+                    }}
+                    error={assistantHandleError}
+                    name="assistantName"
+                    showErrorLabel
+                    className="text-sm"
+                  />
+                </div>
+                <div className="text-lg font-bold text-element-900">
+                  Description
+                </div>
+                <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                  Add a short description that will help Dust and other
+                  workspace members understand
+                  the&nbsp;assistant’s&nbsp;purpose.
+                </div>
+                <div className="text-sm">
+                  <Input
+                    placeholder="Anwser questions about sales, translate from English to French…"
+                    value={builderState.description}
+                    onChange={(value) => {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        description: value,
+                      }));
+                    }}
+                    error={null} // TODO ?
+                    name="assistantDescription"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-center space-y-2">
+                <Avatar
+                  size="xl"
+                  visual={<img src={builderState.avatarUrl || ""} />}
+                />
+                <Button
+                  labelVisible={true}
+                  label={"Change"}
+                  variant="tertiary"
+                  size="xs"
+                  icon={PencilSquareIcon}
+                  onClick={() => {
+                    setIsAvatarModalOpen(true);
+                  }}
+                />
+              </div>
             </div>
           </div>
+
           <div className="mt-8 flex w-full flex-row items-start">
             <div className="flex w-full flex-col gap-4">
-              <div className="text-xl font-bold text-element-900">
+              <div className="text-2xl font-bold text-element-900">
                 Instructions
               </div>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                This is your assistant’s heart and soul.
-                <br />
-                Describe, as is you were addressing them, their purpose. Be
-                specific on the role (
-                <span className="italic">I want you to act as&nbsp;…</span>),
-                their expected output, and&nbsp;any formatting requirements you
-                have (
-                <span className="italic">
-                  ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
-                </span>
-                ).
+              <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
+                <p>This is your assistant’s heart and soul.</p>
+                <p className="pt-2">
+                  Describe, as is you were addressing them, their purpose. Be
+                  specific on the role (
+                  <span className="italic">I want you to act as&nbsp;…</span>),
+                  their expected output, and&nbsp;any formatting requirements
+                  you have (
+                  <span className="italic">
+                    ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
+                  </span>
+                  ).
+                </p>
               </div>
               <div className="text-sm">
                 <AssistantBuilderTextArea
@@ -860,61 +851,33 @@ export default function AssistantBuilder({
 
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
-              <div className="text-xl font-bold text-element-900">
-                Data Sources
-              </div>
+              <div className="text-2xl font-bold text-element-900">Actions</div>
               <div className="text-sm text-element-700">
-                Aside from common knowledge, your&nbsp;assistant can retrieve
-                knowledge from&nbsp;selected sources
-                to&nbsp;answer&nbsp;questions. The Data&nbsp;Sources to pick
-                from are&nbsp;managed by&nbsp;administrators.
+                You can ask the assistant to perform actions before answering,
+                like{" "}
+                <span className="font-bold text-element-800">
+                  searching in your Data Sources
+                </span>
+                , or use a Dust Application you have built for your specific
+                needs.
               </div>
-              <ul role="list" className="flex flex-row gap-12">
-                <li className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-bold text-element-800">
-                      Only set data sources if they are necessary.
-                    </div>
-                    <div className="text-sm text-element-700">
-                      By default, the assistant will follow its instructions
-                      with common knowledge. It&nbsp;will answer faster when not
-                      using Data&nbsp;Sources.
-                    </div>
-                  </div>
-                </li>
-                <li className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-bold text-element-800">
-                      Select your Data Sources carefully.
-                    </div>
-                    <div className="text-sm text-element-700">
-                      More is not necessarily better. The quality of your
-                      assistant’s answers to specific questions will depend on
-                      the&nbsp;quality of&nbsp;the&nbsp;underlying&nbsp;data.
-                    </div>
-                  </div>
-                </li>
-              </ul>
-              <div className="flex flex-row items-center space-x-2 pt-6">
+              <div className="flex flex-row items-center space-x-2 py-4">
                 <div className="text-sm font-semibold text-element-900">
-                  Data Sources:
+                  Action:
                 </div>
                 <DropdownMenu>
                   <DropdownMenu.Button>
                     <Button
                       type="select"
                       labelVisible={true}
-                      disabled={builderState.dustAppMode !== "GENERIC"}
-                      label={
-                        DATA_SOURCE_MODE_TO_LABEL[builderState.dataSourceMode]
-                      }
+                      label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
                       variant="secondary"
                       hasMagnifying={false}
                       size="sm"
                     />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items origin="bottomRight" width={260}>
-                    {Object.entries(DATA_SOURCE_MODE_TO_LABEL).map(
+                    {Object.entries(ACTION_MODE_TO_LABEL).map(
                       ([key, value]) => (
                         <DropdownMenu.Item
                           key={key}
@@ -923,7 +886,7 @@ export default function AssistantBuilder({
                             setEdited(true);
                             setBuilderState((state) => ({
                               ...state,
-                              dataSourceMode: key as DataSourceMode,
+                              actionMode: key as ActionMode,
                             }));
                           }}
                         />
@@ -932,107 +895,109 @@ export default function AssistantBuilder({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-              <div className="pb-4">
-                <DataSourceSelectionSection
-                  show={builderState.dataSourceMode === "SELECTED"}
-                  dataSourceConfigurations={
-                    builderState.dataSourceConfigurations
-                  }
-                  openDataSourceModal={() => {
-                    setShowDataSourcesModal(true);
-                  }}
-                  canAddDataSource={configurableDataSources.length > 0}
-                  onManageDataSource={(name) => {
-                    setDataSourceToManage(
-                      builderState.dataSourceConfigurations[name]
-                    );
-                    setShowDataSourcesModal(true);
-                  }}
-                  onDelete={deleteDataSource}
-                  filteringMode={builderState.filteringMode}
-                  setFilteringMode={(filteringMode: FilteringMode) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      filteringMode,
-                    }));
-                  }}
-                  timeFrame={builderState.timeFrame}
-                  setTimeFrame={(timeFrame) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      timeFrame,
-                    }));
-                  }}
-                  timeFrameError={timeFrameError}
-                />
+
+              <div className="flex flex-col gap-4">
+                {builderState.actionMode === "RETRIEVAL" && (
+                  <>
+                    <div className="text-sm text-element-700">
+                      The assistant will retrieve information from the selected
+                      data sources and run the instructions on the results to
+                      generate an answer. The Data Sources to pick from are
+                      managed by administrators.
+                    </div>
+                    <ul role="list" className="flex flex-row gap-12">
+                      <li className="flex flex-1">
+                        <div className="flex flex-col">
+                          <div className="text-sm font-bold text-element-800">
+                            Only set data sources if they are necessary.
+                          </div>
+                          <div className="text-sm text-element-700">
+                            By default, the assistant will follow its
+                            instructions with common knowledge. It&nbsp;will
+                            answer faster when not using Data&nbsp;Sources.
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex flex-1">
+                        <div className="flex flex-col">
+                          <div className="text-sm font-bold text-element-800">
+                            Select your Data Sources carefully.
+                          </div>
+                          <div className="text-sm text-element-700">
+                            More is not necessarily better. The quality of your
+                            assistant’s answers to specific questions will
+                            depend on the&nbsp;quality
+                            of&nbsp;the&nbsp;underlying&nbsp;data.
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                    <div className="pb-4">
+                      <DataSourceSelectionSection
+                        show={builderState.actionMode === "RETRIEVAL"}
+                        dataSourceConfigurations={
+                          builderState.dataSourceConfigurations
+                        }
+                        openDataSourceModal={() => {
+                          setShowDataSourcesModal(true);
+                        }}
+                        canAddDataSource={configurableDataSources.length > 0}
+                        onManageDataSource={(name) => {
+                          setDataSourceToManage(
+                            builderState.dataSourceConfigurations[name]
+                          );
+                          setShowDataSourcesModal(true);
+                        }}
+                        onDelete={deleteDataSource}
+                        filteringMode={builderState.filteringMode}
+                        setFilteringMode={(filteringMode: FilteringMode) => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            filteringMode,
+                          }));
+                        }}
+                        timeFrame={builderState.timeFrame}
+                        setTimeFrame={(timeFrame) => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            timeFrame,
+                          }));
+                        }}
+                        timeFrameError={timeFrameError}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {builderState.actionMode === "DUST_APP_RUN" && (
+                  <>
+                    <div className="text-sm text-element-700">
+                      Your assistant can execute a Dust Application of your
+                      design before answering. The output of the app (last
+                      block) is injeced in context for the model to generate an
+                      answer. The inputs of the app will be automatically
+                      generated from the context of the conversation based on
+                      the descriptions you provided in the application's input
+                      block dataset schema.
+                    </div>
+                    <div className="pb-4">
+                      <DustAppSelectionSection
+                        show={builderState.actionMode === "DUST_APP_RUN"}
+                        dustAppConfiguration={builderState.dustAppConfiguration}
+                        openDustAppModal={() => {
+                          setShowDustAppsModal(true);
+                        }}
+                        onDelete={deleteDustApp}
+                        canSelectDustApp={dustApps.length !== 0}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
-
-          {dustApps.length > 0 && (
-            <div className="flex flex-row items-start">
-              <div className="flex flex-col gap-4">
-                <div className="text-xl font-bold text-element-900">
-                  Dust App Execution
-                </div>
-                <div className="text-sm text-element-700">
-                  Your assistant can execute a Dust App of your design before
-                  answering. The output of the app (last block) is injeced in
-                  context for the model to generate an answer. The inputs of the
-                  app will be automatically infered from the context of the
-                  conversation based on the descriptions you provided in the app
-                  input block dataset.
-                </div>
-                <div className="flex flex-row items-center space-x-2 pt-6">
-                  <div className="text-sm font-semibold text-element-900">
-                    Dust App:
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenu.Button>
-                      <Button
-                        type="select"
-                        labelVisible={true}
-                        disabled={builderState.dataSourceMode !== "GENERIC"}
-                        label={DUST_APP_MODE_TO_LABEL[builderState.dustAppMode]}
-                        variant="secondary"
-                        hasMagnifying={false}
-                        size="sm"
-                      />
-                    </DropdownMenu.Button>
-                    <DropdownMenu.Items origin="bottomRight" width={260}>
-                      {Object.entries(DUST_APP_MODE_TO_LABEL).map(
-                        ([key, value]) => (
-                          <DropdownMenu.Item
-                            key={key}
-                            label={value}
-                            onClick={() => {
-                              setEdited(true);
-                              setBuilderState((state) => ({
-                                ...state,
-                                dustAppMode: key as DustAppMode,
-                              }));
-                            }}
-                          />
-                        )
-                      )}
-                    </DropdownMenu.Items>
-                  </DropdownMenu>
-                </div>
-                <div className="pb-4">
-                  <DustAppSelectionSection
-                    show={builderState.dustAppMode === "SELECTED"}
-                    dustAppConfiguration={builderState.dustAppConfiguration}
-                    openDustAppModal={() => {
-                      setShowDustAppsModal(true);
-                    }}
-                    onDelete={deleteDustApp}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
@@ -1200,7 +1165,7 @@ function SlackIntegration({
         </div>
       </Modal>
 
-      <div className="text-xl font-bold text-element-900">
+      <div className="text-2xl font-bold text-element-900">
         Slack Integration
       </div>
       <div className="text-sm text-element-700">
