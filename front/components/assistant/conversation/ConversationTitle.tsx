@@ -14,18 +14,18 @@ import React, { MouseEvent, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
-import { useConversation } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { ConversationType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
 
 export function ConversationTitle({
   owner,
-  conversationId,
+  conversation,
   shareLink,
   onDelete,
 }: {
   owner: WorkspaceType;
-  conversationId: string;
+  conversation: ConversationType;
   shareLink: string;
   onDelete?: () => void;
 }) {
@@ -46,16 +46,10 @@ export function ConversationTitle({
     }, 1000);
   };
 
-  const { conversation, isConversationError, isConversationLoading } =
-    useConversation({
-      conversationId,
-      workspaceId: owner.sId,
-    });
-
   const onTitleChange = async (title: string) => {
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
         {
           method: "PATCH",
           headers: {
@@ -68,7 +62,7 @@ export function ConversationTitle({
         }
       );
       await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`
       );
       void mutate(`/api/w/${owner.sId}/assistant/conversations`);
       if (!res.ok) {
@@ -81,16 +75,12 @@ export function ConversationTitle({
     }
   };
 
-  if (isConversationLoading || isConversationError || !conversation) {
-    return null;
-  }
-
   return (
     <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
       <div className="flex min-w-0 flex-row items-center gap-4">
         {!isEditingTitle ? (
           <div className="min-w-0 overflow-hidden truncate">
-            <span className="font-bold">{conversation?.title || ""}</span>
+            <span className="font-bold">{conversation.title || ""}</span>
           </div>
         ) : (
           <div className="w-[84%]">
@@ -158,7 +148,7 @@ export function ConversationTitle({
           <IconButton
             icon={PencilSquareIcon}
             onClick={() => {
-              setEditedTitle(conversation?.title || "");
+              setEditedTitle(conversation.title || "");
               setIsEditingTitle(true);
             }}
             size="sm"

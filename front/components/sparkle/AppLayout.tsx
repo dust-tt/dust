@@ -163,6 +163,7 @@ export default function AppLayout({
   hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
+  pageTitle,
   gaTrackingId,
   navChildren,
   titleChildren,
@@ -174,6 +175,7 @@ export default function AppLayout({
   hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
+  pageTitle?: string;
   gaTrackingId: string;
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
@@ -184,7 +186,7 @@ export default function AppLayout({
   return (
     <>
       <Head>
-        <title>{`Dust - ${owner.name}`}</title>
+        <title>{pageTitle ? pageTitle : `Dust - ${owner.name}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
 
         <meta name="apple-mobile-web-app-title" content="Dust" />
