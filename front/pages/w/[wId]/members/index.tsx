@@ -105,39 +105,39 @@ export default function WorkspaceAdmin({
             />
             {inviteLink ? (
               <div className="pt-1 text-element-700">
-                <Page.P>
-                  Invitation link is activated for domain{" "}
-                  <span className="font-bold">{`@${owner.allowedDomain}`}</span>
-                </Page.P>
-                <div className="mt-3 flex justify-between gap-2">
+                Invitation link is activated for domain{" "}
+                <span className="font-bold">{`@${owner.allowedDomain}`}</span>
+                <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
                   <div className="flex-grow">
                     <Input
-                      className="text-sm"
+                      className=""
                       disabled
                       placeholder={""}
                       value={inviteLink}
                       name={""}
                     />
                   </div>
-                  <div className="flex-none">
-                    <Button
-                      variant="secondary"
-                      label="Copy"
-                      size="sm"
-                      icon={ClipboardIcon}
-                      onClick={() => {
-                        void navigator.clipboard.writeText(inviteLink);
-                      }}
-                    />
-                  </div>
-                  <div className="flex-none">
-                    <Button
-                      variant="secondary"
-                      label="Settings"
-                      size="sm"
-                      icon={Cog6ToothIcon}
-                      onClick={() => setInviteSettingsModalOpen(true)}
-                    />
+                  <div className="relative bottom-0.5 flex flex-row gap-2">
+                    <div className="flex-none">
+                      <Button
+                        variant="secondary"
+                        label="Copy"
+                        size="sm"
+                        icon={ClipboardIcon}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(inviteLink);
+                        }}
+                      />
+                    </div>
+                    <div className="flex-none">
+                      <Button
+                        variant="secondary"
+                        label="Settings"
+                        size="sm"
+                        icon={Cog6ToothIcon}
+                        onClick={() => setInviteSettingsModalOpen(true)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function WorkspaceAdmin({
           owner={owner}
         />
         <Page.SectionHeader title="Member list" />
-        <div className="flex w-full items-stretch gap-2">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row">
           <div className="flex-grow">
             <Searchbar
               placeholder="Search members"
@@ -230,19 +230,21 @@ export default function WorkspaceAdmin({
               name={""}
             />
           </div>
-          <Button
-            variant="primary"
-            label="Invite members"
-            size="sm"
-            icon={PlusIcon}
-            onClick={() => setInviteEmailModalOpen(true)}
-          />
+          <div className="flex-none">
+            <Button
+              variant="primary"
+              label="Invite members"
+              size="sm"
+              icon={PlusIcon}
+              onClick={() => setInviteEmailModalOpen(true)}
+            />
+          </div>
         </div>
         <div>
           {displayList.map((elt, i) => (
             <div
               key={i}
-              className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm hover:bg-structure-100"
+              className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs hover:bg-structure-100 sm:text-sm"
               onMouseEnter={() => {
                 if (isInvitation(elt)) setInvitationToRevoke(elt);
                 else setChangeRoleMember(elt);
@@ -252,20 +254,23 @@ export default function WorkspaceAdmin({
                 else setChangeRoleModalOpen(true);
               }}
             >
-              <div>
+              <div className="hidden sm:block">
                 {isInvitation(elt) ? (
                   <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
                 ) : (
                   <Avatar visual={elt.image} name={elt.name} size="xs" />
                 )}
               </div>
-              {!isInvitation(elt) && (
-                <div className="font-medium text-element-900">{elt.name}</div>
-              )}
-              <div className="grow font-normal text-element-700">
-                {isInvitation(elt)
-                  ? elt.inviteEmail
-                  : elt.email || elt.username}
+              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                {!isInvitation(elt) && (
+                  <div className="font-medium text-element-900">{elt.name}</div>
+                )}
+
+                <div className="grow font-normal text-element-700">
+                  {isInvitation(elt)
+                    ? elt.inviteEmail
+                    : elt.email || elt.username}
+                </div>
               </div>
               <div>
                 {isInvitation(elt) ? (
@@ -292,7 +297,7 @@ export default function WorkspaceAdmin({
                   </Chip>
                 )}
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <ChevronRightIcon />
               </div>
             </div>
@@ -595,7 +600,7 @@ function ChangeMemberModal({
                     key={role}
                     onClick={() =>
                       handleMemberRoleChange(member, role as RoleType)
-                    } // TODO
+                    }
                     label={role.charAt(0).toUpperCase() + role.slice(1)}
                   />
                 ))}
