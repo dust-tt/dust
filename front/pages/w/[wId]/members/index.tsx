@@ -165,7 +165,7 @@ export default function WorkspaceAdmin({
     };
     const [searchText, setSearchText] = useState("");
 
-    const displayList = [
+    const displayedMembersAndInvitations = [
       ...members
         .sort((a, b) => a.name.localeCompare(b.name))
         .filter((m) => m.workspaces[0].role !== "none")
@@ -241,46 +241,52 @@ export default function WorkspaceAdmin({
           </div>
         </div>
         <div>
-          {displayList.map((elt, i) => (
+          {displayedMembersAndInvitations.map((item) => (
             <div
-              key={i}
+              key={
+                isInvitation(item)
+                  ? `invitation-${item.id}`
+                  : `member-${item.id}`
+              }
               className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs hover:bg-structure-100 sm:text-sm"
               onMouseEnter={() => {
-                if (isInvitation(elt)) setInvitationToRevoke(elt);
-                else setChangeRoleMember(elt);
+                if (isInvitation(item)) setInvitationToRevoke(item);
+                else setChangeRoleMember(item);
               }}
               onClick={() => {
-                if (isInvitation(elt)) setRevokeInvitationModalOpen(true);
+                if (isInvitation(item)) setRevokeInvitationModalOpen(true);
                 else setChangeRoleModalOpen(true);
               }}
             >
               <div className="hidden sm:block">
-                {isInvitation(elt) ? (
+                {isInvitation(item) ? (
                   <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
                 ) : (
-                  <Avatar visual={elt.image} name={elt.name} size="xs" />
+                  <Avatar visual={item.image} name={item.name} size="xs" />
                 )}
               </div>
               <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                {!isInvitation(elt) && (
-                  <div className="font-medium text-element-900">{elt.name}</div>
+                {!isInvitation(item) && (
+                  <div className="font-medium text-element-900">
+                    {item.name}
+                  </div>
                 )}
 
                 <div className="grow font-normal text-element-700">
-                  {isInvitation(elt)
-                    ? elt.inviteEmail
-                    : elt.email || elt.username}
+                  {isInvitation(item)
+                    ? item.inviteEmail
+                    : item.email || item.username}
                 </div>
               </div>
               <div>
-                {isInvitation(elt) ? (
+                {isInvitation(item) ? (
                   <Chip size="xs" color="slate">
-                    Invitation {elt.status}
+                    Invitation {item.status}
                   </Chip>
                 ) : (
                   <Chip
                     size="xs"
-                    color={COLOR_FOR_ROLE[elt.workspaces[0].role]}
+                    color={COLOR_FOR_ROLE[item.workspaces[0].role]}
                     className={
                       /** Force tailwind to include classes we will need below */
                       "text-amber-900 text-emerald-900 text-warning-900"
@@ -289,10 +295,10 @@ export default function WorkspaceAdmin({
                     <span
                       className={classNames(
                         "capitalize",
-                        `text-${COLOR_FOR_ROLE[elt.workspaces[0].role]}-900`
+                        `text-${COLOR_FOR_ROLE[item.workspaces[0].role]}-900`
                       )}
                     >
-                      {elt.workspaces[0].role}
+                      {item.workspaces[0].role}
                     </span>
                   </Chip>
                 )}
@@ -337,8 +343,8 @@ function InviteEmailModal({
     >
       <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
         <Page.P>
-          Send an email to invite a new user to your workspace. They will be
-          able to join your workspace by clicking on the link in the email.
+          Invite a new user to your workspace. They will receive an email with a
+          link to join your workspace.
         </Page.P>
         <div className="flex flex-grow flex-col gap-1.5">
           <div className="font-semibold">Email to send invite to:</div>
@@ -374,7 +380,7 @@ function InviteEmailModal({
     </Modal>
   );
 
-  async function handleSendInvitation() {
+  async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
       setEmailError("Invalid email address.");
       return;
@@ -452,7 +458,7 @@ function InviteSettingsModal({
     </Modal>
   );
 
-  async function handleUpdateWorkspace() {
+  async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
     const res = await fetch(`/api/w/${owner.sId}`, {
       method: "POST",
@@ -472,7 +478,7 @@ function InviteSettingsModal({
       window.location.reload();
     }
   }
-  function validDomain() {
+  function validDomain(): boolean {
     let valid = true;
     if (domainInput === null) {
       setAllowedDomainError("");
@@ -513,7 +519,7 @@ function RevokeInvitationModal({
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
-          Revoke invitation of user with email{" "}
+          Revoke invitation for user with email{" "}
           <span className="font-bold">{invitation?.inviteEmail}</span>?
         </div>
         <div className="flex gap-2">
@@ -528,7 +534,7 @@ function RevokeInvitationModal({
     </Modal>
   );
 
-  async function handleRevokeInvitation(invitationId: number) {
+  async function handleRevokeInvitation(invitationId: number): Promise<void> {
     const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
       method: "POST",
       headers: {
@@ -629,7 +635,10 @@ function ChangeMemberModal({
       </div>
     </Modal>
   );
-  async function handleMemberRoleChange(member: UserType, role: string) {
+  async function handleMemberRoleChange(
+    member: UserType,
+    role: string
+  ): Promise<void> {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
       method: "POST",
       headers: {
