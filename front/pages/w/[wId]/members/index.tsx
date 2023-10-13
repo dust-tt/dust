@@ -16,6 +16,7 @@ import {
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
+import React from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -30,8 +31,6 @@ import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
-import React from "react";
-import { set } from "fp-ts";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
@@ -171,7 +170,7 @@ export default function WorkspaceAdmin({
                       size="sm"
                       icon={ClipboardIcon}
                       onClick={() => {
-                        navigator.clipboard.writeText(inviteLink);
+                        void navigator.clipboard.writeText(inviteLink);
                       }}
                     />
                   </div>
