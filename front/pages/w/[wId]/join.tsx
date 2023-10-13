@@ -3,7 +3,9 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
+import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -33,7 +35,7 @@ type OnboardingType =
 
 export const getServerSideProps: GetServerSideProps<{
   onboardingType: OnboardingType;
-  workspaceName: string;
+  workspace: WorkspaceType;
   signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;
@@ -91,7 +93,7 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: {
       onboardingType: onboardingType,
-      workspaceName: workspace.name,
+      workspace: workspace,
       signUpCallbackUrl: signUpCallbackUrl,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -101,64 +103,58 @@ export const getServerSideProps: GetServerSideProps<{
 
 export default function Join({
   onboardingType,
-  workspaceName,
+  workspace,
   signUpCallbackUrl,
+  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
-      <main className="z-10 mx-6">
-        <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          <div style={{ height: "10vh" }}></div>
-          <div className="grid grid-cols-1">
-            <div>
-              <Logo className="h-[48px] w-[192px] px-1" />
-            </div>
-            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Secure AI assistant
-              </span>{" "}
-              <br />
-              with your company’s knowledge
-              <br />
-            </p>
-          </div>
-          <div className="h-10"></div>
-          <div className="font-regular text-lg text-slate-200">
-            <p>Glad to see you!</p>
-
-            {onboardingType === "domain_conversation_link" ? (
-              <p>
-                Please log in or sign up with your company email to access this
-                conversation.
-              </p>
-            ) : (
-              <p>
-                You've been invited to join the {workspaceName} workspace on
-                Dust.
-              </p>
-            )}
-
-            {onboardingType === "email_invite" && (
-              <p>How would you like to connect?</p>
-            )}
-          </div>
-
-          <div className="h-16" />
-
-          <div className="flex flex-col items-center justify-center gap-4">
-            <SignInButton
-              label="Sign up with Google"
-              icon={GoogleLogo}
-              onClick={() => {
-                void signIn("google", {
-                  callbackUrl: signUpCallbackUrl,
-                });
-              }}
-            />
-          </div>
+    <OnboardingLayout owner={workspace} gaTrackingId={gaTrackingId}>
+      <div className="grid grid-cols-1">
+        <div>
+          <Logo className="h-[48px] w-[192px] px-1" />
         </div>
-      </main>
-    </>
+        <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
+          <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+            Secure AI assistant
+          </span>{" "}
+          <br />
+          with your company’s knowledge
+          <br />
+        </p>
+      </div>
+      <div className="h-10"></div>
+      <div className="font-regular text-lg text-slate-200">
+        <p>Glad to see you!</p>
+
+        {onboardingType === "domain_conversation_link" ? (
+          <p>
+            Please log in or sign up with your company email to access this
+            conversation.
+          </p>
+        ) : (
+          <p>
+            You've been invited to join the {workspace.name} workspace on Dust.
+          </p>
+        )}
+
+        {onboardingType === "email_invite" && (
+          <p>How would you like to connect?</p>
+        )}
+      </div>
+
+      <div className="h-16" />
+
+      <div className="flex flex-col items-center justify-center gap-4">
+        <SignInButton
+          label="Sign up with Google"
+          icon={GoogleLogo}
+          onClick={() => {
+            void signIn("google", {
+              callbackUrl: signUpCallbackUrl,
+            });
+          }}
+        />
+      </div>
+    </OnboardingLayout>
   );
 }
