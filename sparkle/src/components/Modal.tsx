@@ -50,7 +50,7 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className="s-fixed s-inset-0 s-bg-gray-500 s-bg-opacity-75 s-transition-opacity" />
+          <div className="s-fixed s-inset-0 s-bg-slate-800/70 s-transition-opacity" />
         </Transition.Child>
 
         <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
@@ -84,14 +84,14 @@ export function Modal({
             >
               <Dialog.Panel
                 className={classNames(
-                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-4 s-transition-all sm:s-px-6",
+                  "s-relative s-transform s-overflow-hidden s-bg-white s-px-3 s-transition-all sm:s-px-4",
                   type === "full-screen" || type === "right-side"
                     ? "s-m-0 s-h-full s-max-h-full"
                     : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2",
                   type === "full-screen"
                     ? "s-w-full s-max-w-full"
                     : type === "right-side"
-                    ? "s-w-full s-max-w-full sm:s-w-1/3"
+                    ? "s-w-full s-max-w-full sm:s-w-[448px]"
                     : ""
                 )}
               >
