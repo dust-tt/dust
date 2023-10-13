@@ -49,7 +49,7 @@ async function handler(
       }
 
       const result = await updateUserFullName({
-        userId: user.id,
+        user: user,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
       });

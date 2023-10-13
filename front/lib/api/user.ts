@@ -1,4 +1,3 @@
-import { ModelId } from "@app/lib/databases";
 import { User, UserMetadata } from "@app/lib/models";
 import { UserMetadataType, UserType } from "@app/types/user";
 
@@ -60,28 +59,28 @@ export async function setUserMetadata(
 }
 
 export async function updateUserFullName({
-  userId,
+  user,
   firstName,
   lastName,
 }: {
-  userId: ModelId;
+  user: UserType;
   firstName: string;
   lastName: string;
 }): Promise<boolean | null> {
-  const user = await User.findOne({
+  const u = await User.findOne({
     where: {
-      id: userId,
+      id: user.id,
     },
   });
 
-  if (!user) {
+  if (!u) {
     return null;
   }
 
-  user.firstName = firstName;
-  user.lastName = lastName;
-  user.name = `${firstName} ${lastName}`;
-  await user.save();
+  u.firstName = firstName;
+  u.lastName = lastName;
+  u.name = `${firstName} ${lastName}`;
+  await u.save();
 
   return true;
 }
