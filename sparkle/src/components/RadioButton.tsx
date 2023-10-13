@@ -73,27 +73,11 @@ export function RadioButton({
                   ? inputClasses.selected
                   : inputClasses.unselected
               )}
-            >
-              <input
-                type="radio"
-                name={name}
-                value={choice.value}
-                checked={value === choice.value}
-                disabled={choice.disabled}
-                onChange={(e) => {
-                  onChange(e.target.value);
-                }}
-                className={classNames(
-                  inputClasses.base,
-                  choice.disabled ? inputClasses.disabled : "",
-                  choice.value === value ? inputClasses.selected : ""
-                )}
-              />
-              <span>{choice.label}</span>
-            </label>
-          </div>
-        );
-      })}
+            />
+            <span>{choice.label}</span>
+          </label>
+        </div>
+      ))}
     </div>
   );
 }
