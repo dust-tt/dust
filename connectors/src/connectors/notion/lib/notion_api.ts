@@ -382,33 +382,18 @@ async function getBlockParent(
         return null;
       }
 
-      const blockParent = block.parent;
-      switch (blockParent.type) {
-        case "page_id":
-          return {
-            parentId: blockParent.page_id,
-            parentType: "page",
-          };
-        case "database_id":
-          return {
-            parentId: blockParent.database_id,
-            parentType: "database",
-          };
-        case "workspace":
-          return {
-            parentId: "workspace",
-            parentType: "workspace",
-          };
-        case "block_id": {
-          blockId = blockParent.block_id;
-          break;
-        }
-        default:
-          ((blockParent: never) => {
-            localLogger.warn({ blockParent }, "Unknown block parent type.");
-          })(blockParent);
-          return null;
+      const parent = getPageOrBlockParent(block);
+      if (parent.type === "unknown") {
+        localLogger.warn("Unknown block parent type.");
+        return null;
+      } else if (parent.type !== "block") {
+        return {
+          parentId: parent.id,
+          parentType: parent.type,
+        };
       }
+
+      blockId = parent.id;
 
       depth += 1;
       if (depth === max_depth) {
@@ -623,6 +608,55 @@ export async function retrieveBlockChildrenResultPage({
   }
 }
 
+export function getPageOrBlockParent(
+  pageOrBlock: PageObjectResponse | BlockObjectResponse
+):
+  | {
+      type: "database" | "page" | "block";
+      id: string;
+    }
+  | {
+      type: "workspace";
+      id: "workspace";
+    }
+  | {
+      type: "unknown";
+      id: "unknown";
+    } {
+  const type = pageOrBlock.parent.type;
+  switch (type) {
+    case "database_id":
+      return {
+        type: "database",
+        id: pageOrBlock.parent.database_id,
+      };
+    case "page_id":
+      return {
+        type: "page",
+        id: pageOrBlock.parent.page_id,
+      };
+    case "block_id":
+      return {
+        type: "block",
+        id: pageOrBlock.parent.block_id,
+      };
+    case "workspace":
+      return {
+        type: "workspace",
+        id: "workspace",
+      };
+    default:
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ((_x: never) => {
+        //
+      })(type);
+      return {
+        type: "unknown",
+        id: "unknown",
+      };
+  }
+}
+
 // deprecated
 export async function getParsedPage(
   notionAccessToken: string,
@@ -708,45 +742,20 @@ export async function getParsedPage(
   // remove base64 images from rendered page
   renderedPage = renderedPage.replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
 
-  const pageParent = page.parent;
-  let parentId: string;
-  let parentType: string;
-
-  switch (pageParent.type) {
-    case "database_id":
-      parentId = pageParent.database_id;
-      parentType = "database";
-      break;
-    case "page_id":
-      parentId = pageParent.page_id;
-      parentType = "page";
-      break;
-    case "block_id": {
-      const parent = await getBlockParentMemoized(
-        notionAccessToken,
-        pageParent.block_id,
-        pageLogger
-      );
-      if (parent) {
-        parentId = parent.parentId;
-        parentType = parent.parentType;
-      } else {
-        parentId = pageParent.block_id;
-        parentType = "block";
-      }
-      break;
+  const parent = getPageOrBlockParent(page);
+  let { id: parentId, type: parentType } = parent;
+  if (parent.type === "unknown") {
+    pageLogger.warn("Unknown page parent type.");
+  } else if (parent.type === "block") {
+    const blockParent = await getBlockParentMemoized(
+      notionAccessToken,
+      parent.id,
+      pageLogger
+    );
+    if (blockParent) {
+      parentId = blockParent.parentId;
+      parentType = blockParent.parentType;
     }
-    case "workspace":
-      parentId = "workspace";
-      parentType = "workspace";
-      break;
-    default:
-      ((pageParent: never) => {
-        logger.warn({ pageParent }, "Unknown page parent type.");
-      })(pageParent);
-      parentId = "unknown";
-      parentType = "unknown";
-      break;
   }
 
   const titleProperty = properties.find((p) => p.type === "title")?.text;
@@ -763,7 +772,7 @@ export async function getParsedPage(
     author,
     lastEditor,
     hasBody: pageHasBody,
-    parentId,
+    parentId: parentId || "unknown",
     parentType: parentType as ParsedNotionPage["parentType"],
   };
 }
@@ -851,6 +860,55 @@ function parsePropertyText(
         );
       })(property);
       return null;
+  }
+}
+
+export async function retrieveDatabaseChildrenResultPage({
+  accessToken,
+  databaseId,
+  cursor,
+  loggerArgs,
+}: {
+  accessToken: string;
+  databaseId: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({ ...loggerArgs, databaseId });
+
+  const notionClient = new Client({ auth: accessToken });
+
+  localLogger.info("Fetching database children result page from Notion API.");
+  try {
+    const resultPage = await notionClient.databases.query({
+      database_id: databaseId,
+      start_cursor: cursor || undefined,
+    });
+
+    localLogger.info(
+      { count: resultPage.results.length },
+      "Received database children result page from Notion API."
+    );
+
+    return resultPage;
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      (e.code === "object_not_found" || e.code === "validation_error")
+    ) {
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Couldn't get database children."
+      );
+      return null;
+    } else {
+      throw e;
+    }
   }
 }
 

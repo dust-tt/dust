@@ -667,6 +667,12 @@ export class NotionConnectorPageCacheEntry extends Model<
 
   declare notionPageId: string;
   declare pageProperties: ParsedNotionPageProperty[]; // JSON -- typed but not guaranteed
+  declare parentId: string;
+  declare parentType: "database" | "page" | "workspace" | "block" | "unknown";
+  declare lastEditedById: string;
+  declare createdById: string;
+  declare createdTime: string;
+  declare lastEditedTime: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -696,11 +702,39 @@ NotionConnectorPageCacheEntry.init(
       type: DataTypes.JSONB,
       allowNull: false,
     },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lastEditedById: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    createdTime: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lastEditedTime: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    createdById: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     sequelize: sequelize_conn,
     modelName: "notion_connector_page_cache_entries",
-    indexes: [{ fields: ["notionPageId", "connectorId"], unique: true }],
+    indexes: [
+      { fields: ["notionPageId", "connectorId"], unique: true },
+      { fields: ["connectorId"] },
+      { fields: ["parentDatabaseId"] },
+    ],
   }
 );
 
@@ -781,6 +815,8 @@ NotionConnectorBlockCacheEntry.init(
         fields: ["notionBlockId", "connectorId", "notionPageId"],
         unique: true,
       },
+      { fields: ["connectorId"] },
+      { fields: ["parentBlockId"] },
     ],
   }
 );

@@ -1,4 +1,4 @@
-import { isFullBlock } from "@notionhq/client";
+import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -14,6 +14,7 @@ import {
 } from "@connectors/connectors/notion/lib/garbage_collect";
 import {
   getDatabaseChildPages,
+  getPageOrBlockParent,
   getPagesAndDatabasesEditedSince,
   getParsedDatabase,
   getParsedPage,
@@ -21,6 +22,7 @@ import {
   parsePageBlock,
   parsePageProperties,
   retrieveBlockChildrenResultPage,
+  retrieveDatabaseChildrenResultPage,
   retrievePage,
 } from "@connectors/connectors/notion/lib/notion_api";
 import {
@@ -1100,10 +1102,19 @@ export async function notionRetrievePageActivity({
   const properties = parsePageProperties(notionPage);
 
   localLogger.info("notionRetrievePageActivity: Saving page in cache.");
+
+  const parent = getPageOrBlockParent(notionPage);
+
   await NotionConnectorPageCacheEntry.create({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: properties,
+    parentType: parent.type,
+    parentId: parent.id,
+    createdById: notionPage.created_by.id,
+    lastEditedById: notionPage.last_edited_by.id,
+    createdTime: notionPage.created_time,
+    lastEditedTime: notionPage.last_edited_time,
   });
 
   return {
@@ -1111,7 +1122,7 @@ export async function notionRetrievePageActivity({
   };
 }
 
-export async function notionBlockChildrenResultPageActivity({
+export async function notionRetrieveBlockChildrenResultPageActivity({
   dataSourceConfig,
   accessToken,
   pageId,
@@ -1126,7 +1137,6 @@ export async function notionBlockChildrenResultPageActivity({
   blockId: string | null;
   cursor: string | null;
   currentIndexInParent: number;
-  runTimestamp: number;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
   nextCursor: string | null;
@@ -1238,6 +1248,101 @@ export async function notionBlockChildrenResultPageActivity({
     childDatabases,
     blocksWithChildren,
     blocksCount: parsedBlocks.length,
+    nextCursor: resultPage.next_cursor,
+  };
+}
+
+export async function notionRetrieveDatabaseChildrenResultPageActivity({
+  dataSourceConfig,
+  accessToken,
+  databaseId,
+  cursor,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  accessToken: string;
+  databaseId: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+}): Promise<{
+  nextCursor: string | null;
+  childrenCount: number;
+}> {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    databaseId,
+  });
+
+  localLogger.info(
+    "notionDatabaseChildrenResultPageActivity: Retrieving connector."
+  );
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  localLogger.info(
+    "notionDatabaseChildrenResultPageActivity: Retrieving result page from Notion API."
+  );
+  const resultPage = await retrieveDatabaseChildrenResultPage({
+    accessToken,
+    databaseId,
+    cursor,
+    loggerArgs,
+  });
+
+  if (!resultPage) {
+    localLogger.info("Skipping result page not found.");
+    return {
+      nextCursor: null,
+      childrenCount: 0,
+    };
+  }
+
+  let pages = [];
+  for (const p of resultPage.results) {
+    if (isFullPage(p)) {
+      pages.push(p);
+    }
+  }
+
+  // exclude pages that are already in the cache
+  const existingPages = await NotionConnectorPageCacheEntry.findAll({
+    where: {
+      notionPageId: resultPage.results.map((r) => r.id),
+      connectorId: connector.id,
+    },
+    attributes: ["notionPageId"],
+  });
+  const existingPageIds = new Set(existingPages.map((p) => p.notionPageId));
+
+  pages = pages.filter((p) => !existingPageIds.has(p.id));
+
+  localLogger.info({ pagesCount: pages.length }, "Saving pages in cache.");
+  await Promise.all(
+    pages.map((page) =>
+      NotionConnectorPageCacheEntry.create({
+        notionPageId: page.id,
+        connectorId: connector.id,
+        pageProperties: parsePageProperties(page),
+        parentId: databaseId,
+        parentType: "database",
+        createdById: page.created_by.id,
+        lastEditedById: page.last_edited_by.id,
+        createdTime: page.created_time,
+        lastEditedTime: page.last_edited_time,
+      })
+    )
+  );
+
+  return {
+    childrenCount: pages.length,
     nextCursor: resultPage.next_cursor,
   };
 }
