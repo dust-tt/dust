@@ -6,9 +6,16 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+import { amber, emerald, slate } from "tailwindcss/colors";
 
 import { DustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
+
+const SyntaxHighlighter = dynamic(
+  () => import("react-syntax-highlighter").then((mod) => mod.Light),
+  { ssr: false }
+);
 
 export default function DustAppRunAction({
   dustAppRunAction,
@@ -102,11 +109,30 @@ export default function DustAppRunAction({
         )}
         {outputVisible && (
           <div className="col-start-2 row-span-1 max-h-48 overflow-y-auto rounded-md bg-structure-100">
-            <pre className="font-mono whitespace-pre-wrap break-words px-2 py-2 text-xs text-element-700">
-              #!/dust/{dustAppRunAction.appName}
-              {"\n\n"}
+            <SyntaxHighlighter
+              className="rounded-md text-xs"
+              style={{
+                "hljs-number": {
+                  color: amber["500"],
+                },
+                "hljs-literal": {
+                  color: amber["500"],
+                },
+                "hljs-string": {
+                  color: emerald["600"],
+                },
+                hljs: {
+                  display: "block",
+                  overflowX: "auto",
+                  color: slate["700"],
+                  padding: "1em",
+                },
+              }}
+              language={"json"}
+              PreTag="div"
+            >
               {JSON.stringify(dustAppRunAction.output, null, 2)}
-            </pre>
+            </SyntaxHighlighter>
           </div>
         )}
       </div>
