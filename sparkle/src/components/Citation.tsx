@@ -34,8 +34,8 @@ export function Citation({
   return (
     <div
       className={classNames(
-        "w-48 s-flex s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3 s-shadow-sm sm:s-w-64",
-        isBlinking ? "animate-[bgblink_500ms_3]" : ""
+        "s-flex s-w-48 s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3 s-shadow-sm sm:s-w-64",
+        isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
       )}
     >
       <div className="s-flex s-items-center s-gap-2">

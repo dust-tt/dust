@@ -83,6 +83,7 @@ export default function DataSourceUpsert({
   const [documentId, setDocumentId] = useState("");
   const [text, setText] = useState("");
   const [tags, setTags] = useState([] as string[]);
+  const [sourceUrl, setSourceUrl] = useState("");
 
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -110,6 +111,7 @@ export default function DataSourceUpsert({
             setDownloading(false);
             setText(document.document.text);
             setTags(document.document.tags);
+            setSourceUrl(document.document.source_url);
           }
         })
         .catch((e) => console.error(e));
@@ -194,6 +196,7 @@ export default function DataSourceUpsert({
         },
         body: JSON.stringify({
           text,
+          source_url: sourceUrl || undefined,
           tags: tags.filter((tag) => tag),
         }),
       }
@@ -369,6 +372,40 @@ export default function DataSourceUpsert({
                     </div>
                   ) : null}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full pb-4">
+            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-5">
+              <div className="sm:col-span-5">
+                <label
+                  htmlFor="documentId"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Source URL
+                </label>
+                <div className="mt-1 flex rounded-md shadow-sm">
+                  <input
+                    type="text"
+                    name="document"
+                    id="document"
+                    readOnly={readOnly}
+                    className={classNames(
+                      "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
+                      "border-gray-300",
+                      readOnly
+                        ? "focus:border-gray-300 focus:ring-0"
+                        : "focus:border-action-500 focus:ring-action-500"
+                    )}
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                  />
+                </div>
+                <p className="my-2 text-sm text-gray-500">
+                  The URL of the source document (if any). This will be used to
+                  link users to the original document in assistants citations.
+                </p>
               </div>
             </div>
           </div>

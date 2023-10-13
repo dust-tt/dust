@@ -18,7 +18,6 @@ export const RadioButtonExamples = () => {
     <div>
       <RadioButton
         name="test1"
-        layout="inline"
         choices={[
           {
             label: "yes",
@@ -46,7 +45,7 @@ export const RadioButtonExamples = () => {
       <br />
       <RadioButton
         name="test2"
-        layout="stacked"
+        className="s-flex-col"
         choices={[
           {
             label: "more",

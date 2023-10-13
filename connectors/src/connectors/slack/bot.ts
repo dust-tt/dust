@@ -508,7 +508,7 @@ function _processCiteMention(
 }
 
 function _removeCiteMention(message: string): string {
-  const regex = /:cite\[[a-zA-Z0-9, ]+\]/g;
+  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
 

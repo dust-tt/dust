@@ -1,4 +1,4 @@
-import { UserMetadata } from "@app/lib/models";
+import { User, UserMetadata } from "@app/lib/models";
 import { UserMetadataType, UserType } from "@app/types/user";
 
 /**
@@ -56,4 +56,31 @@ export async function setUserMetadata(
 
   metadata.value = update.value;
   await metadata.save();
+}
+
+export async function updateUserFullName({
+  user,
+  firstName,
+  lastName,
+}: {
+  user: UserType;
+  firstName: string;
+  lastName: string;
+}): Promise<boolean | null> {
+  const u = await User.findOne({
+    where: {
+      id: user.id,
+    },
+  });
+
+  if (!u) {
+    return null;
+  }
+
+  u.firstName = firstName;
+  u.lastName = lastName;
+  u.name = `${firstName} ${lastName}`;
+  await u.save();
+
+  return true;
 }
