@@ -8,11 +8,12 @@ import {
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models";
 import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
+  Connector,
+  ModelId,
+  NotionDatabase,
+  NotionPage,
+} from "@connectors/lib/models";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -24,15 +25,15 @@ import {
  *
  */
 async function _getParents(
-  dataSourceInfo: DataSourceInfo,
+  connectorId: ModelId,
   pageOrDbId: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
-    (await getNotionPageFromConnectorsDb(dataSourceInfo, pageOrDbId)) ||
-    (await getNotionDatabaseFromConnectorsDb(dataSourceInfo, pageOrDbId));
+    (await getNotionPageFromConnectorsDb(connectorId, pageOrDbId)) ||
+    (await getNotionDatabaseFromConnectorsDb(connectorId, pageOrDbId));
   if (!pageOrDb) {
     // pageOrDb is either not synced yet (not an issue, see design doc) or
     // is not in Dust's scope, in both cases we can just return the page id
@@ -62,7 +63,7 @@ async function _getParents(
         // Notion API
         //
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        await getParents(dataSourceInfo, pageOrDb.parentId!, memoizationKey)
+        await getParents(connectorId, pageOrDb.parentId!, memoizationKey)
       );
     }
     default:
@@ -72,23 +73,28 @@ async function _getParents(
 
 export const getParents = memoize(
   _getParents,
-  (dataSourceInfo, pageOrDbId, memoizationKey) => {
-    return `${dataSourceInfo.dataSourceName}:${pageOrDbId}:${memoizationKey}`;
+  (connectorId, pageOrDbId, memoizationKey) => {
+    return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   }
 );
 
 export async function updateAllParentsFields(
-  dataSourceConfig: DataSourceConfig,
+  connectorId: ModelId,
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
   memoizationKey?: string
 ): Promise<number> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
   const pageIdsToUpdate = await getPagesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
-    dataSourceConfig
+    connectorId
   );
 
   // Update everybody's parents field. Use of a memoization key to control
@@ -99,13 +105,13 @@ export async function updateAllParentsFields(
   for (const pageId of pageIdsToUpdate) {
     promises.push(
       q.add(async () => {
-        const parents = await getParents(
-          dataSourceConfig,
-          pageId,
-          memoizationKey
-        );
+        const parents = await getParents(connectorId, pageId, memoizationKey);
         await updateDocumentParentsField(
-          dataSourceConfig,
+          {
+            dataSourceName: connector.dataSourceName,
+            workspaceId: connector.workspaceId,
+            workspaceAPIKey: connector.workspaceAPIKey,
+          },
           `notion-${pageId}`,
           parents
         );
@@ -127,7 +133,7 @@ export async function updateAllParentsFields(
 async function getPagesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  dataSourceConfig: DataSourceConfig
+  connectorId: ModelId
 ): Promise<Set<string>> {
   const pageIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
@@ -153,7 +159,7 @@ async function getPagesToUpdate(
     visited.add(pageOrDbIdToProcess);
 
     const pageChildren = await getPageChildrenOf(
-      dataSourceConfig,
+      connectorId,
       pageOrDbIdToProcess
     );
 
@@ -164,7 +170,7 @@ async function getPagesToUpdate(
     }
 
     const databaseChildren = await getDatabaseChildrenOf(
-      dataSourceConfig,
+      connectorId,
       pageOrDbIdToProcess
     );
 

@@ -40,6 +40,7 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   Connector,
+  ModelId,
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
   NotionConnectorState,
@@ -49,26 +50,20 @@ import {
 import { nango_client } from "@connectors/lib/nango_client";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import {
-  DataSourceConfig,
-  DataSourceInfo,
-} from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
 const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
 
-export async function getDatabaseChildPagesActivity({
+export async function fetchDatabaseChildPages({
+  connectorId,
   databaseId,
-  dataSourceInfo,
-  accessToken,
   cursor,
   loggerArgs,
   excludeUpToDatePages,
 }: {
+  connectorId: ModelId;
   databaseId: string;
-  dataSourceInfo: DataSourceInfo;
-  accessToken: string;
   cursor: string | null;
   loggerArgs: Record<string, string | number>;
   excludeUpToDatePages: boolean;
@@ -76,24 +71,24 @@ export async function getDatabaseChildPagesActivity({
   pageIds: string[];
   nextCursor: string | null;
 }> {
-  const localLoggerArgs = {
-    ...loggerArgs,
-    databaseId,
-    dataSourceName: dataSourceInfo.dataSourceName,
-    workspaceId: dataSourceInfo.workspaceId,
-  };
-  const localLogger = logger.child(localLoggerArgs);
-
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  const localLoggerArgs = {
+    ...loggerArgs,
+    databaseId,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  };
+  const localLogger = logger.child(localLoggerArgs);
 
   let res;
   try {
@@ -181,34 +176,40 @@ export async function getDatabaseChildPagesActivity({
   };
 }
 
-export async function notionGetToSyncActivity(
-  dataSourceInfo: DataSourceInfo,
-  accessToken: string,
-  lastSyncedAt: number | null,
-  cursor: string | null,
-  excludeUpToDatePages: boolean,
-  loggerArgs: Record<string, string | number>
-): Promise<{
+export async function getPagesAndDatabasesToSync({
+  connectorId,
+  lastSyncedAt,
+  cursor,
+  excludeUpToDatePages,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  lastSyncedAt: number | null;
+  cursor: string | null;
+  excludeUpToDatePages: boolean;
+  loggerArgs: Record<string, string | number>;
+}): Promise<{
   pageIds: string[];
   databaseIds: string[];
   nextCursor: string | null;
 }> {
-  const localLogger = logger.child({
-    ...loggerArgs,
-    dataSourceName: dataSourceInfo.dataSourceName,
-    workspaceId: dataSourceInfo.workspaceId,
-  });
-
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  });
+
+  const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const skippedDatabases = await NotionDatabase.findAll({
     where: {
@@ -230,8 +231,8 @@ export async function notionGetToSyncActivity(
       cursor,
       {
         ...loggerArgs,
-        dataSourceName: dataSourceInfo.dataSourceName,
-        workspaceId: dataSourceInfo.workspaceId,
+        dataSourceName: connector.dataSourceName,
+        workspaceId: connector.workspaceId,
       },
       skippedDatabaseIds
     );
@@ -348,17 +349,28 @@ export async function notionGetToSyncActivity(
   };
 }
 
-export async function notionUpsertDatabaseActivity(
-  accessToken: string,
+export async function upsertDatabase(
+  connectorId: ModelId,
   databaseId: string,
-  dataSourceConfig: DataSourceConfig,
   runTimestamp: number,
   loggerArgs: Record<string, string | number>
 ): Promise<void> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
   const notionDatabase = await getNotionDatabaseFromConnectorsDb(
-    dataSourceConfig,
+    connectorId,
     databaseId
   );
 
@@ -391,7 +403,7 @@ export async function notionUpsertDatabaseActivity(
     parsedDb?.parentId !== notionDatabase?.parentId;
 
   await upsertNotionDatabaseInConnectorsDb({
-    dataSourceInfo: dataSourceConfig,
+    connectorId,
     notionDatabaseId: databaseId,
     lastSeenTs: runTimestamp,
     parentType: parsedDb ? parsedDb.parentType : null,
@@ -402,17 +414,13 @@ export async function notionUpsertDatabaseActivity(
   });
 }
 
-export async function saveSuccessSyncActivity(
-  dataSourceConfig: DataSourceConfig
-) {
+export async function saveSuccessSync(connectorId: ModelId) {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
-
   if (!connector) {
     throw new Error("Could not find connector");
   }
@@ -423,14 +431,11 @@ export async function saveSuccessSyncActivity(
   }
 }
 
-export async function saveStartSyncActivity(
-  dataSourceConfig: DataSourceConfig
-) {
+export async function saveStartSync(connectorId: ModelId) {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
 
@@ -443,39 +448,14 @@ export async function saveStartSyncActivity(
   }
 }
 
-export async function getInitialWorkflowParamsActivity(
-  dataSourceConfig: DataSourceConfig
-): Promise<{
-  notionAccessToken: string;
-  shouldGargageCollect: boolean;
-}> {
-  return {
-    notionAccessToken: await getNotionAccessToken(dataSourceConfig),
-    shouldGargageCollect: await shouldGarbageCollect(dataSourceConfig),
-  };
-}
-
 export async function getNotionAccessToken(
-  dataSourceConfig: DataSourceConfig
+  nangoConnectionId: string
 ): Promise<string> {
   const { NANGO_NOTION_CONNECTOR_ID } = process.env;
 
   if (!NANGO_NOTION_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
-
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
-  const nangoConnectionId = connector.connectionId;
 
   const notionAccessToken = (await nango_client().getToken(
     NANGO_NOTION_CONNECTOR_ID,
@@ -485,8 +465,8 @@ export async function getNotionAccessToken(
   return notionAccessToken;
 }
 
-async function shouldGarbageCollect(
-  dataSourceConfig: DataSourceConfig
+export async function shouldGarbageCollect(
+  connectorId: ModelId
 ): Promise<boolean> {
   if (!isDuringGarbageCollectStartWindow()) {
     // Never garbage collect if we are not in the start window
@@ -496,13 +476,13 @@ async function shouldGarbageCollect(
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
   const notionConnectorState = await NotionConnectorState.findOne({
     where: {
       connectorId: connector.id,
@@ -543,27 +523,33 @@ async function shouldGarbageCollect(
   return true;
 }
 
-export async function syncGarbageCollectorActivity(
-  dataSourceInfo: DataSourceInfo,
-  pageIds: string[],
-  databaseIds: string[],
-  runTimestamp: number
-): Promise<{ newPageIds: string[]; newDatabaseIds: string[] }> {
-  const localLogger = logger.child({
-    dataSourceName: dataSourceInfo.dataSourceName,
-    workspaceId: dataSourceInfo.workspaceId,
-  });
-
+// marks all the pageIds and databaseIds as seen in the database (so we know we don't need
+// to delete them)
+export async function garbageCollectorMarkAsSeen({
+  connectorId,
+  pageIds,
+  databaseIds,
+  runTimestamp,
+}: {
+  connectorId: ModelId;
+  pageIds: string[];
+  databaseIds: string[];
+  runTimestamp: number;
+}): Promise<{ newPageIds: string[]; newDatabaseIds: string[] }> {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  const localLogger = logger.child({
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  });
 
   await NotionPage.update(
     { lastSeenTs: new Date(runTimestamp) },
@@ -630,26 +616,30 @@ export async function syncGarbageCollectorActivity(
 //   - if the database does not exist, delete it from the database
 // - update the lastGarbageCollectionFinishTime
 // - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
-export async function garbageCollectActivity(
-  dataSourceConfig: DataSourceConfig,
-  runTimestamp: number,
-  startTs: number
-) {
-  const localLogger = logger.child({
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceName: dataSourceConfig.dataSourceName,
-  });
-
+export async function garbageCollect({
+  connectorId,
+  runTimestamp,
+  startTs,
+}: {
+  connectorId: ModelId;
+  runTimestamp: number;
+  startTs: number;
+}) {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  });
+
   const notionConnectorState = await NotionConnectorState.findOne({
     where: {
       connectorId: connector.id,
@@ -658,7 +648,7 @@ export async function garbageCollectActivity(
   if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
-  const notionAccessToken = await getNotionAccessToken(dataSourceConfig);
+  const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
   const pagesToDelete = await NotionPage.findAll({
     where: {
@@ -779,7 +769,14 @@ export async function garbageCollectActivity(
     }
 
     iterationLogger.info("Deleting page.");
-    await deleteFromDataSource(dataSourceConfig, `notion-${page.notionPageId}`);
+    await deleteFromDataSource(
+      {
+        dataSourceName: connector.dataSourceName,
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+      },
+      `notion-${page.notionPageId}`
+    );
     await page.destroy();
 
     deletedPagesCount++;
@@ -872,26 +869,24 @@ export async function garbageCollectActivity(
   });
 }
 
-export async function updateParentsFieldsActivity(
-  dataSourceConfig: DataSourceConfig,
+export async function updateParentsFields(
+  connectorId: ModelId,
   runTimestamp: number,
   activityExecutionTimestamp: number
 ) {
-  const localLogger = logger.child({
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceName: dataSourceConfig.dataSourceName,
-  });
-
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  });
 
   const notionPageIds = (
     await NotionPage.findAll({
@@ -914,7 +909,7 @@ export async function updateParentsFieldsActivity(
   ).map((db) => db.notionDatabaseId);
 
   const nbUpdated = await updateAllParentsFields(
-    dataSourceConfig,
+    connectorId,
     notionPageIds,
     notionDatabaseIds,
     activityExecutionTimestamp.toString()
@@ -923,41 +918,42 @@ export async function updateParentsFieldsActivity(
   localLogger.info({ nbUpdated }, "Updated parents fields.");
 }
 
-export async function notionRetrievePageActivity({
-  dataSourceConfig,
-  accessToken,
+export async function cachePage({
+  connectorId,
   pageId,
   runTimestamp,
   loggerArgs,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  accessToken: string;
+  connectorId: ModelId;
   pageId: string;
   runTimestamp: number;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
   skipped: boolean;
 }> {
-  let localLogger = logger.child({ ...loggerArgs, pageId });
-
-  localLogger.info("notionRetrievePageActivity: Retrieving connector.");
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
-
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  let localLogger = logger.child({
+    ...loggerArgs,
+    pageId,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  });
 
   localLogger.info(
     "notionRetrievePageActivity: Retrieving page from connectors DB."
   );
   const notionPageInDb = await getNotionPageFromConnectorsDb(
-    dataSourceConfig,
+    connectorId,
     pageId
   );
 
@@ -1038,17 +1034,15 @@ export async function notionRetrievePageActivity({
   };
 }
 
-export async function notionRetrieveBlockChildrenResultPageActivity({
-  dataSourceConfig,
-  accessToken,
+export async function cacheBlockChildren({
+  connectorId,
   pageId,
   blockId,
   cursor,
   currentIndexInParent,
   loggerArgs,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  accessToken: string;
+  connectorId: ModelId;
   pageId: string;
   blockId: string | null;
   cursor: string | null;
@@ -1060,27 +1054,29 @@ export async function notionRetrieveBlockChildrenResultPageActivity({
   childDatabases: string[];
   blocksCount: number;
 }> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
   const localLogger = logger.child({
     ...loggerArgs,
     pageId,
     blockId,
     currentIndexInParent,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
   });
 
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Retrieving connector."
   );
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-  });
-
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
 
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1177,15 +1173,13 @@ export async function notionRetrieveBlockChildrenResultPageActivity({
   };
 }
 
-export async function notionRetrieveDatabaseChildrenResultPageActivity({
-  dataSourceConfig,
-  accessToken,
+export async function cacheDatabaseChildren({
+  connectorId,
   databaseId,
   cursor,
   loggerArgs,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  accessToken: string;
+  connectorId: ModelId;
   databaseId: string;
   cursor: string | null;
   loggerArgs: Record<string, string | number>;
@@ -1193,24 +1187,27 @@ export async function notionRetrieveDatabaseChildrenResultPageActivity({
   nextCursor: string | null;
   childrenCount: number;
 }> {
-  const localLogger = logger.child({
-    ...loggerArgs,
-    databaseId,
-  });
-
-  localLogger.info(
-    "notionDatabaseChildrenResultPageActivity: Retrieving connector."
-  );
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    databaseId,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  });
+
+  localLogger.info(
+    "notionDatabaseChildrenResultPageActivity: Retrieving connector."
+  );
 
   localLogger.info(
     "notionDatabaseChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1284,37 +1281,36 @@ export async function notionRetrieveDatabaseChildrenResultPageActivity({
   };
 }
 
-export async function notionRenderAndUpsertPageFromCache({
-  dataSourceConfig,
-  accessToken,
+export async function renderAndUpsertPageFromCache({
+  connectorId,
   pageId,
   loggerArgs,
   runTimestamp,
   isFullSync,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  accessToken: string;
+  connectorId: ModelId;
   pageId: string;
   loggerArgs: Record<string, string | number>;
   runTimestamp: number;
   isFullSync: boolean;
 }) {
-  const localLogger = logger.child({
-    ...loggerArgs,
-    pageId,
-  });
-
-  localLogger.info("notionRenderAndUpsertPageFromCache: Retrieving connector.");
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    pageId,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  });
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving page from cache."
@@ -1455,7 +1451,7 @@ export async function notionRenderAndUpsertPageFromCache({
     "notionRenderAndUpsertPageFromCache: Retrieving Notion page from connectors DB."
   );
   const notionPageInDb = await getNotionPageFromConnectorsDb(
-    dataSourceConfig,
+    connectorId,
     pageId
   );
 
@@ -1497,7 +1493,7 @@ export async function notionRenderAndUpsertPageFromCache({
       "notionRenderAndUpsertPageFromCache: Fetching resource parents."
     );
     const parents = await getParents(
-      dataSourceConfig,
+      connectorId,
       pageId,
       runTimestamp.toString()
     );
@@ -1506,7 +1502,11 @@ export async function notionRenderAndUpsertPageFromCache({
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
     await upsertToDatasource({
-      dataSourceConfig,
+      dataSourceConfig: {
+        dataSourceName: connector.dataSourceName,
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+      },
       documentId,
       documentText: renderedPage,
       documentUrl: pageCacheEntry.url,
@@ -1532,7 +1532,10 @@ export async function notionRenderAndUpsertPageFromCache({
     "notionRenderAndUpsertPageFromCache: Saving page in connectors DB."
   );
   await upsertNotionPageInConnectorsDb({
-    dataSourceInfo: dataSourceConfig,
+    dataSourceInfo: {
+      dataSourceName: connector.dataSourceName,
+      workspaceId: connector.workspaceId,
+    },
     notionPageId: pageId,
     lastSeenTs: runTimestamp,
     parentType,
@@ -1545,25 +1548,21 @@ export async function notionRenderAndUpsertPageFromCache({
   });
 }
 
-export async function notionClearConnectorCacheActivity(
-  dataSourceConfig: DataSourceConfig
-) {
-  const localLogger = logger.child({
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceName: dataSourceConfig.dataSourceName,
-  });
-
-  localLogger.info("notionClearConnectorCacheActivity: Retrieving connector.");
+export async function clearConnectorCache(connectorId: ModelId) {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  });
 
   localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
   await NotionConnectorPageCacheEntry.destroy({

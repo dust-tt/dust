@@ -10,39 +10,36 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ModelId } from "@connectors/lib/models";
 
-import { getWorkflowId } from "./utils";
+import { getWorkflowIdV2 } from "./utils";
 
-const { garbageCollectActivity } = proxyActivities<typeof activities>({
+const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
 });
 
-const { notionUpsertDatabaseActivity } = proxyActivities<typeof activities>({
+const { upsertDatabase } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
 });
 
 const {
-  notionGetToSyncActivity,
-  syncGarbageCollectorActivity,
-  updateParentsFieldsActivity,
-  getDatabaseChildPagesActivity,
-  notionRetrievePageActivity,
-  notionRetrieveBlockChildrenResultPageActivity,
-  notionRetrieveDatabaseChildrenResultPageActivity,
-  notionRenderAndUpsertPageFromCache,
-  notionClearConnectorCacheActivity,
+  getPagesAndDatabasesToSync,
+  garbageCollectorMarkAsSeen,
+  updateParentsFields,
+  fetchDatabaseChildPages,
+  cachePage,
+  cacheBlockChildren,
+  cacheDatabaseChildren,
+  renderAndUpsertPageFromCache,
+  clearConnectorCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
 
-const {
-  saveSuccessSyncActivity,
-  saveStartSyncActivity,
-  getInitialWorkflowParamsActivity,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "1 minute",
-});
+const { saveSuccessSync, saveStartSync, shouldGarbageCollect } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "1 minute",
+  });
 
 // soft limit on the number of iterations of the loop that should be ran in a single workflow
 // before "continuing as new" to avoid hitting the workflow log size limit
@@ -67,11 +64,15 @@ function preProcessTimestampForNotion(ts: number) {
   return Math.floor(ts / SYNC_PERIOD_DURATION_MS) * SYNC_PERIOD_DURATION_MS;
 }
 
-export async function notionSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  startFromTs?: number,
-  forceResync = false
-) {
+export async function notionSyncWorkflow({
+  connectorId,
+  startFromTs,
+  forceResync,
+}: {
+  connectorId: ModelId;
+  startFromTs: number | null;
+  forceResync: boolean;
+}) {
   let iterations = 0;
 
   let lastSyncedPeriodTs: number | null = startFromTs
@@ -80,18 +81,17 @@ export async function notionSyncWorkflow(
 
   setHandler(getLastSyncPeriodTsQuery, () => lastSyncedPeriodTs);
 
-  const { notionAccessToken, shouldGargageCollect: isGargageCollectionRun } =
-    await getInitialWorkflowParamsActivity(dataSourceConfig);
+  const isGarbageCollectionRun = await shouldGarbageCollect(connectorId);
 
   const isInitialSync = !lastSyncedPeriodTs;
 
   do {
-    if (!isGargageCollectionRun) {
-      await saveStartSyncActivity(dataSourceConfig);
+    if (!isGarbageCollectionRun) {
+      await saveStartSync(connectorId);
     }
 
     // clear the connector cache before each sync
-    await notionClearConnectorCacheActivity(dataSourceConfig);
+    await clearConnectorCache(connectorId);
 
     const runTimestamp = Date.now();
 
@@ -107,27 +107,25 @@ export async function notionSyncWorkflow(
     do {
       // We only want to fetch pages that were updated since the last sync unless it's a garbage
       // collection run or a force resync.
-      const skipUpToDatePages = !isGargageCollectionRun && !forceResync;
+      const skipUpToDatePages = !isGarbageCollectionRun && !forceResync;
 
       const { pageIds, databaseIds, nextCursor } =
-        await notionGetToSyncActivity(
-          dataSourceConfig,
-          notionAccessToken,
+        await getPagesAndDatabasesToSync({
+          connectorId,
           // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
           // want to fetch pages that were updated since the last sync.
-          !isGargageCollectionRun ? lastSyncedPeriodTs : null,
+          lastSyncedAt: !isGarbageCollectionRun ? lastSyncedPeriodTs : null,
           cursor,
-          skipUpToDatePages,
-          // Logger args:
-          {
+          excludeUpToDatePages: skipUpToDatePages,
+          loggerArgs: {
             pageIndex,
-            runType: isGargageCollectionRun
+            runType: isGarbageCollectionRun
               ? "garbageCollection"
               : isInitialSync
               ? "initialSync"
               : "incrementalSync",
-          }
-        );
+          },
+        });
       cursor = nextCursor;
       pageIndex += 1;
 
@@ -136,11 +134,10 @@ export async function notionSyncWorkflow(
       // batches of child pages.
       promises.push(
         performUpserts({
-          dataSourceConfig,
-          notionAccessToken,
+          connectorId,
           pageIds,
           databaseIds,
-          isGarbageCollectionRun: isGargageCollectionRun,
+          isGarbageCollectionRun: isGarbageCollectionRun,
           runTimestamp,
           pageIndex,
           isBatchSync: isInitialSync,
@@ -152,23 +149,19 @@ export async function notionSyncWorkflow(
     // wait for all child workflows to finish
     await Promise.all(promises);
 
-    await updateParentsFieldsActivity(
-      dataSourceConfig,
-      runTimestamp,
-      new Date().getTime()
-    );
+    await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
 
-    if (!isGargageCollectionRun) {
-      await saveSuccessSyncActivity(dataSourceConfig);
+    if (!isGarbageCollectionRun) {
+      await saveSuccessSync(connectorId);
       lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
     } else {
       // Look at pages and databases that were not visited in this run, check with the notion API if
       // they were really deleted and delete them from the database if they were.
-      await garbageCollectActivity(
-        dataSourceConfig,
+      await garbageCollect({
+        connectorId,
         runTimestamp,
-        new Date().getTime()
-      );
+        startTs: new Date().getTime(),
+      });
     }
 
     iterations += 1;
@@ -180,36 +173,39 @@ export async function notionSyncWorkflow(
     // iteration.
     !isInitialSync &&
     !forceResync &&
-    !isGargageCollectionRun &&
+    !isGarbageCollectionRun &&
     iterations < MAX_ITERATIONS_PER_WORKFLOW
   );
 
-  await continueAsNew<typeof notionSyncWorkflow>(
-    dataSourceConfig,
-    // Cannot actually be undefined, but TS doesn't know that.
-    lastSyncedPeriodTs ?? undefined
-  );
+  await continueAsNew<typeof notionSyncWorkflow>({
+    connectorId,
+    startFromTs: lastSyncedPeriodTs,
+    forceResync: false,
+  });
 }
 
-export async function notionUpsertPageWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  pageId: string,
-  runTimestamp: number,
-  isBatchSync: boolean,
-  pageIndex: number
-): Promise<{
+export async function upsertPageWorkflow({
+  connectorId,
+  pageId,
+  runTimestamp,
+  isBatchSync,
+  pageIndex,
+}: {
+  connectorId: ModelId;
+  pageId: string;
+  runTimestamp: number;
+  isBatchSync: boolean;
+  pageIndex: number;
+}): Promise<{
   skipped: boolean;
 }> {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
-    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
     pageIndex,
   };
 
-  const { skipped } = await notionRetrievePageActivity({
-    dataSourceConfig,
-    accessToken: notionAccessToken,
+  const { skipped } = await cachePage({
+    connectorId,
     pageId,
     loggerArgs,
     runTimestamp,
@@ -225,9 +221,8 @@ export async function notionUpsertPageWorkflow(
   let blockIndexInPage = 0;
   do {
     const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
-      await notionRetrieveBlockChildrenResultPageActivity({
-        dataSourceConfig,
-        accessToken: notionAccessToken,
+      await cacheBlockChildren({
+        connectorId,
         pageId,
         blockId: null,
         cursor,
@@ -239,27 +234,26 @@ export async function notionUpsertPageWorkflow(
 
     for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
-        workflowId: `${getWorkflowId(
-          dataSourceConfig
+        workflowId: `${getWorkflowIdV2(
+          connectorId
         )}-page-${pageId}-block-${block}-children`,
-        args: [{ dataSourceConfig, notionAccessToken, pageId, blockId: block }],
+        args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(notionProcessChildDatabaseWorkflow, {
-        workflowId: `${getWorkflowId(
-          dataSourceConfig
+      await executeChild(processChildDatabaseWorkflow, {
+        workflowId: `${getWorkflowIdV2(
+          connectorId
         )}-page-${pageId}-child-database-${databaseId}`,
-        args: [{ dataSourceConfig, notionAccessToken, databaseId }],
+        args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
   } while (cursor);
 
-  await notionRenderAndUpsertPageFromCache({
-    dataSourceConfig,
-    accessToken: notionAccessToken,
+  await renderAndUpsertPageFromCache({
+    connectorId,
     pageId,
     loggerArgs,
     runTimestamp,
@@ -272,19 +266,16 @@ export async function notionUpsertPageWorkflow(
 }
 
 export async function notionProcessBlockChildrenWorkflow({
-  dataSourceConfig,
-  notionAccessToken,
+  connectorId,
   pageId,
   blockId,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  notionAccessToken: string;
+  connectorId: ModelId;
   pageId: string;
   blockId: string;
 }): Promise<void> {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
-    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
   };
 
   let cursor: string | null = null;
@@ -292,9 +283,8 @@ export async function notionProcessBlockChildrenWorkflow({
 
   do {
     const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
-      await notionRetrieveBlockChildrenResultPageActivity({
-        dataSourceConfig,
-        accessToken: notionAccessToken,
+      await cacheBlockChildren({
+        connectorId,
         pageId,
         blockId,
         cursor,
@@ -306,62 +296,55 @@ export async function notionProcessBlockChildrenWorkflow({
 
     for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
-        workflowId: `${getWorkflowId(
-          dataSourceConfig
+        workflowId: `${getWorkflowIdV2(
+          connectorId
         )}-page-${pageId}-block-${block}-children`,
-        args: [{ dataSourceConfig, notionAccessToken, pageId, blockId: block }],
+        args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(notionProcessChildDatabaseWorkflow, {
-        workflowId: `${getWorkflowId(
-          dataSourceConfig
+      await executeChild(processChildDatabaseWorkflow, {
+        workflowId: `${getWorkflowIdV2(
+          connectorId
         )}-page-${pageId}-child-database-${databaseId}`,
-        args: [{ dataSourceConfig, notionAccessToken, databaseId }],
+        args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
   } while (cursor);
 }
 
-export async function notionProcessChildDatabaseWorkflow({
-  dataSourceConfig,
-  notionAccessToken,
+export async function processChildDatabaseWorkflow({
+  connectorId,
   databaseId,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  notionAccessToken: string;
+  connectorId: ModelId;
   databaseId: string;
 }): Promise<void> {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
-    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
   };
 
   let cursor: string | null = null;
   do {
-    const { nextCursor } =
-      await notionRetrieveDatabaseChildrenResultPageActivity({
-        dataSourceConfig,
-        accessToken: notionAccessToken,
-        databaseId,
-        cursor,
-        loggerArgs,
-      });
+    const { nextCursor } = await cacheDatabaseChildren({
+      connectorId,
+      databaseId,
+      cursor,
+      loggerArgs,
+    });
     cursor = nextCursor;
   } while (cursor);
 }
 
-export async function notionSyncResultPageWorkflow({
-  dataSourceConfig,
-  notionAccessToken,
+export async function syncResultPageWorkflow({
+  connectorId,
   pageIds,
   runTimestamp,
   isBatchSync,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  notionAccessToken: string;
+  connectorId: ModelId;
   pageIds: string[];
   runTimestamp: number;
   isBatchSync: boolean;
@@ -375,18 +358,9 @@ export async function notionSyncResultPageWorkflow({
   for (const [pageIndex, pageId] of pageIds.entries()) {
     promises.push(
       upsertQueue.add(() =>
-        executeChild(notionUpsertPageWorkflow, {
-          workflowId: `${getWorkflowId(
-            dataSourceConfig
-          )}-upsert-page-${pageId}`,
-          args: [
-            dataSourceConfig,
-            notionAccessToken,
-            pageId,
-            runTimestamp,
-            isBatchSync,
-            pageIndex,
-          ],
+        executeChild(upsertPageWorkflow, {
+          workflowId: `${getWorkflowIdV2(connectorId)}-upsert-page-${pageId}`,
+          args: [{ connectorId, pageId, runTimestamp, isBatchSync, pageIndex }],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         })
       )
@@ -396,16 +370,14 @@ export async function notionSyncResultPageWorkflow({
   await Promise.all(promises);
 }
 
-export async function notionSyncResultPageDatabaseWorkflow({
-  dataSourceConfig,
-  notionAccessToken,
+export async function syncResultPageDatabaseWorkflow({
+  connectorId,
   databaseIds,
   runTimestamp,
   isGarbageCollectionRun,
   isBatchSync,
 }: {
-  dataSourceConfig: DataSourceConfig;
-  notionAccessToken: string;
+  connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
   isGarbageCollectionRun: boolean;
@@ -422,20 +394,13 @@ export async function notionSyncResultPageDatabaseWorkflow({
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
+      connectorId,
       databaseIndex,
     };
 
     promises.push(
       upsertQueue.add(() =>
-        notionUpsertDatabaseActivity(
-          notionAccessToken,
-          databaseId,
-          dataSourceConfig,
-          runTimestamp,
-          loggerArgs
-        )
+        upsertDatabase(connectorId, databaseId, runTimestamp, loggerArgs)
       )
     );
   }
@@ -449,14 +414,12 @@ export async function notionSyncResultPageDatabaseWorkflow({
     let cursor: string | null = null;
     let pageIndex = 0;
     const loggerArgs = {
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
+      connectorId,
     };
     do {
-      const { pageIds, nextCursor } = await getDatabaseChildPagesActivity({
-        dataSourceInfo: dataSourceConfig,
+      const { pageIds, nextCursor } = await fetchDatabaseChildPages({
+        connectorId,
         databaseId,
-        accessToken: notionAccessToken,
         cursor,
         loggerArgs: {
           ...loggerArgs,
@@ -472,8 +435,7 @@ export async function notionSyncResultPageDatabaseWorkflow({
       cursor = nextCursor;
       pageIndex += 1;
       const upsertsPromise = performUpserts({
-        dataSourceConfig,
-        notionAccessToken,
+        connectorId,
         pageIds,
         databaseIds: [], // we don't upsert any databases in this workflow
         isGarbageCollectionRun,
@@ -492,8 +454,7 @@ export async function notionSyncResultPageDatabaseWorkflow({
 }
 
 async function performUpserts({
-  dataSourceConfig,
-  notionAccessToken,
+  connectorId,
   pageIds,
   databaseIds,
   isGarbageCollectionRun,
@@ -503,8 +464,7 @@ async function performUpserts({
   queue,
   childWorkflowsNameSuffix = "",
 }: {
-  dataSourceConfig: DataSourceConfig;
-  notionAccessToken: string;
+  connectorId: ModelId;
   pageIds: string[];
   databaseIds: string[];
   isGarbageCollectionRun: boolean;
@@ -522,12 +482,12 @@ async function performUpserts({
   if (isGarbageCollectionRun) {
     // Mark pages and databases as visited to avoid deleting them and return pages and databases
     // that are new.
-    const { newPageIds, newDatabaseIds } = await syncGarbageCollectorActivity(
-      dataSourceConfig,
+    const { newPageIds, newDatabaseIds } = await garbageCollectorMarkAsSeen({
+      connectorId,
       pageIds,
       databaseIds,
-      runTimestamp
-    );
+      runTimestamp,
+    });
     pagesToSync = newPageIds;
     databasesToSync = newDatabaseIds;
   } else {
@@ -547,8 +507,8 @@ async function performUpserts({
     ) {
       const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${getWorkflowId(
-        dataSourceConfig
+      let workflowId = `${getWorkflowIdV2(
+        connectorId
       )}-result-page-${pageIndex}-pages-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
@@ -559,12 +519,11 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(notionSyncResultPageWorkflow, {
+          executeChild(syncResultPageWorkflow, {
             workflowId,
             args: [
               {
-                dataSourceConfig,
-                notionAccessToken,
+                connectorId,
                 runTimestamp,
                 isBatchSync,
                 pageIds: batch,
@@ -588,8 +547,8 @@ async function performUpserts({
         i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
       );
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${getWorkflowId(
-        dataSourceConfig
+      let workflowId = `${getWorkflowIdV2(
+        connectorId
       )}-result-page-${pageIndex}-databases-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
@@ -600,12 +559,11 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(notionSyncResultPageDatabaseWorkflow, {
+          executeChild(syncResultPageDatabaseWorkflow, {
             workflowId,
             args: [
               {
-                dataSourceConfig,
-                notionAccessToken,
+                connectorId,
                 runTimestamp,
                 isGarbageCollectionRun,
                 isBatchSync,

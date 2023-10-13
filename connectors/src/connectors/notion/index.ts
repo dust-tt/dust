@@ -75,7 +75,7 @@ export async function createNotionConnector(
 
       return connector;
     });
-    await launchNotionSyncWorkflow(connector.id.toString());
+    await launchNotionSyncWorkflow(connector.id);
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
@@ -228,7 +228,7 @@ export async function resumeNotionConnector(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   try {
     await launchNotionSyncWorkflow(
-      connector.id.toString(),
+      connector.id,
       connector.lastSyncSuccessfulTime
         ? connector.lastSyncStartTime?.getTime()
         : null
@@ -278,7 +278,7 @@ export async function fullResyncNotionConnector(
 
   try {
     await launchNotionSyncWorkflow(
-      connector.id.toString(),
+      connector.id,
       fromTs,
       true //forceResync
     );
@@ -464,14 +464,7 @@ export async function retrieveNotionResourceParents(
   const memo = memoizationKey || uuidv4();
 
   try {
-    const parents = await getParents(
-      {
-        dataSourceName: connector.dataSourceName,
-        workspaceId: connector.workspaceId,
-      },
-      internalId,
-      memo
-    );
+    const parents = await getParents(connectorId, internalId, memo);
 
     return new Ok(parents);
   } catch (e) {

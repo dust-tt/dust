@@ -67,7 +67,7 @@ async function updateParentsFieldForConnector(connector: Connector) {
 
   // update all parents fields for all pages and databases
   await updateAllParentsFields(
-    connector,
+    connector.id,
     pages.map((p) => p.notionPageId),
     databases.map((d) => d.notionDatabaseId)
   );
