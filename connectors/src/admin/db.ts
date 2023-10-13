@@ -9,6 +9,8 @@ import {
   GoogleDriveFolders,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
+  NotionConnectorBlockCacheEntry,
+  NotionConnectorPageCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -36,6 +38,8 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
+  await NotionConnectorBlockCacheEntry.sync({ alter: true });
+  await NotionConnectorPageCacheEntry.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

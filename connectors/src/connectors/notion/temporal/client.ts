@@ -8,7 +8,7 @@ import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
+import { Connector, ModelId } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceInfo } from "@connectors/types/data_source_config";
@@ -16,7 +16,7 @@ import { DataSourceInfo } from "@connectors/types/data_source_config";
 const logger = mainLogger.child({ provider: "notion" });
 
 export async function launchNotionSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   startFromTs: number | null = null,
   forceResync = false
 ) {
@@ -40,7 +40,7 @@ export async function launchNotionSyncWorkflow(
   }
 
   await client.workflow.start(notionSyncWorkflow, {
-    args: [dataSourceConfig, startFromTs || undefined, forceResync],
+    args: [{ connectorId, startFromTs, forceResync }],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
   });

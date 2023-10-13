@@ -1,15 +1,25 @@
-import type { ParsedPage } from "@connectors/connectors/notion/lib/notion_api";
-
-export function getTagsForPage(page: ParsedPage): string[] {
+export function getTagsForPage({
+  title,
+  author,
+  lastEditor,
+  updatedTime,
+  createdTime,
+}: {
+  title?: string | null;
+  author: string;
+  lastEditor: string;
+  updatedTime: number;
+  createdTime: number;
+}): string[] {
   const tags: string[] = [];
-  if (page.title) {
-    tags.push(`title:${page.title}`);
+  if (title) {
+    tags.push(`title:${title}`);
   }
 
   return tags.concat([
-    `author:${page.author}`,
-    `lastEditor:${page.lastEditor}`,
-    `lastEditedAt:${page.updatedTime}`,
-    `createdAt:${page.createdTime}`,
+    `author:${author}`,
+    `lastEditor:${lastEditor}`,
+    `lastEditedAt:${updatedTime}`,
+    `createdAt:${createdTime}`,
   ]);
 }

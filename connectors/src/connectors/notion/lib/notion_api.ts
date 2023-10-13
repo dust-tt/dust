@@ -1,7 +1,6 @@
 import {
   APIResponseError,
   Client,
-  collectPaginatedAPI,
   isFullBlock,
   isFullDatabase,
   isFullPage,
@@ -10,8 +9,8 @@ import {
   BlockObjectResponse,
   GetDatabaseResponse,
   GetPageResponse,
+  ListBlockChildrenResponse,
   PageObjectResponse,
-  PartialBlockObjectResponse,
   QueryDatabaseResponse,
   RichTextItemResponse,
   SearchResponse,
@@ -19,53 +18,17 @@ import {
 import memoize from "lodash.memoize";
 import { Logger } from "pino";
 
+import {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
-
-// notion SDK types
-type PageObjectProperties = PageObjectResponse["properties"];
-type PropertyKeys = keyof PageObjectProperties;
-type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
-
-// Extractor types
-export interface ParsedPage {
-  id: string;
-  url: string;
-  title?: string;
-  properties: ParsedProperty[];
-  blocks: ParsedBlock[];
-  rendered: string;
-  createdTime: number;
-  updatedTime: number;
-  author: string;
-  lastEditor: string;
-  hasBody: boolean;
-  parentType: "database" | "page" | "block" | "workspace";
-  parentId: string;
-}
-
-export type ParsedProperty = {
-  key: string;
-  id: string;
-  type: PropertyTypes;
-  text: string | null;
-};
-
-type ParsedBlock = {
-  id: string;
-  type: BlockObjectResponse["type"];
-  text: string | null;
-};
-
-export interface ParsedDatabase {
-  id: string;
-  url: string;
-  title?: string;
-  parentType: "database" | "page" | "block" | "workspace";
-  parentId: string;
-}
 
 /**
  * @param notionAccessToken the access token to use to access the Notion API
@@ -417,33 +380,18 @@ async function getBlockParent(
         return null;
       }
 
-      const blockParent = block.parent;
-      switch (blockParent.type) {
-        case "page_id":
-          return {
-            parentId: blockParent.page_id,
-            parentType: "page",
-          };
-        case "database_id":
-          return {
-            parentId: blockParent.database_id,
-            parentType: "database",
-          };
-        case "workspace":
-          return {
-            parentId: "workspace",
-            parentType: "workspace",
-          };
-        case "block_id": {
-          blockId = blockParent.block_id;
-          break;
-        }
-        default:
-          ((blockParent: never) => {
-            localLogger.warn({ blockParent }, "Unknown block parent type.");
-          })(blockParent);
-          return null;
+      const parent = getPageOrBlockParent(block);
+      if (parent.type === "unknown") {
+        localLogger.warn("Unknown block parent type.");
+        return null;
+      } else if (parent.type !== "block") {
+        return {
+          parentId: parent.id,
+          parentType: parent.type,
+        };
       }
+
+      blockId = parent.id;
 
       depth += 1;
       if (depth === max_depth) {
@@ -482,7 +430,7 @@ export async function getParsedDatabase(
   notionAccessToken: string,
   databaseId: string,
   loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedDatabase | null> {
+): Promise<ParsedNotionDatabase | null> {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
   const notionClient = new Client({ auth: notionAccessToken });
@@ -558,21 +506,24 @@ export async function getParsedDatabase(
     url: database.url,
     title,
     parentId,
-    parentType: parentType as ParsedPage["parentType"],
+    parentType: parentType as ParsedNotionPage["parentType"],
   };
 }
 
-export async function getParsedPage(
-  notionAccessToken: string,
-  pageId: string,
-  loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedPage | null> {
+export async function retrievePage({
+  accessToken,
+  pageId,
+  loggerArgs,
+}: {
+  accessToken: string;
+  pageId: string;
+  loggerArgs: Record<string, string | number>;
+}): Promise<PageObjectResponse | null> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({ auth: accessToken });
 
   let page: GetPageResponse | null = null;
-
   try {
     localLogger.info("Fetching page from Notion API.");
     page = await notionClient.pages.retrieve({ page_id: pageId });
@@ -592,134 +543,116 @@ export async function getParsedPage(
     return null;
   }
 
-  const pageLogger = localLogger.child({ pageUrl: page.url });
+  return page;
+}
 
-  pageLogger.info("Parsing page.");
-  const properties = Object.entries(page.properties).map(([key, value]) => ({
+export function parsePageProperties(pageProperties: PageObjectProperties) {
+  const properties = Object.entries(pageProperties).map(([key, value]) => ({
     key,
     id: value.id,
     type: value.type,
     text: parsePropertyText(value),
   }));
 
-  let blocks: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
-    null;
+  return properties;
+}
+
+export async function retrieveBlockChildrenResultPage({
+  accessToken,
+  blockOrPageId,
+  cursor,
+  loggerArgs,
+}: {
+  accessToken: string;
+  blockOrPageId: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+}): Promise<ListBlockChildrenResponse | null> {
+  const localLogger = logger.child(loggerArgs);
+
+  const notionClient = new Client({ auth: accessToken });
 
   try {
-    blocks = await collectPaginatedAPI(notionClient.blocks.children.list, {
-      block_id: page.id,
+    localLogger.info(
+      "Fetching block or page children result page from Notion API."
+    );
+    const resultPage = await notionClient.blocks.children.list({
+      block_id: blockOrPageId,
+      start_cursor: cursor ?? undefined,
     });
+    localLogger.info(
+      { count: resultPage.results.length },
+      "Received block or page children result page from Notion API."
+    );
+    return resultPage;
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
       (e.code === "object_not_found" || e.code === "validation_error")
     ) {
-      blocks = [];
-      pageLogger.info(
+      localLogger.info(
         {
           notion_error: {
             code: e.code,
             message: e.message,
           },
         },
-        "Couldn't get page blocks."
+        "Couldn't get block or page children."
       );
+      return null;
     } else {
       throw e;
     }
   }
+}
 
-  let parsedBlocks: ParsedBlock[] = [];
-  for (const block of blocks) {
-    if (isFullBlock(block)) {
-      parsedBlocks = parsedBlocks.concat(
-        await parsePageBlock(block, notionClient, pageLogger)
-      );
+export function getPageOrBlockParent(
+  pageOrBlock: PageObjectResponse | BlockObjectResponse
+):
+  | {
+      type: "database" | "page" | "block";
+      id: string;
     }
-  }
-
-  let renderedPage = "";
-  for (const property of properties) {
-    if (!property.text) continue;
-    renderedPage += `$${property.key}: ${property.text}\n`;
-  }
-
-  renderedPage += "\n";
-  for (const parsedBlock of parsedBlocks) {
-    if (!parsedBlock.text) continue;
-    renderedPage += `${parsedBlock.text}\n`;
-  }
-
-  const pageHasBody = !parsedBlocks.every((b) => !b.text);
-
-  const author =
-    (await getUserName(notionClient, page.created_by.id, pageLogger)) ||
-    page.created_by.id;
-  const lastEditor =
-    (await getUserName(notionClient, page.last_edited_by.id, pageLogger)) ||
-    page.last_edited_by.id;
-
-  // remove base64 images from rendered page
-  renderedPage = renderedPage.replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
-
-  const pageParent = page.parent;
-  let parentId: string;
-  let parentType: string;
-
-  switch (pageParent.type) {
+  | {
+      type: "workspace";
+      id: "workspace";
+    }
+  | {
+      type: "unknown";
+      id: "unknown";
+    } {
+  const type = pageOrBlock.parent.type;
+  switch (type) {
     case "database_id":
-      parentId = pageParent.database_id;
-      parentType = "database";
-      break;
+      return {
+        type: "database",
+        id: pageOrBlock.parent.database_id,
+      };
     case "page_id":
-      parentId = pageParent.page_id;
-      parentType = "page";
-      break;
-    case "block_id": {
-      const parent = await getBlockParentMemoized(
-        notionAccessToken,
-        pageParent.block_id,
-        pageLogger
-      );
-      if (parent) {
-        parentId = parent.parentId;
-        parentType = parent.parentType;
-      } else {
-        parentId = pageParent.block_id;
-        parentType = "block";
-      }
-      break;
-    }
+      return {
+        type: "page",
+        id: pageOrBlock.parent.page_id,
+      };
+    case "block_id":
+      return {
+        type: "block",
+        id: pageOrBlock.parent.block_id,
+      };
     case "workspace":
-      parentId = "workspace";
-      parentType = "workspace";
-      break;
+      return {
+        type: "workspace",
+        id: "workspace",
+      };
     default:
-      ((pageParent: never) => {
-        logger.warn({ pageParent }, "Unknown page parent type.");
-      })(pageParent);
-      parentId = "unknown";
-      parentType = "unknown";
-      break;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ((_x: never) => {
+        //
+      })(type);
+      return {
+        type: "unknown",
+        id: "unknown",
+      };
   }
-
-  const titleProperty = properties.find((p) => p.type === "title")?.text;
-
-  return {
-    id: page.id,
-    url: page.url,
-    title: titleProperty || undefined,
-    properties,
-    blocks: parsedBlocks,
-    rendered: renderedPage,
-    createdTime: new Date(page.created_time).getTime(),
-    updatedTime: new Date(page.last_edited_time).getTime(),
-    author,
-    lastEditor,
-    hasBody: pageHasBody,
-    parentId,
-    parentType: parentType as ParsedPage["parentType"],
-  };
 }
 
 export async function validateAccessToken(notionAccessToken: string) {
@@ -808,64 +741,90 @@ function parsePropertyText(
   }
 }
 
-async function renderChildDatabase(
-  block: BlockObjectResponse & { type: "child_database" },
-  notionClient: Client,
-  pageLogger: Logger
-): Promise<string | null> {
-  const rows: string[] = [];
-  let header: string[] | null = null;
+export async function retrieveDatabaseChildrenResultPage({
+  accessToken,
+  databaseId,
+  cursor,
+  loggerArgs,
+}: {
+  accessToken: string;
+  databaseId: string;
+  cursor: string | null;
+  loggerArgs: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({ ...loggerArgs, databaseId });
+
+  const notionClient = new Client({ auth: accessToken });
+
+  localLogger.info("Fetching database children result page from Notion API.");
   try {
-    for await (const page of iteratePaginatedAPIWithRetries(
-      notionClient.databases.query,
-      {
-        database_id: block.id,
-      },
-      pageLogger.child({ databaseId: block.id, blockType: block.type })
-    )) {
-      if (isFullPage(page)) {
-        if (!header) {
-          header = Object.entries(page.properties).map(([key]) => key);
-          rows.push(`||${header.join(" | ")}||`);
-        }
+    const resultPage = await notionClient.databases.query({
+      database_id: databaseId,
+      start_cursor: cursor || undefined,
+    });
 
-        const properties: Record<string, string> = Object.entries(
-          page.properties
-        )
-          .map(([key, value]) => ({
-            key,
-            id: value.id,
-            type: value.type,
-            text: parsePropertyText(value),
-          }))
-          .reduce(
-            (acc, property) =>
-              Object.assign(acc, { [property.key]: property.text }),
-            {}
-          );
+    localLogger.info(
+      { count: resultPage.results.length },
+      "Received database children result page from Notion API."
+    );
 
-        rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
-      }
-    }
-
-    return [block.child_database.title, ...rows].join("\n");
+    return resultPage;
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (e.code === "object_not_found" || e.code === "validation_error")
     ) {
-      pageLogger.info(
-        { database_id: block.id },
-        "Couln't query child database."
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Couldn't get database children."
       );
       return null;
+    } else {
+      throw e;
     }
-    throw e;
   }
 }
 
-async function getUserName(
-  notionClient: Client,
+export function renderChildDatabaseFromPages({
+  databaseTitle,
+  pagesProperties,
+}: {
+  databaseTitle: string | null;
+  pagesProperties: PageObjectProperties[];
+}) {
+  const rows: string[] = databaseTitle ? [databaseTitle] : [];
+  let header: string[] | null = null;
+  for (const pageProperties of pagesProperties) {
+    if (!header) {
+      header = Object.entries(pageProperties).map(([key]) => key);
+      rows.push(`||${header.join(" | ")}||`);
+    }
+
+    const properties: Record<string, string> = Object.entries(pageProperties)
+      .map(([key, value]) => ({
+        key,
+        id: value.id,
+        type: value.type,
+        text: parsePropertyText(value),
+      }))
+      .reduce(
+        (acc, property) =>
+          Object.assign(acc, { [property.key]: property.text }),
+        {}
+      );
+
+    rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
+  }
+  return rows.join("\n");
+}
+
+export async function getUserName(
+  accessToken: string,
   userId: string,
   pageLogger: Logger
 ): Promise<string | null> {
@@ -874,6 +833,8 @@ async function getUserName(
     pageLogger.info({ user_id: userId }, "Got user name from cache.");
     return nameFromCache;
   }
+
+  const notionClient = new Client({ auth: accessToken });
 
   try {
     pageLogger.info({ user_id: userId }, "Fetching user name from Notion API.");
@@ -899,12 +860,7 @@ async function getUserName(
   }
 }
 
-async function parsePageBlock(
-  block: BlockObjectResponse,
-  notionClient: Client,
-  pageLogger: Logger,
-  parentsIds: Set<string> = new Set()
-): Promise<ParsedBlock[]> {
+export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
   function parseRichText(text: RichTextItemResponse[]): string {
     const parsed = text.map((t) => t.plain_text).join(" ");
     return parsed;
@@ -937,66 +893,11 @@ async function parsePageBlock(
     return fileText;
   }
 
-  function indentBlocks(blocks: ParsedBlock[]): ParsedBlock[] {
-    const indentedBlocks: ParsedBlock[] = [];
-    for (const { text, ...rest } of blocks) {
-      const indentedText = text ? `- ${text}` : null;
-      indentedBlocks.push({
-        ...rest,
-        text: indentedText,
-      });
-    }
-    return indentedBlocks;
-  }
-
-  async function withPotentialChildren(
-    parsedBlock: ParsedBlock,
-    block: BlockObjectResponse
-  ): Promise<ParsedBlock[]> {
-    const parsedBlocks = [parsedBlock];
-    if (!block.has_children) {
-      return parsedBlocks;
-    }
-
-    const parsedChildren: ParsedBlock[] = [];
-    try {
-      for await (const child of iteratePaginatedAPIWithRetries(
-        notionClient.blocks.children.list,
-        {
-          block_id: block.id,
-        },
-        pageLogger.child({ blockId: block.id, blockType: block.type })
-      )) {
-        if (isFullBlock(child)) {
-          if (!parentsIds.has(child.id)) {
-            parsedChildren.push(
-              ...(await parsePageBlock(
-                child,
-                notionClient,
-                pageLogger,
-                new Set([...parentsIds, block.id])
-              ))
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (
-        APIResponseError.isAPIResponseError(e) &&
-        e.code === "object_not_found"
-      ) {
-        pageLogger.info({ blockId: block.id }, "Couln't get block's children.");
-        return parsedBlocks;
-      }
-      throw e;
-    }
-
-    return parsedBlocks.concat(indentBlocks(parsedChildren));
-  }
-
   const commonFields = {
     id: block.id,
     type: block.type,
+    hasChildren: false,
+    childDatabaseTitle: null,
   };
 
   const NULL_BLOCK = {
@@ -1011,231 +912,192 @@ async function parsePageBlock(
     case "table_of_contents":
     case "unsupported":
       // TODO: check if we want that ?
-      return [NULL_BLOCK];
+      return NULL_BLOCK;
 
     case "equation":
-      return [
-        {
-          ...commonFields,
-          text: block.equation.expression,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: block.equation.expression,
+      };
 
     case "link_preview":
-      return [
-        {
-          ...commonFields,
-          text: block.link_preview.url,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: block.link_preview.url,
+      };
 
     case "table_row":
-      return [
-        {
-          ...commonFields,
-          text: `||${block.table_row.cells.map(parseRichText).join(" | ")}||`,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: `||${block.table_row.cells.map(parseRichText).join(" | ")}||`,
+      };
 
     case "code":
-      return [
-        {
-          ...commonFields,
-          text: `\`\`\`${block.code.language} ${parseRichText(
-            block.code.rich_text
-          )} \`\`\``,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: `\`\`\`${block.code.language} ${parseRichText(
+          block.code.rich_text
+        )} \`\`\``,
+      };
 
     // child databases are a special case
     // we need to fetch all the pages in the database to reconstruct the table
+    // this is handled by the caller
     case "child_database":
-      return [
-        {
-          ...commonFields,
-          text: await renderChildDatabase(block, notionClient, pageLogger),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: null,
+        childDatabaseTitle: block.child_database.title,
+      };
 
     // URL blocks
     case "bookmark":
-      return [
-        {
-          ...commonFields,
-          text: block.bookmark
-            ? renderUrl(
-                block.bookmark.url,
-                parseRichText(block.bookmark.caption)
-              )
-            : null,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: block.bookmark
+          ? renderUrl(block.bookmark.url, parseRichText(block.bookmark.caption))
+          : null,
+      };
+
     case "embed":
-      return [
-        {
-          ...commonFields,
-          text: renderUrl(block.embed.url, parseRichText(block.embed.caption)),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderUrl(block.embed.url, parseRichText(block.embed.caption)),
+      };
 
     // File blocks
     case "file":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.file),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderFile(block.file),
+      };
+
     case "image":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.image),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderFile(block.image),
+      };
+
     case "pdf":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.pdf),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderFile(block.pdf),
+      };
+
     case "video":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.video),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderFile(block.video),
+      };
 
     case "audio":
-      return [
-        {
-          ...commonFields,
-          text: renderFile(block.audio),
-        },
-      ];
+      return {
+        ...commonFields,
+        text: renderFile(block.audio),
+      };
 
     // blocks that may have child blocks:
     case "table":
-      return withPotentialChildren(NULL_BLOCK, block);
+      return { ...NULL_BLOCK, hasChildren: block.has_children };
 
     case "bulleted_list_item":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `* ${parseRichText(block.bulleted_list_item.rich_text)}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `* ${parseRichText(block.bulleted_list_item.rich_text)}`,
+        hasChildren: block.has_children,
+      };
+
     case "callout":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.callout.rich_text),
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: parseRichText(block.callout.rich_text),
+        hasChildren: block.has_children,
+      };
     case "heading_1":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `# ${parseRichText(block.heading_1.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `# ${parseRichText(block.heading_1.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
 
     case "heading_2":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `## ${parseRichText(block.heading_2.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `## ${parseRichText(block.heading_2.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
+
     case "heading_3":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `### ${parseRichText(block.heading_3.rich_text).replace(
-            "\n",
-            " "
-          )}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `### ${parseRichText(block.heading_3.rich_text).replace(
+          "\n",
+          " "
+        )}`,
+        hasChildren: block.has_children,
+      };
+
     case "numbered_list_item":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.numbered_list_item.rich_text),
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: parseRichText(block.numbered_list_item.rich_text),
+        hasChildren: block.has_children,
+      };
+
     case "paragraph":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.paragraph.rich_text),
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: parseRichText(block.paragraph.rich_text),
+        hasChildren: block.has_children,
+      };
+
     case "quote":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `> ${parseRichText(block.quote.rich_text)}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `> ${parseRichText(block.quote.rich_text)}`,
+        hasChildren: block.has_children,
+      };
+
     case "template":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.template.rich_text),
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: parseRichText(block.template.rich_text),
+        hasChildren: block.has_children,
+      };
+
     case "to_do":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: `[${block.to_do.checked ? "x" : " "}] ${parseRichText(
-            block.to_do.rich_text
-          )}`,
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: `[${block.to_do.checked ? "x" : " "}] ${parseRichText(
+          block.to_do.rich_text
+        )}`,
+        hasChildren: block.has_children,
+      };
 
     case "toggle":
-      return withPotentialChildren(
-        {
-          ...commonFields,
-          text: parseRichText(block.toggle.rich_text),
-        },
-        block
-      );
+      return {
+        ...commonFields,
+        text: parseRichText(block.toggle.rich_text),
+        hasChildren: block.has_children,
+      };
 
     case "column_list":
     case "column":
     case "synced_block":
-      return withPotentialChildren(NULL_BLOCK, block);
-
+      return { ...NULL_BLOCK, hasChildren: block.has_children };
     // blocks that technically have children but we don't want to recursively parse them
     // because the search endpoint returns them already
     case "child_page":
-      return [
-        {
-          ...commonFields,
-          text: block.child_page.title,
-        },
-      ];
+      return {
+        ...commonFields,
+        text: block.child_page.title,
+      };
 
     default:
       // `block` here is `never`
@@ -1245,7 +1107,7 @@ async function parsePageBlock(
           "Unknown block type."
         );
       })(block);
-      return [NULL_BLOCK];
+      return NULL_BLOCK;
   }
 }
 

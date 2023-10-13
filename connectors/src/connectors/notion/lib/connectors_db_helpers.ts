@@ -1,4 +1,9 @@
-import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
+import {
+  Connector,
+  ModelId,
+  NotionDatabase,
+  NotionPage,
+} from "@connectors/lib/models";
 import { DataSourceInfo } from "@connectors/types/data_source_config";
 
 // Note: this function does not let you "remove" a skipReason.
@@ -88,28 +93,17 @@ export async function upsertNotionPageInConnectorsDb({
 }
 
 export async function getNotionPageFromConnectorsDb(
-  dataSourceInfo: DataSourceInfo,
+  connectorId: ModelId,
   notionPageId: string,
   lastSeenTs?: number
 ): Promise<NotionPage | null> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
   const where: {
     notionPageId: string;
-    connectorId: string;
+    connectorId: ModelId;
     lastSeenTs?: Date;
   } = {
     notionPageId,
-    connectorId: connector.id.toString(),
+    connectorId,
   };
 
   if (lastSeenTs) {
@@ -121,7 +115,7 @@ export async function getNotionPageFromConnectorsDb(
 
 // Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionDatabaseInConnectorsDb({
-  dataSourceInfo,
+  connectorId,
   notionDatabaseId,
   lastSeenTs,
   parentType,
@@ -131,7 +125,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   skipReason,
   lastCreatedOrMovedRunTs,
 }: {
-  dataSourceInfo: DataSourceInfo;
+  connectorId: ModelId;
   notionDatabaseId: string;
   lastSeenTs: number;
   parentType?: string | null;
@@ -144,8 +138,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   const connector = await Connector.findOne({
     where: {
       type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
+      id: connectorId,
     },
   });
   if (!connector) {
@@ -200,28 +193,17 @@ export async function upsertNotionDatabaseInConnectorsDb({
 }
 
 export async function getNotionDatabaseFromConnectorsDb(
-  dataSourceInfo: DataSourceInfo,
+  connectorId: ModelId,
   notionDatabaseId: string,
   lastSeenTs?: number
 ): Promise<NotionDatabase | null> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
   const where: {
     notionDatabaseId: string;
-    connectorId: string;
+    connectorId: ModelId;
     lastSeenTs?: Date;
   } = {
     notionDatabaseId,
-    connectorId: connector.id.toString(),
+    connectorId,
   };
 
   if (lastSeenTs) {
@@ -237,24 +219,13 @@ export async function getNotionDatabaseFromConnectorsDb(
  * !! Not children *of a page*
  */
 export async function getPageChildrenOf(
-  dataSourceInfo: DataSourceInfo,
+  connectorId: ModelId,
   notionId: string
 ): Promise<NotionPage[]> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
   return NotionPage.findAll({
     where: {
       parentId: notionId,
-      connectorId: connector.id,
+      connectorId: connectorId,
     },
   });
 }
@@ -265,24 +236,13 @@ export async function getPageChildrenOf(
  * !! Not children *of a database*
  */
 export async function getDatabaseChildrenOf(
-  dataSourceInfo: DataSourceInfo,
+  connectorId: ModelId,
   notionId: string
 ): Promise<NotionDatabase[]> {
-  const connector = await Connector.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
   return NotionDatabase.findAll({
     where: {
       parentId: notionId,
-      connectorId: connector.id,
+      connectorId: connectorId,
     },
   });
 }
