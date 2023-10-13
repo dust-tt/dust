@@ -9,6 +9,7 @@ import {
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
@@ -46,7 +47,12 @@ function NavigationBar({
         <div className="flex flex-row p-3">
           <div className="flex flex-col gap-2">
             <div className="pt-3">
-              <Logo className="h-4 w-16" />
+              <Link
+                href={`/w/${owner.sId}/assistant/new`}
+                className="inline-flex"
+              >
+                <Logo className="h-4 w-16" />
+              </Link>
             </div>
             {user && user.workspaces.length > 1 ? (
               <div className="flex flex-row gap-2">
@@ -328,7 +334,7 @@ export default function AppLayout({
         >
           <div
             className={classNames(
-              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:px-6"
+              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
             )}
           >
             <button
