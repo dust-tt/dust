@@ -1,7 +1,6 @@
 import {
   APIResponseError,
   Client,
-  collectPaginatedAPI,
   isFullBlock,
   isFullDatabase,
   isFullPage,
@@ -12,7 +11,6 @@ import {
   GetPageResponse,
   ListBlockChildrenResponse,
   PageObjectResponse,
-  PartialBlockObjectResponse,
   QueryDatabaseResponse,
   RichTextItemResponse,
   SearchResponse,
@@ -657,126 +655,6 @@ export function getPageOrBlockParent(
   }
 }
 
-// deprecated
-export async function getParsedPage(
-  notionAccessToken: string,
-  pageId: string,
-  loggerArgs: Record<string, string | number> = {}
-): Promise<ParsedNotionPage | null> {
-  const localLogger = logger.child({ ...loggerArgs, pageId });
-
-  const notionClient = new Client({ auth: notionAccessToken });
-
-  const page = await retrievePage({
-    accessToken: notionAccessToken,
-    pageId,
-    loggerArgs,
-  });
-
-  if (!page) {
-    return null;
-  }
-
-  const pageLogger = localLogger.child({ pageUrl: page.url });
-
-  pageLogger.info("Parsing page.");
-  const properties = parsePageProperties(page.properties);
-
-  let blocks: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
-    null;
-
-  try {
-    blocks = await collectPaginatedAPI(notionClient.blocks.children.list, {
-      block_id: page.id,
-    });
-  } catch (e) {
-    if (
-      APIResponseError.isAPIResponseError(e) &&
-      (e.code === "object_not_found" || e.code === "validation_error")
-    ) {
-      blocks = [];
-      pageLogger.info(
-        {
-          notion_error: {
-            code: e.code,
-            message: e.message,
-          },
-        },
-        "Couldn't get page blocks."
-      );
-    } else {
-      throw e;
-    }
-  }
-
-  let parsedBlocks: ParsedNotionBlock[] = [];
-  for (const block of blocks) {
-    if (isFullBlock(block)) {
-      parsedBlocks = parsedBlocks.concat(
-        await getParsedBlockWithChildren(block, notionClient, pageLogger)
-      );
-    }
-  }
-
-  let renderedPage = "";
-  for (const property of properties) {
-    if (!property.text) continue;
-    renderedPage += `$${property.key}: ${property.text}\n`;
-  }
-
-  renderedPage += "\n";
-  for (const parsedBlock of parsedBlocks) {
-    if (!parsedBlock.text) continue;
-    renderedPage += `${parsedBlock.text}\n`;
-  }
-
-  const pageHasBody = !parsedBlocks.every((b) => !b.text);
-
-  const author =
-    (await getUserName(notionClient, page.created_by.id, pageLogger)) ||
-    page.created_by.id;
-  const lastEditor =
-    (await getUserName(notionClient, page.last_edited_by.id, pageLogger)) ||
-    page.last_edited_by.id;
-
-  // remove base64 images from rendered page
-  renderedPage = renderedPage.replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
-
-  const parent = getPageOrBlockParent(page);
-  let { id: parentId, type: parentType } = parent;
-  if (parent.type === "unknown") {
-    pageLogger.warn("Unknown page parent type.");
-  } else if (parent.type === "block") {
-    const blockParent = await getBlockParentMemoized(
-      notionAccessToken,
-      parent.id,
-      pageLogger
-    );
-    if (blockParent) {
-      parentId = blockParent.parentId;
-      parentType = blockParent.parentType;
-    }
-  }
-
-  const titleProperty = properties.find((p) => p.type === "title")?.text;
-
-  return {
-    id: page.id,
-    url: page.url,
-    title: titleProperty || undefined,
-    properties,
-    blocks: parsedBlocks,
-    rendered: renderedPage,
-    createdTime: new Date(page.created_time).getTime(),
-    updatedTime: new Date(page.last_edited_time).getTime(),
-    author,
-    lastEditor,
-    hasBody: pageHasBody,
-    parentId: parentId || "unknown",
-    parentType: parentType as ParsedNotionPage["parentType"],
-  };
-}
-
 export async function validateAccessToken(notionAccessToken: string) {
   const notionClient = new Client({ auth: notionAccessToken });
   try {
@@ -945,46 +823,8 @@ export function renderChildDatabaseFromPages({
   return rows.join("\n");
 }
 
-async function renderChildDatabase(
-  block: ParsedNotionBlock & { type: "child_database" },
-  notionClient: Client,
-  pageLogger: Logger
-): Promise<string | null> {
-  const pages: PageObjectResponse[] = [];
-  try {
-    for await (const page of iteratePaginatedAPIWithRetries(
-      notionClient.databases.query,
-      {
-        database_id: block.id,
-      },
-      pageLogger.child({ databaseId: block.id, blockType: block.type })
-    )) {
-      if (isFullPage(page)) {
-        pages.push(page);
-      }
-    }
-  } catch (e) {
-    if (
-      APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
-    ) {
-      pageLogger.info(
-        { database_id: block.id },
-        "Couln't query child database."
-      );
-      return null;
-    }
-    throw e;
-  }
-
-  return renderChildDatabaseFromPages({
-    databaseTitle: block.childDatabaseTitle,
-    pagesProperties: pages.map((p) => p.properties),
-  });
-}
-
-async function getUserName(
-  notionClient: Client,
+export async function getUserName(
+  accessToken: string,
   userId: string,
   pageLogger: Logger
 ): Promise<string | null> {
@@ -993,6 +833,8 @@ async function getUserName(
     pageLogger.info({ user_id: userId }, "Got user name from cache.");
     return nameFromCache;
   }
+
+  const notionClient = new Client({ auth: accessToken });
 
   try {
     pageLogger.info({ user_id: userId }, "Fetching user name from Notion API.");
@@ -1267,88 +1109,6 @@ export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
       })(block);
       return NULL_BLOCK;
   }
-}
-
-async function getParsedBlockWithChildren(
-  block: BlockObjectResponse,
-  notionClient: Client,
-  pageLogger: Logger,
-  parentsIds: Set<string> = new Set(),
-  fetchChildren = true
-): Promise<ParsedNotionBlock[]> {
-  function indentBlocks(blocks: ParsedNotionBlock[]): ParsedNotionBlock[] {
-    const indentedBlocks: ParsedNotionBlock[] = [];
-    for (const { text, ...rest } of blocks) {
-      const indentedText = text ? `- ${text}` : null;
-      indentedBlocks.push({
-        ...rest,
-        text: indentedText,
-      });
-    }
-    return indentedBlocks;
-  }
-
-  async function withChildren(
-    parsedBlock: ParsedNotionBlock,
-    block: BlockObjectResponse
-  ): Promise<ParsedNotionBlock[]> {
-    const parsedBlocks = [parsedBlock];
-    if (!fetchChildren) {
-      return parsedBlocks;
-    }
-    if (!block.has_children) {
-      return parsedBlocks;
-    }
-
-    const parsedChildren: ParsedNotionBlock[] = [];
-    try {
-      for await (const child of iteratePaginatedAPIWithRetries(
-        notionClient.blocks.children.list,
-        {
-          block_id: block.id,
-        },
-        pageLogger.child({ blockId: block.id, blockType: block.type })
-      )) {
-        if (isFullBlock(child)) {
-          if (!parentsIds.has(child.id)) {
-            parsedChildren.push(
-              ...(await getParsedBlockWithChildren(
-                child,
-                notionClient,
-                pageLogger,
-                new Set([...parentsIds, block.id])
-              ))
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (
-        APIResponseError.isAPIResponseError(e) &&
-        e.code === "object_not_found"
-      ) {
-        pageLogger.info({ blockId: block.id }, "Couln't get block's children.");
-        return parsedBlocks;
-      }
-      throw e;
-    }
-
-    return parsedBlocks.concat(indentBlocks(parsedChildren));
-  }
-
-  const parsedBlock = await parsePageBlock(block);
-  const blockType = parsedBlock.type;
-  if (blockType === "child_database") {
-    parsedBlock.text = await renderChildDatabase(
-      { ...parsedBlock, type: blockType },
-      notionClient,
-      pageLogger
-    );
-  }
-  if (!parsedBlock.hasChildren) {
-    return [parsedBlock];
-  }
-  return withChildren(parsedBlock, block);
 }
 
 interface IPaginatedList<T> {

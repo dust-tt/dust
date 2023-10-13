@@ -673,6 +673,7 @@ export class NotionConnectorPageCacheEntry extends Model<
   declare createdById: string;
   declare createdTime: string;
   declare lastEditedTime: string;
+  declare url: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -714,6 +715,10 @@ NotionConnectorPageCacheEntry.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    createdById: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     createdTime: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -722,7 +727,7 @@ NotionConnectorPageCacheEntry.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    createdById: {
+    url: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -733,7 +738,7 @@ NotionConnectorPageCacheEntry.init(
     indexes: [
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
-      { fields: ["parentDatabaseId"] },
+      { fields: ["parentId"] },
     ],
   }
 );

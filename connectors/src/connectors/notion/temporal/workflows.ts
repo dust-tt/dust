@@ -18,10 +18,9 @@ const { garbageCollectActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
 });
 
-const { notionUpsertPageActivity, notionUpsertDatabaseActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "60 minute",
-  });
+const { notionUpsertDatabaseActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "60 minute",
+});
 
 const {
   notionGetToSyncActivity,
@@ -31,6 +30,8 @@ const {
   notionRetrievePageActivity,
   notionRetrieveBlockChildrenResultPageActivity,
   notionRetrieveDatabaseChildrenResultPageActivity,
+  notionRenderAndUpsertPageFromCache,
+  notionClearConnectorCacheActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -88,6 +89,9 @@ export async function notionSyncWorkflow(
     if (!isGargageCollectionRun) {
       await saveStartSyncActivity(dataSourceConfig);
     }
+
+    // clear the connector cache before each sync
+    await notionClearConnectorCacheActivity(dataSourceConfig);
 
     const runTimestamp = Date.now();
 
@@ -191,14 +195,16 @@ export async function notionUpsertPageWorkflow(
   dataSourceConfig: DataSourceConfig,
   notionAccessToken: string,
   pageId: string,
-  runTimestamp: number
-  // isBatchSync = false
+  runTimestamp: number,
+  isBatchSync: boolean,
+  pageIndex: number
 ): Promise<{
   skipped: boolean;
 }> {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
+    pageIndex,
   };
 
   const { skipped } = await notionRetrievePageActivity({
@@ -231,12 +237,12 @@ export async function notionUpsertPageWorkflow(
     cursor = nextCursor;
     blockIndexInPage += blocksCount;
 
-    for (const block in blocksWithChildren) {
+    for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
         workflowId: `${getWorkflowId(
           dataSourceConfig
         )}-page-${pageId}-block-${block}-children`,
-        args: [dataSourceConfig, notionAccessToken, pageId, block],
+        args: [{ dataSourceConfig, notionAccessToken, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
@@ -245,25 +251,37 @@ export async function notionUpsertPageWorkflow(
         workflowId: `${getWorkflowId(
           dataSourceConfig
         )}-page-${pageId}-child-database-${databaseId}`,
-        args: [dataSourceConfig, notionAccessToken, databaseId],
+        args: [{ dataSourceConfig, notionAccessToken, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
   } while (cursor);
 
-  // now the activity that actually renders & upsert the page
+  await notionRenderAndUpsertPageFromCache({
+    dataSourceConfig,
+    accessToken: notionAccessToken,
+    pageId,
+    loggerArgs,
+    runTimestamp,
+    isFullSync: isBatchSync,
+  });
 
   return {
     skipped,
   };
 }
 
-export async function notionProcessBlockChildrenWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  pageId: string,
-  blockId: string
-): Promise<void> {
+export async function notionProcessBlockChildrenWorkflow({
+  dataSourceConfig,
+  notionAccessToken,
+  pageId,
+  blockId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  notionAccessToken: string;
+  pageId: string;
+  blockId: string;
+}): Promise<void> {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -286,12 +304,12 @@ export async function notionProcessBlockChildrenWorkflow(
     cursor = nextCursor;
     blockIndexInParent += blocksCount;
 
-    for (const block in blocksWithChildren) {
+    for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
         workflowId: `${getWorkflowId(
           dataSourceConfig
         )}-page-${pageId}-block-${block}-children`,
-        args: [dataSourceConfig, notionAccessToken, pageId, block],
+        args: [{ dataSourceConfig, notionAccessToken, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
@@ -300,18 +318,22 @@ export async function notionProcessBlockChildrenWorkflow(
         workflowId: `${getWorkflowId(
           dataSourceConfig
         )}-page-${pageId}-child-database-${databaseId}`,
-        args: [dataSourceConfig, notionAccessToken, databaseId],
+        args: [{ dataSourceConfig, notionAccessToken, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
       });
     }
   } while (cursor);
 }
 
-export async function notionProcessChildDatabaseWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  databaseId: string
-): Promise<void> {
+export async function notionProcessChildDatabaseWorkflow({
+  dataSourceConfig,
+  notionAccessToken,
+  databaseId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  notionAccessToken: string;
+  databaseId: string;
+}): Promise<void> {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -331,35 +353,42 @@ export async function notionProcessChildDatabaseWorkflow(
   } while (cursor);
 }
 
-export async function notionSyncResultPageWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  pageIds: string[],
-  runTimestamp: number,
-  isBatchSync = false
-): Promise<void> {
+export async function notionSyncResultPageWorkflow({
+  dataSourceConfig,
+  notionAccessToken,
+  pageIds,
+  runTimestamp,
+  isBatchSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  notionAccessToken: string;
+  pageIds: string[];
+  runTimestamp: number;
+  isBatchSync: boolean;
+}): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
 
-  const promises: Promise<void>[] = [];
+  const promises: Promise<unknown>[] = [];
 
   for (const [pageIndex, pageId] of pageIds.entries()) {
-    const loggerArgs = {
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-      pageIndex,
-    };
     promises.push(
       upsertQueue.add(() =>
-        notionUpsertPageActivity(
-          notionAccessToken,
-          pageId,
-          dataSourceConfig,
-          runTimestamp,
-          loggerArgs,
-          isBatchSync
-        )
+        executeChild(notionUpsertPageWorkflow, {
+          workflowId: `${getWorkflowId(
+            dataSourceConfig
+          )}-upsert-page-${pageId}`,
+          args: [
+            dataSourceConfig,
+            notionAccessToken,
+            pageId,
+            runTimestamp,
+            isBatchSync,
+            pageIndex,
+          ],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        })
       )
     );
   }
@@ -367,14 +396,21 @@ export async function notionSyncResultPageWorkflow(
   await Promise.all(promises);
 }
 
-export async function notionSyncResultPageDatabaseWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  notionAccessToken: string,
-  databaseIds: string[],
-  runTimestamp: number,
-  isGarbageCollectionRun = false,
-  isBatchSync = false
-): Promise<void> {
+export async function notionSyncResultPageDatabaseWorkflow({
+  dataSourceConfig,
+  notionAccessToken,
+  databaseIds,
+  runTimestamp,
+  isGarbageCollectionRun,
+  isBatchSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  notionAccessToken: string;
+  databaseIds: string[];
+  runTimestamp: number;
+  isGarbageCollectionRun: boolean;
+  isBatchSync: boolean;
+}): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
   });
@@ -526,11 +562,13 @@ async function performUpserts({
           executeChild(notionSyncResultPageWorkflow, {
             workflowId,
             args: [
-              dataSourceConfig,
-              notionAccessToken,
-              batch,
-              runTimestamp,
-              isBatchSync,
+              {
+                dataSourceConfig,
+                notionAccessToken,
+                runTimestamp,
+                isBatchSync,
+                pageIds: batch,
+              },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           })
@@ -565,12 +603,14 @@ async function performUpserts({
           executeChild(notionSyncResultPageDatabaseWorkflow, {
             workflowId,
             args: [
-              dataSourceConfig,
-              notionAccessToken,
-              batch,
-              runTimestamp,
-              isGarbageCollectionRun,
-              isBatchSync,
+              {
+                dataSourceConfig,
+                notionAccessToken,
+                runTimestamp,
+                isGarbageCollectionRun,
+                isBatchSync,
+                databaseIds: batch,
+              },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           })
