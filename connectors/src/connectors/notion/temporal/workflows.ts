@@ -28,6 +28,9 @@ const {
   syncGarbageCollectorActivity,
   updateParentsFieldsActivity,
   getDatabaseChildPagesActivity,
+  notionRetrievePageActivity,
+  notionRetrieveBlockChildrenResultPageActivity,
+  notionRetrieveDatabaseChildrenResultPageActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -182,6 +185,150 @@ export async function notionSyncWorkflow(
     // Cannot actually be undefined, but TS doesn't know that.
     lastSyncedPeriodTs ?? undefined
   );
+}
+
+export async function notionUpsertPageWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  pageId: string,
+  runTimestamp: number
+  // isBatchSync = false
+): Promise<{
+  skipped: boolean;
+}> {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+
+  const { skipped } = await notionRetrievePageActivity({
+    dataSourceConfig,
+    accessToken: notionAccessToken,
+    pageId,
+    loggerArgs,
+    runTimestamp,
+  });
+
+  if (skipped) {
+    return {
+      skipped,
+    };
+  }
+
+  let cursor: string | null = null;
+  let blockIndexInPage = 0;
+  do {
+    const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
+      await notionRetrieveBlockChildrenResultPageActivity({
+        dataSourceConfig,
+        accessToken: notionAccessToken,
+        pageId,
+        blockId: null,
+        cursor,
+        currentIndexInParent: blockIndexInPage,
+        loggerArgs,
+      });
+    cursor = nextCursor;
+    blockIndexInPage += blocksCount;
+
+    for (const block in blocksWithChildren) {
+      await executeChild(notionProcessBlockChildrenWorkflow, {
+        workflowId: `${getWorkflowId(
+          dataSourceConfig
+        )}-page-${pageId}-block-${block}-children`,
+        args: [dataSourceConfig, notionAccessToken, pageId, block],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+      });
+    }
+    for (const databaseId of childDatabases) {
+      await executeChild(notionProcessChildDatabaseWorkflow, {
+        workflowId: `${getWorkflowId(
+          dataSourceConfig
+        )}-page-${pageId}-child-database-${databaseId}`,
+        args: [dataSourceConfig, notionAccessToken, databaseId],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+      });
+    }
+  } while (cursor);
+
+  // now the activity that actually renders & upsert the page
+
+  return {
+    skipped,
+  };
+}
+
+export async function notionProcessBlockChildrenWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  pageId: string,
+  blockId: string
+): Promise<void> {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+
+  let cursor: string | null = null;
+  let blockIndexInParent = 0;
+
+  do {
+    const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
+      await notionRetrieveBlockChildrenResultPageActivity({
+        dataSourceConfig,
+        accessToken: notionAccessToken,
+        pageId,
+        blockId,
+        cursor,
+        currentIndexInParent: blockIndexInParent,
+        loggerArgs,
+      });
+    cursor = nextCursor;
+    blockIndexInParent += blocksCount;
+
+    for (const block in blocksWithChildren) {
+      await executeChild(notionProcessBlockChildrenWorkflow, {
+        workflowId: `${getWorkflowId(
+          dataSourceConfig
+        )}-page-${pageId}-block-${block}-children`,
+        args: [dataSourceConfig, notionAccessToken, pageId, block],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+      });
+    }
+    for (const databaseId of childDatabases) {
+      await executeChild(notionProcessChildDatabaseWorkflow, {
+        workflowId: `${getWorkflowId(
+          dataSourceConfig
+        )}-page-${pageId}-child-database-${databaseId}`,
+        args: [dataSourceConfig, notionAccessToken, databaseId],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+      });
+    }
+  } while (cursor);
+}
+
+export async function notionProcessChildDatabaseWorkflow(
+  dataSourceConfig: DataSourceConfig,
+  notionAccessToken: string,
+  databaseId: string
+): Promise<void> {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+
+  let cursor: string | null = null;
+  do {
+    const { nextCursor } =
+      await notionRetrieveDatabaseChildrenResultPageActivity({
+        dataSourceConfig,
+        accessToken: notionAccessToken,
+        databaseId,
+        cursor,
+        loggerArgs,
+      });
+    cursor = nextCursor;
+  } while (cursor);
 }
 
 export async function notionSyncResultPageWorkflow(
