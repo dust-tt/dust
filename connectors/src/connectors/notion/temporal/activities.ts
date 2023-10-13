@@ -32,7 +32,10 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { ParsedNotionBlock } from "@connectors/connectors/notion/lib/types";
+import {
+  PageObjectProperties,
+  ParsedNotionBlock,
+} from "@connectors/connectors/notion/lib/types";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
@@ -1019,7 +1022,8 @@ export async function cachePage({
   await NotionConnectorPageCacheEntry.create({
     notionPageId: pageId,
     connectorId: connector.id,
-    pageProperties: notionPage.properties,
+    pageProperties: {},
+    pagePropertiesText: JSON.stringify(notionPage.properties),
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1263,7 +1267,8 @@ export async function cacheDatabaseChildren({
       NotionConnectorPageCacheEntry.create({
         notionPageId: page.id,
         connectorId: connector.id,
-        pageProperties: page.properties,
+        pageProperties: {},
+        pagePropertiesText: JSON.stringify(page.properties),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
@@ -1380,13 +1385,17 @@ export async function renderAndUpsertPageFromCache({
   for (const [databaseId, pages] of Object.entries(childDatabases)) {
     renderedChildDatabases[databaseId] = renderChildDatabaseFromPages({
       databaseTitle: childDatabaseTitleById[databaseId] ?? null,
-      pagesProperties: pages.map((p) => p.pageProperties),
+      pagesProperties: pages.map(
+        (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+      ),
     });
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
   let renderedPage = "";
-  const parsedProperties = parsePageProperties(pageCacheEntry.pageProperties);
+  const parsedProperties = parsePageProperties(
+    JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
+  );
   for (const p of parsedProperties) {
     if (!p.text) continue;
     renderedPage += `$${p.key}: ${p.text}\n`;

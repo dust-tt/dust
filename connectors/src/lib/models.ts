@@ -667,6 +667,7 @@ export class NotionConnectorPageCacheEntry extends Model<
 
   declare notionPageId: string;
   declare pageProperties: PageObjectProperties; // JSON -- typed but not guaranteed
+  declare pagePropertiesText: string;
   declare parentId: string;
   declare parentType: "database" | "page" | "workspace" | "block" | "unknown";
   declare lastEditedById: string;
@@ -702,6 +703,11 @@ NotionConnectorPageCacheEntry.init(
     pageProperties: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    pagePropertiesText: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "{}",
     },
     parentId: {
       type: DataTypes.STRING,
@@ -816,12 +822,15 @@ NotionConnectorBlockCacheEntry.init(
     sequelize: sequelize_conn,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
-      {
-        fields: ["notionBlockId", "connectorId", "notionPageId"],
-        unique: true,
-      },
+      // TODO: fix sync issue with this index
+      // {
+      //   // fields: ["notionBlockId", "connectorId", "notionPageId"],
+      //   // unique: true,
+      // },
+      // {
       { fields: ["connectorId"] },
       { fields: ["parentBlockId"] },
+      { fields: ["notionPageId"] },
     ],
   }
 );
