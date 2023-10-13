@@ -238,6 +238,7 @@ impl TextSynthLLM {
                                 let (_, _, c) =
                                     Self::extract_name_and_role(scrub_buffer.join("").as_str());
                                 scrubbed = Some(c);
+                                scrub_buffer = vec![];
                             } else {
                                 scrubbed = Some(c.text.clone());
                             }
