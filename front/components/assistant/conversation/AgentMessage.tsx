@@ -40,6 +40,11 @@ import {
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
+function cleanUpCitations(message: string): string {
+  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
+  return message.replace(regex, "");
+}
+
 export function AgentMessage({
   message,
   owner,
@@ -209,7 +214,7 @@ export function AgentMessage({
             icon: ClipboardIcon,
             onClick: () => {
               void navigator.clipboard.writeText(
-                agentMessageToRender.content || ""
+                cleanUpCitations(agentMessageToRender.content || "")
               );
             },
           },
