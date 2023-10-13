@@ -64,26 +64,26 @@ const variantClasses = {
     base: "s-text-white s-bg-action-500 s-border-action-600",
     hover: "hover:s-bg-action-400 hover:s-border-action-500",
     active: "active:s-bg-action-600 active:s-border-action-700",
-    disabled: "s-text-white s-bg-action-200 s-border-action-300",
+    disabled: "s-text-white s-bg-action-200 s-border-action-200",
     dark: {
       base: "",
       hover: "",
       active: "",
       disabled:
-        "dark:s-text-action-700-dark dark:s-bg-action-100-dark dark:s-border-action-200-dark",
+        "dark:s-text-action-700-dark dark:s-bg-action-100-dark dark:s-border-action-200-dark dark:s-saturate-50",
     },
   },
   primaryWarning: {
     base: "s-text-white s-bg-warning-500 s-border-warning-600",
     hover: "hover:s-bg-warning-400 hover:s-border-warning-500",
     active: "active:s-bg-warning-600 active:s-border-warning-700",
-    disabled: "s-text-white s-bg-element-500 s-border-element-500",
+    disabled: "s-text-white s-bg-warning-200 s-border-warning-200",
     dark: {
       base: "",
       hover: "",
       active: "",
       disabled:
-        "dark:s-text-warning-700-dark dark:s-bg-warning-100-dark dark:s-border-warning-200-dark",
+        "dark:s-text-warning-700-dark dark:s-bg-warning-100-dark dark:s-border-warning-200-dark dark:s-saturate-50",
     },
   },
   secondary: {

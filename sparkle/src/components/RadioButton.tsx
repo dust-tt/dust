@@ -17,16 +17,26 @@ export type RadioButtonChoice = {
 };
 
 const labelClasses = {
-  base: "dark:s-text-element-800-dark",
-  selected: "s-opacity-100 s-bg-action-500",
-  disabled: "s-opacity-50",
+  base: "s-text-sm s-text-element-800 dark:s-text-element-800-dark",
+  disabled: "s-text-sm s-text-element-600 dark:s-text-element-600-dark",
 };
 
 const inputClasses = {
-  base: "focus:s-outline-none s-ring-0 s-bg-action-50 dark:s-bg-structure-200-dark dark:s-ring-structure-200-dark s-p-2",
-  selected: "s-opacity-100 s-bg-action-500",
+  base: "s-form-radio s-p-2 s-transition-colors s-duration-300 s-ease-out s-border-px",
+  unselected: classNames(
+    "s-cursor-pointer",
+    "s-border-structure-300 s-bg-structure-50",
+    "hover:s-bg-action-100 hover:s-border-action-300",
+    "active:s-bg-action-200 active:s-border-action-400 active:s-ring-0",
+    "dark:s-border-structure-400-dark dark:s-bg-structure-100-dark",
+    "dark:hover:s-bg-structure-200-dark dark:hover:s-border-action-600-dark"
+  ),
+  selected: classNames(
+    "s-bg-action-500 s-ring-0",
+    "checked:s-ring-0 checked:s-bg-action-500"
+  ),
   disabled:
-    "s-cursor-not-allowed dark:s-bg-structure-0-dark dark:s-border-structure-300-dark",
+    "s-cursor-default s-bg-structure-0 s-border-structure-300 dark:s-bg-structure-0-dark dark:s-border-structure-300-dark",
 };
 
 export function RadioButton({
@@ -40,16 +50,15 @@ export function RadioButton({
     <div
       className={classNames(
         "s-flex",
-        layout === "inline" ? "s-flex-row s-gap-x-4" : "s-flex-col s-gap-y-2"
+        layout === "inline" ? "s-flex-row s-gap-6" : "s-flex-col s-gap-2"
       )}
     >
       {choices.map((choice) => (
         <div key={choice.value}>
           <label
             className={classNames(
-              "s-flex s-items-center s-space-x-2",
-              labelClasses.base,
-              choice.disabled ? labelClasses.disabled : ""
+              "s-flex s-items-center s-gap-2",
+              choice.disabled ? labelClasses.disabled : labelClasses.base
             )}
           >
             <input
@@ -63,8 +72,11 @@ export function RadioButton({
               }}
               className={classNames(
                 inputClasses.base,
-                choice.disabled ? inputClasses.disabled : "",
-                choice.value === value ? inputClasses.selected : ""
+                choice.disabled
+                  ? inputClasses.disabled
+                  : choice.value === value
+                  ? inputClasses.selected
+                  : inputClasses.unselected
               )}
             />
             <span>{choice.label}</span>

@@ -21,9 +21,6 @@ export default meta;
 export const PageHorExample = () => {
   return (
     <Page>
-      <Page.Horizontal>
-        <div className="s-h-16 s-w-16 s-bg-brand" />
-      </Page.Horizontal>
       <Page.Header
         title="Title"
         description="Description"
@@ -40,6 +37,9 @@ export const PageHorExample = () => {
         description="Section Description"
         action={{ label: "Action", size: "sm" }}
       />
+      <Page.Layout direction="horizontal">
+        <div className="s-h-16 s-w-16 s-bg-brand" />
+      </Page.Layout>
     </Page>
   );
 };
@@ -107,33 +107,34 @@ export const PageExample = () => {
 export const AssistantBuilder = () => {
   return (
     <Page>
-      <Page.Horizontal>
-        <Page.Vertical sizing="grow" gap="lg">
-          <Page.Vertical gap="xs">
-            <Page.H variant="h2">Name / Handle</Page.H>
+      <Page.Layout direction="horizontal">
+        <Page.Layout direction="vertical" sizing="grow" gap="lg">
+          <Page.H variant="h2">Identity</Page.H>
+          <Page.Layout direction="vertical" gap="xs">
+            <Page.H variant="h4">Name / Handle</Page.H>
             <Page.P variant="secondary">
               The handle of your Droid will be used to call your Droïd with an
               “@” hand (for instance @myAssistant).
             </Page.P>
-          </Page.Vertical>
-          <Page.Vertical gap="xs">
-            <Page.H variant="h2">Description</Page.H>
+          </Page.Layout>
+          <Page.Layout direction="vertical" gap="xs">
+            <Page.H variant="h4">Description</Page.H>
             <Page.P variant="secondary">
               The description helps your collaborators and Dust to understand
               the purpose of the assistant. It must be descriptive and short.
             </Page.P>
-          </Page.Vertical>
-        </Page.Vertical>
-        <Page.Vertical align="center">
+          </Page.Layout>
+        </Page.Layout>
+        <Page.Layout direction="vertical" align="center">
           <Avatar
-            size="lg"
+            size="xl"
             visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg/"
           />
           <Button size="sm" variant="tertiary" label="Change" />
-        </Page.Vertical>
-      </Page.Horizontal>
-
-      <Page.Vertical sizing="grow" gap="xs">
+        </Page.Layout>
+      </Page.Layout>
+      <Page.Separator />
+      <Page.Layout direction="vertical" sizing="grow" gap="xs">
         <Page.H variant="h2">Instructions</Page.H>
         <Page.P variant="secondary">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam
@@ -141,37 +142,37 @@ export const AssistantBuilder = () => {
           dolor sit amet, consectetur adipiscing elit. Nullam euismod a massa
           quis lacinia. Donec euismod nisl eget nunc
         </Page.P>
-      </Page.Vertical>
-
-      <Page.Vertical sizing="grow" gap="lg">
-        <Page.Vertical sizing="grow" gap="xs">
-          <Page.H variant="h2">Data Sources</Page.H>
+      </Page.Layout>
+      <Page.Separator />
+      <Page.Layout direction="vertical" sizing="grow" gap="lg">
+        <Page.Layout direction="vertical" sizing="grow" gap="xs">
+          <Page.H variant="h2">Actions</Page.H>
           <Page.P variant="secondary">
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam
             euismod a massa quis lacinia. Donec euismod nisl eget nunc Lorem
             ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod a
             massa quis lacinia. Donec euismod nisl eget nunc
           </Page.P>
-        </Page.Vertical>
-        <Page.Horizontal>
-          <Page.Vertical gap="xs" sizing="grow">
-            <Page.H variant="h3">
+        </Page.Layout>
+        <Page.Layout direction="horizontal">
+          <Page.Layout direction="vertical" gap="xs" sizing="grow">
+            <Page.H variant="h5">
               Setting data sources is not an obligation.
             </Page.H>
             <Page.P variant="secondary">
               By default, your assistant will follow your instructions and
               answer based on commun knowledge.
             </Page.P>
-          </Page.Vertical>
-          <Page.Vertical gap="xs" sizing="grow">
-            <Page.H variant="h3">Choose your data sources with care.</Page.H>
+          </Page.Layout>
+          <Page.Layout direction="vertical" gap="xs" sizing="grow">
+            <Page.H variant="h5">Choose your data sources with care.</Page.H>
             <Page.P variant="secondary">
               Giving a lot of data is does not always give better results.
               Selecting only the right data is better.
             </Page.P>
-          </Page.Vertical>
-        </Page.Horizontal>
-      </Page.Vertical>
+          </Page.Layout>
+        </Page.Layout>
+      </Page.Layout>
     </Page>
   );
 };
@@ -183,7 +184,7 @@ export const HelpExample = () => {
         title="Welcome to Assistant"
         icon={ChatBubbleBottomCenterTextIcon}
       />
-      <Page.Vertical gap="xs" align="left">
+      <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">
           Using assistant is easy as asking a question to a friend or a
@@ -196,9 +197,9 @@ export const HelpExample = () => {
           label="Hey @helper, how do I use the assistant ?"
           icon={ChatBubbleLeftRight}
         />
-      </Page.Vertical>
+      </Page.Layout>
       <Page.Separator />
-      <Page.Vertical gap="xs">
+      <Page.Layout direction="vertical" gap="xs">
         <Page.SectionHeader title="Meet your smart friends" />
         <Page.P variant="secondary">
           Dust is not just a single assistant, it’s a full team at your service.{" "}
@@ -206,11 +207,11 @@ export const HelpExample = () => {
           Each member has a set of specific set skills.
         </Page.P>
         <Page.P variant="secondary">Meet some your Droid team:</Page.P>
-      </Page.Vertical>
+      </Page.Layout>
       <Page.Separator />
-      <Page.Vertical gap="xs">
+      <Page.Layout direction="vertical" gap="xs">
         <Page.SectionHeader title="Frequently asked questions" />
-        <Page.Fluid>
+        <Page.Layout direction="fluid" gap="sm">
           <Button
             variant="secondary"
             label="Hey @helper, how do I use the assistant?"
@@ -229,8 +230,8 @@ export const HelpExample = () => {
             icon={ChatBubbleLeftRight}
             hasMagnifying={false}
           />
-        </Page.Fluid>
-      </Page.Vertical>
+        </Page.Layout>
+      </Page.Layout>
     </Page>
   );
 };

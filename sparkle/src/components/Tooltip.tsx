@@ -44,8 +44,10 @@ export function Tooltip({
     return <>{children}</>;
   }
 
-  const baseClasses =
-    "s-absolute s-z-10 s-px-3 s-py-2 s-text-sm s-rounded-xl s-border s-shadow-md s-transition-all s-duration-500 s-ease-out s-transform s-bg-structure-0 dark:s-bg-structure-0-dark s-text-element-700 dark:s-text-element-700-dark";
+  const baseClasses = classNames(
+    "s-absolute s-z-10 s-px-3 s-py-2 s-text-sm s-rounded-xl s-border s-shadow-md s-transition-all s-duration-500 s-ease-out s-transform",
+    "s-border-structure-100 dark:s-border-structure-50-dark s-bg-structure-0 dark:s-bg-structure-100-dark s-text-element-700 dark:s-text-element-600-dark"
+  );
   const hiddenClasses = "s-translate-y-2 s-opacity-0 s-pointer-events-none"; // Added s-pointer-events-none
   const visibleClasses = "-s-translate-y-0 s-opacity-100";
   const hiddenOnMobileClasses = "s-hidden sm:s-block";
