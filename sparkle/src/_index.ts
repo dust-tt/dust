@@ -73,6 +73,9 @@ export { Input };
 import { Searchbar } from "./components/Searchbar";
 export { Searchbar };
 
+import { RadioButton } from "./components/RadioButton";
+export { RadioButton };
+
 //TO BE REMOVED SOON
 import { SectionHeader } from "./components/SectionHeader";
 export { SectionHeader };
