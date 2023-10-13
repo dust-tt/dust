@@ -210,6 +210,7 @@ impl TextSynthLLM {
 
         let mut buf: Vec<u8> = vec![];
         let mut chunk_idx: usize = 0;
+        let mut scrub_buffer: Vec<String> = vec![];
 
         while let Some(chunk) = b.data().await {
             let chunk = chunk?;
@@ -225,7 +226,35 @@ impl TextSynthLLM {
                     }
                     match serde_json::from_slice::<Completion>(item) {
                         Ok(c) => {
-                            // We push the full text so that it can be re-extracted to render the
+                            let mut scrubbed = None;
+
+                            // We aggregate the 4 fist chunks so that we are sure we will be able to
+                            // scrub the name and roles. Then we release them both raw and scrubbed
+                            // scrubbed, unless we reach the finish reason.
+                            if chunk_idx < 4 && c.finish_reason.is_none() {
+                                scrub_buffer.push(c.text.clone());
+                            } else if scrub_buffer.len() > 0 {
+                                scrub_buffer.push(c.text.clone());
+                                let (_, _, c) =
+                                    Self::extract_name_and_role(scrub_buffer.join("").as_str());
+                                scrubbed = Some(c);
+                            } else {
+                                scrubbed = Some(c.text.clone());
+                            }
+
+                            // We emit the scrubbed text.
+                            if let Some(t) = scrubbed {
+                                if t.len() > 0 {
+                                    let _ = event_sender.send(json!({
+                                        "type": "tokens",
+                                        "content": {
+                                            "text": t,
+                                        }
+                                    }));
+                                }
+                            }
+
+                            // We push the raw text so that it can be re-extracted to render the
                             // final completion.
                             completion_text.push_str(c.text.as_str());
 
@@ -241,24 +270,6 @@ impl TextSynthLLM {
                                 }
                                 None => (),
                             }
-
-                            // But we emit only the clean-ed version (first-chunk only).
-                            let text = match chunk_idx {
-                                0 => {
-                                    let (_, _, text) = Self::extract_name_and_role(c.text.as_str());
-                                    text
-                                }
-                                _ => c.text.clone(),
-                            };
-
-                            if c.text.len() > 0 {
-                                let _ = event_sender.send(json!({
-                                    "type":"tokens",
-                                    "content": {
-                                        "text": text,
-                                    }
-                                }));
-                            }
                         }
                         Err(e) => Err(anyhow!(
                             "Error parsing response from TextSynth: error={:?}",
@@ -273,6 +284,7 @@ impl TextSynthLLM {
                 buf = buf[last_newline + 1..].to_vec();
             }
         }
+
         // The last slice should be empty since we have two \n at the end of the stream.
         return match completion {
             Some(response) => Ok(response),
