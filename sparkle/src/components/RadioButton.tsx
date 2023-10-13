@@ -6,7 +6,7 @@ export type RadioButtonProps = {
   name: string;
   choices: RadioButtonChoice[];
   value: string;
-  layout: "inline" | "stacked";
+  className?: string;
   onChange: (value: string) => void;
 };
 
@@ -32,45 +32,43 @@ const inputClasses = {
 export function RadioButton({
   name,
   choices,
+  className,
   value,
-  layout,
   onChange,
 }: RadioButtonProps) {
   return (
-    <div
-      className={classNames(
-        "s-flex",
-        layout === "inline" ? "s-flex-row s-gap-x-4" : "s-flex-col s-gap-y-2"
-      )}
-    >
-      {choices.map((choice) => (
-        <div key={choice.value}>
-          <label
-            className={classNames(
-              "s-flex s-items-center s-space-x-2",
-              labelClasses.base,
-              choice.disabled ? labelClasses.disabled : ""
-            )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={choice.value}
-              checked={value === choice.value}
-              disabled={choice.disabled}
-              onChange={(e) => {
-                onChange(e.target.value);
-              }}
+    <div className={classNames("s-flex s-gap-3", className || "")}>
+      {choices.map((choice) => {
+        if (value === choice.value) console.log("selected", choice.value);
+        return (
+          <div key={choice.value}>
+            <label
               className={classNames(
-                inputClasses.base,
-                choice.disabled ? inputClasses.disabled : "",
-                choice.value === value ? inputClasses.selected : ""
+                "s-flex s-items-center s-space-x-2",
+                labelClasses.base,
+                choice.disabled ? labelClasses.disabled : ""
               )}
-            />
-            <span>{choice.label}</span>
-          </label>
-        </div>
-      ))}
+            >
+              <input
+                type="radio"
+                name={name}
+                value={choice.value}
+                checked={value === choice.value}
+                disabled={choice.disabled}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                }}
+                className={classNames(
+                  inputClasses.base,
+                  choice.disabled ? inputClasses.disabled : "",
+                  choice.value === value ? inputClasses.selected : ""
+                )}
+              />
+              <span>{choice.label}</span>
+            </label>
+          </div>
+        );
+      })}
     </div>
   );
 }
