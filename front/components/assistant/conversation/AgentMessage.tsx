@@ -2,16 +2,13 @@ import {
   ArrowPathIcon,
   Button,
   Chip,
+  Citation,
   ClipboardIcon,
   DocumentDuplicateIcon,
-  DocumentTextIcon,
   DropdownMenu,
-  ExternalLinkIcon,
   EyeIcon,
-  IconButton,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -19,7 +16,6 @@ import { ConversationMessage } from "@app/components/assistant/conversation/Conv
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   linkFromDocument,
-  PROVIDER_LOGO_PATH,
   providerFromDocument,
   titleFromDocument,
 } from "@app/components/assistant/conversation/RetrievalAction";
@@ -34,7 +30,6 @@ import {
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
-import { classNames } from "@app/lib/utils";
 import {
   isRetrievalActionType,
   RetrievalDocumentType,
@@ -413,42 +408,14 @@ function Citations({
         {activeReferences.map(({ document, index }) => {
           const provider = providerFromDocument(document);
           return (
-            <div
-              className={classNames(
-                "flex w-48 flex-none flex-col gap-2 rounded-xl border border-structure-100 p-3 sm:w-64",
-                lastHoveredReference === index
-                  ? "animate-[bgblink_500ms_3]"
-                  : ""
-              )}
+            <Citation
               key={index}
-            >
-              <div className="flex items-center gap-1.5">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800">
-                  {index}
-                </div>
-                <div className="h-5 w-5">
-                  {provider === "none" ? (
-                    <DocumentTextIcon className="h-5 w-5 text-slate-500" />
-                  ) : (
-                    <img
-                      src={PROVIDER_LOGO_PATH[providerFromDocument(document)]}
-                      className="h-5 w-5"
-                    />
-                  )}
-                </div>
-                <div className="flex-grow text-xs" />
-                <Link href={linkFromDocument(document)} target="_blank">
-                  <IconButton
-                    icon={ExternalLinkIcon}
-                    size="xs"
-                    variant="primary"
-                  />
-                </Link>
-              </div>
-              <div className="text-xs font-bold text-element-900">
-                {titleFromDocument(document)}
-              </div>
-            </div>
+              isBlinking={lastHoveredReference === index}
+              type={provider === "none" ? "document" : provider}
+              title={titleFromDocument(document)}
+              href={linkFromDocument(document)}
+              index={index}
+            />
           );
         })}
         <div className="h-1 w-[100%] flex-none" />
