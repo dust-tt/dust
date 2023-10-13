@@ -23,7 +23,7 @@ import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { classNames, subFilter } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
@@ -84,10 +84,7 @@ function AgentListImpl(
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
   const filtered = activeAgents.filter((a) => {
-    return (
-      filter.length === 0 ||
-      a.name.toLowerCase().startsWith(filter.toLowerCase())
-    );
+    return subFilter(filter.toLowerCase(), a.name.toLowerCase());
   });
 
   useImperativeHandle(ref, () => ({
@@ -145,7 +142,7 @@ function AgentListImpl(
       leaveTo="transform opacity-0 scale-100 translate-y-0"
     >
       <div
-        className="fixed z-10 max-h-64 overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
+        className="fixed z-10 max-h-64 w-[240px] overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl"
         style={{
           bottom: position.bottom,
           left: position.left,

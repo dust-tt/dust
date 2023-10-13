@@ -7,8 +7,9 @@ import {
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { subFilter } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { WorkspaceType } from "@app/types/user";
 
@@ -26,9 +27,16 @@ export function AssistantPicker({
   showBuilderButtons?: boolean;
 }) {
   const [searchText, setSearchText] = useState("");
-  const searchedAssistants = assistants.filter((a) =>
-    a.name.toLowerCase().startsWith(searchText.toLowerCase())
-  );
+  const [searchedAssistants, setSearchedAssistants] = useState(assistants);
+
+  useEffect(() => {
+    setSearchedAssistants(
+      assistants.filter((a) =>
+        subFilter(searchText.toLowerCase(), a.name.toLowerCase())
+      )
+    );
+  }, [searchText, assistants]);
+
   return (
     <DropdownMenu>
       <div onClick={() => setSearchText("")}>

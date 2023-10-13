@@ -134,3 +134,16 @@ export function ioTsEnum<EnumType>(
 export function assertNever(x: never): never {
   throw new Error(`${x} is not of type never. This should never happen.`);
 }
+
+// Returns true if a is a subsequence of b.
+export function subFilter(a: string, b: string) {
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+    }
+    j++;
+  }
+  return i === a.length;
+}
