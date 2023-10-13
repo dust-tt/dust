@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -31,6 +31,7 @@ import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 import React from "react";
+import { set } from "fp-ts";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
@@ -72,13 +73,8 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const inviteLink =
     owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
-
-  const { members, isMembersLoading } = useMembers(owner);
-  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
-
-  const [invitationToRevoke, setInvitationToRevoke] =
-    useState<MembershipInvitationType | null>(null);
-
+  const { members } = useMembers(owner);
+  const { invitations } = useWorkspaceInvitations(owner);
   const fakeMembers: UserType[] = [
     {
       name: "John Doe",
@@ -104,22 +100,23 @@ export default function WorkspaceAdmin({
       workspaces: [{ role: "none" }],
       image: null,
     },
-  ].map((m) => ({ ...members[0], ...m }));
+  ].map((m) => ({ ...members[0], ...m, id: -1 }));
+
   const fakeInvitations: MembershipInvitationType[] = [
     {
       inviteEmail: "test@toto.com",
       status: "pending",
-      id: 0,
+      id: -1,
     },
     {
       inviteEmail: "dasfdsafdsafds@dafdasdfas.com",
       status: "consumed",
-      id: 1,
+      id: -2,
     },
     {
       inviteEmail: "thelast@lastone.com",
       status: "revoked",
-      id: 2,
+      id: -3,
     },
   ];
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
@@ -155,7 +152,7 @@ export default function WorkspaceAdmin({
               <div className="pt-1 text-element-700">
                 <Page.P>
                   Invitation link is activated for domain{" "}
-                  <span className="font-bold">{`@${allowedDomain}`}</span>
+                  <span className="font-bold">{`@${owner.allowedDomain}`}</span>
                 </Page.P>
                 <div className="mt-3 flex justify-between gap-2">
                   <div className="flex-grow">
@@ -236,9 +233,20 @@ export default function WorkspaceAdmin({
     ];
 
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
+    /** Modal for changing member role: we need to use 2 states: set the member
+     * on hover, open modal on click. Using only 1 state for both would break
+     * the modal animation because rerendering at the same time than switching
+     * modal to open*/
+    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
     const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
       null
     );
+
+    /* Same for invitations modal */
+    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
+      useState(false);
+    const [invitationToRevoke, setInvitationToRevoke] =
+      useState<MembershipInvitationType | null>(null);
     return (
       <>
         <InviteEmailModal
@@ -249,13 +257,15 @@ export default function WorkspaceAdmin({
           owner={owner}
         />
         <RevokeInvitationModal
+          showModal={revokeInvitationModalOpen}
           invitation={invitationToRevoke}
-          onClose={() => setInvitationToRevoke(null)}
+          onClose={() => setRevokeInvitationModalOpen(false)}
           owner={owner}
         />
         <ChangeMemberModal
+          showModal={changeRoleModalOpen}
           member={changeRoleMember}
-          onClose={() => setChangeRoleMember(null)}
+          onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
         <Page.SectionHeader title="Member list" />
@@ -281,9 +291,13 @@ export default function WorkspaceAdmin({
             <div
               key={i}
               className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-sm hover:bg-structure-100"
-              onClick={() => {
+              onMouseEnter={() => {
                 if (isInvitation(elt)) setInvitationToRevoke(elt);
                 else setChangeRoleMember(elt);
+              }}
+              onClick={() => {
+                if (isInvitation(elt)) setRevokeInvitationModalOpen(true);
+                else setChangeRoleModalOpen(true);
               }}
             >
               <div>
@@ -520,19 +534,21 @@ function InviteSettingsModal({
 }
 
 function RevokeInvitationModal({
-  invitation,
+  showModal,
   onClose,
+  invitation,
   owner,
 }: {
-  invitation: MembershipInvitationType | null;
+  showModal: boolean;
   onClose: () => void;
+  invitation: MembershipInvitationType | null;
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
 
   return (
     <Modal
-      isOpen={invitation !== null}
+      isOpen={showModal}
       onClose={onClose}
       hasChanged={false}
       title="Revoke invitation"
@@ -574,12 +590,14 @@ function RevokeInvitationModal({
 }
 
 function ChangeMemberModal({
-  member,
+  showModal,
   onClose,
+  member,
   owner,
 }: {
-  member: UserType | null;
+  showModal: boolean;
   onClose: () => void;
+  member: UserType | null;
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
@@ -592,7 +610,7 @@ function ChangeMemberModal({
   };
   return (
     <Modal
-      isOpen={member !== null}
+      isOpen={showModal}
       onClose={onClose}
       hasChanged={false}
       title={member.name || "Unreachable"}
