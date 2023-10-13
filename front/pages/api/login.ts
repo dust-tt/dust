@@ -41,6 +41,7 @@ async function handler(
       // `workspaceInvite` is set to a `Workspace` if the query includes a `wId`. It means the user
       // is going through the flow of whitelisted domain to join the workspace.
       let workspaceInvite: null | Workspace = null;
+      let isAdminOnboarding = false;
 
       if (req.query.wId) {
         workspaceInvite = await Workspace.findOne({
@@ -178,6 +179,7 @@ async function handler(
           if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
             await upgradeWorkspace(w.id);
           }
+          isAdminOnboarding = true;
         }
       }
 
@@ -292,6 +294,11 @@ async function handler(
           return;
         }
         res.redirect(`/w/${targetWorkspace.sId}/welcome`);
+        return;
+      }
+
+      if (isAdminOnboarding) {
+        res.redirect(`/w/${u.workspaces[0].sId}/welcome`);
         return;
       }
 

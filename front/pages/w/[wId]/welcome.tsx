@@ -10,10 +10,15 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
+const ADMIN_YOUTUBE_ID = "NVIbCvfkO3E";
+const MEMBER_YOUTUBE_ID = "NVIbCvfkO3E";
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  isAdmin: boolean;
   defaultExpertise: string;
+  defaultAdminInterest: string;
   conversationId: string | null;
   gaTrackingId: string;
   baseUrl: string;
@@ -34,8 +39,11 @@ export const getServerSideProps: GetServerSideProps<{
       },
     };
   }
-
+  const isAdmin = auth.isAdmin();
   const expertise = await getUserMetadata(user, "expertise");
+  const adminInterest = isAdmin
+    ? await getUserMetadata(user, "interest")
+    : null;
 
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.
@@ -46,7 +54,9 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      isAdmin,
       defaultExpertise: expertise?.value || "",
+      defaultAdminInterest: adminInterest?.value || "",
       conversationId,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -57,7 +67,9 @@ export const getServerSideProps: GetServerSideProps<{
 export default function Welcome({
   user,
   owner,
+  isAdmin,
   defaultExpertise,
+  defaultAdminInterest,
   conversationId,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -65,14 +77,19 @@ export default function Welcome({
   const [firstName, setFirstName] = useState<string>(user.name.split(" ")[0]);
   const [lastName, setLastName] = useState<string>(user.name.split(" ")[1]);
   const [expertise, setExpertise] = useState<string>(defaultExpertise);
+  const [adminInterest, setAdminInterest] =
+    useState<string>(defaultAdminInterest);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
   const [isFormProcessed, setIsFormProcessed] = useState<boolean>(false);
 
   useEffect(() => {
     setIsFormValid(
-      firstName.length > 0 && lastName.length > 0 && expertise !== ""
+      firstName !== "" &&
+        lastName !== "" &&
+        expertise !== "" &&
+        (isAdmin ? adminInterest !== "" : true)
     );
-  }, [firstName, lastName, expertise]);
+  }, [firstName, lastName, expertise, adminInterest, isAdmin]);
 
   const handleSubmit = async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
@@ -90,6 +107,15 @@ export default function Welcome({
         },
         body: JSON.stringify({ value: expertise }),
       });
+      if (isAdmin) {
+        await fetch("/api/user/metadata/interest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ value: adminInterest }),
+        });
+      }
     }
     // We don't block the user if it fails here.
     setIsFormProcessed(true);
@@ -130,6 +156,29 @@ export default function Welcome({
               />
             </div>
           </div>
+          {isAdmin && (
+            <div>
+              <p className="pb-2">I'm looking at Dust:</p>
+              <RadioButton
+                name="adminInterest"
+                className="flex-col sm:flex-row"
+                choices={[
+                  {
+                    label: "Just for me",
+                    value: "personnal",
+                    disabled: false,
+                  },
+                  {
+                    label: "For me and my team",
+                    value: "team",
+                    disabled: false,
+                  },
+                ]}
+                value={adminInterest}
+                onChange={setAdminInterest}
+              />
+            </div>
+          )}
           <div>
             <p className="pb-2">
               How often do you use ChatGPT or other AI assistants?
@@ -175,7 +224,9 @@ export default function Welcome({
             <p>Here is a 3 minutes video to get you started with Dust.</p>
           </div>
           <div>
-            <YoutubeIframe youtubeId="NVIbCvfkO3E" />
+            <YoutubeIframe
+              youtubeId={isAdmin ? ADMIN_YOUTUBE_ID : MEMBER_YOUTUBE_ID}
+            />
           </div>
           <div className="flex justify-center">
             <Button
