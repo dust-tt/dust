@@ -170,15 +170,6 @@ Page.Layout = function ({
           gap={gap}
         />
       );
-    default:
-      return (
-        <Page.Vertical
-          children={children}
-          sizing={sizing}
-          align={align}
-          gap={gap}
-        />
-      ); // default to vertical layout
   }
 };
 
