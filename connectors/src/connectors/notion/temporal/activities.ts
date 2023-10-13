@@ -1356,7 +1356,6 @@ export async function notionRenderAndUpsertPageFromCache({
     .map((b) => ({
       id: b.notionBlockId,
       title:
-        // allow non null assertion here:
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         b.childDatabaseTitle!,
     }))
