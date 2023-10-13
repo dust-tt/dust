@@ -118,8 +118,9 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   );
 };
 
-interface PageDivProps {
+interface PageLayoutProps {
   children: React.ReactNode;
+  direction?: "horizontal" | "vertical" | "fluid";
   sizing?: "shrink" | "grow";
   align?: "stretch" | "left" | "center" | "right";
   gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
@@ -134,6 +135,50 @@ const gapSizes = {
   none: "",
 };
 
+Page.Layout = function ({
+  children,
+  direction = "vertical",
+  sizing,
+  align = "left",
+  gap = "lg",
+}: PageLayoutProps) {
+  switch (direction) {
+    case "horizontal":
+      return (
+        <Page.Horizontal
+          children={children}
+          sizing={sizing}
+          align={align}
+          gap={gap}
+        />
+      );
+    case "vertical":
+      return (
+        <Page.Vertical
+          children={children}
+          sizing={sizing}
+          align={align}
+          gap={gap}
+        />
+      );
+    case "fluid":
+      return (
+        <Page.Fluid
+          children={children}
+          sizing={sizing}
+          align={align}
+          gap={gap}
+        />
+      );
+  }
+};
+
+interface PageDivProps {
+  children: React.ReactNode;
+  sizing?: "shrink" | "grow";
+  align?: "stretch" | "left" | "center" | "right";
+  gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
+}
 Page.Horizontal = function ({
   children,
   sizing,
