@@ -88,7 +88,7 @@ export default function WorkspaceAdmin({
     }
 
     return valid;
-  }, [allowedDomain, owner.allowedDomain, owner.name]);
+  }, [allowedDomain]);
 
   useEffect(() => {
     setDisabled(!formValidation());
