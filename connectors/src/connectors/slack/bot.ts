@@ -427,7 +427,9 @@ async function botAnswerMessage(
         }
         lastSentDate = new Date();
 
-        let finalAnswer = _processCiteMention(fullAnswer, action);
+        let finalAnswer = normalizeContentForSlack(
+          _processCiteMention(fullAnswer, action)
+        );
         finalAnswer += `...\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
@@ -445,7 +447,9 @@ async function botAnswerMessage(
       case "agent_generation_success": {
         fullAnswer = `${botIdentity}${event.text}`;
 
-        let finalAnswer = _processCiteMention(fullAnswer, action);
+        let finalAnswer = normalizeContentForSlack(
+          _processCiteMention(fullAnswer, action)
+        );
         finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
@@ -461,6 +465,11 @@ async function botAnswerMessage(
     }
   }
   return new Err(new Error("Failed to get the final answer from Dust"));
+}
+
+function normalizeContentForSlack(content: string): string {
+  // Remove language hint from code blocks.
+  return content.replace(/```[a-z\-_]*\n/g, "```\n");
 }
 
 function _processCiteMention(

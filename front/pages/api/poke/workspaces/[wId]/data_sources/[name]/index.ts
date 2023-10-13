@@ -100,16 +100,34 @@ async function handler(
       const dustAPIProjectId = dataSource.dustAPIProjectId;
 
       if (dataSource.connectorId) {
-        await ConnectorsAPI.deleteConnector(
+        const connDeleteRes = await ConnectorsAPI.deleteConnector(
           dataSource.connectorId.toString(),
           true
         );
+        if (connDeleteRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Error deleting connector: ${connDeleteRes.error.error.message}`,
+            },
+          });
+        }
       }
 
-      await CoreAPI.deleteDataSource({
+      const coreDeleteRes = await CoreAPI.deleteDataSource({
         projectId: dustAPIProjectId,
         dataSourceName: dataSource.name,
       });
+      if (coreDeleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Error deleting core data source: ${coreDeleteRes.error.message}`,
+          },
+        });
+      }
 
       await dataSource.destroy();
 
