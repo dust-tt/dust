@@ -174,7 +174,10 @@ impl TextSynthLLM {
                     "system" => role = Some(ChatMessageRole::System),
                     _ => (),
                 }
-                response_text[6 + r.len()..].to_string().trim().to_string()
+                response_text[6 + r.len()..]
+                    .to_string()
+                    .trim_start()
+                    .to_string()
             }
             None => response_text,
         };
@@ -184,7 +187,10 @@ impl TextSynthLLM {
         response_text = match re.captures(response_text.as_str()) {
             Some(c) => {
                 let n = c.get(1).unwrap().as_str().to_string();
-                let t = response_text[6 + n.len()..].to_string().trim().to_string();
+                let t = response_text[6 + n.len()..]
+                    .to_string()
+                    .trim_start()
+                    .to_string();
                 name = Some(n);
                 t
             }
@@ -203,6 +209,7 @@ impl TextSynthLLM {
         let mut completion_text = String::new();
 
         let mut buf: Vec<u8> = vec![];
+        let mut chunk_idx: usize = 0;
 
         while let Some(chunk) = b.data().await {
             let chunk = chunk?;
@@ -211,8 +218,6 @@ impl TextSynthLLM {
             if buf.contains(&b'\n') {
                 let last_newline = buf.iter().rposition(|&b| b == b'\n').unwrap();
                 let split_buf: Vec<&[u8]> = buf[0..last_newline].split(|&i| i == b'\n').collect();
-
-                let mut first_chunk = true;
 
                 for item in split_buf {
                     if item.len() == 0 {
@@ -238,13 +243,12 @@ impl TextSynthLLM {
                             }
 
                             // But we emit only the clean-ed version (first-chunk only).
-                            let text = match first_chunk {
-                                true => {
-                                    first_chunk = true;
+                            let text = match chunk_idx {
+                                0 => {
                                     let (_, _, text) = Self::extract_name_and_role(c.text.as_str());
                                     text
                                 }
-                                false => c.text.clone(),
+                                _ => c.text.clone(),
                             };
 
                             if c.text.len() > 0 {
@@ -261,6 +265,8 @@ impl TextSynthLLM {
                             e,
                         ))?,
                     }
+
+                    chunk_idx += 1;
                 }
 
                 // Keep the part after the last '\n' in the buffer
