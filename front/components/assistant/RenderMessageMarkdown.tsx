@@ -1,7 +1,6 @@
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
-  DocumentTextIcon,
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -22,16 +21,10 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import { classNames } from "@app/lib/utils";
 import { RetrievalDocumentType } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 
-import {
-  linkFromDocument,
-  PROVIDER_LOGO_PATH,
-  providerFromDocument,
-  titleFromDocument,
-} from "./conversation/RetrievalAction";
+import { linkFromDocument } from "./conversation/RetrievalAction";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -257,41 +250,20 @@ function CiteBlock(props: ReactMarkdownProps) {
       <>
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const provider = providerFromDocument(document);
-          const title = titleFromDocument(document);
           const link = linkFromDocument(document);
 
           return (
-            <sup key={`${r.ref}-${i}`}>
-              <Tooltip
-                contentChildren={
-                  <div className="flex flex-row items-center gap-x-1">
-                    <div className={classNames("mr-1 flex h-4 w-4")}>
-                      {provider !== "none" ? (
-                        <img src={PROVIDER_LOGO_PATH[provider]}></img>
-                      ) : (
-                        <DocumentTextIcon className="h-4 w-4 text-slate-500" />
-                      )}
-                    </div>
-                    <div className="text-md flex whitespace-nowrap">
-                      {title}
-                    </div>
-                  </div>
-                }
-                position="below"
+            <sup key={`${r.ref}-${i}`} className="inline-block">
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseEnter={() => setHoveredReference(r.counter)}
               >
-                <a
-                  // TODO(spolu): for custom data source add data source name to title
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseEnter={() => setHoveredReference(r.counter)}
-                >
-                  <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
-                    {r.counter}
-                  </div>
-                </a>
-              </Tooltip>
+                <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
+                  {r.counter}
+                </div>
+              </a>
             </sup>
           );
         })}
