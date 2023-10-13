@@ -74,50 +74,6 @@ export default function WorkspaceAdmin({
     owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
   const { members } = useMembers(owner);
   const { invitations } = useWorkspaceInvitations(owner);
-  const fakeMembers: UserType[] = [
-    {
-      name: "John Doe",
-      email: "john@doe.com",
-      workspaces: [{ role: "admin" }],
-      image: null,
-    },
-    {
-      name: "Jane Doe",
-      email: "jane@doe.fr",
-      workspaces: [{ role: "builder" }],
-      image: null,
-    },
-    {
-      name: "Coucou Mec",
-      email: "coucou@mec.com",
-      workspaces: [{ role: "user" }],
-      image: null,
-    },
-    {
-      name: "Pas la",
-      email: "pas@la.com",
-      workspaces: [{ role: "none" }],
-      image: null,
-    },
-  ].map((m) => ({ ...members[0], ...m, id: -1 }));
-
-  const fakeInvitations: MembershipInvitationType[] = [
-    {
-      inviteEmail: "test@toto.com",
-      status: "pending",
-      id: -1,
-    },
-    {
-      inviteEmail: "dasfdsafdsafds@dafdasdfas.com",
-      status: "consumed",
-      id: -2,
-    },
-    {
-      inviteEmail: "thelast@lastone.com",
-      status: "revoked",
-      id: -3,
-    },
-  ];
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
 
   return (
@@ -189,10 +145,7 @@ export default function WorkspaceAdmin({
               <div></div>
             )}
           </div>
-          <MemberList
-            members={[...fakeMembers, ...members]}
-            invitations={[...fakeInvitations, ...invitations]}
-          />
+          <MemberList members={members} invitations={invitations} />
         </div>
       </Page>
     </AppLayout>
