@@ -46,6 +46,7 @@ import {
   ModelId,
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
+  NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -1555,6 +1556,62 @@ export async function renderAndUpsertPageFromCache({
     skipReason: skipReason ?? undefined,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
+
+  const childDatabaseIdsToCheck = blockCacheEntries
+    .filter((b) => b.blockType === "child_database")
+    .map((b) => b.notionBlockId);
+  const childPageIdsToCheck = blockCacheEntries
+    .filter((b) => b.blockType === "child_page")
+    .map((b) => b.notionBlockId);
+
+  const childDatabaseIdsInDb = new Set(
+    (
+      await NotionConnectorResourcesToCheckCacheEntry.findAll({
+        where: {
+          notionId: childDatabaseIdsToCheck,
+          resourceType: "database",
+          connectorId: connector.id,
+        },
+        attributes: ["notionId"],
+      })
+    ).map((r) => r.notionId)
+  );
+  const childPageIdsInDb = new Set(
+    (
+      await NotionConnectorResourcesToCheckCacheEntry.findAll({
+        where: {
+          notionId: childPageIdsToCheck,
+          resourceType: "page",
+          connectorId: connector.id,
+        },
+        attributes: ["notionId"],
+      })
+    ).map((r) => r.notionId)
+  );
+
+  const databaseEntriesToCreate = childDatabaseIdsToCheck.filter(
+    (id) => !childDatabaseIdsInDb.has(id)
+  );
+  const pageEntriesToCreate = childPageIdsToCheck.filter(
+    (id) => !childPageIdsInDb.has(id)
+  );
+
+  await Promise.all([
+    ...databaseEntriesToCreate.map((id) =>
+      NotionConnectorResourcesToCheckCacheEntry.upsert({
+        notionId: id,
+        resourceType: "database",
+        connectorId: connector.id,
+      })
+    ),
+    ...pageEntriesToCreate.map((id) =>
+      NotionConnectorResourcesToCheckCacheEntry.upsert({
+        notionId: id,
+        resourceType: "page",
+        connectorId: connector.id,
+      })
+    ),
+  ]);
 }
 
 export async function clearConnectorCache(connectorId: ModelId) {
@@ -1584,4 +1641,90 @@ export async function clearConnectorCache(connectorId: ModelId) {
       connectorId: connector.id,
     },
   });
+  await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+}
+
+export async function getDiscoveredResourcesFromCache(
+  connectorId: ModelId
+): Promise<{ pageIds: string[]; databaseIds: string[] }> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+  });
+
+  localLogger.info(
+    "notionGetResourcesToCheckFromCacheActivity: Retrieving resources to check from cache."
+  );
+
+  const resourcesToCheck =
+    await NotionConnectorResourcesToCheckCacheEntry.findAll({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+  const pageIdsToCheck = resourcesToCheck
+    .filter((r) => r.resourceType === "page")
+    .map((r) => r.notionId);
+  const databaseIdsToCheck = resourcesToCheck
+    .filter((r) => r.resourceType === "database")
+    .map((r) => r.notionId);
+
+  const pageIdsAlreadySeen = new Set(
+    (
+      await NotionPage.findAll({
+        where: {
+          connectorId: connector.id,
+          notionPageId: pageIdsToCheck,
+        },
+        attributes: ["notionPageId"],
+      })
+    ).map((p) => p.notionPageId)
+  );
+
+  const databaseIdsAlreadySeen = new Set(
+    (
+      await NotionDatabase.findAll({
+        where: {
+          connectorId: connector.id,
+          notionDatabaseId: databaseIdsToCheck,
+        },
+        attributes: ["notionDatabaseId"],
+      })
+    ).map((db) => db.notionDatabaseId)
+  );
+
+  const discoveredPageIds = pageIdsToCheck.filter(
+    (id) => !pageIdsAlreadySeen.has(id)
+  );
+  const discoveredDatabaseIds = databaseIdsToCheck.filter(
+    (id) => !databaseIdsAlreadySeen.has(id)
+  );
+
+  localLogger.info(
+    {
+      discoveredPageIdsCount: discoveredPageIds.length,
+      discoveredDatabaseIdsCount: discoveredDatabaseIds.length,
+    },
+    "Discovered new resources."
+  );
+
+  return {
+    pageIds: discoveredPageIds,
+    databaseIds: discoveredDatabaseIds,
+  };
 }

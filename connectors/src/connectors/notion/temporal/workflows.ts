@@ -32,6 +32,7 @@ const {
   cacheDatabaseChildren,
   renderAndUpsertPageFromCache,
   clearConnectorCache,
+  getDiscoveredResourcesFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -150,6 +151,24 @@ export async function notionSyncWorkflow({
     await Promise.all(promises);
 
     await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
+
+    // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
+    // of other pages that we did get from the search API.
+    // We upsert those as well.
+    const discoveredResources = await getDiscoveredResourcesFromCache(
+      connectorId
+    );
+    await performUpserts({
+      connectorId,
+      pageIds: discoveredResources.pageIds,
+      databaseIds: discoveredResources.databaseIds,
+      isGarbageCollectionRun: isGarbageCollectionRun,
+      runTimestamp,
+      pageIndex,
+      isBatchSync: isInitialSync,
+      queue: childWorkflowQueue,
+      childWorkflowsNameSuffix: "discovered",
+    });
 
     if (!isGarbageCollectionRun) {
       await saveSuccessSync(connectorId);
