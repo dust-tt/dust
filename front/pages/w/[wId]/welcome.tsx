@@ -181,7 +181,7 @@ export default function Welcome({
           )}
           <div>
             <p className="pb-2">
-              How often do you use ChatGPT or other AI assistants?
+              You currently use ChatGPT or other AI assistants:
             </p>
             <RadioButton
               name="expertise"
@@ -198,7 +198,7 @@ export default function Welcome({
                   disabled: false,
                 },
                 {
-                  label: "Daily",
+                  label: "Daily!",
                   value: "advanced",
                   disabled: false,
                 },
@@ -208,7 +208,11 @@ export default function Welcome({
             />
           </div>
           <div className="flex justify-center pt-6">
-            <Button label="Ok" disabled={!isFormValid} onClick={handleSubmit} />
+            <Button
+              label="Next"
+              disabled={!isFormValid}
+              onClick={handleSubmit}
+            />
           </div>
         </div>
       </OnboardingLayout>
