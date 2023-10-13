@@ -58,6 +58,7 @@ export type SparkleAppLayoutNavigation = {
 export type SidebarNavigation = {
   id: "conversation" | "workspace" | "developers" | "lab";
   label: string;
+  variant: "primary" | "secondary";
   menus: SparkleAppLayoutNavigation[];
 };
 
@@ -112,6 +113,7 @@ export const subNavigationAdmin = ({
   nav.push({
     id: "conversation",
     label: "Conversations",
+    variant: "secondary",
     menus: [
       {
         id: "assistants",
@@ -138,6 +140,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "workspace",
       label: "Workspace",
+      variant: "secondary",
       menus: [
         {
           id: "workspace",
@@ -164,6 +167,7 @@ export const subNavigationAdmin = ({
   nav.push({
     id: "developers",
     label: "Developers",
+    variant: "secondary",
     menus: [
       {
         id: "developers",
@@ -181,6 +185,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "lab",
       label: "Lab (Dust Only)",
+      variant: "secondary",
       menus: [
         {
           id: "extract",

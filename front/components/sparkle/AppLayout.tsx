@@ -111,9 +111,12 @@ function NavigationBar({
           <div>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="grow px-4 pb-4">
+                <div key={nav.id} className="grow px-4 pb-4 pt-2">
                   <Item.List>
-                    <Item.SectionHeader label={nav.label} />
+                    <Item.SectionHeader
+                      label={nav.label}
+                      variant={nav.variant}
+                    />
                     {nav.menus.map((menu) => {
                       return (
                         <React.Fragment key={menu.id}>
