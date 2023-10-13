@@ -69,10 +69,10 @@ export function Modal({
               enterFrom={classNames(
                 "s-opacity-0",
                 type === "right-side"
-                  ? "s-translate-x-full"
-                  : "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95"
+                  ? "s-translate-x-16"
+                  : "s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
               )}
-              enterTo="s-opacity-100 s-translate-y-0 s-translate-x-0 sm:s-scale-100"
+              enterTo="s-opacity-100 s-translate-y-0 sm:s-scale-100"
               leave="s-ease-in s-duration-200"
               leaveFrom="s-opacity-100 s-translate-y-0 sm:s-scale-100"
               leaveTo={classNames(
