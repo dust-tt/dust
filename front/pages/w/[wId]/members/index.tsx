@@ -596,7 +596,7 @@ function ChangeMemberModal({
                     onClick={() =>
                       handleMemberRoleChange(member, role as RoleType)
                     } // TODO
-                    label={role}
+                    label={role.charAt(0).toUpperCase() + role.slice(1)}
                   />
                 ))}
               </DropdownMenu.Items>
