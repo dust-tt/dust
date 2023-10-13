@@ -2,6 +2,7 @@ import parseArgs from "minimist";
 import PQueue from "p-queue";
 
 import {
+  DELETE_CONNECTOR_BY_TYPE,
   RESUME_CONNECTOR_BY_TYPE,
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
@@ -39,6 +40,12 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
     case "stop": {
       await throwOnError(
         STOP_CONNECTOR_BY_TYPE[provider](connector.id.toString())
+      );
+      return;
+    }
+    case "delete": {
+      await throwOnError(
+        DELETE_CONNECTOR_BY_TYPE[provider](connector.id.toString(), true)
       );
       return;
     }
