@@ -227,6 +227,7 @@ impl AnthropicLLM {
         stop: &Vec<String>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<Response> {
+        let https = HttpsConnector::new();
         let url = self.uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -277,7 +278,7 @@ impl AnthropicLLM {
                     .delay_max(Duration::from_secs(8))
                     .build(),
             )
-            .build();
+            .build_with_conn(https);
 
         let mut stream = client.stream();
 
