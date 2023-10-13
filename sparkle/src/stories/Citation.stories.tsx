@@ -38,6 +38,7 @@ export const CitationsExample = () => (
         index="3"
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."
+        isBlinking={true}
       />
     </div>
   </div>
