@@ -10,7 +10,7 @@ import {
 
 import {
   NotionBlockType,
-  ParsedNotionPageProperty,
+  PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";
 import {
   type ConnectorProvider,
@@ -666,7 +666,7 @@ export class NotionConnectorPageCacheEntry extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare notionPageId: string;
-  declare pageProperties: ParsedNotionPageProperty[]; // JSON -- typed but not guaranteed
+  declare pageProperties: PageObjectProperties; // JSON -- typed but not guaranteed
   declare parentId: string;
   declare parentType: "database" | "page" | "workspace" | "block" | "unknown";
   declare lastEditedById: string;

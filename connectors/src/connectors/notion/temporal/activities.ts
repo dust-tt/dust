@@ -21,6 +21,7 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
+  renderChildDatabaseFromPages,
   retrieveBlockChildrenResultPage,
   retrieveDatabaseChildrenResultPage,
   retrievePage,
@@ -1098,9 +1099,6 @@ export async function notionRetrievePageActivity({
     pageUrl: notionPage.url,
   });
 
-  localLogger.info("notionRetrievePageActivity: Parsing page properties.");
-  const properties = parsePageProperties(notionPage);
-
   localLogger.info("notionRetrievePageActivity: Saving page in cache.");
 
   const parent = getPageOrBlockParent(notionPage);
@@ -1108,7 +1106,7 @@ export async function notionRetrievePageActivity({
   await NotionConnectorPageCacheEntry.create({
     notionPageId: pageId,
     connectorId: connector.id,
-    pageProperties: properties,
+    pageProperties: notionPage.properties,
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1330,7 +1328,7 @@ export async function notionRetrieveDatabaseChildrenResultPageActivity({
       NotionConnectorPageCacheEntry.create({
         notionPageId: page.id,
         connectorId: connector.id,
-        pageProperties: parsePageProperties(page),
+        pageProperties: page.properties,
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,
@@ -1345,4 +1343,132 @@ export async function notionRetrieveDatabaseChildrenResultPageActivity({
     childrenCount: pages.length,
     nextCursor: resultPage.next_cursor,
   };
+}
+
+export async function notionRenderAndUpsertPageFromCache({
+  dataSourceConfig,
+  accessToken,
+  pageId,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  accessToken: string;
+  pageId: string;
+  loggerArgs: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    pageId,
+  });
+
+  localLogger.info("notionRenderAndUpsertPageFromCache: Retrieving connector.");
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+  });
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Retrieving page from cache."
+  );
+  const pageCacheEntry = await NotionConnectorPageCacheEntry.findOne({
+    where: {
+      notionPageId: pageId,
+      connectorId: connector.id,
+    },
+  });
+  if (!pageCacheEntry) {
+    throw new Error("Could not find page in cache");
+  }
+
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
+  );
+  const blockCacheEntries = await NotionConnectorBlockCacheEntry.findAll({
+    where: {
+      notionPageId: pageId,
+      connectorId: connector.id,
+    },
+  });
+  const topLevelBlocks = blockCacheEntries.filter(
+    (b) => b.parentBlockId === null
+  );
+  const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {};
+  for (const blockCacheEntry of blockCacheEntries) {
+    if (!blockCacheEntry.parentBlockId) continue;
+
+    blocksByParentId[blockCacheEntry.parentBlockId] = [
+      ...(blocksByParentId[blockCacheEntry.parentBlockId] ?? []),
+      blockCacheEntry,
+    ];
+  }
+
+  const childDatabaseTitleById = blockCacheEntries
+    .filter((b) => b.blockType === "child_database")
+    .map((b) => ({
+      id: b.notionBlockId,
+      title:
+        // allow non null assertion here:
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        b.childDatabaseTitle!,
+    }))
+    .reduce((acc, { id, title }) => {
+      acc[id] = title;
+      return acc;
+    }, {} as Record<string, string>);
+
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Retrieving child pages from cache."
+  );
+  const childDbPagesCacheEntries = await NotionConnectorPageCacheEntry.findAll({
+    where: {
+      parentId: Object.keys(blocksByParentId),
+      connectorId: connector.id,
+    },
+  });
+  const childDatabases: Record<string, NotionConnectorPageCacheEntry[]> = {};
+  for (const childDbPageCacheEntry of childDbPagesCacheEntries) {
+    childDatabases[childDbPageCacheEntry.parentId] = [
+      ...(childDatabases[childDbPageCacheEntry.parentId] ?? []),
+      childDbPageCacheEntry,
+    ];
+  }
+  const renderedChildDatabases: Record<string, string> = {};
+  for (const [databaseId, pages] of Object.entries(childDatabases)) {
+    renderedChildDatabases[databaseId] = renderChildDatabaseFromPages({
+      databaseTitle: childDatabaseTitleById[databaseId] ?? null,
+      pagesProperties: pages.map((p) => p.pageProperties),
+    });
+  }
+
+  let renderedPage = "";
+  const parsedProperties = parsePageProperties(pageCacheEntry.pageProperties);
+  for (const p of parsedProperties) {
+    if (!p.text) continue;
+    renderedPage += `$${p.key}: ${p.text}\n`;
+  }
+  renderedPage += "\n";
+
+  let pageHasBody = false;
+
+  const renderBlock = (b: NotionConnectorBlockCacheEntry, indent = "") => {
+    if (b.blockText) {
+      pageHasBody = true;
+    }
+    let renderedBlock = b.blockText ? `${indent}${b.blockText}\n` : "";
+    const children = blocksByParentId[b.notionBlockId] ?? [];
+    for (const child of children) {
+      renderedBlock += renderBlock(child, `- ${indent}`);
+    }
+    return `${renderedBlock}\n`;
+  };
+
+  for (const block of topLevelBlocks) {
+    renderedPage += renderBlock(block);
+  }
 }

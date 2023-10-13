@@ -548,8 +548,8 @@ export async function retrievePage({
   return page;
 }
 
-export function parsePageProperties(page: PageObjectResponse) {
-  const properties = Object.entries(page.properties).map(([key, value]) => ({
+export function parsePageProperties(pageProperties: PageObjectProperties) {
+  const properties = Object.entries(pageProperties).map(([key, value]) => ({
     key,
     id: value.id,
     type: value.type,
@@ -680,7 +680,7 @@ export async function getParsedPage(
   const pageLogger = localLogger.child({ pageUrl: page.url });
 
   pageLogger.info("Parsing page.");
-  const properties = parsePageProperties(page);
+  const properties = parsePageProperties(page.properties);
 
   let blocks: (BlockObjectResponse | PartialBlockObjectResponse)[] | null =
     null;
@@ -912,13 +912,45 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
+export function renderChildDatabaseFromPages({
+  databaseTitle,
+  pagesProperties,
+}: {
+  databaseTitle: string | null;
+  pagesProperties: PageObjectProperties[];
+}) {
+  const rows: string[] = databaseTitle ? [databaseTitle] : [];
+  let header: string[] | null = null;
+  for (const pageProperties of pagesProperties) {
+    if (!header) {
+      header = Object.entries(pageProperties).map(([key]) => key);
+      rows.push(`||${header.join(" | ")}||`);
+    }
+
+    const properties: Record<string, string> = Object.entries(pageProperties)
+      .map(([key, value]) => ({
+        key,
+        id: value.id,
+        type: value.type,
+        text: parsePropertyText(value),
+      }))
+      .reduce(
+        (acc, property) =>
+          Object.assign(acc, { [property.key]: property.text }),
+        {}
+      );
+
+    rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
+  }
+  return rows.join("\n");
+}
+
 async function renderChildDatabase(
   block: ParsedNotionBlock & { type: "child_database" },
   notionClient: Client,
   pageLogger: Logger
 ): Promise<string | null> {
-  const rows: string[] = [];
-  let header: string[] | null = null;
+  const pages: PageObjectResponse[] = [];
   try {
     for await (const page of iteratePaginatedAPIWithRetries(
       notionClient.databases.query,
@@ -928,31 +960,9 @@ async function renderChildDatabase(
       pageLogger.child({ databaseId: block.id, blockType: block.type })
     )) {
       if (isFullPage(page)) {
-        if (!header) {
-          header = Object.entries(page.properties).map(([key]) => key);
-          rows.push(`||${header.join(" | ")}||`);
-        }
-
-        const properties: Record<string, string> = Object.entries(
-          page.properties
-        )
-          .map(([key, value]) => ({
-            key,
-            id: value.id,
-            type: value.type,
-            text: parsePropertyText(value),
-          }))
-          .reduce(
-            (acc, property) =>
-              Object.assign(acc, { [property.key]: property.text }),
-            {}
-          );
-
-        rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
+        pages.push(page);
       }
     }
-
-    return [block.childDatabaseTitle, ...rows].join("\n");
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
@@ -966,6 +976,11 @@ async function renderChildDatabase(
     }
     throw e;
   }
+
+  return renderChildDatabaseFromPages({
+    databaseTitle: block.childDatabaseTitle,
+    pagesProperties: pages.map((p) => p.properties),
+  });
 }
 
 async function getUserName(
