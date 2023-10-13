@@ -103,7 +103,7 @@ export default function Welcome({
           <div>
             <p className="mt-16 font-objektiv text-2xl font-bold tracking-tighter">
               <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Hello {user.username}
+                Hello {firstName}
               </span>
               <br />
               Let's check a few things.
