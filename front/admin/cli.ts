@@ -455,16 +455,22 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (dataSource.connectorId) {
         console.log(`Deleting connectorId=${dataSource.connectorId}}`);
-        await ConnectorsAPI.deleteConnector(
+        const connDeleteRes = await ConnectorsAPI.deleteConnector(
           dataSource.connectorId.toString(),
           true
         );
+        if (connDeleteRes.isErr()) {
+          throw new Error(connDeleteRes.error.error.message);
+        }
       }
 
-      await CoreAPI.deleteDataSource({
+      const coreDeleteRes = await CoreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
       });
+      if (coreDeleteRes.isErr()) {
+        throw new Error(coreDeleteRes.error.message);
+      }
 
       await dataSource.destroy();
 
