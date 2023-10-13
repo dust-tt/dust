@@ -217,8 +217,11 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
   return summary;
 }
 
-export function providerFromDocument(document: RetrievalDocumentType): string {
-  let provider = "none";
+export function providerFromDocument(
+  document: RetrievalDocumentType
+): "none" | "slack" | "notion" | "google_drive" | "github" {
+  let provider: "none" | "slack" | "notion" | "google_drive" | "github" =
+    "none";
   if (document.dataSourceId.startsWith("managed-slack")) {
     provider = "slack";
   }
