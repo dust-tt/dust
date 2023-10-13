@@ -406,7 +406,7 @@ function Citations({
   activeReferences.sort((a, b) => a.index - b.index);
   return (
     <div
-      className="-mx-[100%] mt-9 overflow-x-auto px-[100%] scrollbar-hide"
+      className="-mx-[100%] mt-9 overflow-x-auto px-[100%] pb-4 scrollbar-hide"
       ref={citationContainer}
     >
       <div className="left-100 relative flex gap-2">
