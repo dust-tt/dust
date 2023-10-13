@@ -3,6 +3,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -97,77 +98,75 @@ export default function Welcome({
   };
 
   return (
-    <div className="s-dark h-full bg-slate-800 text-slate-200">
-      <main className="z-10 mx-auto max-w-4xl px-6 pt-24">
-        <div className="flex flex-col gap-6">
-          <div>
-            <p className="mt-16 font-objektiv text-2xl font-bold tracking-tighter">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Hello {firstName}
-              </span>
-              <br />
-              Let's check a few things.
-            </p>
-          </div>
-          <div>
-            <p>
-              Your email is <span className="font-bold">{user.email}</span>.
-            </p>
-          </div>
-          <div>
-            <p className="pb-2">Your name is:</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                name="firstName"
-                placeholder=""
-                value={firstName}
-                onChange={setFirstName}
-              />
-              <Input
-                name="lastName"
-                placeholder=""
-                value={lastName}
-                onChange={setLastName}
-              />
-            </div>
-          </div>
-          <div>
-            <p className="pb-2">
-              How often do you use ChatGPT or other AI Assistant?
-            </p>
-            <RadioButton
-              name="expertise"
-              className="flex-col sm:flex-row"
-              choices={[
-                {
-                  label: "Never!",
-                  value: "beginner",
-                  disabled: false,
-                },
-                {
-                  label: "Occasionally",
-                  value: "intermediate",
-                  disabled: false,
-                },
-                {
-                  label: "Regularly",
-                  value: "advanced",
-                  disabled: false,
-                },
-              ]}
-              value={expertise}
-              onChange={setExpertise}
+    <OnboardingLayout owner={owner} gaTrackingId={GA_TRACKING_ID}>
+      <div className="flex flex-col gap-6">
+        <div>
+          <p className="mt-16 font-objektiv text-2xl font-bold tracking-tighter">
+            <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+              Hello {firstName}
+            </span>
+            <br />
+            Let's check a few things.
+          </p>
+        </div>
+        <div>
+          <p>
+            Your email is <span className="font-bold">{user.email}</span>.
+          </p>
+        </div>
+        <div>
+          <p className="pb-2">Your name is:</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              name="firstName"
+              placeholder=""
+              value={firstName}
+              onChange={setFirstName}
             />
-          </div>
-          <div className="flex justify-center pt-6">
-            <Button
-              label="Start with Dust!"
-              disabled={!isFormValid}
-              onClick={handleSubmit}
+            <Input
+              name="lastName"
+              placeholder=""
+              value={lastName}
+              onChange={setLastName}
             />
           </div>
         </div>
-      </main>
-    </div>
+        <div>
+          <p className="pb-2">
+            How often do you use ChatGPT or other AI Assistant?
+          </p>
+          <RadioButton
+            name="expertise"
+            className="flex-col sm:flex-row"
+            choices={[
+              {
+                label: "Never!",
+                value: "beginner",
+                disabled: false,
+              },
+              {
+                label: "Occasionally",
+                value: "intermediate",
+                disabled: false,
+              },
+              {
+                label: "Regularly",
+                value: "advanced",
+                disabled: false,
+              },
+            ]}
+            value={expertise}
+            onChange={setExpertise}
+          />
+        </div>
+        <div className="flex justify-center pt-6">
+          <Button
+            label="Start with Dust!"
+            disabled={!isFormValid}
+            onClick={handleSubmit}
+          />
+        </div>
+      </div>
+    </OnboardingLayout>
   );
 }
