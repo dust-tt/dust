@@ -165,7 +165,10 @@ export default function WorkspaceAdmin({
     };
     const [searchText, setSearchText] = useState("");
 
-    const displayedMembersAndInvitations = [
+    const displayedMembersAndInvitations: (
+      | UserType
+      | MembershipInvitationType
+    )[] = [
       ...members
         .sort((a, b) => a.name.localeCompare(b.name))
         .filter((m) => m.workspaces[0].role !== "none")
@@ -241,73 +244,75 @@ export default function WorkspaceAdmin({
           </div>
         </div>
         <div>
-          {displayedMembersAndInvitations.map((item) => (
-            <div
-              key={
-                isInvitation(item)
-                  ? `invitation-${item.id}`
-                  : `member-${item.id}`
-              }
-              className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs hover:bg-structure-100 sm:text-sm"
-              onMouseEnter={() => {
-                if (isInvitation(item)) setInvitationToRevoke(item);
-                else setChangeRoleMember(item);
-              }}
-              onClick={() => {
-                if (isInvitation(item)) setRevokeInvitationModalOpen(true);
-                else setChangeRoleModalOpen(true);
-              }}
-            >
-              <div className="hidden sm:block">
-                {isInvitation(item) ? (
-                  <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
-                ) : (
-                  <Avatar visual={item.image} name={item.name} size="xs" />
-                )}
-              </div>
-              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                {!isInvitation(item) && (
-                  <div className="font-medium text-element-900">
-                    {item.name}
-                  </div>
-                )}
+          {displayedMembersAndInvitations.map(
+            (item: UserType | MembershipInvitationType) => (
+              <div
+                key={
+                  isInvitation(item)
+                    ? `invitation-${item.id}`
+                    : `member-${item.id}`
+                }
+                className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs hover:bg-structure-100 sm:text-sm"
+                onMouseEnter={() => {
+                  if (isInvitation(item)) setInvitationToRevoke(item);
+                  else setChangeRoleMember(item);
+                }}
+                onClick={() => {
+                  if (isInvitation(item)) setRevokeInvitationModalOpen(true);
+                  else setChangeRoleModalOpen(true);
+                }}
+              >
+                <div className="hidden sm:block">
+                  {isInvitation(item) ? (
+                    <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
+                  ) : (
+                    <Avatar visual={item.image} name={item.name} size="xs" />
+                  )}
+                </div>
+                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                  {!isInvitation(item) && (
+                    <div className="font-medium text-element-900">
+                      {item.name}
+                    </div>
+                  )}
 
-                <div className="grow font-normal text-element-700">
-                  {isInvitation(item)
-                    ? item.inviteEmail
-                    : item.email || item.username}
+                  <div className="grow font-normal text-element-700">
+                    {isInvitation(item)
+                      ? item.inviteEmail
+                      : item.email || item.username}
+                  </div>
+                </div>
+                <div>
+                  {isInvitation(item) ? (
+                    <Chip size="xs" color="slate">
+                      Invitation {item.status}
+                    </Chip>
+                  ) : (
+                    <Chip
+                      size="xs"
+                      color={COLOR_FOR_ROLE[item.workspaces[0].role]}
+                      className={
+                        /** Force tailwind to include classes we will need below */
+                        "text-amber-900 text-emerald-900 text-warning-900"
+                      }
+                    >
+                      <span
+                        className={classNames(
+                          "capitalize",
+                          `text-${COLOR_FOR_ROLE[item.workspaces[0].role]}-900`
+                        )}
+                      >
+                        {item.workspaces[0].role}
+                      </span>
+                    </Chip>
+                  )}
+                </div>
+                <div className="hidden sm:block">
+                  <ChevronRightIcon />
                 </div>
               </div>
-              <div>
-                {isInvitation(item) ? (
-                  <Chip size="xs" color="slate">
-                    Invitation {item.status}
-                  </Chip>
-                ) : (
-                  <Chip
-                    size="xs"
-                    color={COLOR_FOR_ROLE[item.workspaces[0].role]}
-                    className={
-                      /** Force tailwind to include classes we will need below */
-                      "text-amber-900 text-emerald-900 text-warning-900"
-                    }
-                  >
-                    <span
-                      className={classNames(
-                        "capitalize",
-                        `text-${COLOR_FOR_ROLE[item.workspaces[0].role]}-900`
-                      )}
-                    >
-                      {item.workspaces[0].role}
-                    </span>
-                  </Chip>
-                )}
-              </div>
-              <div className="hidden sm:block">
-                <ChevronRightIcon />
-              </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </>
     );
