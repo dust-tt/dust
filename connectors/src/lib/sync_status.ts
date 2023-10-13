@@ -1,18 +1,31 @@
 import { Connector, ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
-import { ConnectorSyncStatus } from "@connectors/types/connector";
+import {
+  ConnectorErrorType,
+  ConnectorSyncStatus,
+} from "@connectors/types/connector";
 
-async function syncFinished(
-  connectorId: ModelId,
-  status: ConnectorSyncStatus,
-  finishedAt: Date
-): Promise<Result<void, Error>> {
+async function syncFinished({
+  connectorId,
+  status,
+  finishedAt,
+  errorMessage,
+  errorType,
+}: {
+  connectorId: ModelId;
+  status: ConnectorSyncStatus;
+  finishedAt: Date;
+  errorMessage?: string;
+  errorType?: ConnectorErrorType;
+}): Promise<Result<void, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
   connector.lastSyncStatus = status;
   connector.lastSyncFinishTime = finishedAt;
+  connector.errorMessage = errorMessage;
+  connector.errorType = errorType;
   if (status === "succeeded") {
     if (!connector.firstSuccessfulSyncTime) {
       connector.firstSuccessfulSyncTime = finishedAt;
@@ -48,18 +61,35 @@ export async function syncSucceeded(connectorId: ModelId, at?: Date) {
     at = new Date();
   }
 
-  return syncFinished(connectorId, "succeeded", at);
+  return syncFinished({
+    connectorId: connectorId,
+    status: "succeeded",
+    finishedAt: at,
+    errorMessage: undefined,
+    errorType: undefined,
+  });
 }
 
 /**
  * Signal that a sync has failed.
  * This function can be used by the sync worker itself or by the supervisor.
  */
-export async function syncFailed(connectorId: ModelId, at?: Date) {
+export async function syncFailed(
+  connectorId: ModelId,
+  errorMessage: string,
+  errorType: ConnectorErrorType,
+  at?: Date
+) {
   if (!at) {
     at = new Date();
   }
-  return syncFinished(connectorId, "failed", new Date());
+  return syncFinished({
+    connectorId,
+    status: "failed",
+    finishedAt: new Date(),
+    errorMessage,
+    errorType,
+  });
 }
 
 /**

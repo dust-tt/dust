@@ -13,6 +13,7 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
 }
 
 export type ConnectorSyncStatus = "succeeded" | "failed";
+export type ConnectorErrorType = "oauth_token_revoked";
 
 export type ConnectorType = {
   id: number;
@@ -24,6 +25,8 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+  errorType?: string;
+  errorMessage?: string;
 
   defaultNewResourcePermission: ConnectorPermission;
 };

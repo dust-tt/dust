@@ -23,6 +23,7 @@ import { literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   Connector,
   GoogleDriveFiles,
@@ -861,6 +862,19 @@ export async function renewOneWebhook(webhookId: ModelId) {
         });
       }
     } catch (e) {
+      if (e instanceof ExternalOauthTokenError) {
+        logger.info(
+          {
+            error: e,
+            connectorId: wh.connectorId,
+            workspaceId: connector.workspaceId,
+            id: wh.id,
+          },
+          `Deleting webhook because the oauth token was revoked.`
+        );
+        await wh.destroy();
+        return;
+      }
       logger.error({ error: e }, `Failed to renew webhook`);
       const tags = [
         `connector_id:${wh.connectorId}`,

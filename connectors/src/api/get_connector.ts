@@ -78,6 +78,8 @@ const _getConnector = async (
     firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
     firstSyncProgress,
     defaultNewResourcePermission: connector.defaultNewResourcePermission,
+    errorMessage: connector.errorMessage,
+    errorType: connector.errorType,
   });
 };
 
