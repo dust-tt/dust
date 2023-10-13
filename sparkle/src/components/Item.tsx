@@ -217,7 +217,7 @@ Item.SectionHeader = function ({
     <div
       className={classNames(
         variant === "primary" ? "s-text-element-800" : "s-text-element-600",
-        "s-pb-2 s-pt-4 s-text-xs s-font-medium s-uppercase"
+        "s-pb-1 s-pt-3 s-text-xs s-font-medium s-uppercase"
       )}
     >
       {label}

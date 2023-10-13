@@ -170,6 +170,8 @@ Page.Layout = function ({
           gap={gap}
         />
       );
+    default:
+      return null;
   }
 };
 

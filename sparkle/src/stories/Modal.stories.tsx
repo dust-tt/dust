@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Button, Input, Modal } from "../index_with_tw_base";
+import { Button, Input, Modal, Page } from "../index_with_tw_base";
 
 const meta = {
   title: "Molecule/Modal",
@@ -20,7 +20,7 @@ export const ModalExample = () => {
   const [isRightSideModalOpen, setIsRightSideModalOpen] = useState(false);
   const [inputValue, setInputValue] = useState("initial value");
   return (
-    <>
+    <Page.Layout gap="md">
       <Modal
         isOpen={isOpenNoActionNoChange}
         onClose={() => setIsOpenNoActionNoChange(false)}
@@ -36,7 +36,7 @@ export const ModalExample = () => {
         title="Modal title"
         hasChanged={inputValue !== "initial value"}
       >
-        <div className="s-flex s-flex-col s-gap-3 s-pl-2">
+        <div className="s-flex s-flex-col s-gap-3">
           <div className="s-mt-4 s-flex-none s-text-left">
             I'm the modal content
           </div>
@@ -113,6 +113,6 @@ export const ModalExample = () => {
         label="Modal right side"
         onClick={() => setIsRightSideModalOpen(true)}
       />
-    </>
+    </Page.Layout>
   );
 };
