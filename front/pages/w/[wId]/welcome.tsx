@@ -132,23 +132,25 @@ export default function Welcome({
             </div>
           </div>
           <div>
-            <p className="pb-2">How much do you know about AI assistants?</p>
+            <p className="pb-2">
+              How often do you use ChatGPT or other AI Assistant?
+            </p>
             <RadioButton
               name="expertise"
               className="flex-col sm:flex-row"
               choices={[
                 {
-                  label: "Nothing!",
+                  label: "Never!",
                   value: "beginner",
                   disabled: false,
                 },
                 {
-                  label: "I know the basics",
+                  label: "Occasionally",
                   value: "intermediate",
                   disabled: false,
                 },
                 {
-                  label: "I'm a pro",
+                  label: "Regularly",
                   value: "advanced",
                   disabled: false,
                 },
