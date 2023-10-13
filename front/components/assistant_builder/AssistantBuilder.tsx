@@ -1135,7 +1135,7 @@ function SlackIntegration({
               <PageHeader
                 title={"Select Slack channels"}
                 icon={CONNECTOR_CONFIGURATIONS["slack"].logoComponent}
-                description="Select the channels in which your assistant will automatically answer."
+                description={`Select the channels in which ${assistantName} will answer by default.`}
               />
             </div>
             <DataSourceResourceSelectorTree
@@ -1169,10 +1169,14 @@ function SlackIntegration({
         Slack Integration
       </div>
       <div className="text-sm text-element-700">
-        Assistants can be configured to answer to messages mentioning @Dust
-        inside specific Slack channels.
+        You can set this assistant as the default assistant on a selection of
+        your Slack workspace channels. {assistantName} will answer by default
+        when the @Dust Slack bot is mentioned in
+        {!existingSelection.length
+          ? " these channels."
+          : " the channels selected below:"}
       </div>
-      <div>
+      <div className="pt-2">
         {existingSelection.length ? (
           <Button
             labelVisible={true}
@@ -1184,7 +1188,7 @@ function SlackIntegration({
         ) : (
           <Button
             labelVisible={true}
-            label={"Add Slack channels"}
+            label={"Select channels"}
             variant={"primary"}
             icon={PlusIcon}
             onClick={openModal}
@@ -1193,10 +1197,6 @@ function SlackIntegration({
       </div>
       {existingSelection.length ? (
         <>
-          <div className="mt-6 text-sm text-element-700">
-            {assistantName} will answer by default when @Dust is mentioned in
-            the following channels:
-          </div>
           <ContextItem.List className="mt-2 border-b border-t border-structure-200">
             {existingSelection.map(({ channelId, channelName }) => {
               return (
