@@ -105,9 +105,10 @@ export default function Join({
   onboardingType,
   workspace,
   signUpCallbackUrl,
+  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <OnboardingLayout owner={workspace} gaTrackingId={GA_TRACKING_ID}>
+    <OnboardingLayout owner={workspace} gaTrackingId={gaTrackingId}>
       <div className="grid grid-cols-1">
         <div>
           <Logo className="h-[48px] w-[192px] px-1" />

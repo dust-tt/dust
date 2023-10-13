@@ -59,6 +59,7 @@ export default function Welcome({
   owner,
   defaultExpertise,
   conversationId,
+  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.name.split(" ")[0]);
@@ -98,7 +99,7 @@ export default function Welcome({
   };
 
   return (
-    <OnboardingLayout owner={owner} gaTrackingId={GA_TRACKING_ID}>
+    <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
       <div className="flex flex-col gap-6">
         <div>
           <p className="mt-16 font-objektiv text-2xl font-bold tracking-tighter">
@@ -133,7 +134,7 @@ export default function Welcome({
         </div>
         <div>
           <p className="pb-2">
-            How often do you use ChatGPT or other AI Assistant?
+            How often do you use ChatGPT or other AI assistants?
           </p>
           <RadioButton
             name="expertise"
@@ -150,7 +151,7 @@ export default function Welcome({
                 disabled: false,
               },
               {
-                label: "Regularly",
+                label: "Daily",
                 value: "advanced",
                 disabled: false,
               },
