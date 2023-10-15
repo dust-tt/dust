@@ -1408,31 +1408,39 @@ impl Store for PostgresStore {
         if let Some(filter) = filter {
             if let Some(tags_filter) = &filter.tags {
                 if let Some(tags) = &tags_filter.is_in {
-                    where_clauses.push(format!("tags_array @> ${}", p_idx));
                     tags_is_in = tags.to_vec();
-                    params.push(&tags_is_in);
-                    p_idx += 1;
+                    if !tags_is_in.is_empty() {
+                        where_clauses.push(format!("tags_array @> ${}", p_idx));
+                        params.push(&tags_is_in);
+                        p_idx += 1;
+                    }
                 }
                 if let Some(tags) = &tags_filter.is_not {
-                    where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
                     tags_is_not = tags.to_vec();
-                    params.push(&tags_is_not);
-                    p_idx += 1;
+                    if !tags_is_not.is_empty() {
+                        where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
+                        params.push(&tags_is_not);
+                        p_idx += 1;
+                    }
                 }
             }
 
             if let Some(parents_filter) = &filter.parents {
                 if let Some(parents) = &parents_filter.is_in {
-                    where_clauses.push(format!("parents @> ${}", p_idx));
                     parents_is_in = parents.to_vec();
-                    params.push(&parents_is_in);
-                    p_idx += 1;
+                    if !parents_is_in.is_empty() {
+                        where_clauses.push(format!("parents @> ${}", p_idx));
+                        params.push(&parents_is_in);
+                        p_idx += 1;
+                    }
                 }
                 if let Some(parents) = &parents_filter.is_not {
-                    where_clauses.push(format!("NOT parents @> ${}", p_idx));
                     parents_is_not = parents.to_vec();
-                    params.push(&parents_is_not);
-                    p_idx += 1;
+                    if !parents_is_not.is_empty() {
+                        where_clauses.push(format!("NOT parents @> ${}", p_idx));
+                        params.push(&parents_is_not);
+                        p_idx += 1;
+                    }
                 }
             }
 
