@@ -15,6 +15,7 @@ interface ModalProps {
   onSave?: () => void;
   title?: string;
   type?: "full-screen" | "right-side" | "default";
+  saveLabel?: string;
 }
 
 export function Modal({
@@ -26,12 +27,14 @@ export function Modal({
   onSave,
   title,
   type = "default",
+  saveLabel = "Save",
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
         variant: "validate",
         onCancel: onClose,
         onSave: onSave,
+        saveLabel,
       }
     : {
         variant: "close",

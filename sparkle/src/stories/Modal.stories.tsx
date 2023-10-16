@@ -60,6 +60,7 @@ export const ModalExample = () => {
           variant: "tertiary",
           size: "xs",
         }}
+        saveLabel="Save (custom name possible)"
         hasChanged={true}
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
