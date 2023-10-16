@@ -529,7 +529,10 @@ function RevokeInvitationModal({
           <Button
             variant="primaryWarning"
             label="Yes, revoke"
-            onClick={() => invitation && handleRevokeInvitation(invitation.id)}
+            onClick={() => {
+              handleRevokeInvitation(invitation.id);
+              onClose();
+            }}
           />
         </div>
       </div>
