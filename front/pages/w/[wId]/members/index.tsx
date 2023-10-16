@@ -513,7 +513,6 @@ function RevokeInvitationModal({
       onClose={onClose}
       hasChanged={false}
       title="Revoke invitation"
-      type="right-side"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
