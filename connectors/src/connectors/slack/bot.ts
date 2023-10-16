@@ -309,11 +309,11 @@ async function botAnswerMessage(
         assistantId: agentConfigurationToMention.sId,
         assistantName: agentConfigurationToMention.name,
       });
-    } else {
-      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      // mentions.push({ assistantId: "dust", assistantName: "dust" });
     }
   }
+
+  // If no mention is found from direct mention (~gpt-4) or channel-based routing rules
+  // We look at mention override (eg: a mention coming from the Slack assistant picker UI).
   if (mentions.length === 0 && mentionOverride.length > 0) {
     const agentConfigs = agentConfigurations.filter(
       (ac) => ac.sId === mentionOverride[0]
