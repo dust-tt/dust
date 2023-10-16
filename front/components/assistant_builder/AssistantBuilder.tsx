@@ -306,13 +306,14 @@ export default function AssistantBuilder({
       channelName: string;
     }[]
   >([]);
-
   // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
       dataSourceName: slackDataSource?.name ?? undefined,
     });
+  const [slackChannelsInitialized, setSlackChannelsInitialized] =
+    useState(false);
 
   // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
   useEffect(() => {
@@ -320,7 +321,7 @@ export default function AssistantBuilder({
       slackChannelsLinkedWithAgent.length &&
       agentConfigurationId &&
       !edited &&
-      !selectedSlackChannels.length
+      !slackChannelsInitialized
     ) {
       setSelectedSlackChannels(
         slackChannelsLinkedWithAgent
@@ -332,12 +333,13 @@ export default function AssistantBuilder({
             channelName: channel.slackChannelName,
           }))
       );
+      setSlackChannelsInitialized(true);
     }
   }, [
     slackChannelsLinkedWithAgent,
     agentConfigurationId,
     edited,
-    selectedSlackChannels,
+    slackChannelsInitialized,
   ]);
 
   const assistantHandleIsValid = useCallback((handle: string) => {
