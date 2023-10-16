@@ -156,8 +156,9 @@ export default function WorkspaceAdmin({
       user: "emerald",
     };
     const [searchText, setSearchText] = useState("");
-    const { members } = useMembers(owner);
-    const { invitations } = useWorkspaceInvitations(owner);
+    const { members, isMembersLoading } = useMembers(owner);
+    const { invitations, isInvitationsLoading } =
+      useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 
     /** Modal for changing member role: we need to use 2 states: set the member
@@ -317,6 +318,27 @@ export default function WorkspaceAdmin({
                 </div>
               </div>
             )
+          )}
+          {(isMembersLoading || isInvitationsLoading) && (
+            <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+              <div className="hidden sm:block">
+                <Avatar size="xs" />
+              </div>
+              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                <div className="font-medium text-element-900">Loading...</div>
+                <div className="grow font-normal text-element-700">
+                  user.email@here.com
+                </div>
+              </div>
+              <div>
+                <Chip size="xs" color="slate">
+                  Loading...
+                </Chip>
+              </div>
+              <div className="hidden sm:block">
+                <ChevronRightIcon />
+              </div>
+            </div>
           )}
         </div>
       </>
@@ -529,8 +551,8 @@ function RevokeInvitationModal({
           <Button
             variant="primaryWarning"
             label="Yes, revoke"
-            onClick={() => {
-              handleRevokeInvitation(invitation.id);
+            onClick={async () => {
+              await handleRevokeInvitation(invitation.id);
               onClose();
             }}
           />
