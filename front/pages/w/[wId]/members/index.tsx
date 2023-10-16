@@ -562,6 +562,7 @@ function ChangeMemberModal({
 }) {
   const { mutate } = useSWRConfig();
   const [currentRole, setCurrentRole] = useState<RoleType | null>(null);
+  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   if (!member) return null; // Unreachable
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -626,7 +627,7 @@ function ChangeMemberModal({
               variant="primaryWarning"
               label="Revoke member access"
               size="sm"
-              onClick={() => handleMemberRoleChange(member, "none")}
+              onClick={() => setRevokeMemberModalOpen(true)}
             />
           </div>
           <Page.P>
@@ -635,6 +636,34 @@ function ChangeMemberModal({
           </Page.P>
         </div>
       </div>
+      <Modal
+        onClose={() => setRevokeMemberModalOpen(false)}
+        isOpen={revokeMemberModalOpen}
+        title="Revoke member access"
+        hasChanged={false}
+      >
+        <div className="mt-6 flex flex-col gap-6 px-2">
+          <div>
+            Revoke access for user{" "}
+            <span className="font-bold">{member.name}</span>?
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="tertiary"
+              label="Cancel"
+              onClick={() => setRevokeMemberModalOpen(false)}
+            />
+            <Button
+              variant="primaryWarning"
+              label="Yes, revoke"
+              onClick={() => {
+                handleMemberRoleChange(member, "none");
+                setRevokeMemberModalOpen(false);
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
   async function handleMemberRoleChange(
