@@ -78,7 +78,8 @@ async function handleChatBot(req: Request, res: Response) {
     slackChannel,
     slackUserId,
     slackMessageTs,
-    slackThreadTs
+    slackThreadTs,
+    []
   );
   if (botRes.isErr()) {
     logger.error(

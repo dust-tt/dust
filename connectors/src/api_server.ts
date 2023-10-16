@@ -26,6 +26,8 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
+import { webhookSlackReactionsAPIHandler } from "./api/webhooks/webhook_slack_reaction";
+
 export function startServer(port: number) {
   const app = express();
 
@@ -43,6 +45,8 @@ export function startServer(port: number) {
       },
     })
   );
+
+  app.use(express.urlencoded({ extended: true })); // support encoded bodies
 
   app.use(authMiddleware);
 
@@ -84,6 +88,10 @@ export function startServer(port: number) {
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/slack_reactions",
+    webhookSlackReactionsAPIHandler
+  );
   app.post(
     "/webhooks/:webhook_secret/google_drive",
     webhookGoogleDriveAPIHandler

@@ -42,8 +42,9 @@ export async function botAnswerMessageWithErrorHandling(
   slackChannel: string,
   slackUserId: string,
   slackMessageTs: string,
-  slackThreadTs: string | null
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+  slackThreadTs: string | null,
+  mentionOverride: string[]
+): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -68,7 +69,8 @@ export async function botAnswerMessageWithErrorHandling(
     slackUserId,
     slackMessageTs,
     slackThreadTs,
-    connector
+    connector,
+    mentionOverride
   );
   if (res.isErr()) {
     logger.error(
@@ -117,8 +119,9 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null,
-  connector: Connector
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+  connector: Connector,
+  mentionOverride: string[]
+): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
@@ -158,6 +161,16 @@ async function botAnswerMessage(
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
     connector
   );
+  const dustAPI = new DustAPI({
+    workspaceId: connector.workspaceId,
+    apiKey: connector.workspaceAPIKey,
+  });
+
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  if (agentConfigurationsRes.isErr()) {
+    return new Err(new Error(agentConfigurationsRes.error.message));
+  }
+  const agentConfigurations = agentConfigurationsRes.value;
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
@@ -195,10 +208,7 @@ async function botAnswerMessage(
   }
 
   await slackChatBotMessage.save();
-  const dustAPI = new DustAPI({
-    workspaceId: connector.workspaceId,
-    apiKey: connector.workspaceAPIKey,
-  });
+
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
     text: "_Thinking..._",
@@ -228,21 +238,17 @@ async function botAnswerMessage(
     }
   }
   // Extract all ~mentions.
+
   const mentionCandidates = message.match(/~[a-zA-Z0-9_-]{1,20}/g) || [];
 
   const mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 1) {
     return new Err(
       new SlackExternalUserError(
-        "Only one assistant at a time can be called through Slack."
+        "To talk to multiple assistants at once, please use the Dust web app."
       )
     );
   } else if (mentionCandidates.length === 1) {
-    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-    if (agentConfigurationsRes.isErr()) {
-      return new Err(new Error(agentConfigurationsRes.error.message));
-    }
-    const agentConfigurations = agentConfigurationsRes.value;
     for (const mc of mentionCandidates) {
       let bestCandidate:
         | {
@@ -305,7 +311,19 @@ async function botAnswerMessage(
       });
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      mentions.push({ assistantId: "dust", assistantName: "dust" });
+      // mentions.push({ assistantId: "dust", assistantName: "dust" });
+    }
+  }
+  if (mentions.length === 0 && mentionOverride.length > 0) {
+    const agentConfigs = agentConfigurations.filter(
+      (ac) => ac.sId === mentionOverride[0]
+    );
+
+    if (agentConfigs.length > 0 && agentConfigs[0]) {
+      mentions.push({
+        assistantId: agentConfigs[0].sId,
+        assistantName: agentConfigs[0].name,
+      });
     }
   }
 
@@ -372,6 +390,44 @@ async function botAnswerMessage(
   }
   slackChatBotMessage.conversationId = conversation.sId;
   await slackChatBotMessage.save();
+  if (mentions.length === 0) {
+    await slackClient.chat.update({
+      channel: slackChannel,
+      text: "__Pick an assistant__",
+      thread_ts: slackMessageTs,
+      ts: mainMessage.ts as string,
+      blocks: [
+        {
+          type: "section",
+          block_id: "agentConfigId",
+          text: {
+            type: "mrkdwn",
+            text: "Pick which assistant should reply:",
+          },
+          accessory: {
+            type: "static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Pick an assistant from the dropdown list",
+              emoji: true,
+            },
+            options: agentConfigurations.map((ac) => {
+              return {
+                text: {
+                  type: "plain_text",
+                  text: ac.name,
+                },
+                value: ac.sId,
+              };
+            }),
+            action_id: "static_selectAgentConfig",
+          },
+        },
+      ],
+    });
+
+    return new Ok(null);
+  }
 
   const agentMessages = conversation.content
     .map((versions) => {
@@ -399,7 +455,7 @@ async function botAnswerMessage(
     return new Err(new Error(streamRes.error.message));
   }
 
-  const botIdentity = `@${mentions[0]?.assistantName}:\n`;
+  const botIdentity = `*~${mentions[0]?.assistantName}:* `;
   let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
   let lastSentDate = new Date();
@@ -437,6 +493,7 @@ async function botAnswerMessage(
           text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
+          mkrdwn: true,
         });
         break;
       }
@@ -457,6 +514,7 @@ async function botAnswerMessage(
           text: finalAnswer,
           ts: mainMessage.ts as string,
           thread_ts: slackMessageTs,
+          mkrdwn: true,
         });
         return new Ok(event);
       }
@@ -589,7 +647,7 @@ async function makeContentFragment(
     if (!replies) {
       return new Err(
         new Error(
-          "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
+          "Received unexpected undefined replies from Slack API in makeContentFragment (generally transient)"
         )
       );
     }
