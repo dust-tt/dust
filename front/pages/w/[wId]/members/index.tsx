@@ -10,7 +10,6 @@ import {
   Modal,
   Page,
   PlusIcon,
-  QuestionMarkCircleStrokeIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
@@ -27,6 +26,7 @@ import {
   getUserFromSession,
   RoleType,
 } from "@app/lib/auth";
+import { ModelId } from "@app/lib/databases";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -72,8 +72,6 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const inviteLink =
     owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
-  const { members } = useMembers(owner);
-  const { invitations } = useWorkspaceInvitations(owner);
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
 
   return (
@@ -145,25 +143,34 @@ export default function WorkspaceAdmin({
               <div></div>
             )}
           </div>
-          <MemberList members={members} invitations={invitations} />
+          <MemberList />
         </div>
       </Page>
     </AppLayout>
   );
 
-  function MemberList({
-    members,
-    invitations,
-  }: {
-    members: UserType[];
-    invitations: MembershipInvitationType[];
-  }) {
-    const COLOR_FOR_ROLE: { [key: string]: "pink" | "amber" | "emerald" } = {
-      admin: "pink",
+  function MemberList() {
+    const COLOR_FOR_ROLE: { [key: string]: "red" | "amber" | "emerald" } = {
+      admin: "red",
       builder: "amber",
       user: "emerald",
     };
     const [searchText, setSearchText] = useState("");
+    const { members } = useMembers(owner);
+    const { invitations } = useWorkspaceInvitations(owner);
+    const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
+    /** Modal for changing member role: we need to use 2 states: set the member
+     * first, then open the modal with an unoticeable delay. Using
+     * only 1 state for both would break the modal animation because rerendering
+     * at the same time than switching modal to open*/
+    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
+    const [changeRoleMemberId, setChangeRoleMemberId] =
+      useState<ModelId | null>(null);
+    /* Same for invitations modal */
+    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
+      useState(false);
+    const [invitationToRevoke, setInvitationToRevoke] =
+      useState<MembershipInvitationType | null>(null);
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -187,21 +194,6 @@ export default function WorkspaceAdmin({
         ),
     ];
 
-    const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
-    /** Modal for changing member role: we need to use 2 states: set the member
-     * on hover, open modal on click. Using only 1 state for both would break
-     * the modal animation because rerendering at the same time than switching
-     * modal to open*/
-    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
-      null
-    );
-
-    /* Same for invitations modal */
-    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
-      useState(false);
-    const [invitationToRevoke, setInvitationToRevoke] =
-      useState<MembershipInvitationType | null>(null);
     return (
       <>
         <InviteEmailModal
@@ -219,7 +211,7 @@ export default function WorkspaceAdmin({
         />
         <ChangeMemberModal
           showModal={changeRoleModalOpen}
-          member={changeRoleMember}
+          member={members.find((m) => m.id === changeRoleMemberId) || null}
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
@@ -253,18 +245,19 @@ export default function WorkspaceAdmin({
                     : `member-${item.id}`
                 }
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
-                onMouseEnter={() => {
-                  if (isInvitation(item)) setInvitationToRevoke(item);
-                  else setChangeRoleMember(item);
-                }}
                 onClick={() => {
-                  if (isInvitation(item)) setRevokeInvitationModalOpen(true);
-                  else setChangeRoleModalOpen(true);
+                  if (isInvitation(item)) setInvitationToRevoke(item);
+                  else setChangeRoleMemberId(item.id);
+                  /* Delay to let react re-render the modal before opening it otherwise no animation transition */
+                  setTimeout(() => {
+                    if (isInvitation(item)) setRevokeInvitationModalOpen(true);
+                    else setChangeRoleModalOpen(true);
+                  }, 50);
                 }}
               >
                 <div className="hidden sm:block">
                   {isInvitation(item) ? (
-                    <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
+                    <Avatar size="xs" />
                   ) : (
                     <Avatar visual={item.image} name={item.name} size="xs" />
                   )}
@@ -342,9 +335,11 @@ function InviteEmailModal({
     <Modal
       isOpen={showModal}
       onClose={onClose}
-      hasChanged={false}
+      hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
       title="Invite new users"
       type="right-side"
+      saveLabel="Invite"
+      onSave={handleSendInvitation}
     >
       <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
         <Page.P>
@@ -365,15 +360,6 @@ function InviteEmailModal({
                   setInviteEmail(e.trim());
                   setEmailError("");
                 }}
-              />
-            </div>
-            <div className="flex-none">
-              <Button
-                variant="primary"
-                label="Invite"
-                size="sm"
-                disabled={emailError !== "" || inviteEmail === "" || isSending}
-                onClick={handleSendInvitation}
               />
             </div>
           </div>
@@ -520,7 +506,6 @@ function RevokeInvitationModal({
       onClose={onClose}
       hasChanged={false}
       title="Revoke invitation"
-      type="right-side"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
@@ -569,6 +554,7 @@ function ChangeMemberModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
+  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   if (!member) return null; // Unreachable
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -629,7 +615,7 @@ function ChangeMemberModal({
               variant="primaryWarning"
               label="Revoke member access"
               size="sm"
-              onClick={() => handleMemberRoleChange(member, "none")}
+              onClick={() => setRevokeMemberModalOpen(true)}
             />
           </div>
           <Page.P>
@@ -638,11 +624,40 @@ function ChangeMemberModal({
           </Page.P>
         </div>
       </div>
+      <Modal
+        onClose={() => setRevokeMemberModalOpen(false)}
+        isOpen={revokeMemberModalOpen}
+        title="Revoke member access"
+        hasChanged={false}
+      >
+        <div className="mt-6 flex flex-col gap-6 px-2">
+          <div>
+            Revoke access for user{" "}
+            <span className="font-bold">{member.name}</span>?
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="tertiary"
+              label="Cancel"
+              onClick={() => setRevokeMemberModalOpen(false)}
+            />
+            <Button
+              variant="primaryWarning"
+              label="Yes, revoke"
+              onClick={async () => {
+                await handleMemberRoleChange(member, "none");
+                setRevokeMemberModalOpen(false);
+                onClose();
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
   async function handleMemberRoleChange(
     member: UserType,
-    role: string
+    role: RoleType
   ): Promise<void> {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
       method: "POST",
@@ -650,7 +665,7 @@ function ChangeMemberModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        role,
+        role: role === "none" ? "revoked" : role,
       }),
     });
     if (!res.ok) {
