@@ -11,6 +11,7 @@ const safeColorsArray = [
   "pink",
   "indigo",
   "action",
+  "red",
 ];
 
 const safeColorlist = safeColorsArray.flatMap((color) => [
@@ -115,6 +116,19 @@ module.exports = {
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
         },
         warning: {
+          500: { DEFAULT: colors.red[500], dark: colors.red[500] },
+          400: { DEFAULT: colors.red[400], dark: colors.red[600] },
+          200: { DEFAULT: colors.red[200], dark: colors.red[800] },
+          300: { DEFAULT: colors.red[300], dark: colors.red[700] },
+          100: { DEFAULT: colors.red[100], dark: colors.red[900] },
+          600: { DEFAULT: colors.red[600], dark: colors.red[400] },
+          700: { DEFAULT: colors.red[700], dark: colors.red[300] },
+          800: { DEFAULT: colors.red[800], dark: colors.red[200] },
+          900: { DEFAULT: colors.red[900], dark: colors.red[100] },
+          950: { DEFAULT: colors.red[950], dark: colors.red[50] },
+          50: { DEFAULT: colors.red[50], dark: colors.red[950] },
+        },
+        red: {
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
           400: { DEFAULT: colors.red[400], dark: colors.red[600] },
           200: { DEFAULT: colors.red[200], dark: colors.red[800] },
