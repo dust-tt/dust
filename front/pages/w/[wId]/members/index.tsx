@@ -647,6 +647,7 @@ function ChangeMemberModal({
               onClick={async () => {
                 await handleMemberRoleChange(member, "none");
                 setRevokeMemberModalOpen(false);
+                onClose();
               }}
             />
           </div>
@@ -664,7 +665,7 @@ function ChangeMemberModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        role,
+        role: role === "none" ? "revoked" : role,
       }),
     });
     if (!res.ok) {
