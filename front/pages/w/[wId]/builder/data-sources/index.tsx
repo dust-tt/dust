@@ -507,7 +507,7 @@ export default function DataSourcesView({
 
                                       <div className="flex flex-col gap-y-2">
                                         <div className="grow text-sm font-medium text-element-800">
-                                          Notice on data Processing
+                                          Notice on data processing
                                         </div>
                                         <div className="text-sm font-normal text-element-700">
                                           By connecting Google Drive, you
