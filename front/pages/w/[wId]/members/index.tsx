@@ -159,18 +159,22 @@ export default function WorkspaceAdmin({
     const { members } = useMembers(owner);
     const { invitations } = useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
+
     /** Modal for changing member role: we need to use 2 states: set the member
      * first, then open the modal with an unoticeable delay. Using
      * only 1 state for both would break the modal animation because rerendering
      * at the same time than switching modal to open*/
     const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
+    /** In the state below we use an Id rather than the member directly, because
+     * we want it to mutate when the members list mutate */
     const [changeRoleMemberId, setChangeRoleMemberId] =
       useState<ModelId | null>(null);
+
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
-    const [invitationToRevoke, setInvitationToRevoke] =
-      useState<MembershipInvitationType | null>(null);
+    const [invitationToRevokeId, setInvitationToRevokeId] =
+      useState<ModelId | null>(null);
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -205,13 +209,21 @@ export default function WorkspaceAdmin({
         />
         <RevokeInvitationModal
           showModal={revokeInvitationModalOpen}
-          invitation={invitationToRevoke}
+          invitation={
+            invitationToRevokeId
+              ? invitations.find((i) => i.id === invitationToRevokeId) || null
+              : null
+          }
           onClose={() => setRevokeInvitationModalOpen(false)}
           owner={owner}
         />
         <ChangeMemberModal
           showModal={changeRoleModalOpen}
-          member={members.find((m) => m.id === changeRoleMemberId) || null}
+          member={
+            changeRoleMemberId
+              ? members.find((m) => m.id === changeRoleMemberId) || null
+              : null
+          }
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
@@ -246,7 +258,7 @@ export default function WorkspaceAdmin({
                 }
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
                 onClick={() => {
-                  if (isInvitation(item)) setInvitationToRevoke(item);
+                  if (isInvitation(item)) setInvitationToRevokeId(item.id);
                   else setChangeRoleMemberId(item.id);
                   /* Delay to let react re-render the modal before opening it otherwise no animation transition */
                   setTimeout(() => {
@@ -499,7 +511,7 @@ function RevokeInvitationModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
-
+  if (!invitation) return null;
   return (
     <Modal
       isOpen={showModal}
