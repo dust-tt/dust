@@ -82,7 +82,7 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page>
+      <Page.Vertical>
         <div className="flex flex-col gap-6">
           <Page.Header
             title="Member Management"
@@ -145,7 +145,7 @@ export default function WorkspaceAdmin({
           </div>
           <MemberList />
         </div>
-      </Page>
+      </Page.Vertical>
     </AppLayout>
   );
 
