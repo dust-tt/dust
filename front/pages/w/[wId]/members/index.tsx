@@ -252,7 +252,7 @@ export default function WorkspaceAdmin({
                     ? `invitation-${item.id}`
                     : `member-${item.id}`
                 }
-                className="flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs hover:bg-structure-100 sm:text-sm"
+                className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
                 onMouseEnter={() => {
                   if (isInvitation(item)) setInvitationToRevoke(item);
                   else setChangeRoleMember(item);
