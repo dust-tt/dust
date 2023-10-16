@@ -702,7 +702,7 @@ NotionConnectorPageCacheEntry.init(
     },
     pageProperties: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
     },
     pagePropertiesText: {
       type: DataTypes.TEXT,
@@ -836,6 +836,57 @@ NotionConnectorBlockCacheEntry.init(
 );
 
 Connector.hasMany(NotionConnectorBlockCacheEntry);
+
+export class NotionConnectorResourcesToCheckCacheEntry extends Model<
+  InferAttributes<NotionConnectorResourcesToCheckCacheEntry>,
+  InferCreationAttributes<NotionConnectorResourcesToCheckCacheEntry>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare notionId: string;
+  declare resourceType: "page" | "database";
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+NotionConnectorResourcesToCheckCacheEntry.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    notionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    resourceType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "notion_connector_resources_to_check_cache_entries",
+    indexes: [
+      { fields: ["notionId", "connectorId"], unique: true },
+      { fields: ["connectorId"] },
+    ],
+  }
+);
+
+Connector.hasMany(NotionConnectorResourcesToCheckCacheEntry);
 
 export class GithubConnectorState extends Model<
   InferAttributes<GithubConnectorState>,
