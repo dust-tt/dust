@@ -31,6 +31,9 @@ export { DropdownMenu };
 import { Page } from "./components/Page";
 export { Page };
 
+import { Frame } from "./components/Frame";
+export { Frame };
+
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
 
