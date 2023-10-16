@@ -120,6 +120,95 @@ export async function botAnswerMessageWithErrorHandling({
   return res;
 }
 
+export async function botPickAssistant({
+  slackTeamId,
+  slackChannel,
+  slackMessageTs,
+  slackThreadTs,
+  mentionOverride,
+}: {
+  slackTeamId: string;
+  slackChannel: string;
+  slackMessageTs: string;
+  slackThreadTs: string | null;
+  mentionOverride: string[];
+}): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
+  const slackConfig = await SlackConfiguration.findOne({
+    where: {
+      slackTeamId: slackTeamId,
+      botEnabled: true,
+    },
+  });
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for which the bot is enabled. Slack team id: ${slackTeamId}.`
+      )
+    );
+  }
+  const connector = await Connector.findByPk(slackConfig.connectorId);
+  if (!connector) {
+    return new Err(new Error("Failed to find connector"));
+  }
+  const accessToken = await getAccessToken(connector.connectionId);
+  const slackClient = getSlackClient(accessToken);
+  const lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
+    where: {
+      connectorId: connector.id,
+      channelId: slackChannel,
+      threadTs: slackThreadTs,
+    },
+    order: [["createdAt", "DESC"]],
+    limit: 1,
+  });
+  if (!lastSlackChatBotMessage) {
+    return new Err(new Error("Failed to find associated Slack message"));
+  }
+
+  if (!lastSlackChatBotMessage.conversationId) {
+    return new Err(new Error("Failed to find associated conversation"));
+  }
+  if (!lastSlackChatBotMessage.userMessageId) {
+    return new Err(new Error("Failed to find associated user message"));
+  }
+  if (!lastSlackChatBotMessage.slackAnswerTs) {
+    return new Err(new Error("Failed to find associated slack answer ts"));
+  }
+  const dustAPI = new DustAPI({
+    workspaceId: connector.workspaceId,
+    apiKey: connector.workspaceAPIKey,
+  });
+  const editMessageRes = await dustAPI.editMessage(
+    lastSlackChatBotMessage.conversationId,
+    lastSlackChatBotMessage.userMessageId,
+    {
+      content: lastSlackChatBotMessage.messageFormatted || "",
+      mentions: mentionOverride.map((m) => {
+        return { configurationId: m };
+      }),
+    }
+  );
+  if (editMessageRes.isErr()) {
+    return new Err(new Error(editMessageRes.error.message));
+  }
+  const conversation = await dustAPI.getConversation({
+    conversationId: lastSlackChatBotMessage.conversationId,
+  });
+  if (conversation.isErr()) {
+    return new Err(new Error(conversation.error.message));
+  }
+  return await botStreamAnswer({
+    conversation: conversation.value,
+    userMessage: editMessageRes.value,
+    connector,
+    slackChannel,
+    slackMessageTs,
+    slackAnswerTs: lastSlackChatBotMessage.slackAnswerTs,
+    slackClient,
+    dustAPI,
+  });
+}
+
 async function botAnswerMessage({
   message,
   slackTeamId,
@@ -234,6 +323,8 @@ async function botAnswerMessage({
     thread_ts: slackMessageTs,
     mrkdwn: true,
   });
+  slackChatBotMessage.slackAnswerTs = mainMessage.ts || null;
+  await slackChatBotMessage.save();
 
   // Slack sends the message with user ids when someone is mentionned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
@@ -407,7 +498,10 @@ async function botAnswerMessage({
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
   }
+  slackChatBotMessage.userMessageId = userMessage.sId;
   slackChatBotMessage.conversationId = conversation.sId;
+  slackChatBotMessage.messageFormatted = message;
+
   await slackChatBotMessage.save();
   if (mentions.length === 0) {
     await slackClient.chat.update({
@@ -448,6 +542,37 @@ async function botAnswerMessage({
     return new Ok(null);
   }
 
+  return await botStreamAnswer({
+    conversation,
+    userMessage,
+    connector,
+    slackChannel,
+    slackMessageTs,
+    slackAnswerTs: mainMessage.ts as string,
+    slackClient,
+    dustAPI,
+  });
+}
+
+async function botStreamAnswer({
+  conversation,
+  userMessage,
+  connector,
+  slackChannel,
+  slackMessageTs,
+  slackAnswerTs,
+  slackClient,
+  dustAPI,
+}: {
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  connector: Connector;
+  slackChannel: string;
+  slackMessageTs: string;
+  slackAnswerTs: string;
+  slackClient: WebClient;
+  dustAPI: DustAPI;
+}) {
   const agentMessages = conversation.content
     .map((versions) => {
       const m = versions[versions.length - 1];
@@ -474,7 +599,7 @@ async function botAnswerMessage({
     return new Err(new Error(streamRes.error.message));
   }
 
-  const botIdentity = `*~${mentions[0]?.assistantName}:* `;
+  const botIdentity = `*~${agentMessage.configuration.name}:* `;
   let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
   let lastSentDate = new Date();
@@ -510,7 +635,7 @@ async function botAnswerMessage({
         await slackClient.chat.update({
           channel: slackChannel,
           text: finalAnswer,
-          ts: mainMessage.ts as string,
+          ts: slackAnswerTs,
           thread_ts: slackMessageTs,
           mkrdwn: true,
         });
@@ -531,7 +656,7 @@ async function botAnswerMessage({
         await slackClient.chat.update({
           channel: slackChannel,
           text: finalAnswer,
-          ts: mainMessage.ts as string,
+          ts: slackAnswerTs,
           thread_ts: slackMessageTs,
           mkrdwn: true,
         });

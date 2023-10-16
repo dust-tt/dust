@@ -319,6 +319,7 @@ export class SlackChatBotMessage extends Model<
   declare connectorId: ForeignKey<Connector["id"]>;
   declare channelId: string;
   declare message: string;
+  declare messageFormatted: string|null;
   declare slackUserId: string;
   declare slackEmail: string;
   declare slackUserName: string;
@@ -330,6 +331,8 @@ export class SlackChatBotMessage extends Model<
   declare chatSessionSid: string | null;
   declare completedAt: Date | null;
   declare conversationId: string | null; // conversationId is set only for V2 conversations
+  declare userMessageId: string | null;
+  declare slackAnswerTs: string | null;
 }
 
 SlackChatBotMessage.init(
@@ -370,6 +373,10 @@ SlackChatBotMessage.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    messageFormatted: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     slackUserId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -394,11 +401,19 @@ SlackChatBotMessage.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    userMessageId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     slackFullName: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     slackAvatar: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    slackAnswerTs: {
       type: DataTypes.STRING,
       allowNull: true,
     },

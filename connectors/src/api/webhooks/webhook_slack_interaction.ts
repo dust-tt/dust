@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
+import { botPickAssistant } from "@connectors/connectors/slack/bot";
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -80,23 +80,22 @@ const _webhookSlackInteractionsAPIHandler = async (
     return res.status(200).end();
   }
 
-  const botRes = await botAnswerMessageWithErrorHandling({
-    message: "",
+  const pickRes = await botPickAssistant({
     slackTeamId: payload.team.id,
     slackChannel: payload.channel.id,
-    slackUserId: payload.user.id,
     slackMessageTs: payload.message.ts,
     slackThreadTs: payload.message?.thread_ts || null,
     mentionOverride: [agentConfigId],
   });
-  if (botRes.isErr()) {
+  if (pickRes.isErr()) {
     logger.error(
       {
-        error: botRes.error,
-        payload: payload,
+        payload,
+        error: pickRes.error,
       },
-      "Failed to handle Slack reaction"
+      `Failed to edit message in slack`
     );
+    return;
   }
 };
 

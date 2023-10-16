@@ -117,6 +117,23 @@ export type PostContentFragmentRequestBody = t.TypeOf<
   typeof PostContentFragmentRequestBodySchemaIoTs
 >;
 
+export const PostEditRequestBodySchema = t.type({
+  content: t.string,
+  mentions: t.array(
+    t.union([
+      t.type({ configurationId: t.string }),
+      t.type({
+        provider: t.string,
+        providerId: t.string,
+      }),
+    ])
+  ),
+});
+
+export type PostEditRequestBodySchema = t.TypeOf<
+  typeof PostEditRequestBodySchema
+>;
+
 // Event sent when the user message is created.
 export type UserMessageErrorEvent = {
   type: "user_message_error";
@@ -298,7 +315,7 @@ export type AgentMessageType = {
   visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-  // configuration: AgentConfigurationType;
+  configuration: AgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
   content: string | null;
@@ -625,5 +642,33 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.contentFragment as ContentFragmentType);
+  }
+
+  async editMessage(
+    conversationId: string,
+    messageId: string,
+    { content, mentions }: PostEditRequestBodySchema
+  ) {
+    const res = await fetch(
+      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages/${messageId}/edit`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          mentions,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.message as UserMessageType);
   }
 }
