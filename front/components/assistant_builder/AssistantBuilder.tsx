@@ -316,7 +316,12 @@ export default function AssistantBuilder({
 
   // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
   useEffect(() => {
-    if (slackChannelsLinkedWithAgent && agentConfigurationId && !edited) {
+    if (
+      slackChannelsLinkedWithAgent.length &&
+      agentConfigurationId &&
+      !edited &&
+      !selectedSlackChannels.length
+    ) {
       setSelectedSlackChannels(
         slackChannelsLinkedWithAgent
           .filter(
@@ -328,7 +333,12 @@ export default function AssistantBuilder({
           }))
       );
     }
-  }, [slackChannelsLinkedWithAgent, agentConfigurationId, edited]);
+  }, [
+    slackChannelsLinkedWithAgent,
+    agentConfigurationId,
+    edited,
+    selectedSlackChannels,
+  ]);
 
   const assistantHandleIsValid = useCallback((handle: string) => {
     return /^[a-zA-Z0-9_-]{1,20}$/.test(removeLeadingAt(handle));
