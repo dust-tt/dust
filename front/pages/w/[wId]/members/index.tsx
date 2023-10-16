@@ -561,6 +561,7 @@ function ChangeMemberModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
+  const [currentRole, setCurrentRole] = useState<RoleType | null>(null);
   if (!member) return null; // Unreachable
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -568,10 +569,14 @@ function ChangeMemberModal({
       "Builders can create custom assistants and use advanced dev tools.",
     user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
   };
+  const onCloseMutate = async () => {
+    await mutate(`/api/w/${owner.sId}/members`);
+    onClose();
+  };
   return (
     <Modal
       isOpen={showModal}
-      onClose={onClose}
+      onClose={onCloseMutate}
       hasChanged={false}
       title={member.name || "Unreachable"}
       type="right-side"
@@ -591,7 +596,7 @@ function ChangeMemberModal({
               <DropdownMenu.Button type="select">
                 <Button
                   variant="secondary"
-                  label={member.workspaces[0].role}
+                  label={currentRole || member.workspaces[0].role}
                   size="sm"
                   type="select"
                   className="capitalize"
@@ -634,7 +639,7 @@ function ChangeMemberModal({
   );
   async function handleMemberRoleChange(
     member: UserType,
-    role: string
+    role: RoleType
   ): Promise<void> {
     const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
       method: "POST",
@@ -648,7 +653,7 @@ function ChangeMemberModal({
     if (!res.ok) {
       window.alert("Failed to update membership.");
     } else {
-      await mutate(`/api/w/${owner.sId}/members`);
+      setCurrentRole(role);
     }
   }
 }
