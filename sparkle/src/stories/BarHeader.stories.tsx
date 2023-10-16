@@ -53,6 +53,41 @@ export const BasicBarHeaderValidate = () => {
   );
 };
 
+export const BasicBarHeaderValidateCustomLabel = () => {
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  return (
+    <div className="s-h-full s-w-full">
+      <BarHeader
+        title="Knowledge Base"
+        rightActions={
+          <BarHeader.ButtonBar
+            variant="validate"
+            isSaving={isSaving}
+            saveLabel="Soupinou"
+            onSave={() => {
+              setIsSaving(true);
+              setTimeout(() => {
+                setIsSaving(false);
+                alert("Save !");
+              }, 2000);
+            }}
+          />
+        }
+      />
+      <div className="s-mt-16 s-h-full s-w-full s-overflow-y-auto">
+        <PageHeader title="Page Title" icon={ChatBubbleBottomCenterText} />
+        <div className="s-flex s-flex-col s-gap-y-96">
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
+          <img src="https://source.unsplash.com/random" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const BasicBarHeaderValidateSaveDisabled = () => (
   <div className="s-mt-16 s-h-full s-w-full">
     <BarHeader
