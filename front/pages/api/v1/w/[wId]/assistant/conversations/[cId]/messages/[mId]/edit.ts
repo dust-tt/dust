@@ -30,25 +30,25 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
 ): Promise<void> {
-    const keyRes = await getAPIKey(req);
-    if (keyRes.isErr()) {
-      return apiError(req, res, keyRes.error);
-    }
-  
-    const { auth, keyWorkspaceId } = await Authenticator.fromKey(
-      keyRes.value,
-      req.query.wId as string
-    );
-  
-    if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "The Assistant API is only available on your own workspace.",
-        },
-      });
-    }
+  const keyRes = await getAPIKey(req);
+  if (keyRes.isErr()) {
+    return apiError(req, res, keyRes.error);
+  }
+
+  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
+
+  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The Assistant API is only available on your own workspace.",
+      },
+    });
+  }
 
   const owner = auth.workspace();
   if (!owner) {
@@ -61,7 +61,6 @@ async function handler(
     });
   }
 
-  
   if (!(typeof req.query.cId === "string")) {
     return apiError(req, res, {
       status_code: 400,

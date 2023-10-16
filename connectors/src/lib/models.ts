@@ -319,7 +319,7 @@ export class SlackChatBotMessage extends Model<
   declare connectorId: ForeignKey<Connector["id"]>;
   declare channelId: string;
   declare message: string;
-  declare messageFormatted: string|null;
+  declare messageFormatted: string | null;
   declare slackUserId: string;
   declare slackEmail: string;
   declare slackUserName: string;
