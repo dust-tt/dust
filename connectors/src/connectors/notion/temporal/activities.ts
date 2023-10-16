@@ -1024,7 +1024,9 @@ export async function cachePage({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
-    pagePropertiesText: JSON.stringify(notionPage.properties),
+    pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
+      notionPage.properties
+    ),
     parentType: parent.type,
     parentId: parent.id,
     createdById: notionPage.created_by.id,
@@ -1269,7 +1271,9 @@ export async function cacheDatabaseChildren({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
-        pagePropertiesText: JSON.stringify(page.properties),
+        pagePropertiesText: ((p: PageObjectProperties) => JSON.stringify(p))(
+          page.properties
+        ),
         parentId: databaseId,
         parentType: "database",
         createdById: page.created_by.id,

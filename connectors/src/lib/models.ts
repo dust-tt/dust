@@ -702,7 +702,7 @@ NotionConnectorPageCacheEntry.init(
     },
     pageProperties: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
     },
     pagePropertiesText: {
       type: DataTypes.TEXT,

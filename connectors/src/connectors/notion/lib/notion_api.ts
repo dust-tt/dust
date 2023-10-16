@@ -253,7 +253,10 @@ export async function getDatabaseChildPages({
       if (
         NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(
           (e as { code: string }).code
-        )
+        ) ||
+        // This happens if the database is a "linked" database - we can't query those so
+        // it's not useful to retry.
+        (e as { code: string }).code === "validation_error"
       ) {
         tryLogger.info("Database not accessible.");
         return {
@@ -445,7 +448,10 @@ export async function getParsedDatabase(
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        // This happens if the database is a "linked" database - we can't query those so
+        // it's not useful to retry.
+        e.code === "validation_error")
     ) {
       localLogger.info("Database not found.");
       return null;
