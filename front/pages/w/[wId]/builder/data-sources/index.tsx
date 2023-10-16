@@ -492,8 +492,8 @@ export default function DataSourcesView({
                                           Disclosure
                                         </div>
                                         <div className="text-sm font-normal text-element-700">
-                                          Dust use of information received from
-                                          Google APIs will adhere to{" "}
+                                          Dust's use of information received
+                                          from the Google APIs will adhere to{" "}
                                           <Link
                                             className="s-text-action-500"
                                             href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
@@ -504,6 +504,28 @@ export default function DataSourcesView({
                                           requirements.
                                         </div>
                                       </div>
+
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
+                                          Notice on data processing
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          By connecting Google Drive, you
+                                          acknowledge and agree that within your
+                                          Google Drive, the data contained in
+                                          the files and folders that you choose
+                                          to synchronize with Dust will be
+                                          transmitted to third-party entities,
+                                          including but not limited to
+                                          Artificial Intelligence (AI) model
+                                          providers, for the purpose of
+                                          processing and analysis. This process
+                                          is an integral part of the
+                                          functionality of our service and is
+                                          subject to the terms outlined in our
+                                          Privacy Policy and Terms of Service.
+                                        </div>
+                                      </div>
                                       <div className="flex justify-center">
                                         <DropdownMenu.Button>
                                           <Button
@@ -511,7 +533,7 @@ export default function DataSourcesView({
                                             icon={CloudArrowLeftRightIcon}
                                             disabled={disabled}
                                             onClick={onclick}
-                                            label={label}
+                                            label="Acknowledge and Connect"
                                           />
                                         </DropdownMenu.Button>
                                       </div>
