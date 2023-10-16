@@ -325,6 +325,7 @@ export type ConversationType = {
 export type AgentConfigurationType = {
   sId: string;
   name: string;
+  status: string;
 };
 
 export type ContentFragmentType = {

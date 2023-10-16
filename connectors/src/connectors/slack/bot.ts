@@ -170,7 +170,9 @@ async function botAnswerMessage(
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
-  const agentConfigurations = agentConfigurationsRes.value;
+  const agentConfigurations = agentConfigurationsRes.value.filter(
+    (ac) => ac.status === "active"
+  );
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
