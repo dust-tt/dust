@@ -342,9 +342,11 @@ function InviteEmailModal({
     <Modal
       isOpen={showModal}
       onClose={onClose}
-      hasChanged={false}
+      hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
       title="Invite new users"
       type="right-side"
+      saveLabel="Invite"
+      onSave={handleSendInvitation}
     >
       <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
         <Page.P>
@@ -365,15 +367,6 @@ function InviteEmailModal({
                   setInviteEmail(e.trim());
                   setEmailError("");
                 }}
-              />
-            </div>
-            <div className="flex-none">
-              <Button
-                variant="primary"
-                label="Invite"
-                size="sm"
-                disabled={emailError !== "" || inviteEmail === "" || isSending}
-                onClick={handleSendInvitation}
               />
             </div>
           </div>
