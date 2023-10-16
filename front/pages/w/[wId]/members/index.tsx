@@ -26,6 +26,7 @@ import {
   getUserFromSession,
   RoleType,
 } from "@app/lib/auth";
+import { ModelId } from "@app/lib/databases";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -71,8 +72,6 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const inviteLink =
     owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
-  const { members } = useMembers(owner);
-  const { invitations } = useWorkspaceInvitations(owner);
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
 
   return (
@@ -144,25 +143,34 @@ export default function WorkspaceAdmin({
               <div></div>
             )}
           </div>
-          <MemberList members={members} invitations={invitations} />
+          <MemberList />
         </div>
       </Page>
     </AppLayout>
   );
 
-  function MemberList({
-    members,
-    invitations,
-  }: {
-    members: UserType[];
-    invitations: MembershipInvitationType[];
-  }) {
+  function MemberList() {
     const COLOR_FOR_ROLE: { [key: string]: "red" | "amber" | "emerald" } = {
       admin: "red",
       builder: "amber",
       user: "emerald",
     };
     const [searchText, setSearchText] = useState("");
+    const { members } = useMembers(owner);
+    const { invitations } = useWorkspaceInvitations(owner);
+    const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
+    /** Modal for changing member role: we need to use 2 states: set the member
+     * first, then open the modal with an unoticeable delay. Using
+     * only 1 state for both would break the modal animation because rerendering
+     * at the same time than switching modal to open*/
+    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
+    const [changeRoleMemberId, setChangeRoleMemberId] =
+      useState<ModelId | null>(null);
+    /* Same for invitations modal */
+    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
+      useState(false);
+    const [invitationToRevoke, setInvitationToRevoke] =
+      useState<MembershipInvitationType | null>(null);
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -186,21 +194,6 @@ export default function WorkspaceAdmin({
         ),
     ];
 
-    const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
-    /** Modal for changing member role: we need to use 2 states: set the member
-     * on hover, open modal on click. Using only 1 state for both would break
-     * the modal animation because rerendering at the same time than switching
-     * modal to open*/
-    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
-      null
-    );
-
-    /* Same for invitations modal */
-    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
-      useState(false);
-    const [invitationToRevoke, setInvitationToRevoke] =
-      useState<MembershipInvitationType | null>(null);
     return (
       <>
         <InviteEmailModal
@@ -218,7 +211,7 @@ export default function WorkspaceAdmin({
         />
         <ChangeMemberModal
           showModal={changeRoleModalOpen}
-          member={changeRoleMember}
+          member={members.find((m) => m.id === changeRoleMemberId) || null}
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
@@ -252,13 +245,14 @@ export default function WorkspaceAdmin({
                     : `member-${item.id}`
                 }
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
-                onMouseEnter={() => {
-                  if (isInvitation(item)) setInvitationToRevoke(item);
-                  else setChangeRoleMember(item);
-                }}
                 onClick={() => {
-                  if (isInvitation(item)) setRevokeInvitationModalOpen(true);
-                  else setChangeRoleModalOpen(true);
+                  if (isInvitation(item)) setInvitationToRevoke(item);
+                  else setChangeRoleMemberId(item.id);
+                  /* Delay to let react re-render the modal before opening it otherwise no animation transition */
+                  setTimeout(() => {
+                    if (isInvitation(item)) setRevokeInvitationModalOpen(true);
+                    else setChangeRoleModalOpen(true);
+                  }, 50);
                 }}
               >
                 <div className="hidden sm:block">
@@ -560,7 +554,6 @@ function ChangeMemberModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
-  const [currentRole, setCurrentRole] = useState<RoleType | null>(null);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   if (!member) return null; // Unreachable
   const roleTexts: { [k: string]: string } = {
@@ -569,14 +562,10 @@ function ChangeMemberModal({
       "Builders can create custom assistants and use advanced dev tools.",
     user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
   };
-  const onCloseMutate = async () => {
-    await mutate(`/api/w/${owner.sId}/members`);
-    onClose();
-  };
   return (
     <Modal
       isOpen={showModal}
-      onClose={onCloseMutate}
+      onClose={onClose}
       hasChanged={false}
       title={member.name || "Unreachable"}
       type="right-side"
@@ -596,7 +585,7 @@ function ChangeMemberModal({
               <DropdownMenu.Button type="select">
                 <Button
                   variant="secondary"
-                  label={currentRole || member.workspaces[0].role}
+                  label={member.workspaces[0].role}
                   size="sm"
                   type="select"
                   className="capitalize"
@@ -681,7 +670,7 @@ function ChangeMemberModal({
     if (!res.ok) {
       window.alert("Failed to update membership.");
     } else {
-      setCurrentRole(role);
+      await mutate(`/api/w/${owner.sId}/members`);
     }
   }
 }
