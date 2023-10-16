@@ -10,7 +10,6 @@ import {
   Modal,
   Page,
   PlusIcon,
-  QuestionMarkCircleStrokeIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
@@ -158,8 +157,8 @@ export default function WorkspaceAdmin({
     members: UserType[];
     invitations: MembershipInvitationType[];
   }) {
-    const COLOR_FOR_ROLE: { [key: string]: "pink" | "amber" | "emerald" } = {
-      admin: "pink",
+    const COLOR_FOR_ROLE: { [key: string]: "red" | "amber" | "emerald" } = {
+      admin: "red",
       builder: "amber",
       user: "emerald",
     };
@@ -656,8 +655,8 @@ function ChangeMemberModal({
             <Button
               variant="primaryWarning"
               label="Yes, revoke"
-              onClick={() => {
-                handleMemberRoleChange(member, "none");
+              onClick={async () => {
+                await handleMemberRoleChange(member, "none");
                 setRevokeMemberModalOpen(false);
               }}
             />
