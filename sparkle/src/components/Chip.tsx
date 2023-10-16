@@ -15,7 +15,8 @@ type ChipProps = {
     | "sky"
     | "pink"
     | "indigo"
-    | "action";
+    | "action"
+    | "red";
   label?: string;
   children?: ReactNode;
   className?: string;
