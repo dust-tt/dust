@@ -158,8 +158,8 @@ export default function WorkspaceAdmin({
     members: UserType[];
     invitations: MembershipInvitationType[];
   }) {
-    const COLOR_FOR_ROLE: { [key: string]: "warning" | "amber" | "emerald" } = {
-      admin: "warning",
+    const COLOR_FOR_ROLE: { [key: string]: "pink" | "amber" | "emerald" } = {
+      admin: "pink",
       builder: "amber",
       user: "emerald",
     };
