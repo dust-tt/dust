@@ -507,21 +507,21 @@ export default function DataSourcesView({
 
                                       <div className="flex flex-col gap-y-2">
                                         <div className="grow text-sm font-medium text-element-800">
-                                          Data Processing
+                                          Notice on data Processing
                                         </div>
                                         <div className="text-sm font-normal text-element-700">
-                                          By using this service, you hereby
-                                          acknowledge and agree that any data
-                                          contained within the Google Drives,
-                                          and folders you choose to synchronize
-                                          with Dust, will be transmitted to
-                                          third-party entities, including but
-                                          not limited to Artificial Intelligence
-                                          (AI) models, for the purpose of
-                                          processing and analysis. This
-                                          transmission is an integral part of
-                                          the functionality of our service.
-                                          Please note that this process is
+                                          By connecting Google Drive, you
+                                          acknowledge and agree that within your
+                                          Google Drive, the data contained in
+                                          the files and folders that you choose
+                                          to synchronize with Dust will be
+                                          transmitted to third-party entities,
+                                          including but not limited to
+                                          Artificial Intelligence (AI) model
+                                          providers, for the purpose of
+                                          processing and analysis. This process
+                                          is an integral part of the
+                                          functionality of our service and is
                                           subject to the terms outlined in our
                                           Privacy Policy and Terms of Service.
                                         </div>
