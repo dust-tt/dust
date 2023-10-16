@@ -20,6 +20,7 @@ const colors = [
   "pink",
   "indigo",
   "action",
+  "red",
 ] as const;
 
 export const ListChipsExample = () => (
