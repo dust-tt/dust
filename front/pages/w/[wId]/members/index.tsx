@@ -264,7 +264,7 @@ export default function WorkspaceAdmin({
               >
                 <div className="hidden sm:block">
                   {isInvitation(item) ? (
-                    <QuestionMarkCircleStrokeIcon className="h-7 w-7" />
+                    <Avatar size="xs" />
                   ) : (
                     <Avatar visual={item.image} name={item.name} size="xs" />
                   )}
