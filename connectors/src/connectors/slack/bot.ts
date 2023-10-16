@@ -36,15 +36,23 @@ const { DUST_API = "https://dust.tt" } = process.env;
 
 class SlackExternalUserError extends Error {}
 
-export async function botAnswerMessageWithErrorHandling(
-  message: string,
-  slackTeamId: string,
-  slackChannel: string,
-  slackUserId: string,
-  slackMessageTs: string,
-  slackThreadTs: string | null,
-  mentionOverride: string[]
-): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
+export async function botAnswerMessageWithErrorHandling({
+  message,
+  slackTeamId,
+  slackChannel,
+  slackUserId,
+  slackMessageTs,
+  slackThreadTs,
+  mentionOverride,
+}: {
+  message: string;
+  slackTeamId: string;
+  slackChannel: string;
+  slackUserId: string;
+  slackMessageTs: string;
+  slackThreadTs: string | null;
+  mentionOverride: string[];
+}): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -62,7 +70,7 @@ export async function botAnswerMessageWithErrorHandling(
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
-  const res = await botAnswerMessage(
+  const res = await botAnswerMessage({
     message,
     slackTeamId,
     slackChannel,
@@ -70,8 +78,8 @@ export async function botAnswerMessageWithErrorHandling(
     slackMessageTs,
     slackThreadTs,
     connector,
-    mentionOverride
-  );
+    mentionOverride,
+  });
   if (res.isErr()) {
     logger.error(
       {
@@ -112,16 +120,25 @@ export async function botAnswerMessageWithErrorHandling(
   return res;
 }
 
-async function botAnswerMessage(
-  message: string,
-  slackTeamId: string,
-  slackChannel: string,
-  slackUserId: string,
-  slackMessageTs: string,
-  slackThreadTs: string | null,
-  connector: Connector,
-  mentionOverride: string[]
-): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
+async function botAnswerMessage({
+  message,
+  slackTeamId,
+  slackChannel,
+  slackUserId,
+  slackMessageTs,
+  slackThreadTs,
+  connector,
+  mentionOverride,
+}: {
+  message: string;
+  slackTeamId: string;
+  slackChannel: string;
+  slackUserId: string;
+  slackMessageTs: string;
+  slackThreadTs: string | null;
+  connector: Connector;
+  mentionOverride: string[];
+}): Promise<Result<AgentGenerationSuccessEvent | null, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({

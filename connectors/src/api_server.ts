@@ -23,10 +23,9 @@ import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
-
-import { webhookSlackReactionsAPIHandler } from "./api/webhooks/webhook_slack_reaction";
 
 export function startServer(port: number) {
   const app = express();
@@ -89,8 +88,8 @@ export function startServer(port: number) {
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
   app.post(
-    "/webhooks/:webhook_secret/slack_reactions",
-    webhookSlackReactionsAPIHandler
+    "/webhooks/:webhook_secret/slack_interaction",
+    webhookSlackInteractionsAPIHandler
   );
   app.post(
     "/webhooks/:webhook_secret/google_drive",

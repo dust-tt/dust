@@ -72,15 +72,15 @@ async function handleChatBot(req: Request, res: Response) {
   // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
   res.status(200).send();
 
-  const botRes = await botAnswerMessageWithErrorHandling(
-    slackMessage,
+  const botRes = await botAnswerMessageWithErrorHandling({
+    message: slackMessage,
     slackTeamId,
     slackChannel,
     slackUserId,
     slackMessageTs,
     slackThreadTs,
-    []
-  );
+    mentionOverride: [],
+  });
   if (botRes.isErr()) {
     logger.error(
       {

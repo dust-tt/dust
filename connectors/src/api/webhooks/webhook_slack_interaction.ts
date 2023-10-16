@@ -39,7 +39,7 @@ type SlackWebhookResBody =
   | null
   | APIErrorWithStatusCode;
 
-const _webhookSlackReactionsAPIHandler = async (
+const _webhookSlackInteractionsAPIHandler = async (
   req: Request<
     Record<string, string>,
     SlackWebhookResBody,
@@ -54,7 +54,6 @@ const _webhookSlackReactionsAPIHandler = async (
   const agentConfigId =
     payload.state?.values?.agentConfigId?.static_selectAgentConfig
       ?.selected_option?.value;
-  console.log("agentConfigId", agentConfigId);
   if (!agentConfigId) {
     logger.error(
       {
@@ -81,15 +80,15 @@ const _webhookSlackReactionsAPIHandler = async (
     return res.status(200).end();
   }
 
-  const botRes = await botAnswerMessageWithErrorHandling(
-    ".",
-    payload.team.id,
-    payload.channel.id,
-    payload.user.id,
-    payload.message.ts,
-    payload.message?.thread_ts || null,
-    [agentConfigId]
-  );
+  const botRes = await botAnswerMessageWithErrorHandling({
+    message: "",
+    slackTeamId: payload.team.id,
+    slackChannel: payload.channel.id,
+    slackUserId: payload.user.id,
+    slackMessageTs: payload.message.ts,
+    slackThreadTs: payload.message?.thread_ts || null,
+    mentionOverride: [agentConfigId],
+  });
   if (botRes.isErr()) {
     logger.error(
       {
@@ -101,6 +100,6 @@ const _webhookSlackReactionsAPIHandler = async (
   }
 };
 
-export const webhookSlackReactionsAPIHandler = withLogging(
-  _webhookSlackReactionsAPIHandler
+export const webhookSlackInteractionsAPIHandler = withLogging(
+  _webhookSlackInteractionsAPIHandler
 );
