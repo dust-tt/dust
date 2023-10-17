@@ -5,11 +5,10 @@ const safeColorsArray = [
   "emerald",
   "amber",
   "slate",
-  "violet",
+  "purple",
   "warning",
   "sky",
   "pink",
-  "indigo",
   "action",
   "red",
 ];
