@@ -166,16 +166,15 @@ export default function WorkspaceAdmin({
      * only 1 state for both would break the modal animation because rerendering
      * at the same time than switching modal to open*/
     const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    /** In the state below we use an Id rather than the member directly, because
-     * we want it to mutate when the members list mutate */
-    const [changeRoleMemberId, setChangeRoleMemberId] =
-      useState<ModelId | null>(null);
+    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
+      null
+    );
 
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
-    const [invitationToRevokeId, setInvitationToRevokeId] =
-      useState<ModelId | null>(null);
+    const [invitationToRevoke, setInvitationToRevoke] =
+      useState<MembershipInvitationType | null>(null);
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -210,21 +209,13 @@ export default function WorkspaceAdmin({
         />
         <RevokeInvitationModal
           showModal={revokeInvitationModalOpen}
-          invitation={
-            invitationToRevokeId
-              ? invitations.find((i) => i.id === invitationToRevokeId) || null
-              : null
-          }
+          invitation={invitationToRevoke}
           onClose={() => setRevokeInvitationModalOpen(false)}
           owner={owner}
         />
         <ChangeMemberModal
           showModal={changeRoleModalOpen}
-          member={
-            changeRoleMemberId
-              ? members.find((m) => m.id === changeRoleMemberId) || null
-              : null
-          }
+          member={changeRoleMember}
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
@@ -259,8 +250,8 @@ export default function WorkspaceAdmin({
                 }
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
                 onClick={() => {
-                  if (isInvitation(item)) setInvitationToRevokeId(item.id);
-                  else setChangeRoleMemberId(item.id);
+                  if (isInvitation(item)) setInvitationToRevoke(item);
+                  else setChangeRoleMember(item);
                   /* Delay to let react re-render the modal before opening it otherwise no animation transition */
                   setTimeout(() => {
                     if (isInvitation(item)) setRevokeInvitationModalOpen(true);
@@ -373,7 +364,13 @@ function InviteEmailModal({
       title="Invite new users"
       type="right-side"
       saveLabel="Invite"
-      onSave={handleSendInvitation}
+      isSaving={isSending}
+      onSave={async () => {
+        setIsSending(true);
+        await handleSendInvitation();
+        setIsSending(false);
+        setInviteEmail("");
+      }}
     >
       <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
         <Page.P>
@@ -410,7 +407,6 @@ function InviteEmailModal({
       setEmailError("Invalid email address.");
       return;
     }
-    setIsSending(true);
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
       method: "POST",
       headers: {
@@ -428,8 +424,6 @@ function InviteEmailModal({
       );
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
-    setIsSending(false);
-    setInviteEmail("");
   }
 }
 
@@ -533,6 +527,7 @@ function RevokeInvitationModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
+  const [isSaving, setIsSaving] = useState(false);
   if (!invitation) return null;
   return (
     <Modal
@@ -540,6 +535,7 @@ function RevokeInvitationModal({
       onClose={onClose}
       hasChanged={false}
       title="Revoke invitation"
+      isSaving={isSaving}
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
@@ -550,10 +546,12 @@ function RevokeInvitationModal({
           <Button variant="tertiary" label="Cancel" onClick={onClose} />
           <Button
             variant="primaryWarning"
-            label="Yes, revoke"
+            label={isSaving ? "Revoking..." : "Yes, revoke"}
             onClick={async () => {
+              setIsSaving(true);
               await handleRevokeInvitation(invitation.id);
               onClose();
+              setIsSaving(false);
             }}
           />
         </div>
@@ -592,6 +590,8 @@ function ChangeMemberModal({
 }) {
   const { mutate } = useSWRConfig();
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   if (!member) return null; // Unreachable
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -603,9 +603,21 @@ function ChangeMemberModal({
     <Modal
       isOpen={showModal}
       onClose={onClose}
-      hasChanged={false}
+      isSaving={isSaving}
+      hasChanged={
+        selectedRole !== null && selectedRole !== member.workspaces[0].role
+      }
       title={member.name || "Unreachable"}
       type="right-side"
+      onSave={async () => {
+        setIsSaving(true);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion --
+        // we know it's not null because of the hasChanged check
+        await handleMemberRoleChange(member, selectedRole!);
+        onClose();
+        setIsSaving(false);
+      }}
+      saveLabel="Update role"
     >
       <div className="mt-6 flex flex-col gap-9 px-2 text-sm text-element-700">
         <div className="flex items-center gap-4">
@@ -622,7 +634,7 @@ function ChangeMemberModal({
               <DropdownMenu.Button type="select">
                 <Button
                   variant="secondary"
-                  label={member.workspaces[0].role}
+                  label={selectedRole || member.workspaces[0].role}
                   size="sm"
                   type="select"
                   className="capitalize"
@@ -632,9 +644,7 @@ function ChangeMemberModal({
                 {["admin", "builder", "user"].map((role) => (
                   <DropdownMenu.Item
                     key={role}
-                    onClick={() =>
-                      handleMemberRoleChange(member, role as RoleType)
-                    }
+                    onClick={() => setSelectedRole(role as RoleType)}
                     label={role.charAt(0).toUpperCase() + role.slice(1)}
                   />
                 ))}
@@ -680,11 +690,13 @@ function ChangeMemberModal({
             />
             <Button
               variant="primaryWarning"
-              label="Yes, revoke"
+              label={isSaving ? "Revoking..." : "Yes, revoke"}
               onClick={async () => {
+                setIsSaving(true);
                 await handleMemberRoleChange(member, "none");
                 setRevokeMemberModalOpen(false);
                 onClose();
+                setIsSaving(false);
               }}
             />
           </div>
