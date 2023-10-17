@@ -421,19 +421,36 @@ export async function retrieveNotionConnectorPermissions({
 
   const folderResources: ConnectorResource[] = [];
   if (!parentInternalId) {
-    // We also need to return a "fake" top-level folder call "Orphaned" to include resources
-    // we haven't been able to find a parent for.
-    folderResources.push({
-      provider: c.type,
-      // Orphaned resources in the database will have "unknown" as their parentId.
-      internalId: "unknown",
-      parentInternalId: null,
-      type: "folder",
-      title: "Orphaned Resources",
-      sourceUrl: null,
-      expandable: true,
-      permission: "read",
-    });
+    const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
+      NotionPage.count({
+        where: {
+          connectorId,
+          parentId: "unknown",
+        },
+      }),
+      NotionDatabase.count({
+        where: {
+          connectorId,
+          parentId: "unknown",
+        },
+      }),
+    ]);
+
+    if (orphanedPagesCount + orphanedDbsCount > 0) {
+      // We also need to return a "fake" top-level folder call "Orphaned" to include resources
+      // we haven't been able to find a parent for.
+      folderResources.push({
+        provider: c.type,
+        // Orphaned resources in the database will have "unknown" as their parentId.
+        internalId: "unknown",
+        parentInternalId: null,
+        type: "folder",
+        title: "Orphaned Resources",
+        sourceUrl: null,
+        expandable: true,
+        permission: "read",
+      });
+    }
   }
 
   const resources = pageResources.concat(dbResources);
