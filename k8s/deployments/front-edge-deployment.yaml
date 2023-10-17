@@ -16,6 +16,7 @@ spec:
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-edge","tags": ["env:prod"]}]'
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/front-image:latest
@@ -46,12 +47,11 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 
-            # add PRESTOP_SECRET env variable from prestop-secret
             - name: PRESTOP_SECRET
               valueFrom:
                 secretKeyRef:
                   name: prestop-secret
-                  key: PRESTOP_SECRET # replace with the key of the secret
+                  key: PRESTOP_SECRET
 
           lifecycle:
             preStop:

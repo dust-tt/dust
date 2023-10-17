@@ -47,7 +47,6 @@ export const withLogging = (handler: any, streaming = false) => {
           message: `Unhandled internal server error: ${err}`,
         },
       });
-
       return;
     }
 
