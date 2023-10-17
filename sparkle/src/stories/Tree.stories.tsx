@@ -23,19 +23,99 @@ export const TreeExample = () => {
             </Tree.Item>
             <Tree.Item label="item 3" variant="folder">
               <Tree>
-                <Tree.Item label="item 1" />
-                <Tree.Item label="item 2" />
-                <Tree.Item label="item 3" />
+                <Tree.Item
+                  type="leaf"
+                  label="item 1"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 2"
+                  type="leaf"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 3"
+                  type="leaf"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
               </Tree>
             </Tree.Item>
-            <Tree.Item label="item 4" variant="folder" />
-            <Tree.Item label="item 5" variant="folder">
+            <Tree.Item label="item 4" variant="folder" collapsed={true}>
               <Tree>
                 <Tree.Item label="item 1" />
-                <Tree.Item label="item 2" />
-                <Tree.Item label="item 3" />
-                <Tree.Item label="item 4" />
-                <Tree.Item label="item 5" />
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="item 5" variant="folder">
+              <Tree>
+                <Tree.Item
+                  label="item 1"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: true,
+                    partialChecked: true,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 2"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: true,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 3"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 4"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 5"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
               </Tree>
             </Tree.Item>
           </Tree>
@@ -45,11 +125,66 @@ export const TreeExample = () => {
         <div className="s-text-xl">Flat</div>
         <div>
           <Tree>
-            <Tree.Item label="item 1" type="item" variant="channel" />
-            <Tree.Item label="item 2" type="item" variant="channel" />
-            <Tree.Item label="item 3" type="item" variant="channel" />
-            <Tree.Item label="item 4" type="item" variant="channel" />
-            <Tree.Item label="item 5" type="item" variant="channel" />
+            <Tree.Item
+              label="item 1"
+              type="item"
+              variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: true,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 2"
+              type="item"
+              variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: true,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 3"
+              type="item"
+              variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 4"
+              type="item"
+              variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 5"
+              type="item"
+              variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
           </Tree>
         </div>
       </div>
