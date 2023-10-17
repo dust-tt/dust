@@ -12,8 +12,8 @@ export default meta;
 
 export const FrameEx = () => (
   <div className="s-flex s-flex-col s-gap-4">
-    <Frame direction="vertical md:horizontal" gap="sm md:lg">
-      <Frame>
+    <Frame direction="vertical md:horizontal" gap="xs sm:lg">
+      <Frame background="pink-200">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque non
         arcu quis ligula dapibus rhoncus. In quis risus ut nunc ultricies
         sagittis. Vivamus quis purus nec ante fermentum facilisis quis a purus.

@@ -2,6 +2,8 @@ import React from "react";
 
 import { classNames, Responsive, responsiveProp } from "@sparkle/lib/utils";
 
+import { safeColorlist } from '../../tailwind.config.js';
+
 type Direction = "horizontal" | "vertical" | "fluid";
 type Sizing = "shrink" | "grow";
 type Align = "stretch" | "left" | "center" | "right";
@@ -13,6 +15,7 @@ interface FrameProps {
   sizing?: Sizing | Responsive<Sizing>;
   align?: Align | Responsive<Align>;
   gap?: Gap | Responsive<Gap>;
+  background?: typeof safeColorlist[number];
 }
 
 const directionMap: Record<Direction, string> = {
@@ -48,13 +51,15 @@ export function Frame({
   sizing = "shrink",
   align = "left",
   gap = "lg",
+  background,
 }: FrameProps) {
   const classes = classNames(
     "s-flex",
     responsiveProp(direction, directionMap),
     responsiveProp(sizing, sizingMap),
     responsiveProp(align, alignMap),
-    responsiveProp(gap, gapMap)
+    responsiveProp(gap, gapMap),
+    background ? `s-bg-${background}` : ""
   );
 
   return <div className={classes}>{children}</div>;

@@ -11,15 +11,35 @@ const safeColorsArray = [
   "pink",
   "action",
   "red",
+  "warning",
 ];
 
-const safeColorlist = safeColorsArray.flatMap((color) => [
-  `s-bg-${color}-100`,
-  `s-border-${color}-200`,
-  `s-text-${color}-900`,
-]);
+const safeColorsNumArray = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+];
+
+const safeColorlist = safeColorsArray.flatMap((color) =>
+  safeColorsNumArray.flatMap((index) => `${color}-${index}`)
+);
+
+const safeCSSlist = safeColorsArray.flatMap((color) =>
+  safeColorsNumArray.flatMap(
+    (index) =>
+      `s-bg-${color}-${index} s-border-${color}-${index} s-text-${color}-${index}`
+  )
+);
 
 module.exports = {
+  safeColorlist: safeColorlist,
   theme: {
     fontFamily: {
       sans: ["'darkmode-off-cc'", "sans-serif"],
@@ -179,5 +199,5 @@ module.exports = {
   plugins: [require("@tailwindcss/forms")],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
-  safelist: safeColorlist,
+  safelist: safeCSSlist,
 };
