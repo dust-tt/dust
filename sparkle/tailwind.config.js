@@ -3,12 +3,15 @@ const colors = require("tailwindcss/colors");
 
 const safeColorsArray = [
   "emerald",
+  "success",
+  "brand",
   "amber",
   "slate",
   "purple",
   "warning",
   "sky",
   "pink",
+  "blue",
   "action",
   "red",
   "warning",

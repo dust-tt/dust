@@ -35,7 +35,8 @@ export const ListChipsExample = () => (
         <Chip key={`sm-${color}`} size="sm" label={color} color={color} />
       ))}
     </Chip.List>
-    <div className="s-w-60">
+    <div className="s-flex s-w-96 s-flex-col s-gap-2">
+      Chip List example
       <Chip.List isWrapping={true}>
         {colors.map((color) => (
           <Chip key={`xs-${color}`} size="xs" label={color} color={color} />
