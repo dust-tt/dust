@@ -339,7 +339,13 @@ export async function isAccessibleAndUnarchived(
           }
           continue;
         }
-        if (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code)) {
+        if (
+          NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+          // This happens if the database is a "linked" database - we can't query those so
+          // it's not useful to retry. We just assume that we don't have access to this resource
+          // and return false.
+          e.code === "validation_error"
+        ) {
           return false;
         }
       }
