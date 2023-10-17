@@ -97,7 +97,7 @@ export default function DustAppRunAction({
                 setOutputVisible(!outputVisible);
               }}
             >
-              <Chip color="violet">
+              <Chip color="purple">
                 {formatOutput(dustAppRunAction.output)}
                 <Icon
                   visual={outputVisible ? ChevronDownIcon : ChevronRightIcon}
