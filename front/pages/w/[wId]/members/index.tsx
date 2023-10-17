@@ -33,6 +33,8 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
+const CLOSING_ANIMATION_DURATION = 200;
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
@@ -569,7 +571,11 @@ function RevokeInvitationModal({
               setIsSaving(true);
               await handleRevokeInvitation(invitation.id);
               onClose();
-              setIsSaving(false);
+              /* Delay to let react close the modal before cleaning isSaving, to
+               * avoid the user seeing the button change label again during the closing animation */
+              setTimeout(() => {
+                setIsSaving(false);
+              }, CLOSING_ANIMATION_DURATION);
             }}
           />
         </div>
@@ -637,7 +643,11 @@ function ChangeMemberModal({
         if (!selectedRole) return; // unreachable due to hasChanged
         await handleMemberRoleChange(member, selectedRole);
         onClose();
-        setIsSaving(false);
+        /* Delay to let react close the modal before cleaning isSaving, to
+         * avoid the user seeing the button change label again during the closing animation */
+        setTimeout(() => {
+          setIsSaving(false);
+        }, CLOSING_ANIMATION_DURATION);
       }}
       saveLabel="Update role"
     >
@@ -718,7 +728,11 @@ function ChangeMemberModal({
                 await handleMemberRoleChange(member, "none");
                 setRevokeMemberModalOpen(false);
                 onClose();
-                setIsSaving(false);
+                /* Delay to let react close the modal before cleaning isSaving, to
+                 * avoid the user seeing the button change label again during the closing animation */
+                setTimeout(() => {
+                  setIsSaving(false);
+                }, CLOSING_ANIMATION_DURATION);
               }}
             />
           </div>
