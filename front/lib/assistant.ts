@@ -66,9 +66,9 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   providerId: "textsynth",
   modelId: "mistral_7B_instruct",
   displayName: "Mistral 7B",
-  contextSize: 4096,
+  contextSize: 8192,
   largeModel: false,
-  recommendedTopK: 8,
+  recommendedTopK: 16,
 } as const;
 
 export const SUPPORTED_MODEL_CONFIGS = [

@@ -796,8 +796,8 @@ impl LLM for TextSynthLLM {
 
     fn context_size(&self) -> usize {
         match self.id.as_str() {
-            "mistral_7B" => 4096,
-            "mistral_7B_instruct" => 4096,
+            "mistral_7B" => 8192,
+            "mistral_7B_instruct" => 8192,
             "falcon_7B" => 2048,
             "falcon_40B" => 2048,
             "falcon_40B-chat" => 2048,
