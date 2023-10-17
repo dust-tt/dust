@@ -26,7 +26,6 @@ import {
   getUserFromSession,
   RoleType,
 } from "@app/lib/auth";
-import { ModelId } from "@app/lib/databases";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -156,21 +155,29 @@ export default function WorkspaceAdmin({
       user: "emerald",
     };
     const [searchText, setSearchText] = useState("");
-    const { members } = useMembers(owner);
-    const { invitations } = useWorkspaceInvitations(owner);
+    const { members, isMembersLoading } = useMembers(owner);
+    const { invitations, isInvitationsLoading } =
+      useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
     /** Modal for changing member role: we need to use 2 states: set the member
      * first, then open the modal with an unoticeable delay. Using
      * only 1 state for both would break the modal animation because rerendering
      * at the same time than switching modal to open*/
     const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    const [changeRoleMemberId, setChangeRoleMemberId] =
-      useState<ModelId | null>(null);
+    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
+      null
+    );
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
     const [invitationToRevoke, setInvitationToRevoke] =
       useState<MembershipInvitationType | null>(null);
+
+    function isInvitation(
+      arg: MembershipInvitationType | UserType
+    ): arg is MembershipInvitationType {
+      return (arg as MembershipInvitationType).inviteEmail !== undefined;
+    }
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -182,15 +189,17 @@ export default function WorkspaceAdmin({
         .filter(
           (m) =>
             !searchText ||
-            m.name.toLowerCase().includes(searchText) ||
-            m.email?.toLowerCase().includes(searchText) ||
-            m.username?.toLowerCase().includes(searchText)
+            m.name.toLowerCase().includes(searchText.toLowerCase()) ||
+            m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+            m.username?.toLowerCase().includes(searchText.toLowerCase())
         ),
       ...invitations
         .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
         .filter((i) => i.status === "pending")
         .filter(
-          (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
+          (i) =>
+            !searchText ||
+            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
 
@@ -211,7 +220,7 @@ export default function WorkspaceAdmin({
         />
         <ChangeMemberModal
           showModal={changeRoleModalOpen}
-          member={members.find((m) => m.id === changeRoleMemberId) || null}
+          member={changeRoleMember}
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
@@ -247,7 +256,7 @@ export default function WorkspaceAdmin({
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
                 onClick={() => {
                   if (isInvitation(item)) setInvitationToRevoke(item);
-                  else setChangeRoleMemberId(item.id);
+                  else setChangeRoleMember(item);
                   /* Delay to let react re-render the modal before opening it otherwise no animation transition */
                   setTimeout(() => {
                     if (isInvitation(item)) setRevokeInvitationModalOpen(true);
@@ -306,14 +315,28 @@ export default function WorkspaceAdmin({
               </div>
             )
           )}
+          {(isMembersLoading || isInvitationsLoading) && (
+            <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+              <div className="hidden sm:block">
+                <Avatar size="xs" />
+              </div>
+              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                <div className="font-medium text-element-900">Loading...</div>
+                <div className="grow font-normal text-element-700"></div>
+              </div>
+              <div>
+                <Chip size="xs" color="slate">
+                  Loading...
+                </Chip>
+              </div>
+              <div className="hidden sm:block">
+                <ChevronRightIcon />
+              </div>
+            </div>
+          )}
         </div>
       </>
     );
-    function isInvitation(
-      arg: MembershipInvitationType | UserType
-    ): arg is MembershipInvitationType {
-      return (arg as MembershipInvitationType).inviteEmail !== undefined;
-    }
   }
 }
 
@@ -331,6 +354,31 @@ function InviteEmailModal({
   const [emailError, setEmailError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const { mutate } = useSWRConfig();
+
+  async function handleSendInvitation(): Promise<void> {
+    if (!isEmailValid(inviteEmail)) {
+      setEmailError("Invalid email address.");
+      return;
+    }
+    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inviteEmail,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to invite new member to workspace.");
+    } else {
+      setSuccessMessage(
+        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
+      );
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+
   return (
     <Modal
       isOpen={showModal}
@@ -339,7 +387,13 @@ function InviteEmailModal({
       title="Invite new users"
       type="right-side"
       saveLabel="Invite"
-      onSave={handleSendInvitation}
+      isSaving={isSending}
+      onSave={async () => {
+        setIsSending(true);
+        await handleSendInvitation();
+        setIsSending(false);
+        setInviteEmail("");
+      }}
     >
       <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
         <Page.P>
@@ -370,33 +424,6 @@ function InviteEmailModal({
       </div>
     </Modal>
   );
-
-  async function handleSendInvitation(): Promise<void> {
-    if (!isEmailValid(inviteEmail)) {
-      setEmailError("Invalid email address.");
-      return;
-    }
-    setIsSending(true);
-    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        inviteEmail,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to invite new member to workspace.");
-    } else {
-      setSuccessMessage(
-        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
-      );
-      await mutate(`/api/w/${owner.sId}/invitations`);
-    }
-    setIsSending(false);
-    setInviteEmail("");
-  }
 }
 
 function InviteSettingsModal({
@@ -411,43 +438,6 @@ function InviteSettingsModal({
   const [domainUpdating, setDomainUpdating] = useState(false);
   const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
   const [allowedDomainError, setAllowedDomainError] = useState("");
-  return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
-      hasChanged={
-        domainInput !== owner.allowedDomain &&
-        !allowedDomainError &&
-        !domainUpdating
-      }
-      title="Invitation link settings"
-      type="right-side"
-      onSave={() => validDomain() && handleUpdateWorkspace()}
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Any person with a Google Workspace email on corresponding domain name
-          will be allowed to join the workspace.
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="font-bold">Whitelisted email domain</div>
-          <Input
-            className="text-sm"
-            placeholder={"Company domain"}
-            value={domainInput}
-            name={""}
-            error={allowedDomainError}
-            showErrorLabel={true}
-            onChange={(e) => {
-              setDomainInput(e);
-              setAllowedDomainError("");
-            }}
-            disabled={domainUpdating}
-          />
-        </div>
-      </div>
-    </Modal>
-  );
 
   async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
@@ -485,6 +475,44 @@ function InviteSettingsModal({
 
     return valid;
   }
+
+  return (
+    <Modal
+      isOpen={showModal}
+      onClose={onClose}
+      hasChanged={
+        domainInput !== owner.allowedDomain &&
+        !allowedDomainError &&
+        !domainUpdating
+      }
+      title="Invitation link settings"
+      type="right-side"
+      onSave={() => validDomain() && handleUpdateWorkspace()}
+    >
+      <div className="mt-6 flex flex-col gap-6 px-2">
+        <div>
+          Any person with a Google Workspace email on corresponding domain name
+          will be allowed to join the workspace.
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="font-bold">Whitelisted email domain</div>
+          <Input
+            className="text-sm"
+            placeholder={"Company domain"}
+            value={domainInput}
+            name={""}
+            error={allowedDomainError}
+            showErrorLabel={true}
+            onChange={(e) => {
+              setDomainInput(e);
+              setAllowedDomainError("");
+            }}
+            disabled={domainUpdating}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 function RevokeInvitationModal({
@@ -499,30 +527,8 @@ function RevokeInvitationModal({
   owner: WorkspaceType;
 }) {
   const { mutate } = useSWRConfig();
-
-  return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
-      hasChanged={false}
-      title="Revoke invitation"
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Revoke invitation for user with email{" "}
-          <span className="font-bold">{invitation?.inviteEmail}</span>?
-        </div>
-        <div className="flex gap-2">
-          <Button variant="tertiary" label="Cancel" onClick={onClose} />
-          <Button
-            variant="primaryWarning"
-            label="Yes, revoke"
-            onClick={() => invitation && handleRevokeInvitation(invitation.id)}
-          />
-        </div>
-      </div>
-    </Modal>
-  );
+  const [isSaving, setIsSaving] = useState(false);
+  if (!invitation) return null;
 
   async function handleRevokeInvitation(invitationId: number): Promise<void> {
     const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
@@ -540,6 +546,36 @@ function RevokeInvitationModal({
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
+
+  return (
+    <Modal
+      isOpen={showModal}
+      onClose={onClose}
+      hasChanged={false}
+      title="Revoke invitation"
+      isSaving={isSaving}
+    >
+      <div className="mt-6 flex flex-col gap-6 px-2">
+        <div>
+          Revoke invitation for user with email{" "}
+          <span className="font-bold">{invitation?.inviteEmail}</span>?
+        </div>
+        <div className="flex gap-2">
+          <Button variant="tertiary" label="Cancel" onClick={onClose} />
+          <Button
+            variant="primaryWarning"
+            label={isSaving ? "Revoking..." : "Yes, revoke"}
+            onClick={async () => {
+              setIsSaving(true);
+              await handleRevokeInvitation(invitation.id);
+              onClose();
+              setIsSaving(false);
+            }}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 function ChangeMemberModal({
@@ -555,7 +591,31 @@ function ChangeMemberModal({
 }) {
   const { mutate } = useSWRConfig();
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!member) return null; // Unreachable
+
+  async function handleMemberRoleChange(
+    member: UserType,
+    role: RoleType
+  ): Promise<void> {
+    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role: role === "none" ? "revoked" : role,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to update membership.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/members`);
+    }
+  }
+
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
     builder:
@@ -566,9 +626,20 @@ function ChangeMemberModal({
     <Modal
       isOpen={showModal}
       onClose={onClose}
-      hasChanged={false}
+      isSaving={isSaving}
+      hasChanged={
+        selectedRole !== null && selectedRole !== member.workspaces[0].role
+      }
       title={member.name || "Unreachable"}
       type="right-side"
+      onSave={async () => {
+        setIsSaving(true);
+        if (!selectedRole) return; // unreachable due to hasChanged
+        await handleMemberRoleChange(member, selectedRole);
+        onClose();
+        setIsSaving(false);
+      }}
+      saveLabel="Update role"
     >
       <div className="mt-6 flex flex-col gap-9 px-2 text-sm text-element-700">
         <div className="flex items-center gap-4">
@@ -585,7 +656,7 @@ function ChangeMemberModal({
               <DropdownMenu.Button type="select">
                 <Button
                   variant="secondary"
-                  label={member.workspaces[0].role}
+                  label={selectedRole || member.workspaces[0].role}
                   size="sm"
                   type="select"
                   className="capitalize"
@@ -595,9 +666,7 @@ function ChangeMemberModal({
                 {["admin", "builder", "user"].map((role) => (
                   <DropdownMenu.Item
                     key={role}
-                    onClick={() =>
-                      handleMemberRoleChange(member, role as RoleType)
-                    }
+                    onClick={() => setSelectedRole(role as RoleType)}
                     label={role.charAt(0).toUpperCase() + role.slice(1)}
                   />
                 ))}
@@ -643,11 +712,13 @@ function ChangeMemberModal({
             />
             <Button
               variant="primaryWarning"
-              label="Yes, revoke"
+              label={isSaving ? "Revoking..." : "Yes, revoke"}
               onClick={async () => {
+                setIsSaving(true);
                 await handleMemberRoleChange(member, "none");
                 setRevokeMemberModalOpen(false);
                 onClose();
+                setIsSaving(false);
               }}
             />
           </div>
@@ -655,23 +726,4 @@ function ChangeMemberModal({
       </Modal>
     </Modal>
   );
-  async function handleMemberRoleChange(
-    member: UserType,
-    role: RoleType
-  ): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        role: role === "none" ? "revoked" : role,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to update membership.");
-    } else {
-      await mutate(`/api/w/${owner.sId}/members`);
-    }
-  }
 }
