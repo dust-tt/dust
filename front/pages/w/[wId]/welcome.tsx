@@ -10,8 +10,8 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-const ADMIN_YOUTUBE_ID = "NVIbCvfkO3E";
-const MEMBER_YOUTUBE_ID = "NVIbCvfkO3E";
+const ADMIN_YOUTUBE_ID = "f9n4mqBX2aw";
+const MEMBER_YOUTUBE_ID = null; // We don't have the video yet.
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -80,7 +80,9 @@ export default function Welcome({
   const [adminInterest, setAdminInterest] =
     useState<string>(defaultAdminInterest);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
-  const [isFormProcessed, setIsFormProcessed] = useState<boolean>(false);
+  const [displayVideoScreen, setDisplayVideoScreen] = useState<boolean>(false);
+
+  const youtubeId = isAdmin ? ADMIN_YOUTUBE_ID : MEMBER_YOUTUBE_ID;
 
   useEffect(() => {
     setIsFormValid(
@@ -118,10 +120,22 @@ export default function Welcome({
       }
     }
     // We don't block the user if it fails here.
-    setIsFormProcessed(true);
+    if (youtubeId) {
+      setDisplayVideoScreen(true);
+    } else {
+      await redirectToApp();
+    }
   };
 
-  if (!isFormProcessed) {
+  const redirectToApp = async () => {
+    if (conversationId) {
+      await router.push(`/w/${owner.sId}/assistant/${conversationId}`);
+    } else {
+      await router.push(`/w/${owner.sId}/assistant/new`);
+    }
+  };
+
+  if (!displayVideoScreen) {
     return (
       <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
         <div className="flex flex-col gap-6">
@@ -209,7 +223,7 @@ export default function Welcome({
           </div>
           <div className="flex justify-center pt-6">
             <Button
-              label="Next"
+              label={youtubeId ? "Next" : "Start with Dust!"}
               disabled={!isFormValid}
               onClick={handleSubmit}
             />
@@ -217,7 +231,7 @@ export default function Welcome({
         </div>
       </OnboardingLayout>
     );
-  } else {
+  } else if (displayVideoScreen && youtubeId !== null) {
     return (
       <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
         <div className="flex flex-col gap-6">
@@ -228,23 +242,13 @@ export default function Welcome({
             <p>Here is a 3 minutes video to get you started with Dust.</p>
           </div>
           <div>
-            <YoutubeIframe
-              youtubeId={isAdmin ? ADMIN_YOUTUBE_ID : MEMBER_YOUTUBE_ID}
-            />
+            <YoutubeIframe youtubeId={youtubeId} />
           </div>
           <div className="flex justify-center">
             <Button
               label="Start with Dust!"
               disabled={!isFormValid}
-              onClick={async () => {
-                if (conversationId) {
-                  await router.push(
-                    `/w/${owner.sId}/assistant/${conversationId}`
-                  );
-                } else {
-                  await router.push(`/w/${owner.sId}/assistant/new`);
-                }
-              }}
+              onClick={redirectToApp}
             />
           </div>
         </div>
