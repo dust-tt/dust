@@ -117,7 +117,7 @@ export default function RetrievalAction({
               onClick={() => setDocListVisible(!docListVisible)}
               className="cursor-pointer"
             >
-              <Chip color="violet">
+              <Chip color="purple">
                 {retrievalAction.documents.length > 0
                   ? RetrievedDocumentsInfo(retrievalAction.documents)
                   : "No documents found"}
