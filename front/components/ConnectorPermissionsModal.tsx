@@ -190,7 +190,7 @@ export default function ConnectorPermissionsModal({
           <>
             {canUpdatePermissions && defaultPermissionTitleText ? (
               <div className="ml-10 mt-8 flex flex-row">
-                <div className="flex flex-initial mr-4">
+                <div className="mr-4 flex flex-initial">
                   <Checkbox
                     className="ml-auto"
                     onChange={(checked) => {
@@ -216,7 +216,7 @@ export default function ConnectorPermissionsModal({
                 </div>
               </div>
             </div>
-            <div className="mb-16 mt-8 mx-2">
+            <div className="mx-2 mb-16 mt-8">
               <PermissionTree
                 owner={owner}
                 dataSource={dataSource}
