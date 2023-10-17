@@ -22,6 +22,9 @@ async function handler(
     return;
   }
 
+  logger.info("Received prestop request, waiting 10s");
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+
   while (!wakeLockIsFree()) {
     logger.info("Waiting for wake lock to be free");
     await new Promise((resolve) => setTimeout(resolve, 1000));

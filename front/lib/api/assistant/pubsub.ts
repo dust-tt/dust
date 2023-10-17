@@ -194,7 +194,7 @@ export async function retryAgentMessageWithPubSub(
 ): Promise<Result<AgentMessageType, PubSubError>> {
   const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
     (resolve) => {
-      void (async () => {
+      void wakeLock(async () => {
         const redis = await redisClient();
         let didResolve = false;
         try {
@@ -255,7 +255,7 @@ export async function retryAgentMessageWithPubSub(
             );
           }
         }
-      })();
+      });
     }
   );
 
