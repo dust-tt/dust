@@ -20,6 +20,7 @@ import { Authenticator } from "@app/lib/auth";
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
+import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import {
   AgentMessageType,
@@ -96,7 +97,7 @@ async function handleUserMessageEvents(
 ): Promise<Result<UserMessageType, PubSubError>> {
   const promise: Promise<Result<UserMessageType, PubSubError>> = new Promise(
     (resolve) => {
-      void (async () => {
+      void wakeLock(async () => {
         const redis = await redisClient();
         let didResolve = false;
         try {
@@ -174,7 +175,7 @@ async function handleUserMessageEvents(
             );
           }
         }
-      })();
+      });
     }
   );
 

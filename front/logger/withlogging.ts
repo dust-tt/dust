@@ -8,15 +8,8 @@ import logger from "./logger";
 
 export const statsDClient = new StatsD();
 
-let _pendingRequestsCount = 0;
-
-export function pendingRequestsCount(): number {
-  return _pendingRequestsCount;
-}
-
 export const withLogging = (handler: any, streaming = false) => {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
-    _pendingRequestsCount += 1;
     const ddtraceSpan = tracer.scope().active();
     if (ddtraceSpan) {
       ddtraceSpan.setTag("streaming", streaming);
@@ -54,7 +47,7 @@ export const withLogging = (handler: any, streaming = false) => {
           message: `Unhandled internal server error: ${err}`,
         },
       });
-      _pendingRequestsCount -= 1;
+
       return;
     }
 
@@ -80,7 +73,6 @@ export const withLogging = (handler: any, streaming = false) => {
       },
       "Processed request"
     );
-    _pendingRequestsCount -= 1;
   };
 };
 
