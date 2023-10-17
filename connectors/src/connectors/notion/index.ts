@@ -347,17 +347,19 @@ export async function retrieveNotionConnectorPermissions({
     return new Err(new Error("Connector not found"));
   }
 
+  const parentId = parentInternalId || "workspace";
+
   const [pages, dbs] = await Promise.all([
     NotionPage.findAll({
       where: {
         connectorId,
-        parentId: parentInternalId || "workspace",
+        parentId,
       },
     }),
     NotionDatabase.findAll({
       where: {
         connectorId,
-        parentId: parentInternalId || "workspace",
+        parentId,
       },
     }),
   ]);
@@ -379,6 +381,7 @@ export async function retrieveNotionConnectorPermissions({
         },
       }),
     ]);
+
     const expandable = childPage || childDB ? true : false;
 
     return {
@@ -416,13 +419,47 @@ export async function retrieveNotionConnectorPermissions({
 
   const dbResources = await Promise.all(dbs.map((db) => getDbResources(db)));
 
+  const folderResources: ConnectorResource[] = [];
+  if (!parentInternalId) {
+    const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
+      NotionPage.count({
+        where: {
+          connectorId,
+          parentId: "unknown",
+        },
+      }),
+      NotionDatabase.count({
+        where: {
+          connectorId,
+          parentId: "unknown",
+        },
+      }),
+    ]);
+
+    if (orphanedPagesCount + orphanedDbsCount > 0) {
+      // We also need to return a "fake" top-level folder call "Orphaned" to include resources
+      // we haven't been able to find a parent for.
+      folderResources.push({
+        provider: c.type,
+        // Orphaned resources in the database will have "unknown" as their parentId.
+        internalId: "unknown",
+        parentInternalId: null,
+        type: "folder",
+        title: "Orphaned Resources",
+        sourceUrl: null,
+        expandable: true,
+        permission: "read",
+      });
+    }
+  }
+
   const resources = pageResources.concat(dbResources);
 
   resources.sort((a, b) => {
     return a.title.localeCompare(b.title);
   });
 
-  return new Ok(resources);
+  return new Ok(resources.concat(folderResources));
 }
 
 export async function retrieveNotionResourcesTitles(

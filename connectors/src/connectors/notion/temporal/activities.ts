@@ -1291,6 +1291,135 @@ export async function cacheDatabaseChildren({
   };
 }
 
+async function resolveResourceParent({
+  parentId,
+  parentType,
+  pageId,
+  accessToken,
+  loggerArgs,
+}: {
+  parentId: string;
+  parentType: NotionConnectorPageCacheEntry["parentType"];
+  pageId: string;
+  accessToken: string;
+  loggerArgs: Record<string, string | number>;
+}): Promise<{
+  parentId: string;
+  parentType: NotionConnectorPageCacheEntry["parentType"];
+}> {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    pageId,
+  });
+
+  if (parentType === "unknown" || parentType === "workspace") {
+    return {
+      parentId,
+      parentType,
+    };
+  }
+
+  if (parentType === "block") {
+    return {
+      parentId: "unknown",
+      parentType: "unknown",
+    };
+  }
+
+  let reachable = await isAccessibleAndUnarchived(
+    accessToken,
+    parentId,
+    parentType,
+    localLogger
+  );
+
+  if (reachable) {
+    return {
+      parentId,
+      parentType,
+    };
+  }
+
+  localLogger.info(
+    "Parent is not reachable -- attempting to find a better one."
+  );
+
+  // refetch the page in hopes of getting a valid parent
+  const page = await retrievePage({
+    accessToken,
+    pageId,
+    loggerArgs,
+  });
+
+  if (!page) {
+    logger.info("Could not retrieve page to find a better parent.");
+    return {
+      parentId: "unknown",
+      parentType: "unknown",
+    };
+  }
+
+  const parent = getPageOrBlockParent(page);
+  let newParentId = parent.id;
+  let newParentType = parent.type;
+
+  if (parent.type === "block") {
+    localLogger.info(
+      "Parent is a block, attempting to find a non-block parent."
+    );
+    const blockParent = await getBlockParentMemoized(
+      accessToken,
+      parent.id,
+      localLogger
+    );
+    if (!blockParent) {
+      localLogger.info("Could not retrieve block parent.");
+      return {
+        parentId: "unknown",
+        parentType: "unknown",
+      };
+    }
+    newParentId = blockParent.parentId;
+    newParentType = blockParent.parentType;
+  }
+
+  if (newParentType === "block") {
+    localLogger.warn("Could not find a valid non-block parent.");
+    return {
+      parentId: "unknown",
+      parentType: "unknown",
+    };
+  }
+
+  if (newParentType === "workspace" || newParentType === "unknown") {
+    return {
+      parentId: newParentId,
+      parentType: newParentType,
+    };
+  }
+
+  reachable = await isAccessibleAndUnarchived(
+    accessToken,
+    newParentId,
+    newParentType,
+    localLogger
+  );
+
+  if (reachable) {
+    logger.info("Found a new reachable parent.");
+    return {
+      parentId: newParentId,
+      parentType: newParentType,
+    };
+  }
+
+  localLogger.info("Could not find a reachable parent");
+  return {
+    parentId: "unknown",
+    parentType: "unknown",
+  };
+}
+
 export async function renderAndUpsertPageFromCache({
   connectorId,
   pageId,
@@ -1458,6 +1587,67 @@ export async function renderAndUpsertPageFromCache({
     if (blockParent) {
       parentType = blockParent.parentType;
       parentId = blockParent.parentId;
+    }
+  }
+
+  // checks if the parent is accessible. If not, attempts to refetch the page to hopefully get a
+  // valid parent. If that fails, returns "unknown" parent (i.e, orphaned node).
+  const resolvedParent = await resolveResourceParent({
+    parentId,
+    parentType,
+    pageId,
+    accessToken,
+    loggerArgs,
+  });
+
+  parentType = resolvedParent.parentType;
+  parentId = resolvedParent.parentId;
+
+  if (parentType === "page" || parentType === "database") {
+    // check if we have the parent page/DB in the DB already. If not, we need to add it
+    // to the cache of resources to check.
+    localLogger.info(
+      { parentType, parentId },
+      "notionRenderAndUpsertPageFromCache: Retrieving parent page/DB from connectors DB."
+    );
+
+    let notionId: string | null = null;
+    if (parentType === "page") {
+      const existingParentPage = await NotionPage.findOne({
+        where: {
+          notionPageId: parentId,
+          connectorId: connector.id,
+        },
+      });
+      if (!existingParentPage) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Parent page not found in connectors DB."
+        );
+        notionId = parentId;
+      }
+    } else if (parentType === "database") {
+      const existingParentDatabase = await NotionDatabase.findOne({
+        where: {
+          notionDatabaseId: parentId,
+          connectorId: connector.id,
+        },
+      });
+      if (!existingParentDatabase) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Parent database not found in connectors DB."
+        );
+        notionId = parentId;
+      }
+    } else {
+      ((_x: never) => void _x)(parentType);
+    }
+
+    if (notionId) {
+      await NotionConnectorResourcesToCheckCacheEntry.upsert({
+        notionId,
+        connectorId: connector.id,
+        resourceType: parentType,
+      });
     }
   }
 
