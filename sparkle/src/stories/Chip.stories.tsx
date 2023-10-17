@@ -14,7 +14,7 @@ const colors = [
   "emerald",
   "amber",
   "slate",
-  "violet",
+  "purple",
   "warning",
   "sky",
   "pink",
