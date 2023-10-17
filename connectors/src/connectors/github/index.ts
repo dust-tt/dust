@@ -312,6 +312,10 @@ export async function retrieveGithubConnectorPermissions({
     );
   }
 
+  resources.sort((a, b) => {
+    return a.title.localeCompare(b.title);
+  });
+
   return new Ok(resources);
 }
 

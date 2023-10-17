@@ -370,6 +370,10 @@ export async function retrieveSlackConnectorPermissions({
     permission: ch.permission,
   }));
 
+  resources.sort((a, b) => {
+    return a.title.localeCompare(b.title);
+  });
+
   return new Ok(resources);
 }
 
