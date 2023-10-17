@@ -6,6 +6,7 @@ import {
   ClipboardIcon,
   Cog6ToothIcon,
   DropdownMenu,
+  Icon,
   Input,
   Modal,
   Page,
@@ -27,7 +28,7 @@ import {
   RoleType,
 } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
-import { classNames, isEmailValid } from "@app/lib/utils";
+import { isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -255,7 +256,7 @@ export default function WorkspaceAdmin({
                     ? `invitation-${item.id}`
                     : `member-${item.id}`
                 }
-                className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 py-2 text-xs duration-200 hover:bg-action-100 sm:text-sm"
+                className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
                 onClick={() => {
                   if (isInvitation(item)) setInvitationToRevoke(item);
                   else setChangeRoleMember(item);
@@ -268,9 +269,9 @@ export default function WorkspaceAdmin({
               >
                 <div className="hidden sm:block">
                   {isInvitation(item) ? (
-                    <Avatar size="xs" />
+                    <Avatar size="sm" />
                   ) : (
-                    <Avatar visual={item.image} name={item.name} size="xs" />
+                    <Avatar visual={item.image} name={item.name} size="sm" />
                   )}
                 </div>
                 <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
@@ -295,24 +296,16 @@ export default function WorkspaceAdmin({
                     <Chip
                       size="xs"
                       color={COLOR_FOR_ROLE[item.workspaces[0].role]}
-                      className={
-                        /** Force tailwind to include classes we will need below */
-                        "text-amber-900 text-emerald-900 text-warning-900"
-                      }
                     >
-                      <span
-                        className={classNames(
-                          "capitalize",
-                          `text-${COLOR_FOR_ROLE[item.workspaces[0].role]}-900`
-                        )}
-                      >
-                        {item.workspaces[0].role}
-                      </span>
+                      {item.workspaces[0].role}
                     </Chip>
                   )}
                 </div>
                 <div className="hidden sm:block">
-                  <ChevronRightIcon />
+                  <Icon
+                    visual={ChevronRightIcon}
+                    className="text-element-600"
+                  />
                 </div>
               </div>
             )
