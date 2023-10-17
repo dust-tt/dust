@@ -86,7 +86,7 @@ export default function OnboardingLayout({
       </div>
 
       <div className="s-dark text-slate-200">
-        <main className="z-10 mx-auto max-w-4xl px-6 pt-48">{children}</main>
+        <main className="z-10 mx-auto max-w-4xl px-6 pt-32">{children}</main>
       </div>
       <>
         <Script
