@@ -32,7 +32,7 @@ export function Searchbar({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col s-p-px">
       <div
         className={classNames(
           "s-relative s-text-sm s-font-normal",
