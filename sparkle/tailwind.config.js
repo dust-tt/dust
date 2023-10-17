@@ -5,7 +5,7 @@ const safeColorsArray = [
   "emerald",
   "amber",
   "slate",
-  "violet",
+  "purple",
   "warning",
   "sky",
   "pink",
@@ -29,16 +29,11 @@ const safeColorsNumArray = [
   "900",
 ];
 
-const safeColorlist = safeColorsArray.flatMap((color) =>
-  safeColorsNumArray.flatMap((index) => `${color}-${index}`)
-);
-
 const safeCSSlist = safeColorsArray.flatMap((color) =>
   safeColorsNumArray.flatMap((index) => `s-bg-${color}-${index} s-border-${color}-${index} s-text-${color}-${index}`)
 );
 
 module.exports = {
-  safeColorlist: safeColorlist,
   theme: {
     fontFamily: {
       sans: ["'darkmode-off-cc'", "sans-serif"],

@@ -1020,7 +1020,7 @@ export async function cachePage({
 
   const parent = getPageOrBlockParent(notionPage);
 
-  await NotionConnectorPageCacheEntry.create({
+  await NotionConnectorPageCacheEntry.upsert({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
@@ -1267,7 +1267,7 @@ export async function cacheDatabaseChildren({
 
   await Promise.all(
     pages.map((page) =>
-      NotionConnectorPageCacheEntry.create({
+      NotionConnectorPageCacheEntry.upsert({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},

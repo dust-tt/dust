@@ -5,7 +5,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-interface CheckboxProps {
+export interface CheckboxProps {
   variant?: "selectable" | "checkable";
   checked: boolean;
   disabled?: boolean;
