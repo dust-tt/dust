@@ -10,7 +10,7 @@ import {
 } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 
-import { Checkbox } from "./Checkbox";
+import { Checkbox, CheckboxProps } from "./Checkbox";
 import { Icon } from "./Icon";
 import { IconButton } from "./IconButton";
 import Spinner from "./Spinner";
@@ -39,8 +39,11 @@ const visualTable = {
 
 export interface TreeItemProps {
   label?: string;
-  type?: "node" | "item";
+  type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
+  checkbox?: CheckboxProps;
+  onChevronClick?: () => void;
+  collapsed?: boolean;
   className?: string;
   children?: React.ReactNode;
 }
@@ -50,6 +53,9 @@ Tree.Item = function ({
   type = "node",
   className = "",
   variant = "file",
+  checkbox,
+  onChevronClick,
+  collapsed,
   children,
 }: TreeItemProps) {
   return (
@@ -62,16 +68,14 @@ Tree.Item = function ({
       >
         {type === "node" && (
           <IconButton
-            icon={children ? ChevronDown : ChevronRight}
+            icon={children && !collapsed ? ChevronDown : ChevronRight}
             size="sm"
             variant="secondary"
+            onClick={onChevronClick}
           />
         )}
-        <Checkbox
-          variant="checkable"
-          checked={false}
-          onChange={() => console.log("click")}
-        />
+        {type === "leaf" && <div className="s-w-5"></div>}
+        {checkbox && <Checkbox {...checkbox} />}
 
         <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
           <Icon
@@ -83,9 +87,7 @@ Tree.Item = function ({
         </div>
       </div>
       {React.Children.count(children) > 0 && (
-        <div className="s-flex s-pl-5">
-          <Tree>{children}</Tree>
-        </div>
+        <div className="s-flex s-pl-5">{!collapsed && children}</div>
       )}
     </>
   );
