@@ -290,22 +290,6 @@ const main = async () => {
       body: { series: [...countSeries, ...guageSeries] },
     });
 
-    await logApi.submitLog({
-      body: [
-        {
-          ddsource: "temporal",
-          ddtags: "temporal",
-          hostname: "temporal",
-          message: "test message soupinou",
-          service: "temporal",
-        },
-      ],
-      contentEncoding: "deflate",
-    });
-
-    const test = { series: [...countSeries, ...guageSeries] };
-    console.log(JSON.stringify(test, null, 2));
-
     console.log({ level: "info", message: "Pausing for 20s" });
     await setTimeoutAsync(20 * 1000);
   }
