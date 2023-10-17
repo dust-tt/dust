@@ -1603,6 +1603,54 @@ export async function renderAndUpsertPageFromCache({
   parentType = resolvedParent.parentType;
   parentId = resolvedParent.parentId;
 
+  if (parentType === "page" || parentType === "database") {
+    // check if we have the parent page/DB in the DB already. If not, we need to add it
+    // to the cache of resources to check.
+    localLogger.info(
+      { parentType, parentId },
+      "notionRenderAndUpsertPageFromCache: Retrieving parent page/DB from connectors DB."
+    );
+
+    let notionId: string | null = null;
+    if (parentType === "page") {
+      const existingParentPage = await NotionPage.findOne({
+        where: {
+          notionPageId: parentId,
+          connectorId: connector.id,
+        },
+      });
+      if (!existingParentPage) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Parent page not found in connectors DB."
+        );
+        notionId = parentId;
+      }
+    } else if (parentType === "database") {
+      const existingParentDatabase = await NotionDatabase.findOne({
+        where: {
+          notionDatabaseId: parentId,
+          connectorId: connector.id,
+        },
+      });
+      if (!existingParentDatabase) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Parent database not found in connectors DB."
+        );
+        notionId = parentId;
+      }
+    } else {
+      ((_x: never) => void _x)(parentType);
+    }
+
+    if (notionId) {
+      await NotionConnectorResourcesToCheckCacheEntry.upsert({
+        notionId,
+        connectorId: connector.id,
+        resourceType: parentType,
+      });
+    }
+  }
+
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving Notion page from connectors DB."
   );
