@@ -1034,9 +1034,12 @@ export async function markFolderAsVisited(
   }
   const authCredentials = await getAuthObject(connector.connectionId);
   const file = await getGoogleDriveObject(authCredentials, driveFileId);
+
   if (!file) {
-    throw new Error(`File ${driveFileId} unexpectedly not found (got 404)`);
+    // We got a 404 on this folder, we skip it.
+    return;
   }
+
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
     dustFileId: getDocumentId(driveFileId),
