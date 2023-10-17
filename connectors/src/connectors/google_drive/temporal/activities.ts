@@ -192,7 +192,12 @@ export async function syncFiles(
     driveFolderId
   );
   if (!driveFolder) {
-    throw new Error(`Folder ${driveFolderId} unexpectedly not found (got 404)`);
+    // We got a 404 on this folder, we skip it.
+    return {
+      nextPageToken: null,
+      count: 0,
+      subfolders: [],
+    };
   }
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
