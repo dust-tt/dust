@@ -26,7 +26,6 @@ import {
   getUserFromSession,
   RoleType,
 } from "@app/lib/auth";
-import { ModelId } from "@app/lib/databases";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -186,15 +185,17 @@ export default function WorkspaceAdmin({
         .filter(
           (m) =>
             !searchText ||
-            m.name.toLowerCase().includes(searchText) ||
-            m.email?.toLowerCase().includes(searchText) ||
-            m.username?.toLowerCase().includes(searchText)
+            m.name.toLowerCase().includes(searchText.toLowerCase()) ||
+            m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+            m.username?.toLowerCase().includes(searchText.toLowerCase())
         ),
       ...invitations
         .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
         .filter((i) => i.status === "pending")
         .filter(
-          (i) => !searchText || i.inviteEmail.toLowerCase().includes(searchText)
+          (i) =>
+            !searchText ||
+            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
 
@@ -611,8 +612,8 @@ function ChangeMemberModal({
       type="right-side"
       onSave={async () => {
         setIsSaving(true);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion --
-        // we know it's not null because of the hasChanged check
+        // we know selectRole is not null because of the hasChanged check
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         await handleMemberRoleChange(member, selectedRole!);
         onClose();
         setIsSaving(false);
