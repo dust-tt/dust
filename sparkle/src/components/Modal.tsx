@@ -13,9 +13,11 @@ interface ModalProps {
   children: React.ReactNode;
   hasChanged: boolean;
   onSave?: () => void;
+  saveLabel?: string;
+  isSaving?: boolean;
+  savingLabel?: string;
   title?: string;
   type?: "full-screen" | "right-side" | "default";
-  saveLabel?: string;
 }
 
 export function Modal({
@@ -25,9 +27,11 @@ export function Modal({
   children,
   hasChanged,
   onSave,
+  saveLabel = "Save",
+  isSaving,
+  savingLabel,
   title,
   type = "default",
-  saveLabel = "Save",
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
@@ -35,6 +39,8 @@ export function Modal({
         onCancel: onClose,
         onSave: onSave,
         saveLabel,
+        isSaving,
+        savingLabel,
       }
     : {
         variant: "close",
