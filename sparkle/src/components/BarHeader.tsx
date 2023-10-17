@@ -61,6 +61,7 @@ type BarHeaderButtonBarValidateProps = {
   onSave?: () => void;
   saveLabel?: string;
   isSaving?: boolean;
+  savingLabel?: string;
 };
 
 type BarHeaderButtonBarConversationProps = {
@@ -113,7 +114,11 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           />
           <Button
             size="sm"
-            label={props.isSaving ? "Processing..." : props.saveLabel || "Save"}
+            label={
+              props.isSaving
+                ? props.savingLabel || "Processing..."
+                : props.saveLabel || "Save"
+            }
             variant="primary"
             onClick={props.onSave}
             disabled={!props.onSave || props.isSaving}
