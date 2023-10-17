@@ -16,6 +16,7 @@ spec:
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-edge","tags": ["env:prod"]}]'
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/front-image:latest
@@ -27,7 +28,6 @@ spec:
                 name: front-edge-config
             - secretRef:
                 name: front-secrets
-
           # override env vars from configmap/secret
           env:
             # we override --max-old-space-size for edge as pods
@@ -46,6 +46,17 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+
+            - name: PRESTOP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prestop-secret
+                  key: PRESTOP_SECRET
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "admin/prestop.sh"]
 
           resources:
             requests:

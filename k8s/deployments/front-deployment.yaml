@@ -16,6 +16,7 @@ spec:
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "front","service": "front","tags": ["env:prod"]}]'
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/front-image:latest
@@ -34,11 +35,22 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 
+            - name: PRESTOP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prestop-secret
+                  key: PRESTOP_SECRET
+
           volumeMounts:
             - name: cert-volume
               mountPath: /etc/certs
             - name: service-account-volume
               mountPath: /etc/service-accounts
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "admin/prestop.sh"]
 
           resources:
             requests:
