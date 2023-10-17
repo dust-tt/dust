@@ -159,7 +159,6 @@ export default function WorkspaceAdmin({
     const { invitations, isInvitationsLoading } =
       useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
-
     /** Modal for changing member role: we need to use 2 states: set the member
      * first, then open the modal with an unoticeable delay. Using
      * only 1 state for both would break the modal animation because rerendering
@@ -168,12 +167,17 @@ export default function WorkspaceAdmin({
     const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
       null
     );
-
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
     const [invitationToRevoke, setInvitationToRevoke] =
       useState<MembershipInvitationType | null>(null);
+
+    function isInvitation(
+      arg: MembershipInvitationType | UserType
+    ): arg is MembershipInvitationType {
+      return (arg as MembershipInvitationType).inviteEmail !== undefined;
+    }
 
     const displayedMembersAndInvitations: (
       | UserType
@@ -318,9 +322,7 @@ export default function WorkspaceAdmin({
               </div>
               <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
                 <div className="font-medium text-element-900">Loading...</div>
-                <div className="grow font-normal text-element-700">
-                  user.email@here.com
-                </div>
+                <div className="grow font-normal text-element-700"></div>
               </div>
               <div>
                 <Chip size="xs" color="slate">
@@ -335,11 +337,6 @@ export default function WorkspaceAdmin({
         </div>
       </>
     );
-    function isInvitation(
-      arg: MembershipInvitationType | UserType
-    ): arg is MembershipInvitationType {
-      return (arg as MembershipInvitationType).inviteEmail !== undefined;
-    }
   }
 }
 
@@ -357,6 +354,31 @@ function InviteEmailModal({
   const [emailError, setEmailError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const { mutate } = useSWRConfig();
+
+  async function handleSendInvitation(): Promise<void> {
+    if (!isEmailValid(inviteEmail)) {
+      setEmailError("Invalid email address.");
+      return;
+    }
+    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inviteEmail,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to invite new member to workspace.");
+    } else {
+      setSuccessMessage(
+        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
+      );
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+
   return (
     <Modal
       isOpen={showModal}
@@ -402,30 +424,6 @@ function InviteEmailModal({
       </div>
     </Modal>
   );
-
-  async function handleSendInvitation(): Promise<void> {
-    if (!isEmailValid(inviteEmail)) {
-      setEmailError("Invalid email address.");
-      return;
-    }
-    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        inviteEmail,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to invite new member to workspace.");
-    } else {
-      setSuccessMessage(
-        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
-      );
-      await mutate(`/api/w/${owner.sId}/invitations`);
-    }
-  }
 }
 
 function InviteSettingsModal({
@@ -440,43 +438,6 @@ function InviteSettingsModal({
   const [domainUpdating, setDomainUpdating] = useState(false);
   const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
   const [allowedDomainError, setAllowedDomainError] = useState("");
-  return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
-      hasChanged={
-        domainInput !== owner.allowedDomain &&
-        !allowedDomainError &&
-        !domainUpdating
-      }
-      title="Invitation link settings"
-      type="right-side"
-      onSave={() => validDomain() && handleUpdateWorkspace()}
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Any person with a Google Workspace email on corresponding domain name
-          will be allowed to join the workspace.
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="font-bold">Whitelisted email domain</div>
-          <Input
-            className="text-sm"
-            placeholder={"Company domain"}
-            value={domainInput}
-            name={""}
-            error={allowedDomainError}
-            showErrorLabel={true}
-            onChange={(e) => {
-              setDomainInput(e);
-              setAllowedDomainError("");
-            }}
-            disabled={domainUpdating}
-          />
-        </div>
-      </div>
-    </Modal>
-  );
 
   async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
@@ -514,6 +475,44 @@ function InviteSettingsModal({
 
     return valid;
   }
+
+  return (
+    <Modal
+      isOpen={showModal}
+      onClose={onClose}
+      hasChanged={
+        domainInput !== owner.allowedDomain &&
+        !allowedDomainError &&
+        !domainUpdating
+      }
+      title="Invitation link settings"
+      type="right-side"
+      onSave={() => validDomain() && handleUpdateWorkspace()}
+    >
+      <div className="mt-6 flex flex-col gap-6 px-2">
+        <div>
+          Any person with a Google Workspace email on corresponding domain name
+          will be allowed to join the workspace.
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="font-bold">Whitelisted email domain</div>
+          <Input
+            className="text-sm"
+            placeholder={"Company domain"}
+            value={domainInput}
+            name={""}
+            error={allowedDomainError}
+            showErrorLabel={true}
+            onChange={(e) => {
+              setDomainInput(e);
+              setAllowedDomainError("");
+            }}
+            disabled={domainUpdating}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 function RevokeInvitationModal({
@@ -530,6 +529,24 @@ function RevokeInvitationModal({
   const { mutate } = useSWRConfig();
   const [isSaving, setIsSaving] = useState(false);
   if (!invitation) return null;
+
+  async function handleRevokeInvitation(invitationId: number): Promise<void> {
+    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "revoked",
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to revoke member's invitation.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+
   return (
     <Modal
       isOpen={showModal}
@@ -559,23 +576,6 @@ function RevokeInvitationModal({
       </div>
     </Modal>
   );
-
-  async function handleRevokeInvitation(invitationId: number): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "revoked",
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to revoke member's invitation.");
-    } else {
-      await mutate(`/api/w/${owner.sId}/invitations`);
-    }
-  }
 }
 
 function ChangeMemberModal({
@@ -593,7 +593,29 @@ function ChangeMemberModal({
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
   if (!member) return null; // Unreachable
+
+  async function handleMemberRoleChange(
+    member: UserType,
+    role: RoleType
+  ): Promise<void> {
+    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role: role === "none" ? "revoked" : role,
+      }),
+    });
+    if (!res.ok) {
+      window.alert("Failed to update membership.");
+    } else {
+      await mutate(`/api/w/${owner.sId}/members`);
+    }
+  }
+
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
     builder:
@@ -612,9 +634,8 @@ function ChangeMemberModal({
       type="right-side"
       onSave={async () => {
         setIsSaving(true);
-        // we know selectRole is not null because of the hasChanged check
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        await handleMemberRoleChange(member, selectedRole!);
+        if (!selectedRole) return; // unreachable due to hasChanged
+        await handleMemberRoleChange(member, selectedRole);
         onClose();
         setIsSaving(false);
       }}
@@ -705,23 +726,4 @@ function ChangeMemberModal({
       </Modal>
     </Modal>
   );
-  async function handleMemberRoleChange(
-    member: UserType,
-    role: RoleType
-  ): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        role: role === "none" ? "revoked" : role,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to update membership.");
-    } else {
-      await mutate(`/api/w/${owner.sId}/members`);
-    }
-  }
 }
