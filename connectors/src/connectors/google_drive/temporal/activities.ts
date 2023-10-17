@@ -193,7 +193,10 @@ export async function syncFiles(
   );
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
-    logger.info(`Folder ${driveFolder} unexpectedly not found (got 404)`);
+    logger.info(
+      { driveFolderId },
+      `Google Drive Folder unexpectedly not found (got 404)`
+    );
     return {
       nextPageToken: null,
       count: 0,
@@ -1037,7 +1040,10 @@ export async function markFolderAsVisited(
   const file = await getGoogleDriveObject(authCredentials, driveFileId);
 
   if (!file) {
-    logger.info(`File ${driveFileId} unexpectedly not found (got 404)`);
+    logger.info(
+      { driveFileId },
+      `Google Drive File unexpectedly not found (got 404)`
+    );
     // We got a 404 on this folder, we skip it.
     return;
   }
