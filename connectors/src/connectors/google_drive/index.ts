@@ -361,17 +361,22 @@ export async function retrieveGoogleDriveConnectorPermissions({
         )
       ).flatMap((f) => (f ? [f] : []));
 
+      resources.sort((a, b) => {
+        return a.title.localeCompare(b.title);
+      });
+
       return new Ok(resources);
     } else {
       // Return the list of all folders and files synced in a parent folder.
-      const folders = await GoogleDriveFiles.findAll({
+      const folderOrFiles = await GoogleDriveFiles.findAll({
         where: {
           connectorId: connectorId,
           parentId: parentInternalId,
         },
       });
+
       const resources: ConnectorResource[] = await Promise.all(
-        folders.map((f) => {
+        folderOrFiles.map((f) => {
           return (async () => {
             return {
               provider: c.type,
@@ -396,6 +401,15 @@ export async function retrieveGoogleDriveConnectorPermissions({
           })();
         })
       );
+
+      // Sorting resources, folders first then alphabetically.
+      resources.sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === "folder" ? -1 : 1;
+        }
+        return a.title.localeCompare(b.title);
+      });
+
       return new Ok(resources);
     }
   } else if (filterPermission === null) {
@@ -428,9 +442,13 @@ export async function retrieveGoogleDriveConnectorPermissions({
         })
       );
 
+      resources.sort((a, b) => {
+        return a.title.localeCompare(b.title);
+      });
+
       return new Ok(resources);
     } else {
-      //Return the list of remote folders inside a parent folder
+      // Return the list of remote folders inside a parent folder.
       const drive = await getDriveClient(authCredentials);
       let nextPageToken: string | undefined = undefined;
       let remoteFolders: drive_v3.Schema$File[] = [];
@@ -458,6 +476,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
         remoteFolders = remoteFolders.concat(res.data.files);
         nextPageToken = res.data.nextPageToken || undefined;
       } while (nextPageToken);
+
       const resources: ConnectorResource[] = await Promise.all(
         remoteFolders.map(async (rf): Promise<ConnectorResource> => {
           const driveObject = await driveObjectToDustType(rf, authCredentials);
@@ -481,6 +500,10 @@ export async function retrieveGoogleDriveConnectorPermissions({
           };
         })
       );
+
+      resources.sort((a, b) => {
+        return a.title.localeCompare(b.title);
+      });
 
       return new Ok(resources);
     }

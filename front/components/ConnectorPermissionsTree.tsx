@@ -1,50 +1,13 @@
-import {
-  Checkbox,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  DocumentTextIcon,
-} from "@dust-tt/sparkle";
-import {
-  ChatBubbleLeftRightIcon,
-  CircleStackIcon,
-  FolderIcon,
-} from "@heroicons/react/20/solid";
+import { Tree } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import {
   ConnectorPermission,
   ConnectorProvider,
-  ConnectorResourceType,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
-
-import { Spinner } from "./Spinner";
-
-export type IconComponentType =
-  | typeof DocumentTextIcon
-  | typeof FolderIcon
-  | typeof CircleStackIcon
-  | typeof ChatBubbleLeftRightIcon;
-
-function getIconForType(type: ConnectorResourceType): IconComponentType {
-  switch (type) {
-    case "file":
-      return DocumentTextIcon;
-    case "folder":
-      return FolderIcon;
-    case "database":
-      return CircleStackIcon;
-    case "channel":
-      return ChatBubbleLeftRightIcon;
-    default:
-      ((n: never) => {
-        throw new Error("Unreachable " + n);
-      })(type);
-  }
-}
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   ConnectorProvider,
@@ -69,6 +32,7 @@ function PermissionTreeChildren({
   permissionFilter,
   canUpdatePermissions,
   onPermissionUpdate,
+  parentIsSelected,
   showExpand,
 }: {
   owner: WorkspaceType;
@@ -83,6 +47,7 @@ function PermissionTreeChildren({
     internalId: string;
     permission: ConnectorPermission;
   }) => void;
+  parentIsSelected?: boolean;
   showExpand?: boolean;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
@@ -117,95 +82,66 @@ function PermissionTreeChildren({
   }
 
   return (
-    <>
-      {isResourcesLoading ? (
-        <Spinner />
-      ) : (
-        <div className="flex-1 space-y-1">
-          {resources.map((r) => {
-            const IconComponent = getIconForType(r.type);
-            const titlePrefix = r.type === "channel" ? "#" : "";
-            return (
-              <div key={r.internalId}>
-                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
-                  {showExpand && (
-                    <div className="mr-4">
-                      {expanded[r.internalId] ? (
-                        <ChevronDownIcon
-                          className="h-5 w-5 cursor-pointer text-action-600"
-                          onClick={() => {
-                            setExpanded((prev) => ({
-                              ...prev,
-                              [r.internalId]: false,
-                            }));
-                          }}
-                        />
-                      ) : (
-                        <ChevronRightIcon
-                          className={classNames(
-                            "h-5 w-5",
-                            r.expandable
-                              ? "cursor-pointer text-action-600"
-                              : "cursor-not-allowed text-slate-300"
-                          )}
-                          onClick={() => {
-                            if (r.expandable) {
-                              setExpanded((prev) => ({
-                                ...prev,
-                                [r.internalId]: true,
-                              }));
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                  <IconComponent className="h-5 w-5 text-slate-300" />
-                  <span className="ml-2 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
-                  {canUpdatePermissions && onPermissionUpdate ? (
-                    <div className="flex-grow">
-                      <Checkbox
-                        className="ml-auto"
-                        checked={
-                          localStateByInternalId[r.internalId] ??
-                          ["read", "read_write"].includes(r.permission)
-                        }
-                        onChange={(checked) => {
-                          setLocalStateByInternalId((prev) => ({
-                            ...prev,
-                            [r.internalId]: checked,
-                          }));
-                          onPermissionUpdate({
-                            internalId: r.internalId,
-                            permission: checked
-                              ? selectedPermission
-                              : unselectedPermission,
-                          });
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-                {expanded[r.internalId] && (
-                  <div className="flex flex-row">
-                    <div className="ml-4" />
-                    <PermissionTreeChildren
-                      owner={owner}
-                      dataSource={dataSource}
-                      parentId={r.internalId}
-                      permissionFilter={permissionFilter}
-                      canUpdatePermissions={canUpdatePermissions}
-                      onPermissionUpdate={onPermissionUpdate}
-                      showExpand={showExpand}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
+    <Tree isLoading={isResourcesLoading}>
+      {resources.map((r) => {
+        const titlePrefix = r.type === "channel" ? "#" : "";
+        return (
+          <Tree.Item
+            key={r.internalId}
+            collapsed={!expanded[r.internalId]}
+            onChevronClick={() => {
+              setExpanded((prev) => ({
+                ...prev,
+                [r.internalId]: prev[r.internalId] ? false : true,
+              }));
+            }}
+            type={r.expandable ? "node" : "leaf"}
+            label={`${titlePrefix}${r.title}`}
+            variant={r.type}
+            className="whitespace-nowrap"
+            checkbox={
+              canUpdatePermissions && onPermissionUpdate
+                ? {
+                    disabled: parentIsSelected,
+                    checked:
+                      parentIsSelected ||
+                      (localStateByInternalId[r.internalId] ??
+                        ["read", "read_write"].includes(r.permission)),
+                    onChange: (checked) => {
+                      setLocalStateByInternalId((prev) => ({
+                        ...prev,
+                        [r.internalId]: checked,
+                      }));
+                      onPermissionUpdate({
+                        internalId: r.internalId,
+                        permission: checked
+                          ? selectedPermission
+                          : unselectedPermission,
+                      });
+                    },
+                  }
+                : undefined
+            }
+          >
+            {expanded[r.internalId] && (
+              <PermissionTreeChildren
+                owner={owner}
+                dataSource={dataSource}
+                parentId={r.internalId}
+                permissionFilter={permissionFilter}
+                canUpdatePermissions={canUpdatePermissions}
+                onPermissionUpdate={onPermissionUpdate}
+                showExpand={showExpand}
+                parentIsSelected={
+                  (parentIsSelected || localStateByInternalId[r.internalId]) ??
+                  ["read", "read_write"].includes(r.permission)
+                }
+              />
+            )}
+          </Tree.Item>
+        );
+      })}
+    </Tree>
   );
 }
 
@@ -240,6 +176,7 @@ export function PermissionTree({
         canUpdatePermissions={canUpdatePermissions}
         onPermissionUpdate={onPermissionUpdate}
         showExpand={showExpand}
+        parentIsSelected={false}
       />
     </div>
   );

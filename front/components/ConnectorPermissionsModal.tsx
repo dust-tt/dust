@@ -189,11 +189,8 @@ export default function ConnectorPermissionsModal({
         defaultNewResourcePermission ? (
           <>
             {canUpdatePermissions && defaultPermissionTitleText ? (
-              <div className="ml-2 mt-8 flex flex-row">
-                <span className="text-sm text-gray-500">
-                  {defaultPermissionTitleText}
-                </span>
-                <div className="flex-grow">
+              <div className="ml-10 mt-8 flex flex-row">
+                <div className="mr-4 flex flex-initial">
                   <Checkbox
                     className="ml-auto"
                     onChange={(checked) => {
@@ -207,16 +204,19 @@ export default function ConnectorPermissionsModal({
                     }
                   />
                 </div>
+                <span className="text-sm text-gray-500">
+                  {defaultPermissionTitleText}
+                </span>
               </div>
             ) : null}
             <div>
-              <div className="ml-2 mt-16">
+              <div className="ml-2 mt-8">
                 <div className="text-sm text-gray-500">
                   {resourceListTitleText}
                 </div>
               </div>
             </div>
-            <div className="mb-16 ml-2 mt-8">
+            <div className="mx-2 mb-16 mt-8">
               <PermissionTree
                 owner={owner}
                 dataSource={dataSource}

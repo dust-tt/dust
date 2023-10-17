@@ -416,7 +416,13 @@ export async function retrieveNotionConnectorPermissions({
 
   const dbResources = await Promise.all(dbs.map((db) => getDbResources(db)));
 
-  return new Ok(pageResources.concat(dbResources));
+  const resources = pageResources.concat(dbResources);
+
+  resources.sort((a, b) => {
+    return a.title.localeCompare(b.title);
+  });
+
+  return new Ok(resources);
 }
 
 export async function retrieveNotionResourcesTitles(
