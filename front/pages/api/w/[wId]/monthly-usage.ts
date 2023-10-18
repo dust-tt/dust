@@ -56,7 +56,8 @@ async function handler(
     case "GET":
       if (
         !req.query.referenceDate ||
-        typeof req.query.referenceDate !== "string"
+        typeof req.query.referenceDate !== "string" ||
+        isNaN(new Date(req.query.referenceDate).getTime())
       ) {
         return apiError(req, res, {
           status_code: 400,
