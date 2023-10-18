@@ -41,6 +41,10 @@ module.exports = removeImports({
             value:
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com",
           },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
         ],
       },
     ];
