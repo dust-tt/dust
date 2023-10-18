@@ -163,7 +163,7 @@ export function AgentMessage({
 
   useEventSource(buildEventSourceURL, onEventCallback);
 
-  const agentMessageToRender = (() => {
+  const agentMessageToRender = ((): AgentMessageType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
