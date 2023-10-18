@@ -170,7 +170,7 @@ export function AgentMessage({
         return message;
       case "cancelled":
         return streamedAgentMessage.status === "created"
-          ? streamedAgentMessage
+          ? { ...streamedAgentMessage, status: "cancelled" }
           : message;
       case "created":
         return streamedAgentMessage;
