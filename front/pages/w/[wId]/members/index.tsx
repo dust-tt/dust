@@ -15,13 +15,11 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useContext, useState } from "react";
-import React from "react";
+import React, { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   Authenticator,
   getSession,
@@ -206,7 +204,6 @@ export default function WorkspaceAdmin({
             i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
-    const sendNotification = useContext(SendNotificationsContext);
     return (
       <>
         <InviteEmailModal
@@ -244,14 +241,7 @@ export default function WorkspaceAdmin({
               label="Invite members"
               size="sm"
               icon={PlusIcon}
-              onClick={() =>
-                sendNotification({
-                  title: `Test {${Math.random()}}`,
-                  description:
-                    "Fat Test, the test, testing the test. Oh yeah. Test. Again. Test.",
-                  type: (() => (Math.random() > 0.5 ? "success" : "error"))(),
-                })
-              }
+              onClick={() => setInviteEmailModalOpen(true)}
             />
           </div>
         </div>
