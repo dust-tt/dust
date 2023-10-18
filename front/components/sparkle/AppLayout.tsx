@@ -191,6 +191,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <>
       <Head>
@@ -245,6 +246,7 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
+
       <div className="light h-full">
         {!hideSidebar && (
           <Transition.Root show={sidebarOpen} as={Fragment}>
