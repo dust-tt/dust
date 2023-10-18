@@ -15,7 +15,6 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
-import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   FixedAssistantInputBar,
