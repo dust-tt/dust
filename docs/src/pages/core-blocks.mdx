@@ -103,7 +103,7 @@ outputs.
 
 The `llm` block provides a standardized interface to large language models from multiple providers
 (OpenAI, Cohere, AI21, ...). It also provides automatic caching mechanisms and a rich templating
-language (based on [Tera](https://tera.netlify.app/docs/#templates), similar go Jinja2) to construct
+language (based on [Tera](https://keats.github.io/tera/docs/#templates), similar go Jinja2) to construct
 prompts.
 
 It is used to issue completion requests to large language models as part of an app execution.
@@ -113,8 +113,8 @@ It is used to issue completion requests to large language models as part of an a
 <Properties>
   <Property name="prompt" type="string">
     The prompt to generate completions. The prompt can be templated using the
-    [Tera](https://tera.netlify.app/docs/#templates) templating language (see
-    below for more details on templating).
+    [Tera](https://keats.github.io/tera/docs/#templates) templating language
+    (see below for more details on templating).
   </Property>
   <Property name="temperature" type="float">
     The temperature to use when sampling from the model. A higher _temperature_
@@ -186,7 +186,7 @@ It is used to issue completion requests to large language models as part of an a
 ### Prompt templating
 
 The `prompt` field of the `llm` block can be templated using the
-[Tera](https://tera.netlify.app/docs/#templates). This is particularly useful to construct few-shot
+[Tera](https://keats.github.io/tera/docs/#templates). This is particularly useful to construct few-shot
 prompts for models. Here's an example of templated model prompt:
 
 ```
@@ -203,9 +203,9 @@ objects), create a line with the English sentence and French translation. Then, 
 with the English sentence from the `INPUT` block output `english` field. A fully functional example
 app relying on this prompt can be found [here](https://dust.tt/w/3e26b0e764/a/d903a92151).
 
-The [Tera](https://tera.netlify.app/) templating language supports a variety of constructs including
+The [Tera](https://keats.github.io/tera/docs) templating language supports a variety of constructs including
 loops and variable replacement. Please refer to the [Tera
-documentation](https://tera.netlify.app/docs/#templates) for more details.
+documentation](https://keats.github.io/tera/docs/#templates) for more details.
 
 ### Support for chat-based models (chatGPT)
 
@@ -236,8 +236,8 @@ generates a new message in response.
     The instructions are passed to the model as initial _system_ role message
     (see OpenAI's [Chat guide](https://platform.openai.com/docs/guides/chat)).
     The instructions can be templated using the
-    [Tera](https://tera.netlify.app/docs/#templates) templating language (see
-    above for more details on templating).
+    [Tera](https://keats.github.io/tera/docs/#templates) templating language
+    (see above for more details on templating).
   </Property>
   <Property name="messages_code" type="javascript">
     A Javascript function `_fun` which takes a single argument `env` (see the
@@ -408,9 +408,9 @@ for more details about how documents are chunked to enable semantic search.
   <Property name="query" type="string">
     The query to embed and use to perform semantic seach against the data
     source. The query can be templated using the
-    [Tera](https://tera.netlify.app/docs/#templates) templating language (see
-    the [LLM block](/core-blocks#llm-block) documentation for more details on
-    templating).
+    [Tera](https://keats.github.io/tera/docs/#templates) templating language
+    (see the [LLM block](/core-blocks#llm-block) documentation for more details
+    on templating).
   </Property>
   <Property name="full_text" type="boolean">
     Whether to return the full text of the retrieved documents (in addition to
