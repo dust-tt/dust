@@ -38,7 +38,8 @@ module.exports = removeImports({
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "script-src 'self' 'unsafe-eval' www.googletagmanager.com",
+            value:
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com",
           },
           {
             key: "X-Frame-Options",
