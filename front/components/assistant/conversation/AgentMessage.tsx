@@ -169,9 +169,9 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        return message.content
-          ? message
-          : { ...message, content: streamedAgentMessage.content };
+        return streamedAgentMessage.status === "created"
+          ? streamedAgentMessage
+          : message;
       case "created":
         return streamedAgentMessage;
 
