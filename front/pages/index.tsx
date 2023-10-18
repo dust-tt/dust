@@ -426,7 +426,6 @@ export default function Home({
              gtag('config', '${gaTrackingId}');
             `}
           </Script>
-          <Script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js" />
         </>
       </main>
     </>

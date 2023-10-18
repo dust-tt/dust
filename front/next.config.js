@@ -30,4 +30,18 @@ module.exports = removeImports({
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*", // Match all paths
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com",
+          },
+        ],
+      },
+    ];
+  },
 });
