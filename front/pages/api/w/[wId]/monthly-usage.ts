@@ -8,15 +8,15 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 interface QueryResult {
   createdAt: string;
   conversationModelId: string;
-  MessageId: string;
-  UserMessageId: string;
-  AgentMessageId: string;
-  UserId: string;
-  UserFirstName: string;
-  UserLastName: string;
-  AssistantId: string;
-  AssistantName: string;
-  ActionType: string;
+  messageId: string;
+  userMessageId: string;
+  agentMessageId: string;
+  userId: string;
+  userFirstName: string;
+  userLastName: string;
+  assistantId: string;
+  assistantName: string;
+  actionType: string;
   source: string;
 }
 
@@ -101,18 +101,18 @@ async function getMonthlyUsage(
     SELECT 
       TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
       c."id" AS "conversationModelId",
-      m."id" as "MessageId",
-      um."id" AS "UserMessageId", 
-      am."id" AS "AgentMessageId",
-      u."id" as "UserId",
-      um."userContextFullName" AS "UserFullName",
-      COALESCE(ac."sId", am."agentConfigurationId") AS "AssistantId", 
-      COALESCE(ac."name", am."agentConfigurationId") AS "AssistantName", 
+      m."id" as "messageId",
+      um."id" AS "userMessageId", 
+      am."id" AS "agentMessageId",
+      u."id" as "userId",
+      um."userContextFullName" AS "userFullName",
+      COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId", 
+      COALESCE(ac."name", am."agentConfigurationId") AS "assistantName", 
       CASE 
           WHEN ac."retrievalConfigurationId" IS NOT NULL THEN 'retrieval'
           WHEN ac."dustAppRunConfigurationId" IS NOT NULL THEN 'dustAppRun'
           ELSE NULL
-      END AS "ActionType",
+      END AS "actionType",
       CASE 
           WHEN um."id" IS NOT NULL THEN 
               CASE 
