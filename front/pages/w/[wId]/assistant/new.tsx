@@ -160,15 +160,6 @@ export default function AssistantNew({
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
           topNavigationCurrent="assistant"
-          titleChildren={
-            conversation && (
-              <ConversationTitle
-                owner={owner}
-                conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
-              />
-            )
-          }
           navChildren={
             <AssistantSidebarMenu
               owner={owner}
