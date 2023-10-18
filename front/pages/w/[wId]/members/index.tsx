@@ -15,8 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useState } from "react";
-import React from "react";
+import React, { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -205,7 +204,6 @@ export default function WorkspaceAdmin({
             i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
-
     return (
       <>
         <InviteEmailModal
