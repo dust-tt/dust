@@ -308,24 +308,33 @@ export async function cancelMessageGenerationEvent(
 ): Promise<void> {
   const redis = await redisClient();
 
-  await messageIds.map(async (messageId) => {
+  const tasks = messageIds.map((messageId) => {
     // Submit event to redis stream so we stop the generation
-    await redis.set(`assistant:generation:cancelled:${messageId}`, "1", {
-      EX: 3600, // 1 hour
-    });
+    const redisTask = redis.set(
+      `assistant:generation:cancelled:${messageId}`,
+      "1",
+      {
+        EX: 3600, // 1 hour
+      }
+    );
 
     // Already set the status to cancel
-    const message = await Message.findOne({
+    const dbTask = Message.findOne({
       where: { sId: messageId },
+    }).then(async (message) => {
+      if (message && message.agentMessageId) {
+        await AgentMessage.update(
+          { status: "cancelled" },
+          { where: { id: message.agentMessageId } }
+        );
+      }
     });
-    if (message && message.agentMessageId) {
-      await AgentMessage.update(
-        { status: "cancelled" },
-        { where: { id: message.agentMessageId } }
-      );
-    }
+
+    // Return both tasks as a single promise
+    return Promise.all([redisTask, dbTask]);
   });
 
+  await Promise.all(tasks);
   await redis.quit();
 }
 
