@@ -204,7 +204,7 @@ export default function WorkspaceAdmin({
           </div>
 
           <div />
-          {owner.upgradedAt && (
+          {!!monthOptions.length && (
             <>
               <Page.SectionHeader
                 title="Workspace Usage"
