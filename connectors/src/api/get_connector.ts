@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 
-import { Connector } from "@connectors/lib/models";
+import {
+  Connector,
+  GithubDiscussion,
+  GithubIssue,
+  NotionPage,
+} from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorType } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
@@ -31,6 +36,38 @@ const _getConnector = async (
     });
   }
 
+  let firstSyncProgress = connector.firstSyncProgress;
+
+  if (!firstSyncProgress) {
+    switch (connector.type) {
+      case "github": {
+        const [issues, discussions] = await Promise.all([
+          GithubIssue.count({
+            where: {
+              connectorId: connector.id,
+            },
+          }),
+          GithubDiscussion.count({
+            where: {
+              connectorId: connector.id,
+            },
+          }),
+        ]);
+        firstSyncProgress = `${issues} issues, ${discussions} discussions`;
+        break;
+      }
+      case "notion": {
+        const c = await NotionPage.count({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        firstSyncProgress = `${c} pages`;
+        break;
+      }
+    }
+  }
+
   return res.status(200).json({
     id: connector.id,
     type: connector.type,
@@ -39,7 +76,7 @@ const _getConnector = async (
     lastSyncFinishTime: connector.lastSyncFinishTime?.getTime(),
     lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
     firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
-    firstSyncProgress: connector.firstSyncProgress,
+    firstSyncProgress,
     defaultNewResourcePermission: connector.defaultNewResourcePermission,
   });
 };
