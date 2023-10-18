@@ -2,7 +2,7 @@ import React from "react";
 
 import { classNames, Responsive, responsiveProp } from "@sparkle/lib/utils";
 
-import { safeColorlist } from '../../tailwind.config.js';
+import { safeColorlist } from "../../tailwind.config.js";
 
 type Direction = "horizontal" | "vertical" | "fluid";
 type Sizing = "shrink" | "grow";
@@ -15,7 +15,7 @@ interface FrameProps {
   sizing?: Sizing | Responsive<Sizing>;
   align?: Align | Responsive<Align>;
   gap?: Gap | Responsive<Gap>;
-  background?: typeof safeColorlist[number];
+  background?: (typeof safeColorlist)[number];
 }
 
 const directionMap: Record<Direction, string> = {
