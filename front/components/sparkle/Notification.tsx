@@ -83,11 +83,11 @@ export function Notification({ title, description, type }: NotificationType) {
       show={showNotification}
       appear={true}
       enter="transition ease-in-out duration-300 transform"
-      enterFrom="translate-y-16 opacity-0"
+      enterFrom="-translate-y-16 opacity-0"
       enterTo="translate-y-0 opacity-100"
       leave="transition ease-in-out duration-300 transform"
       leaveFrom="translate-y-0 opacity-100"
-      leaveTo="translate-y-16 opacity-0"
+      leaveTo="-translate-y-16 opacity-0"
     >
       <div className="flex rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
         <div>
