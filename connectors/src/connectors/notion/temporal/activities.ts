@@ -1406,7 +1406,7 @@ async function resolveResourceParent({
   );
 
   if (reachable) {
-    logger.info("Found a new reachable parent.");
+    localLogger.info("Found a new reachable parent.");
     return {
       parentId: newParentId,
       parentType: newParentType,
