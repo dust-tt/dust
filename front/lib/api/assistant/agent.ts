@@ -119,7 +119,11 @@ export async function generateActionInputs(
   ]);
 
   if (res.isErr()) {
-    return new Err(new Error(`Error generating action inputs: ${res.error}`));
+    return new Err(
+      new Error(
+        `Error generating action inputs: [${res.error.type}] ${res.error.message}`
+      )
+    );
   }
 
   const run = res.value;
