@@ -444,7 +444,6 @@ pub async fn completion(
         "temperature": temperature,
         "n": n,
         "logprobs": logprobs,
-        "echo": echo,
         "stop": match stop.len() {
             0 => None,
             _ => Some(stop),
@@ -459,6 +458,16 @@ pub async fn completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    match model_id {
+        None => (),
+        Some(model_id) => {
+            body["model"] = json!(model_id);
+            // `gpt-3.5-turbo-instruct` does not support `echo`
+            if !model_id.starts_with("gpt-3.5-turbo-instruct") {
+                body["echo"] = json!(echo);
+            }
+        }
+    };
 
     // println!("BODY: {}", body.to_string());
 
