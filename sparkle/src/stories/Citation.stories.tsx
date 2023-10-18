@@ -19,7 +19,7 @@ export const CitationsExample = () => (
     />
     <div className="s-flex s-gap-2">
       <Citation
-        title="Title"
+        title="Source: Thread on #general message from @ed"
         type="slack"
         index="1"
         href="https://www.google.com"
