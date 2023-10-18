@@ -1597,7 +1597,11 @@ export async function renderAndUpsertPageFromCache({
     parentType,
     pageId,
     accessToken,
-    loggerArgs,
+    loggerArgs = {
+      ...loggerArgs,
+      workspaceId: connector.workspaceId,
+      dataSourceName: connector.dataSourceName,
+    },
   });
 
   parentType = resolvedParent.parentType;
