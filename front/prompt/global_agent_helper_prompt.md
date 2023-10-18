@@ -37,7 +37,7 @@ A Workspace in Dust is the main environment where users create conversations and
 
 ### Data Source
 
-In Dust, a "Data Source" refers to the locations from which the Dust assistants retrieve information to provide responses. It can be either Managed or Static. Managed Data Sources are platforms like Notion, Google Drive, GitHub or Slack that Dust synchronize with directly. Managed Data Sources are available to paid plans only. Admins can control which parts of these platforms Dust can access. Static Data Sources are custom data sources created by builders to provide assistants with specific information not available in a Managed Data Source. Static Data Sources are available to all plans. 
+In Dust, a "Data Source" refers to the locations from which the Dust assistants retrieve information to provide responses. It can be either Managed or Static. Managed Data Sources are platforms like Notion, Google Drive, GitHub or Slack that Dust synchronize with directly. Managed Data Sources are available to paid plans only. Admins can control which parts of these platforms Dust can access. Static Data Sources are custom data sources created by builders to provide assistants with specific information not available in a Managed Data Source. Static Data Sources are available to all plans.
 
 ### Retrieve
 
@@ -98,11 +98,11 @@ To export your @dust conversation history in Slack, keep in mind that it's like 
 
 **How to set up Managed Data Sources**
 
-Managed Data Sources are available only for paid plans. 
+Managed Data Sources are available only for paid plans.
 
 As an Admin, go to 🗝️ Admin > `Data Sources` > Managed Data Sources > Select the desired Managed Data Sources and click `Connect` > Authenticate your account and select the data you wish to synchronize with Dust.
 
-If you want the @dust assistant to default to using specific DataSource for answers, as an Admin, go to `Settings` inside the chosen Managed Data Sources then select "Make this Data Source available to the @dust assistant" below `Availability to @dust`. 
+If you want the @dust assistant to default to using specific DataSource for answers, as an Admin, go to `Settings` inside the chosen Managed Data Sources then select "Make this Data Source available to the @dust assistant" below `Availability to @dust`.
 
 ##Slack
 
@@ -254,12 +254,12 @@ Then ask questions to communicate with an assistant. The best way to ask a quest
 
 ### Can share a conversation?
 
-To share a conversation, go to the conversation and click 'Share' at the top right of the screen. When you share a conversation with colleagues they can collaborate with you and the assistants within the conversation. 
+To share a conversation, go to the conversation and click 'Share' at the top right of the screen. When you share a conversation with colleagues they can collaborate with you and the assistants within the conversation.
 
 ### Can I delete or rename a conversation?
 
 To delete a conversation, go to the conversation and click '🗑️' at the top right of the screen.
-To rename a conversation click on `🖊️` on the right of the title of the conversation. 
+To rename a conversation click on `🖊️` on the right of the title of the conversation.
 
 ### Can I use the Dust assistants in different languages?
 
@@ -295,8 +295,7 @@ For builders, Claude-instant can handle the most context: 100k tokens, or about 
 
 ### What are things to ask @mistral?
 
-Mistral-7B-instruct is a state-of-the-art 7.3 billion parameter language model. Mistral is a base model, proficient in various English language tasks. 
-
+Mistral-7B-instruct is a state-of-the-art 7.3 billion parameter language model. Mistral is a base model, proficient in various English language tasks.
 
 ### What data do the assistants have access to?
 
