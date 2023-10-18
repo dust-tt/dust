@@ -27,7 +27,7 @@ const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
   string | null
 > = {
   slack:
-    "Dust is currently invited to the channels below. Select if data from those channels should be synchronized or not.",
+    "Dust's Slack application (@Dust) was invited to the channels below from your Slack workspace. Select below which channels you wish to also synchronize the data from as part of the Slack managed data source.",
   notion: null,
   google_drive: null,
   github: null,
@@ -37,7 +37,7 @@ const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
   ConnectorProvider,
   string | null
 > = {
-  slack: "Automatically synchronize data from channels Dust is invited to:",
+  slack: "Automatically synchronize data from channels Dust is invited to.",
   notion: null,
   google_drive: null,
   github: null,
