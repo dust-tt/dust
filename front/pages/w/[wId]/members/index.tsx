@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -30,6 +30,7 @@ import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
@@ -355,9 +356,8 @@ function InviteEmailModal({
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const { mutate } = useSWRConfig();
-
+  const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
       setEmailError("Invalid email address.");
@@ -373,11 +373,17 @@ function InviteEmailModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to invite new member to workspace.");
+      sendNotification({
+        type: "error",
+        title: "Invite failed",
+        description: "Failed to invite new member to workspace.",
+      });
     } else {
-      setSuccessMessage(
-        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
-      );
+      sendNotification({
+        type: "success",
+        title: "Invite sent",
+        description: `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`,
+      });
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
@@ -421,9 +427,6 @@ function InviteEmailModal({
             </div>
           </div>
         </div>
-        {successMessage && (
-          <div className="text-success-900">{successMessage}</div>
-        )}
       </div>
     </Modal>
   );
