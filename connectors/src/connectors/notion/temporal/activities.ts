@@ -1597,7 +1597,7 @@ export async function renderAndUpsertPageFromCache({
     parentType,
     pageId,
     accessToken,
-    loggerArgs = {
+    loggerArgs: {
       ...loggerArgs,
       workspaceId: connector.workspaceId,
       dataSourceName: connector.dataSourceName,
@@ -1913,13 +1913,15 @@ export async function getDiscoveredResourcesFromCache(
     (id) => !databaseIdsAlreadySeen.has(id)
   );
 
-  localLogger.info(
-    {
-      discoveredPageIdsCount: discoveredPageIds.length,
-      discoveredDatabaseIdsCount: discoveredDatabaseIds.length,
-    },
-    "Discovered new resources."
-  );
+  if (discoveredPageIds.length || discoveredDatabaseIds.length) {
+    localLogger.info(
+      {
+        discoveredPageIdsCount: discoveredPageIds.length,
+        discoveredDatabaseIdsCount: discoveredDatabaseIds.length,
+      },
+      "Discovered new resources."
+    );
+  }
 
   return {
     pageIds: discoveredPageIds,
