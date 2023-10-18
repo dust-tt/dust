@@ -123,7 +123,7 @@ export default function AssistantsBuilder({
             title="Dust Assistants"
             description='Assistants built by Dust for multiple use cases. For instance, use "@help" for any question Dust related, use the handle "@notion" to target specifically knowledge on Notion…'
           />
-          <ContextItem.List className="mt-8  text-element-900">
+          <ContextItem.List className="mt-8 text-element-900">
             {dustAgents.map((agent) => (
               <ContextItem
                 key={agent.sId}

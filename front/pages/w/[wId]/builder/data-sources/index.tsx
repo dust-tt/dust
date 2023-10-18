@@ -1,15 +1,19 @@
 import {
   Button,
+  Chip,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContextItem,
+  DriveLogo,
   DropdownMenu,
+  GithubLogo,
+  NotionLogo,
+  Page,
   PageHeader,
   PlusIcon,
   SectionHeader,
   SlackLogo,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -30,8 +34,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
-import logger from "@app/logger/logger";
+import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -49,9 +52,9 @@ type DataSourceIntegration = {
   dataSourceName: string | null;
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
+  fetchConnectorErrorMessage?: string | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider;
-  logoPath: string;
   description: string;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
@@ -107,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<{
     provider: ConnectorProvider;
     connector: ConnectorType | null;
     fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
   }[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
@@ -123,6 +127,7 @@ export const getServerSideProps: GetServerSideProps<{
             provider: mds.connectorProvider,
             connector: null,
             fetchConnectorError: true,
+            fetchConnectorErrorMessage: statusRes.error.error.message,
           };
         }
         return {
@@ -130,22 +135,18 @@ export const getServerSideProps: GetServerSideProps<{
           provider: mds.connectorProvider,
           connector: statusRes.value,
           fetchConnectorError: false,
+          fetchConnectorErrorMessage: null,
         };
       } catch (e) {
-        // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
-        // displaying the datasources (eventual actions will fail but a 500 just at display is not
-        // desirable). When that happens the managed data sources are shown as failed.
-        logger.error(
-          {
-            error: e,
-          },
-          "Failed to get connector"
-        );
+        // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
+        // the datasources (eventual actions will fail but a 500 just at display is not desirable).
+        // When that happens the managed data sources are shown as failed.
         return {
           dataSourceName: mds.name,
           provider: mds.connectorProvider,
           connector: null,
           fetchConnectorError: true,
+          fetchConnectorErrorMessage: "Synchonization service is down",
         };
       }
     })
@@ -157,11 +158,11 @@ export const getServerSideProps: GetServerSideProps<{
       name: integration.name,
       connectorProvider: integration.connectorProvider,
       isBuilt: integration.isBuilt,
-      logoPath: integration.logoPath,
       description: integration.description,
       dataSourceName: mc.dataSourceName,
       connector: mc.connector,
       fetchConnectorError: mc.fetchConnectorError,
+      fetchConnectorErrorMessage: mc.fetchConnectorErrorMessage,
       synchronizedAgo: mc.connector?.lastSyncSuccessfulTime
         ? timeAgoFrom(mc.connector.lastSyncSuccessfulTime)
         : null,
@@ -199,7 +200,6 @@ export const getServerSideProps: GetServerSideProps<{
         name: integration.name,
         connectorProvider: integration.connectorProvider,
         isBuilt: integration.isBuilt,
-        logoPath: integration.logoPath,
         description: integration.description,
         dataSourceName: null,
         connector: null,
@@ -347,246 +347,48 @@ export default function DataSourcesView({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
     >
-      <PageHeader
-        title="Data Sources"
-        icon={CloudArrowDownIcon}
-        description="Control the data Dust has access to and how it's used."
-      />
+      <Page.Vertical gap="lg" align="stretch">
+        <div className="flex flex-col gap-4 pb-4">
+          <PageHeader
+            title="Data Sources"
+            icon={CloudArrowDownIcon}
+            description="Control the data Dust has access to and how it's used."
+          />
 
-      <div>
-        <SectionHeader
-          title="Managed Data Sources"
-          description="Give Dust real-time data updates by linking your company's online knowledge bases."
-        />
+          <SectionHeader
+            title="Managed Data Sources"
+            description="Give Dust real-time data updates by linking your company's online knowledge bases."
+          />
 
-        <ContextItem.List className="mt-2 border-b border-t border-structure-200">
-          {localIntegrations.map((ds) => {
-            return (
-              <ContextItem
-                key={
-                  ds.dataSourceName ||
-                  `managed-to-connect-${ds.connectorProvider}`
-                }
-                title={ds.name}
-                visual={<ContextItem.Visual visual={SlackLogo} />}
-                action={
-                  <Button.List>
-                    {(() => {
-                      const disabled =
-                        !ds.isBuilt ||
-                        isLoadingByProvider[
-                          ds.connectorProvider as ConnectorProvider
-                        ] ||
-                        !isAdmin;
-                      const onclick = canUseManagedDataSources
-                        ? async () => {
-                            await handleEnableManagedDataSource(
-                              ds.connectorProvider as ConnectorProvider,
-                              ds.setupWithSuffix
-                            );
-                          }
-                        : () => {
-                            window.alert(
-                              "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                            );
-                          };
-                      const label = !ds.isBuilt
-                        ? "Coming soon"
-                        : !isLoadingByProvider[
-                            ds.connectorProvider as ConnectorProvider
-                          ] && !ds.fetchConnectorError
-                        ? "Connect"
-                        : "Connecting...";
-                      if (!ds || !ds.connector) {
-                        return (
-                          <>
-                            {ds.connectorProvider !== "google_drive" && (
-                              <Button
-                                variant="primary"
-                                icon={CloudArrowLeftRightIcon}
-                                disabled={disabled}
-                                onClick={onclick}
-                                label={label}
-                              />
-                            )}
-                            {ds.connectorProvider === "google_drive" && (
-                              <DropdownMenu>
-                                <DropdownMenu.Button>
-                                  <Button
-                                    variant="primary"
-                                    label={label}
-                                    disabled={disabled}
-                                    icon={CloudArrowLeftRightIcon}
-                                  />
-                                </DropdownMenu.Button>
-                                <DropdownMenu.Items
-                                  origin="topRight"
-                                  width={350}
-                                >
-                                  <div className="flex flex-col gap-y-4 p-4">
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Disclosure
-                                      </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        Dust's use of information received from
-                                        the Google APIs will adhere to{" "}
-                                        <Link
-                                          className="s-text-action-500"
-                                          href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
-                                        >
-                                          Google API Services User Data Policy
-                                        </Link>
-                                        , including the Limited Use
-                                        requirements.
-                                      </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Notice on data processing
-                                      </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        By connecting Google Drive, you
-                                        acknowledge and agree that within your
-                                        Google Drive, the data contained in the
-                                        files and folders that you choose to
-                                        synchronize with Dust will be
-                                        transmitted to third-party entities,
-                                        including but not limited to Artificial
-                                        Intelligence (AI) model providers, for
-                                        the purpose of processing and analysis.
-                                        This process is an integral part of the
-                                        functionality of our service and is
-                                        subject to the terms outlined in our
-                                        Privacy Policy and Terms of Service.
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center">
-                                      <DropdownMenu.Button>
-                                        <Button
-                                          variant="secondary"
-                                          icon={CloudArrowLeftRightIcon}
-                                          disabled={disabled}
-                                          onClick={onclick}
-                                          label="Acknowledge and Connect"
-                                        />
-                                      </DropdownMenu.Button>
-                                    </div>
-                                  </div>
-                                </DropdownMenu.Items>
-                              </DropdownMenu>
-                            )}
-                          </>
-                        );
-                      } else {
-                        return (
-                          <Button
-                            variant="secondary"
-                            icon={Cog6ToothIcon}
-                            disabled={
-                              !ds.isBuilt ||
-                              isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ] ||
-                              // Can't manage or view if not (admin or not readonly (ie builder)).
-                              !(isAdmin || !readOnly)
-                            }
-                            onClick={() => {
-                              void router.push(
-                                `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
-                              );
-                            }}
-                            label={isAdmin ? "Manage" : "View"}
-                          />
-                        );
-                      }
-                    })()}
-                  </Button.List>
-                }
-              />
-            );
-          })}
-        </ContextItem.List>
-
-        <div>
-          <ul role="list" className="mt-4 divide-y divide-structure-200">
+          <ContextItem.List className="mt-2">
             {localIntegrations.map((ds) => {
               return (
-                <li
+                <ContextItem
                   key={
                     ds.dataSourceName ||
                     `managed-to-connect-${ds.connectorProvider}`
                   }
-                  className="px-2 py-4"
-                >
-                  <div className="flex items-start">
-                    <div className="min-w-5 flex">
-                      {ds.logoPath ? (
-                        <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                          <img src={ds.logoPath}></img>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-col">
-                      <div className="flex flex-col sm:flex-row sm:items-center">
-                        {ds.connector ? (
-                          <Link
-                            href={`/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`}
-                            className="flex"
-                          >
-                            <span
-                              className={classNames(
-                                "text-sm font-bold text-element-900"
-                              )}
-                            >
-                              {ds.name}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span
-                            className={classNames(
-                              "text-sm font-bold text-element-900"
-                            )}
-                          >
-                            {ds.name}
-                          </span>
-                        )}
-
-                        {ds && ds.connector && (
-                          <div className="text-sm text-element-700 sm:ml-2">
-                            {ds.fetchConnectorError ? (
-                              <span className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
-                                errored
-                              </span>
-                            ) : (
-                              <>
-                                {!ds.connector.lastSyncSuccessfulTime ? (
-                                  <span>
-                                    Synchronizing
-                                    {ds.connector?.firstSyncProgress
-                                      ? ` (${ds.connector?.firstSyncProgress})`
-                                      : null}
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span className="">
-                                      Last Sync ~ {ds.synchronizedAgo} ago
-                                    </span>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mr-2 mt-2 text-sm text-element-700">
-                        {ds.description}
-                      </div>
-                    </div>
-                    <div className="flex flex-1"></div>
-                    <div>
+                  title={ds.name}
+                  visual={
+                    <ContextItem.Visual
+                      visual={(() => {
+                        switch (ds.connectorProvider) {
+                          case "slack":
+                            return SlackLogo;
+                          case "notion":
+                            return NotionLogo;
+                          case "github":
+                            return GithubLogo;
+                          case "google_drive":
+                            return DriveLogo;
+                          default:
+                            return SlackLogo;
+                        }
+                      })()}
+                    />
+                  }
+                  action={
+                    <Button.List>
                       {(() => {
                         const disabled =
                           !ds.isBuilt ||
@@ -719,90 +521,105 @@ export default function DataSourcesView({
                           );
                         }
                       })()}
+                    </Button.List>
+                  }
+                >
+                  {ds && ds.connector && (
+                    <div className="mb-1 mt-2">
+                      {ds.fetchConnectorError ? (
+                        <Chip color="warning">errored</Chip>
+                      ) : (
+                        <>
+                          {!ds.connector.lastSyncSuccessfulTime ? (
+                            <Chip color="amber" isBusy>
+                              Synchronizing
+                              {ds.connector?.firstSyncProgress
+                                ? ` (${ds.connector?.firstSyncProgress})`
+                                : null}
+                            </Chip>
+                          ) : (
+                            <>
+                              <Chip color="slate">
+                                Last Sync ~ {ds.synchronizedAgo} ago
+                              </Chip>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
-                </li>
+                  )}
+                  <ContextItem.Description>
+                    <div className="text-sm text-element-700">
+                      {ds.description}
+                    </div>
+                  </ContextItem.Description>
+                </ContextItem>
               );
             })}
-          </ul>
-        </div>
-      </div>
+          </ContextItem.List>
 
-      <div className="flex flex-col">
-        <SectionHeader
-          title="Static Data Sources"
-          description="Lets you expose static data to Dust."
-          action={
-            !readOnly
-              ? {
-                  label: "Add a new Data Source",
-                  variant: "secondary",
-                  icon: PlusIcon,
-                  onClick: () => {
-                    // Enforce plan limits: DataSources count.
-                    if (
-                      owner.plan.limits.dataSources.count != -1 &&
-                      dataSources.length >= owner.plan.limits.dataSources.count
-                    ) {
-                      window.alert(
-                        "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                      );
-                      return;
-                    } else {
-                      void router.push(
-                        `/w/${owner.sId}/builder/data-sources/new`
-                      );
-                    }
-                  },
-                }
-              : undefined
-          }
-        />
+          <SectionHeader
+            title="Static Data Sources"
+            description="Lets you expose static data to Dust."
+            action={
+              !readOnly
+                ? {
+                    label: "Add a new Data Source",
+                    variant: "secondary",
+                    icon: PlusIcon,
+                    onClick: () => {
+                      // Enforce plan limits: DataSources count.
+                      if (
+                        owner.plan.limits.dataSources.count != -1 &&
+                        dataSources.length >=
+                          owner.plan.limits.dataSources.count
+                      ) {
+                        window.alert(
+                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                        );
+                        return;
+                      } else {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/new`
+                        );
+                      }
+                    },
+                  }
+                : undefined
+            }
+          />
 
-        <div className="my-4">
-          <ul role="list" className="mt-4 divide-y divide-structure-200">
+          <ContextItem.List className="mt-2">
             {dataSources.map((ds) => (
-              <li key={ds.name} className="px-2">
-                <div className="py-4">
-                  <div className="flex items-start">
-                    <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                      <CloudArrowDownIcon className="h-5 w-5 text-element-600" />
-                    </div>
-                    <div className="fexl flex-col">
-                      <Link
-                        href={`/w/${owner.sId}/builder/data-sources/${ds.name}`}
-                        className="flex"
-                      >
-                        <p className="truncate text-sm font-bold text-element-900">
-                          {ds.name}
-                        </p>
-                      </Link>
-                      <div className="mt-2 text-sm text-element-700">
-                        {ds.description}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-1"></div>
-
-                    <div>
-                      <Button
-                        variant="secondary"
-                        icon={Cog6ToothIcon}
-                        onClick={() => {
-                          void router.push(
-                            `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                          );
-                        }}
-                        label="Manage"
-                      />
-                    </div>
+              <ContextItem
+                key={ds.name}
+                title={ds.name}
+                visual={<ContextItem.Visual visual={CloudArrowDownIcon} />}
+                action={
+                  <Button.List>
+                    <Button
+                      variant="secondary"
+                      icon={Cog6ToothIcon}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                        );
+                      }}
+                      label="Manage"
+                    />
+                  </Button.List>
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-sm text-element-700">
+                    {ds.description}
                   </div>
-                </div>
-              </li>
+                </ContextItem.Description>
+              </ContextItem>
             ))}
-          </ul>
+          </ContextItem.List>
         </div>
-      </div>
+      </Page.Vertical>
     </AppLayout>
   );
 }
