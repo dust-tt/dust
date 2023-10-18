@@ -346,11 +346,11 @@ RetrievalDocument.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     documentId: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     reference: {
@@ -362,7 +362,7 @@ RetrievalDocument.init(
       allowNull: false,
     },
     tags: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
     },
     score: {
