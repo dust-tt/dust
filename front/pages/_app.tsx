@@ -6,8 +6,6 @@ import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
 import { MouseEvent, ReactNode } from "react";
 
-import { NotificationArea } from "@app/components/sparkle/Notification";
-
 function NextLinkWrapper({
   href,
   className,
@@ -51,9 +49,7 @@ export default function App({
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
       <SessionProvider session={session}>
-        <NotificationArea>
-          <Component {...pageProps} />
-        </NotificationArea>
+        <Component {...pageProps} />
       </SessionProvider>
     </SparkleContext.Provider>
   );
