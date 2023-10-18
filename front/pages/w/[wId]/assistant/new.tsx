@@ -15,7 +15,6 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
-import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   FixedAssistantInputBar,
@@ -36,13 +35,12 @@ import {
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   isBuilder: boolean;
   owner: WorkspaceType;
-  baseUrl: string;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -67,7 +65,6 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       isBuilder: auth.isBuilder(),
       owner,
-      baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -77,7 +74,6 @@ export default function AssistantNew({
   user,
   isBuilder,
   owner,
-  baseUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -160,15 +156,6 @@ export default function AssistantNew({
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
           topNavigationCurrent="assistant"
-          titleChildren={
-            conversation && (
-              <ConversationTitle
-                owner={owner}
-                conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversation.sId}`}
-              />
-            )
-          }
           navChildren={
             <AssistantSidebarMenu
               owner={owner}
