@@ -1,11 +1,18 @@
-import { Button, KeyIcon, PageHeader } from "@dust-tt/sparkle";
+import {
+  Button,
+  CloudArrowDownIcon,
+  Cog6ToothIcon,
+  DropdownMenu,
+  Input,
+  Page,
+  PageHeader,
+} from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { classNames } from "@app/lib/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -45,9 +52,10 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const [workspaceName, setWorkspaceName] = useState(owner.name);
-  const [workspaceNameError, setWorkspaceNameError] = useState("");
+  const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -55,7 +63,7 @@ export default function WorkspaceAdmin({
     }
     let valid = true;
 
-    if (workspaceName.length == 0) {
+    if (workspaceName.length === 0) {
       setWorkspaceNameError("");
       valid = false;
       // eslint-disable-next-line no-useless-escape
@@ -95,6 +103,99 @@ export default function WorkspaceAdmin({
     }
   };
 
+  const handleSelectMonth = (selectedOption: string) => {
+    setSelectedMonth(selectedOption);
+  };
+
+  const handleDownload = async (selectedMonth: string | null) => {
+    if (!selectedMonth) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/monthly-usage?referenceDate=${selectedMonth}-01`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      const csvData = await response.text();
+      const blob = new Blob([csvData], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+
+      const [year, month] = selectedMonth.split("-");
+
+      const currentDay = new Date().getDate();
+      const formattedDay = String(currentDay).padStart(2, "0");
+
+      const currentMonth = new Date().getMonth() + 1;
+
+      const getMonthName = (monthIndex: number) => {
+        const months = [
+          "jan",
+          "feb",
+          "mar",
+          "apr",
+          "may",
+          "jun",
+          "jul",
+          "aug",
+          "sep",
+          "oct",
+          "nov",
+          "dec",
+        ];
+        return months[monthIndex - 1];
+      };
+
+      const monthName = getMonthName(Number(month));
+      const currentMonthName = getMonthName(currentMonth);
+
+      let filename = `dust_${owner.name}_monthly_usage_${year}_${monthName}`;
+
+      // If the selected month is the current month, append the day
+      if (monthName === currentMonthName) {
+        filename += `_until_${formattedDay}`;
+      }
+
+      filename += ".csv";
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      alert("Failed to download usage data.");
+    }
+  };
+
+  const monthOptions: string[] = [];
+
+  if (owner.upgradedAt) {
+    const upgradedAtDate = new Date(owner.upgradedAt);
+    const upgradedYear = upgradedAtDate.getFullYear();
+    const upgradedMonth = upgradedAtDate.getMonth();
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+
+    for (let year = upgradedYear; year <= currentYear; year++) {
+      const startMonth = year === upgradedYear ? upgradedMonth : 0;
+      const endMonth = year === currentYear ? currentMonth : 11;
+      for (let month = startMonth; month <= endMonth; month++) {
+        monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
+      }
+    }
+
+    if (!selectedMonth) {
+      setSelectedMonth(monthOptions[monthOptions.length - 1]);
+    }
+  }
+
   return (
     <AppLayout
       user={user}
@@ -103,50 +204,30 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
-      <PageHeader
-        title="Workspace Settings"
-        icon={KeyIcon}
-        description="Use this page to manage your workspace."
-      />
-
-      <div className="flex flex-col">
-        <div className="space-y-8 pt-8">
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-5">
-            <div className="sm:col-span-6">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="appName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Workspace name
-                </label>
-              </div>
+      <Page.Vertical>
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+          <PageHeader
+            title="Workspace Settings"
+            icon={Cog6ToothIcon}
+            description="Use this page to manage your workspace."
+          />
+          <div />
+          <Page.SectionHeader
+            title="Workspace name"
+            description="Think GitHub repository names, short and memorable."
+          />
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex-grow">
+              <Input
+                name="name"
+                placeholder="Workspace name"
+                value={workspaceName}
+                onChange={(x) => setWorkspaceName(x)}
+                error={workspaceNameError}
+                showErrorLabel={true}
+              />
             </div>
-            <div className="sm:col-span-3">
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  name="name"
-                  id="appName"
-                  className={classNames(
-                    "block w-full min-w-0 flex-1 rounded-md text-sm",
-                    workspaceNameError
-                      ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                  )}
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                />
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Think GitHub repository names, short and memorable.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex max-w-full flex-row">
-            <div className="flex flex-1"></div>
-            <div className="flex">
+            <div>
               <Button
                 variant="secondary"
                 disabled={disable || updating}
@@ -155,8 +236,48 @@ export default function WorkspaceAdmin({
               />
             </div>
           </div>
+
+          <div />
+          {!!monthOptions.length && (
+            <>
+              <Page.SectionHeader
+                title="Workspace Usage"
+                description="Download monthly usage analytics of your workspace."
+              />
+              <div className="align-center flex flex-row gap-2">
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      type="select"
+                      labelVisible={true}
+                      label={selectedMonth || ""}
+                      variant="secondary"
+                      size="sm"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="topLeft">
+                    {monthOptions.map((month) => (
+                      <DropdownMenu.Item
+                        key={month}
+                        label={month}
+                        onClick={() => handleSelectMonth(month)}
+                      />
+                    ))}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+                <Button
+                  label="Download usage data"
+                  icon={CloudArrowDownIcon}
+                  variant="secondary"
+                  onClick={() => {
+                    void handleDownload(selectedMonth);
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
-      </div>
+      </Page.Vertical>
     </AppLayout>
   );
 }
