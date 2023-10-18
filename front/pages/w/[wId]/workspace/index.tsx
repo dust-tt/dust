@@ -126,7 +126,41 @@ export default function WorkspaceAdmin({
       const url = window.URL.createObjectURL(blob);
 
       const [year, month] = selectedMonth.split("-");
-      const filename = `dust_monthly_usage_${year}_${month}.csv`;
+
+      const currentDay = new Date().getDate();
+      const formattedDay = String(currentDay).padStart(2, "0");
+
+      const currentMonth = new Date().getMonth() + 1;
+
+      const getMonthName = (monthIndex: number) => {
+        const months = [
+          "jan",
+          "feb",
+          "mar",
+          "apr",
+          "may",
+          "jun",
+          "jul",
+          "aug",
+          "sep",
+          "oct",
+          "nov",
+          "dec",
+        ];
+        return months[monthIndex - 1];
+      };
+
+      const monthName = getMonthName(Number(month));
+      const currentMonthName = getMonthName(currentMonth);
+
+      let filename = `dust_monthly_usage_${year}_${monthName}`;
+
+      // If the selected month is the current month, append the day
+      if (monthName === currentMonthName) {
+        filename += `_until_${formattedDay}`;
+      }
+
+      filename += ".csv";
 
       const link = document.createElement("a");
       link.href = url;
