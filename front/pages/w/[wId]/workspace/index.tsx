@@ -153,7 +153,7 @@ export default function WorkspaceAdmin({
       const monthName = getMonthName(Number(month));
       const currentMonthName = getMonthName(currentMonth);
 
-      let filename = `${owner.name}_dust_monthly_usage_${year}_${monthName}`;
+      let filename = `dust_${owner.name}_monthly_usage_${year}_${monthName}`;
 
       // If the selected month is the current month, append the day
       if (monthName === currentMonthName) {
