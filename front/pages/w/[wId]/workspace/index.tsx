@@ -1,9 +1,9 @@
 import {
   Button,
   CloudArrowDownIcon,
+  Cog6ToothIcon,
   DropdownMenu,
   Input,
-  KeyIcon,
   Page,
   PageHeader,
 } from "@dust-tt/sparkle";
@@ -208,7 +208,7 @@ export default function WorkspaceAdmin({
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
           <PageHeader
             title="Workspace Settings"
-            icon={KeyIcon}
+            icon={Cog6ToothIcon}
             description="Use this page to manage your workspace."
           />
           <div />
