@@ -398,7 +398,7 @@ export async function* runGeneration(
       messageId: agentMessage.sId,
       error: {
         code: "agent_generation_error",
-        message: `Error generating agent message: ${res.error}`,
+        message: `Error generating agent message: [${res.error.type}] ${res.error.message}`,
       },
     };
     return;
