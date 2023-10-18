@@ -45,6 +45,10 @@ module.exports = removeImports({
             key: "X-Frame-Options",
             value: "DENY",
           },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=86400", // 1 day in seconds
+          },
         ],
       },
     ];
