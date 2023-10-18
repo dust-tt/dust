@@ -4,7 +4,7 @@ import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
-import { ExternalLinkIcon, Icon, IconButton } from "..";
+import { ExternalLinkIcon, Icon, IconButton, Tooltip } from "..";
 
 interface CitationProps {
   type?: "slack" | "google_drive" | "github" | "notion" | "document";
@@ -52,9 +52,13 @@ export function Citation({
           </a>
         )}
       </div>
-      <div className="s-text-sm s-font-bold s-text-element-900">{title}</div>
+      <Tooltip label={title} position="above">
+        <div className="s-line-clamp-1 s-text-sm s-font-bold s-text-element-900">
+          {title}
+        </div>
+      </Tooltip>
       {description && (
-        <div className="s-text-xs s-font-normal s-text-element-700">
+        <div className="s-line-clamp-2 s-text-xs s-font-normal  s-text-element-700">
           {description}
         </div>
       )}
