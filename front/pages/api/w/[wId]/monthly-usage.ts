@@ -150,7 +150,9 @@ async function getMonthlyUsage(
       type: QueryTypes.SELECT,
     }
   );
-
+  if (!results.length) {
+    return "You have no data for this month.";
+  }
   const csvContent = results
     .map((row) => Object.values(row).join(","))
     .join("\n");
