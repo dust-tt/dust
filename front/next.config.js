@@ -30,7 +30,7 @@ module.exports = removeImports({
       },
     ];
   },
-  poweredByHeader:false,
+  poweredByHeader: false,
   async headers() {
     return [
       {
