@@ -41,10 +41,8 @@ export function NotificationArea({ children }: { children: React.ReactNode }) {
 
   return (
     <SendNotificationsContext.Provider value={sendNotification}>
-      <div className="relative">
-        {children}
-        <NotificationsList notifications={notifications} />
-      </div>
+      {children}
+      <NotificationsList notifications={notifications} />
     </SendNotificationsContext.Provider>
   );
 }
@@ -54,7 +52,7 @@ export function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="absolute right-0 top-0 z-30 w-80">
+    <div className="fixed right-0 top-0 z-30 w-80">
       <div className="flex flex-col items-center justify-center gap-4 p-4">
         {notifications.map((n) => {
           return (
