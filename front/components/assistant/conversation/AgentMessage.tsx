@@ -178,10 +178,12 @@ export function AgentMessage({
   useEffect(() => {
     const mainTag = document.getElementById("main-content");
     if (mainTag && agentMessageToRender.status === "created") {
-      if (mainTag.offsetHeight + window.scrollY >= mainTag.scrollHeight - 200) {
-        window.scrollTo(0, document.body.scrollHeight);
+      if (
+        mainTag.offsetHeight + mainTag.scrollTop >=
+        mainTag.scrollHeight - 50
+      ) {
+        mainTag.scrollTo(0, mainTag.scrollHeight);
       }
-      mainTag.scrollTo(0, mainTag.scrollHeight);
     }
   }, [agentMessageToRender.content, agentMessageToRender.status]);
 
