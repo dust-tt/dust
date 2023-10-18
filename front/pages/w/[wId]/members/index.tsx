@@ -296,6 +296,7 @@ export default function WorkspaceAdmin({
                     <Chip
                       size="xs"
                       color={COLOR_FOR_ROLE[item.workspaces[0].role]}
+                      className="capitalize"
                     >
                       {item.workspaces[0].role}
                     </Chip>
