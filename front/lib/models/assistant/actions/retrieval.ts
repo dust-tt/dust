@@ -346,11 +346,11 @@ RetrievalDocument.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     documentId: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     reference: {
