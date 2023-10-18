@@ -1,13 +1,10 @@
 import {
   Avatar,
   DropdownMenu,
-  Icon,
-  IconButton,
   Item,
   Logo,
   Tab,
   XMarkIcon,
-  CheckCircleStrokeIcon,
 } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
@@ -16,7 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import { Fragment, use, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import React from "react";
 
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -28,7 +25,6 @@ import {
   topNavigation,
   TopNavigationId,
 } from "./navigation";
-import { uuid4 } from "@temporalio/workflow";
 
 function NavigationBar({
   user,
@@ -169,18 +165,6 @@ function NavigationBar({
   );
 }
 
-type NotificationType = {
-  title?: string;
-  description?: string;
-  type: "success" | "error";
-};
-
-export const SendNotificationsContext = React.createContext<
-  (n: NotificationType) => void
->((n) => n);
-
-const NOTIFICATION_DELAY = 5000;
-
 export default function AppLayout({
   user,
   owner,
@@ -207,21 +191,6 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = React.useState<
-    (NotificationType & { id: string })[]
-  >([]);
-
-  function sendNotification(n: NotificationType) {
-    const id = uuid4();
-    setNotifications((notifications) => [{ ...n, id }, ...notifications]);
-    /* After a delay allowing for the notification removal animation, remove the notification from the list */
-    setTimeout(() => {
-      setNotifications((notifications) =>
-        notifications.filter((n) => n.id !== id)
-      );
-    }, NOTIFICATION_DELAY + 1000);
-  }
-
   return (
     <>
       <Head>
@@ -276,144 +245,141 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
-      <SendNotificationsContext.Provider value={sendNotification}>
-        <div className="light h-full">
-          {!hideSidebar && (
-            <Transition.Root show={sidebarOpen} as={Fragment}>
-              <Dialog
-                as="div"
-                className="relative z-50 lg:hidden"
-                onClose={setSidebarOpen}
+      <div className="light h-full">
+        {!hideSidebar && (
+          <Transition.Root show={sidebarOpen} as={Fragment}>
+            <Dialog
+              as="div"
+              className="relative z-50 lg:hidden"
+              onClose={setSidebarOpen}
+            >
+              <Transition.Child
+                as={Fragment}
+                enter="transition-opacity ease-linear duration-300"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+                leave="transition-opacity ease-linear duration-300"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
               >
+                <div className="fixed inset-0 bg-gray-900/80" />
+              </Transition.Child>
+
+              <div className="fixed inset-0 flex">
                 <Transition.Child
                   as={Fragment}
-                  enter="transition-opacity ease-linear duration-300"
-                  enterFrom="opacity-0"
-                  enterTo="opacity-100"
-                  leave="transition-opacity ease-linear duration-300"
-                  leaveFrom="opacity-100"
-                  leaveTo="opacity-0"
+                  enter="transition ease-in-out duration-300 transform"
+                  enterFrom="-translate-x-full"
+                  enterTo="translate-x-0"
+                  leave="transition ease-in-out duration-300 transform"
+                  leaveFrom="translate-x-0"
+                  leaveTo="-translate-x-full"
                 >
-                  <div className="fixed inset-0 bg-gray-900/80" />
+                  <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+                    <Transition.Child
+                      as={Fragment}
+                      enter="ease-in-out duration-300"
+                      enterFrom="opacity-0"
+                      enterTo="opacity-100"
+                      leave="ease-in-out duration-300"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                    >
+                      <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
+                        <button
+                          type="button"
+                          className="-m-2.5 p-2.5"
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <span className="sr-only">Close sidebar</span>
+                          <XMarkIcon
+                            className="h-6 w-6 text-white"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </div>
+                    </Transition.Child>
+                    <NavigationBar
+                      user={user}
+                      owner={owner}
+                      subNavigation={subNavigation}
+                      topNavigationCurrent={topNavigationCurrent}
+                    >
+                      {navChildren && navChildren}
+                    </NavigationBar>
+                  </Dialog.Panel>
                 </Transition.Child>
+              </div>
+            </Dialog>
+          </Transition.Root>
+        )}
 
-                <div className="fixed inset-0 flex">
-                  <Transition.Child
-                    as={Fragment}
-                    enter="transition ease-in-out duration-300 transform"
-                    enterFrom="-translate-x-full"
-                    enterTo="translate-x-0"
-                    leave="transition ease-in-out duration-300 transform"
-                    leaveFrom="translate-x-0"
-                    leaveTo="-translate-x-full"
-                  >
-                    <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                      <Transition.Child
-                        as={Fragment}
-                        enter="ease-in-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in-out duration-300"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                      >
-                        <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                          <button
-                            type="button"
-                            className="-m-2.5 p-2.5"
-                            onClick={() => setSidebarOpen(false)}
-                          >
-                            <span className="sr-only">Close sidebar</span>
-                            <XMarkIcon
-                              className="h-6 w-6 text-white"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        </div>
-                      </Transition.Child>
-                      <NavigationBar
-                        user={user}
-                        owner={owner}
-                        subNavigation={subNavigation}
-                        topNavigationCurrent={topNavigationCurrent}
-                      >
-                        {navChildren && navChildren}
-                      </NavigationBar>
-                    </Dialog.Panel>
-                  </Transition.Child>
-                </div>
-              </Dialog>
-            </Transition.Root>
+        {!hideSidebar && (
+          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <NavigationBar
+              user={user}
+              owner={owner}
+              subNavigation={subNavigation}
+              topNavigationCurrent={topNavigationCurrent}
+            >
+              {navChildren && navChildren}
+            </NavigationBar>
+          </div>
+        )}
+
+        <div
+          className={classNames(
+            "mt-0 h-full flex-1",
+            !hideSidebar ? "lg:pl-80" : ""
           )}
-
-          {!hideSidebar && (
-            <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-              <NavigationBar
-                user={user}
-                owner={owner}
-                subNavigation={subNavigation}
-                topNavigationCurrent={topNavigationCurrent}
-              >
-                {navChildren && navChildren}
-              </NavigationBar>
-            </div>
-          )}
-
+        >
           <div
             className={classNames(
-              "mt-0 h-full flex-1",
-              !hideSidebar ? "lg:pl-80" : ""
+              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
+            )}
+          >
+            <button
+              type="button"
+              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <span className="sr-only">Open sidebar</span>
+              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+          <div
+            className={classNames(
+              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:pl-0",
+              !hideSidebar ? "lg:left-80" : "",
+              "border-b border-structure-300/30 bg-white/80 backdrop-blur",
+              titleChildren ? "fixed" : "lg:hidden"
+            )}
+          >
+            <div className="grow">
+              <div className="mx-auto h-full grow px-6">
+                {titleChildren && titleChildren}
+              </div>
+            </div>
+          </div>
+
+          <main
+            id="main-content"
+            className={classNames(
+              "h-full overflow-x-hidden pt-16",
+              titleChildren ? "" : "lg:pt-8"
             )}
           >
             <div
               className={classNames(
-                "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
+                "mx-auto h-full ",
+                isWideMode ? "w-full" : "max-w-4xl px-6"
               )}
             >
-              <button
-                type="button"
-                className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <span className="sr-only">Open sidebar</span>
-                <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-              </button>
+              {children}
             </div>
-            <div
-              className={classNames(
-                "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:pl-0",
-                !hideSidebar ? "lg:left-80" : "",
-                "border-b border-structure-300/30 bg-white/80 backdrop-blur",
-                titleChildren ? "fixed" : "lg:hidden"
-              )}
-            >
-              <div className="grow">
-                <div className="mx-auto h-full grow px-6">
-                  {titleChildren && titleChildren}
-                </div>
-              </div>
-            </div>
-
-            <main
-              id="main-content"
-              className={classNames(
-                "h-full overflow-x-hidden pt-16",
-                titleChildren ? "" : "lg:pt-8"
-              )}
-            >
-              <div
-                className={classNames(
-                  "mx-auto h-full ",
-                  isWideMode ? "w-full" : "max-w-4xl px-6"
-                )}
-              >
-                {children}
-              </div>
-            </main>
-          </div>
+          </main>
         </div>
-        <NotificationsList notifications={notifications} />
-      </SendNotificationsContext.Provider>
+      </div>
       <>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
@@ -430,73 +396,5 @@ export default function AppLayout({
         </Script>
       </>
     </>
-  );
-}
-
-function NotificationsList({
-  notifications,
-}: {
-  notifications: (NotificationType & { id: string })[];
-}) {
-  return (
-    <div className="margin-auto fixed bottom-0 flex flex-col items-center gap-4 p-4">
-      {notifications.map((n) => {
-        return (
-          <Notification
-            key={n.id}
-            title={n.title}
-            description={n.description}
-            type={n.type}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function Notification({ title, description, type }: NotificationType) {
-  const [showNotification, setShowNotification] = React.useState(true);
-  useEffect(() => {
-    setTimeout(() => {
-      setShowNotification(false);
-    }, NOTIFICATION_DELAY);
-  }, []);
-  return (
-    <Transition
-      show={showNotification}
-      appear={true}
-      enter="transition ease-in-out duration-300 transform"
-      enterFrom="translate-y-16 opacity-0"
-      enterTo="translate-y-0 opacity-100"
-      leave="transition ease-in-out duration-300 transform"
-      leaveFrom="translate-y-0 opacity-100"
-      leaveTo="translate-y-16 opacity-0"
-    >
-      <div className="z-40 flex w-96 rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
-        <div>
-          <Icon
-            size="sm"
-            visual={CheckCircleStrokeIcon}
-            className="text-success-500"
-          />
-        </div>
-        <div className="flex flex-col">
-          <div className="text-sm font-semibold capitalize text-success-500">
-            {title || type}
-          </div>
-          <div className="text-xs font-normal capitalize text-element-700">
-            {description}
-          </div>
-        </div>
-        <div>
-          <IconButton
-            icon={XMarkIcon}
-            size="xs"
-            variant="secondary"
-            onClick={() => setShowNotification(false)}
-          />
-        </div>
-      </div>
-    </Transition>
   );
 }

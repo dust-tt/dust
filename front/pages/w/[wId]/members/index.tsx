@@ -19,10 +19,9 @@ import { useContext, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
-import AppLayout, {
-  SendNotificationsContext,
-} from "@app/components/sparkle/AppLayout";
+import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   Authenticator,
   getSession,
