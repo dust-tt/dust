@@ -69,7 +69,7 @@ export function AssistantSidebarMenu({
     <div className="flex grow flex-col">
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
-          <div className="pr py-4 text-right">
+          <div className="py-4 pr-2 text-right">
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {

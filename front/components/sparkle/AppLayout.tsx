@@ -108,10 +108,10 @@ function NavigationBar({
           <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
         </div>
         {subNavigation && (
-          <div>
+          <div className="py-2">
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="grow px-4 pb-4 pt-2">
+                <div key={nav.id} className="grow pl-4 pr-3">
                   <Item.List>
                     <Item.SectionHeader
                       label={nav.label}
