@@ -313,7 +313,7 @@ export async function cancelMessageGenerationEvent(
       // Submit event to redis stream so we stop the generation
       const redisTask = redis.set(
         `assistant:generation:cancelled:${messageId}`,
-        "1",
+        1,
         {
           EX: 3600, // 1 hour
         }

@@ -419,7 +419,10 @@ export async function* runGeneration(
         shouldYieldCancel = true;
         await redis.set(
           `assistant:generation:cancelled:${agentMessage.sId}`,
-          0
+          0,
+          {
+            EX: 3600, // 1 hour
+          }
         );
       }
     } catch (error) {
