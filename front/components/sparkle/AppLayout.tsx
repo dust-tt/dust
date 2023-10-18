@@ -111,7 +111,7 @@ function NavigationBar({
           <div className="py-2">
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="grow px-4">
+                <div key={nav.id} className="grow pl-4 pr-3">
                   <Item.List>
                     <Item.SectionHeader
                       label={nav.label}
