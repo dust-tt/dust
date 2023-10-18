@@ -35,13 +35,12 @@ import {
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   isBuilder: boolean;
   owner: WorkspaceType;
-  baseUrl: string;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -66,7 +65,6 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       isBuilder: auth.isBuilder(),
       owner,
-      baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -76,7 +74,6 @@ export default function AssistantNew({
   user,
   isBuilder,
   owner,
-  baseUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
