@@ -18,6 +18,7 @@ import {
   useState,
 } from "react";
 import * as ReactDOMServer from "react-dom/server";
+import { mutate } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -791,6 +792,9 @@ export function FixedAssistantInputBar({
           messageIds: generationContext.generatingMessageIds,
         }),
       }
+    );
+    await mutate(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
     );
   };
 

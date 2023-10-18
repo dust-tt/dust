@@ -18,6 +18,7 @@ import {
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { APIErrorWithStatusCode } from "@app/lib/error";
+import { AgentMessage, Message } from "@app/lib/models";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -306,9 +307,25 @@ export async function cancelMessageGenerationEvent(
   messageIds: string[]
 ): Promise<void> {
   const redis = await redisClient();
-  messageIds.forEach(async (messageId) => {
-    await redis.set(`assistant:generation:cancelled:${messageId}`, 1);
+
+  await messageIds.map(async (messageId) => {
+    // Submit event to redis stream so we stop the generation
+    await redis.set(`assistant:generation:cancelled:${messageId}`, "1", {
+      EX: 3600, // 1 hour
+    });
+
+    // Already set the status to cancel
+    const message = await Message.findOne({
+      where: { sId: messageId },
+    });
+    if (message && message.agentMessageId) {
+      await AgentMessage.update(
+        { status: "cancelled" },
+        { where: { id: message.agentMessageId } }
+      );
+    }
   });
+
   await redis.quit();
 }
 

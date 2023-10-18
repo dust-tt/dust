@@ -61,21 +61,8 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
-  const shouldStream = (() => {
-    switch (streamedAgentMessage.status) {
-      case "succeeded":
-      case "failed":
-      case "cancelled":
-        return false;
-      case "created":
-        return true;
-
-      default:
-        ((status: never) => {
-          throw new Error(`Unknown status: ${status}`);
-        })(streamedAgentMessage.status);
-    }
-  })();
+  const shouldStream =
+    message.status === "created" && streamedAgentMessage.status === "created";
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -163,8 +150,11 @@ export function AgentMessage({
     switch (message.status) {
       case "succeeded":
       case "failed":
-      case "cancelled":
         return message;
+      case "cancelled":
+        return message.content
+          ? message
+          : { ...message, content: streamedAgentMessage.content };
       case "created":
         return streamedAgentMessage;
 
