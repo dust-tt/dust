@@ -37,11 +37,6 @@ module.exports = removeImports({
         source: "/:path*", // Match all paths
         headers: [
           {
-            key: "Content-Security-Policy",
-            value:
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com",
-          },
-          {
             key: "X-Frame-Options",
             value: "DENY",
           },
