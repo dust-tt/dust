@@ -323,7 +323,8 @@ function StandardDataSourceView({
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
   notion: "Explore the Notion pages and databases Dust has access to:",
   google_drive: "Google Drive folders and files Dust has access to:",
-  slack: "Slack channels Dust has access to:",
+  slack:
+    "Synchronize Slack channels by inviting @Dust (the Slack app that was connected to your Slack workspace) to join those channels. Slack channels Dust has access to:",
   github: "GitHub repositories Dust has access to:",
 };
 
