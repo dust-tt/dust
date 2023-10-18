@@ -27,7 +27,7 @@ const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
   string | null
 > = {
   slack:
-    "@Dust (the Slack app that was connected to your Slack workspace) was invited, and therefore has access, to the channels below. Select which channels you want Dust to synchronize as part of the Slack managed data source:",
+    "Dust's Slack application (@Dust) was invited to the channels below from your Slack workspace. Select below which channels you wish to also synchronize the data from as part of the Slack managed data source.",
   notion: null,
   google_drive: null,
   github: null,
