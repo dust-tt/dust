@@ -75,8 +75,8 @@ export default function Welcome({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [firstName, setFirstName] = useState<string>(user.name.split(" ")[0]);
-  const [lastName, setLastName] = useState<string>(user.name.split(" ")[1]);
+  const [firstName, setFirstName] = useState<string>(user.firstName);
+  const [lastName, setLastName] = useState<string>(user.lastName || "");
   const [expertise, setExpertise] = useState<string>(defaultExpertise);
   const [adminInterest, setAdminInterest] =
     useState<string>(defaultAdminInterest);

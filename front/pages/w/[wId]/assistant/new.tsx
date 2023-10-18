@@ -183,7 +183,7 @@ export default function AssistantNew({
             <div className="text-sm font-normal text-element-800">
               <Page.Vertical gap="md" align="left">
                 <Page.Header
-                  title={"Welcome " + user.name.split(" ")[0] + "!"} //Not solid
+                  title={`Welcome ${user.firstName}!`}
                   icon={ChatBubbleLeftRightIcon}
                 />
                 {/* FEATURED AGENTS */}

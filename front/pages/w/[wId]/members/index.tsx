@@ -213,12 +213,12 @@ export default function WorkspaceAdmin({
       | MembershipInvitationType
     )[] = [
       ...members
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => a.fullName.localeCompare(b.fullName))
         .filter((m) => m.workspaces[0].role !== "none")
         .filter(
           (m) =>
             !searchText ||
-            m.name.toLowerCase().includes(searchText.toLowerCase()) ||
+            m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
             m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
             m.username?.toLowerCase().includes(searchText.toLowerCase())
         ),
@@ -314,13 +314,17 @@ export default function WorkspaceAdmin({
                     {isInvitation(item) ? (
                       <Avatar size="sm" />
                     ) : (
-                      <Avatar visual={item.image} name={item.name} size="sm" />
+                      <Avatar
+                        visual={item.image}
+                        name={item.fullName}
+                        size="sm"
+                      />
                     )}
                   </div>
                   <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
                     {!isInvitation(item) && (
                       <div className="font-medium text-element-900">
-                        {item.name}
+                        {item.fullName}
                         {user?.id === item.id && " (you)"}
                       </div>
                     )}
@@ -689,7 +693,7 @@ function ChangeMemberModal({
       sendNotification({
         type: "success",
         title: "Role updated",
-        description: `Role updated for ${member.name}.`,
+        description: `Role updated for ${member.fullName}.`,
       });
       await mutate(`/api/w/${owner.sId}/members`);
     }
@@ -709,7 +713,7 @@ function ChangeMemberModal({
       hasChanged={
         selectedRole !== null && selectedRole !== member.workspaces[0].role
       }
-      title={member.name || "Unreachable"}
+      title={member.fullName || "Unreachable"}
       type="right-side"
       onSave={async () => {
         setIsSaving(true);
@@ -726,9 +730,11 @@ function ChangeMemberModal({
     >
       <div className="mt-6 flex flex-col gap-9 px-2 text-sm text-element-700">
         <div className="flex items-center gap-4">
-          <Avatar size="lg" visual={member.image} name={member.name} />
+          <Avatar size="lg" visual={member.image} name={member.fullName} />
           <div className="flex grow flex-col">
-            <div className="font-semibold text-element-900">{member.name}</div>
+            <div className="font-semibold text-element-900">
+              {member.fullName}
+            </div>
             <div className="font-normal">{member.email}</div>
           </div>
         </div>
@@ -786,7 +792,7 @@ function ChangeMemberModal({
         <div className="mt-6 flex flex-col gap-6 px-2">
           <div>
             Revoke access for user{" "}
-            <span className="font-bold">{member.name}</span>?
+            <span className="font-bold">{member.fullName}</span>?
           </div>
           <div className="flex gap-2">
             <Button

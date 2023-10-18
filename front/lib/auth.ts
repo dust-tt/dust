@@ -290,7 +290,11 @@ export class Authenticator {
           providerId: this._user.providerId,
           username: this._user.username,
           email: this._user.email,
-          name: this._user.name,
+          fullName:
+            this._user.firstName +
+            (this._user.lastName ? ` ${this._user.lastName}` : ""),
+          firstName: this._user.firstName,
+          lastName: this._user.lastName || null,
           // Not available from this method
           image: null,
           workspaces: [],
@@ -354,7 +358,9 @@ export async function getUserFromSession(
     providerId: user.providerId,
     username: user.username,
     email: user.email,
-    name: user.name,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
     image: session.user ? session.user.image : null,
     workspaces: workspaces.map((w) => {
       const m = memberships.find((m) => m.workspaceId === w.id);

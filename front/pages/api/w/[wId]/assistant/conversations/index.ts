@@ -138,7 +138,7 @@ async function handler(
           context: {
             timezone: message.context.timezone,
             username: user.username,
-            fullName: user.name,
+            fullName: user.fullName,
             email: user.email,
             profilePictureUrl: message.context.profilePictureUrl,
           },
