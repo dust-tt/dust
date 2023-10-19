@@ -108,7 +108,7 @@ export default function WorkspaceAdmin({
                 Invitation link is activated for domain{" "}
                 <span className="font-bold">{`@${owner.allowedDomain}`}</span>.
               </Page.P>
-              <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
+              <div className="mt-3 flex w-full flex-col justify-between gap-2 sm:flex-row">
                 <div className="flex-grow">
                   <Input
                     className=""
