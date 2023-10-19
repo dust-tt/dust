@@ -346,7 +346,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       users.forEach((u) => {
-        console.log(`> id='${u.id}' username='${u.username}'`);
+        console.log(`> id='${u.id}'`);
       });
       return;
     }
