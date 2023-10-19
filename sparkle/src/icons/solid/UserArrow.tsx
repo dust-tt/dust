@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgDocumentPlus = (props: SVGProps<SVGSVGElement>) => (
+const SvgUserArrow = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -11,11 +11,8 @@ const SvgDocumentPlus = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      fillRule="evenodd"
-      d="M14 2H4v20h16V9h-6V2ZM8 13h3v-3h2v3h3v2h-3v3h-2v-3H8v-2Z"
-      clipRule="evenodd"
+      d="M14 8A5 5 0 1 1 4 8a5 5 0 0 1 10 0ZM1 22a8 8 0 1 1 16 0H1ZM22 13l-4-4v3h-4v2h4v3l4-4Z"
     />
-    <path fill="currentColor" d="M20 7h-4V3l4 4Z" />
   </svg>
 );
-export default SvgDocumentPlus;
+export default SvgUserArrow;

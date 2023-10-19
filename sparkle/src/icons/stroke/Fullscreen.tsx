@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgTrash = (props: SVGProps<SVGSVGElement>) => (
+const SvgFullscreen = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -9,16 +9,17 @@ const SvgTrash = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
+    <path fill="currentColor" d="M22 3H2v8h2V5h16v14h-6v2h8V3Z" />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M20 5h-4V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v2H4v2h16V5ZM10 5V4h4v1h-4Z"
+      d="M2 21h10v-8H2v8Zm8-6H4v4h6v-4Z"
       clipRule="evenodd"
     />
     <path
       fill="currentColor"
-      d="M19 8H5v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"
+      d="m12.5 7 2.043 2.043-2.25 2.25 1.414 1.414 2.25-2.25L18 12.5V7h-5.5Z"
     />
   </svg>
 );
-export default SvgTrash;
+export default SvgFullscreen;

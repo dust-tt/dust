@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgDocumentText = (props: SVGProps<SVGSVGElement>) => (
+const SvgDocumentPile = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -9,13 +9,13 @@ const SvgDocumentText = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M8 7h3v2H8V7ZM8 11h8v2H8v-2ZM8 15h8v2H8v-2Z" />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M20 8v14H4V2h9.997L20 8Zm-2 1h-5V4H6v16h12V9Z"
+      d="M15 2H7v4H3v16h14v-4h4V8h-6V2Zm0 16H7c-.126 0 0-8.952 0-10H5v12h10v-2Z"
       clipRule="evenodd"
     />
+    <path fill="currentColor" d="M17 2v4h4l-4-4Z" />
   </svg>
 );
-export default SvgDocumentText;
+export default SvgDocumentPile;
