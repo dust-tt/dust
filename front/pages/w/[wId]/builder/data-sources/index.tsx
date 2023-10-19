@@ -594,7 +594,14 @@ export default function DataSourcesView({
               <ContextItem
                 key={ds.name}
                 title={ds.name}
-                visual={<ContextItem.Visual visual={CloudArrowDownIcon} />}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      FolderOpenIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
                 action={
                   <Button.List>
                     <Button
