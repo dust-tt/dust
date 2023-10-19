@@ -11,7 +11,7 @@ import { statsDClient } from "@app/logger/withlogging";
 // Record an event and a log for the action error.
 const logActionError = (
   loggerArgs: {
-    workspace: { sId: string; };
+    workspace: { sId: string; name: string };
     action: string;
     app: DustAppType;
   },
