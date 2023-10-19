@@ -50,7 +50,7 @@ Page.SectionHeader = function ({
   return (
     <Page.Horizontal gap="md">
       <Page.Vertical gap="xs" sizing="grow">
-        <Page.H variant="h4">{title}</Page.H>
+        <Page.H variant="h5">{title}</Page.H>
         <Page.P variant="secondary">{description}</Page.P>
       </Page.Vertical>
       {action && (
@@ -139,7 +139,7 @@ Page.Layout = function ({
   children,
   direction = "vertical",
   sizing,
-  align = "left",
+  align = "stretch",
   gap = "lg",
 }: PageLayoutProps) {
   switch (direction) {

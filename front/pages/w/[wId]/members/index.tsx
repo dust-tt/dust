@@ -83,69 +83,71 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page.Vertical>
-        <div className="flex flex-col gap-6">
-          <Page.Header
-            title="Member Management"
-            icon={UsersIcon}
-            description="Invite and remove members, manage their rights."
-          />
-          <div>
-            <InviteSettingsModal
-              showModal={inviteSettingsModalOpen}
-              onClose={() => {
-                setInviteSettingsModalOpen(false);
-              }}
-              owner={owner}
-            />
-            <Page.SectionHeader
-              title="Invitation Link"
-              description="Allow any person with the right email domain name (@company.com) to signup and join your workspace."
-            />
-            {inviteLink ? (
-              <div className="pt-1 text-element-700">
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Member Management"
+          icon={UsersIcon}
+          description="Invite and remove members, manage their rights."
+        />
+        <InviteSettingsModal
+          showModal={inviteSettingsModalOpen}
+          onClose={() => {
+            setInviteSettingsModalOpen(false);
+          }}
+          owner={owner}
+        />
+        <Page.Vertical gap="xs">
+          <Page.H variant="h5">Invitation link</Page.H>
+          <Page.P variant="secondary">
+            Allow any person with the right email domain name (
+            <em>@company.com</em>) to signup and join your workspace.
+          </Page.P>
+          {inviteLink ? (
+            <>
+              <Page.P variant="secondary">
                 Invitation link is activated for domain{" "}
-                <span className="font-bold">{`@${owner.allowedDomain}`}</span>
-                <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
-                  <div className="flex-grow">
-                    <Input
-                      className=""
-                      disabled
-                      placeholder={""}
-                      value={inviteLink}
-                      name={""}
+                <span className="font-bold">{`@${owner.allowedDomain}`}</span>.
+              </Page.P>
+              <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
+                <div className="flex-grow">
+                  <Input
+                    className=""
+                    disabled
+                    placeholder={""}
+                    value={inviteLink}
+                    name={""}
+                  />
+                </div>
+                <div className="relative bottom-0.5 flex flex-row gap-2">
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Copy"
+                      size="sm"
+                      icon={ClipboardIcon}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(inviteLink);
+                      }}
                     />
                   </div>
-                  <div className="relative bottom-0.5 flex flex-row gap-2">
-                    <div className="flex-none">
-                      <Button
-                        variant="secondary"
-                        label="Copy"
-                        size="sm"
-                        icon={ClipboardIcon}
-                        onClick={() => {
-                          void navigator.clipboard.writeText(inviteLink);
-                        }}
-                      />
-                    </div>
-                    <div className="flex-none">
-                      <Button
-                        variant="secondary"
-                        label="Settings"
-                        size="sm"
-                        icon={Cog6ToothIcon}
-                        onClick={() => setInviteSettingsModalOpen(true)}
-                      />
-                    </div>
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Settings"
+                      size="sm"
+                      icon={Cog6ToothIcon}
+                      onClick={() => setInviteSettingsModalOpen(true)}
+                    />
                   </div>
                 </div>
               </div>
-            ) : (
-              <div></div>
-            )}
-          </div>
-          <MemberList />
-        </div>
+            </>
+          ) : (
+            <div className="hidden"></div>
+          )}
+        </Page.Vertical>
+
+        <MemberList />
       </Page.Vertical>
     </AppLayout>
   );
@@ -225,110 +227,113 @@ export default function WorkspaceAdmin({
           onClose={() => setChangeRoleModalOpen(false)}
           owner={owner}
         />
-        <Page.SectionHeader title="Member list" />
-        <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row">
-          <div className="flex-grow">
-            <Searchbar
-              placeholder="Search members"
-              onChange={setSearchText}
-              value={searchText}
-              name={""}
-            />
+        <Page.Vertical gap="sm" align="stretch">
+          <Page.H variant="h5">Member list</Page.H>
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row">
+            <div className="flex-grow">
+              <Searchbar
+                placeholder="Search members"
+                onChange={setSearchText}
+                value={searchText}
+                name={""}
+              />
+            </div>
+            <div className="flex-none">
+              <Button
+                variant="primary"
+                label="Invite members"
+                size="sm"
+                icon={PlusIcon}
+                onClick={() => setInviteEmailModalOpen(true)}
+              />
+            </div>
           </div>
-          <div className="flex-none">
-            <Button
-              variant="primary"
-              label="Invite members"
-              size="sm"
-              icon={PlusIcon}
-              onClick={() => setInviteEmailModalOpen(true)}
-            />
-          </div>
-        </div>
-        <div>
-          {displayedMembersAndInvitations.map(
-            (item: UserType | MembershipInvitationType) => (
-              <div
-                key={
-                  isInvitation(item)
-                    ? `invitation-${item.id}`
-                    : `member-${item.id}`
-                }
-                className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                onClick={() => {
-                  if (isInvitation(item)) setInvitationToRevoke(item);
-                  else setChangeRoleMember(item);
-                  /* Delay to let react re-render the modal before opening it otherwise no animation transition */
-                  setTimeout(() => {
-                    if (isInvitation(item)) setRevokeInvitationModalOpen(true);
-                    else setChangeRoleModalOpen(true);
-                  }, 50);
-                }}
-              >
-                <div className="hidden sm:block">
-                  {isInvitation(item) ? (
-                    <Avatar size="sm" />
-                  ) : (
-                    <Avatar visual={item.image} name={item.name} size="sm" />
-                  )}
-                </div>
-                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                  {!isInvitation(item) && (
-                    <div className="font-medium text-element-900">
-                      {item.name}
-                    </div>
-                  )}
+          <div className="s-w-full">
+            {displayedMembersAndInvitations.map(
+              (item: UserType | MembershipInvitationType) => (
+                <div
+                  key={
+                    isInvitation(item)
+                      ? `invitation-${item.id}`
+                      : `member-${item.id}`
+                  }
+                  className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+                  onClick={() => {
+                    if (isInvitation(item)) setInvitationToRevoke(item);
+                    else setChangeRoleMember(item);
+                    /* Delay to let react re-render the modal before opening it otherwise no animation transition */
+                    setTimeout(() => {
+                      if (isInvitation(item))
+                        setRevokeInvitationModalOpen(true);
+                      else setChangeRoleModalOpen(true);
+                    }, 50);
+                  }}
+                >
+                  <div className="hidden sm:block">
+                    {isInvitation(item) ? (
+                      <Avatar size="sm" />
+                    ) : (
+                      <Avatar visual={item.image} name={item.name} size="sm" />
+                    )}
+                  </div>
+                  <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                    {!isInvitation(item) && (
+                      <div className="font-medium text-element-900">
+                        {item.name}
+                      </div>
+                    )}
 
-                  <div className="grow font-normal text-element-700">
-                    {isInvitation(item)
-                      ? item.inviteEmail
-                      : item.email || item.username}
+                    <div className="grow font-normal text-element-700">
+                      {isInvitation(item)
+                        ? item.inviteEmail
+                        : item.email || item.username}
+                    </div>
+                  </div>
+                  <div>
+                    {isInvitation(item) ? (
+                      <Chip size="xs" color="slate">
+                        Invitation {item.status}
+                      </Chip>
+                    ) : (
+                      <Chip
+                        size="xs"
+                        color={COLOR_FOR_ROLE[item.workspaces[0].role]}
+                        className="capitalize"
+                      >
+                        {item.workspaces[0].role}
+                      </Chip>
+                    )}
+                  </div>
+                  <div className="hidden sm:block">
+                    <Icon
+                      visual={ChevronRightIcon}
+                      className="text-element-600"
+                    />
                   </div>
                 </div>
+              )
+            )}
+            {(isMembersLoading || isInvitationsLoading) && (
+              <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+                <div className="hidden sm:block">
+                  <Avatar size="xs" />
+                </div>
+                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                  <div className="font-medium text-element-900">Loading...</div>
+                  <div className="grow font-normal text-element-700"></div>
+                </div>
                 <div>
-                  {isInvitation(item) ? (
-                    <Chip size="xs" color="slate">
-                      Invitation {item.status}
-                    </Chip>
-                  ) : (
-                    <Chip
-                      size="xs"
-                      color={COLOR_FOR_ROLE[item.workspaces[0].role]}
-                      className="capitalize"
-                    >
-                      {item.workspaces[0].role}
-                    </Chip>
-                  )}
+                  <Chip size="xs" color="slate">
+                    Loading...
+                  </Chip>
                 </div>
                 <div className="hidden sm:block">
-                  <Icon
-                    visual={ChevronRightIcon}
-                    className="text-element-600"
-                  />
+                  <ChevronRightIcon />
                 </div>
               </div>
-            )
-          )}
-          {(isMembersLoading || isInvitationsLoading) && (
-            <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
-              <div className="hidden sm:block">
-                <Avatar size="xs" />
-              </div>
-              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="font-medium text-element-900">Loading...</div>
-                <div className="grow font-normal text-element-700"></div>
-              </div>
-              <div>
-                <Chip size="xs" color="slate">
-                  Loading...
-                </Chip>
-              </div>
-              <div className="hidden sm:block">
-                <ChevronRightIcon />
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </Page.Vertical>
       </>
     );
   }

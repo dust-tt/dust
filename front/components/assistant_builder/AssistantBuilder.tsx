@@ -779,7 +779,7 @@ export default function AssistantBuilder({
                 </div>
                 <div className="text-sm">
                   <Input
-                    placeholder="Anwser questions about sales, translate from English to French…"
+                    placeholder="Answer questions about sales, translate from English to French…"
                     value={builderState.description}
                     onChange={(value) => {
                       setEdited(true);
