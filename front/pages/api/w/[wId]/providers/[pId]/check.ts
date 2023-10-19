@@ -219,6 +219,13 @@ async function handler(
           return;
 
         case "browserlessapi":
+          if (!isValidApiKey(config.api_key)) {
+            res
+              .status(400)
+              .json({ ok: false, error: "Invalid Browserless API key" });
+            return;
+
+          }
           const testScrape = await fetch(
             `https://chrome.browserless.io/scrape?token=${config.api_key}`,
             {
@@ -266,3 +273,10 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+function isValidApiKey(apiKey) {
+  // Implement your validation logic here
+  // For example, check if the key format matches your expected format
+  const apiKeyFormat = /^[\w-]{43}$/; // Replace with your actual API key format
+  return apiKeyFormat.test(apiKey);
+}
