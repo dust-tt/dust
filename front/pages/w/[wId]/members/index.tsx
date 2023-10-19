@@ -27,7 +27,7 @@ import {
   RoleType,
 } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
-import { isEmailValid } from "@app/lib/utils";
+import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -102,49 +102,49 @@ export default function WorkspaceAdmin({
             Allow any person with the right email domain name (
             <em>@company.com</em>) to signup and join your workspace.
           </Page.P>
-          {inviteLink ? (
-            <>
+          <>
+            {inviteLink && (
               <Page.P variant="secondary">
                 Invitation link is activated for domain{" "}
                 <span className="font-bold">{`@${owner.allowedDomain}`}</span>.
               </Page.P>
-              <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
-                <div className="flex-grow">
-                  <Input
-                    className=""
-                    disabled
-                    placeholder={""}
-                    value={inviteLink}
-                    name={""}
+            )}
+            <div className="mt-3 flex w-full flex-col justify-between gap-2 sm:flex-row">
+              <div className="flex-grow">
+                <Input
+                  className=""
+                  disabled
+                  placeholder={""}
+                  value={inviteLink}
+                  name={""}
+                />
+              </div>
+              <div className="relative bottom-0.5 flex flex-row gap-2">
+                <div className="flex-none">
+                  <Button
+                    variant="secondary"
+                    label="Copy"
+                    size="sm"
+                    icon={ClipboardIcon}
+                    disabled={!inviteLink}
+                    onClick={() => {
+                      if (!inviteLink) return;
+                      void navigator.clipboard.writeText(inviteLink);
+                    }}
                   />
                 </div>
-                <div className="relative bottom-0.5 flex flex-row gap-2">
-                  <div className="flex-none">
-                    <Button
-                      variant="secondary"
-                      label="Copy"
-                      size="sm"
-                      icon={ClipboardIcon}
-                      onClick={() => {
-                        void navigator.clipboard.writeText(inviteLink);
-                      }}
-                    />
-                  </div>
-                  <div className="flex-none">
-                    <Button
-                      variant="secondary"
-                      label="Settings"
-                      size="sm"
-                      icon={Cog6ToothIcon}
-                      onClick={() => setInviteSettingsModalOpen(true)}
-                    />
-                  </div>
+                <div className="flex-none">
+                  <Button
+                    variant="secondary"
+                    label="Settings"
+                    size="sm"
+                    icon={Cog6ToothIcon}
+                    onClick={() => setInviteSettingsModalOpen(true)}
+                  />
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="hidden"></div>
-          )}
+            </div>
+          </>
         </Page.Vertical>
 
         <MemberList />
@@ -259,6 +259,7 @@ export default function WorkspaceAdmin({
                   }
                   className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
                   onClick={() => {
+                    if (user?.id === item.id) return; // no action on self
                     if (isInvitation(item)) setInvitationToRevoke(item);
                     else setChangeRoleMember(item);
                     /* Delay to let react re-render the modal before opening it otherwise no animation transition */
@@ -307,7 +308,10 @@ export default function WorkspaceAdmin({
                   <div className="hidden sm:block">
                     <Icon
                       visual={ChevronRightIcon}
-                      className="text-element-600"
+                      className={classNames(
+                        "text-element-600",
+                        user?.id === item.id ? "invisible" : ""
+                      )}
                     />
                   </div>
                 </div>
@@ -464,7 +468,7 @@ function InviteSettingsModal({
       setAllowedDomainError("");
     } else {
       // eslint-disable-next-line no-useless-escape
-      if (!domainInput.match(/^[a-z0-9\.\-]+$/)) {
+      if (!domainInput.match(/^[a-z0-9\.\-]*$/)) {
         setAllowedDomainError("Allowed domain must be a valid domain name.");
         valid = false;
       } else {
