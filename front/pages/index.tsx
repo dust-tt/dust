@@ -74,6 +74,13 @@ export default function Home({
   }
 
   return (
+    <form action="/api/w/123/invitations" method="POST">
+      <input name="arico"></input>
+      <button type="submit">submit</button>
+    </form>
+  );
+
+  return (
     <>
       <Head>
         <title>Dust - Secure AI assistant with your company's knowledge</title>

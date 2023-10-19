@@ -6,6 +6,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
+import { uuid4 } from "@temporalio/workflow";
 import React, { useEffect } from "react";
 
 import { classNames } from "@app/lib/utils";
@@ -28,7 +29,7 @@ export function NotificationArea({ children }: { children: React.ReactNode }) {
   >([]);
 
   function sendNotification(n: NotificationType) {
-    const id = Math.random().toString();
+    const id = uuid4();
     setNotifications((notifications) => [...notifications, { ...n, id }]);
     /* After a delay allowing for the notification exit animation, remove the
     notification from the list */

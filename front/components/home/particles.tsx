@@ -57,9 +57,7 @@ function init() {
       THREE.MathUtils.randFloatSpread(originalSpread), // y
       THREE.MathUtils.randFloatSpread(originalSpread) // z
     );
-    const color = new THREE.Color(
-      colorsArray[Math.floor(Math.random() * colorsArray.length)]
-    );
+    const color = new THREE.Color(colorsArray[Math.floor(colorsArray.length)]);
     colors.push(color.r, color.g, color.b);
   }
   geometry.setAttribute(
@@ -229,7 +227,6 @@ function calculateTargetPositions() {
         targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
         targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
         targetPositionZ = 0; // flat grid on the x/y plane
-        //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
         break;
       case 1: // sphere
         radius = geometricObjectSize * 1.5;

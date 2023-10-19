@@ -57,7 +57,6 @@ async function handler(
 
       res.status(200).json({ fileUrl });
     } catch (error) {
-      console.error("Upload error:", error);
       res.status(500).send("Error uploading file.");
     }
   } else {

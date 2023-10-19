@@ -485,7 +485,6 @@ export default function ExecuteView({
 
       source.onmessage = (event: { data: string }) => {
         if (event.data === "") {
-          console.error("Received empty event");
           // ignore empty events
           return;
         }
@@ -520,7 +519,6 @@ export default function ExecuteView({
                 lastStatusEventByBlockTypeName[blockTypeName] = parsedEvent;
 
                 if (parsedEvent.content.status === "errored") {
-                  console.error("Block errored", parsedEvent);
                   setIsErrored(true);
                 }
               } else {

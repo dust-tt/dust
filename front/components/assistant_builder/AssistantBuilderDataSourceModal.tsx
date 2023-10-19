@@ -243,7 +243,7 @@ function DataSourceResourceSelector({
       return;
     }
     if (!hasParentsById && hasSelectedResources) {
-      fetchParents().catch(console.error);
+      fetchParents().catch(()=>{});
     }
   }, [
     hasParentsById,

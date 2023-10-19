@@ -35,10 +35,8 @@ export function useEventSource(
     };
 
     es.onerror = (event) => {
-      console.error("useEventSource.onerror()", event);
       errorCount.current += 1;
       if (errorCount.current >= 3) {
-        console.log("too many errors, not reconnecting..");
         setIsError(new Error("Too many errors, closing connection."));
         es.close();
         return;

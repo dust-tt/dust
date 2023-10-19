@@ -21,6 +21,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetWorkspaceInvitationsResponseBody>
 ): Promise<void> {
+  console.log('req.body', req.body)
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -48,6 +49,7 @@ async function handler(
       },
     });
   }
+  
 
   switch (req.method) {
     case "GET":

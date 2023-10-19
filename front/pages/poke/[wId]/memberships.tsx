@@ -66,7 +66,6 @@ const MembershipsPage = ({
   const router = useRouter();
 
   const onRevoke = async (m: UserType) => {
-    console.log(m);
     if (!window.confirm(`Are you sure you want to revoke ${m.username}?`)) {
       return;
     }
@@ -85,7 +84,6 @@ const MembershipsPage = ({
       }
       await router.reload();
     } catch (e) {
-      console.error(e);
       window.alert("An error occurred while revoking the user.");
     }
   };

@@ -262,8 +262,7 @@ export default function AssistantBuilder({
       if (!builderState.avatarUrl) {
         setBuilderState((state) => ({
           ...state,
-          avatarUrl:
-            availableUrls[Math.floor(Math.random() * availableUrls.length)],
+          avatarUrl: availableUrls[Math.floor(availableUrls.length)],
         }));
       }
     }
@@ -722,7 +721,6 @@ export default function AssistantBuilder({
                           setIsSavingOrDeleting(false);
                         })
                         .catch((e) => {
-                          console.error(e);
                           alert(
                             "An error occured while saving your agent." +
                               " Please try again. If the error persists, pease reach out to team@dust.tt"

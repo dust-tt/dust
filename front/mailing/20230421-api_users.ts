@@ -58,7 +58,6 @@ async function main() {
     },
   });
 
-  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
 
   // split users in chunks of 16
   const chunks = [];
@@ -76,7 +75,6 @@ async function main() {
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((u) => {
         if (LIVE && LIVE === "true") {
@@ -92,6 +90,5 @@ async function main() {
 }
 
 void main().then(() => {
-  console.log("DONE");
   process.exit(0);
 });

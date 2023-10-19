@@ -385,8 +385,7 @@ function ManagedDataSourceView({
         .push(`/w/${owner.sId}/builder/data-sources/${dataSource.name}`)
         .then(() => {
           setShowPermissionModal(true);
-        })
-        .catch(console.error);
+        });
     }
   }, [dataSource.name, owner.sId, router]);
 
@@ -397,7 +396,6 @@ function ManagedDataSourceView({
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
-      console.error("No connector");
       return;
     }
     const provider = connector.type;
@@ -422,9 +420,7 @@ function ManagedDataSourceView({
         window.alert(updateRes.error);
       }
     } else if (provider === "github") {
-      const installationId = await githubAuth(githubAppUrl).catch((e) => {
-        console.error(e);
-      });
+      const installationId = await githubAuth(githubAppUrl).catch((e) => {});
 
       if (!installationId) {
         window.alert(

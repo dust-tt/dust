@@ -161,7 +161,6 @@ const WorkspacePage = ({
       }
       await router.reload();
     } catch (e) {
-      console.error(e);
       window.alert("An error occurred while upgrading the workspace.");
     }
   };
@@ -182,7 +181,6 @@ const WorkspacePage = ({
       }
       await router.reload();
     } catch (e) {
-      console.error(e);
       window.alert("An error occurred while downgrading the workspace.");
     }
   };
@@ -215,7 +213,6 @@ const WorkspacePage = ({
       }
       await router.reload();
     } catch (e) {
-      console.error(e);
       window.alert("An error occurred while deleting the data source.");
     }
   };
@@ -239,7 +236,6 @@ const WorkspacePage = ({
       }
       router.reload();
     } catch (e) {
-      console.error(e);
       window.alert("An error occurred while toggling slackbot.");
     }
   };

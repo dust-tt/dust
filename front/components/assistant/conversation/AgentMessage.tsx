@@ -155,9 +155,7 @@ export function AgentMessage({
       }
 
       default:
-        ((t: never) => {
-          console.error("Unknown event type", t);
-        })(event);
+        ((t: never) => {})(event);
     }
   }, []);
 

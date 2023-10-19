@@ -31,9 +31,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
-      workspaces.forEach((w) => {
-        console.log(`> wId='${w.sId}' name='${w.name}'`);
-      });
+
       return;
     }
 
@@ -52,23 +50,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      console.log(`workspace:`);
-      console.log(`  wId: ${w.sId}`);
-      console.log(`  name: ${w.name}`);
 
       const plan = planForWorkspace(w);
-      console.log(`  plan:`);
-      console.log(`    limits:`);
-      console.log(`      dataSources:`);
-      console.log(`        count:    ${plan.limits.dataSources.count}`);
-      console.log(`        documents:`);
-      console.log(
-        `          count:  ${plan.limits.dataSources.documents.count}`
-      );
-      console.log(
-        `          sizeMb: ${plan.limits.dataSources.documents.sizeMb}`
-      );
-      console.log(`        managed:    ${plan.limits.dataSources.managed}`);
 
       const dataSources = await DataSource.findAll({
         where: {
@@ -76,10 +59,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
-      console.log("Data sources:");
-      dataSources.forEach((ds) => {
-        console.log(`  - name: ${ds.name} provider: ${ds.connectorProvider}`);
-      });
 
       const memberships = await Membership.findAll({
         where: {
@@ -92,14 +71,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
-      console.log("Users:");
-      users.forEach((u) => {
-        console.log(
-          `  - userId: ${u.id} role: ${
-            memberships.find((m) => m.userId === u.id)?.role
-          }`
-        );
-      });
+
 
       return;
     }
@@ -152,7 +124,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         try {
           plan = JSON.parse(w.plan);
         } catch (err) {
-          console.log("Ignoring existing plan since not parseable JSON.");
         }
       }
 
@@ -325,10 +296,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     default:
-      console.log(`Unknown workspace command: ${command}`);
-      console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `add-user`, `change-role`, `upgrade`, `downgrade`"
-      );
+      
   }
 };
 
@@ -345,9 +313,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
-      users.forEach((u) => {
-        console.log(`> id='${u.id}'`);
-      });
+
       return;
     }
     case "show": {
@@ -365,8 +331,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`User not found: userId='${args.userId}'`);
       }
 
-      console.log(`user:`);
-      console.log(`  id: ${u.id}`);
+
 
       const memberships = await Membership.findAll({
         where: {
@@ -380,22 +345,11 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
-      console.log(`  workspaces:`);
 
-      workspaces.forEach((w) => {
-        const m = memberships.find((m) => m.workspaceId === w.id);
-        console.log(`    - wId: ${w.sId}`);
-        console.log(`      name: ${w.name}`);
-        if (m) {
-          console.log(`      role: ${m.role}`);
-        }
-      });
 
       return;
     }
     default:
-      console.log(`Unknown user command: ${command}`);
-      console.log("Possible values: `find`, `show`");
   }
 };
 
@@ -449,7 +403,6 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       if (dataSource.connectorId) {
-        console.log(`Deleting connectorId=${dataSource.connectorId}}`);
         const connDeleteRes = await ConnectorsAPI.deleteConnector(
           dataSource.connectorId.toString(),
           true
@@ -469,14 +422,6 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       await dataSource.destroy();
 
-      console.log("Data source deleted. Make sure to run: \n\n");
-      console.log(
-        "\x1b[32m%s\x1b[0m",
-        `./admin/cli.sh data-source scrub --dustAPIProjectId ${dustAPIProjectId}`
-      );
-      console.log(
-        "\n\n...to fully scrub the customer data from our infra (GCS clean-up)."
-      );
 
       return;
     }
@@ -492,7 +437,6 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         .bucket(DUST_DATA_SOURCES_BUCKET)
         .getFiles({ prefix: `${args.dustAPIProjectId}` });
 
-      console.log(`Chunking ${files.length} files...`);
       const chunkSize = 32;
       const chunks = [];
       for (let i = 0; i < files.length; i += chunkSize) {
@@ -500,7 +444,6 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       for (let i = 0; i < chunks.length; i++) {
-        console.log(`Processing chunk ${i}/${chunks.length}...`);
         const chunk = chunks[i];
         if (!chunk) {
           continue;
@@ -508,7 +451,6 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         await Promise.all(
           chunk.map((f) => {
             return (async () => {
-              console.log(`Deleting file: ${f.name}`);
               await f.delete();
             })();
           })
@@ -519,8 +461,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     default:
-      console.log(`Unknown data-source command: ${command}`);
-      console.log("Possible values: `delete`, `scrub`");
+      
   }
 };
 
@@ -561,9 +502,7 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
           id: args.eventSchemaId,
         },
       });
-      console.log(
-        nbRowsDestroyed ? "Event Schema deleted" : "Event Schema not found"
-      );
+
       return;
     }
     case "show": {
@@ -578,17 +517,7 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!schema) {
         throw new Error(`EventSchema not found: id='${args.eventSchemaId}'`);
       }
-      console.log(`Event Schema #${schema.id}:`);
-      console.log(`  marker: ${schema.marker}`);
-      console.log(`  description: ${schema.description}`);
-      console.log(`  status: ${schema.status}`);
-      console.log(`  debug: ${schema.debug}`);
-      console.log(`  workspaceId: ${schema.workspaceId}`);
-      console.log(`  userId: ${schema.userId}`);
-      console.log(
-        `  properties: ${JSON.stringify(schema.properties, null, 4)}`
-      );
-      console.log("\n\n");
+      
       return;
     }
     case "list": {
@@ -616,10 +545,6 @@ const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
   if (argv._.length < 2) {
-    console.log(
-      "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
-    );
-    console.log("Possible object types: `workspace`, `user`, `data-source`");
     return;
   }
 
@@ -639,20 +564,15 @@ const main = async () => {
       await eventSchema(command, argv);
       return;
     default:
-      console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`"
-      );
+      
       return;
   }
 };
 
 main()
   .then(() => {
-    console.error("\x1b[32m%s\x1b[0m", `Done`);
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
-    console.log(err);
     process.exit(1);
   });

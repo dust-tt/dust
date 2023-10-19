@@ -365,14 +365,6 @@ export async function* runGeneration(
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = c.temperature;
 
-  // This is the console.log you want to uncomment to generate inputs for the generator app.
-  // console.log(
-  //   JSON.stringify({
-  //     conversation: modelConversationRes.value,
-  //     prompt,
-  //   })
-  // );
-
   logger.info(
     {
       workspaceId: conversation.owner.sId,
@@ -426,7 +418,6 @@ export async function* runGeneration(
         );
       }
     } catch (error) {
-      console.error("Error checking cancellation:", error);
       return false;
     }
   };

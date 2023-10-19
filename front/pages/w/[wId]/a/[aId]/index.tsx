@@ -192,7 +192,6 @@ export default function AppView({
           }),
         });
 
-        console.log("STATE SAVED", spec, config);
       }
     }, 1000);
   };

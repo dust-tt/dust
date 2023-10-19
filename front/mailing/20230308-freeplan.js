@@ -74,7 +74,7 @@ async function main() {
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    console.log("SENDING CHUNK", i, chunk.length);
+    
     await Promise.all(
       chunk.map((u) => {
         if (LIVE && LIVE === "true") {

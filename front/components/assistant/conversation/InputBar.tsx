@@ -575,8 +575,6 @@ export function AssistantInputBar({
                         selected = null;
                       }
 
-                      // console.log("SELECTED", selected);
-
                       // We received a selected agent configration, recover the state of the
                       // contenteditable and inject an AgentMention component.
                       if (selected) {
@@ -648,7 +646,6 @@ export function AssistantInputBar({
                     // These are events on the small contentEditable that receives the user input
                     // and drives the agent list selection.
                     inputNode.onkeydown = (e) => {
-                      // console.log("KEYDOWN", e.key);
                       if (e.key === "Escape") {
                         agentListRef.current?.reset();
                         inputNode.setAttribute("ignore", "escape");
@@ -692,7 +689,6 @@ export function AssistantInputBar({
                     // have no more match we just blur to exit the selection process.
                     inputNode.oninput = (e) => {
                       const target = e.target as HTMLInputElement;
-                      // console.log("INPUT", target.textContent);
                       setAgentListFilter(target.textContent || "");
                       e.stopPropagation();
                       setTimeout(() => {

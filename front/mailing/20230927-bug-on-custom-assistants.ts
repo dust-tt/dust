@@ -25,7 +25,6 @@ export const sendAPIUserEmail = async ({
 
   await sgMail.send(msg);
 
-  console.log("EMAIL SENT", user_email);
 };
 
 async function main() {
@@ -45,9 +44,7 @@ async function main() {
           `
   );
 
-  console.log({ count: rows.length });
 
-  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
 
   // split rows in chunks of 16
   const chunks = [];
@@ -65,7 +62,6 @@ async function main() {
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i] as { user_email: string }[];
-    console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((row) => {
         if (LIVE && LIVE === "true") {
@@ -81,6 +77,5 @@ async function main() {
 }
 
 void main().then(() => {
-  console.log("DONE");
   process.exit(0);
 });

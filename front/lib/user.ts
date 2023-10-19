@@ -13,14 +13,12 @@ export async function getUserMetadataFromClient(key: string) {
     const res = await fetch(`/api/user/metadata/${encodeURIComponent(key)}`);
     if (!res.ok) {
       const err = await res.json();
-      console.error("getUserMetadata error", err);
       return null;
     }
 
     const json = (await res.json()) as GetUserMetadataResponseBody;
     return json.metadata;
   } catch (err) {
-    console.error("getUserMetadata error", err);
     return null;
   }
 }
@@ -48,13 +46,11 @@ export function setUserMetadataFromClient(metadata: UserMetadataType) {
 
       if (!res.ok) {
         const err = await res.json();
-        console.error("setUserMetadata error", err);
       }
 
       // Finally mutate to kick SWR to revalidate.
       await mutate(`/api/user/metadata/${encodeURIComponent(metadata.key)}`);
     } catch (err) {
-      console.error("setUserMetadata error", err);
     }
   })();
 }

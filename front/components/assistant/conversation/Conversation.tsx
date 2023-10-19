@@ -139,9 +139,7 @@ export default function Conversation({
             break;
           }
           default:
-            ((t: never) => {
-              console.error("Unknown event type", t);
-            })(event);
+            ((t: never) => {})(event);
         }
       }
     },
@@ -217,9 +215,7 @@ export default function Conversation({
               </div>
             );
           default:
-            ((message: never) => {
-              console.error("Unknown message type", message);
-            })(m);
+            ((message: never) => {})(m);
         }
       })}
     </div>

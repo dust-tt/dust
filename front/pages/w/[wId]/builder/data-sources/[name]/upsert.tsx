@@ -103,18 +103,16 @@ export default function DataSourceUpsert({
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
         }/documents/${encodeURIComponent(loadDocumentId)}`
-      )
-        .then(async (res) => {
-          if (res.ok) {
-            const document = await res.json();
-            setDisabled(false);
-            setDownloading(false);
-            setText(document.document.text);
-            setTags(document.document.tags);
-            setSourceUrl(document.document.source_url);
-          }
-        })
-        .catch((e) => console.error(e));
+      ).then(async (res) => {
+        if (res.ok) {
+          const document = await res.json();
+          setDisabled(false);
+          setDownloading(false);
+          setText(document.document.text);
+          setTags(document.document.tags);
+          setSourceUrl(document.document.source_url);
+        }
+      });
     }
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
@@ -208,7 +206,6 @@ export default function DataSourceUpsert({
       );
     } else {
       const data = await res.json();
-      console.log("UPSERT Error", data.error);
       window.alert(`Error upserting document: ${data.error.message}`);
       setLoading(false);
     }

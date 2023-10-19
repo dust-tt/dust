@@ -76,13 +76,11 @@ export function AvatarPicker({
           }
         );
         if (!res.ok) {
-          console.error("Error uploading avatar");
           alert("Error uploading avatar");
         }
         const { fileUrl } = await res.json();
         onPick(fileUrl);
       } catch (e) {
-        console.error("Error uploading avatar");
         alert("Error uploading avatar");
       } finally {
         setIsUploadingAvatar(false);

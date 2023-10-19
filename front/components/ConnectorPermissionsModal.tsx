@@ -159,7 +159,6 @@ export default function ConnectorPermissionsModal({
         }
       }
     } catch (e) {
-      console.error(e);
       window.alert("An unexpected error occurred");
     }
 

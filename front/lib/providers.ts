@@ -162,7 +162,6 @@ export async function getProviderLLMModels(
   );
   if (!modelsRes.ok) {
     const err = await modelsRes.json();
-    console.log(`Error fetching models for ${providerId}:`, err);
     return { models: [] };
   }
   const models = await modelsRes.json();

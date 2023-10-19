@@ -126,7 +126,6 @@ export async function upgradeWorkspace(workspaceId: number) {
     try {
       plan = JSON.parse(workspace.plan);
     } catch (err) {
-      console.log("Ignoring existing plan since not parseable JSON.");
     }
   }
 

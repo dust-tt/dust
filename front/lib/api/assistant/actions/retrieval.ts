@@ -410,7 +410,7 @@ const getRefs = () => {
       })
       .flat();
     // randomize
-    REFS.sort(() => Math.random() - 0.5);
+    REFS.sort(() =>  0.5);
   }
   return REFS;
 };

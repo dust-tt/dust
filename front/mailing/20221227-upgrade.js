@@ -49,7 +49,6 @@ Looking forward to hearing from you.
 
   await sgMail.send(msg);
 
-  console.log("UPGRADE & ACTIVATION KEY SENT", user.id);
 };
 
 async function main() {
@@ -60,11 +59,9 @@ async function main() {
   });
 
   users.forEach((u) => {
-    console.log("USER", u.id);
   });
 
   if (LIVE && LIVE === "true") {
-    console.log("SENDING EMAILS");
     await Promise.all(
       users.map((u) => {
         return sendUpgradeEmail(u);

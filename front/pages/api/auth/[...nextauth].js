@@ -17,8 +17,6 @@ export const authOptions = {
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     session: async ({ session, token, user }) => {
-      // console.log("TOKEN", token);
-      // console.log("SESSION", session);
       // Legacy support for old tokens.
       if (token.github && !token.provider) {
         token.provider = {
@@ -34,16 +32,11 @@ export const authOptions = {
       if (!session.user.image) {
         session.user.image = null;
       }
-      // console.log("FINAL SESSION", session);
       return session;
     },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async jwt({ token, user, account, profile, isNewUser }) {
-      // console.log("JWT TOKEN", token);
-      // console.log("JWT USER", user);
-      // console.log("JWT ACCOUNT", account);
-      // console.log("JWT PROFILE", profile);
-      // console.log("JWT ISNEWUSER", isNewUser);
+      
       if (profile && account && account.provider === "github") {
         token.provider = {
           provider: "github",
@@ -61,7 +54,6 @@ export const authOptions = {
           access_token: account.access_token,
         };
       }
-      // console.log("FINAL JTW TOKEN", token);
       return token;
     },
   },

@@ -76,7 +76,7 @@ const defaultData = [
 
 const genDefaultDataset = () => {
   const shuffled = defaultData.map((a) => a);
-  shuffled.sort(() => 0.5 - Math.random());
+  shuffled.sort(() => 0.5);
   return shuffled.slice(0, 3);
 };
 
