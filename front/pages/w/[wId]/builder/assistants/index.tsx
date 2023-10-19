@@ -113,7 +113,7 @@ export default function AssistantsBuilder({
       subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
     >
       <PageHeader
-        title="Assistants Manager"
+        title="Assistants"
         icon={RobotIcon}
         description="Create, manage and deploy Assistants to your collaborators."
       />

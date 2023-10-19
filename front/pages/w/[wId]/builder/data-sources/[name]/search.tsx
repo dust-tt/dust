@@ -149,7 +149,9 @@ export default function DataSourceView({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({
         owner,
-        current: "data_sources",
+        current: dataSource.connectorId
+          ? "data_sources_managed"
+          : "data_sources_static",
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle

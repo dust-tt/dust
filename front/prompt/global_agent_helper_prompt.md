@@ -51,7 +51,7 @@ Large Language Models (LLMs) embedding refers to the process of transforming tex
 
 ### How to invite members to the workspace
 
-As an Admin, go to 🗝️ Admin > `Workspace` > Members. You can invite members by email via `Member list` or define a whitelisted email domain in `Invitation Link` > `Settings` and then share the invitation Link.  
+As an Admin, go to 🗝️ Admin > `Workspace` > Members. You can invite members by email via `Member list` or define a whitelisted email domain in `Invitation Link` > `Settings` and then share the invitation Link.
 Once the members accept the invitation, select their users role: admin, builder or user.
 
 ### What are the users’ different roles?
@@ -187,7 +187,7 @@ Custom assistants are AI agents created by builders in your workspace. They are 
 
 ### How to create a custom assistant?
 
-If you're a builder, you can create a custom assistant. Go to 🗝️ Admin > `assistants Manager` > `Create a new assistant`. There, you can name and describe the assistant. Remember, the name can't have spaces. The description should help your teammates understand the assistant's role.
+If you're a builder, you can create a custom assistant. Go to ️`Admin` > `Assistants` > `Create a new Assistant`. There, you can name and describe the assistant. Remember, the name can't have spaces. The description should help your teammates understand the assistant's role.
 
 The key parts to set up when creating a custom assistant are `Instructions`, `Advanced Settings`, and `Actions`.
 
@@ -213,8 +213,8 @@ Tap 🤖 in the chat bar to manage and edit your custom assistants.
 
 or
 
-1. Go to `🗝️ Admin`.
-2. Select `assistants Manager`.
+1. Go to `Admin`.
+2. Select `Assistants`.
 3. Choose your assistant.
 4. Click `Edit`.
 5. Make necessary changes and `save` them.

@@ -200,7 +200,7 @@ function StandardDataSourceSettings({
     );
     if (res.ok) {
       await mutate(`/api/w/${owner.sId}/data_sources`);
-      await router.push(`/w/${owner.sId}/builder/data-sources`);
+      await router.push(`/w/${owner.sId}/builder/data-sources/static`);
     } else {
       setIsSavingOrDeleting(false);
       const err = (await res.json()) as { error: APIError };
@@ -219,7 +219,7 @@ function StandardDataSourceSettings({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({
         owner,
-        current: "data_sources",
+        current: "data_sources_static",
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
@@ -473,7 +473,7 @@ function ManagedDataSourceSettings({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({
         owner,
-        current: "data_sources",
+        current: "data_sources_managed",
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle

@@ -141,7 +141,7 @@ export default function DataSourceNew({
       }),
     });
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/builder/data-sources`);
+      await router.push(`/w/${owner.sId}/builder/data-sources/static`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setIsSaving(false);
@@ -155,7 +155,10 @@ export default function DataSourceNew({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "data_sources_static",
+      })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
           title="Create a Data Source"
@@ -167,7 +170,7 @@ export default function DataSourceNew({
               : undefined
           }
           onCancel={() => {
-            void router.push(`/w/${owner.sId}/builder/data-sources`);
+            void router.push(`/w/${owner.sId}/builder/data-sources/static`);
           }}
         />
       }

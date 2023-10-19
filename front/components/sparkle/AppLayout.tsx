@@ -113,10 +113,12 @@ function NavigationBar({
               return (
                 <div key={nav.id} className="grow pl-4 pr-3">
                   <Item.List>
-                    <Item.SectionHeader
-                      label={nav.label}
-                      variant={nav.variant}
-                    />
+                    {nav.label && (
+                      <Item.SectionHeader
+                        label={nav.label}
+                        variant={nav.variant}
+                      />
+                    )}
                     {nav.menus.map((menu) => {
                       return (
                         <React.Fragment key={menu.id}>

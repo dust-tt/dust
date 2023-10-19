@@ -592,13 +592,19 @@ export default function DataSourceView({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({
         owner,
-        current: "data_sources",
+        current: dataSource.connectorId
+          ? "data_sources_managed"
+          : "data_sources_static",
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={`Manage Data Source`}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/builder/data-sources`);
+            if (dataSource.connectorId) {
+              void router.push(`/w/${owner.sId}/builder/data-sources/managed`);
+            } else {
+              void router.push(`/w/${owner.sId}/builder/data-sources/static`);
+            }
           }}
         />
       }

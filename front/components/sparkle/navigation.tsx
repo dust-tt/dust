@@ -4,6 +4,7 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  DocumentPileIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   KeyIcon,
@@ -24,7 +25,8 @@ import { WorkspaceType } from "@app/types/user";
 export type TopNavigationId = "assistant" | "settings";
 
 export type SubNavigationAdminId =
-  | "data_sources"
+  | "data_sources_managed"
+  | "data_sources_static"
   | "workspace"
   | "members"
   | "developers"
@@ -57,7 +59,7 @@ export type SparkleAppLayoutNavigation = {
 
 export type SidebarNavigation = {
   id: "conversation" | "workspace" | "developers" | "lab";
-  label: string;
+  label: string | null;
   variant: "primary" | "secondary";
   menus: SparkleAppLayoutNavigation[];
 };
@@ -84,7 +86,7 @@ export const topNavigation = ({
     nav.push({
       id: "settings",
       label: "Admin",
-      icon: KeyIcon,
+      icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/builder/assistants`,
       current: current === "settings",
     });
@@ -112,12 +114,12 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "conversation",
-    label: "Conversations",
+    label: null,
     variant: "secondary",
     menus: [
       {
         id: "assistants",
-        label: "Assistants Manager",
+        label: "Assistants",
         icon: RobotIcon,
         href: `/w/${owner.sId}/builder/assistants`,
         current: current === "assistants",
@@ -125,13 +127,24 @@ export const subNavigationAdmin = ({
         subMenu: current === "assistants" ? subMenu : undefined,
       },
       {
-        id: "data_sources",
-        label: "Data Sources",
+        id: "data_sources_managed",
+        label: "Connections",
         icon: CloudArrowLeftRightIcon,
-        href: `/w/${owner.sId}/builder/data-sources`,
-        current: current === "data_sources",
-        subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
-        subMenu: current === "data_sources" ? subMenu : undefined,
+        href: `/w/${owner.sId}/builder/data-sources/managed`,
+        current: current === "data_sources_managed",
+        subMenuLabel:
+          current === "data_sources_managed" ? subMenuLabel : undefined,
+        subMenu: current === "data_sources_managed" ? subMenu : undefined,
+      },
+      {
+        id: "data_sources_static",
+        label: "Data Sources",
+        icon: DocumentPileIcon,
+        href: `/w/${owner.sId}/builder/data-sources/static`,
+        current: current === "data_sources_static",
+        subMenuLabel:
+          current === "data_sources_static" ? subMenuLabel : undefined,
+        subMenu: current === "data_sources_static" ? subMenu : undefined,
       },
     ],
   });
@@ -139,12 +152,12 @@ export const subNavigationAdmin = ({
   if (owner.role === "admin") {
     nav.push({
       id: "workspace",
-      label: "Workspace",
+      label: "Settings",
       variant: "secondary",
       menus: [
         {
           id: "workspace",
-          label: "Settings",
+          label: "Workspace",
           icon: KeyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",

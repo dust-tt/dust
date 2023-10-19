@@ -257,7 +257,7 @@ export default function DataSourceUpsert({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({
         owner,
-        current: "data_sources",
+        current: "data_sources_static",
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
