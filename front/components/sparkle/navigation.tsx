@@ -4,7 +4,7 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
-  DocumentDuplicateIcon,
+  DocumentPileIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   KeyIcon,
@@ -139,7 +139,7 @@ export const subNavigationAdmin = ({
       {
         id: "data_sources_static",
         label: "Data Sources",
-        icon: DocumentDuplicateIcon,
+        icon: DocumentPileIcon,
         href: `/w/${owner.sId}/builder/data-sources/static`,
         current: current === "data_sources_static",
         subMenuLabel:

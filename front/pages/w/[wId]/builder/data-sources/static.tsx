@@ -2,7 +2,7 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
-  DocumentDuplicateIcon,
+  DocumentPileIcon,
   FolderOpenIcon,
   Page,
   PageHeader,
@@ -16,6 +16,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -104,7 +105,7 @@ export default function DataSourcesView({
         <div className="flex flex-col gap-4 pb-4">
           <PageHeader
             title="Data Sources"
-            icon={DocumentDuplicateIcon}
+            icon={DocumentPileIcon}
             description="Make more documents accessible to this workspace. Manage data sources manually or via API."
           />
 
@@ -126,7 +127,11 @@ export default function DataSourcesView({
               }
             />
           ) : (
-            <Button.List className="justify-center pt-16">
+            <div
+              className={classNames(
+                "mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+              )}
+            >
               <Button
                 disabled={readOnly}
                 size="md"
@@ -137,7 +142,7 @@ export default function DataSourcesView({
                   await handleCreateDataSource();
                 }}
               />
-            </Button.List>
+            </div>
           )}
 
           <ContextItem.List>
