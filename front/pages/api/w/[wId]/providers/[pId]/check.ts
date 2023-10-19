@@ -219,11 +219,8 @@ async function handler(
           return;
 
         case "browserlessapi":
-          if (config.api_key.match(/^[a-zA-Z0-9]{32}$/) === null) {
-            throw new Error('sisi')
-          }
           const testScrape = await fetch(
-            `https://chrome.browserless.io/scrape?token=${encodeURIComponent(config.api_key)}`,
+            `https://chrome.browserless.io/scrape?token=${config.api_key}`,
             {
               method: "POST",
               headers: {
