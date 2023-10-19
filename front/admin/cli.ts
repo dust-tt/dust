@@ -95,7 +95,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log("Users:");
       users.forEach((u) => {
         console.log(
-          `  - userId: ${u.id} email: ${u.email} role: ${
+          `  - userId: ${u.id} role: ${
             memberships.find((m) => m.userId === u.id)?.role
           }`
         );
@@ -346,9 +346,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       users.forEach((u) => {
-        console.log(
-          `> id='${u.id}' username='${u.username}' name='${u.name}' email='${u.email}'`
-        );
+        console.log(`> id='${u.id}' username='${u.username}'`);
       });
       return;
     }
@@ -369,9 +367,6 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
 
       console.log(`user:`);
       console.log(`  id: ${u.id}`);
-      console.log(`  username: ${u.username}`);
-      console.log(`  name: ${u.name}`);
-      console.log(`  email: ${u.email}`);
 
       const memberships = await Membership.findAll({
         where: {

@@ -144,7 +144,6 @@ export async function runAction(
   const loggerArgs = {
     workspace: {
       sId: owner.sId,
-      name: owner.name,
     },
     action: actionName,
     app: action.app,
