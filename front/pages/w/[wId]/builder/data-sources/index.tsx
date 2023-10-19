@@ -7,6 +7,7 @@ import {
   ContextItem,
   DriveLogo,
   DropdownMenu,
+  FolderOpenIcon,
   GithubLogo,
   NotionLogo,
   Page,
@@ -360,7 +361,7 @@ export default function DataSourcesView({
             description="Give Dust real-time data updates by linking your company's online knowledge bases."
           />
 
-          <ContextItem.List className="mt-2">
+          <ContextItem.List>
             {localIntegrations.map((ds) => {
               return (
                 <ContextItem
@@ -589,7 +590,7 @@ export default function DataSourcesView({
             }
           />
 
-          <ContextItem.List className="mt-2">
+          <ContextItem.List>
             {dataSources.map((ds) => (
               <ContextItem
                 key={ds.name}
@@ -602,6 +603,7 @@ export default function DataSourcesView({
                       })
                     }
                   />
+                }
                 action={
                   <Button.List>
                     <Button
