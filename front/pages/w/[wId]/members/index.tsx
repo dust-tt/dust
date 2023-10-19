@@ -102,47 +102,50 @@ export default function WorkspaceAdmin({
               title="Invitation Link"
               description="Allow any person with the right email domain name (@company.com) to signup and join your workspace."
             />
-            {inviteLink ? (
-              <div className="pt-1 text-element-700">
-                Invitation link is activated for domain{" "}
-                <span className="font-bold">{`@${owner.allowedDomain}`}</span>
-                <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
-                  <div className="flex-grow">
-                    <Input
-                      className=""
-                      disabled
-                      placeholder={""}
-                      value={inviteLink}
-                      name={""}
+
+            <div className="pt-1 text-element-700">
+              {inviteLink && (
+                <div>
+                  Invitation link is activated for domain{" "}
+                  <span className="font-bold">{`@${owner.allowedDomain}`}</span>
+                </div>
+              )}
+              <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
+                <div className="flex-grow">
+                  <Input
+                    className=""
+                    disabled
+                    placeholder={""}
+                    value={inviteLink}
+                    name={""}
+                  />
+                </div>
+                <div className="relative bottom-0.5 flex flex-row gap-2">
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Copy"
+                      size="sm"
+                      icon={ClipboardIcon}
+                      disabled={!inviteLink}
+                      onClick={() => {
+                        if (!inviteLink) return;
+                        void navigator.clipboard.writeText(inviteLink);
+                      }}
                     />
                   </div>
-                  <div className="relative bottom-0.5 flex flex-row gap-2">
-                    <div className="flex-none">
-                      <Button
-                        variant="secondary"
-                        label="Copy"
-                        size="sm"
-                        icon={ClipboardIcon}
-                        onClick={() => {
-                          void navigator.clipboard.writeText(inviteLink);
-                        }}
-                      />
-                    </div>
-                    <div className="flex-none">
-                      <Button
-                        variant="secondary"
-                        label="Settings"
-                        size="sm"
-                        icon={Cog6ToothIcon}
-                        onClick={() => setInviteSettingsModalOpen(true)}
-                      />
-                    </div>
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Settings"
+                      size="sm"
+                      icon={Cog6ToothIcon}
+                      onClick={() => setInviteSettingsModalOpen(true)}
+                    />
                   </div>
                 </div>
               </div>
-            ) : (
-              <div></div>
-            )}
+            </div>
           </div>
           <MemberList />
         </div>
@@ -463,7 +466,7 @@ function InviteSettingsModal({
       setAllowedDomainError("");
     } else {
       // eslint-disable-next-line no-useless-escape
-      if (!domainInput.match(/^[a-z0-9\.\-]+$/)) {
+      if (!domainInput.match(/^[a-z0-9\.\-]*$/)) {
         setAllowedDomainError("Allowed domain must be a valid domain name.");
         valid = false;
       } else {
