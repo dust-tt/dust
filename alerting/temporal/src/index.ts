@@ -235,24 +235,12 @@ const convertPrometheusHistogramToDatadogGuageSeries = (
 const main = async () => {
   const { countMetricNames, histogramMetricNames } = await getMetricNames();
 
-  console.log({
-    level: "info",
-    message: "Polling metrics",
-    countMetricNames,
-    histogramMetricNames,
-  });
+  
 
   while (true) {
     const queryWindow = generateQueryWindow();
 
-    console.log({
-      level: "info",
-      message: "Collecting metrics from temporal cloud.",
-      startDate: new Date(
-        queryWindow.startSecondsSinceEpoch * 1000
-      ).toISOString(),
-      endDate: new Date(queryWindow.endSecondsSinceEpoch * 1000).toISOString(),
-    });
+
 
     const countSeries = (
       await Promise.all(
@@ -285,7 +273,7 @@ const main = async () => {
       )
     ).flat(2);
 
-    console.log({ level: "info", message: "Submitting metrics to Datadog" });
+  
     await datadogMetricsApi.submitMetrics({
       body: { series: [...countSeries, ...guageSeries] },
     });
