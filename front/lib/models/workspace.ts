@@ -5,9 +5,11 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 
 export class Workspace extends Model<
@@ -24,6 +26,8 @@ export class Workspace extends Model<
   declare description: string | null;
   declare allowedDomain: string | null;
   declare plan: string | null;
+
+  declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
   {
