@@ -11,7 +11,7 @@ const SvgTrash = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M17 5h4v2h-1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7H3V5h4V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2Zm1 2H6v13h12V7Zm-9 3h2v8H9v-8Zm4 0h2v8h-2v-8ZM9 4v1h6V4H9Z"
+      d="M16 5h4v2h-1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7H4V5h4V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2Zm1 2H7v13h10V7Zm-7-3v1h4V4h-4Z"
     />
   </svg>
 );
