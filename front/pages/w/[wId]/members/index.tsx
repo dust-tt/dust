@@ -534,21 +534,36 @@ function RevokeInvitationModal({
 }) {
   const { mutate } = useSWRConfig();
   const [isSaving, setIsSaving] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
   if (!invitation) return null;
 
-  async function handleRevokeInvitation(invitationId: number): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "revoked",
-      }),
-    });
+  async function handleRevokeInvitation(
+    invitation: MembershipInvitationType
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/w/${owner.sId}/invitations/${invitation.id}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "revoked",
+        }),
+      }
+    );
     if (!res.ok) {
-      window.alert("Failed to revoke member's invitation.");
+      sendNotification({
+        type: "error",
+        title: "Revoke failed",
+        description: "Failed to revoke member's invitation.",
+      });
     } else {
+      sendNotification({
+        type: "success",
+        title: "Invitation revoked",
+        description: `Invitation revoked for ${invitation.inviteEmail}.`,
+      });
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
@@ -573,7 +588,7 @@ function RevokeInvitationModal({
             label={isSaving ? "Revoking..." : "Yes, revoke"}
             onClick={async () => {
               setIsSaving(true);
-              await handleRevokeInvitation(invitation.id);
+              await handleRevokeInvitation(invitation);
               onClose();
               /* Delay to let react close the modal before cleaning isSaving, to
                * avoid the user seeing the button change label again during the closing animation */
