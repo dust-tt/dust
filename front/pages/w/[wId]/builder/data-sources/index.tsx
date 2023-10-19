@@ -1,12 +1,19 @@
 import {
   Button,
-  CloudArrowDownIcon,
+  Chip,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
+  ContextItem,
+  DriveLogo,
   DropdownMenu,
+  FolderOpenIcon,
+  GithubLogo,
+  NotionLogo,
+  Page,
   PageHeader,
   PlusIcon,
   SectionHeader,
+  SlackLogo,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -27,8 +34,7 @@ import {
   ConnectorType,
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
-import logger from "@app/logger/logger";
+import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -46,9 +52,9 @@ type DataSourceIntegration = {
   dataSourceName: string | null;
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
+  fetchConnectorErrorMessage?: string | null;
   isBuilt: boolean;
   connectorProvider: ConnectorProvider;
-  logoPath: string;
   description: string;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
@@ -104,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<{
     provider: ConnectorProvider;
     connector: ConnectorType | null;
     fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
   }[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
@@ -120,6 +127,7 @@ export const getServerSideProps: GetServerSideProps<{
             provider: mds.connectorProvider,
             connector: null,
             fetchConnectorError: true,
+            fetchConnectorErrorMessage: statusRes.error.error.message,
           };
         }
         return {
@@ -127,22 +135,18 @@ export const getServerSideProps: GetServerSideProps<{
           provider: mds.connectorProvider,
           connector: statusRes.value,
           fetchConnectorError: false,
+          fetchConnectorErrorMessage: null,
         };
       } catch (e) {
-        // Probably means `connectors` is down, we log but don't fail to avoid a 500 when just
-        // displaying the datasources (eventual actions will fail but a 500 just at display is not
-        // desirable). When that happens the managed data sources are shown as failed.
-        logger.error(
-          {
-            error: e,
-          },
-          "Failed to get connector"
-        );
+        // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
+        // the datasources (eventual actions will fail but a 500 just at display is not desirable).
+        // When that happens the managed data sources are shown as failed.
         return {
           dataSourceName: mds.name,
           provider: mds.connectorProvider,
           connector: null,
           fetchConnectorError: true,
+          fetchConnectorErrorMessage: "Synchonization service is down",
         };
       }
     })
@@ -154,11 +158,11 @@ export const getServerSideProps: GetServerSideProps<{
       name: integration.name,
       connectorProvider: integration.connectorProvider,
       isBuilt: integration.isBuilt,
-      logoPath: integration.logoPath,
       description: integration.description,
       dataSourceName: mc.dataSourceName,
       connector: mc.connector,
       fetchConnectorError: mc.fetchConnectorError,
+      fetchConnectorErrorMessage: mc.fetchConnectorErrorMessage,
       synchronizedAgo: mc.connector?.lastSyncSuccessfulTime
         ? timeAgoFrom(mc.connector.lastSyncSuccessfulTime)
         : null,
@@ -196,7 +200,6 @@ export const getServerSideProps: GetServerSideProps<{
         name: integration.name,
         connectorProvider: integration.connectorProvider,
         isBuilt: integration.isBuilt,
-        logoPath: integration.logoPath,
         description: integration.description,
         dataSourceName: null,
         connector: null,
@@ -344,96 +347,48 @@ export default function DataSourcesView({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
     >
-      <PageHeader
-        title="Data Sources"
-        icon={CloudArrowDownIcon}
-        description="Control the data Dust has access to and how it's used."
-      />
+      <Page.Vertical gap="lg" align="stretch">
+        <div className="flex flex-col gap-4 pb-4">
+          <PageHeader
+            title="Data Sources"
+            icon={CloudArrowLeftRightIcon}
+            description="Control the data Dust has access to and how it's used."
+          />
 
-      <div>
-        <SectionHeader
-          title="Managed Data Sources"
-          description="Give Dust real-time data updates by linking your company's online knowledge bases."
-        />
+          <SectionHeader
+            title="Managed Data Sources"
+            description="Give Dust real-time data updates by linking your company's online knowledge bases."
+          />
 
-        <div>
-          <ul role="list" className="mt-4 divide-y divide-structure-200">
+          <ContextItem.List>
             {localIntegrations.map((ds) => {
               return (
-                <li
+                <ContextItem
                   key={
                     ds.dataSourceName ||
                     `managed-to-connect-${ds.connectorProvider}`
                   }
-                  className="px-2 py-4"
-                >
-                  <div className="flex items-start">
-                    <div className="min-w-5 flex">
-                      {ds.logoPath ? (
-                        <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                          <img src={ds.logoPath}></img>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-col">
-                      <div className="flex flex-col sm:flex-row sm:items-center">
-                        {ds.connector ? (
-                          <Link
-                            href={`/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`}
-                            className="flex"
-                          >
-                            <span
-                              className={classNames(
-                                "text-sm font-bold text-element-900"
-                              )}
-                            >
-                              {ds.name}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span
-                            className={classNames(
-                              "text-sm font-bold text-element-900"
-                            )}
-                          >
-                            {ds.name}
-                          </span>
-                        )}
-
-                        {ds && ds.connector && (
-                          <div className="text-sm text-element-700 sm:ml-2">
-                            {ds.fetchConnectorError ? (
-                              <span className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
-                                errored
-                              </span>
-                            ) : (
-                              <>
-                                {!ds.connector.lastSyncSuccessfulTime ? (
-                                  <span>
-                                    Synchronizing
-                                    {ds.connector?.firstSyncProgress
-                                      ? ` (${ds.connector?.firstSyncProgress})`
-                                      : null}
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span className="">
-                                      Last Sync ~ {ds.synchronizedAgo} ago
-                                    </span>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mr-2 mt-2 text-sm text-element-700">
-                        {ds.description}
-                      </div>
-                    </div>
-                    <div className="flex flex-1"></div>
-                    <div>
+                  title={ds.name}
+                  visual={
+                    <ContextItem.Visual
+                      visual={(() => {
+                        switch (ds.connectorProvider) {
+                          case "slack":
+                            return SlackLogo;
+                          case "notion":
+                            return NotionLogo;
+                          case "github":
+                            return GithubLogo;
+                          case "google_drive":
+                            return DriveLogo;
+                          default:
+                            return SlackLogo;
+                        }
+                      })()}
+                    />
+                  }
+                  action={
+                    <Button.List>
                       {(() => {
                         const disabled =
                           !ds.isBuilt ||
@@ -566,90 +521,113 @@ export default function DataSourcesView({
                           );
                         }
                       })()}
+                    </Button.List>
+                  }
+                >
+                  {ds && ds.connector && (
+                    <div className="mb-1 mt-2">
+                      {ds.fetchConnectorError ? (
+                        <Chip color="warning">errored</Chip>
+                      ) : (
+                        <>
+                          {!ds.connector.lastSyncSuccessfulTime ? (
+                            <Chip color="amber" isBusy>
+                              Synchronizing
+                              {ds.connector?.firstSyncProgress
+                                ? ` (${ds.connector?.firstSyncProgress})`
+                                : null}
+                            </Chip>
+                          ) : (
+                            <>
+                              <Chip color="slate">
+                                Last Sync ~ {ds.synchronizedAgo} ago
+                              </Chip>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
-                </li>
+                  )}
+                  <ContextItem.Description>
+                    <div className="text-sm text-element-700">
+                      {ds.description}
+                    </div>
+                  </ContextItem.Description>
+                </ContextItem>
               );
             })}
-          </ul>
-        </div>
-      </div>
+          </ContextItem.List>
 
-      <div className="flex flex-col">
-        <SectionHeader
-          title="Static Data Sources"
-          description="Lets you expose static data to Dust."
-          action={
-            !readOnly
-              ? {
-                  label: "Add a new Data Source",
-                  variant: "secondary",
-                  icon: PlusIcon,
-                  onClick: () => {
-                    // Enforce plan limits: DataSources count.
-                    if (
-                      owner.plan.limits.dataSources.count != -1 &&
-                      dataSources.length >= owner.plan.limits.dataSources.count
-                    ) {
-                      window.alert(
-                        "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                      );
-                      return;
-                    } else {
-                      void router.push(
-                        `/w/${owner.sId}/builder/data-sources/new`
-                      );
-                    }
-                  },
-                }
-              : undefined
-          }
-        />
+          <SectionHeader
+            title="Static Data Sources"
+            description="Lets you expose static data to Dust."
+            action={
+              !readOnly
+                ? {
+                    label: "Add a new Data Source",
+                    variant: "secondary",
+                    icon: PlusIcon,
+                    onClick: () => {
+                      // Enforce plan limits: DataSources count.
+                      if (
+                        owner.plan.limits.dataSources.count != -1 &&
+                        dataSources.length >=
+                          owner.plan.limits.dataSources.count
+                      ) {
+                        window.alert(
+                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+                        );
+                        return;
+                      } else {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/new`
+                        );
+                      }
+                    },
+                  }
+                : undefined
+            }
+          />
 
-        <div className="my-4">
-          <ul role="list" className="mt-4 divide-y divide-structure-200">
+          <ContextItem.List>
             {dataSources.map((ds) => (
-              <li key={ds.name} className="px-2">
-                <div className="py-4">
-                  <div className="flex items-start">
-                    <div className="mr-2 flex h-5 w-5 flex-initial sm:mr-4">
-                      <CloudArrowDownIcon className="h-5 w-5 text-element-600" />
-                    </div>
-                    <div className="fexl flex-col">
-                      <Link
-                        href={`/w/${owner.sId}/builder/data-sources/${ds.name}`}
-                        className="flex"
-                      >
-                        <p className="truncate text-sm font-bold text-element-900">
-                          {ds.name}
-                        </p>
-                      </Link>
-                      <div className="mt-2 text-sm text-element-700">
-                        {ds.description}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-1"></div>
-
-                    <div>
-                      <Button
-                        variant="secondary"
-                        icon={Cog6ToothIcon}
-                        onClick={() => {
-                          void router.push(
-                            `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                          );
-                        }}
-                        label="Manage"
-                      />
-                    </div>
+              <ContextItem
+                key={ds.name}
+                title={ds.name}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      FolderOpenIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
+                }
+                action={
+                  <Button.List>
+                    <Button
+                      variant="secondary"
+                      icon={Cog6ToothIcon}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                        );
+                      }}
+                      label="Manage"
+                    />
+                  </Button.List>
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-sm text-element-700">
+                    {ds.description}
                   </div>
-                </div>
-              </li>
+                </ContextItem.Description>
+              </ContextItem>
             ))}
-          </ul>
+          </ContextItem.List>
         </div>
-      </div>
+      </Page.Vertical>
     </AppLayout>
   );
 }

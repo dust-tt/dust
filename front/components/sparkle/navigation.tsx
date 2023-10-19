@@ -1,7 +1,7 @@
 import {
   ArrowUpOnSquareIcon,
   ChatBubbleLeftRightIcon,
-  CloudArrowDownIcon,
+  CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DocumentTextIcon,
@@ -127,7 +127,7 @@ export const subNavigationAdmin = ({
       {
         id: "data_sources",
         label: "Data Sources",
-        icon: CloudArrowDownIcon,
+        icon: CloudArrowLeftRightIcon,
         href: `/w/${owner.sId}/builder/data-sources`,
         current: current === "data_sources",
         subMenuLabel: current === "data_sources" ? subMenuLabel : undefined,
