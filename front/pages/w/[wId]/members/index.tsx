@@ -102,48 +102,51 @@ export default function WorkspaceAdmin({
             Allow any person with the right email domain name (
             <em>@company.com</em>) to signup and join your workspace.
           </Page.P>
+          {inviteLink ? (
+            <>
+              <Page.P variant="secondary">
+                Invitation link is activated for domain{" "}
+                <span className="font-bold">{`@${owner.allowedDomain}`}</span>.
+              </Page.P>
+              <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
+                <div className="flex-grow">
+                  <Input
+                    className=""
+                    disabled
+                    placeholder={""}
+                    value={inviteLink}
+                    name={""}
+                  />
+                </div>
+                <div className="relative bottom-0.5 flex flex-row gap-2">
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Copy"
+                      size="sm"
+                      icon={ClipboardIcon}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(inviteLink);
+                      }}
+                    />
+                  </div>
+                  <div className="flex-none">
+                    <Button
+                      variant="secondary"
+                      label="Settings"
+                      size="sm"
+                      icon={Cog6ToothIcon}
+                      onClick={() => setInviteSettingsModalOpen(true)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="hidden"></div>
+          )}
         </Page.Vertical>
-        {inviteLink ? (
-          <div className="pt-1 text-element-700">
-            Invitation link is activated for domain{" "}
-            <span className="font-bold">{`@${owner.allowedDomain}`}</span>
-            <div className="mt-3 flex flex-col justify-between gap-2 sm:flex-row">
-              <div className="flex-grow">
-                <Input
-                  className=""
-                  disabled
-                  placeholder={""}
-                  value={inviteLink}
-                  name={""}
-                />
-              </div>
-              <div className="relative bottom-0.5 flex flex-row gap-2">
-                <div className="flex-none">
-                  <Button
-                    variant="secondary"
-                    label="Copy"
-                    size="sm"
-                    icon={ClipboardIcon}
-                    onClick={() => {
-                      void navigator.clipboard.writeText(inviteLink);
-                    }}
-                  />
-                </div>
-                <div className="flex-none">
-                  <Button
-                    variant="secondary"
-                    label="Settings"
-                    size="sm"
-                    icon={Cog6ToothIcon}
-                    onClick={() => setInviteSettingsModalOpen(true)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="hidden"></div>
-        )}
+
         <MemberList />
       </Page.Vertical>
     </AppLayout>
