@@ -352,7 +352,7 @@ export default function DataSourcesView({
         <div className="flex flex-col gap-4 pb-4">
           <PageHeader
             title="Data Sources"
-            icon={CloudArrowDownIcon}
+            icon={CloudArrowLeftRightIcon}
             description="Control the data Dust has access to and how it's used."
           />
 
