@@ -30,5 +30,5 @@ The Dust Team
 
   await sgMail.send(msg);
 
-  console.log("ACTIVATION KEY SENT", user.email);
+  console.log("ACTIVATION KEY SENT", user.id);
 };
