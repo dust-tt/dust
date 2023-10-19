@@ -27,7 +27,7 @@ import {
   RoleType,
 } from "@app/lib/auth";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
-import { isEmailValid } from "@app/lib/utils";
+import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -256,6 +256,7 @@ export default function WorkspaceAdmin({
                 }
                 className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
                 onClick={() => {
+                  if (user?.id === item.id) return; // no action on self
                   if (isInvitation(item)) setInvitationToRevoke(item);
                   else setChangeRoleMember(item);
                   /* Delay to let react re-render the modal before opening it otherwise no animation transition */
@@ -303,7 +304,10 @@ export default function WorkspaceAdmin({
                 <div className="hidden sm:block">
                   <Icon
                     visual={ChevronRightIcon}
-                    className="text-element-600"
+                    className={classNames(
+                      "text-element-600",
+                      user?.id === item.id ? "invisible" : ""
+                    )}
                   />
                 </div>
               </div>
