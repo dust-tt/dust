@@ -27,15 +27,15 @@ export function ContextItem({
       )}
       aria-label={title}
     >
-      <div className="s-flex s-flex-row s-gap-3 s-pb-5 s-pt-3">
-        <div className="s-flex s-pt-1.5">{visual}</div>
-        <div className="s-flex s-grow s-flex-col">
-          <div className="s-text-normal s-flex s-h-9 s-flex-col s-justify-center s-font-semibold">
+      <div className="s-flex s-flex-row s-gap-3 s-px-2 s-py-4">
+        <div className="s-flex">{visual}</div>
+        <div className="s-flex s-grow s-flex-col s-gap-1">
+          <div className="s-text-normal s-flex  s-flex-col s-justify-center s-font-semibold">
             {title}
           </div>
           <div className="-s-mt-1">{children}</div>
         </div>
-        <div>{action}</div>
+        <div className="">{action}</div>
       </div>
     </div>
   );
