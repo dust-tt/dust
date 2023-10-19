@@ -95,7 +95,7 @@ export default function DataSourcesView({
 
           <SectionHeader
             title="Data Sources"
-            description="Make uploaded text files (doc, pdf, text, ...) available to Dust."
+            description="Make text data or uploaded files (.txt, .md, .pdf) available to Dust."
             action={
               !readOnly
                 ? {
