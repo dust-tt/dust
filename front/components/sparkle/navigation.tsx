@@ -128,7 +128,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "data_sources_managed",
-        label: "Platform Integrations",
+        label: "Connections",
         icon: CloudArrowLeftRightIcon,
         href: `/w/${owner.sId}/builder/data-sources/managed`,
         current: current === "data_sources_managed",

@@ -74,6 +74,21 @@ export default function DataSourcesView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
+  const handleCreateDataSource = async () => {
+    // Enforce plan limits: DataSources count.
+    if (
+      owner.plan.limits.dataSources.count != -1 &&
+      dataSources.length >= owner.plan.limits.dataSources.count
+    ) {
+      window.alert(
+        "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
+      );
+      return;
+    } else {
+      void router.push(`/w/${owner.sId}/builder/data-sources/new`);
+    }
+  };
+
   return (
     <AppLayout
       user={user}
@@ -90,39 +105,40 @@ export default function DataSourcesView({
           <PageHeader
             title="Data Sources"
             icon={DocumentDuplicateIcon}
-            description="Make data available to the workspace. Manage the data manually or by API."
+            description="Make more documents accessible to this workspace. Manage data sources manually or via API."
           />
 
-          <SectionHeader
-            title="Data Sources"
-            description="Make text data or uploaded files (.txt, .md, .pdf) available to Dust."
-            action={
-              !readOnly
-                ? {
-                    label: "Add a new Data Source",
-                    variant: "secondary",
-                    icon: PlusIcon,
-                    onClick: () => {
-                      // Enforce plan limits: DataSources count.
-                      if (
-                        owner.plan.limits.dataSources.count != -1 &&
-                        dataSources.length >=
-                          owner.plan.limits.dataSources.count
-                      ) {
-                        window.alert(
-                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                        );
-                        return;
-                      } else {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/new`
-                        );
-                      }
-                    },
-                  }
-                : undefined
-            }
-          />
+          {dataSources.length > 0 ? (
+            <SectionHeader
+              title=""
+              description=""
+              action={
+                !readOnly
+                  ? {
+                      label: "Add a new Data Source",
+                      variant: "primary",
+                      icon: PlusIcon,
+                      onClick: async () => {
+                        await handleCreateDataSource();
+                      },
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <Button.List className="justify-center pt-16">
+              <Button
+                disabled={readOnly}
+                size="md"
+                label="Add a new Data Source"
+                variant="primary"
+                icon={PlusIcon}
+                onClick={async () => {
+                  await handleCreateDataSource();
+                }}
+              />
+            </Button.List>
+          )}
 
           <ContextItem.List>
             {dataSources.map((ds) => (

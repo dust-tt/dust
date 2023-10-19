@@ -10,7 +10,6 @@ import {
   NotionLogo,
   Page,
   PageHeader,
-  SectionHeader,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
@@ -345,16 +344,11 @@ export default function DataSourcesView({
       })}
     >
       <Page.Vertical gap="lg" align="stretch">
-        <div className="flex flex-col gap-4 pb-4">
+        <div className="flex flex-col gap-8 pb-4">
           <PageHeader
-            title="Platform Integrations"
+            title="Connections"
             icon={CloudArrowLeftRightIcon}
-            description="Manage the integration and data access of Dust with your platforms."
-          />
-
-          <SectionHeader
-            title="Connected Data Sources"
-            description="Give Dust real-time data updates by linking your company's online knowledge bases."
+            description="Manage connections to your products and the real-time data feeds Dust has access to."
           />
 
           <ContextItem.List>
