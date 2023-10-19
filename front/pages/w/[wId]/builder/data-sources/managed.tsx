@@ -6,12 +6,10 @@ import {
   ContextItem,
   DriveLogo,
   DropdownMenu,
-  FolderOpenIcon,
   GithubLogo,
   NotionLogo,
   Page,
   PageHeader,
-  PlusIcon,
   SectionHeader,
   SlackLogo,
 } from "@dust-tt/sparkle";
@@ -65,7 +63,6 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;
-  dataSources: DataSourceType[];
   integrations: DataSourceIntegration[];
   canUseManagedDataSources: boolean;
   gaTrackingId: string;
@@ -102,7 +99,6 @@ export const getServerSideProps: GetServerSideProps<{
   const isAdmin = auth.isAdmin();
 
   const allDataSources = await getDataSources(auth);
-  const dataSources = allDataSources.filter((ds) => !ds.connectorId);
   const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
 
   const managedConnector: {
@@ -217,7 +213,6 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       readOnly,
       isAdmin,
-      dataSources,
       integrations,
       canUseManagedDataSources: owner.plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
@@ -237,7 +232,6 @@ export default function DataSourcesView({
   owner,
   readOnly,
   isAdmin,
-  dataSources,
   integrations,
   canUseManagedDataSources,
   gaTrackingId,
@@ -345,18 +339,21 @@ export default function DataSourcesView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({ owner, current: "data_sources" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "data_sources_managed",
+      })}
     >
       <Page.Vertical gap="lg" align="stretch">
         <div className="flex flex-col gap-4 pb-4">
           <PageHeader
-            title="Data Sources"
+            title="Platform Integrations"
             icon={CloudArrowLeftRightIcon}
-            description="Control the data Dust has access to and how it's used."
+            description="Manage the integration and data access of Dust with your platforms."
           />
 
           <SectionHeader
-            title="Managed Data Sources"
+            title="Connected Data Sources"
             description="Give Dust real-time data updates by linking your company's online knowledge bases."
           />
 
@@ -556,75 +553,6 @@ export default function DataSourcesView({
                 </ContextItem>
               );
             })}
-          </ContextItem.List>
-
-          <SectionHeader
-            title="Static Data Sources"
-            description="Lets you expose static data to Dust."
-            action={
-              !readOnly
-                ? {
-                    label: "Add a new Data Source",
-                    variant: "secondary",
-                    icon: PlusIcon,
-                    onClick: () => {
-                      // Enforce plan limits: DataSources count.
-                      if (
-                        owner.plan.limits.dataSources.count != -1 &&
-                        dataSources.length >=
-                          owner.plan.limits.dataSources.count
-                      ) {
-                        window.alert(
-                          "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-                        );
-                        return;
-                      } else {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/new`
-                        );
-                      }
-                    },
-                  }
-                : undefined
-            }
-          />
-
-          <ContextItem.List>
-            {dataSources.map((ds) => (
-              <ContextItem
-                key={ds.name}
-                title={ds.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={({ className }) =>
-                      FolderOpenIcon({
-                        className: className + " text-element-600",
-                      })
-                    }
-                  />
-                }
-                action={
-                  <Button.List>
-                    <Button
-                      variant="secondary"
-                      icon={Cog6ToothIcon}
-                      onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                        );
-                      }}
-                      label="Manage"
-                    />
-                  </Button.List>
-                }
-              >
-                <ContextItem.Description>
-                  <div className="text-sm text-element-700">
-                    {ds.description}
-                  </div>
-                </ContextItem.Description>
-              </ContextItem>
-            ))}
           </ContextItem.List>
         </div>
       </Page.Vertical>

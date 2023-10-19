@@ -103,7 +103,7 @@ export default function DataSourcePicker({
                   "Select DataSource"
                 ) : (
                   <Link
-                    href={`/w/${owner.sId}/builder/data-sources`}
+                    href={`/w/${owner.sId}/builder/data-sources/static`}
                     className={classNames(
                       readOnly
                         ? "border-white text-gray-300"
