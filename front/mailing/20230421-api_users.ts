@@ -49,8 +49,6 @@ of always allowing you to build with better tools.</p>
   };
 
   await sgMail.send(msg);
-
-  console.log("EMAIL SENT", user.email);
 };
 
 async function main() {
@@ -61,10 +59,6 @@ async function main() {
   });
 
   console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
-
-  users.forEach((u) => {
-    console.log("USER", u.id, u.email);
-  });
 
   // split users in chunks of 16
   const chunks = [];
@@ -85,7 +79,6 @@ async function main() {
     console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((u) => {
-        console.log("PREPARING EMAIL", u.email);
         if (LIVE && LIVE === "true") {
           return sendAPIUserEmail(u);
         } else {

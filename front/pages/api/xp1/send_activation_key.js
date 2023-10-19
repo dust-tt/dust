@@ -22,11 +22,6 @@ async function handler(req, res) {
     return;
   }
 
-  logger.info(
-    { name: req.body.name, email: req.body.email },
-    "XP1 user creation"
-  );
-
   let user = await XP1User.findOne({
     where: {
       email: req.body.email,
@@ -40,6 +35,7 @@ async function handler(req, res) {
       name: req.body.name,
     });
   }
+  logger.info({ name: req.body.name, userId: user.id }, "XP1 user creation");
 
   await sendActivationKey(user);
 

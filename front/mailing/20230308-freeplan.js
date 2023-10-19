@@ -53,18 +53,10 @@ The Dust team
   };
 
   await sgMail.send(msg);
-
-  console.log("UPGRADE & ACTIVATION KEY SENT", user.email);
 };
 
 async function main() {
   let users = await await XP1User.findAll();
-
-  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
-
-  users.forEach((u) => {
-    console.log("USER", u.id, u.email);
-  });
 
   // split users in chunks of 16
   let chunks = [];
@@ -85,7 +77,6 @@ async function main() {
     console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((u) => {
-        console.log("PREPARING EMAIL", u.email);
         if (LIVE && LIVE === "true") {
           return sendFreeplanEmail(u);
         } else {

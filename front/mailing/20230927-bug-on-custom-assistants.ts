@@ -68,7 +68,6 @@ async function main() {
     console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((row) => {
-        console.log("PREPARING EMAIL", row.user_email);
         if (LIVE && LIVE === "true") {
           return sendAPIUserEmail(row);
         } else {

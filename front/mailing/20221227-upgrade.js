@@ -49,7 +49,7 @@ Looking forward to hearing from you.
 
   await sgMail.send(msg);
 
-  console.log("UPGRADE & ACTIVATION KEY SENT", user.email);
+  console.log("UPGRADE & ACTIVATION KEY SENT", user.id);
 };
 
 async function main() {
@@ -60,7 +60,7 @@ async function main() {
   });
 
   users.forEach((u) => {
-    console.log("USER", u.id, u.email);
+    console.log("USER", u.id);
   });
 
   if (LIVE && LIVE === "true") {

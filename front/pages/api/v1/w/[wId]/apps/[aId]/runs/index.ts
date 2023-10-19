@@ -163,7 +163,6 @@ async function handler(
         {
           workspace: {
             sId: owner.sId,
-            name: owner.name,
           },
           app: app.sId,
         },

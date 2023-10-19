@@ -62,7 +62,6 @@ export async function runActionStreamed(
   const loggerArgs = {
     workspace: {
       sId: owner.sId,
-      name: owner.name,
     },
     action: actionName,
     app: action.app,
