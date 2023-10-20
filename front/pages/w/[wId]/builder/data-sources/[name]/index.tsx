@@ -1,8 +1,12 @@
 import {
+  Avatar,
   Button,
   Cog6ToothIcon,
+  ContextItem,
   PlusIcon,
   SectionHeader,
+  SlackLogo,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -321,11 +325,11 @@ function StandardDataSourceView({
 }
 
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
-  notion: "Explore the Notion pages and databases Dust has access to:",
-  google_drive: "Google Drive folders and files Dust has access to:",
+  notion: "Explore the Notion pages and databases Dust has access to.",
+  google_drive: "Google Drive folders and files Dust has access to.",
   slack:
-    "To synchronize data from Slack, first visit Slack to invite the @Dust Slack application in the desired channels. You can also select a subset of the channels the @Dust slack application was invited to for synchronization with 'Edit Permissions'. Slack channels Dust has access to:",
-  github: "GitHub repositories Dust has access to:",
+    "To synchronize data from Slack, first visit Slack to invite the @Dust Slack application in the desired channels. You can also select a subset of the channels the @Dust slack application was invited to for synchronization with 'Edit Permissions'. Slack channels Dust has access to.",
+  github: "GitHub repositories Dust has access to.",
 };
 
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
@@ -488,7 +492,7 @@ function ManagedDataSourceView({
           void handleUpdatePermissions();
         }}
       />
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col">
         <SectionHeader
           title={`Managed ${CONNECTOR_CONFIGURATIONS[connectorProvider].name} Data Source`}
           description={
@@ -515,7 +519,7 @@ function ManagedDataSourceView({
                 }
           }
         />
-        <div className="flex flex-row">
+        <div className="flex flex-row py-8">
           <div className="flex flex-1"></div>
           <Button.List>
             {GOOGLE_OAUTH_WORKSPACE_IDS.includes(owner.sId) && (
@@ -553,17 +557,47 @@ function ManagedDataSourceView({
             )}
           </Button.List>
         </div>
-        <div className="text-sm text-element-900">
-          {CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
-        </div>
 
-        <div className="pb-8">
-          <PermissionTree
-            owner={owner}
-            dataSource={dataSource}
-            permissionFilter="read"
-            showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
+        {connectorProvider === "slack" && (
+          <ContextItem.List>
+            <ContextItem
+              title="Slack Bot"
+              visual={<ContextItem.Visual visual={SlackLogo} />}
+              action={
+                <SliderToggle
+                  size="sm"
+                  onClick={async () => {
+                    // await handleToggleAgentStatus(agent);
+                  }}
+                  selected={true}
+                  disabled={readOnly}
+                />
+              }
+            >
+              <ContextItem.Description>
+                <div className="text-element-700">
+                  You can ask questions to your assistants directly from Slack
+                  by mentioning @Dust.
+                </div>
+              </ContextItem.Description>
+            </ContextItem>
+          </ContextItem.List>
+        )}
+
+        <div className="flex flex-col gap-y-8">
+          <SectionHeader
+            title="Synchronized data"
+            description={CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
           />
+
+          <div className="pb-8">
+            <PermissionTree
+              owner={owner}
+              dataSource={dataSource}
+              permissionFilter="read"
+              showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
+            />
+          </div>
         </div>
       </div>
     </>
