@@ -60,6 +60,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "./DustAppSelectionSection";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -209,7 +210,7 @@ export default function AssistantBuilder({
   agentConfigurationId,
 }: AssistantBuilderProps) {
   const router = useRouter();
-
+  const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
   );
@@ -223,6 +224,7 @@ export default function AssistantBuilder({
         : GPT_3_5_TURBO_16K_MODEL_CONFIG,
     },
   });
+
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
@@ -607,7 +609,11 @@ export default function AssistantBuilder({
 
     if (!res.ok) {
       const data = await res.json();
-      window.alert(`Error deleting Assistant: ${data.error.message}`);
+      sendNotification({
+        title: "Error deleting Assistant",
+        description: data.error.message,
+        type: "error",
+      });
       setIsSavingOrDeleting(false);
       return;
     }
@@ -712,10 +718,11 @@ export default function AssistantBuilder({
                         })
                         .catch((e) => {
                           console.error(e);
-                          alert(
-                            "An error occured while saving your agent." +
-                              " Please try again. If the error persists, pease reach out to team@dust.tt"
-                          );
+                          sendNotification({
+                            title: "Error saving Assistant",
+                            description: `Please try again. If the error persists, pease reach out to team@dust.tt (error ${e.message})`,
+                            type: "error",
+                          });
                           setIsSavingOrDeleting(false);
                         });
                     }
