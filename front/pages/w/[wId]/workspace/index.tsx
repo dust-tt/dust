@@ -317,10 +317,52 @@ export default function WorkspaceAdmin({
               />
             </div>
 <<<<<<< HEAD
+<<<<<<< HEAD
           </Page.Vertical>
 =======
           </>
 >>>>>>> 8f36eb7c (Polishing Admin Pages)
+=======
+          </>
+        )}
+        {!!monthOptions.length && (
+          <Page.Vertical align="stretch" gap="md">
+            <Page.SectionHeader
+              title="Workspace Activity"
+              description="Download monthly workspace activity details."
+            />
+            <Page.Horizontal>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={selectedMonth || ""}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="topLeft">
+                  {monthOptions.map((month) => (
+                    <DropdownMenu.Item
+                      key={month}
+                      label={month}
+                      onClick={() => handleSelectMonth(month)}
+                    />
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+              <Button
+                label="Download activity data"
+                icon={CloudArrowDownIcon}
+                variant="secondary"
+                onClick={() => {
+                  void handleDownload(selectedMonth);
+                }}
+              />
+            </Page.Horizontal>
+          </Page.Vertical>
+>>>>>>> 677de35a (Merge)
         )}
       </Page.Vertical>
     </AppLayout>
