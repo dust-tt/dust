@@ -15,11 +15,12 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   Authenticator,
   getSession,
@@ -281,6 +282,7 @@ export default function WorkspaceAdmin({
                     {!isInvitation(item) && (
                       <div className="font-medium text-element-900">
                         {item.name}
+                        {user?.id === item.id && " (you)"}
                       </div>
                     )}
 
@@ -355,9 +357,8 @@ function InviteEmailModal({
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const { mutate } = useSWRConfig();
-
+  const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
       setEmailError("Invalid email address.");
@@ -373,11 +374,17 @@ function InviteEmailModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to invite new member to workspace.");
+      sendNotification({
+        type: "error",
+        title: "Invite failed",
+        description: "Failed to invite new member to workspace.",
+      });
     } else {
-      setSuccessMessage(
-        `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`
-      );
+      sendNotification({
+        type: "success",
+        title: "Invite sent",
+        description: `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`,
+      });
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
@@ -421,9 +428,6 @@ function InviteEmailModal({
             </div>
           </div>
         </div>
-        {successMessage && (
-          <div className="text-success-900">{successMessage}</div>
-        )}
       </div>
     </Modal>
   );
@@ -441,7 +445,7 @@ function InviteSettingsModal({
   const [domainUpdating, setDomainUpdating] = useState(false);
   const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
   const [allowedDomainError, setAllowedDomainError] = useState("");
-
+  const sendNotification = useContext(SendNotificationsContext);
   async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
     const res = await fetch(`/api/w/${owner.sId}`, {
@@ -454,7 +458,11 @@ function InviteSettingsModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to update workspace.");
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: `Failed to update workspace with new domain ${domainInput}.`,
+      });
       setDomainUpdating(false);
     } else {
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
@@ -531,21 +539,36 @@ function RevokeInvitationModal({
 }) {
   const { mutate } = useSWRConfig();
   const [isSaving, setIsSaving] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
   if (!invitation) return null;
 
-  async function handleRevokeInvitation(invitationId: number): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/invitations/${invitationId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "revoked",
-      }),
-    });
+  async function handleRevokeInvitation(
+    invitation: MembershipInvitationType
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/w/${owner.sId}/invitations/${invitation.id}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "revoked",
+        }),
+      }
+    );
     if (!res.ok) {
-      window.alert("Failed to revoke member's invitation.");
+      sendNotification({
+        type: "error",
+        title: "Revoke failed",
+        description: "Failed to revoke member's invitation.",
+      });
     } else {
+      sendNotification({
+        type: "success",
+        title: "Invitation revoked",
+        description: `Invitation revoked for ${invitation.inviteEmail}.`,
+      });
       await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
@@ -570,7 +593,7 @@ function RevokeInvitationModal({
             label={isSaving ? "Revoking..." : "Yes, revoke"}
             onClick={async () => {
               setIsSaving(true);
-              await handleRevokeInvitation(invitation.id);
+              await handleRevokeInvitation(invitation);
               onClose();
               /* Delay to let react close the modal before cleaning isSaving, to
                * avoid the user seeing the button change label again during the closing animation */
@@ -600,7 +623,7 @@ function ChangeMemberModal({
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
+  const sendNotification = useContext(SendNotificationsContext);
   if (!member) return null; // Unreachable
 
   async function handleMemberRoleChange(
@@ -617,8 +640,17 @@ function ChangeMemberModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to update membership.");
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: "Failed to update member's role.",
+      });
     } else {
+      sendNotification({
+        type: "success",
+        title: "Role updated",
+        description: `Role updated for ${member.name}.`,
+      });
       await mutate(`/api/w/${owner.sId}/members`);
     }
   }
