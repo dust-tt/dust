@@ -153,7 +153,7 @@ export default function WorkspaceAdmin({
       const monthName = getMonthName(Number(month));
       const currentMonthName = getMonthName(currentMonth);
 
-      let filename = `dust_${owner.name}_monthly_usage_${year}_${monthName}`;
+      let filename = `dust_${owner.name}_monthly_activity_${year}_${monthName}`;
 
       // If the selected month is the current month, append the day
       if (monthName === currentMonthName) {
@@ -169,7 +169,7 @@ export default function WorkspaceAdmin({
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      alert("Failed to download usage data.");
+      alert("Failed to download activity data.");
     }
   };
 
@@ -241,8 +241,8 @@ export default function WorkspaceAdmin({
           {!!monthOptions.length && (
             <>
               <Page.SectionHeader
-                title="Workspace Usage"
-                description="Download monthly usage analytics of your workspace."
+                title="Workspace Activity"
+                description="Download monthly workspace activity details."
               />
               <div className="align-center flex flex-row gap-2">
                 <DropdownMenu>
@@ -266,7 +266,7 @@ export default function WorkspaceAdmin({
                   </DropdownMenu.Items>
                 </DropdownMenu>
                 <Button
-                  label="Download usage data"
+                  label="Download activity data"
                   icon={CloudArrowDownIcon}
                   variant="secondary"
                   onClick={() => {
