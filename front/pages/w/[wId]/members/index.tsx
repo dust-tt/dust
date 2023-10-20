@@ -20,6 +20,7 @@ import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   Authenticator,
   getSession,
@@ -30,7 +31,6 @@ import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
