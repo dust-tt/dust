@@ -14,6 +14,7 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
@@ -27,7 +28,6 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/DataSo
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
-  FilteringMode,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -60,8 +60,6 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "./DustAppSelectionSection";
-import { set } from "fp-ts";
-import { Transition } from "@headlessui/react";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -121,7 +119,6 @@ type AssistantBuilderState = {
     string,
     AssistantBuilderDataSourceConfiguration
   >;
-  filteringMode: FilteringMode;
   timeFrame: {
     value: number;
     unit: TimeframeUnit;
@@ -146,7 +143,6 @@ export type AssistantBuilderInitialState = {
   dataSourceConfigurations:
     | AssistantBuilderState["dataSourceConfigurations"]
     | null;
-  filteringMode: FilteringMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
   handle: string;
@@ -172,7 +168,6 @@ type AssistantBuilderProps = {
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   actionMode: "GENERIC",
   dataSourceConfigurations: {},
-  filteringMode: "SEARCH",
   timeFrame: {
     value: 1,
     unit: "month",
@@ -290,9 +285,6 @@ export default function AssistantBuilder({
           initialBuilderState.dataSourceConfigurations ?? {
             ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
           },
-        filteringMode:
-          initialBuilderState.filteringMode ??
-          DEFAULT_ASSISTANT_STATE.filteringMode,
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
@@ -411,19 +403,18 @@ export default function AssistantBuilder({
         valid = false;
       }
     }
-
-    if (builderState.actionMode === "DUST_APP_RUN") {
-      if (!builderState.dustAppConfiguration) {
-        valid = false;
-      }
-    }
-
-    if (builderState.filteringMode === "TIMEFRAME") {
+    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
       if (!builderState.timeFrame.value) {
         valid = false;
         setTimeFrameError("Timeframe must be a number");
       } else {
         setTimeFrameError(null);
+      }
+    }
+
+    if (builderState.actionMode === "DUST_APP_RUN") {
+      if (!builderState.dustAppConfiguration) {
+        valid = false;
       }
     }
 
@@ -434,7 +425,6 @@ export default function AssistantBuilder({
     builderState.description,
     builderState.instructions,
     configuredDataSourceCount,
-    builderState.filteringMode,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
     assistantHandleIsAvailable,
@@ -488,31 +478,17 @@ export default function AssistantBuilder({
         break;
       case "RETRIEVAL_SEARCH":
       case "RETRIEVAL_EXHAUSTIVE":
-        const tfParam = (() => {
-          switch (builderState.filteringMode) {
-            case "SEARCH":
-              return "auto";
-            case "TIMEFRAME":
-              if (!builderState.timeFrame.value) {
-                // unreachable
-                // we keep this for TS
-                throw new Error("Form not valid");
-              }
-              return {
-                duration: builderState.timeFrame.value,
-                unit: builderState.timeFrame.unit,
-              };
-            default:
-              ((x: never) => {
-                throw new Error(`Unknown time frame mode ${x}`);
-              })(builderState.filteringMode);
-          }
-        })();
-
         actionParam = {
           type: "retrieval_configuration",
-          query: builderState.filteringMode === "SEARCH" ? "auto" : "none",
-          timeframe: tfParam,
+          query:
+            builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
+          timeframe:
+            builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
+              ? {
+                  duration: builderState.timeFrame.value,
+                  unit: builderState.timeFrame.unit,
+                }
+              : "auto",
           topK: "auto",
           dataSources: Object.values(builderState.dataSourceConfigurations).map(
             ({ dataSource, selectedResources, isSelectAll }) => ({
@@ -931,8 +907,9 @@ export default function AssistantBuilder({
                     Assistants are limited in the quantity of data they can
                     manage.
                   </strong>{" "}
-                  Limit your in time with a timeframe and select sources with
-                  care.
+                  To ensure the assistant can handle all relevant data, select
+                  sources with care, and limit processing to the smallest
+                  relevant time frame using the "Collect data from" field below.
                 </div>
                 <div>
                   The available data sources are managed by administrators.
