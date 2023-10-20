@@ -549,6 +549,7 @@ export async function toggleSlackbot(
       connectorId: connectorId,
     },
   });
+
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -556,6 +557,24 @@ export async function toggleSlackbot(
       )
     );
   }
+
+  if (botEnabled) {
+    const otherSlackConfigWithBotEnabled = await SlackConfiguration.findOne({
+      where: {
+        slackTeamId: slackConfig.slackTeamId,
+        botEnabled: true,
+      },
+    });
+
+    if (otherSlackConfigWithBotEnabled) {
+      return new Err(
+        new Error(
+          "Another Dust workspace has already enabled the slack bot for your Slack workspace."
+        )
+      );
+    }
+  }
+
   slackConfig.botEnabled = botEnabled;
   await slackConfig.save();
 

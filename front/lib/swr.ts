@@ -9,6 +9,7 @@ import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs
 import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import { GetManagedDataSourceDefaultNewResourcePermissionResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions/default";
 import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
@@ -273,6 +274,27 @@ export function useConnectorPermissions({
     resources: data ? data.resources : [],
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function useConnectorBotEnabled({
+  owner,
+  dataSource,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+}) {
+  const botEnabledFetcher: Fetcher<GetOrPostBotEnabledResponseBody> = fetcher;
+
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/bot_enabled`;
+
+  const { data, error, mutate } = useSWR(url, botEnabledFetcher);
+
+  return {
+    botEnabled: data ? data.botEnabled : null,
+    isResourcesLoading: !error && !data,
+    isResourcesError: error,
+    mutateBotEnabled: mutate,
   };
 }
 
