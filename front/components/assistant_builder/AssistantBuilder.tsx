@@ -975,19 +975,32 @@ export default function AssistantBuilder({
               <>
                 <div>
                   The assistant will perform a search on the selected data
-                  source, run the instructions on the results.
+                  source, run the instructions on the results.{" "}
                   <span className="font-semibold">
-                    It’s the best approach with large quantity of data.
+                    It’s the best approach with large quantities of data.
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <strong>Select your sources with care</strong>
-                    The quality of the answers to specific questions will depend
-                    on the quality of the data.
+                    <p>
+                      <strong>Select your sources with care</strong> The quality
+                      of the answers to specific questions will depend on the
+                      quality of the data.
+                    </p>
+                    <p>
+                      <strong>
+                        You can narrow your search on most recent documents
+                      </strong>{" "}
+                      by adding instructions in your prompt such as 'Only search
+                      in documents from the last 3 months', 'Only look at data
+                      from the last 2 days', etc.
+                    </p>
                   </div>
                   <div>
-                    The available data sources are managed by administrators.
+                    <p>
+                      <strong>Note:</strong> The available data sources are
+                      managed by administrators.
+                    </p>
                   </div>
                 </div>
 
