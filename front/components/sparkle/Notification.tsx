@@ -64,7 +64,7 @@ export function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="z-60 fixed bottom-0 right-0 w-80">
+    <div className="fixed bottom-0 right-0 z-60 w-80">
       <div className="flex flex-col items-center justify-center gap-4 p-4">
         {notifications.map((n) => {
           return (
@@ -93,11 +93,11 @@ export function Notification({ title, description, type }: NotificationType) {
       show={showNotification}
       appear={true}
       enter="transition ease-in-out duration-300 transform"
-      enterFrom="-translate-y-16 opacity-0"
+      enterFrom="translate-y-16 opacity-0"
       enterTo="translate-y-0 opacity-100"
       leave="transition ease-in-out duration-300 transform"
       leaveFrom="translate-y-0 opacity-100"
-      leaveTo="-translate-y-16 opacity-0"
+      leaveTo="translate-y-16 opacity-0"
     >
       <div className="flex rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
         <div>
