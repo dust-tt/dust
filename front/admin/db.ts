@@ -22,10 +22,12 @@ import {
   Mention,
   Message,
   MessageReaction,
+  Plan,
   Provider,
   RetrievalDocument,
   RetrievalDocumentChunk,
   Run,
+  Subscription,
   TrackedDocument,
   User,
   UserMessage,
@@ -54,6 +56,9 @@ async function main() {
   await EventSchema.sync({ alter: true });
   await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await Plan.sync({ alter: true });
+  await Subscription.sync({ alter: true });
 
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });

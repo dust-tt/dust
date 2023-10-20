@@ -30,6 +30,7 @@ import {
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
   Key,
@@ -64,10 +65,12 @@ export {
   Mention,
   Message,
   MessageReaction,
+  Plan,
   Provider,
   RetrievalDocument,
   RetrievalDocumentChunk,
   Run,
+  Subscription,
   TrackedDocument,
   User,
   UserMessage,
