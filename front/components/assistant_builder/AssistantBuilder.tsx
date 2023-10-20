@@ -16,7 +16,7 @@ import {
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
@@ -28,6 +28,7 @@ import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
   FilteringMode,
+  TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -59,6 +60,8 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "./DustAppSelectionSection";
+import { set } from "fp-ts";
+import { Transition } from "@headlessui/react";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
@@ -914,156 +917,174 @@ export default function AssistantBuilder({
                 </DropdownMenu.Items>
               </DropdownMenu>
             </div>
-
-            {builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" && (
-              <>
+            <ActionModeSection
+              show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
+            >
+              <div>
+                The assistant will look exhaustively at all the Data Sources, in
+                chronological order.
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  The assistant will look exhaustively at all the Data Sources,
-                  in chronological order.
+                  <strong>
+                    <span className="text-warning-500">Warning!</span>{" "}
+                    Assistants are limited in the quantity of data they can
+                    manage.
+                  </strong>{" "}
+                  Limit your in time with a timeframe and select sources with
+                  care.
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div>
+                  The available data sources are managed by administrators.
+                </div>
+              </div>
+              <DataSourceSelectionSection
+                dataSourceConfigurations={builderState.dataSourceConfigurations}
+                openDataSourceModal={() => {
+                  setShowDataSourcesModal(true);
+                }}
+                canAddDataSource={configurableDataSources.length > 0}
+                onManageDataSource={(name) => {
+                  setDataSourceToManage(
+                    builderState.dataSourceConfigurations[name]
+                  );
+                  setShowDataSourcesModal(true);
+                }}
+                onDelete={deleteDataSource}
+              />
+              <div className={"flex flex-row items-center gap-4 pb-4"}>
+                <div className="text-sm font-semibold text-element-900">
+                  Collect data from the last
+                </div>
+                <input
+                  type="text"
+                  className={classNames(
+                    "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+                    !timeFrameError
+                      ? "focus:border-action-500 focus:ring-action-500"
+                      : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                    "bg-structure-50 stroke-structure-50"
+                  )}
+                  value={builderState.timeFrame.value || ""}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value) || !e.target.value) {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        timeFrame: {
+                          value,
+                          unit: builderState.timeFrame.unit,
+                        },
+                      }));
+                    }
+                  }}
+                />
+                <DropdownMenu>
+                  <DropdownMenu.Button tooltipPosition="above">
+                    <Button
+                      type="select"
+                      labelVisible={true}
+                      label={
+                        TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]
+                      }
+                      variant="secondary"
+                      size="sm"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="bottomLeft">
+                    {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                      ([key, value]) => (
+                        <DropdownMenu.Item
+                          key={key}
+                          label={value}
+                          onClick={() => {
+                            setEdited(true);
+                            setBuilderState((state) => ({
+                              ...state,
+                              timeFrame: {
+                                value: builderState.timeFrame.value,
+                                unit: key as TimeframeUnit,
+                              },
+                            }));
+                          }}
+                        />
+                      )
+                    )}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "RETRIEVAL_SEARCH"}
+            >
+              <div>
+                The assistant will perform a search on the selected data source,
+                run the instructions on the results.{" "}
+                <span className="font-semibold">
+                  It’s the best approach with large quantities of data.
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p>
+                    <strong>Select your sources with care</strong> The quality
+                    of the answers to specific questions will depend on the
+                    quality of the data.
+                  </p>
+                  <p>
                     <strong>
-                      <span className="text-warning-500">Warning!</span>{" "}
-                      Assistants are limited in the quantity of data they can
-                      manage.
+                      You can narrow your search on most recent documents
                     </strong>{" "}
-                    Limit your in time with a timeframe and select sources with
-                    care.
-                  </div>
-                  <div>
-                    The available data sources are managed by administrators.
-                  </div>
+                    by adding instructions in your prompt such as 'Only search
+                    in documents from the last 3 months', 'Only look at data
+                    from the last 2 days', etc.
+                  </p>
                 </div>
-                <DataSourceSelectionSection
-                  show={true}
-                  dataSourceConfigurations={
-                    builderState.dataSourceConfigurations
-                  }
-                  openDataSourceModal={() => {
-                    setShowDataSourcesModal(true);
-                  }}
-                  canAddDataSource={configurableDataSources.length > 0}
-                  onManageDataSource={(name) => {
-                    setDataSourceToManage(
-                      builderState.dataSourceConfigurations[name]
-                    );
-                    setShowDataSourcesModal(true);
-                  }}
-                  onDelete={deleteDataSource}
-                  filteringMode={builderState.filteringMode}
-                  setFilteringMode={(filteringMode: FilteringMode) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      filteringMode,
-                    }));
-                  }}
-                  timeFrame={builderState.timeFrame}
-                  setTimeFrame={(timeFrame) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      timeFrame,
-                    }));
-                  }}
-                  timeFrameError={timeFrameError}
-                />
-              </>
-            )}
-            {builderState.actionMode === "RETRIEVAL_SEARCH" && (
-              <>
                 <div>
-                  The assistant will perform a search on the selected data
-                  source, run the instructions on the results.{" "}
-                  <span className="font-semibold">
-                    It’s the best approach with large quantities of data.
-                  </span>
+                  <p>
+                    <strong>Note:</strong> The available data sources are
+                    managed by administrators.
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p>
-                      <strong>Select your sources with care</strong> The quality
-                      of the answers to specific questions will depend on the
-                      quality of the data.
-                    </p>
-                    <p>
-                      <strong>
-                        You can narrow your search on most recent documents
-                      </strong>{" "}
-                      by adding instructions in your prompt such as 'Only search
-                      in documents from the last 3 months', 'Only look at data
-                      from the last 2 days', etc.
-                    </p>
-                  </div>
-                  <div>
-                    <p>
-                      <strong>Note:</strong> The available data sources are
-                      managed by administrators.
-                    </p>
-                  </div>
-                </div>
+              </div>
 
-                <DataSourceSelectionSection
-                  show={true}
-                  dataSourceConfigurations={
-                    builderState.dataSourceConfigurations
-                  }
-                  openDataSourceModal={() => {
-                    setShowDataSourcesModal(true);
-                  }}
-                  canAddDataSource={configurableDataSources.length > 0}
-                  onManageDataSource={(name) => {
-                    setDataSourceToManage(
-                      builderState.dataSourceConfigurations[name]
-                    );
-                    setShowDataSourcesModal(true);
-                  }}
-                  onDelete={deleteDataSource}
-                  filteringMode={builderState.filteringMode}
-                  setFilteringMode={(filteringMode: FilteringMode) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      filteringMode,
-                    }));
-                  }}
-                  timeFrame={builderState.timeFrame}
-                  setTimeFrame={(timeFrame) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      timeFrame,
-                    }));
-                  }}
-                  timeFrameError={timeFrameError}
-                />
-              </>
-            )}
-
-            {builderState.actionMode === "DUST_APP_RUN" && (
-              <>
-                <div className="text-sm text-element-700">
-                  Your assistant can execute a Dust Application of your design
-                  before answering. The output of the app (last block) is
-                  injeced in context for the model to generate an answer. The
-                  inputs of the app will be automatically generated from the
-                  context of the conversation based on the descriptions you
-                  provided in the application's input block dataset schema.
-                </div>
-                <div className="pb-4">
-                  <DustAppSelectionSection
-                    show={builderState.actionMode === "DUST_APP_RUN"}
-                    dustAppConfiguration={builderState.dustAppConfiguration}
-                    openDustAppModal={() => {
-                      setShowDustAppsModal(true);
-                    }}
-                    onDelete={deleteDustApp}
-                    canSelectDustApp={dustApps.length !== 0}
-                  />
-                </div>
-              </>
-            )}
+              <DataSourceSelectionSection
+                dataSourceConfigurations={builderState.dataSourceConfigurations}
+                openDataSourceModal={() => {
+                  setShowDataSourcesModal(true);
+                }}
+                canAddDataSource={configurableDataSources.length > 0}
+                onManageDataSource={(name) => {
+                  setDataSourceToManage(
+                    builderState.dataSourceConfigurations[name]
+                  );
+                  setShowDataSourcesModal(true);
+                }}
+                onDelete={deleteDataSource}
+              />
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "DUST_APP_RUN"}
+            >
+              <div className="text-sm text-element-700">
+                Your assistant can execute a Dust Application of your design
+                before answering. The output of the app (last block) is injeced
+                in context for the model to generate an answer. The inputs of
+                the app will be automatically generated from the context of the
+                conversation based on the descriptions you provided in the
+                application's input block dataset schema.
+              </div>
+              <DustAppSelectionSection
+                show={builderState.actionMode === "DUST_APP_RUN"}
+                dustAppConfiguration={builderState.dustAppConfiguration}
+                openDustAppModal={() => {
+                  setShowDustAppsModal(true);
+                }}
+                onDelete={deleteDustApp}
+                canSelectDustApp={dustApps.length !== 0}
+              />
+            </ActionModeSection>
           </div>
 
           <div className="flex flex-row items-start">
@@ -1438,6 +1459,35 @@ function AdvancedSettings({
   );
 }
 
+function ActionModeSection({
+  children,
+  show,
+}: {
+  children: ReactNode;
+  show: boolean;
+}) {
+  return (
+    <Transition
+      show={show}
+      as={Fragment}
+      enterFrom="opacity-0 -translate-y-32"
+      enterTo="opacity-100 translate-y-0"
+      leave="transition-all duration-300"
+      enter="transition-all duration-300"
+      leaveFrom="opacity-100 translate-y-0"
+      leaveTo="opacity-0 -translate-y-32"
+      afterEnter={() => {
+        window.scrollBy({
+          left: 0,
+          top: 140,
+          behavior: "smooth",
+        });
+      }}
+    >
+      <div className="flex flex-col gap-6">{children}</div>
+    </Transition>
+  );
+}
 function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
 }
