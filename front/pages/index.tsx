@@ -7,14 +7,13 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { ParsedUrlQuery } from "querystring";
-import React, { useEffect, useRef, useState } from "react";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
 
 import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getSession, getUserFromSession } from "@app/lib/auth";
-
-import { ContentSection } from "./ContentBlocks";
+import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -46,6 +45,60 @@ export const getServerSideProps: GetServerSideProps<{
     props: { gaTrackingId: GA_TRACKING_ID },
   };
 };
+
+const defaultGridClasses = "grid grid-cols-12 gap-6";
+
+const defaultFlexClasses = "flex flex-col gap-4";
+
+const hClasses = {
+  h1: "font-objektiv text-4xl font-bold tracking-tight text-slate-50 md:text-6xl drop-shadow-lg",
+  h2: "font-objektiv text-3xl font-bold tracking-tight text-slate-50 md:text-5xl drop-shadow-lg",
+  h3: "font-objektiv text-xl font-bold tracking-tight text-slate-50 md:text-2xl drop-shadow-md",
+  h4: "font-objektiv text-lg font-bold tracking-tight text-slate-50 md:text-xl drop-shadow-md",
+};
+
+const pClasses = {
+  normal: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
+  big: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
+};
+
+interface ContentProps {
+  children: ReactNode;
+  className?: string;
+  variant?: string;
+}
+
+export const Grid = ({ children, className = "" }: ContentProps) => (
+  <div className={classNames(className, defaultGridClasses)}>{children}</div>
+);
+
+export const H1 = ({ children, className = "" }: ContentProps) => (
+  <h1 className={classNames(className, hClasses.h1)}>{children}</h1>
+);
+
+export const H2 = ({ children, className = "" }: ContentProps) => (
+  <h2 className={classNames(className, hClasses.h2)}>{children}</h2>
+);
+export const H3 = ({ children, className = "" }: ContentProps) => (
+  <h3 className={classNames(className, hClasses.h3)}>{children}</h3>
+);
+
+export const P = ({ children, className = "", variant }: ContentProps) => (
+  <p
+    className={classNames(
+      className,
+      variant === "big" ? pClasses.big : pClasses.normal
+    )}
+  >
+    {children}
+  </p>
+);
+
+export const Strong = ({ children, className = "" }: ContentProps) => (
+  <strong className={classNames(className, "font-bold text-slate-300")}>
+    {children}
+  </strong>
+);
 
 export default function Home({
   gaTrackingId,
@@ -125,44 +178,116 @@ export default function Home({
       </div>
 
       <main className="z-10 mx-6 flex flex-col items-center">
-        <ContentSection>
-          <div style={{ height: "30vh" }}></div>
-          <div className="grid grid-cols-1">
-            <div ref={logoRef}>
-              <Logo className="h-[48px] w-[192px] px-1" />
+        <div className="container flex max-w-7xl flex-col gap-16">
+          <Grid>
+            <div className="col-span-8 col-start-3 flex flex-col gap-16">
+              <div style={{ height: "24vh" }} />
+              <div ref={logoRef}>
+                <Logo className="h-[48px] w-[192px]" />
+              </div>
+              <H1>
+                <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+                  Amplify your team's potential
+                </span>{" "}
+                <br />
+                with customizable and secure AI&nbsp;assistants
+              </H1>
+              <P variant="big" className="col-span-6 col-start-3">
+                <Strong>AI is changing the way we work.</Strong>
+                <br />
+                Effectively channeling the potential of AI is a competitive
+                edge.
+              </P>
             </div>
-            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Amplify your team's potential
-              </span>{" "}
-              <br />
-              with customizable and secure AI&nbsp;assistants
-            </p>
-          </div>
-          <div className="h-10"></div>
-          <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-400 md:grid-cols-2 lg:grid-cols-3">
-            <p className="font-regular lg:col-span-2">
-              AI is changing the way we&nbsp;work.
-              <br />
-              Effectively channeling its&nbsp;potential is
-              a&nbsp;competitive&nbsp;edge.
-            </p>
-          </div>
-        </ContentSection>
-        <ContentSection>
-          <div className="font-regular flex  text-xl text-slate-400">
-            <p className="">
-              Deliver state-of-the-art AI technology to your team
-            </p>
+          </Grid>
+          <Grid>
+            <P className="col-span-4">
+              Deploy Large Language Models on concrete use cases in your company
+              today.
+            </P>
+            <P className="col-span-4">
+              Empower teams to tailor assistants to their needs, with the best
+              models and internal company knowledge.
+            </P>
+            <P className="col-span-4">
+              Maintain granular control over data access and with a safe and
+              privacy-obsessed application.
+            </P>
+          </Grid>
 
-            <p>Foster their engagement</p>
-
-            <p>Develop strong creative use of AI tailored to your needs</p>
-
-            <p>Maintain full data safety and privacy</p>
-          </div>
-        </ContentSection>
-
+          <Grid>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-8 flex flex-col gap-4"
+              )}
+            >
+              <H2>
+                Get the state of the&nbsp;art,
+                <br />
+                today and&nbsp;tomorrow.
+              </H2>
+              <P variant="big">
+                Dust gives you&nbsp;access to the&nbsp;
+                <Strong>leading models</Strong>, and&nbsp; augments them
+                with&nbsp;
+                <Strong>your&nbsp;company’s internal&nbsp;information</Strong>.
+              </P>
+            </div>
+          </Grid>
+          <Grid>
+            <P className="col-span-4">
+              Proprietary and open-source models suited to your needs: OpenAI,
+              Anthropic, Mistral, …
+            </P>
+            <P className="col-span-4">
+              Your own knowledge base continuously in sync: Notion, Slack,
+              GitHub, Google Drive, and more.
+            </P>
+            <P className="col-span-4">
+              Modular and composable: Dust is deeply customizable to your exact
+              needs and will evolve as those needs evolve.
+            </P>
+          </Grid>
+          <Grid>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-8 col-start-5 flex flex-col gap-4 text-right"
+              )}
+            >
+              <h2 className={hClasses.h2}>
+                Bring your&nbsp;team
+                <br />
+                up&nbsp;to&nbsp;speed.
+              </h2>
+              <p className={pClasses.big}>
+                Moving to AI is a paradigm shift in your team’s workflow.
+                <br />
+                Dust{" "}
+                <Strong>
+                  spotlights your most creative and driven team members
+                </Strong>{" "}
+                and <Strong>spreads their findings</Strong> effortlessly
+                throughout your&nbsp;organization.
+              </p>
+            </div>
+          </Grid>
+          <Grid>
+            <P className="col-span-4">
+              Seamlessly manage workspace invitations with SSO.
+            </P>
+            <P className="col-span-4">
+              Allow assistants and teammates to collaborate across workflows to
+              solve problems faster.
+            </P>
+            <P className="col-span-4">
+              Learn from best practices to easily deploy assistants with
+              specific data source specs and custom instructions for your use
+              cases across functions.
+            </P>
+          </Grid>
+        </div>
         <div
           ref={scrollRef1}
           className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl"
@@ -172,7 +297,9 @@ export default function Home({
               <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
                 <div
                   className="mt-2"
-                  style={{ filter: "drop-shadow(0 10px 8px rgb(0 0 0 / 0.3))" }}
+                  style={{
+                    filter: "drop-drop-shadow(0 10px 8px rgb(0 0 0 / 0.3))",
+                  }}
                 >
                   <div className="font-objektiv text-xl font-bold tracking-tighter text-red-400 md:text-2xl">
                     GPT-4 and all your internal knowledge, <br />
