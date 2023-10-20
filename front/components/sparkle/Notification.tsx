@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 import { classNames } from "@app/lib/utils";
 
@@ -42,7 +43,18 @@ export function NotificationArea({ children }: { children: React.ReactNode }) {
   return (
     <SendNotificationsContext.Provider value={sendNotification}>
       {children}
-      <NotificationsList notifications={notifications} />
+      {
+        /** Notifications are created at DOM root via a Portal. This is to avoid
+         * them being made inert by headlessUI modals */
+        typeof window === "object" ? (
+          createPortal(
+            <NotificationsList notifications={notifications} />,
+            document.body
+          )
+        ) : (
+          <NotificationsList notifications={notifications} />
+        ) // SSR (otherwise hydration issues)
+      }
     </SendNotificationsContext.Provider>
   );
 }
@@ -52,7 +64,7 @@ export function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="fixed right-0 top-0 z-30 w-80">
+    <div className="z-60 fixed bottom-0 right-0 w-80">
       <div className="flex flex-col items-center justify-center gap-4 p-4">
         {notifications.map((n) => {
           return (
