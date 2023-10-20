@@ -7,8 +7,8 @@ import {
   DocumentPileIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  KeyIcon,
   PaperAirplaneIcon,
+  PlanetIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
@@ -158,7 +158,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace",
-          icon: KeyIcon,
+          icon: PlanetIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,

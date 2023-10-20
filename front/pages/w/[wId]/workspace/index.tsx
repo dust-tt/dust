@@ -1,11 +1,10 @@
 import {
   Button,
   CloudArrowDownIcon,
-  Cog6ToothIcon,
   DropdownMenu,
   Input,
   Page,
-  PageHeader,
+  PlanetIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useCallback, useEffect, useState } from "react";
@@ -210,6 +209,7 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
+<<<<<<< HEAD
       <Page.Vertical gap="xl" align="stretch">
         <PageHeader
           title="Workspace Settings"
@@ -250,6 +250,42 @@ export default function WorkspaceAdmin({
             <Page.P variant="secondary">
               Download monthly workspace activity details.
             </Page.P>
+=======
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header
+          title="Workspace"
+          icon={PlanetIcon}
+          description="Use this page to manage your workspace."
+        />
+        <Page.SectionHeader
+          title="Workspace name"
+          description="Think GitHub repository names, short and memorable."
+        />
+        <Page.Horizontal>
+          <div className="flex-grow">
+            <Input
+              name="name"
+              placeholder="Workspace name"
+              value={workspaceName}
+              onChange={(x) => setWorkspaceName(x)}
+              error={workspaceNameError}
+              showErrorLabel={true}
+            />
+          </div>
+          <Button
+            variant="secondary"
+            disabled={disable || updating}
+            onClick={handleUpdateWorkspace}
+            label={updating ? "Updating..." : "Update"}
+          />
+        </Page.Horizontal>
+        {!!monthOptions.length && (
+          <>
+            <Page.SectionHeader
+              title="Workspace Activity"
+              description="Download monthly workspace activity details."
+            />
+>>>>>>> 8f36eb7c (Polishing Admin Pages)
             <div className="align-center flex flex-row gap-2">
               <DropdownMenu>
                 <DropdownMenu.Button>
@@ -280,7 +316,11 @@ export default function WorkspaceAdmin({
                 }}
               />
             </div>
+<<<<<<< HEAD
           </Page.Vertical>
+=======
+          </>
+>>>>>>> 8f36eb7c (Polishing Admin Pages)
         )}
       </Page.Vertical>
     </AppLayout>

@@ -24,7 +24,7 @@ export function Input({
   className?: string;
 }) {
   return (
-    <div className="s-flex s-flex-col s-gap-1">
+    <div className="s-flex s-flex-col s-gap-1 s-p-px">
       <input
         type={isPassword ? "password" : "text"}
         name={name}
