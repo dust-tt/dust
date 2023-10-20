@@ -85,11 +85,20 @@ export async function createSlackConnector(
         { transaction: t }
       );
 
+      const otherSlackConfigurationWithBotEnabled =
+        await SlackConfiguration.findOne({
+          where: {
+            slackTeamId: teamInfo.team.id,
+            botEnabled: true,
+          },
+          transaction: t,
+        });
+
       await SlackConfiguration.create(
         {
           slackTeamId: teamInfo.team.id,
           connectorId: connector.id,
-          botEnabled: false,
+          botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         },
         { transaction: t }
       );
