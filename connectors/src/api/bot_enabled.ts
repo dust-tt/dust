@@ -108,7 +108,7 @@ const _setBotEnabled = async (
     return apiError(req, res, {
       api_error: {
         type: "internal_server_error",
-        message: `An error occurred while enabling the bot: ${toggleRes.error}`,
+        message: `An error occurred while toggling the bot: ${toggleRes.error.message}`,
       },
       status_code: 500,
     });

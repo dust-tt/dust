@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   Cog6ToothIcon,
   ContextItem,
@@ -12,13 +11,14 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -33,8 +33,9 @@ import {
   getDisplayNameForDocument,
   getProviderLogoPathForDataSource,
 } from "@app/lib/data_sources";
+import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
-import { useDocuments } from "@app/lib/swr";
+import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -324,6 +325,80 @@ function StandardDataSourceView({
   );
 }
 
+function SlackBotEnableView({
+  owner,
+  readOnly,
+  isAdmin,
+  dataSource,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+}) {
+  const { botEnabled, mutateBotEnabled } = useConnectorBotEnabled({
+    owner: owner,
+    dataSource,
+  });
+
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const [loading, setLoading] = useState(false);
+
+  const handleSetBotEnabled = async (botEnabled: boolean) => {
+    setLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/bot_enabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ botEnabled }),
+      }
+    );
+    if (res.ok) {
+      await mutateBotEnabled();
+      setLoading(false);
+    } else {
+      setLoading(false);
+      const err = (await res.json()) as { error: APIError };
+      sendNotification({
+        type: "error",
+        title: "Failed to enable the Slack bot",
+        description: err.error.message,
+      });
+    }
+    return true;
+  };
+
+  return (
+    <ContextItem.List>
+      <ContextItem
+        title="Slack Bot"
+        visual={<ContextItem.Visual visual={SlackLogo} />}
+        action={
+          <SliderToggle
+            size="sm"
+            onClick={async () => {
+              await handleSetBotEnabled(!botEnabled);
+            }}
+            selected={botEnabled || false}
+            disabled={readOnly || !isAdmin || loading}
+          />
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-element-700">
+            You can ask questions to your assistants directly from Slack by
+            mentioning @Dust.
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+    </ContextItem.List>
+  );
+}
+
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
   notion: "Explore the Notion pages and databases Dust has access to.",
   google_drive: "Google Drive folders and files Dust has access to.",
@@ -367,7 +442,6 @@ function ManagedDataSourceView({
   const router = useRouter();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-
   const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
   );
@@ -559,29 +633,7 @@ function ManagedDataSourceView({
         </div>
 
         {connectorProvider === "slack" && (
-          <ContextItem.List>
-            <ContextItem
-              title="Slack Bot"
-              visual={<ContextItem.Visual visual={SlackLogo} />}
-              action={
-                <SliderToggle
-                  size="sm"
-                  onClick={async () => {
-                    // await handleToggleAgentStatus(agent);
-                  }}
-                  selected={true}
-                  disabled={readOnly}
-                />
-              }
-            >
-              <ContextItem.Description>
-                <div className="text-element-700">
-                  You can ask questions to your assistants directly from Slack
-                  by mentioning @Dust.
-                </div>
-              </ContextItem.Description>
-            </ContextItem>
-          </ContextItem.List>
+          <SlackBotEnableView {...{ owner, readOnly, isAdmin, dataSource }} />
         )}
 
         <div className="flex flex-col gap-y-8">
