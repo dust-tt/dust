@@ -1,0 +1,11 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: front-edge-backendconfig
+spec:
+  customResponseHeaders:
+    headers:
+      - "Strict-Transport-Security: max-age=86400"
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+  timeoutSec: 300
