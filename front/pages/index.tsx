@@ -14,6 +14,8 @@ import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 
+import { ContentSection } from "./ContentBlocks";
+
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
@@ -75,74 +77,7 @@ export default function Home({
 
   return (
     <>
-      <Head>
-        <title>Dust - Secure AI assistant with your company's knowledge</title>
-        <link rel="shortcut icon" href="/static/favicon.png" />
-
-        <meta name="apple-mobile-web-app-title" content="Dust" />
-        <link rel="apple-touch-icon" href="/static/AppIcon.png" />
-        <link
-          rel="apple-touch-icon"
-          sizes="60x60"
-          href="/static/AppIcon_60.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="76x76"
-          href="/static/AppIcon_76.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="120x120"
-          href="/static/AppIcon_120.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="152x152"
-          href="/static/AppIcon_152.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="167x167"
-          href="/static/AppIcon_167.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/static/AppIcon_180.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="192x192"
-          href="/static/AppIcon_192.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="228x228"
-          href="/static/AppIcon_228.png"
-        />
-
-        <meta
-          id="meta-description"
-          name="description"
-          content="Dust is an AI assistant that safely brings the best large language models, continuously updated company knowledge, powerful collaboration applications, and an extensible platform to your team's fingertips."
-        />
-        <meta
-          id="og-title"
-          property="og:title"
-          content="Dust - Secure AI assistant with your company's knowledge"
-        />
-        <meta
-          id="og-image"
-          property="og:image"
-          content="/static/og_image.png"
-        />
-
-        <link
-          rel="stylesheet"
-          href="https://use.typekit.net/lzv1deb.css"
-        ></link>
-      </Head>
+      <HeadComponent />
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center px-4">
           <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
@@ -179,7 +114,7 @@ export default function Home({
       </ScrollingHeader>
 
       {/* Keeping the background dark */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
         <Particles
@@ -189,38 +124,44 @@ export default function Home({
         />
       </div>
 
-      <main className="z-10 mx-6">
-        <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          <div style={{ height: "40vh" }}></div>
+      <main className="z-10 mx-6 flex flex-col items-center">
+        <ContentSection>
+          <div style={{ height: "30vh" }}></div>
           <div className="grid grid-cols-1">
             <div ref={logoRef}>
               <Logo className="h-[48px] w-[192px] px-1" />
             </div>
             <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
               <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Secure AI assistant
+                Amplify your team's potential
               </span>{" "}
               <br />
-              with your company’s knowledge
-              <br />
+              with customizable and secure AI&nbsp;assistants
             </p>
           </div>
-
           <div className="h-10"></div>
-
           <div className="grid grid-cols-1 gap-4 font-objektiv text-xl text-slate-400 md:grid-cols-2 lg:grid-cols-3">
             <p className="font-regular lg:col-span-2">
-              AI is changing the way we work and is a competitive advantage
-              for&nbsp;smart teams that harness its&nbsp;potential effectively.
-            </p>
-            <p className="font-regular lg:col-span-2">
-              Dust is an AI assistant that safely brings the best large language
-              models, continuously updated company knowledge, powerful
-              collaboration applications, and an&nbsp;extensible platform
-              to&nbsp;your team’s&nbsp;fingertips.
+              AI is changing the way we&nbsp;work.
+              <br />
+              Effectively channeling its&nbsp;potential is
+              a&nbsp;competitive&nbsp;edge.
             </p>
           </div>
-        </div>
+        </ContentSection>
+        <ContentSection>
+          <div className="font-regular flex  text-xl text-slate-400">
+            <p className="">
+              Deliver state-of-the-art AI technology to your team
+            </p>
+
+            <p>Foster their engagement</p>
+
+            <p>Develop strong creative use of AI tailored to your needs</p>
+
+            <p>Maintain full data safety and privacy</p>
+          </div>
+        </ContentSection>
 
         <div
           ref={scrollRef1}
@@ -431,3 +372,72 @@ export default function Home({
     </>
   );
 }
+
+const HeadComponent = () => {
+  return (
+    <Head>
+      <title>
+        Dust - Amplify your team's potential with customizable and secure AI
+        assistants
+      </title>
+      <link rel="shortcut icon" href="/static/favicon.png" />
+
+      <meta name="apple-mobile-web-app-title" content="Dust" />
+      <link rel="apple-touch-icon" href="/static/AppIcon.png" />
+      <link
+        rel="apple-touch-icon"
+        sizes="60x60"
+        href="/static/AppIcon_60.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="76x76"
+        href="/static/AppIcon_76.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="120x120"
+        href="/static/AppIcon_120.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="152x152"
+        href="/static/AppIcon_152.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="167x167"
+        href="/static/AppIcon_167.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/static/AppIcon_180.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="192x192"
+        href="/static/AppIcon_192.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="228x228"
+        href="/static/AppIcon_228.png"
+      />
+
+      <meta
+        id="meta-description"
+        name="description"
+        content="Dust is an AI assistant that safely brings the best large language models, continuously updated company knowledge, powerful collaboration applications, and an extensible platform to your team's fingertips."
+      />
+      <meta
+        id="og-title"
+        property="og:title"
+        content="Dust - Secure AI assistant with your company's knowledge"
+      />
+      <meta id="og-image" property="og:image" content="/static/og_image.png" />
+
+      <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css"></link>
+    </Head>
+  );
+};
