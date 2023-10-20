@@ -282,6 +282,7 @@ export default function WorkspaceAdmin({
                     {!isInvitation(item) && (
                       <div className="font-medium text-element-900">
                         {item.name}
+                        {user?.id === item.id && " (you)"}
                       </div>
                     )}
 
