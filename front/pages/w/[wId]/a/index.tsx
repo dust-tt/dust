@@ -1,10 +1,4 @@
-import {
-  Button,
-  CommandLineIcon,
-  PageHeader,
-  PlusIcon,
-  SectionHeader,
-} from "@dust-tt/sparkle";
+import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -109,12 +103,12 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   return (
     <>
-      <SectionHeader
+      <Page.SectionHeader
         title="Secret API Keys"
         description="Secrets used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
         action={{
           label: "Create Secret API Key",
-          variant: "tertiary",
+          variant: "primary",
           onClick: async () => {
             await handleGenerate();
           },
@@ -287,7 +281,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       />
 
       <>
-        <SectionHeader
+        <Page.SectionHeader
           title="Model Providers"
           description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
         />
@@ -361,9 +355,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           ))}
         </ul>
 
-        <SectionHeader
+        <Page.SectionHeader
           title="Service Providers"
-          description="Service providers enable your apps to query external data or write to external services."
+          description="Service providers enable your apps to query external data or write to&nbsp;external&nbsp;services."
         />
 
         <ul role="list" className="pt-4">
@@ -448,18 +442,18 @@ export default function Developers({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "developers" })}
     >
-      <PageHeader
-        title="Developers Tools"
-        icon={CommandLineIcon}
-        description="Design and deploy custom large language model apps with access to your Data Sources and other Service Providers."
-      />
-      <div className="flex flex-col">
-        <SectionHeader
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Developers Tools"
+          icon={CommandLineIcon}
+          description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
+        />
+        <Page.SectionHeader
           title="Apps"
           description="Your Large Language Model apps."
           action={{
             label: "Create App",
-            variant: "tertiary",
+            variant: "primary",
             onClick: async () => {
               void router.push(`/w/${owner.sId}/a/new`);
             },
@@ -534,7 +528,7 @@ export default function Developers({
         </ul>
         {!readOnly ? <Providers owner={owner} /> : null}
         {!readOnly ? <APIKeys owner={owner} /> : null}
-      </div>
+      </Page.Vertical>
     </AppLayout>
   );
 }

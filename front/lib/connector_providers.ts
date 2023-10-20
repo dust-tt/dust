@@ -20,8 +20,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
     description:
-      "Grant Dust access to authorized sections of your company's Notion workspace, organized by top-level pages. Dust doesn't synchronize external files shared within a Notion page.",
+      "Authorize granular access to your company's Notion workspace, by top-level pages.",
     logoComponent: NotionLogo,
+    isNested: true,
+  },
+  google_drive: {
+    name: "Google Drive™",
+    connectorProvider: "google_drive",
+    isBuilt: true,
+    logoPath: "/static/google_drive_32x32.png",
+    description:
+      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files.",
+    logoComponent: DriveLogo,
     isNested: true,
   },
   slack: {
@@ -30,7 +40,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
     description:
-      "Grant Dust access to authorized channels in your company's Slack on a channel-by-channel basis. Dust doesn't synchronize external files shared within a Slack channel.",
+      "Authorize granular access to your Slack on a channel-by-channel basis.",
     logoComponent: SlackLogo,
     isNested: false,
   },
@@ -40,18 +50,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
     description:
-      "Grant Dust access to authorized sections of your company's GitHub, on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Dust does not access code.",
+      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Dust does not access code.",
     logoComponent: GithubLogo,
     isNested: false,
-  },
-  google_drive: {
-    name: "Google Drive™",
-    connectorProvider: "google_drive",
-    isBuilt: true,
-    logoPath: "/static/google_drive_32x32.png",
-    description:
-      "Grant Dust access to authorized sections of your company's Google Drive, selected by shared drives and folders. Supported files include GDocs, GSlides, and .txt files, each with a limit of <750KB of extracted text.",
-    logoComponent: DriveLogo,
-    isNested: true,
   },
 };

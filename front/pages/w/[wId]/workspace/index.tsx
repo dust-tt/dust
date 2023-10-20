@@ -1,11 +1,10 @@
 import {
   Button,
   CloudArrowDownIcon,
-  Cog6ToothIcon,
   DropdownMenu,
   Input,
   Page,
-  PageHeader,
+  PlanetIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useCallback, useEffect, useState } from "react";
@@ -211,9 +210,9 @@ export default function WorkspaceAdmin({
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
       <Page.Vertical gap="xl" align="stretch">
-        <PageHeader
+        <Page.Header
           title="Workspace Settings"
-          icon={Cog6ToothIcon}
+          icon={PlanetIcon}
           description="Use this page to manage your workspace."
         />
         <Page.Vertical align="stretch" gap="md">
@@ -250,6 +249,40 @@ export default function WorkspaceAdmin({
             <Page.P variant="secondary">
               Download monthly workspace activity details.
             </Page.P>
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header
+          title="Workspace"
+          icon={PlanetIcon}
+          description="Use this page to manage your workspace."
+        />
+        <Page.SectionHeader
+          title="Workspace name"
+          description="Think GitHub repository names, short and memorable."
+        />
+        <Page.Horizontal>
+          <div className="flex-grow">
+            <Input
+              name="name"
+              placeholder="Workspace name"
+              value={workspaceName}
+              onChange={(x) => setWorkspaceName(x)}
+              error={workspaceNameError}
+              showErrorLabel={true}
+            />
+          </div>
+          <Button
+            variant="secondary"
+            disabled={disable || updating}
+            onClick={handleUpdateWorkspace}
+            label={updating ? "Updating..." : "Update"}
+          />
+        </Page.Horizontal>
+        {!!monthOptions.length && (
+          <>
+            <Page.SectionHeader
+              title="Workspace Activity"
+              description="Download monthly workspace activity details."
+            />
             <div className="align-center flex flex-row gap-2">
               <DropdownMenu>
                 <DropdownMenu.Button>
@@ -281,6 +314,7 @@ export default function WorkspaceAdmin({
               />
             </div>
           </Page.Vertical>
+          </>
         )}
       </Page.Vertical>
     </AppLayout>

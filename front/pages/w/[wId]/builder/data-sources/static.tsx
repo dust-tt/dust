@@ -5,7 +5,6 @@ import {
   DocumentPileIcon,
   FolderOpenIcon,
   Page,
-  PageHeader,
   PlusIcon,
   SectionHeader,
 } from "@dust-tt/sparkle";
@@ -105,88 +104,84 @@ export default function DataSourcesView({
         current: "data_sources_static",
       })}
     >
-      <Page.Vertical gap="lg" align="stretch">
-        <div className="flex flex-col gap-4 pb-4">
-          <PageHeader
-            title="Data Sources"
-            icon={DocumentPileIcon}
-            description="Make more documents accessible to this workspace. Manage data sources manually or via API."
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Data Sources"
+          icon={DocumentPileIcon}
+          description="Make more documents accessible to this workspace. Manage data sources manually or via API."
+        />
+
+        {dataSources.length > 0 ? (
+          <SectionHeader
+            title=""
+            description=""
+            action={
+              !readOnly
+                ? {
+                    label: "Add a new Data Source",
+                    variant: "primary",
+                    icon: PlusIcon,
+                    onClick: async () => {
+                      await handleCreateDataSource();
+                    },
+                  }
+                : undefined
+            }
           />
-
-          {dataSources.length > 0 ? (
-            <SectionHeader
-              title=""
-              description=""
-              action={
-                !readOnly
-                  ? {
-                      label: "Add a new Data Source",
-                      variant: "primary",
-                      icon: PlusIcon,
-                      onClick: async () => {
-                        await handleCreateDataSource();
-                      },
-                    }
-                  : undefined
-              }
+        ) : (
+          <div
+            className={classNames(
+              "mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+            )}
+          >
+            <Button
+              disabled={readOnly}
+              size="md"
+              label="Add a new Data Source"
+              variant="primary"
+              icon={PlusIcon}
+              onClick={async () => {
+                await handleCreateDataSource();
+              }}
             />
-          ) : (
-            <div
-              className={classNames(
-                "mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-              )}
-            >
-              <Button
-                disabled={readOnly}
-                size="md"
-                label="Add a new Data Source"
-                variant="primary"
-                icon={PlusIcon}
-                onClick={async () => {
-                  await handleCreateDataSource();
-                }}
-              />
-            </div>
-          )}
+          </div>
+        )}
 
-          <ContextItem.List>
-            {dataSources.map((ds) => (
-              <ContextItem
-                key={ds.name}
-                title={ds.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={({ className }) =>
-                      FolderOpenIcon({
-                        className: className + " text-element-600",
-                      })
-                    }
+        <ContextItem.List>
+          {dataSources.map((ds) => (
+            <ContextItem
+              key={ds.name}
+              title={ds.name}
+              visual={
+                <ContextItem.Visual
+                  visual={({ className }) =>
+                    FolderOpenIcon({
+                      className: className + " text-element-600",
+                    })
+                  }
+                />
+              }
+              action={
+                <Button.List>
+                  <Button
+                    variant="secondary"
+                    icon={Cog6ToothIcon}
+                    onClick={() => {
+                      void router.push(
+                        `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                      );
+                    }}
+                    label="Manage"
                   />
-                }
-                action={
-                  <Button.List>
-                    <Button
-                      variant="secondary"
-                      icon={Cog6ToothIcon}
-                      onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                        );
-                      }}
-                      label="Manage"
-                    />
-                  </Button.List>
-                }
-              >
-                <ContextItem.Description>
-                  <div className="text-sm text-element-700">
-                    {ds.description}
-                  </div>
-                </ContextItem.Description>
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </div>
+                </Button.List>
+              }
+            >
+              <ContextItem.Description>
+                <div className="text-sm text-element-700">{ds.description}</div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
       </Page.Vertical>
     </AppLayout>
   );
