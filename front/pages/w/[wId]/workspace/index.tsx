@@ -204,19 +204,19 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
-      <Page.Vertical>
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-          <PageHeader
-            title="Workspace Settings"
-            icon={Cog6ToothIcon}
-            description="Use this page to manage your workspace."
-          />
-          <div />
-          <Page.SectionHeader
-            title="Workspace name"
-            description="Think GitHub repository names, short and memorable."
-          />
-          <div className="flex w-full flex-col gap-4">
+      <Page.Vertical gap="xl" align="stretch">
+        <PageHeader
+          title="Workspace Settings"
+          icon={Cog6ToothIcon}
+          description="Use this page to manage your workspace."
+        />
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h5">Workspace name</Page.H>
+          <Page.P variant="secondary">
+            Think GitHub repository names, short and memorable.
+          </Page.P>
+
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row">
             <div className="flex-grow">
               <Input
                 name="name"
@@ -227,7 +227,7 @@ export default function WorkspaceAdmin({
                 showErrorLabel={true}
               />
             </div>
-            <div>
+            <div className="flex-none">
               <Button
                 variant="secondary"
                 disabled={disable || updating}
@@ -236,47 +236,46 @@ export default function WorkspaceAdmin({
               />
             </div>
           </div>
+        </Page.Vertical>
 
-          <div />
-          {!!monthOptions.length && (
-            <>
-              <Page.SectionHeader
-                title="Workspace Activity"
-                description="Download monthly workspace activity details."
-              />
-              <div className="align-center flex flex-row gap-2">
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={selectedMonth || ""}
-                      variant="secondary"
-                      size="sm"
+        {!!monthOptions.length && (
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h5">Workspace Activity</Page.H>
+            <Page.P variant="secondary">
+              Download monthly workspace activity details.
+            </Page.P>
+            <div className="align-center flex flex-row gap-2">
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={selectedMonth || ""}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="topLeft">
+                  {monthOptions.map((month) => (
+                    <DropdownMenu.Item
+                      key={month}
+                      label={month}
+                      onClick={() => handleSelectMonth(month)}
                     />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="topLeft">
-                    {monthOptions.map((month) => (
-                      <DropdownMenu.Item
-                        key={month}
-                        label={month}
-                        onClick={() => handleSelectMonth(month)}
-                      />
-                    ))}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-                <Button
-                  label="Download activity data"
-                  icon={CloudArrowDownIcon}
-                  variant="secondary"
-                  onClick={() => {
-                    void handleDownload(selectedMonth);
-                  }}
-                />
-              </div>
-            </>
-          )}
-        </div>
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+              <Button
+                label="Download activity data"
+                icon={CloudArrowDownIcon}
+                variant="secondary"
+                onClick={() => {
+                  void handleDownload(selectedMonth);
+                }}
+              />
+            </div>
+          </Page.Vertical>
+        )}
       </Page.Vertical>
     </AppLayout>
   );
