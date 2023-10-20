@@ -444,7 +444,7 @@ function InviteSettingsModal({
   const [domainUpdating, setDomainUpdating] = useState(false);
   const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
   const [allowedDomainError, setAllowedDomainError] = useState("");
-
+  const sendNotification = useContext(SendNotificationsContext);
   async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
     const res = await fetch(`/api/w/${owner.sId}`, {
@@ -457,7 +457,11 @@ function InviteSettingsModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to update workspace.");
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: `Failed to update workspace with new domain ${domainInput}.`,
+      });
       setDomainUpdating(false);
     } else {
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
@@ -618,7 +622,7 @@ function ChangeMemberModal({
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
+  const sendNotification = useContext(SendNotificationsContext);
   if (!member) return null; // Unreachable
 
   async function handleMemberRoleChange(
@@ -635,8 +639,17 @@ function ChangeMemberModal({
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to update membership.");
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: "Failed to update member's role.",
+      });
     } else {
+      sendNotification({
+        type: "success",
+        title: "Role updated",
+        description: `Role updated for ${member.name}.`,
+      });
       await mutate(`/api/w/${owner.sId}/members`);
     }
   }
