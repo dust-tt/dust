@@ -1,3 +1,5 @@
+use dust::utils;
+use rayon::prelude::*;
 use rusqlite::{params, params_from_iter, types::ToSqlOutput, Connection, Result, ToSql};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -21,16 +23,26 @@ impl ToSql for SchemaFieldType {
 }
 
 fn main() -> Result<()> {
+    let now = utils::now();
+
     // Read the JSON file
     let data = std::fs::read_to_string("dblp.json").unwrap();
-    let json: Value = serde_json::from_str(&data).unwrap();
 
-    // Ensure the JSON value is an array
-    let json_objects = json.as_array().expect("JSON value is not an array");
+    println!("File reading: {} ms", utils::now() - now);
+    let now = utils::now();
+
+    let data = data
+        .par_split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+
+    println!("JSON parsing: {} ms", utils::now() - now);
+    let now = utils::now();
 
     // Infer schema
     let mut schema = HashMap::new();
-    for object in json_objects {
+    for object in &data {
         let object = object.as_object().expect("Array element is not an object");
         for (key, value) in object {
             let value_type = match value {
@@ -50,8 +62,11 @@ fn main() -> Result<()> {
         }
     }
 
+    println!("Schema inference: {} ms", utils::now() - now);
+    let now = utils::now();
+
     // Open a SQLite in-memory database
-    let mut conn = Connection::open_in_memory()?;
+    let conn = Connection::open_in_memory()?;
 
     // Create table
     let create_table_sql = format!(
@@ -64,11 +79,40 @@ fn main() -> Result<()> {
     );
     conn.execute(&create_table_sql, params![])?;
 
+    println!("Table creation: {} ms", utils::now() - now);
+    let now = utils::now();
+
+    let keys = schema.keys().collect::<Vec<_>>();
+
+    // Prepare rows
+    let rows = data
+        .par_iter()
+        .map(|object| {
+            let object = object.as_object().unwrap();
+            let mut values: Vec<SchemaFieldType> = Vec::new();
+            for key in &keys {
+                let value = match object.get(*key) {
+                    Some(Value::Number(n)) => SchemaFieldType::Int(n.as_i64().unwrap()),
+                    Some(Value::String(s)) => SchemaFieldType::Text(s.clone()),
+                    Some(Value::Bool(b)) => SchemaFieldType::Bool(*b),
+                    Some(Value::Object(_)) | Some(Value::Array(_)) => {
+                        SchemaFieldType::Text(object[*key].to_string())
+                    }
+                    _ => SchemaFieldType::Null,
+                };
+                values.push(value);
+            }
+            values
+        })
+        .collect::<Vec<_>>();
+
+    println!("Rows preparation: {} ms", utils::now() - now);
+    let now = utils::now();
+
     // Start a transaction
-    let tx = conn.transaction()?;
+    // let tx = conn.transaction()?;
 
     // Prepare SQL insert statement
-    let keys = schema.keys().collect::<Vec<_>>();
     let insert_query = format!(
         "INSERT INTO data ({}) VALUES ({})",
         keys.iter()
@@ -81,31 +125,18 @@ fn main() -> Result<()> {
             .join(", ")
     );
 
-    let mut stmt = tx.prepare(&insert_query)?;
-
     // Insert rows
-    for object in json_objects {
-        let object = object.as_object().unwrap();
-        let mut values: Vec<SchemaFieldType> = Vec::new();
-        for key in &keys {
-            let value = match object.get(*key) {
-                Some(Value::Number(n)) => SchemaFieldType::Int(n.as_i64().unwrap()),
-                Some(Value::String(s)) => SchemaFieldType::Text(s.clone()),
-                Some(Value::Bool(b)) => SchemaFieldType::Bool(*b),
-                Some(Value::Object(_)) | Some(Value::Array(_)) => {
-                    SchemaFieldType::Text(object[*key].to_string())
-                }
-                _ => SchemaFieldType::Null,
-            };
-            values.push(value);
-        }
-        stmt.execute(params_from_iter(values.iter().collect::<Vec<_>>()))?;
-    }
-
+    let mut stmt = conn.prepare(&insert_query)?;
+    rows.into_iter()
+        .map(|values| stmt.execute(params_from_iter(values.iter().collect::<Vec<_>>())))
+        .collect::<Result<Vec<_>>>()?;
     stmt.finalize()?;
 
     // Commit the transaction
-    tx.commit()?;
+    // tx.commit()?;
+
+    println!("Insertions: {} ms", utils::now() - now);
+    let now = utils::now();
 
     // Query and print result
     let count_articles: i64 = conn.query_row(
@@ -115,9 +146,14 @@ fn main() -> Result<()> {
     )?;
     println!("Number of articles: {}", count_articles);
 
+    println!("Querying: {} ms", utils::now() - now);
+    let now = utils::now();
+
     let count_total: i64 =
         conn.query_row("SELECT COUNT(*) FROM data", params![], |row| row.get(0))?;
     println!("Total number of entries: {}", count_total);
+
+    println!("Querying: {} ms", utils::now() - now);
 
     Ok(())
 }
