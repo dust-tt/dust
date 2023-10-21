@@ -720,7 +720,7 @@ export default function AssistantBuilder({
                           console.error(e);
                           sendNotification({
                             title: "Error saving Assistant",
-                            description: `Please try again. If the error persists, pease reach out to team@dust.tt (error ${e.message})`,
+                            description: `Please try again. If the error persists, reach out to team@dust.tt (error ${e.message})`,
                             type: "error",
                           });
                           setIsSavingOrDeleting(false);
@@ -905,7 +905,7 @@ export default function AssistantBuilder({
             >
               <div>
                 The assistant will look exhaustively at all the Data Sources, in
-                chronological order.
+                reverse chronological order (most recent first).
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
