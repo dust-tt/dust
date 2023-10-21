@@ -1410,7 +1410,7 @@ impl Store for PostgresStore {
                 if let Some(tags) = &tags_filter.is_in {
                     tags_is_in = tags.to_vec();
                     if !tags_is_in.is_empty() {
-                        where_clauses.push(format!("tags_array @> ${}", p_idx));
+                        where_clauses.push(format!("tags_array && ${}", p_idx));
                         params.push(&tags_is_in);
                         p_idx += 1;
                     }
@@ -1418,7 +1418,7 @@ impl Store for PostgresStore {
                 if let Some(tags) = &tags_filter.is_not {
                     tags_is_not = tags.to_vec();
                     if !tags_is_not.is_empty() {
-                        where_clauses.push(format!("NOT tags_array @> ${}", p_idx));
+                        where_clauses.push(format!("NOT tags_array && ${}", p_idx));
                         params.push(&tags_is_not);
                         p_idx += 1;
                     }
@@ -1429,7 +1429,7 @@ impl Store for PostgresStore {
                 if let Some(parents) = &parents_filter.is_in {
                     parents_is_in = parents.to_vec();
                     if !parents_is_in.is_empty() {
-                        where_clauses.push(format!("parents @> ${}", p_idx));
+                        where_clauses.push(format!("parents && ${}", p_idx));
                         params.push(&parents_is_in);
                         p_idx += 1;
                     }
@@ -1437,7 +1437,7 @@ impl Store for PostgresStore {
                 if let Some(parents) = &parents_filter.is_not {
                     parents_is_not = parents.to_vec();
                     if !parents_is_not.is_empty() {
-                        where_clauses.push(format!("NOT parents @> ${}", p_idx));
+                        where_clauses.push(format!("NOT parents && ${}", p_idx));
                         params.push(&parents_is_not);
                         p_idx += 1;
                     }
