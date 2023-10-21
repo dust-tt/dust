@@ -128,7 +128,7 @@ fn main() -> Result<()> {
     // Insert rows
     let mut stmt = conn.prepare(&insert_query)?;
     rows.into_iter()
-        .map(|values| stmt.execute(params_from_iter(values.iter().collect::<Vec<_>>())))
+        .map(|values| stmt.execute(params_from_iter(values)))
         .collect::<Result<Vec<_>>>()?;
     stmt.finalize()?;
 
