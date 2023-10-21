@@ -214,9 +214,7 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings: owner.plan.limits.largeModels
-        ? GPT_4_32K_MODEL_CONFIG
-        : GPT_3_5_TURBO_16K_MODEL_CONFIG,
+      modelSettings: GPT_4_32K_MODEL_CONFIG,
     },
   });
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -848,7 +846,6 @@ export default function AssistantBuilder({
                 />
               </div>
               <AdvancedSettings
-                owner={owner}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
                   setEdited(true);
@@ -1277,11 +1274,9 @@ function AssistantBuilderTextArea({
 }
 
 function AdvancedSettings({
-  owner,
   generationSettings,
   setGenerationSettings,
 }: {
-  owner: WorkspaceType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
@@ -1318,27 +1313,22 @@ function AdvancedSettings({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topLeft">
-                {usedModelConfigs
-                  .filter(
-                    (modelConfig) =>
-                      !modelConfig.largeModel || owner.plan.limits.largeModels
-                  )
-                  .map((modelConfig) => (
-                    <DropdownMenu.Item
-                      key={modelConfig.modelId}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel,
-                        });
-                      }}
-                    />
-                  ))}
+                {usedModelConfigs.map((modelConfig) => (
+                  <DropdownMenu.Item
+                    key={modelConfig.modelId}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                          // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                        } as SupportedModel,
+                      });
+                    }}
+                  />
+                ))}
               </DropdownMenu.Items>
             </DropdownMenu>
           </div>

@@ -267,18 +267,10 @@ const WorkspacePage = ({
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
-            {workspace.upgradedAt ? (
-              <p className="mb-4 text-green-600">
-                This workspace was fully upgraded
-                {workspace.upgradedAt &&
-                  ` on ${new Date(workspace.upgradedAt).toLocaleDateString()}`}
-                .
-              </p>
-            ) : (
-              <p className="mb-4 text-green-600">
-                This workspace is not upgraded.
-              </p>
-            )}
+            <p className="mb-4 text-green-600">
+              This workspace is on {workspace.plan.code} plan since{" "}
+              {new Date(workspace.plan.startDate).toLocaleDateString()}.
+            </p>
             <JsonViewer value={workspace.plan} rootName={false} />
             <div>
               <div className="mt-4 flex-row">

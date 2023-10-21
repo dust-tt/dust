@@ -2,7 +2,6 @@ import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
-import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
@@ -11,6 +10,11 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import {
+  FREE_TRIAL_PLAN_CODE,
+  TEST_PLAN_CODE,
+} from "@app/lib/plans/free_plans";
+import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -177,7 +181,15 @@ async function handler(
           });
 
           if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
-            await upgradeWorkspace(w.id);
+            await internalSubscribeWorkspaceToFreePlan({
+              workspaceModelId: w.id,
+              planCode: FREE_TRIAL_PLAN_CODE,
+            });
+          } else {
+            await internalSubscribeWorkspaceToFreePlan({
+              workspaceModelId: w.id,
+              planCode: TEST_PLAN_CODE,
+            });
           }
           isAdminOnboarding = true;
         }

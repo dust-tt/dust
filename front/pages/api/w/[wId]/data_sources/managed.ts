@@ -117,8 +117,30 @@ async function handler(
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 256;
 
+      let isDataSourceAllowedInPlan: boolean;
+      switch (provider) {
+        case "slack":
+          isDataSourceAllowedInPlan =
+            owner.plan.limits.managedDataSources.isSlackAllowed;
+          break;
+        case "notion":
+          isDataSourceAllowedInPlan =
+            owner.plan.limits.managedDataSources.isNotionAllowed;
+          break;
+        case "github":
+          isDataSourceAllowedInPlan =
+            owner.plan.limits.managedDataSources.isGithubAllowed;
+          break;
+        case "google_drive":
+          isDataSourceAllowedInPlan =
+            owner.plan.limits.managedDataSources.isGoogleDriveAllowed;
+          break;
+        default:
+          isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
+      }
+
       // Enforce plan limits: managed DataSources.
-      if (!owner.plan.limits.dataSources.managed) {
+      if (!isDataSourceAllowedInPlan) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {

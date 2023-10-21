@@ -1,31 +1,45 @@
 import { RoleType } from "@app/lib/auth";
 import { ModelId } from "@app/lib/databases";
 
-/**
- *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
- *  limit. If the limit is undefined we revert to the default limit.
- * */
-export type LimitsType = {
-  dataSources: {
-    count: number;
-    documents: { count: number; sizeMb: number };
-    managed: boolean;
-  };
-  largeModels?: boolean;
-};
-
-export type PlanType = {
-  limits: LimitsType;
-};
-
 export type WorkspaceType = {
   id: ModelId;
   sId: string;
   name: string;
   allowedDomain: string | null;
   role: RoleType;
-  plan: PlanType;
+  plan: SubscribedPlanType;
   upgradedAt: number | null;
+};
+
+export type ManageDataSourcesLimitsType = {
+  isSlackAllowed: boolean;
+  isNotionAllowed: boolean;
+  isGoogleDriveAllowed: boolean;
+  isGithubAllowed: boolean;
+};
+
+export type SubscribedPlanType = {
+  code: string;
+  name: string;
+  startDate: number;
+  endDate: number | null;
+  limits: {
+    assistant: {
+      isSlackBotAllowed: boolean;
+      maxWeeklyMessages: number;
+    };
+    managedDataSources: ManageDataSourcesLimitsType;
+    staticDataSources: {
+      count: number;
+      documents: {
+        count: number;
+        sizeMb: number;
+      };
+    };
+    users: {
+      maxUsers: number;
+    };
+  };
 };
 
 export type UserProviderType = "github" | "google";

@@ -1,18 +1,15 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { FindOptions, Op, WhereOptions } from "sequelize";
 
-import {
-  getSession,
-  getUserFromSession,
-  planForWorkspace,
-} from "@app/lib/auth";
+import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
+type WorkspaceWithoutPlan = Omit<WorkspaceType, "plan">;
 export type GetWorkspacesResponseBody = {
-  workspaces: WorkspaceType[];
+  workspaces: WorkspaceWithoutPlan[];
 };
 
 async function handler(
@@ -144,7 +141,6 @@ async function handler(
           sId: ws.sId,
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,
-          plan: planForWorkspace(ws),
           role: "admin",
           upgradedAt: ws.upgradedAt?.getTime() || null,
         })),

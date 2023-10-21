@@ -90,8 +90,8 @@ async function handler(
 
       // Enforce plan limits: DataSources count.
       if (
-        owner.plan.limits.dataSources.count != -1 &&
-        dataSources.length >= owner.plan.limits.dataSources.count
+        owner.plan.limits.staticDataSources.count != -1 &&
+        dataSources.length >= owner.plan.limits.staticDataSources.count
       ) {
         return apiError(req, res, {
           status_code: 401,

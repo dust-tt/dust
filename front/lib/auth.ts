@@ -11,10 +11,11 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { SubscribedPlanType, UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
 import { Key, Membership, User, Workspace } from "./models";
+import { getActiveWorkspacePlan } from "./plans/subscription";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -36,12 +37,19 @@ export class Authenticator {
   _workspace: Workspace | null;
   _user: User | null;
   _role: RoleType;
+  _subscribedPlan: SubscribedPlanType | null;
 
   // Should only be called from the static methods below.
-  constructor(workspace: Workspace | null, user: User | null, role: RoleType) {
+  constructor(
+    workspace: Workspace | null,
+    user: User | null,
+    role: RoleType,
+    subscribedPlan: SubscribedPlanType | null
+  ) {
     this._workspace = workspace;
     this._user = user;
     this._role = role;
+    this._subscribedPlan = subscribedPlan;
   }
 
   /**
@@ -75,30 +83,43 @@ export class Authenticator {
       })(),
     ]);
 
-    let role = "none" as RoleType;
+    let role: RoleType = "none";
+    let subscribedPlan: SubscribedPlanType | null = null;
 
-    if (user && workspace) {
-      const membership = await Membership.findOne({
-        where: {
-          userId: user.id,
-          workspaceId: workspace.id,
-        },
-      });
-
-      if (membership) {
-        switch (membership.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = membership.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
+    if (workspace) {
+      [role, subscribedPlan] = await Promise.all([
+        (async (): Promise<RoleType> => {
+          let membership: Membership | null = null;
+          if (user) {
+            membership = await Membership.findOne({
+              where: {
+                userId: user.id,
+                workspaceId: workspace.id,
+              },
+            });
+          }
+          if (membership) {
+            switch (membership.role) {
+              case "admin":
+              case "builder":
+              case "user":
+                return membership.role as RoleType;
+              default:
+                return "none" as RoleType;
+            }
+          } else {
+            return "none" as RoleType;
+          }
+        })(),
+        (async (): Promise<SubscribedPlanType> => {
+          return await getActiveWorkspacePlan({
+            workspaceModelId: workspace.id,
+          });
+        })(),
+      ]);
     }
 
-    return new Authenticator(workspace, user, role);
+    return new Authenticator(workspace, user, role, subscribedPlan);
   }
 
   /**
@@ -136,11 +157,17 @@ export class Authenticator {
       })(),
     ]);
 
+    const subscribedPlan = workspace
+      ? await getActiveWorkspacePlan({
+          workspaceModelId: workspace.id,
+        })
+      : null;
+
     if (!user || !user.isDustSuperUser) {
-      return new Authenticator(workspace, user, "none");
+      return new Authenticator(workspace, user, "none", subscribedPlan);
     }
 
-    return new Authenticator(workspace, user, "admin");
+    return new Authenticator(workspace, user, "admin", subscribedPlan);
   }
 
   /**
@@ -182,8 +209,14 @@ export class Authenticator {
       }
     }
 
+    const subscribedPlan = workspace
+      ? await getActiveWorkspacePlan({
+          workspaceModelId: workspace.id,
+        })
+      : null;
+
     return {
-      auth: new Authenticator(workspace, null, role),
+      auth: new Authenticator(workspace, null, role, subscribedPlan),
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
@@ -204,7 +237,10 @@ export class Authenticator {
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
-    return new Authenticator(workspace, null, "builder");
+    const subscribedPlan = await getActiveWorkspacePlan({
+      workspaceModelId: workspace.id,
+    });
+    return new Authenticator(workspace, null, "builder", subscribedPlan);
   }
 
   role(): RoleType {
@@ -242,14 +278,14 @@ export class Authenticator {
   }
 
   workspace(): WorkspaceType | null {
-    return this._workspace
+    return this._workspace && this._subscribedPlan
       ? {
           id: this._workspace.id,
           sId: this._workspace.sId,
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
-          plan: planForWorkspace(this._workspace),
+          plan: this._subscribedPlan,
           upgradedAt: this._workspace.upgradedAt?.getTime() || null,
         }
       : null;
@@ -326,6 +362,34 @@ export async function getUserFromSession(
     },
   });
 
+  async function _getWorkspaceType(workspace: Workspace) {
+    const m = memberships.find((m) => m.workspaceId === workspace.id);
+    let role = "none" as RoleType;
+    if (m) {
+      switch (m.role) {
+        case "admin":
+        case "builder":
+        case "user":
+          role = m.role;
+          break;
+        default:
+          role = "none";
+      }
+    }
+    const plan = await getActiveWorkspacePlan({
+      workspaceModelId: workspace.id,
+    });
+    return {
+      id: workspace.id,
+      sId: workspace.sId,
+      name: workspace.name,
+      allowedDomain: workspace.allowedDomain || null,
+      role,
+      plan,
+      upgradedAt: workspace.upgradedAt?.getTime() || null,
+    };
+  }
+
   return {
     id: user.id,
     provider: user.provider,
@@ -334,30 +398,9 @@ export async function getUserFromSession(
     email: user.email,
     name: user.name,
     image: session.user ? session.user.image : null,
-    workspaces: workspaces.map((w) => {
-      const m = memberships.find((m) => m.workspaceId === w.id);
-      let role = "none" as RoleType;
-      if (m) {
-        switch (m.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = m.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
-      return {
-        id: w.id,
-        sId: w.sId,
-        name: w.name,
-        allowedDomain: w.allowedDomain || null,
-        role,
-        plan: planForWorkspace(w),
-        upgradedAt: w.upgradedAt?.getTime() || null,
-      };
-    }),
+    workspaces: await Promise.all(
+      workspaces.map((workspace) => _getWorkspaceType(workspace))
+    ),
     isDustSuperUser: user.isDustSuperUser,
   };
 }
@@ -410,80 +453,6 @@ export async function getAPIKey(
   }
 
   return new Ok(key);
-}
-
-const DEFAULT_DATASOURCES_COUNT_LIMIT = 1;
-const DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT = 32;
-const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
-
-/**
- * Construct the PlanType for the provided workspace.
- * @param w WorkspaceType the workspace to get the plan for
- * @returns PlanType
- */
-export function planForWorkspace(w: Workspace): PlanType {
-  const limits = {
-    dataSources: {
-      count: DEFAULT_DATASOURCES_COUNT_LIMIT,
-      documents: {
-        count: DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT,
-        sizeMb: DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT,
-      },
-      managed: false,
-    },
-    largeModels: false,
-  };
-
-  if (w.plan) {
-    let plan = {} as any;
-    try {
-      plan = JSON.parse(w.plan) as any;
-    } catch (e) {
-      logger.error({ planJSON: w.plan, error: e }, "Error parsing plan JSON");
-    }
-
-    if (plan.limits) {
-      if (plan.limits.largeModels) {
-        if (typeof plan.limits.largeModels === "boolean") {
-          limits.largeModels = plan.limits.largeModels;
-        }
-      }
-      if (plan.limits.dataSources) {
-        if (
-          plan.limits.dataSources.count &&
-          typeof plan.limits.dataSources.count === "number"
-        ) {
-          limits.dataSources.count = plan.limits.dataSources.count;
-        }
-        if (plan.limits.dataSources.documents) {
-          if (
-            plan.limits.dataSources.documents.count &&
-            typeof plan.limits.dataSources.documents.count === "number"
-          ) {
-            limits.dataSources.documents.count =
-              plan.limits.dataSources.documents.count;
-          }
-          if (
-            plan.limits.dataSources.documents.sizeMb &&
-            typeof plan.limits.dataSources.documents.sizeMb === "number"
-          ) {
-            limits.dataSources.documents.sizeMb =
-              plan.limits.dataSources.documents.sizeMb;
-          }
-        }
-        if (
-          plan.limits.dataSources.managed &&
-          typeof plan.limits.dataSources.managed === "boolean"
-        ) {
-          limits.dataSources.managed = plan.limits.dataSources.managed;
-        }
-      }
-    }
-  }
-
-  return {
-    limits,
-  };
 }
 
 /**

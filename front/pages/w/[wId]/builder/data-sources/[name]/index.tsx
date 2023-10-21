@@ -237,8 +237,8 @@ function StandardDataSourceView({
                 onClick={() => {
                   // Enforce plan limits: DataSource documents count.
                   if (
-                    owner.plan.limits.dataSources.documents.count != -1 &&
-                    total >= owner.plan.limits.dataSources.documents.count
+                    owner.plan.limits.staticDataSources.documents.count != -1 &&
+                    total >= owner.plan.limits.staticDataSources.documents.count
                   ) {
                     window.alert(
                       "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."

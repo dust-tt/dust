@@ -33,7 +33,11 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import {
+  ManageDataSourcesLimitsType,
+  UserType,
+  WorkspaceType,
+} from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
@@ -63,7 +67,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   isAdmin: boolean;
   integrations: DataSourceIntegration[];
-  canUseManagedDataSources: boolean;
+  managedDataSourcesLimits: ManageDataSourcesLimitsType;
   gaTrackingId: string;
   nangoConfig: {
     publicKey: string;
@@ -213,7 +217,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       isAdmin,
       integrations,
-      canUseManagedDataSources: owner.plan.limits.dataSources.managed,
+      managedDataSourcesLimits: owner.plan.limits.managedDataSources,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
@@ -232,7 +236,7 @@ export default function DataSourcesView({
   readOnly,
   isAdmin,
   integrations,
-  canUseManagedDataSources,
+  managedDataSourcesLimits,
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
@@ -387,18 +391,42 @@ export default function DataSourcesView({
                             ds.connectorProvider as ConnectorProvider
                           ] ||
                           !isAdmin;
-                        const onclick = canUseManagedDataSources
-                          ? async () => {
-                              await handleEnableManagedDataSource(
-                                ds.connectorProvider as ConnectorProvider,
-                                ds.setupWithSuffix
-                              );
-                            }
-                          : () => {
-                              window.alert(
-                                "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                              );
-                            };
+                        const onclick = async () => {
+                          let isDataSourceAllowedInPlan: boolean;
+
+                          switch (ds.connectorProvider) {
+                            case "slack":
+                              isDataSourceAllowedInPlan =
+                                managedDataSourcesLimits.isSlackAllowed;
+                              break;
+                            case "notion":
+                              isDataSourceAllowedInPlan =
+                                managedDataSourcesLimits.isNotionAllowed;
+                              break;
+                            case "github":
+                              isDataSourceAllowedInPlan =
+                                managedDataSourcesLimits.isGithubAllowed;
+                              break;
+                            case "google_drive":
+                              isDataSourceAllowedInPlan =
+                                managedDataSourcesLimits.isGoogleDriveAllowed;
+                              break;
+                            default:
+                              isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
+                          }
+
+                          if (isDataSourceAllowedInPlan) {
+                            await handleEnableManagedDataSource(
+                              ds.connectorProvider as ConnectorProvider,
+                              ds.setupWithSuffix
+                            );
+                          } else {
+                            window.alert(
+                              "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                            );
+                          }
+                          return;
+                        };
                         const label = !ds.isBuilt
                           ? "Coming soon"
                           : !isLoadingByProvider[

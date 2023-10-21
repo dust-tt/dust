@@ -4,6 +4,9 @@ import { Plan } from "@app/lib/models";
 
 type PlanAttributes = Omit<Attributes<Plan>, "id" | "createdAt" | "updatedAt">;
 
+export const TEST_PLAN_CODE = "TEST_PLAN_V0";
+export const FREE_TRIAL_PLAN_CODE = "TRIAL_PLAN_V0";
+
 /**
  * This file is used to store the plans data.
  * We never delete plans, we only add new ones.
@@ -21,7 +24,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     isManagedGithubAllowed: false,
     maxNbStaticDataSources: 10,
     maxNbStaticDocuments: 10,
-    maxSizeStaticDataSources: 1000,
+    maxSizeStaticDataSources: 2, // 2MB
   },
   {
     code: "TRIAL_PLAN_V0",
@@ -35,7 +38,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     isManagedGithubAllowed: true,
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
-    maxSizeStaticDataSources: -1,
+    maxSizeStaticDataSources: 2, // 2MB
   },
 ];
 

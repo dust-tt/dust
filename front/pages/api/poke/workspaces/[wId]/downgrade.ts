@@ -1,13 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { downgradeWorkspace } from "@app/lib/api/workspace";
-import {
-  getSession,
-  getUserFromSession,
-  planForWorkspace,
-} from "@app/lib/auth";
+import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
+import { TEST_PLAN_CODE } from "@app/lib/plans/free_plans";
+import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
@@ -72,9 +69,10 @@ async function handler(
         });
       }
 
-      await downgradeWorkspace(workspace.id);
-
-      const plan = await planForWorkspace(workspace);
+      const plan = await internalSubscribeWorkspaceToFreePlan({
+        workspaceModelId: workspace.id,
+        planCode: TEST_PLAN_CODE,
+      });
 
       return res.status(200).json({
         workspace: {

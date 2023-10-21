@@ -78,8 +78,8 @@ export default function DataSourcesView({
   const handleCreateDataSource = async () => {
     // Enforce plan limits: DataSources count.
     if (
-      owner.plan.limits.dataSources.count != -1 &&
-      dataSources.length >= owner.plan.limits.dataSources.count
+      owner.plan.limits.staticDataSources.count != -1 &&
+      dataSources.length >= owner.plan.limits.staticDataSources.count
     ) {
       window.alert(
         "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."

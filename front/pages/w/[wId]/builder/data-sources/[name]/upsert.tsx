@@ -118,10 +118,12 @@ export default function DataSourceUpsert({
     }
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
+  const planDocumentLimits = owner.plan.limits.staticDataSources.documents;
+
   const alertDataSourcesLimit = () => {
     window.alert(
       "DataSource document upload size is limited to " +
-        `${owner.plan.limits.dataSources.documents.sizeMb}MB (of raw text)` +
+        `${planDocumentLimits.sizeMb}MB (of raw text)` +
         ". Contact team@dust.tt if you want to increase this limit."
     );
   };
@@ -132,8 +134,8 @@ export default function DataSourceUpsert({
 
     // Enforce plan limits: DataSource documents size.
     if (
-      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      planDocumentLimits.sizeMb != -1 &&
+      text.length > 1024 * 1024 * planDocumentLimits.sizeMb
     ) {
       alertDataSourcesLimit();
       return;
@@ -157,8 +159,8 @@ export default function DataSourceUpsert({
 
     // Enforce plan limits: DataSource documents size.
     if (
-      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      planDocumentLimits.sizeMb != -1 &&
+      text.length > 1024 * 1024 * planDocumentLimits.sizeMb
     ) {
       alertDataSourcesLimit();
       return;
