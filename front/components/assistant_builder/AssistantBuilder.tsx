@@ -36,6 +36,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -60,7 +61,6 @@ import { UserType, WorkspaceType } from "@app/types/user";
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "./DustAppSelectionSection";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
