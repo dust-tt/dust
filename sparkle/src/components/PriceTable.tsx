@@ -9,21 +9,25 @@ interface PriceTableProps {
   title: string;
   price: string;
   priceLabel?: string;
-  color?: "pink" | "sky" | "emerald";
+  color?: "pink" | "sky" | "emerald" | "amber" | "blue";
   className?: string;
   children: ReactNode;
 }
 
 const colorTable = {
-  pink: "s-bg-pink-400",
-  sky: "s-bg-sky-400",
-  emerald: "s-bg-emerald-400",
+  pink: "s-bg-pink-400 dark:s-bg-pink-500",
+  amber: "s-bg-amber-400 dark:s-bg-amber-500",
+  sky: "s-bg-sky-400 dark:s-bg-sky-500",
+  blue: "s-bg-blue-400 dark:s-bg-blue-500",
+  emerald: "s-bg-emerald-400 dark:s-bg-emerald-500",
 };
 
 const textColorTable = {
-  pink: "s-text-pink-900",
-  sky: "s-text-sky-900",
-  emerald: "s-text-emerald-900",
+  pink: "s-text-pink-900 dark:s-text-pink-950",
+  amber: "s-text-amber-900 dark:s-text-amber-950",
+  sky: "s-text-sky-900 dark:s-text-sky-950",
+  blue: "s-text-blue-900 dark:s-text-blue-950",
+  emerald: "s-text-emerald-900 dark:s-text-emerald-950",
 };
 
 export function PriceTable({
@@ -45,7 +49,12 @@ export function PriceTable({
       )}
     >
       <div className="s-flex s-flex-col s-px-3 s-py-2">
-        <div className="s-w-full s-text-right s-text-2xl s-font-semibold s-text-white">
+        <div
+          className={classNames(
+            "s-w-full s-text-right s-text-2xl s-font-semibold",
+            "s-text-structure-0"
+          )}
+        >
           {title}
         </div>
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
@@ -62,7 +71,12 @@ export function PriceTable({
           </span>
         </div>
       </div>
-      <div className="s-flex s-h-full s-flex-col s-overflow-hidden s-rounded-lg s-bg-white s-shadow-md">
+      <div
+        className={classNames(
+          "s-flex s-h-full s-flex-col s-overflow-hidden s-rounded-lg s-shadow-md",
+          "s-bg-white dark:s-bg-structure-100-dark"
+        )}
+      >
         {children}
       </div>
     </div>
@@ -95,7 +109,9 @@ PriceTable.Item = function ({
   return (
     <div
       className={classNames(
-        "s-flex s-items-center s-gap-1.5 s-border-b s-border-structure-100 s-px-2 s-py-2.5 s-text-sm s-text-element-800 ",
+        "s-flex s-items-center s-gap-1.5 s-border-b s-px-2 s-py-2.5 s-text-sm",
+        "s-border-structure-100 s-text-element-800",
+        "dark:s-border-structure-200-dark/50 dark:s-text-element-800-dark",
         className
       )}
     >
@@ -108,7 +124,9 @@ PriceTable.Item = function ({
       </div>
       <div
         className={classNames(
-          variant === "xmark" ? "s-text-element-600" : "",
+          variant === "xmark"
+            ? "s-text-element-600 dark:s-text-element-600-dark"
+            : "",
           "s-overflow-hidden s-overflow-ellipsis s-whitespace-nowrap"
         )}
       >

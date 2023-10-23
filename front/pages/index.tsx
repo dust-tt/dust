@@ -1,4 +1,4 @@
-import { Logo } from "@dust-tt/sparkle";
+import { Logo, PriceTable } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -58,8 +58,8 @@ const hClasses = {
 };
 
 const pClasses = {
-  normal: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
-  big: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
+  normal: "font-regular text-sm text-slate-400 md:text-lg drop-shadow",
+  big: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
 };
 
 interface ContentProps {
@@ -81,6 +81,9 @@ export const H2 = ({ children, className = "" }: ContentProps) => (
 );
 export const H3 = ({ children, className = "" }: ContentProps) => (
   <h3 className={classNames(className, hClasses.h3)}>{children}</h3>
+);
+export const H4 = ({ children, className = "" }: ContentProps) => (
+  <h4 className={classNames(className, hClasses.h4)}>{children}</h4>
 );
 
 export const P = ({ children, className = "", variant }: ContentProps) => (
@@ -192,12 +195,12 @@ export default function Home({
                 <br />
                 with customizable and secure AI&nbsp;assistants
               </H1>
-              <P variant="big" className="col-span-6 col-start-3">
+              <H4 className="col-span-6 col-start-3">
                 <Strong>AI is changing the way we work.</Strong>
                 <br />
                 Effectively channeling the potential of AI is a competitive
                 edge.
-              </P>
+              </H4>
             </div>
           </Grid>
           <Grid>
@@ -219,7 +222,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 flex flex-col gap-4"
+                "col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
               <H2>
@@ -253,39 +256,159 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 col-start-5 flex flex-col gap-4 text-right"
+                "col-span-8 col-start-3 flex flex-col gap-4 text-right"
               )}
             >
-              <h2 className={hClasses.h2}>
+              <H2>
                 Bring your&nbsp;team
                 <br />
                 up&nbsp;to&nbsp;speed.
-              </h2>
-              <p className={pClasses.big}>
-                Moving to AI is a paradigm shift in your team’s workflow.
+              </H2>
+              <P variant="big">
+                Embracing AI is a&nbsp;paradigm shift for&nbsp;your
+                team’s&nbsp;workflows.
                 <br />
-                Dust{" "}
-                <Strong>
-                  spotlights your most creative and driven team members
-                </Strong>{" "}
-                and <Strong>spreads their findings</Strong> effortlessly
-                throughout your&nbsp;organization.
-              </p>
+                Dust empowers
+                <Strong>your most creative and driven team members</Strong>{" "}
+                to&nbsp;<Strong>develop and&nbsp;share</Strong> their practices
+                throughout your&nbsp;company.
+              </P>
             </div>
           </Grid>
           <Grid>
             <P className="col-span-4">
-              Seamlessly manage workspace invitations with SSO.
+              Team members can <Strong>imagine and build new workflows</Strong>,
+              package them in an{" "}
+              <Strong>easy to&nbsp;use / easy to&nbsp;share</Strong> assistants.
             </P>
             <P className="col-span-4">
-              Allow assistants and teammates to collaborate across workflows to
-              solve problems faster.
+              Spread good practices &&nbsp;encourage collaboration with
+              <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
+              <Strong>Slack&nbsp;integration</Strong>.
             </P>
             <P className="col-span-4">
-              Learn from best practices to easily deploy assistants with
-              specific data source specs and custom instructions for your use
-              cases across functions.
+              Seamlessly manage workspace invitations with{" "}
+              <Strong>single sign-on</Strong>&nbsp;(SSO).
             </P>
+          </Grid>
+
+          <Grid>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-6 flex flex-col gap-4"
+              )}
+            >
+              <H2>
+                Designed for security
+                <br />
+                and data privacy.
+              </H2>
+              <P>
+                No re-training of&nbsp;models on your internal knowledge.
+                Enterprise-grade security to manage your&nbsp;data access
+                policies with control and&nbsp;confidence.
+                <br />
+              </P>
+            </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-6 flex flex-col gap-4"
+              )}
+            >
+              <H2>
+                Need more?
+                <br />
+                Dust do it!
+              </H2>
+              <P className={pClasses.big}>
+                Built for developers and tinkerers with powerful actions and
+                application orchestration to fit your exact needs.
+              </P>
+            </div>
+          </Grid>
+          <Grid>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-6 flex flex-col gap-4"
+              )}
+            >
+              <H2>Pricing</H2>
+              <PriceTable.Container>
+                <PriceTable
+                  title="Free"
+                  price="0€"
+                  priceLabel="/ month"
+                  color="emerald"
+                  className="w-64"
+                >
+                  <PriceTable.Item
+                    label="Single member / workspace"
+                    variant="dash"
+                  />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
+                  <PriceTable.Item label="20 messages a week" variant="dash" />
+                  <PriceTable.Item
+                    label="Static Data Sources (35Mo)"
+                    variant="dash"
+                  />
+                  <PriceTable.Item
+                    label="Connected Data Sources"
+                    variant="xmark"
+                  />
+                </PriceTable>
+                <PriceTable
+                  title="Pro"
+                  price="0€"
+                  priceLabel="/ month"
+                  className="w-64"
+                >
+                  <PriceTable.Item
+                    label="Single member / workspace"
+                    variant="dash"
+                  />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
+                  <PriceTable.Item label="20 messages a week" variant="dash" />
+                  <PriceTable.Item
+                    label="Static Data Sources (35Mo)"
+                    variant="dash"
+                  />
+                  <PriceTable.Item
+                    label="Connected Data Sources"
+                    variant="xmark"
+                  />
+                </PriceTable>
+                <PriceTable
+                  title="Team"
+                  price="0€"
+                  color="sky"
+                  priceLabel="/ month / seat"
+                  className="w-64"
+                >
+                  <PriceTable.Item label="Unlimited members / workspace" />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                </PriceTable>
+                <PriceTable title="Enterprise" price="Custom" className="w-64">
+                  <PriceTable.Item label="Unlimited members / workspace" />
+                  <PriceTable.Item label="Unlimited workspaces" />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="1 user" />
+                </PriceTable>
+              </PriceTable.Container>
+            </div>
           </Grid>
         </div>
         <div
