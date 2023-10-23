@@ -168,6 +168,7 @@ export default function EditAssistant({
         agentConfiguration.action.relativeTimeFrame === "auto" ||
         agentConfiguration.action.relativeTimeFrame === "none"
       ) {
+        /** Should never happen. Throw loudly if it does */
         throw new Error(
           "Invalid configuration: exhaustive retrieval must have a definite time frame"
         );

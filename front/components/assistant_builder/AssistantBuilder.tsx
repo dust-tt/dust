@@ -81,7 +81,7 @@ type ActionMode = (typeof ACTION_MODES)[number];
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action (Generic model)",
   RETRIEVAL_SEARCH: "Search Data Sources",
-  RETRIEVAL_EXHAUSTIVE: "Exhaustive Data  Sources Processing",
+  RETRIEVAL_EXHAUSTIVE: "Exhaustive Data Sources Processing",
   DUST_APP_RUN: "Run Dust App",
 };
 
@@ -919,7 +919,8 @@ export default function AssistantBuilder({
                   relevant time frame using the "Collect data from" field below.
                 </div>
                 <div>
-                  The available data sources are managed by administrators.
+                  <strong>Note:</strong> The available data sources are managed
+                  by administrators.
                 </div>
               </div>
               <DataSourceSelectionSection
@@ -1016,7 +1017,7 @@ export default function AssistantBuilder({
                     of the answers to specific questions will depend on the
                     quality of the data.
                   </p>
-                  <p>
+                  <p className="mt-1">
                     <strong>
                       You can narrow your search on most recent documents
                     </strong>{" "}
@@ -1468,7 +1469,7 @@ function ActionModeSection({
         });
       }}
     >
-      <div className="flex flex-col gap-6">{children}</div>
+      <div className="flex flex-col gap-6 text-justify">{children}</div>
     </Transition>
   );
 }
