@@ -61,6 +61,9 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
+  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
+    useState<boolean>(false);
+
   const shouldStream = (() => {
     if (message.status !== "created") {
       return false;
@@ -233,6 +236,7 @@ export function AgentMessage({
             onClick: () => {
               void retryHandler(agentMessageToRender);
             },
+            disabled: isRetryHandlerProcessing || shouldStream,
           },
         ];
 
@@ -365,6 +369,7 @@ export function AgentMessage({
   }
 
   async function retryHandler(agentMessage: AgentMessageType) {
+    setIsRetryHandlerProcessing(true);
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
       {
@@ -374,6 +379,7 @@ export function AgentMessage({
         },
       }
     );
+    setIsRetryHandlerProcessing(false);
   }
 }
 
