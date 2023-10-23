@@ -48,8 +48,8 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
-  errorMessage?:string;
-  errorType?:ConnectorErrorType;
+  errorMessage?: string;
+  errorType?: ConnectorErrorType;
 
   defaultNewResourcePermission: ConnectorPermission;
 };
