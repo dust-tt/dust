@@ -51,7 +51,7 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models";
-import { nango_client } from "@connectors/lib/nango_client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 
@@ -461,10 +461,11 @@ export async function getNotionAccessToken(
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
 
-  const notionAccessToken = (await nango_client().getToken(
-    NANGO_NOTION_CONNECTOR_ID,
-    nangoConnectionId
-  )) as string;
+  const notionAccessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_NOTION_CONNECTOR_ID,
+    useCache: true,
+  });
 
   return notionAccessToken;
 }

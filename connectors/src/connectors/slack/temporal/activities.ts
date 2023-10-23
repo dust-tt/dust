@@ -25,7 +25,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models";
-import { nango_client } from "@connectors/lib/nango_client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import {
   reportInitialSyncProgress,
   syncSucceeded,
@@ -682,7 +682,11 @@ export async function getAccessToken(
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
   }
-  return nango_client().getToken(NANGO_SLACK_CONNECTOR_ID, nangoConnectionId);
+  return getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_SLACK_CONNECTOR_ID,
+    useCache: true,
+  });
 }
 
 export async function saveSuccessSyncActivity(connectorId: string) {
