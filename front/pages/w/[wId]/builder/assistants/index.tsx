@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  Cog6ToothIcon,
   ContextItem,
   PageHeader,
   PencilSquareIcon,
@@ -132,7 +133,20 @@ export default function AssistantsBuilder({
                   <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
                 }
                 action={
-                  agent.sId !== "helper" ? (
+                  agent.sId === "helper" ? null : agent.sId === "dust" ? (
+                    <Button
+                      variant="secondary"
+                      icon={Cog6ToothIcon}
+                      label="Manage"
+                      size="sm"
+                      disabled={!isBuilder}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/assistants/dust`
+                        );
+                      }}
+                    />
+                  ) : (
                     <SliderToggle
                       size="sm"
                       onClick={async () => {
@@ -144,7 +158,7 @@ export default function AssistantsBuilder({
                         !isBuilder
                       }
                     />
-                  ) : null
+                  )
                 }
               >
                 <ContextItem.Description>
