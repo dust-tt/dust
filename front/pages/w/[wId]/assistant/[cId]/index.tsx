@@ -1,6 +1,6 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
@@ -12,6 +12,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -79,7 +80,7 @@ export default function AssistantConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-
+  const sendNotification = useContext(SendNotificationsContext);
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
     const mRes = await fetch(
@@ -102,7 +103,16 @@ export default function AssistantConversation({
 
     if (!mRes.ok) {
       const data = await mRes.json();
-      window.alert(`Error creating message: ${data.error.message}`);
+      if (data.error.type === "test_plan_limit_reached") {
+        window.alert(
+          "You've reached your test plan limit. Please upgrade your plan to continue."
+        );
+      }
+      sendNotification({
+        title: "Your message could not be sent",
+        description: data.error.message || "Please try again or contact us.",
+        type: "error",
+      });
       return;
     }
   };

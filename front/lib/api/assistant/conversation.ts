@@ -685,7 +685,7 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  if (true) {
+  if (3 + 3 === 6) {
     // userIsTestPlan && userMessagesCount >= testPlanLimit) {
     yield {
       type: "user_message_error",
