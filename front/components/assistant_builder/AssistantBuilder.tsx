@@ -14,9 +14,10 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
@@ -27,7 +28,7 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/DataSo
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
-  FilteringMode,
+  TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -35,6 +36,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -69,12 +71,18 @@ const usedModelConfigs = [
 
 // Actions
 
-const ACTION_MODES = ["GENERIC", "RETRIEVAL", "DUST_APP_RUN"] as const;
+const ACTION_MODES = [
+  "GENERIC",
+  "RETRIEVAL_SEARCH",
+  "RETRIEVAL_EXHAUSTIVE",
+  "DUST_APP_RUN",
+] as const;
 type ActionMode = (typeof ACTION_MODES)[number];
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action (Generic model)",
-  RETRIEVAL: "Search Data Sources",
-  DUST_APP_RUN: "Execute Dust App",
+  RETRIEVAL_SEARCH: "Search Data Sources",
+  RETRIEVAL_EXHAUSTIVE: "Exhaustive Data Sources Processing",
+  DUST_APP_RUN: "Run Dust App",
 };
 
 // Retrieval Action
@@ -112,7 +120,6 @@ type AssistantBuilderState = {
     string,
     AssistantBuilderDataSourceConfiguration
   >;
-  filteringMode: FilteringMode;
   timeFrame: {
     value: number;
     unit: TimeframeUnit;
@@ -137,7 +144,6 @@ export type AssistantBuilderInitialState = {
   dataSourceConfigurations:
     | AssistantBuilderState["dataSourceConfigurations"]
     | null;
-  filteringMode: FilteringMode | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
   handle: string;
@@ -163,7 +169,6 @@ type AssistantBuilderProps = {
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   actionMode: "GENERIC",
   dataSourceConfigurations: {},
-  filteringMode: "SEARCH",
   timeFrame: {
     value: 1,
     unit: "month",
@@ -205,7 +210,7 @@ export default function AssistantBuilder({
   agentConfigurationId,
 }: AssistantBuilderProps) {
   const router = useRouter();
-
+  const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
   );
@@ -219,6 +224,7 @@ export default function AssistantBuilder({
         : GPT_3_5_TURBO_16K_MODEL_CONFIG,
     },
   });
+
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
@@ -281,9 +287,6 @@ export default function AssistantBuilder({
           initialBuilderState.dataSourceConfigurations ?? {
             ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
           },
-        filteringMode:
-          initialBuilderState.filteringMode ??
-          DEFAULT_ASSISTANT_STATE.filteringMode,
         timeFrame: initialBuilderState.timeFrame ?? {
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
@@ -394,24 +397,26 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (builderState.actionMode === "RETRIEVAL") {
+    if (
+      builderState.actionMode === "RETRIEVAL_SEARCH" ||
+      builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
+    ) {
       if (!configuredDataSourceCount) {
         valid = false;
+      }
+    }
+    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
+      if (!builderState.timeFrame.value) {
+        valid = false;
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
       }
     }
 
     if (builderState.actionMode === "DUST_APP_RUN") {
       if (!builderState.dustAppConfiguration) {
         valid = false;
-      }
-    }
-
-    if (builderState.filteringMode === "TIMEFRAME") {
-      if (!builderState.timeFrame.value) {
-        valid = false;
-        setTimeFrameError("Timeframe must be a number");
-      } else {
-        setTimeFrameError(null);
       }
     }
 
@@ -422,7 +427,6 @@ export default function AssistantBuilder({
     builderState.description,
     builderState.instructions,
     configuredDataSourceCount,
-    builderState.filteringMode,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
     assistantHandleIsAvailable,
@@ -474,32 +478,19 @@ export default function AssistantBuilder({
     switch (builderState.actionMode) {
       case "GENERIC":
         break;
-      case "RETRIEVAL":
-        const tfParam = (() => {
-          switch (builderState.filteringMode) {
-            case "SEARCH":
-              return "auto";
-            case "TIMEFRAME":
-              if (!builderState.timeFrame.value) {
-                // unreachable
-                // we keep this for TS
-                throw new Error("Form not valid");
-              }
-              return {
-                duration: builderState.timeFrame.value,
-                unit: builderState.timeFrame.unit,
-              };
-            default:
-              ((x: never) => {
-                throw new Error(`Unknown time frame mode ${x}`);
-              })(builderState.filteringMode);
-          }
-        })();
-
+      case "RETRIEVAL_SEARCH":
+      case "RETRIEVAL_EXHAUSTIVE":
         actionParam = {
           type: "retrieval_configuration",
-          query: builderState.filteringMode === "SEARCH" ? "auto" : "none",
-          timeframe: tfParam,
+          query:
+            builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
+          timeframe:
+            builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
+              ? {
+                  duration: builderState.timeFrame.value,
+                  unit: builderState.timeFrame.unit,
+                }
+              : "auto",
           topK: "auto",
           dataSources: Object.values(builderState.dataSourceConfigurations).map(
             ({ dataSource, selectedResources, isSelectAll }) => ({
@@ -618,7 +609,11 @@ export default function AssistantBuilder({
 
     if (!res.ok) {
       const data = await res.json();
-      window.alert(`Error deleting Assistant: ${data.error.message}`);
+      sendNotification({
+        title: "Error deleting Assistant",
+        description: data.error.message,
+        type: "error",
+      });
       setIsSavingOrDeleting(false);
       return;
     }
@@ -723,10 +718,11 @@ export default function AssistantBuilder({
                         })
                         .catch((e) => {
                           console.error(e);
-                          alert(
-                            "An error occured while saving your agent." +
-                              " Please try again. If the error persists, pease reach out to team@dust.tt"
-                          );
+                          sendNotification({
+                            title: "Error saving Assistant",
+                            description: `Please try again. If the error persists, reach out to team@dust.tt (error ${e.message})`,
+                            type: "error",
+                          });
                           setIsSavingOrDeleting(false);
                         });
                     }
@@ -861,35 +857,128 @@ export default function AssistantBuilder({
             </div>
           </div>
 
-          <div className="flex flex-row items-start">
-            <div className="flex flex-col gap-4">
-              <div className="text-2xl font-bold text-element-900">Actions</div>
-              <div className="text-sm text-element-700">
-                You can ask the assistant to perform actions before answering,
-                like{" "}
-                <span className="font-bold text-element-800">
-                  searching in your Data Sources
-                </span>
-                , or use a Dust Application you have built for your specific
-                needs.
+          <div className="flex flex-col gap-6 text-sm text-element-700">
+            <div className="text-2xl font-bold text-element-900">Actions</div>
+            <div>
+              You can ask the assistant to perform actions before answering,
+              like{" "}
+              <span className="font-bold text-element-800">
+                searching in your Data Sources
+              </span>
+              , or use a Dust Application you have built for your specific
+              needs.
+            </div>
+            <div className="flex flex-row items-center space-x-2">
+              <div className="text-sm font-semibold text-element-900">
+                Action:
               </div>
-              <div className="flex flex-row items-center space-x-2 py-4">
-                <div className="text-sm font-semibold text-element-900">
-                  Action:
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
+                    variant="secondary"
+                    hasMagnifying={false}
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomRight" width={260}>
+                  {Object.entries(ACTION_MODE_TO_LABEL).map(([key, value]) => (
+                    <DropdownMenu.Item
+                      key={key}
+                      label={value}
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          actionMode: key as ActionMode,
+                        }));
+                      }}
+                    />
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+            <ActionModeSection
+              show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
+            >
+              <div>
+                The assistant will look exhaustively at all the Data Sources, in
+                reverse chronological order (most recent first).
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <strong>
+                    <span className="text-warning-500">Warning!</span>{" "}
+                    Assistants are limited in the quantity of data they can
+                    manage.
+                  </strong>{" "}
+                  To ensure the assistant can handle all relevant data, select
+                  sources with care, and limit processing to the smallest
+                  relevant time frame using the "Collect data from" field below.
                 </div>
+                <div>
+                  <strong>Note:</strong> The available data sources are managed
+                  by administrators.
+                </div>
+              </div>
+              <DataSourceSelectionSection
+                dataSourceConfigurations={builderState.dataSourceConfigurations}
+                openDataSourceModal={() => {
+                  setShowDataSourcesModal(true);
+                }}
+                canAddDataSource={configurableDataSources.length > 0}
+                onManageDataSource={(name) => {
+                  setDataSourceToManage(
+                    builderState.dataSourceConfigurations[name]
+                  );
+                  setShowDataSourcesModal(true);
+                }}
+                onDelete={deleteDataSource}
+              />
+              <div className={"flex flex-row items-center gap-4 pb-4"}>
+                <div className="text-sm font-semibold text-element-900">
+                  Collect data from the last
+                </div>
+                <input
+                  type="text"
+                  className={classNames(
+                    "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+                    !timeFrameError
+                      ? "focus:border-action-500 focus:ring-action-500"
+                      : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                    "bg-structure-50 stroke-structure-50"
+                  )}
+                  value={builderState.timeFrame.value || ""}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value) || !e.target.value) {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        timeFrame: {
+                          value,
+                          unit: builderState.timeFrame.unit,
+                        },
+                      }));
+                    }
+                  }}
+                />
                 <DropdownMenu>
-                  <DropdownMenu.Button>
+                  <DropdownMenu.Button tooltipPosition="above">
                     <Button
                       type="select"
                       labelVisible={true}
-                      label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
+                      label={
+                        TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]
+                      }
                       variant="secondary"
-                      hasMagnifying={false}
                       size="sm"
                     />
                   </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="bottomRight" width={260}>
-                    {Object.entries(ACTION_MODE_TO_LABEL).map(
+                  <DropdownMenu.Items origin="bottomLeft">
+                    {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
                       ([key, value]) => (
                         <DropdownMenu.Item
                           key={key}
@@ -898,7 +987,10 @@ export default function AssistantBuilder({
                             setEdited(true);
                             setBuilderState((state) => ({
                               ...state,
-                              actionMode: key as ActionMode,
+                              timeFrame: {
+                                value: builderState.timeFrame.value,
+                                unit: key as TimeframeUnit,
+                              },
                             }));
                           }}
                         />
@@ -907,108 +999,77 @@ export default function AssistantBuilder({
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
-
-              <div className="flex flex-col gap-4">
-                {builderState.actionMode === "RETRIEVAL" && (
-                  <>
-                    <div className="text-sm text-element-700">
-                      The assistant will retrieve information from the selected
-                      data sources and run the instructions on the results to
-                      generate an answer. The Data Sources to pick from are
-                      managed by administrators.
-                    </div>
-                    <ul role="list" className="flex flex-row gap-12">
-                      <li className="flex flex-1">
-                        <div className="flex flex-col">
-                          <div className="text-sm font-bold text-element-800">
-                            Only set data sources if they are necessary.
-                          </div>
-                          <div className="text-sm text-element-700">
-                            By default, the assistant will follow its
-                            instructions with common knowledge. It&nbsp;will
-                            answer faster when not using Data&nbsp;Sources.
-                          </div>
-                        </div>
-                      </li>
-                      <li className="flex flex-1">
-                        <div className="flex flex-col">
-                          <div className="text-sm font-bold text-element-800">
-                            Select your Data Sources carefully.
-                          </div>
-                          <div className="text-sm text-element-700">
-                            More is not necessarily better. The quality of your
-                            assistant’s answers to specific questions will
-                            depend on the&nbsp;quality
-                            of&nbsp;the&nbsp;underlying&nbsp;data.
-                          </div>
-                        </div>
-                      </li>
-                    </ul>
-                    <div className="pb-4">
-                      <DataSourceSelectionSection
-                        show={builderState.actionMode === "RETRIEVAL"}
-                        dataSourceConfigurations={
-                          builderState.dataSourceConfigurations
-                        }
-                        openDataSourceModal={() => {
-                          setShowDataSourcesModal(true);
-                        }}
-                        canAddDataSource={configurableDataSources.length > 0}
-                        onManageDataSource={(name) => {
-                          setDataSourceToManage(
-                            builderState.dataSourceConfigurations[name]
-                          );
-                          setShowDataSourcesModal(true);
-                        }}
-                        onDelete={deleteDataSource}
-                        filteringMode={builderState.filteringMode}
-                        setFilteringMode={(filteringMode: FilteringMode) => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            filteringMode,
-                          }));
-                        }}
-                        timeFrame={builderState.timeFrame}
-                        setTimeFrame={(timeFrame) => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            timeFrame,
-                          }));
-                        }}
-                        timeFrameError={timeFrameError}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {builderState.actionMode === "DUST_APP_RUN" && (
-                  <>
-                    <div className="text-sm text-element-700">
-                      Your assistant can execute a Dust Application of your
-                      design before answering. The output of the app (last
-                      block) is injeced in context for the model to generate an
-                      answer. The inputs of the app will be automatically
-                      generated from the context of the conversation based on
-                      the descriptions you provided in the application's input
-                      block dataset schema.
-                    </div>
-                    <div className="pb-4">
-                      <DustAppSelectionSection
-                        show={builderState.actionMode === "DUST_APP_RUN"}
-                        dustAppConfiguration={builderState.dustAppConfiguration}
-                        openDustAppModal={() => {
-                          setShowDustAppsModal(true);
-                        }}
-                        onDelete={deleteDustApp}
-                        canSelectDustApp={dustApps.length !== 0}
-                      />
-                    </div>
-                  </>
-                )}
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "RETRIEVAL_SEARCH"}
+            >
+              <div>
+                The assistant will perform a search on the selected data source,
+                run the instructions on the results.{" "}
+                <span className="font-semibold">
+                  It’s the best approach with large quantities of data.
+                </span>
               </div>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p>
+                    <strong>Select your sources with care</strong> The quality
+                    of the answers to specific questions will depend on the
+                    quality of the data.
+                  </p>
+                  <p className="mt-1">
+                    <strong>
+                      You can narrow your search on most recent documents
+                    </strong>{" "}
+                    by adding instructions in your prompt such as 'Only search
+                    in documents from the last 3 months', 'Only look at data
+                    from the last 2 days', etc.
+                  </p>
+                </div>
+                <div>
+                  <p>
+                    <strong>Note:</strong> The available data sources are
+                    managed by administrators.
+                  </p>
+                </div>
+              </div>
+
+              <DataSourceSelectionSection
+                dataSourceConfigurations={builderState.dataSourceConfigurations}
+                openDataSourceModal={() => {
+                  setShowDataSourcesModal(true);
+                }}
+                canAddDataSource={configurableDataSources.length > 0}
+                onManageDataSource={(name) => {
+                  setDataSourceToManage(
+                    builderState.dataSourceConfigurations[name]
+                  );
+                  setShowDataSourcesModal(true);
+                }}
+                onDelete={deleteDataSource}
+              />
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "DUST_APP_RUN"}
+            >
+              <div className="text-sm text-element-700">
+                Your assistant can execute a Dust Application of your design
+                before answering. The output of the app (last block) is injeced
+                in context for the model to generate an answer. The inputs of
+                the app will be automatically generated from the context of the
+                conversation based on the descriptions you provided in the
+                application's input block dataset schema.
+              </div>
+              <DustAppSelectionSection
+                show={builderState.actionMode === "DUST_APP_RUN"}
+                dustAppConfiguration={builderState.dustAppConfiguration}
+                openDustAppModal={() => {
+                  setShowDustAppsModal(true);
+                }}
+                onDelete={deleteDustApp}
+                canSelectDustApp={dustApps.length !== 0}
+              />
+            </ActionModeSection>
           </div>
 
           <div className="flex flex-row items-start">
@@ -1383,6 +1444,35 @@ function AdvancedSettings({
   );
 }
 
+function ActionModeSection({
+  children,
+  show,
+}: {
+  children: ReactNode;
+  show: boolean;
+}) {
+  return (
+    <Transition
+      show={show}
+      as={Fragment}
+      enterFrom="opacity-0 -translate-y-32"
+      enterTo="opacity-100 translate-y-0"
+      leave="transition-all duration-300"
+      enter="transition-all duration-300"
+      leaveFrom="opacity-100 translate-y-0"
+      leaveTo="opacity-0 -translate-y-32"
+      afterEnter={() => {
+        window.scrollBy({
+          left: 0,
+          top: 140,
+          behavior: "smooth",
+        });
+      }}
+    >
+      <div className="flex flex-col gap-6 text-justify">{children}</div>
+    </Transition>
+  );
+}
 function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
 }

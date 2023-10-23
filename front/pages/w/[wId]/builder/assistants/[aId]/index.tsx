@@ -160,26 +160,27 @@ export default function EditAssistant({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
-  let filteringMode: AssistantBuilderInitialState["filteringMode"] = null;
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
   if (isRetrievalConfiguration(agentConfiguration.action)) {
-    actionMode = "RETRIEVAL";
-    if (agentConfiguration.action?.relativeTimeFrame) {
-      switch (agentConfiguration.action.relativeTimeFrame) {
-        case "auto":
-          filteringMode = "SEARCH";
-          break;
-        case "none":
-          filteringMode = "SEARCH";
-          break;
-        default:
-          filteringMode = "TIMEFRAME";
-          timeFrame = {
-            value: agentConfiguration.action.relativeTimeFrame.duration,
-            unit: agentConfiguration.action.relativeTimeFrame.unit,
-          };
+    if (agentConfiguration.action.query === "none") {
+      if (
+        agentConfiguration.action.relativeTimeFrame === "auto" ||
+        agentConfiguration.action.relativeTimeFrame === "none"
+      ) {
+        /** Should never happen. Throw loudly if it does */
+        throw new Error(
+          "Invalid configuration: exhaustive retrieval must have a definite time frame"
+        );
       }
+      actionMode = "RETRIEVAL_EXHAUSTIVE";
+      timeFrame = {
+        value: agentConfiguration.action.relativeTimeFrame.duration,
+        unit: agentConfiguration.action.relativeTimeFrame.unit,
+      };
+    }
+    if (agentConfiguration.action.query === "auto") {
+      actionMode = "RETRIEVAL_SEARCH";
     }
   }
 
@@ -196,7 +197,6 @@ export default function EditAssistant({
       dustApps={dustApps}
       initialBuilderState={{
         actionMode,
-        filteringMode,
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
