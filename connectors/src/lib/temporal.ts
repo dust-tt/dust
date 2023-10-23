@@ -1,4 +1,9 @@
-import { Client, Connection, ConnectionOptions } from "@temporalio/client";
+import {
+  Client,
+  Connection,
+  ConnectionOptions,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
@@ -92,4 +97,20 @@ export async function getConnectorId(
     }
   }
   return WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] || null;
+}
+
+export async function cancelWorkflow(workflowId: string) {
+  const client = await getTemporalClient();
+  try {
+    const workflowHandle = await client.workflow.getHandle(workflowId);
+    await workflowHandle.cancel();
+
+    return true;
+  } catch (e) {
+    if (!(e instanceof WorkflowNotFoundError)) {
+      throw e;
+    }
+  }
+
+  return false;
 }

@@ -1,5 +1,4 @@
 import { Context } from "@temporalio/activity";
-import { WorkflowNotFoundError } from "@temporalio/client";
 import {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -12,7 +11,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import { getConnectorId, getTemporalClient } from "./temporal";
+import { cancelWorkflow, getConnectorId } from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -90,23 +89,12 @@ export class ActivityInboundLogInterceptor
           if (connectorId) {
             await syncFailed(
               connectorId,
-              "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date.",
+              "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date on Dust.",
               "oauth_token_revoked"
             );
-            const client = await getTemporalClient();
-            try {
-              const workflowHandle = await client.workflow.getHandle(
-                workflowId
-              );
-              await workflowHandle.cancel();
-              this.logger.info(
-                "Detected an OAuth token revoked. Cancelling the workflow."
-              );
-            } catch (e) {
-              if (!(e instanceof WorkflowNotFoundError)) {
-                throw e;
-              }
-            }
+
+            this.logger.info("Cancelling workflow because of expired token.");
+            await cancelWorkflow(workflowId);
           }
         }
         error = err;
