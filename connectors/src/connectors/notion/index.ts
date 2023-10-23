@@ -18,6 +18,7 @@ import {
   nango_client,
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -44,10 +45,11 @@ export async function createNotionConnector(
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
 
-  const notionAccessToken = (await nango_client().getToken(
-    NANGO_NOTION_CONNECTOR_ID,
-    nangoConnectionId
-  )) as string;
+  const notionAccessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_NOTION_CONNECTOR_ID,
+    useCache: false,
+  });
 
   if (!validateAccessToken(notionAccessToken)) {
     return new Err(new Error("Notion access token is invalid"));
