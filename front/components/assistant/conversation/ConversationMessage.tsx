@@ -41,6 +41,7 @@ export function ConversationMessage({
     label: string;
     icon: ComponentType;
     onClick: MouseEventHandler<HTMLButtonElement>;
+    disabled?: boolean;
   }[];
   reactions: MessageReactionType[];
   avatarBusy?: boolean;
@@ -272,6 +273,7 @@ export function ConversationMessage({
                     labelVisible={false}
                     icon={button.icon}
                     onClick={button.onClick}
+                    disabled={button.disabled || false}
                   />
                 ))}
               </div>
