@@ -1,47 +1,37 @@
 import { front_sequelize, ModelId } from "@app/lib/databases";
 import { Plan, Subscription } from "@app/lib/models";
 import {
-  FREE_TRIAL_PLAN_CODE,
-  TEST_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+  FREE_TEST_PLAN_DATA,
+  FREE_UPGRADED_PLAN_CODE,
+  PlanAttributes,
 } from "@app/lib/plans/free_plans";
 import { generateModelSId } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 import { SubscribedPlanType } from "@app/types/user";
 
 export const getActiveWorkspacePlan = async ({
   workspaceModelId,
 }: {
-  workspaceModelId: ModelId;
+  workspaceModelId: ModelId | null;
 }): Promise<SubscribedPlanType> => {
-  let plan = null;
+  let activeSubscription: Subscription | null = null;
+  let plan: PlanAttributes = FREE_TEST_PLAN_DATA; // When no subscription the default plan is FREE_TEST_PLAN
   let startDate = new Date();
   let endDate = null;
 
-  const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: workspaceModelId, status: "active" },
-  });
-
+  if (workspaceModelId) {
+    activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspaceModelId, status: "active" },
+    });
+  }
   if (activeSubscription) {
-    plan = await Plan.findOne({
+    const subscribedPlan = await Plan.findOne({
       where: { id: activeSubscription.planId },
     });
     startDate = activeSubscription.startDate;
     endDate = activeSubscription.endDate;
-  }
-
-  // This should never happen, all workspace should have an active subscription
-  // If it happens we log and error that requires immediate fix.
-  // We return the free test plan to avoid breaking the app
-  if (!activeSubscription || !plan) {
-    logger.error(
-      { workspaceModelId },
-      "Cannot find active subscription or plan for workspace. Please fix ASAP. Returning a free plan."
-    );
-    plan = await Plan.findOne({
-      where: { code: TEST_PLAN_CODE },
-    });
-    if (!plan) {
-      throw new Error(`Cannot find free plan ${TEST_PLAN_CODE}.`);
+    if (subscribedPlan) {
+      plan = subscribedPlan;
     }
   }
 
@@ -86,9 +76,40 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
   workspaceModelId: ModelId;
   planCode: string;
 }): Promise<SubscribedPlanType> => {
-  if (planCode !== TEST_PLAN_CODE && planCode !== FREE_TRIAL_PLAN_CODE) {
+  if (
+    planCode !== FREE_TEST_PLAN_CODE &&
+    planCode !== FREE_UPGRADED_PLAN_CODE
+  ) {
     throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // If we want to downgrade to the default FREE_TEST_PLAN, we end the active subscription if any: status is set to ended yesterday, or cancelled if we both subscribed and cancelled on the same day.
+  if (planCode === FREE_TEST_PLAN_CODE) {
+    const activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspaceModelId, status: "active" },
+    });
+    if (activeSubscription) {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (activeSubscription.startDate >= today) {
+        await activeSubscription.update({
+          status: "cancelled",
+          endDate: today,
+        });
+      } else {
+        await activeSubscription.update({
+          status: "ended",
+          endDate: yesterday,
+        });
+      }
+    }
+  }
+
+  // Else we want to subscribe to the FREE_UPGRADED_PLAN, we need to end the active subscription if any and create the new one
   const newPlan = await Plan.findOne({
     where: { code: planCode },
   });
@@ -103,9 +124,6 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
       `Cannot subscribe to plan ${planCode}:  already subscribed.`
     );
   }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   return await front_sequelize.transaction(async (t) => {
     // We end the active subscription if any: status is set to ended yesterday, or cancelled if we both subscribed and cancelled on the same day.

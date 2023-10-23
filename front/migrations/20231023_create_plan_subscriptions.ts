@@ -1,7 +1,7 @@
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import {
-  FREE_TRIAL_PLAN_CODE,
-  TEST_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/free_plans";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -17,12 +17,12 @@ async function main() {
 
   const testPlan = await Plan.findOne({
     where: {
-      code: TEST_PLAN_CODE,
+      code: FREE_TEST_PLAN_CODE,
     },
   });
   const freeTrialPlan = await Plan.findOne({
     where: {
-      code: FREE_TRIAL_PLAN_CODE,
+      code: FREE_UPGRADED_PLAN_CODE,
     },
   });
 

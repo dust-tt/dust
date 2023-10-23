@@ -37,14 +37,14 @@ export class Authenticator {
   _workspace: Workspace | null;
   _user: User | null;
   _role: RoleType;
-  _subscribedPlan: SubscribedPlanType | null;
+  _subscribedPlan: SubscribedPlanType;
 
   // Should only be called from the static methods below.
   constructor(
     workspace: Workspace | null,
     user: User | null,
     role: RoleType,
-    subscribedPlan: SubscribedPlanType | null
+    subscribedPlan: SubscribedPlanType
   ) {
     this._workspace = workspace;
     this._user = user;
@@ -86,26 +86,24 @@ export class Authenticator {
     let role: RoleType = "none";
     let subscribedPlan: SubscribedPlanType | null = null;
 
-    if (workspace) {
-      [role, subscribedPlan] = await Promise.all([
-        (async (): Promise<RoleType> => {
-          if (user) {
-            const membership = await Membership.findOne({
-              where: {
-                userId: user.id,
-                workspaceId: workspace.id,
-              },
-            });
-            return membership &&
-              ["admin", "builder", "user"].includes(membership.role)
-              ? (membership.role as RoleType)
-              : "none";
-          }
-          return "none";
-        })(),
-        getActiveWorkspacePlan({ workspaceModelId: workspace.id }),
-      ]);
-    }
+    [role, subscribedPlan] = await Promise.all([
+      (async (): Promise<RoleType> => {
+        if (workspace && user) {
+          const membership = await Membership.findOne({
+            where: {
+              userId: user.id,
+              workspaceId: workspace.id,
+            },
+          });
+          return membership &&
+            ["admin", "builder", "user"].includes(membership.role)
+            ? (membership.role as RoleType)
+            : "none";
+        }
+        return "none";
+      })(),
+      getActiveWorkspacePlan({ workspaceModelId: workspace?.id || null }),
+    ]);
 
     return new Authenticator(workspace, user, role, subscribedPlan);
   }
@@ -145,11 +143,9 @@ export class Authenticator {
       })(),
     ]);
 
-    const subscribedPlan = workspace
-      ? await getActiveWorkspacePlan({
-          workspaceModelId: workspace.id,
-        })
-      : null;
+    const subscribedPlan = await getActiveWorkspacePlan({
+      workspaceModelId: workspace?.id || null,
+    });
 
     if (!user || !user.isDustSuperUser) {
       return new Authenticator(workspace, user, "none", subscribedPlan);
@@ -197,11 +193,9 @@ export class Authenticator {
       }
     }
 
-    const subscribedPlan = workspace
-      ? await getActiveWorkspacePlan({
-          workspaceModelId: workspace.id,
-        })
-      : null;
+    const subscribedPlan = await getActiveWorkspacePlan({
+      workspaceModelId: workspace?.id || null,
+    });
 
     return {
       auth: new Authenticator(workspace, null, role, subscribedPlan),
@@ -266,7 +260,7 @@ export class Authenticator {
   }
 
   workspace(): WorkspaceType | null {
-    return this._workspace && this._subscribedPlan
+    return this._workspace
       ? {
           id: this._workspace.id,
           sId: this._workspace.sId,

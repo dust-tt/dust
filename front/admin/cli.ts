@@ -12,8 +12,8 @@ import {
   Workspace,
 } from "@app/lib/models";
 import {
-  FREE_TRIAL_PLAN_CODE,
-  TEST_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/free_plans";
 import {
   getActiveWorkspacePlan,
@@ -110,7 +110,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       });
       await internalSubscribeWorkspaceToFreePlan({
         workspaceModelId: w.id,
-        planCode: TEST_PLAN_CODE,
+        planCode: FREE_TEST_PLAN_CODE,
       });
 
       args.wId = w.sId;
@@ -134,7 +134,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       await internalSubscribeWorkspaceToFreePlan({
         workspaceModelId: w.id,
-        planCode: FREE_TRIAL_PLAN_CODE,
+        planCode: FREE_UPGRADED_PLAN_CODE,
       });
       await workspace("show", args);
       return;
@@ -156,7 +156,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       await internalSubscribeWorkspaceToFreePlan({
         workspaceModelId: w.id,
-        planCode: TEST_PLAN_CODE,
+        planCode: FREE_TEST_PLAN_CODE,
       });
       await workspace("show", args);
       return;

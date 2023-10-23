@@ -95,7 +95,9 @@ const Dashboard = (
               ))}
             </ul>
           )}
-          <h1 className="mb-4 mt-8 text-2xl font-bold">Upgraded Workspaces</h1>
+          <h1 className="mb-4 mt-8 text-2xl font-bold">
+            Free Trial Workspaces
+          </h1>
           <ul className="space-y-4">
             {!isUpgradedWorkspacesLoading &&
               !isUpgradedWorkspacesError &&

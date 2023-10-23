@@ -11,8 +11,8 @@ import {
   Workspace,
 } from "@app/lib/models";
 import {
-  FREE_TRIAL_PLAN_CODE,
-  TEST_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/free_plans";
 import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
@@ -183,12 +183,12 @@ async function handler(
           if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
             await internalSubscribeWorkspaceToFreePlan({
               workspaceModelId: w.id,
-              planCode: FREE_TRIAL_PLAN_CODE,
+              planCode: FREE_UPGRADED_PLAN_CODE,
             });
           } else {
             await internalSubscribeWorkspaceToFreePlan({
               workspaceModelId: w.id,
-              planCode: TEST_PLAN_CODE,
+              planCode: FREE_TEST_PLAN_CODE,
             });
           }
           isAdminOnboarding = true;
