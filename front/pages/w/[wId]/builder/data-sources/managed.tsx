@@ -517,26 +517,32 @@ export default function DataSourcesView({
                 >
                   {ds && ds.connector && (
                     <div className="mb-1 mt-2">
-                      {ds.fetchConnectorError ? (
-                        <Chip color="warning">errored</Chip>
-                      ) : (
-                        <>
-                          {!ds.connector.lastSyncSuccessfulTime ? (
+                      {(() => {
+                        if (ds.connector.errorType) {
+                          return (
+                            <Chip color="warning">
+                              {ds.connector.errorMessage}
+                            </Chip>
+                          );
+                        } else if (ds.fetchConnectorError) {
+                          return <Chip color="warning">errored</Chip>;
+                        } else if (!ds.connector.lastSyncSuccessfulTime) {
+                          return (
                             <Chip color="amber" isBusy>
                               Synchronizing
                               {ds.connector?.firstSyncProgress
                                 ? ` (${ds.connector?.firstSyncProgress})`
                                 : null}
                             </Chip>
-                          ) : (
-                            <>
-                              <Chip color="slate">
-                                Last Sync ~ {ds.synchronizedAgo} ago
-                              </Chip>
-                            </>
-                          )}
-                        </>
-                      )}
+                          );
+                        } else {
+                          return (
+                            <Chip color="slate">
+                              Last Sync ~ {ds.synchronizedAgo} ago
+                            </Chip>
+                          );
+                        }
+                      })()}
                     </div>
                   )}
                   <ContextItem.Description>
