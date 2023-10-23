@@ -684,6 +684,19 @@ export async function* postUserMessage(
     };
     return;
   }
+  // Check plan limit
+  if (true) {
+    // userIsTestPlan && userMessagesCount >= testPlanLimit) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "test_plan_limit_reached",
+        message: "The test plan limit has been reached.",
+      },
+    };
+    return;
+  }
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
