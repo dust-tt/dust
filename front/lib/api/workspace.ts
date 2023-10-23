@@ -10,7 +10,7 @@ import { getActiveWorkspacePlan } from "@app/lib/plans/subscription";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
-export async function getWorkspaceInfos(
+export async function getWorkspaceInfo(
   wId: string
 ): Promise<WorkspaceType | null> {
   const workspace = await Workspace.findOne({

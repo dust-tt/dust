@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { getWorkspaceInfo } from "@app/lib/api/workspace";
 import { WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -46,7 +46,7 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
-  const workspace = await getWorkspaceInfos(wId);
+  const workspace = await getWorkspaceInfo(wId);
   if (!workspace) {
     return {
       notFound: true,

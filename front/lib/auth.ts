@@ -89,33 +89,21 @@ export class Authenticator {
     if (workspace) {
       [role, subscribedPlan] = await Promise.all([
         (async (): Promise<RoleType> => {
-          let membership: Membership | null = null;
           if (user) {
-            membership = await Membership.findOne({
+            const membership = await Membership.findOne({
               where: {
                 userId: user.id,
                 workspaceId: workspace.id,
               },
             });
+            return membership &&
+              ["admin", "builder", "user"].includes(membership.role)
+              ? (membership.role as RoleType)
+              : "none";
           }
-          if (membership) {
-            switch (membership.role) {
-              case "admin":
-              case "builder":
-              case "user":
-                return membership.role as RoleType;
-              default:
-                return "none" as RoleType;
-            }
-          } else {
-            return "none" as RoleType;
-          }
+          return "none";
         })(),
-        (async (): Promise<SubscribedPlanType> => {
-          return await getActiveWorkspacePlan({
-            workspaceModelId: workspace.id,
-          });
-        })(),
+        getActiveWorkspacePlan({ workspaceModelId: workspace.id }),
       ]);
     }
 

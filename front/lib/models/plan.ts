@@ -117,7 +117,7 @@ export class Subscription extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string; // unique
-  declare status: string; // "active" | "ended" | "cancelled"
+  declare status: "active" | "ended" | "cancelled";
   declare startDate: Date;
   declare endDate: Date | null;
 
