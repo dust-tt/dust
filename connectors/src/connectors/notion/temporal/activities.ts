@@ -1575,19 +1575,34 @@ export async function renderAndUpsertPageFromCache({
   let parentType = pageCacheEntry.parentType;
   let parentId = pageCacheEntry.parentId;
 
-  if (parentType === "block") {
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Retrieving block parent from notion API."
-    );
-    const blockParent = await getBlockParentMemoized(
-      accessToken,
-      parentId,
-      localLogger
-    );
-    if (blockParent) {
-      parentType = blockParent.parentType;
-      parentId = blockParent.parentId;
+  try {
+    if (parentType === "block") {
+      localLogger.info(
+        "notionRenderAndUpsertPageFromCache: Retrieving block parent from notion API."
+      );
+      const blockParent = await getBlockParentMemoized(
+        accessToken,
+        parentId,
+        localLogger
+      );
+      if (blockParent) {
+        parentType = blockParent.parentType;
+        parentId = blockParent.parentId;
+      }
     }
+  } catch (e) {
+    const attempt = Context.current().info.attempt;
+    localLogger.error(
+      { error: e, attempt },
+      "Could not retrieve block parent from Notion API."
+    );
+    if (attempt < 15) {
+      throw e;
+    }
+    localLogger.warn(
+      { attempt },
+      "Giving up attempts retrieve block parent (too many failures)."
+    );
   }
 
   // checks if the parent is accessible. If not, attempts to refetch the page to hopefully get a
