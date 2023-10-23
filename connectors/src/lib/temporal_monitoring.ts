@@ -90,7 +90,7 @@ export class ActivityInboundLogInterceptor
           if (connectorId) {
             await syncFailed(
               connectorId,
-              "Oops! It seems that our access to your account has been revoked. Please reconnect to continue using our services.",
+              "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date.",
               "oauth_token_revoked"
             );
             const client = await getTemporalClient();

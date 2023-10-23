@@ -518,14 +518,19 @@ export default function DataSourcesView({
                   {ds && ds.connector && (
                     <div className="mb-1 mt-2">
                       {(() => {
-                        if (ds.connector.errorType) {
+                        if (ds.fetchConnectorError) {
+                          return (
+                            <Chip color="warning">
+                              Error loading the connector. Try again in a few
+                              minutes.
+                            </Chip>
+                          );
+                        } else if (ds.connector.errorType) {
                           return (
                             <Chip color="warning">
                               {ds.connector.errorMessage}
                             </Chip>
                           );
-                        } else if (ds.fetchConnectorError) {
-                          return <Chip color="warning">errored</Chip>;
                         } else if (!ds.connector.lastSyncSuccessfulTime) {
                           return (
                             <Chip color="amber" isBusy>
