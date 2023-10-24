@@ -100,6 +100,9 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       workflowId: workflowId,
       signal: newWebhookSignal,
       signalArgs: undefined,
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {
