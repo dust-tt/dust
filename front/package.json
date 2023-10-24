@@ -13,7 +13,11 @@
     "initdb": "env $(cat .env.local) npx tsx admin/db.ts"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.31",
+=======
+    "@dust-tt/sparkle": "^0.2.28",
+>>>>>>> f3358ed4 (wip)
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.7",
