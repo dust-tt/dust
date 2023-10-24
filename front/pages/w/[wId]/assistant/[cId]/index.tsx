@@ -13,6 +13,10 @@ import { useConversation } from "@app/lib/swr";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { set } from "fp-ts";
+import { Transition } from "@headlessui/react";
+import { Button, Chip } from "@dust-tt/sparkle";
+import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -60,6 +64,8 @@ export default function AssistantConversation({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const [planLimitReached, setPlanLimitReached] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -80,7 +86,6 @@ export default function AssistantConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-  const sendNotification = useContext(SendNotificationsContext);
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
     const mRes = await fetch(
@@ -104,15 +109,14 @@ export default function AssistantConversation({
     if (!mRes.ok) {
       const data = await mRes.json();
       if (data.error.type === "test_plan_message_limit_reached") {
-        window.alert(
-          "You've reached your test plan limit. Please upgrade your plan to continue."
-        );
+        setPlanLimitReached(true);
+      } else {
+        sendNotification({
+          title: "Your message could not be sent",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
       }
-      sendNotification({
-        title: "Your message could not be sent",
-        description: data.error.message || "Please try again or contact us.",
-        type: "error",
-      });
       return;
     }
   };
@@ -174,7 +178,9 @@ export default function AssistantConversation({
           onSubmit={handleSubmit}
           stickyMentions={stickyMentions}
           conversationId={conversationId}
+          disabled={planLimitReached}
         />
+        <LimitReachedPopup planLimitReached={planLimitReached} />
       </AppLayout>
     </GenerationContextProvider>
   );
