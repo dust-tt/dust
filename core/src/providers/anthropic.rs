@@ -82,12 +82,24 @@ impl AnthropicLLM {
             .iter()
             .map(|cm| -> String {
                 format!(
-                    "\n\n{}: {}",
+                    "\n\n{}: {}{}",
                     match cm.role {
-                        ChatMessageRole::System => "System",
+                        ChatMessageRole::System => "Human",
                         ChatMessageRole::Assistant => "Assistant",
                         ChatMessageRole::User => "Human",
-                        ChatMessageRole::Function => "FunctionResult",
+                        ChatMessageRole::Function => "Human",
+                    },
+                    match cm.role {
+                        ChatMessageRole::System => "[System Instructions] ".to_string(),
+                        ChatMessageRole::Assistant => "".to_string(),
+                        ChatMessageRole::User => match cm.name.as_ref() {
+                            Some(name) => format!("[User {}]", name),
+                            None => "".to_string(),
+                        },
+                        ChatMessageRole::Function => match cm.name.as_ref() {
+                            Some(name) => format!("[Function Result `{}`]", name),
+                            None => "[Function Result]".to_string(),
+                        },
                     },
                     cm.content.as_ref().unwrap_or(&String::from("")).clone(),
                     // match cm.name.as_ref() {
@@ -123,8 +135,6 @@ impl AnthropicLLM {
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
-        stop_tokens.push(String::from("\n\nSystem:"));
-        stop_tokens.push(String::from("\n\nFunctionResult:"));
 
         if max_tokens.is_none() || max_tokens.unwrap() == -1 {
             let tokens = self.encode(&prompt).await?;
@@ -176,8 +186,6 @@ impl AnthropicLLM {
         let mut stop_tokens = stop.clone();
         stop_tokens.push(String::from("\n\nHuman:"));
         stop_tokens.push(String::from("\n\nAssistant:"));
-        stop_tokens.push(String::from("\n\nSystem:"));
-        stop_tokens.push(String::from("\n\nFunctionResult:"));
 
         if max_tokens.is_none() || max_tokens.unwrap() == -1 {
             let tokens = self.encode(&prompt).await?;
