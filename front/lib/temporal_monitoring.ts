@@ -55,7 +55,7 @@ export class ActivityInboundLogInterceptor
       this.logger.info("Activity started.");
       return await next(input);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err) {
       error = err;
       throw err;
     } finally {

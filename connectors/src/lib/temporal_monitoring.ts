@@ -55,85 +55,84 @@ export class ActivityInboundLogInterceptor
       `attempt:${this.context.info.attempt}`,
     ];
 
-    if (this.context)
-      try {
-        this.logger.info("Activity started.");
-        return await tracer.trace(
-          `${this.context.info.workflowType}-${this.context.info.activityType}`,
-          {
-            resource: this.context.info.activityType,
-            type: "temporal-activity",
-          },
-          async (span) => {
-            span?.setTag("attempt", this.context.info.attempt);
-            span?.setTag(
-              "workflow_id",
-              this.context.info.workflowExecution.workflowId
-            );
-            span?.setTag(
-              "workflow_run_id",
-              this.context.info.workflowExecution.runId
-            );
+    try {
+      this.logger.info("Activity started.");
+      return await tracer.trace(
+        `${this.context.info.workflowType}-${this.context.info.activityType}`,
+        {
+          resource: this.context.info.activityType,
+          type: "temporal-activity",
+        },
+        async (span) => {
+          span?.setTag("attempt", this.context.info.attempt);
+          span?.setTag(
+            "workflow_id",
+            this.context.info.workflowExecution.workflowId
+          );
+          span?.setTag(
+            "workflow_run_id",
+            this.context.info.workflowExecution.runId
+          );
 
-            return await next(input);
-          }
-        );
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
-        if (err instanceof ExternalOauthTokenError) {
-          // We have a connector working on an expired token, we need to cancel the workflow.
-          const workflowId = this.context.info.workflowExecution.workflowId;
-
-          const connectorId = await getConnectorId(workflowId);
-          if (connectorId) {
-            await syncFailed(
-              connectorId,
-              "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date on Dust.",
-              "oauth_token_revoked"
-            );
-
-            this.logger.info("Cancelling workflow because of expired token.");
-            await cancelWorkflow(workflowId);
-          }
+          return await next(input);
         }
-        error = err;
-        throw err;
-      } finally {
-        const durationMs = new Date().getTime() - startTime.getTime();
-        if (error) {
-          let errorType = "unhandled_internal_activity_error";
-          if (error.__is_dust_error !== undefined) {
-            // this is a dust error
-            errorType = error.type;
-            this.logger.error(
-              { error, durationMs, attempt: this.context.info.attempt },
-              "Activity failed"
-            );
-          } else {
-            // unknown error type
-            this.logger.error(
-              {
-                error,
-                error_stack: error?.stack,
-                durationMs: durationMs,
-                attempt: this.context.info.attempt,
-              },
-              "Unhandled activity error"
-            );
-          }
+      );
 
-          tags.push(`error_type:${errorType}`);
-          statsDClient.increment("activity_failed.count", 1, tags);
-        } else {
-          this.logger.info({ durationMs: durationMs }, "Activity completed.");
-          statsDClient.increment("activities_success.count", 1, tags);
-          // statsDClient.distribution(
-          //   "activities.duration.distribution",
-          //   durationMs,
-          //   tags
-          // );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: unknown) {
+      if (err instanceof ExternalOauthTokenError) {
+        // We have a connector working on an expired token, we need to cancel the workflow.
+        const workflowId = this.context.info.workflowExecution.workflowId;
+
+        const connectorId = await getConnectorId(workflowId);
+        if (connectorId) {
+          await syncFailed(
+            connectorId,
+            "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date on Dust.",
+            "oauth_token_revoked"
+          );
+
+          this.logger.info("Cancelling workflow because of expired token.");
+          await cancelWorkflow(workflowId);
         }
       }
+      error = err;
+      throw err;
+    } finally {
+      const durationMs = new Date().getTime() - startTime.getTime();
+      if (error) {
+        let errorType = "unhandled_internal_activity_error";
+        if (error.__is_dust_error !== undefined) {
+          // this is a dust error
+          errorType = error.type;
+          this.logger.error(
+            { error, durationMs, attempt: this.context.info.attempt },
+            "Activity failed"
+          );
+        } else {
+          // unknown error type
+          this.logger.error(
+            {
+              error,
+              error_stack: error?.stack,
+              durationMs: durationMs,
+              attempt: this.context.info.attempt,
+            },
+            "Unhandled activity error"
+          );
+        }
+
+        tags.push(`error_type:${errorType}`);
+        statsDClient.increment("activity_failed.count", 1, tags);
+      } else {
+        this.logger.info({ durationMs: durationMs }, "Activity completed.");
+        statsDClient.increment("activities_success.count", 1, tags);
+        // statsDClient.distribution(
+        //   "activities.duration.distribution",
+        //   durationMs,
+        //   tags
+        // );
+      }
+    }
   }
 }

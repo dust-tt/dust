@@ -45,8 +45,7 @@ export class Connector extends Model<
   declare dataSourceName: string;
 
   declare lastSyncStatus?: ConnectorSyncStatus;
-  declare errorMessage?: string;
-  declare errorType?: ConnectorErrorType;
+  declare errorType: ConnectorErrorType | null;
   declare lastSyncStartTime?: Date;
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
@@ -95,10 +94,6 @@ Connector.init(
       allowNull: false,
     },
     lastSyncStatus: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    errorMessage: {
       type: DataTypes.STRING,
       allowNull: true,
     },

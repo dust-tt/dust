@@ -9,14 +9,12 @@ async function syncFinished({
   connectorId,
   status,
   finishedAt,
-  errorMessage,
   errorType,
 }: {
   connectorId: ModelId;
   status: ConnectorSyncStatus;
   finishedAt: Date;
-  errorMessage?: string;
-  errorType?: ConnectorErrorType;
+  errorType: ConnectorErrorType | null;
 }): Promise<Result<void, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -24,7 +22,6 @@ async function syncFinished({
   }
   connector.lastSyncStatus = status;
   connector.lastSyncFinishTime = finishedAt;
-  connector.errorMessage = errorMessage;
   connector.errorType = errorType;
   if (status === "succeeded") {
     if (!connector.firstSuccessfulSyncTime) {
@@ -65,8 +62,7 @@ export async function syncSucceeded(connectorId: ModelId, at?: Date) {
     connectorId: connectorId,
     status: "succeeded",
     finishedAt: at,
-    errorMessage: undefined,
-    errorType: undefined,
+    errorType: null,
   });
 }
 
@@ -87,7 +83,6 @@ export async function syncFailed(
     connectorId,
     status: "failed",
     finishedAt: new Date(),
-    errorMessage,
     errorType,
   });
 }

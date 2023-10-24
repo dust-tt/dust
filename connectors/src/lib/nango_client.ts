@@ -24,12 +24,7 @@ class CustomNango extends Nango {
     } catch (e) {
       if (axios.isAxiosError(e)) {
         if (e.response?.status === 400) {
-          if (
-            typeof e.response.data === "object" &&
-            e.response?.data !== null &&
-            "error" in e.response.data &&
-            typeof e.response.data.error === "string"
-          ) {
+          if (typeof e?.response?.data?.error === "string") {
             const errorText = e.response.data.error;
             if (
               errorText.includes(
