@@ -1,9 +1,9 @@
 import { Op } from "sequelize";
 
-import { planForWorkspace } from "@app/lib/auth";
+// import { planForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
 
-const { LIVE = false } = process.env;
+// const { LIVE = false } = process.env;
 
 async function main() {
   console.log("Fetching Upgraded Worspaces...");
@@ -26,26 +26,26 @@ async function main() {
 
   for (let i = 0; i < chunks.length; i++) {
     console.log(`Processing chunk ${i}/${chunks.length}...`);
-    const chunk = chunks[i];
-    await Promise.all(
-      chunk.map((workspace: Workspace) => {
-        return set1MBLimit(!!LIVE, workspace);
-      })
-    );
+    // const chunk = chunks[i];
+    // await Promise.all(
+    //   chunk.map((workspace: Workspace) => {
+    //     return set1MBLimit(!!LIVE, workspace);
+    //   })
+    // );
   }
 }
 
-async function set1MBLimit(live: boolean, workspace: Workspace) {
-  const plan = planForWorkspace(workspace);
-  plan.limits.dataSources.documents.sizeMb = 2;
-  if (live) {
-    await workspace.update({
-      plan: JSON.stringify(plan),
-    });
-  } else {
-    console.log(`Would have mutated ${workspace.sId}`);
-  }
-}
+// async function set1MBLimit(live: boolean, workspace: Workspace) {
+//   const plan = planForWorkspace(workspace);
+//   plan.limits.dataSources.documents.sizeMb = 2;
+//   if (live) {
+//     await workspace.update({
+//       plan: JSON.stringify(plan),
+//     });
+//   } else {
+//     console.log(`Would have mutated ${workspace.sId}`);
+//   }
+// }
 
 main()
   .then(() => {

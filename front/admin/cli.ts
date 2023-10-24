@@ -2,7 +2,6 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
-import { downgradeWorkspace, upgradeWorkspace } from "@app/lib/api/workspace";
 import { planForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
@@ -13,6 +12,10 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import {
+  internalSubscribeWorkspaceToFreeTestPlan,
+  internalSubscribeWorkspaceToFreeUpgradedPlan,
+} from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
@@ -56,7 +59,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  wId: ${w.sId}`);
       console.log(`  name: ${w.name}`);
 
-      const plan = planForWorkspace(w);
+      const plan = await planForWorkspace(w);
       console.log(`  plan:`);
       console.log(`    limits:`);
       console.log(`      dataSources:`);
@@ -68,7 +71,18 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(
         `          sizeMb: ${plan.limits.dataSources.documents.sizeMb}`
       );
-      console.log(`        managed:    ${plan.limits.dataSources.managed}`);
+      console.log(
+        `        managed Slack:    ${plan.limits.connections.isSlackAllowed}`
+      );
+      console.log(
+        `        managed Notion:    ${plan.limits.connections.isNotionAllowed}`
+      );
+      console.log(
+        `        managed Github:    ${plan.limits.connections.isGithubAllowed}`
+      );
+      console.log(
+        `        managed Google Drive:    ${plan.limits.connections.isGoogleDriveAllowed}`
+      );
 
       const dataSources = await DataSource.findAll({
         where: {
@@ -114,87 +128,11 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         name: args.name,
       });
 
-      args.wId = w.sId;
-      await workspace("show", args);
-      return;
-    }
-
-    case "set-limits": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.limit) {
-        throw new Error("Missing --limit argument");
-      }
-      if (!args.value) {
-        throw new Error("Missing --value argument");
-      }
-
-      if (args.value === "inf") {
-        args.value = -1;
-      }
-
-      if (!Number.isInteger(args.value)) {
-        throw new Error(`--value must be an integer: ${args.value}`);
-      }
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
+      await internalSubscribeWorkspaceToFreeTestPlan({
+        workspaceId: w.sId,
       });
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
 
-      let plan = {} as any;
-      if (w.plan) {
-        try {
-          plan = JSON.parse(w.plan);
-        } catch (err) {
-          console.log("Ignoring existing plan since not parseable JSON.");
-        }
-      }
-
-      if (!plan.limits) {
-        plan.limits = {};
-      }
-      if (!plan.limits.dataSources) {
-        plan.limits.dataSources = {};
-      }
-
-      switch (args.limit) {
-        case "dataSources.count":
-          plan.limits.dataSources.count = args.value;
-          break;
-        case "dataSources.managed":
-          switch (args.value) {
-            case 1:
-              plan.limits.dataSources.managed = true;
-              break;
-            default:
-              plan.limits.dataSources.managed = false;
-          }
-          break;
-        case "dataSources.documents.count":
-          if (!plan.limits.dataSources.documents) {
-            plan.limits.dataSources.documents = {};
-          }
-          plan.limits.dataSources.documents.count = args.value;
-          break;
-        case "dataSources.documents.sizeMb":
-          if (!plan.limits.dataSources.documents) {
-            plan.limits.dataSources.documents = {};
-          }
-          plan.limits.dataSources.documents.sizeMb = args.value;
-          break;
-        default:
-          throw new Error(`Unknown --limit: ${args.limit}`);
-      }
-
-      w.plan = JSON.stringify(plan);
-      await w.save();
-
+      args.wId = w.sId;
       await workspace("show", args);
       return;
     }
@@ -213,7 +151,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await upgradeWorkspace(w.id);
+      await internalSubscribeWorkspaceToFreeUpgradedPlan({
+        workspaceId: w.sId,
+      });
       await workspace("show", args);
       return;
     }
@@ -232,7 +172,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await downgradeWorkspace(w.id);
+      await internalSubscribeWorkspaceToFreeTestPlan({
+        workspaceId: w.sId,
+      });
       await workspace("show", args);
       return;
     }
