@@ -184,13 +184,13 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
       <PageHeader
         title="Dust Assistant"
         icon={LogoSquareColorLogo}
-        description="Configure the @dust assistant for this workspace."
+        description="Configure the Dust assistant for this workspace."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
           <SectionHeader
             title="Availability"
-            description="Select whether or not @dust is available as a standalone assistant for this workspace."
+            description="Select whether or not Dust is available as a standalone assistant for this workspace."
           />
           {dustAgentConfiguration?.status !== "active" ? (
             defaultAgentName ? (
