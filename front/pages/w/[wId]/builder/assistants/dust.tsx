@@ -66,8 +66,7 @@ export default function EditDustAssistant({
   user,
   owner,
   gaTrackingId,
-}: // dataSources,
-InferGetServerSidePropsType<typeof getServerSideProps>) {
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
