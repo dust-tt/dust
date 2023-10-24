@@ -249,7 +249,7 @@ export async function cleanupSlackConnector(
         client_id: SLACK_CLIENT_ID,
         client_secret: SLACK_CLIENT_SECRET,
       });
-      if (!deleteRes.ok) {
+      if (deleteRes && !deleteRes.ok) {
         return new Err(
           new Error(
             `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
