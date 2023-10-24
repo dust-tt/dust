@@ -886,7 +886,8 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     sequelize: sequelize_conn,
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
-      { fields: ["notionId", "connectorId"], unique: true },
+      // TODO(@fontanierh): fix sync issue with this index
+      // { fields: ["notionId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
     ],
   }
