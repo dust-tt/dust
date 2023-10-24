@@ -1160,7 +1160,7 @@ export async function cacheBlockChildren({
   );
   await Promise.all(
     parsedBlocks.map((block, i) =>
-      NotionConnectorBlockCacheEntry.create({
+      NotionConnectorBlockCacheEntry.upsert({
         notionPageId: pageId,
         notionBlockId: block.id,
         blockType: block.type,
