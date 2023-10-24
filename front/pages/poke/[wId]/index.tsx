@@ -12,11 +12,12 @@ import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscribedPlanType, UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   workspace: WorkspaceType;
+  plan: SubscribedPlanType;
   dataSources: DataSourceType[];
   slackbotEnabled?: boolean;
   documentCounts: Record<string, number>;
@@ -50,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const workspace = auth.workspace();
+  const plan = auth.plan();
 
   if (!workspace) {
     return {
@@ -128,6 +130,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       workspace,
+      plan,
       dataSources,
       slackbotEnabled,
       documentCounts: docCountByDsName,
@@ -138,6 +141,7 @@ export const getServerSideProps: GetServerSideProps<{
 
 const WorkspacePage = ({
   workspace,
+  plan,
   dataSources,
   slackbotEnabled,
   documentCounts,
@@ -268,10 +272,10 @@ const WorkspacePage = ({
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
             <p className="mb-4 text-green-600">
-              This workspace is on {workspace.plan.code} plan since{" "}
-              {new Date(workspace.plan.startDate).toLocaleDateString()}.
+              This workspace is on {plan.code} plan since{" "}
+              {new Date(plan.startDate).toLocaleDateString()}.
             </p>
-            <JsonViewer value={workspace.plan} rootName={false} />
+            <JsonViewer value={plan} rootName={false} />
             <div>
               <div className="mt-4 flex-row">
                 <Button

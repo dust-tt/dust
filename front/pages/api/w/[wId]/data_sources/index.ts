@@ -41,6 +41,7 @@ async function handler(
       },
     });
   }
+  const plan = auth.plan();
 
   const dataSources = await getDataSources(auth);
 
@@ -90,8 +91,8 @@ async function handler(
 
       // Enforce plan limits: DataSources count.
       if (
-        owner.plan.limits.staticDataSources.count != -1 &&
-        dataSources.length >= owner.plan.limits.staticDataSources.count
+        plan.limits.staticDataSources.count != -1 &&
+        dataSources.length >= plan.limits.staticDataSources.count
       ) {
         return apiError(req, res, {
           status_code: 401,

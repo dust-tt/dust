@@ -6,7 +6,6 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { getActiveWorkspacePlan } from "@app/lib/plans/subscription";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -29,7 +28,6 @@ export async function getWorkspaceInfo(
     name: workspace.name,
     allowedDomain: workspace.allowedDomain,
     role: "none",
-    plan: await getActiveWorkspacePlan({ workspaceModelId: workspace.id }),
     upgradedAt: workspace.upgradedAt?.getTime() || null,
   };
 }

@@ -98,6 +98,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const plan = auth.plan();
+
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
 
@@ -217,7 +219,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       isAdmin,
       integrations,
-      managedDataSourcesLimits: owner.plan.limits.managedDataSources,
+      managedDataSourcesLimits: plan.limits.managedDataSources,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,

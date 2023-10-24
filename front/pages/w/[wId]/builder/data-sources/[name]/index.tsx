@@ -33,7 +33,7 @@ import { githubAuth } from "@app/lib/github_auth";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscribedPlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
@@ -49,6 +49,7 @@ const GOOGLE_OAUTH_WORKSPACE_IDS = ["17fd918e1d", "2f151df544"];
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  plan: SubscribedPlanType;
   readOnly: boolean;
   isAdmin: boolean;
   dataSource: DataSourceType;
@@ -76,6 +77,7 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+  const plan = auth.plan();
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
@@ -105,6 +107,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       readOnly,
       isAdmin,
       dataSource,
@@ -124,10 +127,12 @@ export const getServerSideProps: GetServerSideProps<{
 
 function StandardDataSourceView({
   owner,
+  plan,
   readOnly,
   dataSource,
 }: {
   owner: WorkspaceType;
+  plan: SubscribedPlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
 }) {
@@ -237,8 +242,8 @@ function StandardDataSourceView({
                 onClick={() => {
                   // Enforce plan limits: DataSource documents count.
                   if (
-                    owner.plan.limits.staticDataSources.documents.count != -1 &&
-                    total >= owner.plan.limits.staticDataSources.documents.count
+                    plan.limits.staticDataSources.documents.count != -1 &&
+                    total >= plan.limits.staticDataSources.documents.count
                   ) {
                     window.alert(
                       "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
@@ -573,6 +578,7 @@ function ManagedDataSourceView({
 export default function DataSourceView({
   user,
   owner,
+  plan,
   readOnly,
   isAdmin,
   dataSource,
@@ -624,7 +630,7 @@ export default function DataSourceView({
         />
       ) : (
         <StandardDataSourceView
-          {...{ owner, readOnly: readOnly || standardView, dataSource }}
+          {...{ owner, plan, readOnly: readOnly || standardView, dataSource }}
         />
       )}
     </AppLayout>

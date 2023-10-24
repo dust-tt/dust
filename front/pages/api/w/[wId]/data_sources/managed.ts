@@ -41,6 +41,8 @@ async function handler(
     });
   }
 
+  const plan = auth.plan();
+
   switch (req.method) {
     case "POST":
       if (!auth.isAdmin()) {
@@ -121,19 +123,19 @@ async function handler(
       switch (provider) {
         case "slack":
           isDataSourceAllowedInPlan =
-            owner.plan.limits.managedDataSources.isSlackAllowed;
+            plan.limits.managedDataSources.isSlackAllowed;
           break;
         case "notion":
           isDataSourceAllowedInPlan =
-            owner.plan.limits.managedDataSources.isNotionAllowed;
+            plan.limits.managedDataSources.isNotionAllowed;
           break;
         case "github":
           isDataSourceAllowedInPlan =
-            owner.plan.limits.managedDataSources.isGithubAllowed;
+            plan.limits.managedDataSources.isGithubAllowed;
           break;
         case "google_drive":
           isDataSourceAllowedInPlan =
-            owner.plan.limits.managedDataSources.isGoogleDriveAllowed;
+            plan.limits.managedDataSources.isGoogleDriveAllowed;
           break;
         default:
           isDataSourceAllowedInPlan = false; // default to false if provider is not recognized

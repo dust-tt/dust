@@ -7,9 +7,8 @@ import { Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
-type WorkspaceWithoutPlan = Omit<WorkspaceType, "plan">;
 export type GetWorkspacesResponseBody = {
-  workspaces: WorkspaceWithoutPlan[];
+  workspaces: WorkspaceType[];
 };
 
 async function handler(

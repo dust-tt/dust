@@ -68,7 +68,7 @@ async function handler(
         });
       }
 
-      const plan = await internalSubscribeWorkspaceToFreeTestPlan({
+      await internalSubscribeWorkspaceToFreeTestPlan({
         workspaceModelId: workspace.id,
       });
 
@@ -79,7 +79,6 @@ async function handler(
           name: workspace.name,
           allowedDomain: workspace.allowedDomain || null,
           role: "admin",
-          plan,
           upgradedAt: workspace.upgradedAt?.getTime() || null,
         },
       });

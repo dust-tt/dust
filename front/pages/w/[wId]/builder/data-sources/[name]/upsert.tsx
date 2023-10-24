@@ -22,13 +22,14 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscribedPlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  plan: SubscribedPlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
   loadDocumentId: string | null;
@@ -47,6 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+  const plan = auth.plan();
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
   if (!dataSource) {
@@ -62,6 +64,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       readOnly,
       dataSource,
       loadDocumentId: (context.query.documentId || null) as string | null,
@@ -73,6 +76,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourceUpsert({
   user,
   owner,
+  plan,
   readOnly,
   dataSource,
   loadDocumentId,
@@ -118,7 +122,7 @@ export default function DataSourceUpsert({
     }
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
-  const planDocumentLimits = owner.plan.limits.staticDataSources.documents;
+  const planDocumentLimits = plan.limits.staticDataSources.documents;
 
   const alertDataSourcesLimit = () => {
     window.alert(

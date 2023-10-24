@@ -18,13 +18,14 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscribedPlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  plan: SubscribedPlanType;
   readOnly: boolean;
   dataSources: DataSourceType[];
   gaTrackingId: string;
@@ -49,6 +50,7 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+  const plan = auth.plan();
 
   const readOnly = !auth.isBuilder();
 
@@ -59,6 +61,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       readOnly,
       dataSources,
       gaTrackingId: GA_TRACKING_ID,
@@ -69,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourcesView({
   user,
   owner,
+  plan,
   readOnly,
   dataSources,
   gaTrackingId,
@@ -78,8 +82,8 @@ export default function DataSourcesView({
   const handleCreateDataSource = async () => {
     // Enforce plan limits: DataSources count.
     if (
-      owner.plan.limits.staticDataSources.count != -1 &&
-      dataSources.length >= owner.plan.limits.staticDataSources.count
+      plan.limits.staticDataSources.count != -1 &&
+      dataSources.length >= plan.limits.staticDataSources.count
     ) {
       window.alert(
         "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."

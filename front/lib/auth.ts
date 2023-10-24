@@ -267,10 +267,13 @@ export class Authenticator {
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
-          plan: this._subscribedPlan,
           upgradedAt: this._workspace.upgradedAt?.getTime() || null,
         }
       : null;
+  }
+
+  plan(): SubscribedPlanType {
+    return this._subscribedPlan;
   }
 
   /**
@@ -344,34 +347,6 @@ export async function getUserFromSession(
     },
   });
 
-  async function _getWorkspaceType(workspace: Workspace) {
-    const m = memberships.find((m) => m.workspaceId === workspace.id);
-    let role = "none" as RoleType;
-    if (m) {
-      switch (m.role) {
-        case "admin":
-        case "builder":
-        case "user":
-          role = m.role;
-          break;
-        default:
-          role = "none";
-      }
-    }
-    const plan = await getActiveWorkspacePlan({
-      workspaceModelId: workspace.id,
-    });
-    return {
-      id: workspace.id,
-      sId: workspace.sId,
-      name: workspace.name,
-      allowedDomain: workspace.allowedDomain || null,
-      role,
-      plan,
-      upgradedAt: workspace.upgradedAt?.getTime() || null,
-    };
-  }
-
   return {
     id: user.id,
     provider: user.provider,
@@ -380,9 +355,29 @@ export async function getUserFromSession(
     email: user.email,
     name: user.name,
     image: session.user ? session.user.image : null,
-    workspaces: await Promise.all(
-      workspaces.map((workspace) => _getWorkspaceType(workspace))
-    ),
+    workspaces: workspaces.map((w) => {
+      const m = memberships.find((m) => m.workspaceId === w.id);
+      let role = "none" as RoleType;
+      if (m) {
+        switch (m.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = m.role;
+            break;
+          default:
+            role = "none";
+        }
+      }
+      return {
+        id: w.id,
+        sId: w.sId,
+        name: w.name,
+        allowedDomain: w.allowedDomain || null,
+        role,
+        upgradedAt: w.upgradedAt?.getTime() || null,
+      };
+    }),
     isDustSuperUser: user.isDustSuperUser,
   };
 }
