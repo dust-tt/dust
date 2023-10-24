@@ -3,8 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
-import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/free_plans";
-import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
+import { internalSubscribeWorkspaceToFreeUpgradedPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
@@ -69,9 +68,8 @@ async function handler(
         });
       }
 
-      const plan = await internalSubscribeWorkspaceToFreePlan({
+      const plan = await internalSubscribeWorkspaceToFreeUpgradedPlan({
         workspaceModelId: workspace.id,
-        planCode: FREE_UPGRADED_PLAN_CODE,
       });
 
       return res.status(200).json({

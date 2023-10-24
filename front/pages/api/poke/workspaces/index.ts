@@ -99,13 +99,13 @@ async function handler(
       if (upgraded !== undefined) {
         if (upgraded) {
           conditions.push({
-            plan: {
+            upgradedAt: {
               [Op.not]: null,
             },
           });
         } else {
           conditions.push({
-            plan: null,
+            upgradedAt: null,
           });
         }
       }

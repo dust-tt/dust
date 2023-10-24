@@ -1,12 +1,17 @@
+import { Op } from "sequelize";
+
 import { Plan, Subscription, Workspace } from "@app/lib/models";
-import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-} from "@app/lib/plans/free_plans";
+import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/free_plans";
 import { generateModelSId } from "@app/lib/utils";
 
 async function main() {
-  const workspaces = await Workspace.findAll();
+  const workspaces = await Workspace.findAll({
+    where: {
+      upgradedAt: {
+        [Op.not]: null,
+      },
+    },
+  });
 
   console.log(`Found ${workspaces.length} workspaces to update`);
 
@@ -15,19 +20,14 @@ async function main() {
     chunks.push(workspaces.slice(i, i + 16));
   }
 
-  const testPlan = await Plan.findOne({
-    where: {
-      code: FREE_TEST_PLAN_CODE,
-    },
-  });
-  const freeTrialPlan = await Plan.findOne({
+  const freeUpgradedPlan = await Plan.findOne({
     where: {
       code: FREE_UPGRADED_PLAN_CODE,
     },
   });
 
-  if (!testPlan || !freeTrialPlan) {
-    console.error(`Cannot find test or free plan. Aborting.`);
+  if (!freeUpgradedPlan) {
+    console.error(`Cannot find free upgraded plan. Aborting.`);
     return;
   }
 
@@ -37,7 +37,7 @@ async function main() {
     await Promise.all(
       chunk.map(async (workspace: Workspace) => {
         const activeSubscription = await Subscription.findOne({
-          where: { workspaceId: workspace.id, status: "active" },
+          where: { workspaceId: workspace.id },
         });
         if (activeSubscription) {
           return;
@@ -50,19 +50,7 @@ async function main() {
           await Subscription.create({
             sId: generateModelSId(),
             workspaceId: workspace.id,
-            planId: freeTrialPlan.id,
-            status: "active",
-            startDate: startDate,
-          });
-        } else {
-          // We subscribe to Test plan
-          const startDate = workspace.createdAt;
-          startDate.setHours(0, 0, 0, 0);
-          await Subscription.create({
-            sId: generateModelSId(),
-            workspaceId: workspace.id,
-            planId: testPlan.id,
-            status: "active",
+            planId: freeUpgradedPlan.id,
             startDate: startDate,
           });
         }

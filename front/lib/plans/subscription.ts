@@ -1,12 +1,14 @@
+import { Op } from "sequelize";
+
 import { front_sequelize, ModelId } from "@app/lib/databases";
 import { Plan, Subscription } from "@app/lib/models";
 import {
-  FREE_TEST_PLAN_CODE,
   FREE_TEST_PLAN_DATA,
   FREE_UPGRADED_PLAN_CODE,
   PlanAttributes,
 } from "@app/lib/plans/free_plans";
 import { generateModelSId } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { SubscribedPlanType } from "@app/types/user";
 
 export const getActiveWorkspacePlan = async ({
@@ -15,15 +17,24 @@ export const getActiveWorkspacePlan = async ({
   workspaceModelId: ModelId | null;
 }): Promise<SubscribedPlanType> => {
   let activeSubscription: Subscription | null = null;
-  let plan: PlanAttributes = FREE_TEST_PLAN_DATA; // When no subscription the default plan is FREE_TEST_PLAN
-  let startDate = new Date();
-  let endDate = null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   if (workspaceModelId) {
     activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspaceModelId, status: "active" },
+      where: {
+        workspaceId: workspaceModelId,
+        startDate: { [Op.lte]: today },
+        [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
+      },
     });
   }
+
+  // Default values when no subscription
+  let plan: PlanAttributes = FREE_TEST_PLAN_DATA;
+  let startDate = today;
+  let endDate = null;
+
   if (activeSubscription) {
     const subscribedPlan = await Plan.findOne({
       where: { id: activeSubscription.planId },
@@ -32,6 +43,14 @@ export const getActiveWorkspacePlan = async ({
     endDate = activeSubscription.endDate;
     if (subscribedPlan) {
       plan = subscribedPlan;
+    } else {
+      logger.error(
+        {
+          workspaceModelId,
+          activeSubscription,
+        },
+        "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+      );
     }
   }
 
@@ -66,79 +85,120 @@ export const getActiveWorkspacePlan = async ({
 };
 
 /**
- * Internal function to subscribe a workspace to a free plan.
- * Used to subscribe to free Test plan or free Trial plan only.
+ * Internal function to subscribe to the default FREE_TEST_PLAN.
+ * This is the only plan without a database entry: no need to create a subscription, we just end the active one if any.
  */
-export const internalSubscribeWorkspaceToFreePlan = async ({
+export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   workspaceModelId,
-  planCode,
 }: {
   workspaceModelId: ModelId;
-  planCode: string;
 }): Promise<SubscribedPlanType> => {
-  if (
-    planCode !== FREE_TEST_PLAN_CODE &&
-    planCode !== FREE_UPGRADED_PLAN_CODE
-  ) {
-    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // We end the active subscription if any
+  const activeSubscription = await Subscription.findOne({
+    where: {
+      workspaceId: workspaceModelId,
+      startDate: { [Op.lte]: today },
+      [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
+    },
+  });
+  if (activeSubscription) {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (activeSubscription.startDate >= today) {
+      await activeSubscription.update({
+        startDate: today,
+        endDate: today,
+      });
+    } else {
+      await activeSubscription.update({
+        endDate: yesterday,
+      });
+    }
+  }
+
+  // We return the default subscription to FREE_TEST_PLAN
+  const freeTestPlan: PlanAttributes = FREE_TEST_PLAN_DATA;
+
+  return {
+    code: freeTestPlan.code,
+    name: freeTestPlan.name,
+    startDate: today.getTime(),
+    endDate: null,
+    limits: {
+      assistant: {
+        isSlackBotAllowed: freeTestPlan.isSlackbotAllowed,
+        maxWeeklyMessages: freeTestPlan.maxWeeklyMessages,
+      },
+      managedDataSources: {
+        isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
+        isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
+        isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
+        isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
+      },
+      staticDataSources: {
+        count: freeTestPlan.maxNbStaticDataSources,
+        documents: {
+          count: freeTestPlan.maxNbStaticDocuments,
+          sizeMb: freeTestPlan.maxSizeStaticDataSources,
+        },
+      },
+      users: {
+        maxUsers: freeTestPlan.maxUsersInWorkspace,
+      },
+    },
+  };
+};
+
+/**
+ * Internal function to subscribe to the FREE_UPGRADED_PLAN.
+ * This plan is free with no limitations, and should be used for Dust workspaces only (once we have paiement plans)
+ */
+export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
+  workspaceModelId,
+}: {
+  workspaceModelId: ModelId;
+}): Promise<SubscribedPlanType> => {
+  const plan = await Plan.findOne({
+    where: { code: FREE_UPGRADED_PLAN_CODE },
+  });
+  if (!plan) {
+    throw new Error(
+      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  not found.`
+    );
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // If we want to downgrade to the default FREE_TEST_PLAN, we end the active subscription if any: status is set to ended yesterday, or cancelled if we both subscribed and cancelled on the same day.
-  if (planCode === FREE_TEST_PLAN_CODE) {
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspaceModelId, status: "active" },
-    });
-    if (activeSubscription) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (activeSubscription.startDate >= today) {
-        await activeSubscription.update({
-          status: "cancelled",
-          endDate: today,
-        });
-      } else {
-        await activeSubscription.update({
-          status: "ended",
-          endDate: yesterday,
-        });
-      }
-    }
-  }
-
-  // Else we want to subscribe to the FREE_UPGRADED_PLAN, we need to end the active subscription if any and create the new one
-  const newPlan = await Plan.findOne({
-    where: { code: planCode },
-  });
-  if (!newPlan) {
-    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
-  }
+  // We search for an active subscription for this workspace
   const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: workspaceModelId, status: "active" },
+    where: {
+      workspaceId: workspaceModelId,
+      startDate: { [Op.lte]: today },
+      [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
+    },
   });
-  if (activeSubscription && activeSubscription.planId === newPlan.id) {
+  if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}:  already subscribed.`
+      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  already subscribed.`
     );
   }
 
   return await front_sequelize.transaction(async (t) => {
-    // We end the active subscription if any: status is set to ended yesterday, or cancelled if we both subscribed and cancelled on the same day.
+    // We end the active subscription if any
     if (activeSubscription) {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
       if (activeSubscription.startDate >= today) {
-        await activeSubscription.update(
-          { status: "cancelled", endDate: today },
-          { transaction: t }
-        );
+        await activeSubscription.update({ endDate: today }, { transaction: t });
       } else {
         await activeSubscription.update(
-          { status: "ended", endDate: yesterday },
+          { endDate: yesterday },
           { transaction: t }
         );
       }
@@ -149,39 +209,37 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
       {
         sId: generateModelSId(),
         workspaceId: workspaceModelId,
-        planId: newPlan.id,
-        status: "active",
+        planId: plan.id,
         startDate: today,
       },
       { transaction: t }
     );
 
     return {
-      code: newPlan.code,
-      name: newPlan.name,
-      status: newSubscription.status,
+      code: plan.code,
+      name: plan.name,
       startDate: newSubscription.startDate?.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {
         assistant: {
-          isSlackBotAllowed: newPlan.isSlackbotAllowed,
-          maxWeeklyMessages: newPlan.maxWeeklyMessages,
+          isSlackBotAllowed: plan.isSlackbotAllowed,
+          maxWeeklyMessages: plan.maxWeeklyMessages,
         },
         managedDataSources: {
-          isSlackAllowed: newPlan.isManagedSlackAllowed,
-          isNotionAllowed: newPlan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: newPlan.isManagedGithubAllowed,
+          isSlackAllowed: plan.isManagedSlackAllowed,
+          isNotionAllowed: plan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: plan.isManagedGithubAllowed,
         },
         staticDataSources: {
-          count: newPlan.maxNbStaticDataSources,
+          count: plan.maxNbStaticDataSources,
           documents: {
-            count: newPlan.maxNbStaticDocuments,
-            sizeMb: newPlan.maxSizeStaticDataSources,
+            count: plan.maxNbStaticDocuments,
+            sizeMb: plan.maxSizeStaticDataSources,
           },
         },
         users: {
-          maxUsers: newPlan.maxUsersInWorkspace,
+          maxUsers: plan.maxUsersInWorkspace,
         },
       },
     };

@@ -17,7 +17,8 @@ import {
 } from "@app/lib/plans/free_plans";
 import {
   getActiveWorkspacePlan,
-  internalSubscribeWorkspaceToFreePlan,
+  internalSubscribeWorkspaceToFreeTestPlan,
+  internalSubscribeWorkspaceToFreeUpgradedPlan,
 } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -108,9 +109,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         sId: generateModelSId(),
         name: args.name,
       });
-      await internalSubscribeWorkspaceToFreePlan({
+      await internalSubscribeWorkspaceToFreeTestPlan({
         workspaceModelId: w.id,
-        planCode: FREE_TEST_PLAN_CODE,
       });
 
       args.wId = w.sId;
@@ -118,7 +118,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
-    case "subscribe-plan-free-trial": {
+    case "subscribe-plan-free-upgraded": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
@@ -132,15 +132,14 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreePlan({
+      await internalSubscribeWorkspaceToFreeUpgradedPlan({
         workspaceModelId: w.id,
-        planCode: FREE_UPGRADED_PLAN_CODE,
       });
       await workspace("show", args);
       return;
     }
 
-    case "subscribe-plan-test": {
+    case "subscribe-plan-free-test": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
@@ -154,9 +153,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreePlan({
+      await internalSubscribeWorkspaceToFreeTestPlan({
         workspaceModelId: w.id,
-        planCode: FREE_TEST_PLAN_CODE,
       });
       await workspace("show", args);
       return;
