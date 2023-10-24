@@ -1,4 +1,12 @@
-import { Logo, PriceTable } from "@dust-tt/sparkle";
+import {
+  AnthropicLogo,
+  DriveLogo,
+  GoogleLogo,
+  Logo,
+  NotionLogo,
+  OpenaiLogo,
+  PriceTable,
+} from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -122,34 +130,96 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
     {children}
   </strong>
 );
+
 interface ReactImgProps {
+  children: ReactNode;
+  colorCSS?: string;
+  containerPaddingCSS?: string;
+  innerPaddingCSS?: string;
   className?: string;
-  colorCSS: string;
   src?: string;
+  isSmall?: boolean;
 }
+
 export const ReactiveImg = ({
-  src,
+  children,
   colorCSS = "border-slate-700/50 bg-slate-900/70",
+  containerPaddingCSS = "p-6",
+  innerPaddingCSS = "p-3",
   className = "",
-}: ReactImgProps) => (
-  <div className={classNames("group p-6", className)}>
-    <div
-      className={classNames(
-        colorCSS,
-        "flex rounded-2xl border p-3 shadow-2xl backdrop-blur-sm",
-        "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
-      )}
-    >
-      <img
+  isSmall = false,
+}: ReactImgProps) => {
+  const singleChild = React.Children.only(children);
+
+  if (!React.isValidElement(singleChild)) {
+    console.error(
+      "Invalid children for ReactiveImg. It must be a single React element."
+    );
+    return null;
+  }
+
+  const modifiedChild = React.cloneElement(
+    singleChild as React.ReactElement<any, any>,
+    {
+      className: classNames(
+        singleChild.props.className,
+        "z-10",
+        !isSmall
+          ? "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+          : "scale-100 transition-all duration-700 ease-out group-hover:scale-125"
+      ),
+    }
+  );
+
+  return (
+    <div className={classNames("group", containerPaddingCSS, className)}>
+      <div
         className={classNames(
-          "z-10 w-full",
-          "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+          colorCSS,
+          innerPaddingCSS,
+          "flex rounded-2xl border drop-shadow-[0_25px_25px_rgba(0,0,0,0.5)] backdrop-blur-sm",
+          !isSmall
+            ? "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+            : "scale-100 transition-all duration-700 ease-out group-hover:scale-110"
         )}
-        src={src}
-      />
+      >
+        {modifiedChild}
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+export const ReactiveIcon = ({ children, colorCSS }: ReactImgProps) => {
+  const singleChild = React.Children.only(children);
+
+  if (!React.isValidElement(singleChild)) {
+    console.error(
+      "Invalid children for ReactiveImg. It must be a single React element."
+    );
+    return null;
+  }
+
+  const modifiedChild = React.cloneElement(
+    singleChild as React.ReactElement<any, any>,
+    {
+      className: classNames(
+        singleChild.props.className,
+        "h-10 w-10 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
+      ),
+    }
+  );
+  return (
+    <ReactiveImg
+      colorCSS={colorCSS}
+      className="w-fit"
+      containerPaddingCSS="p-3"
+      innerPaddingCSS="p-3.5"
+      isSmall
+    >
+      {modifiedChild}
+    </ReactiveImg>
+  );
+};
 
 export default function Home({
   gaTrackingId,
@@ -293,41 +363,49 @@ export default function Home({
           </Grid>
           <Grid>
             <div className="col-span-4">
-              <div className="group p-6">
-                <div
-                  className={classNames(
-                    "flex rounded-2xl border border-slate-700/50 bg-slate-900/70 p-3 shadow-2xl backdrop-blur-sm",
-                    "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
-                  )}
-                >
-                  <img
-                    className={classNames(
-                      "z-10 w-full",
-                      "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
-                    )}
-                    src="/static/landing/connect.png"
-                  />
-                </div>
-              </div>
+              <ReactiveImg>
+                <img src="/static/landing/connect.png" />
+              </ReactiveImg>
               <P>
                 Proprietary and&nbsp;open-source models suited
                 to&nbsp;your&nbsp;needs:{" "}
                 <Strong>OpenAI, Anthropic, Mistral…</Strong>
               </P>
             </div>
-            <P className="col-span-4">
+            <div className="col-span-4">
+              <div className="flex flex-wrap gap-0">
+                <ReactiveIcon colorCSS="bg-purple-400/80 border-purple-300/50">
+                  <OpenaiLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorCSS="bg-purple-400/80 border-purple-300/50">
+                  <AnthropicLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                  <GoogleLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                  <DriveLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                  <NotionLogo />
+                </ReactiveIcon>
+              </div>
               <img className="z-10 w-full" src="/static/landing/partners.png" />
-              Your own knowledge base continuously in&nbsp;sync:{" "}
-              <Strong>
-                Notion, Slack, GitHub, Google Drive, and&nbsp;more
-              </Strong>
-              .
-            </P>
-            <P className="col-span-4">
-              <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
-              customizable to&nbsp;your exact needs and will evolve as
-              those&nbsp;needs evolve.
-            </P>
+              <P>
+                Your own knowledge base continuously in&nbsp;sync:{" "}
+                <Strong>
+                  Notion, Slack, GitHub, Google Drive, and&nbsp;more
+                </Strong>
+                .
+              </P>
+            </div>
+            <div className="col-span-4">
+              <P>
+                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
+                customizable to&nbsp;your exact needs and will evolve as
+                those&nbsp;needs evolve.
+              </P>
+            </div>
           </Grid>
           <Grid>
             <div
