@@ -692,8 +692,8 @@ export async function* postUserMessage(
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "test_plan_messages_limit_reached",
-        message: "The test plan limit has been reached.",
+        code: "test_plan_message_limit_reached",
+        message: "The test plan message limit has been reached.",
       },
     };
     return;

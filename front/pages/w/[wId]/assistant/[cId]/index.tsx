@@ -103,7 +103,7 @@ export default function AssistantConversation({
 
     if (!mRes.ok) {
       const data = await mRes.json();
-      if (data.error.type === "test_plan_limit_reached") {
+      if (data.error.type === "test_plan_message_limit_reached") {
         window.alert(
           "You've reached your test plan limit. Please upgrade your plan to continue."
         );

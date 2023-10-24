@@ -144,12 +144,12 @@ async function handleUserMessageEvents(
                  up messages for the test plan, handled separately*/
 
                 didResolve = true;
-                if (event.error.code === "test_plan_limit_reached") {
+                if (event.error.code === "test_plan_message_limit_reached") {
                   resolve(
                     new Err({
                       status_code: 403,
                       api_error: {
-                        type: "test_plan_limit_reached",
+                        type: "test_plan_message_limit_reached",
                         message: event.error.message,
                       },
                     })
