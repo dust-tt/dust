@@ -15,6 +15,7 @@ import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/
 import {
   ConversationType,
   ConversationWithoutContentType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 
 export const PostConversationsRequestBodySchema = t.type({
@@ -32,6 +33,7 @@ export type GetConversationsResponseBody = {
 };
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
+  message?: UserMessageType;
 };
 
 async function handler(
@@ -122,11 +124,14 @@ async function handler(
         visibility,
       });
 
+      let newMessage: UserMessageType | null = null;
+
       if (message) {
-        // Not awaiting this promise on purpose. We want to answer "OK" to the client ASAP and
-        // process the events in the background. So that the client gets updated as soon as
-        // possible.
-        void postUserMessageWithPubSub(auth, {
+        /* If a message was provided we do await for the message to be created
+        before returning the conversation along with the message.
+        PostUserMessageWithPubSub returns swiftly since it only waits for the
+        initial message creation event (or error) */
+        const messageRes = await postUserMessageWithPubSub(auth, {
           conversation,
           content: message.content,
           mentions: message.mentions,
@@ -138,9 +143,14 @@ async function handler(
             profilePictureUrl: message.context.profilePictureUrl,
           },
         });
+        if (messageRes.isErr()) {
+          return apiError(req, res, messageRes.error);
+        }
+
+        newMessage = messageRes.value;
       }
 
-      res.status(200).json({ conversation });
+      res.status(200).json({ conversation, message: newMessage ?? undefined });
       return;
 
     default:

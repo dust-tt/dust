@@ -109,8 +109,8 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      // Not awaiting this promise on prupose. We want to answer "OK" to the client ASAP and process
-      // the events in the background.
+      /* postUserMessageWithPubSub returns swiftly since it only waits for the
+        initial message creation event (or error) */
       const messageRes = await postUserMessageWithPubSub(auth, {
         conversation,
         content,
