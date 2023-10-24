@@ -366,7 +366,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-8 col-start-3 flex flex-col gap-4"
+                "s-dark dark col-span-12 flex flex-col gap-4"
               )}
             >
               <H2>Pricing</H2>
@@ -376,7 +376,6 @@ export default function Home({
                   price="$0"
                   priceLabel="/ month"
                   color="emerald"
-                  className="w-64"
                 >
                   <PriceTable.Item label="One user" variant="dash" />
                   <PriceTable.Item label="One workspace" variant="dash" />
@@ -386,34 +385,66 @@ export default function Home({
                     label="50 documents as data sources"
                     variant="dash"
                   />
+                  <PriceTable.Item
+                    label="No connections
+(GitHub, Google Drive, Notion, Slack)"
+                    variant="xmark"
+                  />
                   <PriceTable.Item label="Privacy and Data Security" />
                   <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
                   <PriceTable.Item label="Dust Developer Platform" />
                 </PriceTable>
                 <PriceTable
-                  title="Team"
-                  price="0€"
+                  title="Pro"
+                  price="$29"
                   color="sky"
                   priceLabel="/ month / seat"
-                  className="w-64"
                 >
-                  <PriceTable.Item label="Unlimited members / workspace" />
+                  <PriceTable.Item label="Up to 500 users" />
+                  <PriceTable.Item label="One workspace" variant="dash" />
                   <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="Unlimited messages" />
+                  <PriceTable.Item label="Unlimited data sources (fair use)" />
+                  <PriceTable.Item
+                    label="Connections
+(GitHub, Google Drive, Notion, Slack)"
+                  />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Dust Developer Platform" />
+
+                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
+                  <PriceTable.Item
+                    label="Workspace role and permissions"
+                    variant="dash"
+                  />
+                  <PriceTable.Item label="Centralize billing" variant="dash" />
+
+                  <PriceTable.Item label="Assistants available via Slackbot" />
+                  <PriceTable.Item label="Assistants can execute Dust Apps" />
                 </PriceTable>
-                <PriceTable title="Enterprise" price="Custom" className="w-64">
-                  <PriceTable.Item label="Unlimited members / workspace" />
-                  <PriceTable.Item label="Unlimited workspaces" />
+                <PriceTable title="Enterprise" price="Custom">
+                  <PriceTable.Item label="From 100 users" />
+                  <PriceTable.Item label="Multiple workspaces" variant="dash" />
                   <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
-                  <PriceTable.Item label="1 user" />
+                  <PriceTable.Item label="Unlimited messages" />
+                  <PriceTable.Item label="Unlimited data sources (fair use)" />
+                  <PriceTable.Item
+                    label="Connections
+(GitHub, Google Drive, Notion, Slack)"
+                  />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Dust Developer Platform" />
+
+                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
+                  <PriceTable.Item label="Advanced workspace role and permissions" />
+                  <PriceTable.Item label="Centralize billing" />
+
+                  <PriceTable.Item label="Assistants available via Slackbot" />
+                  <PriceTable.Item label="Assistants can execute Dust Apps" />
+                  <PriceTable.Item label="Assistant design and evaluation" />
+                  <PriceTable.Item label="Dedicated account support" />
                 </PriceTable>
               </div>
             </div>
