@@ -528,7 +528,9 @@ export default function DataSourcesView({
                         } else if (ds.connector.errorType) {
                           return (
                             <Chip color="warning">
-                              {ds.connector.errorMessage}
+                              Oops! It seems that our access to your account has
+                              been revoked. Please re-authorize this Data Source
+                              to keep your data up to date on Dust.
                             </Chip>
                           );
                         } else if (!ds.connector.lastSyncSuccessfulTime) {
