@@ -88,7 +88,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     return {
       notFound: true,
     };
@@ -213,7 +214,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       isAdmin,
       integrations,
-      canUseManagedDataSources: owner.plan.limits.dataSources.managed,
+      canUseManagedDataSources: plan.limits.dataSources.managed,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,

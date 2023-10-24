@@ -31,7 +31,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -118,7 +119,7 @@ async function handler(
       const dataSourceMaxChunkSize = 256;
 
       // Enforce plan limits: managed DataSources.
-      if (!owner.plan.limits.dataSources.managed) {
+      if (!plan.limits.dataSources.managed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {

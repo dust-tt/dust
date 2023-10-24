@@ -63,9 +63,8 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const useLargeModels = auth.workspace()?.plan.limits.largeModels
-    ? true
-    : false;
+  const plan = auth.plan();
+  const useLargeModels = plan && plan.limits.largeModels ? true : false;
 
   let model: { providerId: string; modelId: string } = useLargeModels
     ? {

@@ -13,7 +13,7 @@ import { isDustAppRunConfiguration } from "@app/types/assistant/actions/dust_app
 import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -24,6 +24,7 @@ type DataSourceConfig = NonNullable<
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dataSourceConfigurations: Record<string, DataSourceConfig>;
@@ -39,7 +40,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !user || !auth.isBuilder() || !context.params?.aId) {
+  const plan = auth.plan();
+  if (!owner || !user || !auth.isBuilder() || !plan || !context.params?.aId) {
     return {
       notFound: true,
     };
@@ -138,6 +140,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
       dataSourceConfigurations,
@@ -151,6 +154,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function EditAssistant({
   user,
   owner,
+  plan,
   gaTrackingId,
   dataSources,
   dataSourceConfigurations,
@@ -192,6 +196,7 @@ export default function EditAssistant({
     <AssistantBuilder
       user={user}
       owner={owner}
+      plan={plan}
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}
       dustApps={dustApps}

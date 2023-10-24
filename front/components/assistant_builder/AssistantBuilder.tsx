@@ -56,7 +56,7 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
@@ -159,6 +159,7 @@ export type AssistantBuilderInitialState = {
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
+  plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
@@ -203,6 +204,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 export default function AssistantBuilder({
   user,
   owner,
+  plan,
   gaTrackingId,
   dataSources,
   dustApps,
@@ -219,7 +221,7 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings: owner.plan.limits.largeModels
+      modelSettings: plan.limits.largeModels
         ? GPT_4_32K_MODEL_CONFIG
         : GPT_3_5_TURBO_16K_MODEL_CONFIG,
     },
@@ -844,7 +846,7 @@ export default function AssistantBuilder({
                 />
               </div>
               <AdvancedSettings
-                owner={owner}
+                plan={plan}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
                   setEdited(true);
@@ -1338,11 +1340,11 @@ function AssistantBuilderTextArea({
 }
 
 function AdvancedSettings({
-  owner,
+  plan,
   generationSettings,
   setGenerationSettings,
 }: {
-  owner: WorkspaceType;
+  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
@@ -1382,7 +1384,7 @@ function AdvancedSettings({
                 {usedModelConfigs
                   .filter(
                     (modelConfig) =>
-                      !modelConfig.largeModel || owner.plan.limits.largeModels
+                      !modelConfig.largeModel || plan.limits.largeModels
                   )
                   .map((modelConfig) => (
                     <DropdownMenu.Item

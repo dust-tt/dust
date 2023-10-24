@@ -1,4 +1,4 @@
-import { Authenticator, planForWorkspace } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { RoleType } from "@app/lib/auth";
 import {
   Membership,
@@ -28,7 +28,6 @@ export async function getWorkspaceInfos(
     name: workspace.name,
     allowedDomain: workspace.allowedDomain,
     role: "none",
-    plan: planForWorkspace(workspace),
     upgradedAt: workspace.upgradedAt?.getTime() || null,
   };
 }

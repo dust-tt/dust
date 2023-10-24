@@ -70,7 +70,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -225,7 +226,7 @@ async function handler(
       // We only load the number of documents if the limit is not -1 (unlimited).
       // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
       // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-      if (owner.plan.limits.dataSources.documents.count != -1) {
+      if (plan.limits.dataSources.documents.count != -1) {
         const documents = await CoreAPI.getDataSourceDocuments({
           projectId: dataSource.dustAPIProjectId,
           dataSourceName: dataSource.name,
@@ -245,8 +246,8 @@ async function handler(
         }
 
         if (
-          owner.plan.limits.dataSources.documents.count != -1 &&
-          documents.value.total >= owner.plan.limits.dataSources.documents.count
+          plan.limits.dataSources.documents.count != -1 &&
+          documents.value.total >= plan.limits.dataSources.documents.count
         ) {
           return apiError(req, res, {
             status_code: 401,
@@ -261,9 +262,9 @@ async function handler(
 
       // Enforce plan limits: DataSource document size.
       if (
-        owner.plan.limits.dataSources.documents.sizeMb != -1 &&
+        plan.limits.dataSources.documents.sizeMb != -1 &&
         req.body.text.length >
-          1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+          1024 * 1024 * plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
           status_code: 401,

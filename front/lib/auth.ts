@@ -36,12 +36,19 @@ export class Authenticator {
   _workspace: Workspace | null;
   _user: User | null;
   _role: RoleType;
+  _plan: PlanType | null;
 
   // Should only be called from the static methods below.
-  constructor(workspace: Workspace | null, user: User | null, role: RoleType) {
+  constructor(
+    workspace: Workspace | null,
+    user: User | null,
+    role: RoleType,
+    plan: PlanType | null
+  ) {
     this._workspace = workspace;
     this._user = user;
     this._role = role;
+    this._plan = plan;
   }
 
   /**
@@ -98,7 +105,9 @@ export class Authenticator {
       }
     }
 
-    return new Authenticator(workspace, user, role);
+    const plan = workspace ? planForWorkspace(workspace) : null;
+
+    return new Authenticator(workspace, user, role, plan);
   }
 
   /**
@@ -136,11 +145,13 @@ export class Authenticator {
       })(),
     ]);
 
+    const plan = workspace ? planForWorkspace(workspace) : null;
+
     if (!user || !user.isDustSuperUser) {
-      return new Authenticator(workspace, user, "none");
+      return new Authenticator(workspace, user, "none", plan);
     }
 
-    return new Authenticator(workspace, user, "admin");
+    return new Authenticator(workspace, user, "admin", plan);
   }
 
   /**
@@ -182,8 +193,10 @@ export class Authenticator {
       }
     }
 
+    const plan = workspace ? planForWorkspace(workspace) : null;
+
     return {
-      auth: new Authenticator(workspace, null, role),
+      auth: new Authenticator(workspace, null, role, plan),
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
@@ -204,7 +217,9 @@ export class Authenticator {
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
-    return new Authenticator(workspace, null, "builder");
+    const plan = workspace ? planForWorkspace(workspace) : null;
+
+    return new Authenticator(workspace, null, "builder", plan);
   }
 
   role(): RoleType {
@@ -249,10 +264,13 @@ export class Authenticator {
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
-          plan: planForWorkspace(this._workspace),
           upgradedAt: this._workspace.upgradedAt?.getTime() || null,
         }
       : null;
+  }
+
+  plan(): PlanType | null {
+    return this._plan;
   }
 
   /**
@@ -354,7 +372,6 @@ export async function getUserFromSession(
         name: w.name,
         allowedDomain: w.allowedDomain || null,
         role,
-        plan: planForWorkspace(w),
         upgradedAt: w.upgradedAt?.getTime() || null,
       };
     }),

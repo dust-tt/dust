@@ -24,7 +24,6 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
-  plan: PlanType;
   upgradedAt: number | null;
 };
 
