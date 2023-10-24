@@ -21,6 +21,7 @@ export type ManageDataSourcesLimitsType = {
 export type SubscribedPlanType = {
   code: string;
   name: string;
+  status: string;
   startDate: number;
   endDate: number | null;
   limits: {

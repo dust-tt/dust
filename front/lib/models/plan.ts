@@ -6,7 +6,6 @@ import {
   InferCreationAttributes,
   Model,
   NonAttribute,
-  Op,
   Transaction,
 } from "sequelize";
 
@@ -119,6 +118,7 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
 
+  declare status: "active" | "ended" | "cancelled";
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -149,6 +149,13 @@ Subscription.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        isIn: [["active", "ended", "cancelled"]],
+      },
+    },
     startDate: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -169,21 +176,14 @@ Subscription.addHook(
   "beforeCreate",
   "enforce_single_active_subscription",
   async (subscription: Subscription, options: { transaction: Transaction }) => {
-    const today = new Date();
-    const subscriptionStartDate = subscription.startDate;
-    const subscriptionEndDate = subscription.endDate;
-
-    if (
-      subscriptionStartDate <= today &&
-      (!subscriptionEndDate || subscriptionEndDate > today)
-    ) {
+    if (subscription.status === "active") {
+      // Check if there's already an active subscription for the same workspace
       const existingActiveSubscription = await Subscription.findOne({
         where: {
           workspaceId: subscription.workspaceId,
-          startDate: { [Op.lte]: today },
-          [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
+          status: "active",
         },
-        transaction: options.transaction,
+        transaction: options.transaction, // Include the transaction in your query
       });
 
       if (existingActiveSubscription) {

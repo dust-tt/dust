@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { front_sequelize, ModelId } from "@app/lib/databases";
 import { Plan, Subscription } from "@app/lib/models";
 import {
@@ -22,11 +20,7 @@ export const getActiveWorkspacePlan = async ({
 
   if (workspaceModelId) {
     activeSubscription = await Subscription.findOne({
-      where: {
-        workspaceId: workspaceModelId,
-        startDate: { [Op.lte]: today },
-        [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
-      },
+      where: { workspaceId: workspaceModelId, status: "active" },
     });
   }
 
@@ -34,6 +28,7 @@ export const getActiveWorkspacePlan = async ({
   let plan: PlanAttributes = FREE_TEST_PLAN_DATA;
   let startDate = today;
   let endDate = null;
+  let status = "active";
 
   if (activeSubscription) {
     const subscribedPlan = await Plan.findOne({
@@ -41,6 +36,7 @@ export const getActiveWorkspacePlan = async ({
     });
     startDate = activeSubscription.startDate;
     endDate = activeSubscription.endDate;
+    status = activeSubscription.status;
     if (subscribedPlan) {
       plan = subscribedPlan;
     } else {
@@ -57,6 +53,7 @@ export const getActiveWorkspacePlan = async ({
   return {
     code: plan.code,
     name: plan.name,
+    status: status,
     startDate: startDate?.getTime(),
     endDate: endDate?.getTime() || null,
     limits: {
@@ -98,11 +95,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
 
   // We end the active subscription if any
   const activeSubscription = await Subscription.findOne({
-    where: {
-      workspaceId: workspaceModelId,
-      startDate: { [Op.lte]: today },
-      [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
-    },
+    where: { workspaceId: workspaceModelId, status: "active" },
   });
   if (activeSubscription) {
     const yesterday = new Date(today);
@@ -110,11 +103,13 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
 
     if (activeSubscription.startDate >= today) {
       await activeSubscription.update({
+        status: "cancelled",
         startDate: today,
         endDate: today,
       });
     } else {
       await activeSubscription.update({
+        status: "ended",
         endDate: yesterday,
       });
     }
@@ -126,6 +121,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   return {
     code: freeTestPlan.code,
     name: freeTestPlan.name,
+    status: "active",
     startDate: today.getTime(),
     endDate: null,
     limits: {
@@ -176,11 +172,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 
   // We search for an active subscription for this workspace
   const activeSubscription = await Subscription.findOne({
-    where: {
-      workspaceId: workspaceModelId,
-      startDate: { [Op.lte]: today },
-      [Op.or]: [{ endDate: { [Op.gt]: today } }, { endDate: null }],
-    },
+    where: { workspaceId: workspaceModelId, status: "active" },
   });
   if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
@@ -195,12 +187,16 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       yesterday.setDate(yesterday.getDate() - 1);
 
       if (activeSubscription.startDate >= today) {
-        await activeSubscription.update({ endDate: today }, { transaction: t });
+        await activeSubscription.update({
+          status: "cancelled",
+          startDate: today,
+          endDate: today,
+        });
       } else {
-        await activeSubscription.update(
-          { endDate: yesterday },
-          { transaction: t }
-        );
+        await activeSubscription.update({
+          status: "ended",
+          endDate: yesterday,
+        });
       }
     }
 
@@ -210,6 +206,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         sId: generateModelSId(),
         workspaceId: workspaceModelId,
         planId: plan.id,
+        status: "active",
         startDate: today,
       },
       { transaction: t }
@@ -218,6 +215,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     return {
       code: plan.code,
       name: plan.name,
+      status: newSubscription.status,
       startDate: newSubscription.startDate?.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {

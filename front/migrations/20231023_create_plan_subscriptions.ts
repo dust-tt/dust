@@ -37,7 +37,7 @@ async function main() {
     await Promise.all(
       chunk.map(async (workspace: Workspace) => {
         const activeSubscription = await Subscription.findOne({
-          where: { workspaceId: workspace.id },
+          where: { workspaceId: workspace.id, status: "active" },
         });
         if (activeSubscription) {
           return;
@@ -51,6 +51,7 @@ async function main() {
             sId: generateModelSId(),
             workspaceId: workspace.id,
             planId: freeUpgradedPlan.id,
+            status: "active",
             startDate: startDate,
           });
         }
