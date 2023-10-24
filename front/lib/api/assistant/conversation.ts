@@ -1,4 +1,4 @@
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   cloneBaseConfig,
@@ -53,8 +53,7 @@ import {
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 import { WorkspaceType } from "@app/types/user";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-
+import { FREE_PLAN_MESSAGE_LIMIT } from "@app/lib/models/plan";
 /**
  * Conversation Creation, update and deletion
  */
@@ -1671,11 +1670,11 @@ async function* streamRunAgentEvents(
 }
 
 async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
-  const planIsTest = true; // placeHolder
+  const planIsTest = false; // TODO replace with real plan check
   if (!planIsTest) {
     return false;
   }
-
+  /** Counting on workspace because user can be null */
   const count = await Conversation.count({
     include: [
       {
@@ -1684,22 +1683,11 @@ async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
         as: "messages",
         include: [
           {
-            model: UserMessage,
-            as: "userMessage",
+            model: AgentMessage,
+            as: "agentMessage",
             required: true,
             where: {
-              createdAt: {
-                [Op.gt]: Sequelize.literal("CURRENT_DATE - INTERVAL '7 days'"),
-              },
-            },
-          },
-          {
-            model: Mention,
-            required: false,
-            where: {
-              agentConfigurationId: {
-                [Op.not]: GLOBAL_AGENTS_SID.HELPER,
-              },
+              status: "succeeded",
             },
           },
         ],
@@ -1709,7 +1697,5 @@ async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
       workspaceId: owner.id,
     },
   });
-
-  console.log("Message count is ", count);
-  return false;
+  return count >= FREE_PLAN_MESSAGE_LIMIT;
 }

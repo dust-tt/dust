@@ -12,6 +12,7 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
 
+export const FREE_PLAN_MESSAGE_LIMIT = 100;
 export class Plan extends Model<
   InferAttributes<Plan>,
   InferCreationAttributes<Plan>
