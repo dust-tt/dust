@@ -178,7 +178,6 @@ export default function AssistantConversation({
           onSubmit={handleSubmit}
           stickyMentions={stickyMentions}
           conversationId={conversationId}
-          disabled={planLimitReached}
         />
         <LimitReachedPopup planLimitReached={planLimitReached} />
       </AppLayout>

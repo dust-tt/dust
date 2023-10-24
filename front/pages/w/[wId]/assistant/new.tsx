@@ -12,7 +12,7 @@ import {
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -34,6 +34,8 @@ import {
   MentionType,
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -77,7 +79,8 @@ export default function AssistantNew({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-
+  const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
+  const sendNotification = useContext(SendNotificationsContext);
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
@@ -119,7 +122,15 @@ export default function AssistantNew({
 
     if (!cRes.ok) {
       const data = await cRes.json();
-      window.alert(`Error creating conversation: ${data.error.message}`);
+      if (data.error.type === "test_plan_message_limit_reached") {
+        setPlanLimitReached(true);
+      } else {
+        sendNotification({
+          title: "Your message could not be sent",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
+      }
       return;
     }
 
@@ -346,6 +357,7 @@ export default function AssistantNew({
             onSubmit={handleSubmit}
             conversationId={conversation?.sId || null}
           />
+          <LimitReachedPopup planLimitReached={planLimitReached} />
         </AppLayout>
       </GenerationContextProvider>
     </InputBarContext.Provider>

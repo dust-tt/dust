@@ -759,13 +759,11 @@ export function FixedAssistantInputBar({
   onSubmit,
   stickyMentions,
   conversationId,
-  disabled,
 }: {
   owner: WorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  disabled: boolean;
 }) {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -816,7 +814,7 @@ export function FixedAssistantInputBar({
             label={isProcessing ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
-            disabled={isProcessing || disabled}
+            disabled={isProcessing}
           />
         </div>
       )}
