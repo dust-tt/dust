@@ -53,6 +53,10 @@ export async function launchGoogleDriveFullSyncWorkflow(
       args: [connectorIdModelId, nangoConnectionId, dataSourceConfig],
       taskQueue: "google-queue",
       workflowId: workflowId,
+
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {

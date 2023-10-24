@@ -15,6 +15,8 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
+export type ConnectorErrorType = "oauth_token_revoked";
+
 const CONNECTOR_PROVIDERS = [
   "slack",
   "notion",
@@ -46,6 +48,7 @@ export type ConnectorType = {
   lastSyncSuccessfulTime?: number;
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
+  errorType?: ConnectorErrorType;
 
   defaultNewResourcePermission: ConnectorPermission;
 };

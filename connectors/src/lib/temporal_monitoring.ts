@@ -9,6 +9,10 @@ import tracer from "dd-trace";
 import logger, { Logger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
+import { ExternalOauthTokenError } from "./error";
+import { syncFailed } from "./sync_status";
+import { cancelWorkflow, getConnectorId } from "./temporal";
+
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
   logger: typeof logger;
@@ -55,7 +59,10 @@ export class ActivityInboundLogInterceptor
       this.logger.info("Activity started.");
       return await tracer.trace(
         `${this.context.info.workflowType}-${this.context.info.activityType}`,
-        { resource: this.context.info.activityType, type: "temporal-activity" },
+        {
+          resource: this.context.info.activityType,
+          type: "temporal-activity",
+        },
         async (span) => {
           span?.setTag("attempt", this.context.info.attempt);
           span?.setTag(
@@ -72,7 +79,23 @@ export class ActivityInboundLogInterceptor
       );
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (err instanceof ExternalOauthTokenError) {
+        // We have a connector working on an expired token, we need to cancel the workflow.
+        const workflowId = this.context.info.workflowExecution.workflowId;
+
+        const connectorId = await getConnectorId(workflowId);
+        if (connectorId) {
+          await syncFailed(
+            connectorId,
+            "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date on Dust.",
+            "oauth_token_revoked"
+          );
+
+          this.logger.info("Cancelling workflow because of expired token.");
+          await cancelWorkflow(workflowId);
+        }
+      }
       error = err;
       throw err;
     } finally {

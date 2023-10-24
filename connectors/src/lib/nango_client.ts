@@ -1,14 +1,53 @@
 import { Nango } from "@nangohq/node";
+import axios from "axios";
+
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 
 import { Err, Ok, Result } from "./result";
 
 const { NANGO_SECRET_KEY } = process.env;
 
-export function nango_client(): Nango {
+class CustomNango extends Nango {
+  async getConnection(
+    providerConfigKey: string,
+    connectionId: string,
+    forceRefresh?: boolean,
+    refreshToken?: boolean
+  ) {
+    try {
+      return await super.getConnection(
+        providerConfigKey,
+        connectionId,
+        true,
+        refreshToken
+      );
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        if (e.response?.status === 400) {
+          if (typeof e?.response?.data?.error === "string") {
+            const errorText = e.response.data.error;
+            if (
+              errorText.includes(
+                "The external API returned an error when trying to refresh the access token"
+              ) &&
+              errorText.includes("invalid_grant")
+            ) {
+              throw new ExternalOauthTokenError();
+            }
+          }
+        }
+      }
+
+      throw e;
+    }
+  }
+}
+
+export function nango_client() {
   if (!NANGO_SECRET_KEY) {
     throw new Error("Env var NANGO_SECRET_KEY is not defined");
   }
-  const nango = new Nango({ secretKey: NANGO_SECRET_KEY });
+  const nango = new CustomNango({ secretKey: NANGO_SECRET_KEY });
 
   return nango;
 }

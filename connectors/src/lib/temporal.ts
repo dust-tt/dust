@@ -1,9 +1,17 @@
-import { Client, Connection, ConnectionOptions } from "@temporalio/client";
+import {
+  Client,
+  Connection,
+  ConnectionOptions,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
+import { ModelId } from "./models";
+
 // This is a singleton connection to the Temporal server.
 let TEMPORAL_CLIENT: Client | undefined;
+const WORKFLOW_ID2CONNECTOR_ID_CACHE: Record<string, ModelId> = {};
 
 export async function getTemporalClient(): Promise<Client> {
   if (TEMPORAL_CLIENT) {
@@ -64,4 +72,45 @@ export async function getTemporalWorkerConnection(): Promise<{
   const connectionOptions = await getConnectionOptions();
   const connection = await NativeConnection.connect(connectionOptions);
   return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
+}
+
+export async function getConnectorId(
+  workflowRunId: string
+): Promise<ModelId | null> {
+  if (!WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId]) {
+    const client = await getTemporalClient();
+    const workflowHandle = await client.workflow.getHandle(workflowRunId);
+    const described = await workflowHandle.describe();
+    if (described.memo && described.memo.connectorId) {
+      if (typeof described.memo.connectorId === "number") {
+        WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] =
+          described.memo.connectorId;
+      } else if (typeof described.memo.connectorId === "string") {
+        WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] = parseInt(
+          described.memo.connectorId,
+          10
+        );
+      }
+    }
+    if (!WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId]) {
+      return null;
+    }
+  }
+  return WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] || null;
+}
+
+export async function cancelWorkflow(workflowId: string) {
+  const client = await getTemporalClient();
+  try {
+    const workflowHandle = await client.workflow.getHandle(workflowId);
+    await workflowHandle.cancel();
+
+    return true;
+  } catch (e) {
+    if (!(e instanceof WorkflowNotFoundError)) {
+      throw e;
+    }
+  }
+
+  return false;
 }

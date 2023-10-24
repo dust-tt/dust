@@ -25,6 +25,7 @@
     "@types/lodash.memoize": "^4.1.7",
     "@types/minimist": "^1.2.2",
     "@types/uuid": "^9.0.2",
+    "axios": "^1.5.1",
     "body-parser": "^1.20.2",
     "dd-trace": "^3.16.0",
     "eventsource-parser": "^1.0.0",

@@ -120,7 +120,7 @@ async function _upsertToDatasource({
     );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
-    if (axios.isAxiosError(e) && e.config.data) {
+    if (axios.isAxiosError(e) && e.config?.data) {
       e.config.data = "[REDACTED]";
     }
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);

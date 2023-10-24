@@ -13,6 +13,7 @@ import {
   PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";
 import {
+  ConnectorErrorType,
   type ConnectorProvider,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";
@@ -44,6 +45,7 @@ export class Connector extends Model<
   declare dataSourceName: string;
 
   declare lastSyncStatus?: ConnectorSyncStatus;
+  declare errorType: ConnectorErrorType | null;
   declare lastSyncStartTime?: Date;
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date;
@@ -92,6 +94,10 @@ Connector.init(
       allowNull: false,
     },
     lastSyncStatus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    errorType: {
       type: DataTypes.STRING,
       allowNull: true,
     },

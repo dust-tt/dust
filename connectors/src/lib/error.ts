@@ -48,3 +48,6 @@ export class HTTPError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+// This error is thrown when we are dealing with a revoked OAuth token.
+export class ExternalOauthTokenError extends Error {}
