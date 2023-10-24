@@ -5,6 +5,7 @@ import {
   GoogleLogo,
   HuggingFaceLogo,
   Logo,
+  LogoHorizontalWhiteLogo,
   MicrosoftLogo,
   MistralLogo,
   MoreIcon,
@@ -13,7 +14,6 @@ import {
   PriceTable,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -28,9 +28,11 @@ import {
   H1,
   H2,
   H3,
+  H4,
   P,
   ReactiveIcon,
   ReactiveImg,
+  Separator,
   Strong,
 } from "@app/components/home/contentComponents";
 
@@ -103,7 +105,7 @@ export default function Home({
 
   return (
     <>
-      <HeadComponent />
+      <Header />
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center px-4">
           <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
@@ -150,7 +152,7 @@ export default function Home({
         />
       </div>
 
-      <main className="z-10 mx-6 flex flex-col items-center">
+      <main className="z-10 flex flex-col items-center">
         <div className="container flex max-w-7xl flex-col gap-16">
           <Grid>
             <div className="col-span-8 col-start-3 flex flex-col gap-16">
@@ -173,26 +175,37 @@ export default function Home({
               </H3>
             </div>
           </Grid>
-          <Grid>
-            <P className="col-span-4">
-              Deploy <Strong>Large Language Models</Strong> on{" "}
-              <Strong>concrete use cases</Strong> in your company{" "}
-              <Strong>today</Strong>.
-            </P>
-            <P className="col-span-4">
-              Empower teams with{" "}
-              <Strong>assistants tailored to&nbsp;their needs</Strong>, using{" "}
-              <Strong>the best models</Strong> augmented with{" "}
-              <Strong>your company's knowledge</Strong>.
-            </P>
-            <P className="col-span-4">
-              <Strong>Control granularly data access</Strong> with a{" "}
-              <Strong>safe and privacy-obsessed</Strong> application.
-            </P>
+          <Grid className="items-center">
+            <div className="col-span-6 col-start-2">
+              <ReactiveImg containerPaddingCSS="p-6">
+                <img src="/static/landing/conversation.png" />
+              </ReactiveImg>
+            </div>
+            <div className={classNames(defaultFlexClasses, "col-span-3 gap-8")}>
+              <P>
+                Empower teams with{" "}
+                <Strong>assistants tailored to&nbsp;their needs</Strong>, using{" "}
+                <Strong>the best models</Strong> augmented with{" "}
+                <Strong>your company's knowledge</Strong>.
+              </P>
+              <Separator color="amber" />
+              <P>
+                Deploy <Strong>Large Language Models</Strong> on{" "}
+                <Strong>concrete use cases</Strong> in your company{" "}
+                <Strong>today</Strong>.
+              </P>
+              <Separator color="red" />
+              <P>
+                <Strong>Control granularly data access</Strong> with a{" "}
+                <Strong>safe and privacy-obsessed</Strong> application.
+              </P>
+              <Separator color="emerald" />
+            </div>
           </Grid>
 
           <Grid>
             <div
+              ref={scrollRef1}
               className={classNames(
                 defaultFlexClasses,
                 "col-span-8 col-start-3 flex flex-col gap-4"
@@ -214,17 +227,12 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <div className="col-span-4">
-              <ReactiveImg colorCSS="border-slate-700/50 bg-slate-900/70">
-                <img src="/static/landing/connect.png" />
-              </ReactiveImg>
-              <P>
+            <div className={classNames(defaultFlexClasses, "col-span-6")}>
+              <P className="pr-48">
                 Proprietary and&nbsp;open-source models suited
                 to&nbsp;your&nbsp;needs:{" "}
                 <Strong>OpenAI, Anthropic, Mistral…</Strong>
               </P>
-            </div>
-            <div className="col-span-4">
               <div className="flex flex-wrap gap-0">
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <GoogleLogo />
@@ -260,7 +268,19 @@ export default function Home({
                   <MoreIcon className="text-slate-900" />
                 </ReactiveIcon>
               </div>
-              <P>
+              <P className="pr-48">
+                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
+                customizable to&nbsp;your exact needs and will evolve as
+                those&nbsp;needs evolve.
+              </P>
+            </div>
+            <div className="test-right col-span-6 flex flex-col items-end gap-6">
+              <div className="w-8/12">
+                <ReactiveImg containerPaddingCSS="p-0">
+                  <img src="/static/landing/connect.png" />
+                </ReactiveImg>
+              </div>
+              <P className="w-8/12">
                 Your own knowledge base continuously in&nbsp;sync:{" "}
                 <Strong>
                   Notion, Slack, GitHub, Google Drive, and&nbsp;more
@@ -268,25 +288,19 @@ export default function Home({
                 .
               </P>
             </div>
-            <div className="col-span-4">
-              <P>
-                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
-                customizable to&nbsp;your exact needs and will evolve as
-                those&nbsp;needs evolve.
-              </P>
-            </div>
           </Grid>
           <Grid>
             <div
+              ref={scrollRef2}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 col-start-3 flex flex-col gap-4 text-right"
+                "col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
-              <H2 color="text-red-400">
+              <H2 color="text-amber-500">
                 Bring your&nbsp;team
                 <br />
-                <H2 isSpan color="text-red-200">
+                <H2 isSpan color="text-amber-200">
                   up&nbsp;to&nbsp;speed.
                 </H2>
               </H2>
@@ -302,33 +316,55 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <P className="col-span-4">
-              Team members can <Strong>imagine and build new workflows</Strong>,
-              package them in an{" "}
-              <Strong>easy to&nbsp;use / easy to&nbsp;share</Strong> assistants.
-            </P>
-            <P className="col-span-4">
-              Spread good practices &&nbsp;encourage collaboration with
-              <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
-              <Strong>Slack&nbsp;integration</Strong>.
-            </P>
-            <P className="col-span-4">
-              Seamlessly manage workspace invitations with{" "}
-              <Strong>single sign-on</Strong>&nbsp;(SSO).
-            </P>
+            <div className="col-span-5">
+              <ReactiveImg containerPaddingCSS="p-6">
+                <img src="/static/landing/builder.png" />
+              </ReactiveImg>
+            </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-3 justify-center gap-8"
+              )}
+            >
+              <P>
+                Team members can{" "}
+                <Strong>imagine and build new workflows</Strong>, package them
+                in an <Strong>easy to&nbsp;use / easy to&nbsp;share</Strong>{" "}
+                assistants.
+              </P>
+              <Separator color="sky" />
+              <P>
+                Spread good practices &&nbsp;encourage collaboration with
+                <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
+                <Strong>Slack&nbsp;integration</Strong>.
+              </P>
+              <Separator color="emerald" />
+              <P>
+                Seamlessly manage workspace invitations with{" "}
+                <Strong>single sign-on</Strong>&nbsp;(SSO).
+              </P>
+              <Separator color="amber" />
+            </div>
+            <div className="col-span-3">
+              <ReactiveImg containerPaddingCSS="p-6">
+                <img src="/static/landing/assistants.png" />
+              </ReactiveImg>
+            </div>
           </Grid>
 
           <Grid>
             <div
+              ref={scrollRef3}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-6 flex flex-col gap-4"
+                "col-span-4 flex flex-col gap-4"
               )}
             >
-              <H2 color="text-emerald-500">
+              <H2 color="text-red-400">
                 Designed for security
                 <br />
-                <H2 isSpan color="text-emerald-200">
+                <H2 isSpan color="text-red-200">
                   and data privacy.
                 </H2>
               </H2>
@@ -343,13 +379,13 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-6 flex flex-col gap-4"
+                "col-span-4 flex flex-col gap-4"
               )}
             >
-              <H2 color="text-amber-500">
+              <H2 color="text-emerald-500">
                 Need more?
                 <br />
-                <H2 isSpan color="text-amber-200">
+                <H2 isSpan color="text-emerald-200">
                   Dust do it!
                 </H2>
               </H2>
@@ -361,16 +397,28 @@ export default function Home({
                 them with 3rd party APIs, chain them with assistants.
               </P>
             </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-4 flex flex-col gap-4"
+              )}
+            >
+              <div className="w-full">
+                <ReactiveImg innerPaddingCSS="p-1" containerPaddingCSS="p-42">
+                  <img src="/static/landing/apps.png" />
+                </ReactiveImg>
+              </div>
+            </div>
           </Grid>
           <Grid>
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-12 flex flex-col gap-4"
+                "s-dark dark col-span-8 flex flex-col gap-4"
               )}
             >
               <H2>Pricing</H2>
-              <div className="flex items-stretch">
+              <PriceTable.Container>
                 <PriceTable
                   title="Free"
                   price="$0"
@@ -446,202 +494,51 @@ export default function Home({
                   <PriceTable.Item label="Assistant design and evaluation" />
                   <PriceTable.Item label="Dedicated account support" />
                 </PriceTable>
-              </div>
+              </PriceTable.Container>
             </div>
           </Grid>
-        </div>
-        <div
-          ref={scrollRef1}
-          className="mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl"
-        >
-          <div className="mt-32">
-            <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
-                <div
-                  className="mt-2"
-                  style={{
-                    filter: "drop-drop-shadow(0 10px 8px rgb(0 0 0 / 0.3))",
-                  }}
-                >
-                  <div className="font-objektiv text-xl font-bold tracking-tighter text-red-400 md:text-2xl">
-                    GPT-4 and all your internal knowledge, <br />
-                    <span className="text-3xl text-rose-200 md:text-5xl">
-                      combined
-                    </span>
-                    .
-                  </div>
-                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
-                    Use Dust for unified and safe access to GPT-4.
-                  </p>
-                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
-                    Connect Dust to your team’s data and break down knowledge
-                    silos with always up-to-date answers
-                    in&nbsp;a&nbsp;chat&nbsp;UI.
-                  </p>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="z-10mx-auto overflow-hidden ">
-                  <img
-                    className="z-10 mx-auto w-[500px] rotate-2"
-                    src="/static/landing_data_sources.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div ref={scrollRef2} className="mt-16">
-            <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="order-1 flex flex-col justify-center self-center text-left md:order-2 md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="font-objektiv text-xl font-bold tracking-tighter text-emerald-500 md:text-2xl">
-                    Get your teams <br />
-                    <span className="text-3xl text-green-300 md:text-5xl">
-                      up to speed
-                    </span>{" "}
-                    on AI.
-                  </div>
-                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
-                    Let your team share prompts and conversations to ramp up on
-                    the potential of generative AI for their tasks.
-                  </p>
-                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
-                    Get suggestions from Dust on documentation updates and
-                    improvements based on ongoing internal conversations and
-                    decisions.
-                  </p>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="order-2 mt-8 md:order-1 md:col-span-4 md:mt-0">
-                <div className="mx-auto">
-                  <img
-                    className="mx-auto w-[500px] -rotate-2"
-                    src="/static/landing_chat.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div ref={scrollRef3} className="mt-16">
-            <div className="gap-8 md:grid md:grid-cols-8">
-              <div className="flex flex-col justify-center self-center text-left md:col-span-4 md:pr-8">
-                <div className="mt-2 flex-initial">
-                  <div className="font-objektiv text-xl font-bold tracking-tighter text-blue-500 md:text-2xl">
-                    Build your own <br />
-                    <span className="text-3xl text-sky-300 md:text-5xl">
-                      powerful workflows
-                    </span>
-                    .
-                  </div>
-                  <p className="font-regular text-md mt-4 font-objektiv text-slate-300 md:text-lg">
-                    Build custom Large Language Model apps on top of your
-                    company data. Let Dust assist you with the details of
-                    working with LLMs as you adapt them to your specific needs.
-                  </p>
-                  <div className="mt-6">
-                    <Link href="https://docs.dust.tt">
-                      <Button
-                        variant="tertiary"
-                        size="sm"
-                        label="View Documentation"
-                      />
-                    </Link>
-                  </div>
-                </div>
-                <div className="flex flex-1"></div>
-              </div>
-              <div className="mt-8 md:col-span-4 md:mt-0">
-                <div className="mx-auto">
-                  <img
-                    className="mx-auto w-[500px] rotate-2"
-                    src="/static/landing_block.png"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-32"></div>
-
-          <div className="grid grid-cols-1">
-            <p className="font-objektiv text-3xl font-bold text-red-400">
-              Our product
-              <br />
-              <span className="text-3xl text-rose-300 md:text-5xl">
+          <div className={defaultFlexClasses}>
+            <H2 color="text-red-400">
+              Our product{" "}
+              <H2 isSpan color="text-red-200">
                 constitution
-              </span>
-            </p>
-          </div>
-
-          <div className="h-6"></div>
-
-          <div className="grid gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="font-semibold text-slate-100">
-                Augmenting humans, not&nbsp;replacing&nbsp;them
-              </p>
-              <div className="h-2"></div>
-              <p className="font-regular text-slate-500">
-                We're optimistic about making work life better for smart people.
-                We're building R2-D2, not Skynet.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-100">
-                Uncompromising on data security & privacy
-              </p>
-              <div className="h-2"></div>
-              <p className="font-regular text-slate-500">
-                We aspire to define standards rather than simply abide by
-                the&nbsp;existing ones.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-100">
-                Hard problems over hype
-              </p>
-              <div className="h-2"></div>
-              <p className="font-regular text-slate-500">
-                There's more to do than wrapping GPT into a chat UI. We're in
-                this to solve hard problems on user experience and product
-                quality.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-100">
-                Building with an&nbsp;AI&nbsp;core
-              </p>
-              <div className="h-2"></div>
-              <p className="font-regular text-slate-500">
-                We're building with large language models in mind from the
-                ground up, rather than sprinkling them here and&nbsp;there.
-              </p>
+              </H2>
+            </H2>
+            <div className="grid gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+              <div className={defaultFlexClasses}>
+                <H4>Augmenting humans, not&nbsp;replacing&nbsp;them</H4>
+                <P>
+                  We're optimistic about making work life better for smart
+                  people. We're building R2-D2, not Skynet.
+                </P>
+              </div>
+              <div className="flex flex-col gap-3">
+                <H4>Uncompromising on data security&nbsp;&&nbsp;privacy</H4>
+                <P>
+                  We aspire to define standards rather than simply abide by
+                  the&nbsp;existing ones.
+                </P>
+              </div>
+              <div className="flex flex-col gap-3">
+                <H4>Hard problems over&nbsp;hype</H4>
+                <P>
+                  There's more to do than wrapping GPT into a chat UI. We're in
+                  this to solve hard problems on user experience and product
+                  quality.
+                </P>
+              </div>
+              <div className="flex flex-col gap-3">
+                <H4>Building with an&nbsp;AI&nbsp;core</H4>
+                <P>
+                  We're building with large language models in mind from the
+                  ground up, rather than sprinkling them here and&nbsp;there.
+                </P>
+              </div>
             </div>
           </div>
-
-          <div className="h-32"></div>
         </div>
 
-        <div className="mx-auto my-10 mt-32 max-w-3xl pb-8 text-center font-objektiv font-objektiv text-sm text-slate-500">
-          Dust © 2022-2023 –{" "}
-          <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
-            Legal
-          </Link>
-          {" - "}
-          <Link href="/website-privacy">Website Privacy</Link>
-          {" - "}
-          <Link href="/platform-privacy">Platform Privacy</Link>
-          {" - "}
-          <Link href="/terms">Terms</Link>
-          {" - "}
-          <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
-            Cookies
-          </Link>
-        </div>
+        <Footer />
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
@@ -662,7 +559,7 @@ export default function Home({
   );
 }
 
-const HeadComponent = () => {
+const Header = () => {
   return (
     <Head>
       <title>
@@ -728,5 +625,26 @@ const HeadComponent = () => {
 
       <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css"></link>
     </Head>
+  );
+};
+
+const Footer = () => {
+  return (
+    <div className="mt-48 flex w-full flex-col gap-6 border-t border-slate-800 bg-slate-900 px-12 pb-20 pt-12">
+      <div className="opacity-70">
+        <LogoHorizontalWhiteLogo className="h-6 w-24" />
+      </div>
+      <div className="grid w-full gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
+          Legal
+        </Link>
+        <Link href="/website-privacy">Website Privacy</Link>
+        <Link href="/platform-privacy">Platform Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
+          Cookies
+        </Link>
+      </div>
+    </div>
   );
 };
