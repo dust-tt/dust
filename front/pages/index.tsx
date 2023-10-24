@@ -47,14 +47,23 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 const defaultGridClasses = "grid grid-cols-12 gap-6";
-
 const defaultFlexClasses = "flex flex-col gap-4";
 
+export const Grid = ({
+  children,
+  color = "text-slate-50",
+  className = "",
+}: ContentProps) => (
+  <div className={classNames(className, color, defaultGridClasses)}>
+    {children}
+  </div>
+);
+
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight text-slate-50 md:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-3xl font-bold tracking-tight text-slate-50 md:text-5xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight text-slate-50 md:text-2xl drop-shadow-md",
-  h4: "font-objektiv text-lg font-bold tracking-tight text-slate-50 md:text-xl drop-shadow-md",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-6xl drop-shadow-lg",
+  h2: "font-objektiv text-3xl font-bold tracking-tight md:text-5xl drop-shadow-lg",
+  h3: "font-objektiv text-xl font-bold tracking-tight md:text-2xl drop-shadow-md",
+  h4: "font-objektiv text-lg font-bold tracking-tight md:text-xl drop-shadow-md",
 };
 
 const pClasses = {
@@ -66,25 +75,36 @@ interface ContentProps {
   children: ReactNode;
   className?: string;
   variant?: string;
+  color?: string;
+  isSpan?: boolean;
 }
 
-export const Grid = ({ children, className = "" }: ContentProps) => (
-  <div className={classNames(className, defaultGridClasses)}>{children}</div>
-);
+type TagName = "h1" | "h2" | "h3" | "h4";
 
-export const H1 = ({ children, className = "" }: ContentProps) => (
-  <h1 className={classNames(className, hClasses.h1)}>{children}</h1>
-);
+const createHeadingComponent = (Tag: TagName) => {
+  const Component: React.FC<ContentProps> = ({
+    children,
+    color = "text-slate-50",
+    className = "",
+    isSpan = false,
+  }) => {
+    if (isSpan) {
+      return <span className={classNames(className, color)}>{children}</span>;
+    }
+    return (
+      <Tag className={classNames(className, color, hClasses[Tag])}>
+        {children}
+      </Tag>
+    );
+  };
+  Component.displayName = Tag.toUpperCase();
+  return Component;
+};
 
-export const H2 = ({ children, className = "" }: ContentProps) => (
-  <h2 className={classNames(className, hClasses.h2)}>{children}</h2>
-);
-export const H3 = ({ children, className = "" }: ContentProps) => (
-  <h3 className={classNames(className, hClasses.h3)}>{children}</h3>
-);
-export const H4 = ({ children, className = "" }: ContentProps) => (
-  <h4 className={classNames(className, hClasses.h4)}>{children}</h4>
-);
+export const H1 = createHeadingComponent("h1");
+export const H2 = createHeadingComponent("h2");
+export const H3 = createHeadingComponent("h3");
+export const H4 = createHeadingComponent("h4");
 
 export const P = ({ children, className = "", variant }: ContentProps) => (
   <p
@@ -98,9 +118,37 @@ export const P = ({ children, className = "", variant }: ContentProps) => (
 );
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
-  <strong className={classNames(className, "font-bold text-slate-300")}>
+  <strong className={classNames(className, "font-medium text-slate-200")}>
     {children}
   </strong>
+);
+interface ReactImgProps {
+  className?: string;
+  colorCSS: string;
+  src?: string;
+}
+export const ReactiveImg = ({
+  src,
+  colorCSS = "border-slate-700/50 bg-slate-900/70",
+  className = "",
+}: ReactImgProps) => (
+  <div className={classNames("group p-6", className)}>
+    <div
+      className={classNames(
+        colorCSS,
+        "flex rounded-2xl border p-3 shadow-2xl backdrop-blur-sm",
+        "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+      )}
+    >
+      <img
+        className={classNames(
+          "z-10 w-full",
+          "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+        )}
+        src={src}
+      />
+    </div>
+  </div>
 );
 
 export default function Home({
@@ -195,26 +243,29 @@ export default function Home({
                 <br />
                 with customizable and secure AI&nbsp;assistants
               </H1>
-              <H4 className="col-span-6 col-start-3">
-                <Strong>AI is changing the way we work.</Strong>
+              <H3 className="col-span-6 col-start-3">
+                AI is changing the way we work.
                 <br />
                 Effectively channeling the potential of AI is a competitive
                 edge.
-              </H4>
+              </H3>
             </div>
           </Grid>
           <Grid>
             <P className="col-span-4">
-              Deploy Large Language Models on concrete use cases in your company
-              today.
+              Deploy <Strong>Large Language Models</Strong> on{" "}
+              <Strong>concrete use cases</Strong> in your company{" "}
+              <Strong>today</Strong>.
             </P>
             <P className="col-span-4">
-              Empower teams to tailor assistants to their needs, with the best
-              models and internal company knowledge.
+              Empower teams with{" "}
+              <Strong>assistants tailored to&nbsp;their needs</Strong>, using{" "}
+              <Strong>the best models</Strong> augmented with{" "}
+              <Strong>your company's knowledge</Strong>.
             </P>
             <P className="col-span-4">
-              Maintain granular control over data access and with a safe and
-              privacy-obsessed application.
+              <Strong>Control granularly data access</Strong> with a{" "}
+              <Strong>safe and privacy-obsessed</Strong> application.
             </P>
           </Grid>
 
@@ -225,10 +276,12 @@ export default function Home({
                 "col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
-              <H2>
+              <H2 color="text-sky-500">
                 Get the state of the&nbsp;art,
                 <br />
-                today and&nbsp;tomorrow.
+                <H2 isSpan color="text-sky-200">
+                  today and&nbsp;tomorrow.
+                </H2>
               </H2>
               <P variant="big">
                 Dust gives you&nbsp;access to the&nbsp;
@@ -239,17 +292,41 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
+            <div className="col-span-4">
+              <div className="group p-6">
+                <div
+                  className={classNames(
+                    "flex rounded-2xl border border-slate-700/50 bg-slate-900/70 p-3 shadow-2xl backdrop-blur-sm",
+                    "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+                  )}
+                >
+                  <img
+                    className={classNames(
+                      "z-10 w-full",
+                      "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
+                    )}
+                    src="/static/landing/connect.png"
+                  />
+                </div>
+              </div>
+              <P>
+                Proprietary and&nbsp;open-source models suited
+                to&nbsp;your&nbsp;needs:{" "}
+                <Strong>OpenAI, Anthropic, Mistral…</Strong>
+              </P>
+            </div>
             <P className="col-span-4">
-              Proprietary and open-source models suited to your needs: OpenAI,
-              Anthropic, Mistral, …
+              <img className="z-10 w-full" src="/static/landing/partners.png" />
+              Your own knowledge base continuously in&nbsp;sync:{" "}
+              <Strong>
+                Notion, Slack, GitHub, Google Drive, and&nbsp;more
+              </Strong>
+              .
             </P>
             <P className="col-span-4">
-              Your own knowledge base continuously in sync: Notion, Slack,
-              GitHub, Google Drive, and more.
-            </P>
-            <P className="col-span-4">
-              Modular and composable: Dust is deeply customizable to your exact
-              needs and will evolve as those needs evolve.
+              <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
+              customizable to&nbsp;your exact needs and will evolve as
+              those&nbsp;needs evolve.
             </P>
           </Grid>
           <Grid>
@@ -259,16 +336,18 @@ export default function Home({
                 "col-span-8 col-start-3 flex flex-col gap-4 text-right"
               )}
             >
-              <H2>
+              <H2 color="text-red-400">
                 Bring your&nbsp;team
                 <br />
-                up&nbsp;to&nbsp;speed.
+                <H2 isSpan color="text-red-200">
+                  up&nbsp;to&nbsp;speed.
+                </H2>
               </H2>
               <P variant="big">
                 Embracing AI is a&nbsp;paradigm shift for&nbsp;your
                 team’s&nbsp;workflows.
                 <br />
-                Dust empowers
+                Dust empowers{" "}
                 <Strong>your most creative and driven team members</Strong>{" "}
                 to&nbsp;<Strong>develop and&nbsp;share</Strong> their practices
                 throughout your&nbsp;company.
@@ -299,15 +378,18 @@ export default function Home({
                 "col-span-6 flex flex-col gap-4"
               )}
             >
-              <H2>
+              <H2 color="text-emerald-500">
                 Designed for security
                 <br />
-                and data privacy.
+                <H2 isSpan color="text-emerald-200">
+                  and data privacy.
+                </H2>
               </H2>
               <P>
-                No re-training of&nbsp;models on your internal knowledge.
-                Enterprise-grade security to manage your&nbsp;data access
-                policies with control and&nbsp;confidence.
+                <Strong>Your data is private</Strong>: No re-training
+                of&nbsp;models on your internal knowledge.{" "}
+                <Strong>Enterprise-grade security</Strong> to manage
+                your&nbsp;data access policies with control and&nbsp;confidence.
                 <br />
               </P>
             </div>
@@ -317,14 +399,19 @@ export default function Home({
                 "col-span-6 flex flex-col gap-4"
               )}
             >
-              <H2>
+              <H2 color="text-amber-500">
                 Need more?
                 <br />
-                Dust do it!
+                <H2 isSpan color="text-amber-200">
+                  Dust do it!
+                </H2>
               </H2>
-              <P className={pClasses.big}>
-                Built for developers and tinkerers with powerful actions and
-                application orchestration to fit your exact needs.
+              <P>
+                Built for <Strong>developers</Strong> and{" "}
+                <Strong>tinkerers</Strong> with powerful{" "}
+                <Strong>actions and application orchestration</Strong> to fit
+                your exact needs. Build <Strong>custom actions</Strong>, connect
+                them with 3rd party APIs, chain them with assistants.
               </P>
             </div>
           </Grid>
@@ -332,7 +419,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-6 flex flex-col gap-4"
+                "s-dark dark col-span-12 flex flex-col gap-4"
               )}
             >
               <H2>Pricing</H2>
@@ -341,7 +428,7 @@ export default function Home({
                   title="Free"
                   price="0€"
                   priceLabel="/ month"
-                  color="emerald"
+                  color="amber"
                   className="w-64"
                 >
                   <PriceTable.Item
@@ -365,6 +452,7 @@ export default function Home({
                   price="0€"
                   priceLabel="/ month"
                   className="w-64"
+                  color="emerald"
                 >
                   <PriceTable.Item
                     label="Single member / workspace"

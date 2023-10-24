@@ -41,7 +41,7 @@ const ScrollingHeader = ({
   const baseClasses =
     "fixed top-0 w-full transition-all duration-500 ease-out border-b z-50";
   const idleClasses = "h-24 border-transparent";
-  const scrolledClasses = "h-16 border-b-slate-700 backdrop-blur-lg";
+  const scrolledClasses = "h-16 border-slate-800 backdrop-blur-lg";
 
   // Combine them depending on state
   const combinedClasses = classNames(
@@ -50,7 +50,7 @@ const ScrollingHeader = ({
   );
 
   const invisibleFirstClasses = classNames(
-    "invisibleFirst absolute bottom-0 left-0 right-0 top-0 z-10 bg-slate-800",
+    "invisibleFirst absolute bottom-0 left-0 right-0 top-0 z-10 bg-slate-900",
     isScrolled2 ? "opacity-60" : "opacity-0"
   );
 
