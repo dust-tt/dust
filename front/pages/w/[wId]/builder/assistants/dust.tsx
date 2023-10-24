@@ -10,10 +10,12 @@ import {
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useContext } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { APIError } from "@app/lib/error";
@@ -67,6 +69,8 @@ export default function EditDustAssistant({
 }: // dataSources,
 InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
+
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -101,15 +105,19 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
-      window.alert(
-        `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
-      );
+      sendNotification({
+        title: "Dust Assistant",
+        description: `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`,
+        type: "error",
+      });
       return;
     }
     if (agent.status === "disabled_missing_datasource") {
-      window.alert(
-        `@${agent.name} is not available because you have not configured any data sources.`
-      );
+      sendNotification({
+        title: "Dust Assistant",
+        description: `@${agent.name} is not available because you have not configured any data sources.`,
+        type: "error",
+      });
       return;
     }
     const res = await fetch(
@@ -222,11 +230,12 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
               />
             }
           />
-          {dataSources.length ? (
+          {dataSources.length &&
+          dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
               <SectionHeader
                 title="Data Sources"
-                description="Configure which connections and data sources will be searched by the Dust Assistant."
+                description="Configure which connections and data sources will be searched by the Dust assistant."
               />
               <>
                 {
@@ -275,7 +284,7 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
             <>
               <SectionHeader
                 title="This workspace doesn't currently have any data sources."
-                description="Add connections or data sources to enable @dust."
+                description="Add connections or data sources to enable the Dust assistant."
                 action={{
                   label: "Add connections",
                   variant: "primary",
