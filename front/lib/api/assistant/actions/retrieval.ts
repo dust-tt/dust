@@ -567,21 +567,36 @@ export async function* runRetrieval(
   }));
 
   for (const ds of c.dataSources) {
-    if (ds.filter.tags) {
-      if (!config.DATASOURCE.filter.tags) {
-        config.DATASOURCE.filter.tags = { in: [], not: [] };
+    /** Caveat: empty array in tags.in means "no document match" since no
+     * documents has any tags that is in the tags.in array (same for parents)*/
+    if (!config.DATASOURCE.filter.tags) {
+      config.DATASOURCE.filter.tags = {};
+    }
+    if (ds.filter.tags?.in) {
+      if (!config.DATASOURCE.filter.tags.in) {
+        config.DATASOURCE.filter.tags.in = [];
       }
-
       config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
+    }
+    if (ds.filter.tags?.not) {
+      if (!config.DATASOURCE.filter.tags.not) {
+        config.DATASOURCE.filter.tags.not = [];
+      }
       config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
     }
-
-    if (ds.filter.parents) {
-      if (!config.DATASOURCE.filter.parents) {
-        config.DATASOURCE.filter.parents = { in: [], not: [] };
+    if (!config.DATASOURCE.filter.parents) {
+      config.DATASOURCE.filter.parents = {};
+    }
+    if (ds.filter.parents?.in) {
+      if (!config.DATASOURCE.filter.parents.in) {
+        config.DATASOURCE.filter.parents.in = [];
       }
-
       config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
+    }
+    if (ds.filter.parents?.not) {
+      if (!config.DATASOURCE.filter.parents.not) {
+        config.DATASOURCE.filter.parents.not = [];
+      }
       config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
     }
   }
