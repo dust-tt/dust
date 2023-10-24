@@ -90,7 +90,7 @@ interface ReactImgProps {
 
 export const ReactiveImg = ({
   children,
-  colorCSS = "border-slate-700/50 bg-slate-900/70",
+  colorCSS = "border-slate-700/40 bg-slate-900/30",
   colorHEX,
   containerPaddingCSS = "p-6",
   innerPaddingCSS = "p-3",
@@ -118,8 +118,8 @@ export const ReactiveImg = ({
 
   const style = colorHEX
     ? {
-        backgroundColor: `${colorHEX}B3`, // B3 is hexadecimal for 70% opacity
-        borderColor: "#FFFFFF33", // 33 is hexadecimal for 20% opacity
+        backgroundColor: `${colorHEX}88`, // B3 is hexadecimal for 70% opacity
+        borderColor: "#FFFFFF22", // 33 is hexadecimal for 20% opacity
       }
     : undefined;
 
@@ -173,3 +173,18 @@ export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
     </ReactiveImg>
   );
 };
+
+interface SeparatorProps {
+  color?: "red" | "amber" | "emerald" | "sky";
+}
+
+const colorTable = {
+  red: "s-bg-red-400",
+  amber: "s-bg-amber-400",
+  sky: "s-bg-sky-400",
+  emerald: "s-bg-emerald-400",
+};
+
+export const Separator = ({ color = "emerald" }: SeparatorProps) => (
+  <div className={classNames("h-1 w-3", colorTable[color])} />
+);
