@@ -36,6 +36,14 @@ const { DUST_API = "https://dust.tt" } = process.env;
 
 class SlackExternalUserError extends Error {}
 
+const DEFAULT_ASSISTANTS_ORDER = [
+  "dust",
+  "gpt-4",
+  "claude-2",
+  "gpt-3.5-turbo",
+  "claude-instant-1",
+];
+
 export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
@@ -237,12 +245,15 @@ async function botAnswerMessage(
         "Only one assistant at a time can be called through Slack."
       )
     );
-  } else if (mentionCandidates.length === 1) {
-    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-    if (agentConfigurationsRes.isErr()) {
-      return new Err(new Error(agentConfigurationsRes.error.message));
-    }
-    const agentConfigurations = agentConfigurationsRes.value;
+  }
+
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  if (agentConfigurationsRes.isErr()) {
+    return new Err(new Error(agentConfigurationsRes.error.message));
+  }
+  const agentConfigurations = agentConfigurationsRes.value;
+
+  if (mentionCandidates.length === 1) {
     for (const mc of mentionCandidates) {
       let bestCandidate:
         | {
@@ -287,11 +298,6 @@ async function botAnswerMessage(
     let agentConfigurationToMention: AgentConfigurationType | null = null;
 
     if (channel && channel.agentConfigurationId) {
-      const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-      if (agentConfigurationsRes.isErr()) {
-        return new Err(new Error(agentConfigurationsRes.error.message));
-      }
-      const agentConfigurations = agentConfigurationsRes.value;
       agentConfigurationToMention =
         agentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId
@@ -304,8 +310,31 @@ async function botAnswerMessage(
         assistantName: agentConfigurationToMention.name,
       });
     } else {
+      let defaultAssistant: AgentConfigurationType | null = null;
+      for (const maybeDefaultAssistant of DEFAULT_ASSISTANTS_ORDER) {
+        const maybeDefaultAssistantConfig = agentConfigurations.find(
+          (ac) => ac.sId === maybeDefaultAssistant
+        );
+        if (
+          maybeDefaultAssistantConfig &&
+          maybeDefaultAssistantConfig.status === "active"
+        ) {
+          defaultAssistant = maybeDefaultAssistantConfig;
+          break;
+        }
+      }
+      if (!defaultAssistant) {
+        return new Err(
+          new SlackExternalUserError(
+            "Sorry, but I could not find an assistant to answer your question."
+          )
+        );
+      }
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      mentions.push({ assistantId: "dust", assistantName: "dust" });
+      mentions.push({
+        assistantId: defaultAssistant.sId,
+        assistantName: defaultAssistant.name,
+      });
     }
   }
 

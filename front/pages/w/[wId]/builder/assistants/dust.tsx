@@ -1,8 +1,10 @@
 import {
+  Chip,
   CloudArrowDownIcon,
   ContextItem,
   LogoSquareColorLogo,
   PageHeader,
+  PlusIcon,
   SectionHeader,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -21,6 +23,14 @@ import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
+
+const DEFAULT_ASSISTANTS_ORDER = [
+  "dust",
+  "gpt-4",
+  "claude-2",
+  "gpt-3.5-turbo",
+  "claude-instant-1",
+];
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -77,14 +87,28 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
     (c) => c.name === "dust"
   );
   if (!dustAgentConfiguration) {
-    void router.push(`/w/${owner.sId}/builder/assistants`);
     return null;
+  }
+
+  let defaultAgentName: string | null = null;
+  for (const agentSid of DEFAULT_ASSISTANTS_ORDER) {
+    const agentConfig = agentConfigurations?.find((c) => c.sId === agentSid);
+    if (agentConfig && agentConfig.status === "active") {
+      defaultAgentName = agentConfig.name;
+      break;
+    }
   }
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
       window.alert(
         `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
+      );
+      return;
+    }
+    if (agent.status === "disabled_missing_datasource") {
+      window.alert(
+        `@${agent.name} is not available because you have not configured any data sources.`
       );
       return;
     }
@@ -136,6 +160,7 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
       );
     }
     await mutateDataSources();
+    await mutateAgentConfigurations();
   };
 
   return (
@@ -167,6 +192,18 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
             title="Availability"
             description="Select whether or not @dust is available as a standalone assistant for this workspace."
           />
+          {dustAgentConfiguration?.status !== "active" ? (
+            defaultAgentName ? (
+              <Chip>
+                If @dust is invoked on Slack @{defaultAgentName} will reply.
+              </Chip>
+            ) : (
+              <Chip color="warning">
+                No assistant is configured to reply when @dust is invoked on
+                Slack.
+              </Chip>
+            )
+          ) : null}
           <ContextItem
             title="Enabled"
             visual={null}
@@ -176,10 +213,16 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
                 onClick={async () => {
                   await handleToggleAgentStatus(dustAgentConfiguration);
                 }}
+                disabled={
+                  dustAgentConfiguration?.status ===
+                    "disabled_free_workspace" ||
+                  dustAgentConfiguration?.status ===
+                    "disabled_missing_datasource"
+                }
               />
             }
           />
-          {dustAgentConfiguration?.status === "active" ? (
+          {dataSources.length ? (
             <>
               <SectionHeader
                 title="Data Sources"
@@ -226,6 +269,24 @@ InferGetServerSidePropsType<typeof getServerSideProps>) {
                   </ContextItem.List>
                 }
               </>
+            </>
+          ) : dustAgentConfiguration?.status ===
+            "disabled_missing_datasource" ? (
+            <>
+              <SectionHeader
+                title="This workspace doesn't currently have any data sources."
+                description="Add connections or data sources to enable @dust."
+                action={{
+                  label: "Add connections",
+                  variant: "primary",
+                  icon: PlusIcon,
+                  onClick: async () => {
+                    await router.push(
+                      `/w/${owner.sId}/builder/data-sources/managed`
+                    );
+                  },
+                }}
+              />
             </>
           ) : null}
         </div>
