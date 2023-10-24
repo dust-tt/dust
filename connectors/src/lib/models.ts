@@ -828,12 +828,11 @@ NotionConnectorBlockCacheEntry.init(
     sequelize: sequelize_conn,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
-      // TODO: fix sync issue with this index
-      // {
-      //   // fields: ["notionBlockId", "connectorId", "notionPageId"],
-      //   // unique: true,
-      // },
-      // {
+      {
+        fields: ["notionBlockId", "connectorId", "notionPageId"],
+        unique: true,
+        name: "uq_notion_block_id_conn_id_page_id",
+      },
       { fields: ["connectorId"] },
       { fields: ["parentBlockId"] },
       { fields: ["notionPageId"] },
