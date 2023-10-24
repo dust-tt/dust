@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import {
   cloneBaseConfig,
@@ -52,6 +52,8 @@ import {
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
+import { WorkspaceType } from "@app/types/user";
+import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 
 /**
  * Conversation Creation, update and deletion
@@ -685,13 +687,12 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  if (3 + 3 === 6) {
-    // userIsTestPlan && userMessagesCount >= testPlanLimit) {
+  if (await messagesLimitReached(owner)) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "test_plan_limit_reached",
+        code: "test_plan_messages_limit_reached",
         message: "The test plan limit has been reached.",
       },
     };
@@ -1667,4 +1668,48 @@ async function* streamRunAgentEvents(
         return;
     }
   }
+}
+
+async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
+  const planIsTest = true; // placeHolder
+  if (!planIsTest) {
+    return false;
+  }
+
+  const count = await Conversation.count({
+    include: [
+      {
+        model: Message,
+        required: true,
+        as: "messages",
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+            where: {
+              createdAt: {
+                [Op.gt]: Sequelize.literal("CURRENT_DATE - INTERVAL '7 days'"),
+              },
+            },
+          },
+          {
+            model: Mention,
+            required: false,
+            where: {
+              agentConfigurationId: {
+                [Op.not]: GLOBAL_AGENTS_SID.HELPER,
+              },
+            },
+          },
+        ],
+      },
+    ],
+    where: {
+      workspaceId: owner.id,
+    },
+  });
+
+  console.log("Message count is ", count);
+  return false;
 }
