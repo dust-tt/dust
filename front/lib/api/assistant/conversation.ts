@@ -31,6 +31,7 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
+import { FREE_PLAN_MESSAGE_LIMIT } from "@app/lib/models/plan";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -49,11 +50,10 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { WorkspaceType } from "@app/types/user";
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
-import { WorkspaceType } from "@app/types/user";
-import { FREE_PLAN_MESSAGE_LIMIT } from "@app/lib/models/plan";
 /**
  * Conversation Creation, update and deletion
  */

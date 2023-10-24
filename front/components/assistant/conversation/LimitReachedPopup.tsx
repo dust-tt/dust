@@ -1,4 +1,4 @@
-import { Chip, Button } from "@dust-tt/sparkle";
+import { Button, Chip } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
 export function LimitReachedPopup({

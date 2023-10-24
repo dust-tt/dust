@@ -20,8 +20,10 @@ import {
   FixedAssistantInputBar,
   InputBarContext,
 } from "@app/components/assistant/conversation/InputBar";
+import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -34,8 +36,6 @@ import {
   MentionType,
 } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
