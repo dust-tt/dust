@@ -28,7 +28,6 @@ import {
   H1,
   H2,
   H3,
-  H4,
   P,
   ReactiveIcon,
   ReactiveImg,
@@ -367,56 +366,29 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-12 flex flex-col gap-4"
+                "s-dark dark col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
               <H2>Pricing</H2>
-              <PriceTable.Container>
+              <div className="flex items-stretch">
                 <PriceTable
                   title="Free"
-                  price="0€"
+                  price="$0"
                   priceLabel="/ month"
-                  color="amber"
-                  className="w-64"
-                >
-                  <PriceTable.Item
-                    label="Single member / workspace"
-                    variant="dash"
-                  />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
-                  <PriceTable.Item label="20 messages a week" variant="dash" />
-                  <PriceTable.Item
-                    label="Static Data Sources (35Mo)"
-                    variant="dash"
-                  />
-                  <PriceTable.Item
-                    label="Connected Data Sources"
-                    variant="xmark"
-                  />
-                </PriceTable>
-                <PriceTable
-                  title="Pro"
-                  price="0€"
-                  priceLabel="/ month"
-                  className="w-64"
                   color="emerald"
+                  className="w-64"
                 >
-                  <PriceTable.Item
-                    label="Single member / workspace"
-                    variant="dash"
-                  />
+                  <PriceTable.Item label="One user" variant="dash" />
+                  <PriceTable.Item label="One workspace" variant="dash" />
                   <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
-                  <PriceTable.Item label="20 messages a week" variant="dash" />
+                  <PriceTable.Item label="100 messages" variant="xmark" />
                   <PriceTable.Item
-                    label="Static Data Sources (35Mo)"
+                    label="50 documents as data sources"
                     variant="dash"
                   />
-                  <PriceTable.Item
-                    label="Connected Data Sources"
-                    variant="xmark"
-                  />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Dust Developer Platform" />
                 </PriceTable>
                 <PriceTable
                   title="Team"
@@ -443,7 +415,7 @@ export default function Home({
                   <PriceTable.Item label="1 user" />
                   <PriceTable.Item label="1 user" />
                 </PriceTable>
-              </PriceTable.Container>
+              </div>
             </div>
           </Grid>
         </div>
