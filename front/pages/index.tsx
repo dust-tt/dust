@@ -1,11 +1,17 @@
 import {
   AnthropicLogo,
   DriveLogo,
+  GithubLogo,
   GoogleLogo,
+  HuggingFaceLogo,
   Logo,
+  MicrosoftLogo,
+  MistralLogo,
+  MoreIcon,
   NotionLogo,
   OpenaiLogo,
   PriceTable,
+  SlackLogo,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -15,7 +21,21 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { ParsedUrlQuery } from "querystring";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
+import {
+  Grid,
+  H1,
+  H2,
+  H3,
+  H4,
+  P,
+  ReactiveIcon,
+  ReactiveImg,
+  Strong,
+} from "@app/components/home/contentComponents";
+
+const defaultFlexClasses = "flex flex-col gap-4";
 
 import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
@@ -52,173 +72,6 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: { gaTrackingId: GA_TRACKING_ID },
   };
-};
-
-const defaultGridClasses = "grid grid-cols-12 gap-6";
-const defaultFlexClasses = "flex flex-col gap-4";
-
-export const Grid = ({
-  children,
-  color = "text-slate-50",
-  className = "",
-}: ContentProps) => (
-  <div className={classNames(className, color, defaultGridClasses)}>
-    {children}
-  </div>
-);
-
-const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-3xl font-bold tracking-tight md:text-5xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight md:text-2xl drop-shadow-md",
-  h4: "font-objektiv text-lg font-bold tracking-tight md:text-xl drop-shadow-md",
-};
-
-const pClasses = {
-  normal: "font-regular text-sm text-slate-400 md:text-lg drop-shadow",
-  big: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
-};
-
-interface ContentProps {
-  children: ReactNode;
-  className?: string;
-  variant?: string;
-  color?: string;
-  isSpan?: boolean;
-}
-
-type TagName = "h1" | "h2" | "h3" | "h4";
-
-const createHeadingComponent = (Tag: TagName) => {
-  const Component: React.FC<ContentProps> = ({
-    children,
-    color = "text-slate-50",
-    className = "",
-    isSpan = false,
-  }) => {
-    if (isSpan) {
-      return <span className={classNames(className, color)}>{children}</span>;
-    }
-    return (
-      <Tag className={classNames(className, color, hClasses[Tag])}>
-        {children}
-      </Tag>
-    );
-  };
-  Component.displayName = Tag.toUpperCase();
-  return Component;
-};
-
-export const H1 = createHeadingComponent("h1");
-export const H2 = createHeadingComponent("h2");
-export const H3 = createHeadingComponent("h3");
-export const H4 = createHeadingComponent("h4");
-
-export const P = ({ children, className = "", variant }: ContentProps) => (
-  <p
-    className={classNames(
-      className,
-      variant === "big" ? pClasses.big : pClasses.normal
-    )}
-  >
-    {children}
-  </p>
-);
-
-export const Strong = ({ children, className = "" }: ContentProps) => (
-  <strong className={classNames(className, "font-medium text-slate-200")}>
-    {children}
-  </strong>
-);
-
-interface ReactImgProps {
-  children: ReactNode;
-  colorCSS?: string;
-  containerPaddingCSS?: string;
-  innerPaddingCSS?: string;
-  className?: string;
-  src?: string;
-  isSmall?: boolean;
-}
-
-export const ReactiveImg = ({
-  children,
-  colorCSS = "border-slate-700/50 bg-slate-900/70",
-  containerPaddingCSS = "p-6",
-  innerPaddingCSS = "p-3",
-  className = "",
-  isSmall = false,
-}: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveImg. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(
-    singleChild as React.ReactElement<any, any>,
-    {
-      className: classNames(
-        singleChild.props.className,
-        "z-10",
-        !isSmall
-          ? "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
-          : "scale-100 transition-all duration-700 ease-out group-hover:scale-125"
-      ),
-    }
-  );
-
-  return (
-    <div className={classNames("group", containerPaddingCSS, className)}>
-      <div
-        className={classNames(
-          colorCSS,
-          innerPaddingCSS,
-          "flex rounded-2xl border drop-shadow-[0_25px_25px_rgba(0,0,0,0.5)] backdrop-blur-sm",
-          !isSmall
-            ? "scale-100 transition-all duration-1000 ease-out group-hover:scale-105"
-            : "scale-100 transition-all duration-700 ease-out group-hover:scale-110"
-        )}
-      >
-        {modifiedChild}
-      </div>
-    </div>
-  );
-};
-
-export const ReactiveIcon = ({ children, colorCSS }: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveImg. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(
-    singleChild as React.ReactElement<any, any>,
-    {
-      className: classNames(
-        singleChild.props.className,
-        "h-10 w-10 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
-      ),
-    }
-  );
-  return (
-    <ReactiveImg
-      colorCSS={colorCSS}
-      className="w-fit"
-      containerPaddingCSS="p-3"
-      innerPaddingCSS="p-3.5"
-      isSmall
-    >
-      {modifiedChild}
-    </ReactiveImg>
-  );
 };
 
 export default function Home({
@@ -363,7 +216,7 @@ export default function Home({
           </Grid>
           <Grid>
             <div className="col-span-4">
-              <ReactiveImg>
+              <ReactiveImg colorCSS="border-slate-700/50 bg-slate-900/70">
                 <img src="/static/landing/connect.png" />
               </ReactiveImg>
               <P>
@@ -374,23 +227,40 @@ export default function Home({
             </div>
             <div className="col-span-4">
               <div className="flex flex-wrap gap-0">
-                <ReactiveIcon colorCSS="bg-purple-400/80 border-purple-300/50">
-                  <OpenaiLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorCSS="bg-purple-400/80 border-purple-300/50">
-                  <AnthropicLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                <ReactiveIcon colorHEX="#1E3A8A">
                   <GoogleLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                <ReactiveIcon colorHEX="#1E3A8A">
                   <DriveLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorCSS="bg-white/90 border-slate-200/50">
+                <ReactiveIcon colorHEX="#FFFFFF">
                   <NotionLogo />
                 </ReactiveIcon>
+                <ReactiveIcon colorHEX="#FFFFFF">
+                  <GithubLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#3A123E">
+                  <SlackLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#A26BF7">
+                  <OpenaiLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#D4A480">
+                  <AnthropicLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <MistralLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <HuggingFaceLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <MicrosoftLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#FFFFFF">
+                  <MoreIcon className="text-slate-900" />
+                </ReactiveIcon>
               </div>
-              <img className="z-10 w-full" src="/static/landing/partners.png" />
               <P>
                 Your own knowledge base continuously in&nbsp;sync:{" "}
                 <Strong>
