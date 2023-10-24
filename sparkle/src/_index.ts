@@ -103,6 +103,7 @@ export {
 
 import {
   Ai21 as Ai21Logo,
+  Anthropic as AnthropicLogo,
   Claude as ClaudeLogo,
   Cohere as CohereLogo,
   Drive as DriveLogo,
@@ -113,12 +114,14 @@ import {
   HuggingFace as HuggingFaceLogo,
   Microsoft as MicrosoftLogo,
   Notion as NotionLogo,
+  Openai as OpenaiLogo,
   Replicate as ReplicateLogo,
   Slack as SlackLogo,
 } from "./logo/platforms";
 
 export {
   Ai21Logo,
+  AnthropicLogo,
   ClaudeLogo,
   CohereLogo,
   DriveLogo,
@@ -129,6 +132,7 @@ export {
   HuggingFaceLogo,
   MicrosoftLogo,
   NotionLogo,
+  OpenaiLogo,
   ReplicateLogo,
   SlackLogo,
 };
