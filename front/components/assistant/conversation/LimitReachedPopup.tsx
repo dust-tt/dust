@@ -28,10 +28,10 @@ export function LimitReachedPopup({
         <Button
           variant="primary"
           size="sm"
-          label="Check Dust plans"
+          label="Contact us" // TODO replace with "Check Dust plans"
           onClick={() => {
             window.open(
-              "https://dust.notion.site/Plans-6b8d7b0a6c3c4a7d8f6f8a6e2c0c3a5b"
+              "mailto:team@dust.tt?subject=Upgrading to paid plan" // TODO replace with the link to the plans page
             );
           }}
         />
