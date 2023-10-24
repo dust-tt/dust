@@ -15,6 +15,9 @@ pub mod data_sources {
     pub mod data_source;
     pub mod splitter;
 }
+pub mod databases {
+    pub mod table_schema;
+}
 pub mod project;
 pub mod run;
 pub mod utils;
