@@ -36,14 +36,6 @@ const { DUST_API = "https://dust.tt" } = process.env;
 
 class SlackExternalUserError extends Error {}
 
-const DEFAULT_ASSISTANTS_ORDER = [
-  "dust",
-  "gpt-4",
-  "claude-2",
-  "gpt-3.5-turbo",
-  "claude-instant-1",
-];
-
 export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
@@ -310,18 +302,13 @@ async function botAnswerMessage(
         assistantName: agentConfigurationToMention.name,
       });
     } else {
+      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
       let defaultAssistant: AgentConfigurationType | null = null;
-      for (const maybeDefaultAssistant of DEFAULT_ASSISTANTS_ORDER) {
-        const maybeDefaultAssistantConfig = agentConfigurations.find(
-          (ac) => ac.sId === maybeDefaultAssistant
-        );
-        if (
-          maybeDefaultAssistantConfig &&
-          maybeDefaultAssistantConfig.status === "active"
-        ) {
-          defaultAssistant = maybeDefaultAssistantConfig;
-          break;
-        }
+      defaultAssistant =
+        agentConfigurations.find((ac) => ac.sId === "dust") || null;
+      if (!defaultAssistant || defaultAssistant.status !== "active") {
+        defaultAssistant =
+          agentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
       }
       if (!defaultAssistant) {
         return new Err(
@@ -330,7 +317,6 @@ async function botAnswerMessage(
           )
         );
       }
-      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
       mentions.push({
         assistantId: defaultAssistant.sId,
         assistantName: defaultAssistant.name,

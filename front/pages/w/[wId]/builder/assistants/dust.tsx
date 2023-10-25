@@ -1,5 +1,5 @@
 import {
-  Chip,
+  Avatar,
   CloudArrowDownIcon,
   ContextItem,
   LogoSquareColorLogo,
@@ -25,14 +25,6 @@ import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-const DEFAULT_ASSISTANTS_ORDER = [
-  "dust",
-  "gpt-4",
-  "claude-2",
-  "gpt-3.5-turbo",
-  "claude-instant-1",
-];
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -91,15 +83,6 @@ export default function EditDustAssistant({
   );
   if (!dustAgentConfiguration) {
     return null;
-  }
-
-  let defaultAgentName: string | null = null;
-  for (const agentSid of DEFAULT_ASSISTANTS_ORDER) {
-    const agentConfig = agentConfigurations?.find((c) => c.sId === agentSid);
-    if (agentConfig && agentConfig.status === "active") {
-      defaultAgentName = agentConfig.name;
-      break;
-    }
   }
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
@@ -191,44 +174,38 @@ export default function EditDustAssistant({
       <PageHeader
         title="Dust Assistant"
         icon={LogoSquareColorLogo}
-        description="Configure the Dust assistant for this workspace."
+        description="The Dust assistant is a general purpose assistant that has context on your company data."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
-          <SectionHeader
-            title="Availability"
-            description="Select whether or not Dust is available as a standalone assistant for this workspace."
-          />
-          {dustAgentConfiguration?.status !== "active" ? (
-            defaultAgentName ? (
-              <Chip>
-                If @dust is invoked on Slack @{defaultAgentName} will reply.
-              </Chip>
-            ) : (
-              <Chip color="warning">
-                No assistant is configured to reply when @dust is invoked on
-                Slack.
-              </Chip>
-            )
-          ) : null}
-          <ContextItem
-            title="Enabled"
-            visual={null}
-            action={
-              <SliderToggle
-                selected={dustAgentConfiguration?.status === "active"}
-                onClick={async () => {
-                  await handleToggleAgentStatus(dustAgentConfiguration);
-                }}
-                disabled={
-                  dustAgentConfiguration?.status ===
-                    "disabled_free_workspace" ||
-                  dustAgentConfiguration?.status ===
-                    "disabled_missing_datasource"
-                }
-              />
-            }
-          />
+          <>
+            <SectionHeader
+              title="Availability"
+              description="The Dust assistant requires data sources or connections to operate."
+            />
+
+            <ContextItem
+              title="Enable the Dust assistant for this workspace."
+              visual={
+                <Avatar
+                  visual="https://dust.tt/static/systemavatar/dust_avatar_full.png"
+                  size="xs"
+                  isRounded={false}
+                />
+              }
+              action={
+                <SliderToggle
+                  selected={dustAgentConfiguration?.status === "active"}
+                  onClick={async () => {
+                    await handleToggleAgentStatus(dustAgentConfiguration);
+                  }}
+                  disabled={
+                    dustAgentConfiguration?.status === "disabled_free_workspace"
+                  }
+                />
+              }
+            />
+          </>
           {dataSources.length &&
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
