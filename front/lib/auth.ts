@@ -15,11 +15,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import {
-  FREE_TEST_PLAN_DATA,
-  FREE_UPGRADED_PLAN_CODE,
-  PlanAttributes,
-} from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
 import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -517,7 +513,6 @@ export async function planForWorkspace(
       users: {
         maxUsers: plan.maxUsersInWorkspace,
       },
-      largeModels: plan.code === FREE_UPGRADED_PLAN_CODE, // TODO: remove this, it is always true now (kept to limit the scope of the PR)
     },
   };
 }

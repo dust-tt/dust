@@ -64,7 +64,6 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
       users: {
         maxUsers: freeTestPlan.maxUsersInWorkspace,
       },
-      largeModels: false, // TODO: remove this, it is always true now (kept to limit the scope of the PR)
     },
   };
 };
@@ -153,7 +152,6 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         users: {
           maxUsers: plan.maxUsersInWorkspace,
         },
-        largeModels: true, // TODO: remove this, it is always true now (kept to limit the scope of the PR)
       },
     };
   });

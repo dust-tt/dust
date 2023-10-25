@@ -28,7 +28,6 @@ export type LimitsType = {
   users: {
     maxUsers: number;
   };
-  largeModels: boolean; // TODO: remove this, it is always true now (kept to limit the scope of the PR)
 };
 
 export type PlanType = {

@@ -153,18 +153,6 @@ export type ConversationVisibility = "unlisted" | "workspace" | "deleted";
  *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
  *  limit. If the limit is undefined we revert to the default limit.
  * */
-export type LimitsType = {
-  dataSources: {
-    count: number;
-    documents: { count: number; sizeMb: number };
-    managed: boolean;
-  };
-  largeModels?: boolean;
-};
-
-export type PlanType = {
-  limits: LimitsType;
-};
 
 export type RoleType = "admin" | "builder" | "user" | "none";
 
@@ -174,8 +162,6 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
-  plan: PlanType;
-  upgradedAt: number | null;
 };
 
 /**
