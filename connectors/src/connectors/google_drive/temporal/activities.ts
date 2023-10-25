@@ -1038,7 +1038,7 @@ export async function driveObjectToDustType(
   }
 }
 
-function getDocumentId(driveFileId: string): string {
+export function getDocumentId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }
 

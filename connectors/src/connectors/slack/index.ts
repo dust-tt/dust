@@ -377,6 +377,8 @@ export async function retrieveSlackConnectorPermissions({
     sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
     expandable: false,
     permission: ch.permission,
+    dustDocumentId: null,
+    lastUpdatedAt: null,
   }));
 
   resources.sort((a, b) => {

@@ -1,4 +1,9 @@
-import { ExternalLinkIcon, IconButton, Tree } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  ExternalLinkIcon,
+  IconButton,
+  Tree,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import {
@@ -128,6 +133,16 @@ function PermissionTreeChildren({
                 <IconButton
                   size="xs"
                   icon={ExternalLinkIcon}
+                  onClick={() => {
+                    if (r.sourceUrl) {
+                      window.open(r.sourceUrl, "_blank");
+                    }
+                  }}
+                  className={classNames(r.sourceUrl ? "" : "hidden")}
+                />
+                <IconButton
+                  size="xs"
+                  icon={BracesIcon}
                   onClick={() => {
                     if (r.sourceUrl) {
                       window.open(r.sourceUrl, "_blank");

@@ -396,6 +396,8 @@ export async function retrieveNotionConnectorPermissions({
       sourceUrl: page.notionUrl || null,
       expandable,
       permission: "read",
+      dustDocumentId: `notion-${page.notionPageId}`,
+      lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
     };
   };
 
@@ -416,6 +418,8 @@ export async function retrieveNotionConnectorPermissions({
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
     };
   };
 
@@ -451,6 +455,8 @@ export async function retrieveNotionConnectorPermissions({
         sourceUrl: null,
         expandable: true,
         permission: "read",
+        dustDocumentId: null,
+        lastUpdatedAt: null,
       });
     }
   }

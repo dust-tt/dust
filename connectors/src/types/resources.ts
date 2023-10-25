@@ -38,4 +38,6 @@ export type ConnectorResource = {
   sourceUrl: string | null;
   expandable: boolean;
   permission: ConnectorPermission;
+  dustDocumentId: string | null;
+  lastUpdatedAt: number | null;
 };
