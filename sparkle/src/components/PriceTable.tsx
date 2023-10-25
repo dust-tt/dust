@@ -25,11 +25,11 @@ const colorTable = {
 };
 
 const bigColorTable = {
-  pink: "s-bg-pink-400/60 dark:s-bg-pink-400/80 backdrop-blur-md",
-  amber: "s-bg-amber-400/60 dark:s-bg-amber-400/80 backdrop-blur-md",
-  sky: "s-bg-sky-400/60 dark:s-bg-sky-400/80 backdrop-blur-md",
-  blue: "s-bg-blue-400/60 dark:s-bg-blue-400/80 backdrop-blur-md",
-  emerald: "s-bg-emerald-400/60 dark:s-bg-emerald-400/80 backdrop-blur-md",
+  pink: "s-bg-pink-400/60 dark:s-bg-pink-400/80 s-backdrop-blur-md",
+  amber: "s-bg-amber-400/60 dark:s-bg-amber-400/80 s-backdrop-blur-md",
+  sky: "s-bg-sky-400/60 dark:s-bg-sky-400/80 s-backdrop-blur-md",
+  blue: "s-bg-blue-400/60 dark:s-bg-blue-400/80 s-backdrop-blur-md",
+  emerald: "s-bg-emerald-400/60 dark:s-bg-emerald-400/80 s-backdrop-blur-md",
 };
 
 const textColorTable = {
