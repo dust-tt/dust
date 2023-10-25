@@ -24,7 +24,7 @@ export class Plan extends Model<
   declare name: string;
 
   // workspace limitations
-  declare maxWeeklyMessages: number;
+  declare maxMessages: number;
   declare maxUsersInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedSlackAllowed: boolean;
@@ -60,7 +60,7 @@ Plan.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    maxWeeklyMessages: {
+    maxMessages: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -117,7 +117,7 @@ export class Subscription extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string; // unique
-  declare status: string; // "active" | "ended"
+  declare status: "active" | "ended" | "cancelled";
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -152,7 +152,7 @@ Subscription.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["active", "ended"]],
+        isIn: [["active", "ended", "cancelled"]],
       },
     },
     startDate: {
@@ -196,7 +196,7 @@ Subscription.addHook(
 
 // Plan <> Subscription relationship: attribute "planId" in Subscription
 Plan.hasMany(Subscription, {
-  foreignKey: { name: "workspaceId", allowNull: false },
+  foreignKey: { name: "planId", allowNull: false },
   onDelete: "CASCADE",
 });
 Subscription.belongsTo(Plan, {

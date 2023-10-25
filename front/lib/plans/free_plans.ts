@@ -12,7 +12,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
   {
     code: "TEST_PLAN_V0",
     name: "Test",
-    maxWeeklyMessages: 50,
+    maxMessages: 50,
     maxUsersInWorkspace: 1,
     isSlackbotAllowed: false,
     isManagedSlackAllowed: false,
@@ -26,7 +26,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
   {
     code: "TRIAL_PLAN_V0",
     name: "Free Trial",
-    maxWeeklyMessages: -1,
+    maxMessages: -1,
     maxUsersInWorkspace: -1,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
