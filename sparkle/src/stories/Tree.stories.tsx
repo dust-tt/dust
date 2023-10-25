@@ -2,7 +2,12 @@ import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
-import { Tree } from "../index_with_tw_base";
+import {
+  CloudArrowDownIcon,
+  IconButton,
+  PlusCircleIcon,
+  Tree,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Tree",
@@ -202,6 +207,15 @@ const TreeItem = ({ label }: { label: string }) => {
       variant="folder"
       collapsed={!isOpen}
       onChevronClick={() => setIsOpen(!isOpen)}
+      actions={
+        <div className="s-flex s-flex-row s-justify-center s-gap-2">
+          <span className="s-text-xs s-text-element-700">
+            last updated Jan 6
+          </span>
+          <IconButton icon={CloudArrowDownIcon} size="xs" />
+          <IconButton icon={PlusCircleIcon} size="xs" />
+        </div>
+      }
     >
       {isOpen && <Tree>{createTreeItems(n)}</Tree>}
     </Tree.Item>
@@ -218,10 +232,10 @@ const createTreeItems = (n = 5) => {
   return <Tree>{items}</Tree>;
 };
 
-export const DeeplyNestedTree = () => {
+export const DeeplyNestedTreeWithActions = () => {
   return (
-    <div className="s-mx-auto s-max-w-2xl s-gap-3">
-      <div className="s-text-xl">Huge</div>
+    <div className="s-mx-auto s-max-w-2xl s-gap-3 s-pt-10">
+      <div className="s-pb-10 s-text-xl">Huge</div>
       <div>
         <Tree>{createTreeItems(20)}</Tree>
       </div>
