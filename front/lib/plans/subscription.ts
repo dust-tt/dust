@@ -23,27 +23,15 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   if (!workspace) {
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
-  const today = new Date();
-
   // We end the active subscription if any
   const activeSubscription = await Subscription.findOne({
     where: { workspaceId: workspace.id, status: "active" },
   });
   if (activeSubscription) {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (activeSubscription.startDate >= today) {
-      await activeSubscription.update({
-        status: "cancelled",
-        endDate: today,
-      });
-    } else {
-      await activeSubscription.update({
-        status: "ended",
-        endDate: yesterday,
-      });
-    }
+    await activeSubscription.update({
+      status: "ended",
+      endDate: new Date(),
+    });
   }
 
   // We return the default subscription to FREE_TEST_PLAN
@@ -105,7 +93,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     );
   }
 
-  const today = new Date();
+  const now = new Date();
 
   // We search for an active subscription for this workspace
   const activeSubscription = await Subscription.findOne({
@@ -120,20 +108,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   return await front_sequelize.transaction(async (t) => {
     // We end the active subscription if any
     if (activeSubscription) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (activeSubscription.startDate >= today) {
-        await activeSubscription.update({
-          status: "cancelled",
-          endDate: today,
-        });
-      } else {
-        await activeSubscription.update({
-          status: "ended",
-          endDate: yesterday,
-        });
-      }
+      await activeSubscription.update({
+        status: "ended",
+        endDate: now,
+      });
     }
 
     // We create a new subscription
@@ -143,7 +121,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         workspaceId: workspace.id,
         planId: plan.id,
         status: "active",
-        startDate: today,
+        startDate: now,
       },
       { transaction: t }
     );
