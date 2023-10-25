@@ -237,12 +237,15 @@ async function botAnswerMessage(
         "Only one assistant at a time can be called through Slack."
       )
     );
-  } else if (mentionCandidates.length === 1) {
-    const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-    if (agentConfigurationsRes.isErr()) {
-      return new Err(new Error(agentConfigurationsRes.error.message));
-    }
-    const agentConfigurations = agentConfigurationsRes.value;
+  }
+
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  if (agentConfigurationsRes.isErr()) {
+    return new Err(new Error(agentConfigurationsRes.error.message));
+  }
+  const agentConfigurations = agentConfigurationsRes.value;
+
+  if (mentionCandidates.length === 1) {
     for (const mc of mentionCandidates) {
       let bestCandidate:
         | {
@@ -287,11 +290,6 @@ async function botAnswerMessage(
     let agentConfigurationToMention: AgentConfigurationType | null = null;
 
     if (channel && channel.agentConfigurationId) {
-      const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-      if (agentConfigurationsRes.isErr()) {
-        return new Err(new Error(agentConfigurationsRes.error.message));
-      }
-      const agentConfigurations = agentConfigurationsRes.value;
       agentConfigurationToMention =
         agentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId
@@ -305,7 +303,25 @@ async function botAnswerMessage(
       });
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      mentions.push({ assistantId: "dust", assistantName: "dust" });
+      let defaultAssistant: AgentConfigurationType | null = null;
+      defaultAssistant =
+        agentConfigurations.find((ac) => ac.sId === "dust") || null;
+      if (!defaultAssistant || defaultAssistant.status !== "active") {
+        defaultAssistant =
+          agentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+      }
+      if (!defaultAssistant) {
+        return new Err(
+          // not actually reachable, gpt-4 cannot be disabled.
+          new SlackExternalUserError(
+            "No assistant has been configured to reply on Slack."
+          )
+        );
+      }
+      mentions.push({
+        assistantId: defaultAssistant.sId,
+        assistantName: defaultAssistant.name,
+      });
     }
   }
 

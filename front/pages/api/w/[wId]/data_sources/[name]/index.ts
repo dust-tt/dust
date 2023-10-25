@@ -119,24 +119,48 @@ async function handler(
         // non-managed data source
         if (
           !req.body ||
-          !(typeof req.body.description == "string") ||
-          !["public", "private"].includes(req.body.visibility) ||
-          !(typeof req.body.assistantDefaultSelected == "boolean")
+          (typeof req.body.description !== "string" &&
+            typeof req.body.visibility !== "string" &&
+            typeof req.body.assistantDefaultSelected !== "boolean")
         ) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message:
-                "The request body is invalid, expects { description, visibility, assistantDefaultSelected }.",
+              message: "The request body is missing",
             },
           });
         }
-        ds = await dataSourceModel.update({
-          description: req.body.description || null,
-          visibility: req.body.visibility,
-          assistantDefaultSelected: req.body.assistantDefaultSelected,
-        });
+
+        const toUpdate: {
+          description?: string | null;
+          visibility?: "public" | "private";
+          assistantDefaultSelected?: boolean;
+        } = {};
+
+        if (typeof req.body.description === "string") {
+          toUpdate.description = req.body.description || null;
+        }
+
+        if (typeof req.body.visibility === "string") {
+          if (!["public", "private"].includes(req.body.visibility)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The visibility field must be either `public` or `private` if provided.",
+              },
+            });
+          }
+          toUpdate.visibility = req.body.visibility;
+        }
+
+        if (typeof req.body.assistantDefaultSelected === "boolean") {
+          toUpdate.assistantDefaultSelected = req.body.assistantDefaultSelected;
+        }
+
+        ds = await dataSourceModel.update(toUpdate);
       }
 
       return res.status(200).json({

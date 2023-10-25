@@ -140,11 +140,7 @@ async function _getGPT35TurboGlobalAgent({
   };
 }
 
-async function _getGPT4GlobalAgent({
-  settings,
-}: {
-  settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -152,7 +148,7 @@ async function _getGPT4GlobalAgent({
     name: "gpt4",
     description: "OpenAI's most powerful model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
-    status: settings ? settings.status : "active",
+    status: "active",
     scope: "global",
     generation: {
       id: -1,
@@ -559,7 +555,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent({ settings });
+      agentConfiguration = await _getGPT4GlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });

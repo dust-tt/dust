@@ -176,7 +176,7 @@ export function useDocuments(
 
 export function useDataSources(owner: WorkspaceType) {
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${owner.sId}/data_sources`,
     dataSourcesFetcher
   );
@@ -185,6 +185,7 @@ export function useDataSources(owner: WorkspaceType) {
     dataSources: data ? data.dataSources : [],
     isDataSourcesLoading: !error && !data,
     isDataSourcesError: error,
+    mutateDataSources: mutate,
   };
 }
 
