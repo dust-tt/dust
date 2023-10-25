@@ -21,7 +21,7 @@ export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
 export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   code: FREE_TEST_PLAN_CODE,
   name: "Test",
-  maxMessages: 50,
+  maxMessages: 100,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
   isManagedSlackAllowed: false,

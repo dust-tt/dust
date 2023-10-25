@@ -45,6 +45,7 @@ export type APIErrorType =
   | "agent_configuration_not_found"
   | "message_not_found"
   | "message_reaction_error"
+  | "test_plan_message_limit_reached"
   | "global_agent_error";
 
 export type APIError = {

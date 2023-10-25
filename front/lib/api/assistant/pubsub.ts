@@ -137,10 +137,24 @@ async function handleUserMessageEvents(
                 break;
               }
               case "user_message_error": {
-                // We resolve the promise with an error as we were not able to create the user
-                // message. This is possible for a variety of reason and will get turned into a 400
-                // in the API route calling `{post/edit}UserMessageWithPubSub`.
+                //  We resolve the promise with an error as we were not able to
+                //  create the user message. This is possible for a variety of
+                //  reason and will get turned into a 400 in the API route calling
+                //  `{post/edit}UserMessageWithPubSub`, except for the case of used
+                //  up messages for the test plan, handled separately
+
                 didResolve = true;
+                if (event.error.code === "test_plan_message_limit_reached") {
+                  resolve(
+                    new Err({
+                      status_code: 403,
+                      api_error: {
+                        type: "test_plan_message_limit_reached",
+                        message: event.error.message,
+                      },
+                    })
+                  );
+                }
                 resolve(
                   new Err({
                     status_code: 400,

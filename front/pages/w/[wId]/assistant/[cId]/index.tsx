@@ -1,13 +1,15 @@
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
+import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
@@ -59,6 +61,8 @@ export default function AssistantConversation({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const [planLimitReached, setPlanLimitReached] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -79,7 +83,6 @@ export default function AssistantConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-
   const handleSubmit = async (input: string, mentions: MentionType[]) => {
     // Create a new user message.
     const mRes = await fetch(
@@ -102,7 +105,15 @@ export default function AssistantConversation({
 
     if (!mRes.ok) {
       const data = await mRes.json();
-      window.alert(`Error creating message: ${data.error.message}`);
+      if (data.error.type === "test_plan_message_limit_reached") {
+        setPlanLimitReached(true);
+      } else {
+        sendNotification({
+          title: "Your message could not be sent",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
+      }
       return;
     }
   };
@@ -165,6 +176,7 @@ export default function AssistantConversation({
           stickyMentions={stickyMentions}
           conversationId={conversationId}
         />
+        <LimitReachedPopup planLimitReached={planLimitReached} />
       </AppLayout>
     </GenerationContextProvider>
   );

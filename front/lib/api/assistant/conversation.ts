@@ -49,10 +49,10 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { PlanType, WorkspaceType } from "@app/types/user";
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
-
 /**
  * Conversation Creation, update and deletion
  */
@@ -672,14 +672,28 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
   const owner = auth.workspace();
+  const plan = auth.plan();
 
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner || owner.id !== conversation.owner.id || !plan) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
         code: "conversation_not_found",
         message: "The conversation does not exist.",
+      },
+    };
+    return;
+  }
+  // Check plan limit
+  const isAboveMessageLimit = await isMessagesLimitReached({ owner, plan });
+  if (isAboveMessageLimit) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "test_plan_message_limit_reached",
+        message: "The free plan message limit has been reached.",
       },
     };
     return;
@@ -1654,4 +1668,32 @@ async function* streamRunAgentEvents(
         return;
     }
   }
+}
+
+async function isMessagesLimitReached({
+  owner,
+  plan,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+}): Promise<boolean> {
+  if (plan.limits.assistant.maxMessages === -1) {
+    return false;
+  }
+  const messages = await Message.findAll({
+    attributes: ["id"],
+    include: [
+      {
+        model: Conversation,
+        as: "conversation",
+        attributes: ["id", "workspaceId"],
+        required: true,
+        where: { workspaceId: owner.id },
+      },
+    ],
+    where: { agentMessageId: { [Op.ne]: null } },
+    limit: plan.limits.assistant.maxMessages,
+  });
+
+  return messages.length === plan.limits.assistant.maxMessages;
 }
