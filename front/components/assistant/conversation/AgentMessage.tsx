@@ -420,27 +420,29 @@ function Citations({
 
   activeReferences.sort((a, b) => a.index - b.index);
   return (
-    <div
-      className="-mx-[100%] mt-9 overflow-x-auto px-[100%] pb-4 scrollbar-hide"
-      ref={citationContainer}
-    >
-      <div className="left-100 relative flex gap-2">
-        {activeReferences.map(({ document, index }) => {
-          const provider = providerFromDocument(document);
-          return (
-            <Citation
-              key={index}
-              isBlinking={lastHoveredReference === index}
-              type={provider === "none" ? "document" : provider}
-              title={titleFromDocument(document)}
-              href={linkFromDocument(document)}
-              index={index}
-            />
-          );
-        })}
-        <div className="h-1 w-[100%] flex-none" />
+    activeReferences.length > 0 && (
+      <div
+        className="-mx-[100%] mt-9 overflow-x-auto px-[100%] pb-4 scrollbar-hide"
+        ref={citationContainer}
+      >
+        <div className="left-100 relative flex gap-2">
+          {activeReferences.map(({ document, index }) => {
+            const provider = providerFromDocument(document);
+            return (
+              <Citation
+                key={index}
+                isBlinking={lastHoveredReference === index}
+                type={provider === "none" ? "document" : provider}
+                title={titleFromDocument(document)}
+                href={linkFromDocument(document)}
+                index={index}
+              />
+            );
+          })}
+          <div className="h-1 w-[100%] flex-none" />
+        </div>
       </div>
-    </div>
+    )
   );
 }
 
