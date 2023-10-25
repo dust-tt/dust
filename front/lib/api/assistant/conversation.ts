@@ -1680,16 +1680,20 @@ async function isMessagesLimitReached({
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
-  const count = await Message.count({
+  const messages = await Message.findAll({
+    attributes: ["id"],
     include: [
       {
         model: Conversation,
         as: "conversation",
+        attributes: ["id", "workspaceId"],
         required: true,
         where: { workspaceId: owner.id },
       },
     ],
     where: { agentMessageId: { [Op.ne]: null } },
+    limit: plan.limits.assistant.maxMessages,
   });
-  return count >= plan.limits.assistant.maxMessages;
+
+  return messages.length === plan.limits.assistant.maxMessages;
 }
