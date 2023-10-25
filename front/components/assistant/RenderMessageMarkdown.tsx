@@ -34,7 +34,7 @@ const SyntaxHighlighter = dynamic(
 function mentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
-      if (node.name === "mention") {
+      if (node.name === "mention" && node.children[0]) {
         const data = node.data || (node.data = {});
         data.hName = "mention";
         data.hProperties = {
