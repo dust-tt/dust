@@ -1,4 +1,4 @@
-import { Tree } from "@dust-tt/sparkle";
+import { ExternalLinkIcon, IconButton, Tree } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import {
@@ -6,6 +6,7 @@ import {
   ConnectorProvider,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -121,6 +122,20 @@ function PermissionTreeChildren({
                     },
                   }
                 : undefined
+            }
+            actions={
+              <div className="flex flex-row gap-2">
+                <IconButton
+                  size="xs"
+                  icon={ExternalLinkIcon}
+                  onClick={() => {
+                    if (r.sourceUrl) {
+                      window.open(r.sourceUrl, "_blank");
+                    }
+                  }}
+                  className={classNames(r.sourceUrl ? "" : "hidden")}
+                />
+              </div>
             }
           >
             {expanded[r.internalId] && (
