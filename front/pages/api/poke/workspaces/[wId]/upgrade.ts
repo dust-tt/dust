@@ -79,7 +79,6 @@ async function handler(
           name: workspace.name,
           allowedDomain: workspace.allowedDomain || null,
           role: "admin",
-          upgradedAt: workspace.upgradedAt?.getTime() || null,
         },
       });
 

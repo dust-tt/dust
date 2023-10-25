@@ -55,7 +55,6 @@ const Dashboard = (
     isWorkspacesError: isSearchResultsError,
   } = usePokeWorkspaces({
     search: searchTerm,
-    upgraded: false,
     disabled: searchDisabled,
     limit: 10,
   });
@@ -69,7 +68,7 @@ const Dashboard = (
       <PokeNavbar />
       <div className="flex-grow p-6">
         <>
-          <h1 className="mb-4 text-2xl font-bold">Free Workspaces</h1>
+          <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
           <input
             className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
             type="text"

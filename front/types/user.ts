@@ -46,7 +46,6 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
-  upgradedAt: number | null;
 };
 
 export type UserProviderType = "github" | "google";

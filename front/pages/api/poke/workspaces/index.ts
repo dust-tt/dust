@@ -3,7 +3,7 @@ import { FindOptions, Op, WhereOptions } from "sequelize";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Workspace } from "@app/lib/models";
+import { Subscription, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
@@ -96,15 +96,24 @@ async function handler(
       const conditions: WhereOptions<Workspace>[] = [];
 
       if (upgraded !== undefined) {
+        const subscriptions = await Subscription.findAll({
+          where: {
+            status: "active",
+          },
+          attributes: ["workspaceId"],
+        });
+        const workspaceIds = subscriptions.map((s) => s.workspaceId);
         if (upgraded) {
           conditions.push({
-            upgradedAt: {
-              [Op.not]: null,
+            id: {
+              [Op.in]: workspaceIds,
             },
           });
         } else {
           conditions.push({
-            upgradedAt: null,
+            id: {
+              [Op.notIn]: workspaceIds,
+            },
           });
         }
       }
@@ -141,7 +150,6 @@ async function handler(
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,
           role: "admin",
-          upgradedAt: ws.upgradedAt?.getTime() || null,
         })),
       });
     default:
