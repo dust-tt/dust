@@ -5,6 +5,7 @@ import {
   GithubWhiteLogo,
   GoogleLogo,
   HuggingFaceLogo,
+  LightbulbIcon,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -15,6 +16,7 @@ import {
   PriceTable,
   RocketIcon,
   SlackLogo,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -183,7 +185,7 @@ export default function Home({
                     Amplify your team's potential
                   </span>{" "}
                   <br />
-                  with customizable and secure AI&nbsp;assistants
+                  with customizable and secure AI&nbsp;assistants.
                 </H1>
                 <H3 className="col-span-6 col-start-3">
                   AI is changing the way we work.
@@ -194,7 +196,7 @@ export default function Home({
                 <div className="flex w-full flex-col items-start">
                   <Button
                     variant="primary"
-                    size="md"
+                    size="lg"
                     label="Start with Dust now"
                     icon={RocketIcon}
                   />
@@ -320,7 +322,6 @@ export default function Home({
                 .
               </P>
             </div>
-            <div />
             <div className="test-right col-span-4 flex h-full flex-col justify-center gap-6">
               <ReactiveImg>
                 <img src="/static/landing/connect.png" />
@@ -379,8 +380,7 @@ export default function Home({
             </div>
             <div
               className={classNames(
-                defaultFlexClasses,
-                "col-span-3 col-start-3 justify-center gap-16"
+                "col-span-3 col-start-3 flex flex-col justify-center gap-10"
               )}
             >
               <P border="amber">
@@ -471,10 +471,10 @@ export default function Home({
           <Grid>
             <div className="col-span-8 col-start-3">
               <H2 color="text-amber-400">
-                Deal with Dust;
+                Deal with Dust!
                 <br />
                 <H2 color="text-amber-100" isSpan>
-                  Meet our pricing plans
+                  Meet our pricing plans.
                 </H2>
               </H2>
             </div>
@@ -508,7 +508,12 @@ export default function Home({
                   />
                   <PriceTable.Item label="No connections" variant="xmark" />
                   <PriceTable.ActionContainer>
-                    <Button variant="primary" size="md" label="Start testing" />
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      label="Start testing"
+                      icon={LightbulbIcon}
+                    />
                   </PriceTable.ActionContainer>
                 </PriceTable>
 
@@ -539,7 +544,12 @@ export default function Home({
                     variant="dash"
                   />
                   <PriceTable.ActionContainer>
-                    <Button variant="primary" size="md" label="Start now" />
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      label="Start now"
+                      icon={RocketIcon}
+                    />
                   </PriceTable.ActionContainer>
                 </PriceTable>
 
@@ -566,51 +576,49 @@ export default function Home({
                   <PriceTable.Item label="Advanced workspace role and permissions" />
                   <PriceTable.Item label="Dedicated account support" />
                   <PriceTable.ActionContainer>
-                    <Button variant="secondary" size="md" label="Contact us" />
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      label="Contact us"
+                      icon={SparklesIcon}
+                    />
                   </PriceTable.ActionContainer>
                 </PriceTable>
               </div>
             </div>
           </Grid>
-          <div className={defaultFlexClasses}>
-            <H2 color="text-red-400">
-              Our product{" "}
-              <H2 isSpan color="text-red-200">
-                constitution
-              </H2>
+          <Grid>
+            <H2 color="text-emerald-400 col-span-8 col-start-3">
+              Our product constitution
             </H2>
-            <div className="grid gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-              <div className={defaultFlexClasses}>
-                <H4>Augmenting humans, not&nbsp;replacing&nbsp;them</H4>
-                <P>
-                  We're optimistic about making work life better for smart
-                  people. We're building R2-D2, not Skynet.
-                </P>
-              </div>
-              <div className="flex flex-col gap-3">
-                <H4>Uncompromising on data security&nbsp;&&nbsp;privacy</H4>
-                <P>
-                  We aspire to define standards rather than simply abide by
-                  the&nbsp;existing ones.
-                </P>
-              </div>
-              <div className="flex flex-col gap-3">
-                <H4>Hard problems over&nbsp;hype</H4>
-                <P>
-                  There's more to do than wrapping GPT into a chat UI. We're in
-                  this to solve hard problems on user experience and product
-                  quality.
-                </P>
-              </div>
-              <div className="flex flex-col gap-3">
-                <H4>Building with an&nbsp;AI&nbsp;core</H4>
-                <P>
-                  We're building with large language models in mind from the
-                  ground up, rather than sprinkling them here and&nbsp;there.
-                </P>
-              </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-3 col-start-3"
+              )}
+            >
+              <H4>Augmenting humans, not&nbsp;replacing&nbsp;them</H4>
+              <P>
+                We're optimistic about making work life better for smart people.
+                We're building R2-D2, not Skynet.
+              </P>
             </div>
-          </div>
+            <div className={classNames(defaultFlexClasses, "col-span-3")}>
+              <H4>Hard problems over&nbsp;hype</H4>
+              <P>
+                There's more to do than wrapping GPT into a chat UI. We're in
+                this to solve hard problems on user experience and product
+                quality.
+              </P>
+            </div>
+            <div className={classNames(defaultFlexClasses, "col-span-3")}>
+              <H4>Building with an&nbsp;AI&nbsp;core</H4>
+              <P>
+                We're building with large language models in mind from the
+                ground up, rather than sprinkling them here and&nbsp;there.
+              </P>
+            </div>
+          </Grid>
         </div>
 
         <Footer />
