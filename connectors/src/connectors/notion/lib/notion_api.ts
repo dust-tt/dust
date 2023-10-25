@@ -729,7 +729,7 @@ function parsePropertyText(
         ? property.title.map((t) => t.plain_text).join(" ")
         : null;
     case "rich_text":
-      if (!property.rich_text.map) {
+      if (!Array.isArray(property.rich_text)) {
         logger.warn(
           {
             property,
