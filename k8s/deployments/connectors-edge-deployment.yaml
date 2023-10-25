@@ -36,7 +36,7 @@ spec:
             - name: NODE_OPTIONS
               value: "-r dd-trace/init --max-old-space-size=600"
 
-            - name: FRONT_API
+            - name: DUST_FRONT_API
               value: http://front-edge-service
 
             - name: DD_AGENT_HOST

@@ -18,7 +18,7 @@ type DataSourceType = {
   connectorProvider?: ConnectorProvider;
 };
 
-const { DUST_API = "https://dust.tt" } = process.env;
+const { DUST_FRONT_API } = process.env;
 
 type DustAPIErrorResponse = {
   type: string;
@@ -348,6 +348,9 @@ export class DustAPI {
    */
   constructor(credentials: DustAPICredentials) {
     this._credentials = credentials;
+    if (!DUST_FRONT_API) {
+      throw new Error("Missing DUST_FRONT_API env variable.");
+    }
   }
 
   workspaceId(): string {
@@ -362,7 +365,7 @@ export class DustAPI {
    */
   async getDataSources(workspaceId: string) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${workspaceId}/data_sources`,
+      `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources`,
       {
         method: "GET",
         headers: {
@@ -392,7 +395,7 @@ export class DustAPI {
     >
   > {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
       {
         method: "POST",
         headers: {
@@ -426,7 +429,7 @@ export class DustAPI {
     message: PostMessagesRequestBodySchema;
   }) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
         headers: {
@@ -460,7 +463,7 @@ export class DustAPI {
     };
 
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
         conversation.sId
       }/messages/${message.sId}/events`,
       {
@@ -559,7 +562,7 @@ export class DustAPI {
 
   async getConversation({ conversationId }: { conversationId: string }) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
         method: "GET",
         headers: {
@@ -579,7 +582,7 @@ export class DustAPI {
 
   async getAgentConfigurations() {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
       {
         method: "GET",
         headers: {
@@ -605,7 +608,7 @@ export class DustAPI {
     contentFragment: PostContentFragmentRequestBody;
   }) {
     const res = await fetch(
-      `${DUST_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
+      `${DUST_FRONT_API}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
       {
         method: "POST",
         headers: {
