@@ -16,8 +16,8 @@ export const Grid = ({
 const hClasses = {
   h1: "font-objektiv text-4xl font-bold tracking-tight md:text-6xl drop-shadow-lg",
   h2: "font-objektiv text-3xl font-bold tracking-tight md:text-5xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight md:text-2xl drop-shadow-md",
-  h4: "font-objektiv text-lg font-bold tracking-tight md:text-xl drop-shadow-md",
+  h3: "font-objektiv text-xl font-bold tracking-tight md:text-3xl drop-shadow-md",
+  h4: "font-objektiv text-lg font-bold tracking-tight md:text-2xl drop-shadow-md",
 };
 
 interface ContentProps {
