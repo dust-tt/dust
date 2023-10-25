@@ -144,11 +144,18 @@ function PermissionTreeChildren({
                   size="xs"
                   icon={BracesIcon}
                   onClick={() => {
-                    if (r.sourceUrl) {
-                      window.open(r.sourceUrl, "_blank");
+                    if (r.dustDocumentId) {
+                      window.open(
+                        `https://dust.tt/w/${owner.sId}/builder/data-sources/${
+                          dataSource.name
+                        }/upsert?documentId=${encodeURIComponent(
+                          r.dustDocumentId
+                        )}`,
+                        "_blank"
+                      );
                     }
                   }}
-                  className={classNames(r.sourceUrl ? "" : "hidden")}
+                  className={classNames(r.dustDocumentId ? "" : "hidden")}
                 />
               </div>
             }
