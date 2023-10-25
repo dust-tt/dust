@@ -45,6 +45,7 @@ export interface TreeItemProps {
   onChevronClick?: () => void;
   collapsed?: boolean;
   className?: string;
+  actions?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -57,6 +58,7 @@ Tree.Item = function ({
   onChevronClick,
   collapsed,
   children,
+  actions,
 }: TreeItemProps) {
   return (
     <>
@@ -77,17 +79,20 @@ Tree.Item = function ({
         {type === "leaf" && <div className="s-w-5"></div>}
         {checkbox && <Checkbox {...checkbox} />}
 
-        <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
-          <Icon
-            visual={visualTable[variant]}
-            size="sm"
-            className="s-text-element-700"
-          />
-          {label}
+        <div className="s-flex s-w-full s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
+          <div className="s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
+            <Icon
+              visual={visualTable[variant]}
+              size="sm"
+              className="s-flex-shrink-0 s-text-element-700"
+            />
+            <div className="s-truncate">{label}</div>
+            {actions && <div className="s-inline-block s-pl-5">{actions}</div>}
+          </div>
         </div>
       </div>
       {React.Children.count(children) > 0 && (
-        <div className="s-flex s-pl-5">{!collapsed && children}</div>
+        <div className="s-pl-5">{!collapsed && children}</div>
       )}
     </>
   );
