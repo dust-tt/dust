@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { planForWorkspace } from "@app/lib/auth";
+//import { planForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
 
 async function main() {
@@ -24,22 +24,22 @@ async function main() {
 
   for (let i = 0; i < chunks.length; i++) {
     console.log(`Processing chunk ${i}/${chunks.length}...`);
-    const chunk = chunks[i];
-    await Promise.all(
-      chunk.map((workspace: Workspace) => {
-        return addLargeModelTrue(workspace);
-      })
-    );
+    // const chunk = chunks[i];
+    // await Promise.all(
+    //   chunk.map((workspace: Workspace) => {
+    //     return addLargeModelTrue(workspace);
+    //   })
+    // );
   }
 }
 
-async function addLargeModelTrue(workspace: Workspace) {
-  const plan = planForWorkspace(workspace);
-  plan.limits.largeModels = true;
-  await workspace.update({
-    plan: JSON.stringify(plan),
-  });
-}
+// async function addLargeModelTrue(workspace: Workspace) {
+//   const plan = planForWorkspace(workspace);
+//   plan.limits.largeModels = true;
+//   await workspace.update({
+//     plan: JSON.stringify(plan),
+//   });
+// }
 
 main()
   .then(() => {

@@ -7,6 +7,19 @@ import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
 import { APIErrorWithStatusCode } from "@app/lib/error";
+import {
+  Key,
+  Membership,
+  Plan,
+  Subscription,
+  User,
+  Workspace,
+} from "@app/lib/models";
+import {
+  FREE_TEST_PLAN_DATA,
+  FREE_UPGRADED_PLAN_CODE,
+  PlanAttributes,
+} from "@app/lib/plans/free_plans";
 import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -14,7 +27,6 @@ import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
-import { Key, Membership, User, Workspace } from "./models";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -83,29 +95,25 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
+    let plan: PlanType | null = null;
 
     if (user && workspace) {
-      const membership = await Membership.findOne({
-        where: {
-          userId: user.id,
-          workspaceId: workspace.id,
-        },
-      });
-
-      if (membership) {
-        switch (membership.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = membership.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
+      [role, plan] = await Promise.all([
+        (async (): Promise<RoleType> => {
+          const membership = await Membership.findOne({
+            where: {
+              userId: user.id,
+              workspaceId: workspace.id,
+            },
+          });
+          return membership &&
+            ["admin", "builder", "user"].includes(membership.role)
+            ? (membership.role as RoleType)
+            : "none";
+        })(),
+        planForWorkspace(workspace),
+      ]);
     }
-
-    const plan = workspace ? planForWorkspace(workspace) : null;
 
     return new Authenticator(workspace, user, role, plan);
   }
@@ -145,7 +153,7 @@ export class Authenticator {
       })(),
     ]);
 
-    const plan = workspace ? planForWorkspace(workspace) : null;
+    const plan = workspace ? await planForWorkspace(workspace) : null;
 
     if (!user || !user.isDustSuperUser) {
       return new Authenticator(workspace, user, "none", plan);
@@ -193,7 +201,7 @@ export class Authenticator {
       }
     }
 
-    const plan = workspace ? planForWorkspace(workspace) : null;
+    const plan = workspace ? await planForWorkspace(workspace) : null;
 
     return {
       auth: new Authenticator(workspace, null, role, plan),
@@ -217,7 +225,7 @@ export class Authenticator {
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
-    const plan = workspace ? planForWorkspace(workspace) : null;
+    const plan = workspace ? await planForWorkspace(workspace) : null;
 
     return new Authenticator(workspace, null, "builder", plan);
   }
@@ -429,77 +437,90 @@ export async function getAPIKey(
   return new Ok(key);
 }
 
-const DEFAULT_DATASOURCES_COUNT_LIMIT = 1;
-const DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT = 32;
-const DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT = 1;
-
 /**
  * Construct the PlanType for the provided workspace.
  * @param w WorkspaceType the workspace to get the plan for
  * @returns PlanType
  */
-export function planForWorkspace(w: Workspace): PlanType {
-  const limits = {
-    dataSources: {
-      count: DEFAULT_DATASOURCES_COUNT_LIMIT,
-      documents: {
-        count: DEFAULT_DATASOURCES_DOCUMENTS_COUNT_LIMIT,
-        sizeMb: DEFAULT_DATASOURCES_DOCUMENTS_SIZE_MB_LIMIT,
+export async function planForWorkspace(
+  w: Workspace
+): Promise<Promise<PlanType>> {
+  const activeSubscription = await Subscription.findOne({
+    attributes: ["id", "startDate", "endDate"],
+    where: { workspaceId: w.id, status: "active" },
+    include: [
+      {
+        model: Plan,
+        as: "plan",
+        required: true,
+        attributes: [
+          "code",
+          "name",
+          "isSlackbotAllowed",
+          "maxMessages",
+          "isManagedSlackAllowed",
+          "isManagedNotionAllowed",
+          "isManagedGoogleDriveAllowed",
+          "isManagedGithubAllowed",
+          "maxNbStaticDataSources",
+          "maxNbStaticDocuments",
+          "maxSizeStaticDataSources",
+          "maxUsersInWorkspace",
+        ],
       },
-      managed: false,
-    },
-    largeModels: false,
-  };
+    ],
+  });
 
-  if (w.plan) {
-    let plan = {} as any;
-    try {
-      plan = JSON.parse(w.plan) as any;
-    } catch (e) {
-      logger.error({ planJSON: w.plan, error: e }, "Error parsing plan JSON");
-    }
+  // Default values when no subscription
+  let plan: PlanAttributes = FREE_TEST_PLAN_DATA;
+  let startDate = null;
+  let endDate = null;
 
-    if (plan.limits) {
-      if (plan.limits.largeModels) {
-        if (typeof plan.limits.largeModels === "boolean") {
-          limits.largeModels = plan.limits.largeModels;
-        }
-      }
-      if (plan.limits.dataSources) {
-        if (
-          plan.limits.dataSources.count &&
-          typeof plan.limits.dataSources.count === "number"
-        ) {
-          limits.dataSources.count = plan.limits.dataSources.count;
-        }
-        if (plan.limits.dataSources.documents) {
-          if (
-            plan.limits.dataSources.documents.count &&
-            typeof plan.limits.dataSources.documents.count === "number"
-          ) {
-            limits.dataSources.documents.count =
-              plan.limits.dataSources.documents.count;
-          }
-          if (
-            plan.limits.dataSources.documents.sizeMb &&
-            typeof plan.limits.dataSources.documents.sizeMb === "number"
-          ) {
-            limits.dataSources.documents.sizeMb =
-              plan.limits.dataSources.documents.sizeMb;
-          }
-        }
-        if (
-          plan.limits.dataSources.managed &&
-          typeof plan.limits.dataSources.managed === "boolean"
-        ) {
-          limits.dataSources.managed = plan.limits.dataSources.managed;
-        }
-      }
+  if (activeSubscription) {
+    startDate = activeSubscription.startDate;
+    endDate = activeSubscription.endDate;
+    if (activeSubscription.plan) {
+      plan = activeSubscription.plan;
+    } else {
+      logger.error(
+        {
+          workspaceId: w.id,
+          activeSubscription,
+        },
+        "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+      );
     }
   }
 
   return {
-    limits,
+    code: plan.code,
+    name: plan.name,
+    status: "active",
+    startDate: startDate?.getTime() || null,
+    endDate: endDate?.getTime() || null,
+    limits: {
+      assistant: {
+        isSlackBotAllowed: plan.isSlackbotAllowed,
+        maxMessages: plan.maxMessages,
+      },
+      connections: {
+        isSlackAllowed: plan.isManagedSlackAllowed,
+        isNotionAllowed: plan.isManagedNotionAllowed,
+        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+        isGithubAllowed: plan.isManagedGithubAllowed,
+      },
+      dataSources: {
+        count: plan.maxNbStaticDataSources,
+        documents: {
+          count: plan.maxNbStaticDocuments,
+          sizeMb: plan.maxSizeStaticDataSources,
+        },
+      },
+      users: {
+        maxUsers: plan.maxUsersInWorkspace,
+      },
+      largeModels: plan.code === FREE_UPGRADED_PLAN_CODE, // TODO: remove this, it is always true now (kept to limit the scope of the PR)
+    },
   };
 }
 

@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { upgradeWorkspace } from "@app/lib/api/workspace";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
+import { internalSubscribeWorkspaceToFreeUpgradedPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
@@ -68,7 +68,9 @@ async function handler(
         });
       }
 
-      await upgradeWorkspace(workspace.id);
+      await internalSubscribeWorkspaceToFreeUpgradedPlan({
+        workspaceId: workspace.sId,
+      });
 
       return res.status(200).json({
         workspace: {

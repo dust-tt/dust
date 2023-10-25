@@ -117,7 +117,7 @@ export class Subscription extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string; // unique
-  declare status: "active" | "ended" | "cancelled";
+  declare status: "active" | "ended";
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -152,7 +152,7 @@ Subscription.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["active", "ended", "cancelled"]],
+        isIn: [["active", "ended"]],
       },
     },
     startDate: {
@@ -167,7 +167,10 @@ Subscription.init(
   {
     modelName: "subscription",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["sId"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["workspaceId", "status"] },
+    ],
   }
 );
 // Define a hook to ensure there's only one active subscription for each workspace
