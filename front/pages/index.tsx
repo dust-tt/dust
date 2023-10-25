@@ -1,5 +1,6 @@
 import {
   AnthropicLogo,
+  Button,
   DriveLogo,
   GithubLogo,
   GoogleLogo,
@@ -328,21 +329,20 @@ export default function Home({
               )}
             >
               <P>
-                Team members can{" "}
-                <Strong>imagine and build new workflows</Strong>, package them
-                in an <Strong>easy to&nbsp;use / easy to&nbsp;share</Strong>{" "}
-                assistants.
+                Team members <Strong>imagine new workflows</Strong> and{" "}
+                <Strong>package them with assistants</Strong> that&nbsp;others
+                can and effortlessly&nbsp;use.
               </P>
               <Separator color="sky" />
               <P>
-                Spread good practices &&nbsp;encourage collaboration with
+                Spread good practices &&nbsp;encourage collaboration with{" "}
                 <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
                 <Strong>Slack&nbsp;integration</Strong>.
               </P>
               <Separator color="emerald" />
               <P>
-                Seamlessly manage workspace invitations with{" "}
-                <Strong>single sign-on</Strong>&nbsp;(SSO).
+                Manage workspace invitations seamlessly&nbsp;with{" "}
+                <Strong>single sign&nbsp;on</Strong>&nbsp;(SSO).
               </P>
               <Separator color="amber" />
             </div>
@@ -390,11 +390,15 @@ export default function Home({
                 </H2>
               </H2>
               <P>
-                Built for <Strong>developers</Strong> and{" "}
-                <Strong>tinkerers</Strong> with powerful{" "}
-                <Strong>actions and application orchestration</Strong> to fit
-                your exact needs. Build <Strong>custom actions</Strong>, connect
-                them with 3rd party APIs, chain them with assistants.
+                Provide{" "}
+                <Strong>developers and tinkerers with a&nbsp;framework</Strong>{" "}
+                to&nbsp;build custom actions and&nbsp;application orchestration
+                to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
+              </P>
+              <P>
+                Support <Strong>custom plugins</Strong> for assistants to
+                interact with your{" "}
+                <Strong>own databases on advanced use cases</Strong>.
               </P>
             </div>
             <div
@@ -422,77 +426,77 @@ export default function Home({
                 <PriceTable
                   title="Free"
                   price="$0"
-                  priceLabel="/ month"
+                  priceLabel=""
                   color="emerald"
                 >
                   <PriceTable.Item label="One user" variant="dash" />
                   <PriceTable.Item label="One workspace" variant="dash" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="100 messages" variant="xmark" />
+                  <PriceTable.Item
+                    label="100 messages with Assistants"
+                    variant="dash"
+                  />
                   <PriceTable.Item
                     label="50 documents as data sources"
                     variant="dash"
                   />
-                  <PriceTable.Item
-                    label="No connections
-(GitHub, Google Drive, Notion, Slack)"
-                    variant="xmark"
-                  />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Dust Developer Platform" />
+                  <PriceTable.Item label="No connections" variant="xmark" />
+                  <PriceTable.ActionContainer>
+                    <Button variant="primary" label="Start testing" />
+                  </PriceTable.ActionContainer>
                 </PriceTable>
+
                 <PriceTable
                   title="Pro"
                   price="$29"
                   color="sky"
                   priceLabel="/ month / seat"
                 >
-                  <PriceTable.Item label="Up to 500 users" />
+                  <PriceTable.Item label="From 1 user" />
                   <PriceTable.Item label="One workspace" variant="dash" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Unlimited data sources (fair use)" />
+                  <PriceTable.Item label="Up to 1Go/user of data sources" />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Dust Developer Platform" />
-
                   <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
+                  <PriceTable.Item label="Dust Slackbot" />
+                  <PriceTable.Item label="Assistants can execute actions" />
                   <PriceTable.Item
                     label="Workspace role and permissions"
                     variant="dash"
                   />
-                  <PriceTable.Item label="Centralize billing" variant="dash" />
-
-                  <PriceTable.Item label="Assistants available via Slackbot" />
-                  <PriceTable.Item label="Assistants can execute Dust Apps" />
+                  <PriceTable.ActionContainer>
+                    <Button variant="primary" label="Start now" />
+                  </PriceTable.ActionContainer>
                 </PriceTable>
+
                 <PriceTable title="Enterprise" price="Custom">
                   <PriceTable.Item label="From 100 users" />
-                  <PriceTable.Item label="Multiple workspaces" variant="dash" />
+                  <PriceTable.Item label="Multiple workspaces" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Unlimited data sources (fair use)" />
+                  <PriceTable.Item label="Unlimited data sources" />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="State of the art LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Dust Developer Platform" />
-
-                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
+                  <PriceTable.Item label="Single Sign-on" />
+                  <PriceTable.Item label="Dust Slackbot" />
+                  <PriceTable.Item label="Assistants can execute actions" />
                   <PriceTable.Item label="Advanced workspace role and permissions" />
-                  <PriceTable.Item label="Centralize billing" />
-
-                  <PriceTable.Item label="Assistants available via Slackbot" />
-                  <PriceTable.Item label="Assistants can execute Dust Apps" />
-                  <PriceTable.Item label="Assistant design and evaluation" />
                   <PriceTable.Item label="Dedicated account support" />
+                  <PriceTable.ActionContainer>
+                    <Button variant="secondary" label="Contact us" />
+                  </PriceTable.ActionContainer>
                 </PriceTable>
               </PriceTable.Container>
             </div>
