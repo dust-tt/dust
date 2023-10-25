@@ -77,17 +77,21 @@ Tree.Item = function ({
         {type === "leaf" && <div className="s-w-5"></div>}
         {checkbox && <Checkbox {...checkbox} />}
 
-        <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
-          <Icon
-            visual={visualTable[variant]}
-            size="sm"
-            className="s-text-element-700"
-          />
-          {label}
+        <div className="s-flex s-w-full s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
+          <div className="s-flex s-w-full s-items-center s-gap-1">
+            <Icon
+              visual={visualTable[variant]}
+              size="sm"
+              className="s-flex-shrink-0 s-text-element-700"
+            />
+            <div className="s-line-clamp-1 s-inline-block s-truncate">
+              {label}
+            </div>
+          </div>
         </div>
       </div>
       {React.Children.count(children) > 0 && (
-        <div className="s-flex s-pl-5">{!collapsed && children}</div>
+        <div className="s-pl-5">{!collapsed && children}</div>
       )}
     </>
   );

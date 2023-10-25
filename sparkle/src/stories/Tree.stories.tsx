@@ -1,5 +1,6 @@
 import type { Meta } from "@storybook/react";
-import React from "react";
+import React, { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 import { Tree } from "../index_with_tw_base";
 
@@ -187,6 +188,42 @@ export const TreeExample = () => {
             />
           </Tree>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const TreeItem = ({ label }: { label: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const n = Math.floor(Math.random() * 8) + 3;
+  return (
+    <Tree.Item
+      label={label}
+      variant="folder"
+      collapsed={!isOpen}
+      onChevronClick={() => setIsOpen(!isOpen)}
+    >
+      {isOpen && <Tree>{createTreeItems(n)}</Tree>}
+    </Tree.Item>
+  );
+};
+
+const createTreeItems = (n = 5) => {
+  const items = [];
+  for (let i = 1; i <= n; i++) {
+    const label = `${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}`;
+    items.push(<TreeItem key={label} label={label} />);
+  }
+
+  return <Tree>{items}</Tree>;
+};
+
+export const DeeplyNestedTree = () => {
+  return (
+    <div className="s-mx-auto s-max-w-2xl s-gap-3">
+      <div className="s-text-xl">Huge</div>
+      <div>
+        <Tree>{createTreeItems(20)}</Tree>
       </div>
     </div>
   );
