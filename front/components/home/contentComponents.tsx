@@ -20,11 +20,6 @@ const hClasses = {
   h4: "font-objektiv text-lg font-bold tracking-tight md:text-xl drop-shadow-md",
 };
 
-const pClasses = {
-  normal: "font-regular text-sm text-slate-400 md:text-lg drop-shadow",
-  big: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
-};
-
 interface ContentProps {
   children: ReactNode;
   className?: string;
@@ -66,6 +61,11 @@ const borderColorTable = {
   sky: "border-sky-400",
   emerald: "border-emerald-400",
   red: "border-red-400",
+};
+
+const pClasses = {
+  normal: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
+  big: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
 };
 
 export const P = ({
@@ -180,19 +180,3 @@ export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
     </ReactiveImg>
   );
 };
-
-interface SeparatorProps {
-  color?: "red" | "amber" | "emerald" | "sky" | "pink";
-}
-
-const colorTable = {
-  red: "bg-red-400",
-  pink: "bg-pink-300",
-  amber: "bg-amber-400",
-  sky: "bg-sky-400",
-  emerald: "bg-emerald-400",
-};
-
-export const Separator = ({ color = "emerald" }: SeparatorProps) => (
-  <div className={classNames("h-1 w-3", colorTable[color])} />
-);

@@ -24,14 +24,6 @@ const colorTable = {
   emerald: "s-bg-emerald-400 dark:s-bg-emerald-500",
 };
 
-const bigColorTable = {
-  pink: "s-bg-pink-400/60 dark:s-bg-pink-400/80 s-backdrop-blur-md",
-  amber: "s-bg-amber-400/60 dark:s-bg-amber-400/80 s-backdrop-blur-md",
-  sky: "s-bg-sky-400/60 dark:s-bg-sky-400/80 s-backdrop-blur-md",
-  blue: "s-bg-blue-400/60 dark:s-bg-blue-400/80 s-backdrop-blur-md",
-  emerald: "s-bg-emerald-400/60 dark:s-bg-emerald-400/80 s-backdrop-blur-md",
-};
-
 const textColorTable = {
   pink: "s-text-pink-900 dark:s-text-pink-950",
   amber: "s-text-amber-900 dark:s-text-amber-950",
@@ -83,6 +75,7 @@ export function PriceTable({
           ? "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100"
           : "",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         "s-flex s-cursor-default s-flex-col s-rounded-xl s-p-1 s-shadow-xl",
         "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100",
@@ -91,6 +84,9 @@ export function PriceTable({
 =======
         size === "xs" ? colorTable[color] : bigColorTable[color],
 >>>>>>> 8fa7eac1 (New alpha Sparkle)
+=======
+        colorTable[color],
+>>>>>>> 6793f0f1 (New alpha Sparkle)
         className
       )}
     >
