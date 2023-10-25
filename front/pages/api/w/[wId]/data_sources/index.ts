@@ -32,7 +32,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -90,8 +91,8 @@ async function handler(
 
       // Enforce plan limits: DataSources count.
       if (
-        owner.plan.limits.dataSources.count != -1 &&
-        dataSources.length >= owner.plan.limits.dataSources.count
+        plan.limits.dataSources.count != -1 &&
+        dataSources.length >= plan.limits.dataSources.count
       ) {
         return apiError(req, res, {
           status_code: 401,

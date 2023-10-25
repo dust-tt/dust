@@ -49,6 +49,10 @@ export async function getAgentConfiguration(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
 
   if (isGlobalAgentId(agentId)) {
     return await getGlobalAgent(auth, agentId);
@@ -187,10 +191,7 @@ export async function getAgentConfiguration(
     };
 
     // Enforce plan limits: check if large models are allowed and act accordingly
-    if (
-      !owner.plan.limits.largeModels &&
-      getSupportedModelConfig(model).largeModel
-    ) {
+    if (!plan.limits.largeModels && getSupportedModelConfig(model).largeModel) {
       return null;
     }
   }
@@ -396,14 +397,15 @@ export async function createAgentGenerationConfiguration(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
 
   if (temperature < 0) {
     throw new Error("Temperature must be positive.");
   }
-  if (
-    getSupportedModelConfig(model).largeModel &&
-    !owner.plan.limits.largeModels
-  ) {
+  if (getSupportedModelConfig(model).largeModel && !plan.limits.largeModels) {
     throw new Error("You need to upgrade your plan to use large models.");
   }
 

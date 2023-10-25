@@ -1,11 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { FindOptions, Op, WhereOptions } from "sequelize";
 
-import {
-  getSession,
-  getUserFromSession,
-  planForWorkspace,
-} from "@app/lib/auth";
+import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -102,13 +98,13 @@ async function handler(
       if (upgraded !== undefined) {
         if (upgraded) {
           conditions.push({
-            plan: {
+            upgradedAt: {
               [Op.not]: null,
             },
           });
         } else {
           conditions.push({
-            plan: null,
+            upgradedAt: null,
           });
         }
       }
@@ -144,7 +140,6 @@ async function handler(
           sId: ws.sId,
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,
-          plan: planForWorkspace(ws),
           role: "admin",
           upgradedAt: ws.upgradedAt?.getTime() || null,
         })),

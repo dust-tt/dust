@@ -12,11 +12,12 @@ import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   workspace: WorkspaceType;
+  plan: PlanType;
   dataSources: DataSourceType[];
   slackbotEnabled?: boolean;
   documentCounts: Record<string, number>;
@@ -50,8 +51,9 @@ export const getServerSideProps: GetServerSideProps<{
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const workspace = auth.workspace();
+  const plan = auth.plan();
 
-  if (!workspace) {
+  if (!workspace || !plan) {
     return {
       notFound: true,
     };
@@ -128,6 +130,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       workspace,
+      plan,
       dataSources,
       slackbotEnabled,
       documentCounts: docCountByDsName,
@@ -138,6 +141,7 @@ export const getServerSideProps: GetServerSideProps<{
 
 const WorkspacePage = ({
   workspace,
+  plan,
   dataSources,
   slackbotEnabled,
   documentCounts,
@@ -279,7 +283,7 @@ const WorkspacePage = ({
                 This workspace is not upgraded.
               </p>
             )}
-            <JsonViewer value={workspace.plan} rootName={false} />
+            <JsonViewer value={plan} rootName={false} />
             <div>
               <div className="mt-4 flex-row">
                 <Button

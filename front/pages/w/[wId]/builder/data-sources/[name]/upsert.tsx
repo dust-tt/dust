@@ -22,13 +22,14 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { UserType, WorkspaceType } from "@app/types/user";
+import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
   loadDocumentId: string | null;
@@ -42,7 +43,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     return {
       notFound: true,
     };
@@ -62,6 +64,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       readOnly,
       dataSource,
       loadDocumentId: (context.query.documentId || null) as string | null,
@@ -73,6 +76,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourceUpsert({
   user,
   owner,
+  plan,
   readOnly,
   dataSource,
   loadDocumentId,
@@ -121,7 +125,7 @@ export default function DataSourceUpsert({
   const alertDataSourcesLimit = () => {
     window.alert(
       "DataSource document upload size is limited to " +
-        `${owner.plan.limits.dataSources.documents.sizeMb}MB (of raw text)` +
+        `${plan.limits.dataSources.documents.sizeMb}MB (of raw text)` +
         ". Contact team@dust.tt if you want to increase this limit."
     );
   };
@@ -132,8 +136,8 @@ export default function DataSourceUpsert({
 
     // Enforce plan limits: DataSource documents size.
     if (
-      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      plan.limits.dataSources.documents.sizeMb != -1 &&
+      text.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
     ) {
       alertDataSourcesLimit();
       return;
@@ -157,8 +161,8 @@ export default function DataSourceUpsert({
 
     // Enforce plan limits: DataSource documents size.
     if (
-      owner.plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * owner.plan.limits.dataSources.documents.sizeMb
+      plan.limits.dataSources.documents.sizeMb != -1 &&
+      text.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
     ) {
       alertDataSourcesLimit();
       return;

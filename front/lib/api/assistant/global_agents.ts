@@ -79,7 +79,11 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = owner.plan.limits.largeModels
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+  const model = plan.limits.largeModels
     ? {
         providerId: GPT_4_32K_MODEL_CONFIG.providerId,
         modelId: GPT_4_32K_MODEL_CONFIG.modelId,
@@ -538,6 +542,10 @@ export async function getGlobalAgent(
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
 
   const settings = await GlobalAgentSettings.findOne({
     where: { workspaceId: owner.id, agentId: sId },
@@ -584,7 +592,7 @@ export async function getGlobalAgent(
 
   // Enforce plan limits: check if large models are allowed and act accordingly
   if (
-    !owner.plan.limits.largeModels &&
+    !plan.limits.largeModels &&
     agentConfiguration.generation &&
     getSupportedModelConfig(agentConfiguration.generation?.model).largeModel
   ) {

@@ -31,7 +31,7 @@ async function main() {
 }
 
 async function markWorkspaceAsUpgraded(workspace: Workspace) {
-  if (!workspace.upgradedAt && workspace.plan) {
+  if (!workspace.upgradedAt) {
     const updatedAt = workspace.updatedAt;
     await workspace.update({
       upgradedAt: updatedAt,
