@@ -252,6 +252,8 @@ const WorkspacePage = ({
     (ds) => !!ds.connectorProvider
   );
 
+  const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
+
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
@@ -271,18 +273,6 @@ const WorkspacePage = ({
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
-            {workspace.upgradedAt ? (
-              <p className="mb-4 text-green-600">
-                This workspace was fully upgraded
-                {workspace.upgradedAt &&
-                  ` on ${new Date(workspace.upgradedAt).toLocaleDateString()}`}
-                .
-              </p>
-            ) : (
-              <p className="mb-4 text-green-600">
-                This workspace is not upgraded.
-              </p>
-            )}
             <JsonViewer value={plan} rootName={false} />
             <div>
               <div className="mt-4 flex-row">
@@ -291,7 +281,8 @@ const WorkspacePage = ({
                   variant="secondaryWarning"
                   onClick={onDowngrade}
                   disabled={
-                    !workspace.upgradedAt || workspaceHasManagedDataSources
+                    plan.code === FREE_TEST_PLAN_CODE ||
+                    workspaceHasManagedDataSources
                   }
                 />
 
@@ -299,17 +290,18 @@ const WorkspacePage = ({
                   label="Upgrade"
                   variant="secondary"
                   onClick={onUpgrade}
-                  disabled={!!workspace.upgradedAt}
+                  disabled={plan.code !== FREE_TEST_PLAN_CODE}
                 />
               </div>
             </div>
-            {workspace.upgradedAt && workspaceHasManagedDataSources && (
-              <span className="mx-2 w-1/3">
-                <p className="text-warning mb-4 text-sm ">
-                  Delete managed data sources before downgrading.
-                </p>
-              </span>
-            )}
+            {plan.code !== FREE_TEST_PLAN_CODE &&
+              workspaceHasManagedDataSources && (
+                <span className="mx-2 w-1/3">
+                  <p className="text-warning mb-4 text-sm ">
+                    Delete managed data sources before downgrading.
+                  </p>
+                </span>
+              )}
           </div>
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
