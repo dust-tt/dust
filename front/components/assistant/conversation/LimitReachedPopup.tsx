@@ -18,11 +18,11 @@ export function LimitReachedPopup({
       className="fixed bottom-16 right-16 z-30 flex w-64 flex-col gap-3 rounded-lg border border-amber-100 bg-amber-50 p-4 shadow-lg"
     >
       <div>
-        <Chip color="red">Test plan</Chip>
+        <Chip color="red">Free plan</Chip>
       </div>
       <div className="text-sm font-normal text-element-900">
-        Looks like you've used up all your messages for this week. Take a peek
-        at our plans:
+        Looks like you've used up all your messages. Contact us to know more
+        about our paid plans.
       </div>
       <div className="self-center">
         <Button

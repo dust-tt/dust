@@ -31,7 +31,6 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
-import { FREE_PLAN_MESSAGE_LIMIT } from "@app/lib/models/plan";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -50,7 +49,7 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
+import { PlanType, WorkspaceType } from "@app/types/user";
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
@@ -673,8 +672,9 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
   const owner = auth.workspace();
+  const plan = auth.plan();
 
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner || owner.id !== conversation.owner.id || !plan) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -686,13 +686,14 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  if (await messagesLimitReached(owner)) {
+  const isAboveMessageLimit = await isMessagesLimitReached({ owner, plan });
+  if (isAboveMessageLimit) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
         code: "test_plan_message_limit_reached",
-        message: "The test plan message limit has been reached.",
+        message: "The free plan message limit has been reached.",
       },
     };
     return;
@@ -1669,9 +1670,14 @@ async function* streamRunAgentEvents(
   }
 }
 
-async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
-  const planIsTest = false; // TODO replace with real plan check
-  if (!planIsTest) {
+async function isMessagesLimitReached({
+  owner,
+  plan,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+}): Promise<boolean> {
+  if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
   /** Counting on workspace because user can be null */
@@ -1697,5 +1703,5 @@ async function messagesLimitReached(owner: WorkspaceType): Promise<boolean> {
       workspaceId: owner.id,
     },
   });
-  return count >= FREE_PLAN_MESSAGE_LIMIT;
+  return count >= plan.limits.assistant.maxMessages;
 }
