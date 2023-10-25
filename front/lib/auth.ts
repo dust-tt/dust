@@ -445,10 +445,7 @@ export async function getAPIKey(
 export async function planForWorkspace(
   w: Workspace
 ): Promise<Promise<PlanType>> {
-  let activeSubscription: Subscription | null = null;
-  const today = new Date();
-
-  activeSubscription = await Subscription.findOne({
+  const activeSubscription = await Subscription.findOne({
     attributes: ["id", "startDate", "endDate"],
     where: { workspaceId: w.id, status: "active" },
     include: [
@@ -476,7 +473,7 @@ export async function planForWorkspace(
 
   // Default values when no subscription
   let plan: PlanAttributes = FREE_TEST_PLAN_DATA;
-  let startDate = today;
+  let startDate = null;
   let endDate = null;
 
   if (activeSubscription) {
