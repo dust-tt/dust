@@ -4,7 +4,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { runAction } from "@app/lib/actions/server";
+import { runActionStreamed } from "@app/lib/actions/server";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
@@ -564,11 +564,16 @@ export async function generateConversationTitle(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
 
-  const res = await runAction(auth, "assistant-v2-title-generator", config, [
-    {
-      conversation: modelConversationRes.value.modelConversation,
-    },
-  ]);
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-title-generator",
+    config,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+      },
+    ]
+  );
 
   if (res.isErr()) {
     return new Err(
@@ -576,19 +581,32 @@ export async function generateConversationTitle(
     );
   }
 
-  const run = res.value;
+  const { eventStream } = res.value;
 
   let title: string | null = null;
-  for (const t of run.traces) {
-    if (t[1][0][0].error) {
+
+  for await (const event of eventStream) {
+    if (event.type === "error") {
       return new Err(
-        new Error(`Error generating conversation title: ${t[1][0][0].error}`)
+        new Error(
+          `Error generating conversation title: ${event.content.message}`
+        )
       );
     }
-    if (t[0][1] === "OUTPUT") {
-      const v = t[1][0][0].value as any;
-      if (v.conversation_title) {
-        title = v.conversation_title;
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return new Err(
+          new Error(`Error generating conversation title: ${e.error}`)
+        );
+      }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        const v = e.value as any;
+        if (v.conversation_title) {
+          title = v.conversation_title;
+        }
       }
     }
   }
