@@ -86,18 +86,11 @@ export default function EditDustAssistant({
   }
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
-    if (agent.status === "disabled_free_workspace") {
-      sendNotification({
-        title: "Dust Assistant",
-        description: `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`,
-        type: "error",
-      });
-      return;
-    }
     if (agent.status === "disabled_missing_datasource") {
       sendNotification({
         title: "Dust Assistant",
-        description: `@${agent.name} is not available because you have not configured any data sources.`,
+        description:
+          "The Dust assistant requres at least one data source to be enabled.",
         type: "error",
       });
       return;
@@ -182,7 +175,7 @@ export default function EditDustAssistant({
             <>
               <SectionHeader
                 title="Availability"
-                description="The Dust assistant requires data sources or connections to operate."
+                description="The Dust assistant requres at least one data source to be enabled."
               />
 
               <ContextItem
@@ -213,7 +206,7 @@ export default function EditDustAssistant({
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
               <SectionHeader
-                title="Data Sources"
+                title="Data Sources and Connections"
                 description="Configure which connections and data sources will be searched by the Dust assistant."
               />
               <>
