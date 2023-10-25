@@ -629,6 +629,7 @@ async function getConversationRankVersionLock(
   conversation: ConversationType,
   t: Transaction
 ) {
+  const now = new Date();
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = crypto
     .createHash("md5")
@@ -639,6 +640,16 @@ async function getConversationRankVersionLock(
     transaction: t,
     replacements: { key: lockKey },
   });
+
+  logger.info(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      duration: new Date().getTime() - now.getTime(),
+      lockKey,
+    },
+    "[ASSISTANT_TRACE] Advisory lock acquired"
+  );
 }
 
 // Event sent when the user message is created.
