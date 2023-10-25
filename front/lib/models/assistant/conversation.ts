@@ -493,6 +493,7 @@ Conversation.hasMany(Message, {
   onDelete: "CASCADE",
 });
 Message.belongsTo(Conversation, {
+  as: "conversation",
   foreignKey: { name: "conversationId", allowNull: false },
 });
 

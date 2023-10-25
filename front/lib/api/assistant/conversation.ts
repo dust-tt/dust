@@ -1680,28 +1680,16 @@ async function isMessagesLimitReached({
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
-  /** Counting on workspace because user can be null */
-  const count = await Conversation.count({
+  const count = await Message.count({
     include: [
       {
-        model: Message,
+        model: Conversation,
+        as: "conversation",
         required: true,
-        as: "messages",
-        include: [
-          {
-            model: AgentMessage,
-            as: "agentMessage",
-            required: true,
-            where: {
-              status: "succeeded",
-            },
-          },
-        ],
+        where: { workspaceId: owner.id },
       },
     ],
-    where: {
-      workspaceId: owner.id,
-    },
+    where: { agentMessageId: { [Op.ne]: null } },
   });
   return count >= plan.limits.assistant.maxMessages;
 }
