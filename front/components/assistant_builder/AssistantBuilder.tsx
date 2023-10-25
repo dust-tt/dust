@@ -14,7 +14,6 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
