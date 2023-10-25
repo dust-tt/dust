@@ -55,7 +55,8 @@ export async function generateActionInputs(
   // We inject the prompt of the model so that its input generation behavior can be modified by its
   // instructions. It also injects context about the local time. If there is no generation phase we
   // default to a generic prompt.
-  const prompt = constructPrompt(
+  const prompt = await constructPrompt(
+    auth,
     userMessage,
     configuration,
     "You are a conversational assistant with access to function calling."

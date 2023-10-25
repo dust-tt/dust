@@ -35,6 +35,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
+import { getAgentConfigurations } from "./configuration";
 const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
@@ -249,7 +250,8 @@ export type GenerationCancelEvent = {
 // - Meta data about the agent and current time.
 // - Insructions from the agent configuration (in case of generation)
 // - Meta data about the retrieval action (in case of retrieval)
-export function constructPrompt(
+export async function constructPrompt(
+  auth: Authenticator,
   userMessage: UserMessageType,
   configuration: AgentConfigurationType,
   fallbackPrompt?: string
@@ -267,6 +269,27 @@ export function constructPrompt(
 
   if (isRetrievalConfiguration(configuration.action)) {
     meta += "\n" + retrievalMetaPrompt();
+  }
+
+  meta.replaceAll(
+    "{USER_FULL_NAME}",
+    userMessage.context.fullName || "Unknown user"
+  );
+
+  // if meta includes the string "{ASSISTANTS_LIST}"
+  if (meta.includes("{ASSISTANTS_LIST}")) {
+    const agents = await getAgentConfigurations(auth);
+    meta.replaceAll(
+      "{ASSISTANTS_LIST}",
+      agents
+        .map((agent) => {
+          let agentDescription = "";
+          agentDescription += `@${agent.name}: `;
+          agentDescription += `${agent.description}`;
+          return agentDescription;
+        })
+        .join("\n")
+    );
   }
 
   return meta;
@@ -321,7 +344,7 @@ export async function* runGeneration(
     );
   }
 
-  const prompt = constructPrompt(userMessage, configuration);
+  const prompt = await constructPrompt(auth, userMessage, configuration);
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
