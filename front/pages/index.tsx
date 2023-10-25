@@ -2,7 +2,7 @@ import {
   AnthropicLogo,
   Button,
   DriveLogo,
-  GithubLogo,
+  GithubWhiteLogo,
   GoogleLogo,
   HuggingFaceLogo,
   Logo,
@@ -34,7 +34,6 @@ import {
   P,
   ReactiveIcon,
   ReactiveImg,
-  Separator,
   Strong,
 } from "@app/components/home/contentComponents";
 
@@ -160,7 +159,7 @@ export default function Home({
       {/* Particle system */}
       <div
         className={classNames(
-          "fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[3000ms]",
+          "fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]",
           hasScrolled ? "opacity-30" : "opacity-100"
         )}
       >
@@ -210,21 +209,21 @@ export default function Home({
                 "col-span-4 col-start-3 gap-8"
               )}
             >
-              <P variant="big" border="sky">
+              <P border="sky">
                 Deploy <Strong>the best Large Language Models</Strong> to{" "}
                 <Strong>all&nbsp;your&nbsp;company</Strong>, today.
               </P>
-              <P variant="big" border="amber">
+              <P border="amber">
                 Connect Dust to <Strong>your team’s data</Strong> and{" "}
                 <Strong>break down knowledge silos</Strong> with context aware
                 assistants.
               </P>
-              <P variant="big" border="red">
+              <P border="red">
                 Empower your teams with{" "}
                 <Strong>assistants tailored to&nbsp;their needs</Strong> on
                 concrete use&nbsp;cases.
               </P>
-              <P variant="big" border="emerald">
+              <P border="emerald">
                 <Strong>Control granularly data access</Strong> with a{" "}
                 <Strong>safe and privacy-obsessed</Strong> application.
               </P>
@@ -260,18 +259,16 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <div className="test-right col-span-4 col-start-3 flex h-full flex-col justify-center gap-6">
-              <div>
-                <ReactiveImg>
-                  <img src="/static/landing/connect.png" />
-                </ReactiveImg>
-              </div>
-            </div>
-            <div className={classNames(defaultFlexClasses, "col-span-5 gap-8")}>
-              <P variant="big" border="pink">
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-5 col-start-3 gap-8"
+              )}
+            >
+              <P border="pink">
                 <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
-                customizable to&nbsp;your exact needs and will evolve as
-                those&nbsp;needs evolve.
+                customizable to&nbsp;your&nbsp;exact needs and will&nbsp;evolve
+                as those&nbsp;needs&nbsp;evolve.
               </P>
               <div className="flex flex-wrap gap-4 pl-6">
                 <ReactiveIcon colorHEX="#A26BF7">
@@ -290,10 +287,10 @@ export default function Home({
                   <MicrosoftLogo />
                 </ReactiveIcon>
               </div>
-              <P variant="big" border="emerald">
+              <P border="emerald">
                 Proprietary and&nbsp;open-source models suited
                 to&nbsp;your&nbsp;needs:{" "}
-                <Strong>OpenAI, Anthropic, Mistral…</Strong>
+                <Strong>OpenAI,&nbsp;Anthropic,&nbsp;Mistral…</Strong>
               </P>
               <div className="flex flex-wrap gap-4 pl-6">
                 <ReactiveIcon colorHEX="#1E3A8A">
@@ -306,7 +303,7 @@ export default function Home({
                   <NotionLogo />
                 </ReactiveIcon>
                 <ReactiveIcon colorHEX="#1E3A8A">
-                  <GithubLogo />
+                  <GithubWhiteLogo />
                 </ReactiveIcon>
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <SlackLogo />
@@ -315,13 +312,19 @@ export default function Home({
                   <MoreIcon className="text-slate-50" />
                 </ReactiveIcon>
               </div>
-              <P variant="big" border="sky">
+              <P border="sky">
                 Your own knowledge base continuously in&nbsp;sync:{" "}
                 <Strong>
-                  Notion, Slack, GitHub, Google Drive, and&nbsp;more
+                  Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
                 </Strong>
                 .
               </P>
+            </div>
+            <div />
+            <div className="test-right col-span-4 flex h-full flex-col justify-center gap-6">
+              <ReactiveImg>
+                <img src="/static/landing/connect.png" />
+              </ReactiveImg>
             </div>
           </Grid>
           <Grid>
@@ -332,73 +335,79 @@ export default function Home({
                 "col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
-              <H2 color="text-amber-500">
+              <H2 color="text-amber-400">
                 Bring your&nbsp;team
                 <br />
-                <H2 isSpan color="text-amber-200">
+                <H2 isSpan color="text-amber-100">
                   up&nbsp;to&nbsp;speed.
                 </H2>
               </H2>
               <P variant="big">
-                Embracing AI is a&nbsp;paradigm shift for&nbsp;your
-                team’s&nbsp;workflows.
-                <br />
+                Embracing AI is a&nbsp;
+                <Strong>
+                  paradigm shift for&nbsp;your team’s&nbsp;workflows
+                </Strong>
+                .
+              </P>
+              <P variant="big">
                 Dust empowers{" "}
                 <Strong>your most creative and driven team members</Strong>{" "}
-                to&nbsp;<Strong>develop and&nbsp;share</Strong> their practices
-                throughout your&nbsp;company.
+                to&nbsp;<Strong>develop and&nbsp;share</Strong>{" "}
+                their&nbsp;practices throughout your&nbsp;company.
               </P>
             </div>
           </Grid>
           <Grid>
-            <div className="col-span-5">
+            <div className="col-span-6 col-start-2">
               <ReactiveImg>
                 <img src="/static/landing/builder.png" />
               </ReactiveImg>
             </div>
             <div
+              className={classNames(defaultFlexClasses, "col-span-4 gap-16")}
+            >
+              <P border="sky">
+                Team members <Strong>imagine new workflows</Strong> and&nbsp;
+                <Strong>package them with assistants</Strong> that&nbsp;others
+                can&nbsp;effortlessly&nbsp;use.
+              </P>
+              <div className="w-[75%] pl-4">
+                <ReactiveImg>
+                  <img src="/static/landing/assistants.png" />
+                </ReactiveImg>
+              </div>
+            </div>
+            <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-3 justify-center gap-8"
+                "col-span-3 col-start-3 justify-center gap-16"
               )}
             >
-              <P>
-                Team members <Strong>imagine new workflows</Strong> and{" "}
-                <Strong>package them with assistants</Strong> that&nbsp;others
-                can and effortlessly&nbsp;use.
-              </P>
-              <Separator color="sky" />
-              <P>
+              <P border="amber">
                 Spread good practices &&nbsp;encourage collaboration with{" "}
+                <Strong>conversation sharing</Strong>,{" "}
                 <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
                 <Strong>Slack&nbsp;integration</Strong>.
               </P>
-              <Separator color="emerald" />
-              <P>
+              <P border="pink">
                 Manage workspace invitations seamlessly&nbsp;with{" "}
-                <Strong>single sign&nbsp;on</Strong>&nbsp;(SSO).
+                <Strong>single sign&#8209;on</Strong>&nbsp;(SSO).
               </P>
-              <Separator color="amber" />
             </div>
-            <div className="col-span-3">
+            <div className="col-span-6">
               <ReactiveImg>
-                <img src="/static/landing/assistants.png" />
+                <div className="rounded-xl">
+                  <img src="/static/landing/slack.png" />
+                </div>
               </ReactiveImg>
             </div>
           </Grid>
-          <div className="w-[700px]">
-            <ReactiveImg>
-              <div className="rounded-xl">
-                <img src="/static/landing/slack.png" />
-              </div>
-            </ReactiveImg>
-          </div>
           <Grid>
             <div
               ref={scrollRef3}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-4 flex flex-col gap-4"
+                "col-span-5 col-start-2 flex flex-col gap-4 text-right"
               )}
             >
               <H2 color="text-red-400">
@@ -408,18 +417,35 @@ export default function Home({
                   and data privacy.
                 </H2>
               </H2>
-              <P>
-                <Strong>Your data is private</Strong>: No re-training
-                of&nbsp;models on your internal knowledge.{" "}
+            </div>
+            <div className="col-span-4 flex flex-col gap-4">
+              <P variant="big">
+                <Strong>Your data is private</Strong>, No re-training
+                of&nbsp;models on your internal knowledge.
+              </P>
+              <P variant="big">
                 <Strong>Enterprise-grade security</Strong> to manage
                 your&nbsp;data access policies with control and&nbsp;confidence.
-                <br />
               </P>
+            </div>
+          </Grid>
+          <Grid>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-4 col-start-3 flex flex-col gap-4"
+              )}
+            >
+              <div className="w-full pt-12">
+                <ReactiveImg paddingCSS="p-1">
+                  <img src="/static/landing/apps.png" />
+                </ReactiveImg>
+              </div>
             </div>
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-4 flex flex-col gap-4"
+                "col-span-5 flex flex-col gap-8"
               )}
             >
               <H2 color="text-emerald-500">
@@ -429,39 +455,35 @@ export default function Home({
                   Dust do it!
                 </H2>
               </H2>
-              <P>
+              <P variant="big">
                 Provide{" "}
                 <Strong>developers and tinkerers with a&nbsp;framework</Strong>{" "}
                 to&nbsp;build custom actions and&nbsp;application orchestration
                 to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
               </P>
-              <P>
+              <P variant="big">
                 Support <Strong>custom plugins</Strong> for assistants to
                 interact with your{" "}
                 <Strong>own databases on advanced use cases</Strong>.
               </P>
             </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-4 flex flex-col gap-4"
-              )}
-            >
-              <div className="w-full">
-                <ReactiveImg paddingCSS="p-1">
-                  <img src="/static/landing/apps.png" />
-                </ReactiveImg>
-              </div>
-            </div>
           </Grid>
           <Grid>
+            <div className="col-span-8 col-start-3">
+              <H2 color="text-amber-400">
+                Deal with Dust;
+                <br />
+                <H2 color="text-amber-100" isSpan>
+                  Meet our pricing plans
+                </H2>
+              </H2>
+            </div>
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-12 flex flex-col gap-4"
+                "s-dark dark col-span-10 col-start-2 flex flex-col gap-4"
               )}
             >
-              <H2>Pricing</H2>
               <div className="flex flex-row gap-10">
                 <PriceTable
                   title="Free"
