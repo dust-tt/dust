@@ -271,7 +271,7 @@ export async function constructPrompt(
     meta += "\n" + retrievalMetaPrompt();
   }
 
-  meta.replaceAll(
+  meta = meta.replaceAll(
     "{USER_FULL_NAME}",
     userMessage.context.fullName || "Unknown user"
   );
@@ -279,7 +279,7 @@ export async function constructPrompt(
   // if meta includes the string "{ASSISTANTS_LIST}"
   if (meta.includes("{ASSISTANTS_LIST}")) {
     const agents = await getAgentConfigurations(auth);
-    meta.replaceAll(
+    meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents
         .map((agent) => {

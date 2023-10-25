@@ -14,7 +14,6 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { Transition } from "@headlessui/react";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
@@ -79,9 +78,9 @@ const ACTION_MODES = [
 ] as const;
 type ActionMode = (typeof ACTION_MODES)[number];
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
-  GENERIC: "No action (Generic model)",
+  GENERIC: "No action",
   RETRIEVAL_SEARCH: "Search Data Sources",
-  RETRIEVAL_EXHAUSTIVE: "Exhaustive Data Sources Processing",
+  RETRIEVAL_EXHAUSTIVE: "Process Data Sources",
   DUST_APP_RUN: "Run Dust App",
 };
 
@@ -737,9 +736,7 @@ export default function AssistantBuilder({
       >
         <div className="flex flex-col space-y-8 pb-8 pt-8">
           <div className="flex w-full flex-col gap-4">
-            <div className="text-2xl font-bold text-element-900">
-              Identity card
-            </div>
+            <div className="text-2xl font-bold text-element-900">Identity</div>
             <div className="flex flex-row items-start gap-8">
               <div className="flex flex-col gap-4">
                 <div className="text-lg font-bold text-element-900">Name</div>
@@ -906,21 +903,20 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
             >
               <div>
-                The assistant will look exhaustively at all the Data Sources, in
-                reverse chronological order (most recent first).
+                The assistant will include as many documents as possible from
+                the Data Sources, using reverse chronological order.
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="col-span-1">
                   <strong>
                     <span className="text-warning-500">Warning!</span>{" "}
-                    Assistants are limited in the quantity of data they can
-                    manage.
+                    Assistants are limited in the amount of data they can
+                    process.
                   </strong>{" "}
-                  To ensure the assistant can handle all relevant data, select
-                  sources with care, and limit processing to the smallest
-                  relevant time frame using the "Collect data from" field below.
+                  Select Data Sources with care, and limit processing to the
+                  shortest relevant time frame.
                 </div>
-                <div>
+                <div className="col-span-1">
                   <strong>Note:</strong> The available data sources are managed
                   by administrators.
                 </div>
@@ -1453,27 +1449,7 @@ function ActionModeSection({
   children: ReactNode;
   show: boolean;
 }) {
-  return (
-    <Transition
-      show={show}
-      as={Fragment}
-      enterFrom="opacity-0 -translate-y-32"
-      enterTo="opacity-100 translate-y-0"
-      leave="transition-all duration-300"
-      enter="transition-all duration-300"
-      leaveFrom="opacity-100 translate-y-0"
-      leaveTo="opacity-0 -translate-y-32"
-      afterEnter={() => {
-        window.scrollBy({
-          left: 0,
-          top: 140,
-          behavior: "smooth",
-        });
-      }}
-    >
-      <div className="flex flex-col gap-6">{children}</div>
-    </Transition>
-  );
+  return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
