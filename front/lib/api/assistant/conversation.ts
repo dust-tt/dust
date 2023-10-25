@@ -1,4 +1,5 @@
-import { Op } from "sequelize";
+import crypto from "crypto";
+import { Op, Transaction } from "sequelize";
 
 import {
   cloneBaseConfig,
@@ -624,6 +625,22 @@ export async function generateConversationTitle(
  * Conversation API
  */
 
+async function getConversationRankVersionLock(
+  conversation: ConversationType,
+  t: Transaction
+) {
+  // Get a lock using the unique lock key (number withing postgresql BigInt range).
+  const hash = crypto
+    .createHash("md5")
+    .update(`conversation_message_rank_version_${conversation.id}`)
+    .digest("hex");
+  const lockKey = parseInt(hash, 16) % 9999999999;
+  await front_sequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+    transaction: t,
+    replacements: { key: lockKey },
+  });
+}
+
 // Event sent when the user message is created.
 export type UserMessageNewEvent = {
   type: "user_message_new";
@@ -720,6 +737,8 @@ export async function* postUserMessage(
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await front_sequelize.transaction(async (t) => {
+      await getConversationRankVersionLock(conversation, t);
+
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -1093,6 +1112,8 @@ export async function* editUserMessage(
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await front_sequelize.transaction(async (t) => {
+      await getConversationRankVersionLock(conversation, t);
+
       const messageRow = await Message.findOne({
         where: {
           sId: message.sId,
@@ -1382,6 +1403,8 @@ export async function* retryAgentMessage(
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
   } | null = await front_sequelize.transaction(async (t) => {
+    await getConversationRankVersionLock(conversation, t);
+
     const messageRow = await Message.findOne({
       where: {
         conversationId: conversation.id,
@@ -1539,6 +1562,8 @@ export async function postNewContentFragment(
 
   const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
     async (t) => {
+      await getConversationRankVersionLock(conversation, t);
+
       const contentFragmentRow = await ContentFragment.create(
         { content, title, url, contentType },
         { transaction: t }
