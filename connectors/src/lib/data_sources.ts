@@ -4,8 +4,8 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { FRONT_API } = process.env;
-if (!FRONT_API) {
+const { DUST_FRONT_API } = process.env;
+if (!DUST_FRONT_API) {
   throw new Error("FRONT_API not set");
 }
 
@@ -95,7 +95,7 @@ async function _upsertToDatasource({
   const now = new Date();
 
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestPayload = {
     text: documentText,
     source_url: documentUrl,
@@ -168,7 +168,7 @@ export async function deleteFromDataSource(
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -204,7 +204,7 @@ export async function updateDocumentParentsField(
 ) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
