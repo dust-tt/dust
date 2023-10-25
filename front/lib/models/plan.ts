@@ -167,7 +167,10 @@ Subscription.init(
   {
     modelName: "subscription",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["sId"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["workspaceId", "status"] },
+    ],
   }
 );
 // Define a hook to ensure there's only one active subscription for each workspace

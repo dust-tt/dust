@@ -24,7 +24,6 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   // We end the active subscription if any
   const activeSubscription = await Subscription.findOne({
@@ -37,7 +36,6 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     if (activeSubscription.startDate >= today) {
       await activeSubscription.update({
         status: "cancelled",
-        startDate: today,
         endDate: today,
       });
     } else {
@@ -55,7 +53,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     code: freeTestPlan.code,
     name: freeTestPlan.name,
     status: "active",
-    startDate: today.getTime(),
+    startDate: null,
     endDate: null,
     limits: {
       assistant: {
@@ -108,7 +106,6 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   }
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   // We search for an active subscription for this workspace
   const activeSubscription = await Subscription.findOne({
@@ -129,7 +126,6 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       if (activeSubscription.startDate >= today) {
         await activeSubscription.update({
           status: "cancelled",
-          startDate: today,
           endDate: today,
         });
       } else {
@@ -156,7 +152,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       code: plan.code,
       name: plan.name,
       status: "active",
-      startDate: newSubscription.startDate?.getTime(),
+      startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {
         assistant: {

@@ -35,7 +35,7 @@ export type PlanType = {
   code: string;
   name: string;
   status: "active" | "cancelled" | "ended";
-  startDate: number;
+  startDate: number | null;
   endDate: number | null;
   limits: LimitsType;
 };

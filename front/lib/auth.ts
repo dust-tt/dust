@@ -447,10 +447,31 @@ export async function planForWorkspace(
 ): Promise<Promise<PlanType>> {
   let activeSubscription: Subscription | null = null;
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   activeSubscription = await Subscription.findOne({
+    attributes: ["id", "startDate", "endDate"],
     where: { workspaceId: w.id, status: "active" },
+    include: [
+      {
+        model: Plan,
+        as: "plan",
+        required: true,
+        attributes: [
+          "code",
+          "name",
+          "isSlackbotAllowed",
+          "maxMessages",
+          "isManagedSlackAllowed",
+          "isManagedNotionAllowed",
+          "isManagedGoogleDriveAllowed",
+          "isManagedGithubAllowed",
+          "maxNbStaticDataSources",
+          "maxNbStaticDocuments",
+          "maxSizeStaticDataSources",
+          "maxUsersInWorkspace",
+        ],
+      },
+    ],
   });
 
   // Default values when no subscription
@@ -459,13 +480,10 @@ export async function planForWorkspace(
   let endDate = null;
 
   if (activeSubscription) {
-    const subscribedPlan = await Plan.findOne({
-      where: { id: activeSubscription.planId },
-    });
     startDate = activeSubscription.startDate;
     endDate = activeSubscription.endDate;
-    if (subscribedPlan) {
-      plan = subscribedPlan;
+    if (activeSubscription.plan) {
+      plan = activeSubscription.plan;
     } else {
       logger.error(
         {
@@ -481,7 +499,7 @@ export async function planForWorkspace(
     code: plan.code,
     name: plan.name,
     status: "active",
-    startDate: startDate?.getTime(),
+    startDate: startDate?.getTime() || null,
     endDate: endDate?.getTime() || null,
     limits: {
       assistant: {
