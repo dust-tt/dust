@@ -178,34 +178,37 @@ export default function EditDustAssistant({
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
-          <>
-            <SectionHeader
-              title="Availability"
-              description="The Dust assistant requires data sources or connections to operate."
-            />
+          {!!dataSources.length && (
+            <>
+              <SectionHeader
+                title="Availability"
+                description="The Dust assistant requires data sources or connections to operate."
+              />
 
-            <ContextItem
-              title="Enable the Dust assistant for this workspace."
-              visual={
-                <Avatar
-                  visual="https://dust.tt/static/systemavatar/dust_avatar_full.png"
-                  size="xs"
-                  isRounded={false}
-                />
-              }
-              action={
-                <SliderToggle
-                  selected={dustAgentConfiguration?.status === "active"}
-                  onClick={async () => {
-                    await handleToggleAgentStatus(dustAgentConfiguration);
-                  }}
-                  disabled={
-                    dustAgentConfiguration?.status === "disabled_free_workspace"
-                  }
-                />
-              }
-            />
-          </>
+              <ContextItem
+                title="Enable the Dust assistant for this workspace."
+                visual={
+                  <Avatar
+                    visual="https://dust.tt/static/systemavatar/dust_avatar_full.png"
+                    size="xs"
+                    isRounded={false}
+                  />
+                }
+                action={
+                  <SliderToggle
+                    selected={dustAgentConfiguration?.status === "active"}
+                    onClick={async () => {
+                      await handleToggleAgentStatus(dustAgentConfiguration);
+                    }}
+                    disabled={
+                      dustAgentConfiguration?.status ===
+                      "disabled_free_workspace"
+                    }
+                  />
+                }
+              />
+            </>
+          )}
           {dataSources.length &&
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>

@@ -312,8 +312,9 @@ async function botAnswerMessage(
       }
       if (!defaultAssistant) {
         return new Err(
+          // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
-            "Sorry, but I could not find an assistant to answer your question."
+            "No assistant has been configured to reply on Slack."
           )
         );
       }
