@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import React, { ReactElement, ReactNode } from "react";
 
-const defaultGridClasses = "grid grid-cols-12 gap-6";
+const defaultGridClasses = "grid grid-cols-12 gap-10";
 
 export const Grid = ({
   children,
@@ -30,6 +30,7 @@ interface ContentProps {
   className?: string;
   variant?: string;
   color?: string;
+  border?: "pink" | "amber" | "emerald" | "sky" | "red";
   isSpan?: boolean;
 }
 
@@ -59,11 +60,25 @@ export const H1 = createHeadingComponent("h1");
 export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
+const borderColorTable = {
+  pink: "border-pink-300",
+  amber: "border-amber-400",
+  sky: "border-sky-400",
+  emerald: "border-emerald-400",
+  red: "border-red-400",
+};
 
-export const P = ({ children, className = "", variant }: ContentProps) => (
+export const P = ({
+  children,
+  border,
+  className = "",
+  variant,
+}: ContentProps) => (
   <p
     className={classNames(
       className,
+      border ? "border-l-4 pl-4" : "",
+      border ? borderColorTable[border] : "",
       variant === "big" ? pClasses.big : pClasses.normal
     )}
   >
@@ -81,8 +96,7 @@ interface ReactImgProps {
   children: ReactNode;
   colorCSS?: string;
   colorHEX?: string;
-  containerPaddingCSS?: string;
-  innerPaddingCSS?: string;
+  paddingCSS?: string;
   className?: string;
   src?: string;
   isSmall?: boolean;
@@ -92,8 +106,7 @@ export const ReactiveImg = ({
   children,
   colorCSS = "border-slate-700/40 bg-slate-900/30",
   colorHEX,
-  containerPaddingCSS = "p-6",
-  innerPaddingCSS = "p-3",
+  paddingCSS = "p-3",
   className = "",
   isSmall = false,
 }: ReactImgProps) => {
@@ -124,12 +137,12 @@ export const ReactiveImg = ({
     : undefined;
 
   return (
-    <div className={classNames("group", containerPaddingCSS, className)}>
+    <div className={classNames("group", className)}>
       <div
         style={style}
         className={classNames(
           colorCSS,
-          innerPaddingCSS,
+          paddingCSS,
           "flex rounded-2xl border drop-shadow-[0_25px_25px_rgba(0,0,0,0.5)] backdrop-blur-sm",
           !isSmall
             ? "scale-100 transition-all duration-700 ease-out group-hover:scale-105"
@@ -157,32 +170,27 @@ export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
     {
       className: classNames(
         singleChild.props.className,
-        "h-10 w-10 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
+        "h-12 w-12 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
       ),
     }
   );
   return (
-    <ReactiveImg
-      colorHEX={colorHEX}
-      className="w-fit"
-      containerPaddingCSS="p-3"
-      innerPaddingCSS="p-3.5"
-      isSmall
-    >
+    <ReactiveImg colorHEX={colorHEX} className="w-fit" paddingCSS="p-4" isSmall>
       {modifiedChild}
     </ReactiveImg>
   );
 };
 
 interface SeparatorProps {
-  color?: "red" | "amber" | "emerald" | "sky";
+  color?: "red" | "amber" | "emerald" | "sky" | "pink";
 }
 
 const colorTable = {
-  red: "s-bg-red-400",
-  amber: "s-bg-amber-400",
-  sky: "s-bg-sky-400",
-  emerald: "s-bg-emerald-400",
+  red: "bg-red-400",
+  pink: "bg-pink-300",
+  amber: "bg-amber-400",
+  sky: "bg-sky-400",
+  emerald: "bg-emerald-400",
 };
 
 export const Separator = ({ color = "emerald" }: SeparatorProps) => (
