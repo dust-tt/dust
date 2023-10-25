@@ -10,8 +10,10 @@ interface PriceTableProps {
   price: string;
   priceLabel?: string;
   color?: "pink" | "sky" | "emerald" | "amber" | "blue";
+  size?: "xs" | "sm";
   className?: string;
   children: ReactNode;
+  magnified?: boolean;
 }
 
 const colorTable = {
@@ -22,6 +24,14 @@ const colorTable = {
   emerald: "s-bg-emerald-400 dark:s-bg-emerald-500",
 };
 
+const bigColorTable = {
+  pink: "s-bg-pink-400/60 dark:s-bg-pink-400/80 backdrop-blur-md",
+  amber: "s-bg-amber-400/60 dark:s-bg-amber-400/80 backdrop-blur-md",
+  sky: "s-bg-sky-400/60 dark:s-bg-sky-400/80 backdrop-blur-md",
+  blue: "s-bg-blue-400/60 dark:s-bg-blue-400/80 backdrop-blur-md",
+  emerald: "s-bg-emerald-400/60 dark:s-bg-emerald-400/80 backdrop-blur-md",
+};
+
 const textColorTable = {
   pink: "s-text-pink-900 dark:s-text-pink-950",
   amber: "s-text-amber-900 dark:s-text-amber-950",
@@ -30,28 +40,58 @@ const textColorTable = {
   emerald: "s-text-emerald-900 dark:s-text-emerald-950",
 };
 
+const sizeTable = {
+  sm: "s-rounded-2xl s-p-1.5 s-shadow-2xl",
+  xs: "s-rounded-xl s-p-1 s-shadow-xl",
+};
+
 export function PriceTable({
   title,
   price,
   color = "pink",
+  size = "xs",
   priceLabel = "",
   className = "",
+  magnified = true,
   children, // Use children instead of tableItems
 }: PriceTableProps) {
+  // Pass size prop to all PriceTable.Item children
+  const childrenWithProps = React.Children.map(children, (child) => {
+    // Checking isValidElement is the safe way and avoids a typescript error too
+    if (React.isValidElement<PriceTableItemProps>(child)) {
+      if (
+        child.type === PriceTable.Item ||
+        child.type === PriceTable.ActionContainer
+      ) {
+        return React.cloneElement(child, { size: size });
+      }
+    }
+    return child;
+  });
+
   return (
     <div
       className={classNames(
         "s-w-full",
-        "s-flex s-cursor-default s-flex-col s-rounded-xl s-p-1 s-shadow-xl",
-        "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100",
-        colorTable[color],
+        "s-flex s-cursor-default s-flex-col s-border s-border-white/30",
+        sizeTable[size],
+        magnified
+          ? "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100"
+          : "",
+        size === "xs" ? colorTable[color] : bigColorTable[color],
         className
       )}
     >
-      <div className="s-flex s-flex-col s-px-3 s-py-2">
+      <div
+        className={classNames(
+          "s-flex s-flex-col",
+          size === "xs" ? "s-px-3 s-py-2" : "s-px-4 s-py-3"
+        )}
+      >
         <div
           className={classNames(
-            "s-w-full s-text-right s-text-2xl s-font-semibold",
+            size === "xs" ? "s-text-2xl" : "s-text-3xl",
+            "s-w-full s-text-right s-font-semibold",
             "s-text-structure-0"
           )}
         >
@@ -60,24 +100,31 @@ export function PriceTable({
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
           <span
             className={classNames(
+              size === "xs" ? "s-text-3xl" : "s-text-4xl",
               textColorTable[color],
-              "s-text-3xl s-font-bold"
+              "s-font-bold"
             )}
           >
             {price}
           </span>
-          <span className="s-text-base s-font-bold s-text-white/70">
+          <span
+            className={classNames(
+              "s-font-bold s-text-white/70",
+              size === "xs" ? "s-text-base" : "s-text-lg"
+            )}
+          >
             {priceLabel}
           </span>
         </div>
       </div>
       <div
         className={classNames(
-          "s-flex s-h-full s-flex-col s-overflow-hidden s-rounded-lg s-shadow-md",
+          size === "xs" ? "s-rounded-lg" : "s-rounded-xl",
+          "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
           "s-bg-white dark:s-bg-structure-100-dark"
         )}
       >
-        {children}
+        {childrenWithProps}
       </div>
     </div>
   );
@@ -143,13 +190,20 @@ PriceTable.Item = function ({
 
 interface PriceTableActionContainerProps {
   children: ReactNode;
+  size?: "xs" | "sm";
 }
 
 PriceTable.ActionContainer = function ({
   children,
+  size = "xs",
 }: PriceTableActionContainerProps) {
   return (
-    <div className="s-flex s-w-full s-flex-grow s-justify-center s-p-2">
+    <div
+      className={classNames(
+        "s-flex s-w-full s-flex-grow s-justify-center s-px-2",
+        size === "xs" ? "s-py-2" : "s-py-4"
+      )}
+    >
       <div className="s-flex s-h-full s-flex-col s-justify-end">{children}</div>
     </div>
   );
