@@ -97,6 +97,7 @@ const iconColorTable = {
 
 interface PriceTableItemProps {
   label: string;
+  size?: "xs" | "sm";
   variant?: "check" | "dash" | "xmark";
   className?: string;
 }
@@ -104,20 +105,24 @@ interface PriceTableItemProps {
 PriceTable.Item = function ({
   label,
   variant = "check",
+  size = "xs",
   className = "",
 }: PriceTableItemProps) {
   return (
     <div
       className={classNames(
-        "s-flex s-items-center s-gap-1.5 s-border-b s-px-2 s-py-2.5 s-text-sm",
+        size === "xs"
+          ? " s-gap-2 s-p-2.5 s-text-sm"
+          : "s-gap-3 s-p-4 s-text-base",
+        "s-flex s-items-start s-border-b",
         "s-border-structure-100 s-text-element-800",
         "dark:s-border-structure-200-dark/50 dark:s-text-element-800-dark",
         className
       )}
     >
-      <div>
+      <div className="s-pt-0.5">
         <Icon
-          size="xs"
+          size={size}
           visual={iconTable[variant]}
           className={iconColorTable[variant]}
         />
@@ -127,7 +132,7 @@ PriceTable.Item = function ({
           variant === "xmark"
             ? "s-text-element-600 dark:s-text-element-600-dark"
             : "",
-          "s-overflow-hidden s-overflow-ellipsis s-whitespace-nowrap"
+          "s-overflow-hidden"
         )}
       >
         {label}

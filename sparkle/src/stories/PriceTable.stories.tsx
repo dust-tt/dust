@@ -19,7 +19,6 @@ export const Pricing = () => {
           price="0€"
           priceLabel="/ month"
           color="emerald"
-          className="s-w-64"
         >
           <PriceTable.Item label="Single member / workspace" variant="dash" />
           <PriceTable.Item label="Unlimited custom assistants" />
@@ -38,7 +37,6 @@ export const Pricing = () => {
           price="0€"
           color="sky"
           priceLabel="/ month / seat"
-          className="s-w-64"
         >
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited custom assistants" />
@@ -51,7 +49,7 @@ export const Pricing = () => {
             <Button size="sm" variant="primary" label="Select this plan" />
           </PriceTable.ActionContainer>
         </PriceTable>
-        <PriceTable title="Enterprise" price="Custom" className="s-w-64">
+        <PriceTable title="Enterprise" price="Custom">
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited workspaces" />
           <PriceTable.Item label="Unlimited custom assistants" />
