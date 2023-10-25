@@ -32,7 +32,7 @@ import {
   getUserName,
 } from "./temporal/activities";
 
-const { DUST_API = "https://dust.tt" } = process.env;
+const { DUST_CLIENT_FACING_URL } = process.env;
 
 class SlackExternalUserError extends Error {}
 
@@ -446,7 +446,7 @@ async function botAnswerMessage(
         let finalAnswer = normalizeContentForSlack(
           _processCiteMention(fullAnswer, action)
         );
-        finalAnswer += `...\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+        finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
           channel: slackChannel,
@@ -466,7 +466,7 @@ async function botAnswerMessage(
         let finalAnswer = normalizeContentForSlack(
           _processCiteMention(fullAnswer, action)
         );
-        finalAnswer += `\n\n <${DUST_API}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+        finalAnswer += `\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
           channel: slackChannel,
@@ -516,7 +516,7 @@ function _processCiteMention(
             }
             const link = ref.sourceUrl
               ? ref.sourceUrl
-              : `${DUST_API}/w/${
+              : `${DUST_CLIENT_FACING_URL}/w/${
                   ref.dataSourceWorkspaceId
                 }/builder/data-sources/${
                   ref.dataSourceId
