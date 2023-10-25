@@ -80,7 +80,7 @@ Tree.Item = function ({
         {checkbox && <Checkbox {...checkbox} />}
 
         <div className="s-flex s-w-full s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
-          <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
+          <div className="s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
             <Icon
               visual={visualTable[variant]}
               size="sm"
