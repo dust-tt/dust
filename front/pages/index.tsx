@@ -13,6 +13,7 @@ import {
   NotionLogo,
   OpenaiLogo,
   PriceTable,
+  RocketIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -82,6 +83,7 @@ export default function Home({
   const router = useRouter();
   const [logoY, setLogoY] = useState<number>(0);
   const logoRef = useRef<HTMLDivElement | null>(null);
+  const [hasScrolled, setHasScrolled] = useState<boolean>(false);
 
   const scrollRef1 = useRef<HTMLDivElement | null>(null);
   const scrollRef2 = useRef<HTMLDivElement | null>(null);
@@ -92,6 +94,17 @@ export default function Home({
       const logoPosition = logoRef.current.offsetTop;
       setLogoY(logoPosition);
     }
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setHasScrolled(currentScrollY > 600);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
@@ -145,7 +158,12 @@ export default function Home({
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
+      <div
+        className={classNames(
+          "fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[3000ms]",
+          hasScrolled ? "opacity-30" : "opacity-100"
+        )}
+      >
         <Particles
           scrollRef1={scrollRef1}
           scrollRef2={scrollRef2}
@@ -154,53 +172,67 @@ export default function Home({
       </div>
 
       <main className="z-10 flex flex-col items-center">
-        <div className="container flex max-w-7xl flex-col gap-16">
+        <div className="max-w-8xl container flex flex-col gap-36 py-36">
           <Grid>
-            <div className="col-span-8 col-start-3 flex flex-col gap-16">
-              <div style={{ height: "24vh" }} />
+            <div className="col-span-8 col-start-3 flex min-h-[60vh] flex-col justify-end gap-24">
               <div ref={logoRef}>
                 <Logo className="h-[48px] w-[192px]" />
               </div>
-              <H1>
-                <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                  Amplify your team's potential
-                </span>{" "}
-                <br />
-                with customizable and secure AI&nbsp;assistants
-              </H1>
-              <H3 className="col-span-6 col-start-3">
-                AI is changing the way we work.
-                <br />
-                Effectively channeling the potential of AI is a competitive
-                edge.
-              </H3>
+              <div className="flex flex-col gap-12">
+                <H1>
+                  <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+                    Amplify your team's potential
+                  </span>{" "}
+                  <br />
+                  with customizable and secure AI&nbsp;assistants
+                </H1>
+                <H3 className="col-span-6 col-start-3">
+                  AI is changing the way we work.
+                  <br />
+                  Effectively channeling the potential of AI is a competitive
+                  edge.
+                </H3>
+                <div className="flex w-full flex-col items-start">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    label="Start with Dust now"
+                    icon={RocketIcon}
+                  />
+                </div>
+              </div>
             </div>
           </Grid>
           <Grid className="items-center">
-            <div className="col-span-6 col-start-2">
-              <ReactiveImg containerPaddingCSS="p-6">
-                <img src="/static/landing/conversation.png" />
-              </ReactiveImg>
-            </div>
-            <div className={classNames(defaultFlexClasses, "col-span-3 gap-8")}>
-              <P>
-                Empower teams with{" "}
-                <Strong>assistants tailored to&nbsp;their needs</Strong>, using{" "}
-                <Strong>the best models</Strong> augmented with{" "}
-                <Strong>your company's knowledge</Strong>.
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-4 col-start-3 gap-8"
+              )}
+            >
+              <P variant="big" border="sky">
+                Deploy <Strong>the best Large Language Models</Strong> to{" "}
+                <Strong>all&nbsp;your&nbsp;company</Strong>, today.
               </P>
-              <Separator color="amber" />
-              <P>
-                Deploy <Strong>Large Language Models</Strong> on{" "}
-                <Strong>concrete use cases</Strong> in your company{" "}
-                <Strong>today</Strong>.
+              <P variant="big" border="amber">
+                Connect Dust to <Strong>your team’s data</Strong> and{" "}
+                <Strong>break down knowledge silos</Strong> with context aware
+                assistants.
               </P>
-              <Separator color="red" />
-              <P>
+              <P variant="big" border="red">
+                Empower your teams with{" "}
+                <Strong>assistants tailored to&nbsp;their needs</Strong> on
+                concrete use&nbsp;cases.
+              </P>
+              <P variant="big" border="emerald">
                 <Strong>Control granularly data access</Strong> with a{" "}
                 <Strong>safe and privacy-obsessed</Strong> application.
               </P>
-              <Separator color="emerald" />
+            </div>
+            <div className="col-span-5">
+              <ReactiveImg>
+                <img src="/static/landing/conversation.png" />
+              </ReactiveImg>
             </div>
           </Grid>
 
@@ -209,79 +241,81 @@ export default function Home({
               ref={scrollRef1}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 col-start-3 flex flex-col gap-4"
+                "col-span-8 col-start-3 flex flex-col gap-4 text-right"
               )}
             >
-              <H2 color="text-sky-500">
+              <H1 color="text-sky-500">
                 Get the state of the&nbsp;art,
                 <br />
-                <H2 isSpan color="text-sky-200">
+                <H1 isSpan color="text-sky-200">
                   today and&nbsp;tomorrow.
-                </H2>
-              </H2>
+                </H1>
+              </H1>
               <P variant="big">
                 Dust gives you&nbsp;access to the&nbsp;
-                <Strong>leading models</Strong>, and&nbsp; augments them
-                with&nbsp;
+                <Strong>leading models</Strong>,<br />
+                and&nbsp; augments them with&nbsp;
                 <Strong>your&nbsp;company’s internal&nbsp;information</Strong>.
               </P>
             </div>
           </Grid>
           <Grid>
-            <div className={classNames(defaultFlexClasses, "col-span-6")}>
-              <P className="pr-48">
-                Proprietary and&nbsp;open-source models suited
-                to&nbsp;your&nbsp;needs:{" "}
-                <Strong>OpenAI, Anthropic, Mistral…</Strong>
+            <div className="test-right col-span-4 col-start-3 flex h-full flex-col justify-center gap-6">
+              <div>
+                <ReactiveImg>
+                  <img src="/static/landing/connect.png" />
+                </ReactiveImg>
+              </div>
+            </div>
+            <div className={classNames(defaultFlexClasses, "col-span-5 gap-8")}>
+              <P variant="big" border="pink">
+                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
+                customizable to&nbsp;your exact needs and will evolve as
+                those&nbsp;needs evolve.
               </P>
-              <div className="flex flex-wrap gap-0">
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <GoogleLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <DriveLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#FFFFFF">
-                  <NotionLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#FFFFFF">
-                  <GithubLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#3A123E">
-                  <SlackLogo />
-                </ReactiveIcon>
+              <div className="flex flex-wrap gap-4 pl-6">
                 <ReactiveIcon colorHEX="#A26BF7">
                   <OpenaiLogo />
                 </ReactiveIcon>
                 <ReactiveIcon colorHEX="#D4A480">
                   <AnthropicLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
+                <ReactiveIcon colorHEX="#1A1C20">
                   <MistralLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
+                <ReactiveIcon colorHEX="#3A3B45">
                   <HuggingFaceLogo />
                 </ReactiveIcon>
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <MicrosoftLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#FFFFFF">
-                  <MoreIcon className="text-slate-900" />
+              </div>
+              <P variant="big" border="emerald">
+                Proprietary and&nbsp;open-source models suited
+                to&nbsp;your&nbsp;needs:{" "}
+                <Strong>OpenAI, Anthropic, Mistral…</Strong>
+              </P>
+              <div className="flex flex-wrap gap-4 pl-6">
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <GoogleLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <DriveLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <NotionLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <GithubLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <SlackLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <MoreIcon className="text-slate-50" />
                 </ReactiveIcon>
               </div>
-              <P className="pr-48">
-                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
-                customizable to&nbsp;your exact needs and will evolve as
-                those&nbsp;needs evolve.
-              </P>
-            </div>
-            <div className="test-right col-span-6 flex flex-col items-end gap-6">
-              <div className="w-8/12">
-                <ReactiveImg containerPaddingCSS="p-0">
-                  <img src="/static/landing/connect.png" />
-                </ReactiveImg>
-              </div>
-              <P className="w-8/12">
+              <P variant="big" border="sky">
                 Your own knowledge base continuously in&nbsp;sync:{" "}
                 <Strong>
                   Notion, Slack, GitHub, Google Drive, and&nbsp;more
@@ -318,7 +352,7 @@ export default function Home({
           </Grid>
           <Grid>
             <div className="col-span-5">
-              <ReactiveImg containerPaddingCSS="p-6">
+              <ReactiveImg>
                 <img src="/static/landing/builder.png" />
               </ReactiveImg>
             </div>
@@ -347,12 +381,18 @@ export default function Home({
               <Separator color="amber" />
             </div>
             <div className="col-span-3">
-              <ReactiveImg containerPaddingCSS="p-6">
+              <ReactiveImg>
                 <img src="/static/landing/assistants.png" />
               </ReactiveImg>
             </div>
           </Grid>
-
+          <div className="w-[700px]">
+            <ReactiveImg>
+              <div className="rounded-xl">
+                <img src="/static/landing/slack.png" />
+              </div>
+            </ReactiveImg>
+          </div>
           <Grid>
             <div
               ref={scrollRef3}
@@ -408,7 +448,7 @@ export default function Home({
               )}
             >
               <div className="w-full">
-                <ReactiveImg innerPaddingCSS="p-1" containerPaddingCSS="p-42">
+                <ReactiveImg paddingCSS="p-1">
                   <img src="/static/landing/apps.png" />
                 </ReactiveImg>
               </div>
@@ -422,46 +462,29 @@ export default function Home({
               )}
             >
               <H2>Pricing</H2>
-              <PriceTable.Container>
+              <div className="flex flex-row gap-10">
                 <PriceTable
                   title="Free"
                   price="$0"
                   priceLabel=""
                   color="emerald"
+                  size="sm"
+                  magnified={false}
                 >
-                  <PriceTable.Item size="sm" label="One user" variant="dash" />
+                  <PriceTable.Item label="One user" variant="dash" />
+                  <PriceTable.Item label="One workspace" variant="dash" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item
-                    size="sm"
-                    label="One workspace"
-                    variant="dash"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Privacy and Data Security"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Advanced LLM models (GPT-4, Claude, …)"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Unlimited custom assistants"
-                  />
-                  <PriceTable.Item
-                    size="sm"
                     label="100 messages with Assistants"
                     variant="dash"
                   />
                   <PriceTable.Item
-                    size="sm"
                     label="50 documents as data sources"
                     variant="dash"
                   />
-                  <PriceTable.Item
-                    size="sm"
-                    label="No connections"
-                    variant="xmark"
-                  />
+                  <PriceTable.Item label="No connections" variant="xmark" />
                   <PriceTable.ActionContainer>
                     <Button variant="primary" size="md" label="Start testing" />
                   </PriceTable.ActionContainer>
@@ -472,45 +495,24 @@ export default function Home({
                   price="$29"
                   color="sky"
                   priceLabel="/ month / seat"
+                  size="sm"
+                  magnified={false}
                 >
-                  <PriceTable.Item size="sm" label="From 1 user" />
-                  <PriceTable.Item
-                    size="sm"
-                    label="One workspace"
-                    variant="dash"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Privacy and Data Security"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Advanced LLM models (GPT-4, Claude, …)"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Unlimited custom assistants"
-                  />
-                  <PriceTable.Item size="sm" label="Unlimited messages" />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Up to 1Go/user of data sources"
-                  />
+                  <PriceTable.Item label="From 1 user" />
+                  <PriceTable.Item label="One workspace" variant="dash" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="Unlimited messages" />
+                  <PriceTable.Item label="Up to 1Go/user of data sources" />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
+                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
+                  <PriceTable.Item label="Dust Slackbot" />
+                  <PriceTable.Item label="Assistants can execute actions" />
                   <PriceTable.Item
-                    size="sm"
-                    label="Single Sign-on (Google, GitHub)"
-                  />
-                  <PriceTable.Item size="sm" label="Dust Slackbot" />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Assistants can execute actions"
-                  />
-                  <PriceTable.Item
-                    size="sm"
                     label="Workspace role and permissions"
                     variant="dash"
                   />
@@ -519,46 +521,33 @@ export default function Home({
                   </PriceTable.ActionContainer>
                 </PriceTable>
 
-                <PriceTable title="Enterprise" price="Custom">
-                  <PriceTable.Item size="sm" label="From 100 users" />
-                  <PriceTable.Item size="sm" label="Multiple workspaces" />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Privacy and Data Security"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Advanced LLM models (GPT-4, Claude, …)"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Unlimited custom assistants"
-                  />
-                  <PriceTable.Item size="sm" label="Unlimited messages" />
-                  <PriceTable.Item size="sm" label="Unlimited data sources" />
+                <PriceTable
+                  title="Enterprise"
+                  price="Custom"
+                  size="sm"
+                  magnified={false}
+                >
+                  <PriceTable.Item label="From 100 users" />
+                  <PriceTable.Item label="Multiple workspaces" />
+                  <PriceTable.Item label="Privacy and Data Security" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item label="Unlimited messages" />
+                  <PriceTable.Item label="Unlimited data sources" />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
-                  <PriceTable.Item size="sm" label="Single Sign-on" />
-                  <PriceTable.Item size="sm" label="Dust Slackbot" />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Assistants can execute actions"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Advanced workspace role and permissions"
-                  />
-                  <PriceTable.Item
-                    size="sm"
-                    label="Dedicated account support"
-                  />
+                  <PriceTable.Item label="Single Sign-on" />
+                  <PriceTable.Item label="Dust Slackbot" />
+                  <PriceTable.Item label="Assistants can execute actions" />
+                  <PriceTable.Item label="Advanced workspace role and permissions" />
+                  <PriceTable.Item label="Dedicated account support" />
                   <PriceTable.ActionContainer>
                     <Button variant="secondary" size="md" label="Contact us" />
                   </PriceTable.ActionContainer>
                 </PriceTable>
-              </PriceTable.Container>
+              </div>
             </div>
           </Grid>
           <div className={defaultFlexClasses}>
