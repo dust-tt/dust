@@ -79,9 +79,9 @@ const ACTION_MODES = [
 ] as const;
 type ActionMode = (typeof ACTION_MODES)[number];
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
-  GENERIC: "No action (Generic model)",
+  GENERIC: "No action",
   RETRIEVAL_SEARCH: "Search Data Sources",
-  RETRIEVAL_EXHAUSTIVE: "Exhaustive Data Sources Processing",
+  RETRIEVAL_EXHAUSTIVE: "Process Data Sources",
   DUST_APP_RUN: "Run Dust App",
 };
 
@@ -906,11 +906,11 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
             >
               <div>
-                The assistant will look exhaustively at all the Data Sources, in
-                reverse chronological order (most recent first).
+                The assistant will look exhaustively at all the Data Sources
+                documents, in reverse chronological order (most recent first).
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="col-span-1">
                   <strong>
                     <span className="text-warning-500">Warning!</span>{" "}
                     Assistants are limited in the quantity of data they can
@@ -920,7 +920,7 @@ export default function AssistantBuilder({
                   sources with care, and limit processing to the smallest
                   relevant time frame using the "Collect data from" field below.
                 </div>
-                <div>
+                <div className="col-span-1">
                   <strong>Note:</strong> The available data sources are managed
                   by administrators.
                 </div>
