@@ -5,7 +5,7 @@ import logger from "@app/logger/logger";
 import { DataSourceType } from "@app/types/data_source";
 import { RunType } from "@app/types/run";
 
-const { DUST_API = "https://dust.tt", NODE_ENV } = process.env;
+const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
@@ -300,7 +300,7 @@ export class DustAPI {
   apiUrl() {
     return this._useLocalInDev && NODE_ENV === "development"
       ? "http://localhost:3000"
-      : DUST_API;
+      : DUST_PROD_API;
   }
 
   /**
