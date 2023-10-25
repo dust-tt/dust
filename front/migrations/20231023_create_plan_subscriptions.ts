@@ -45,14 +45,12 @@ async function main() {
 
         if (workspace.upgradedAt) {
           // We subscribe to Free Trial plan
-          const startDate = workspace.upgradedAt;
-          startDate.setHours(0, 0, 0, 0);
           await Subscription.create({
             sId: generateModelSId(),
             workspaceId: workspace.id,
             planId: freeUpgradedPlan.id,
             status: "active",
-            startDate: startDate,
+            startDate: workspace.upgradedAt,
           });
         }
       })
