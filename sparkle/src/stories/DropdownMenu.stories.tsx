@@ -40,6 +40,25 @@ export const DropdownExample = () => {
       </div>
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
+        <div className="s-text-sm">Long items small width</div>
+        <DropdownMenu>
+          <DropdownMenu.Button
+            icon={ChatBubbleBottomCenterTextIcon}
+            tooltip="Moonlab"
+            tooltipPosition="below"
+          />
+          <DropdownMenu.Items origin="topLeft" width={120}>
+            <DropdownMenu.Item label="item 1 is longish" href="#" />
+            <DropdownMenu.Item label="item 2 is also longer" href="#" />
+            <DropdownMenu.Item
+              label="item with a long title because it is long"
+              href="#"
+            />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
         <div className="s-text-sm">Top right menu</div>
         <DropdownMenu>
           <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} />
@@ -61,6 +80,10 @@ export const DropdownExample = () => {
           <DropdownMenu.Items origin="topLeft">
             <DropdownMenu.Item label="item 1" href="#" />
             <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item
+              label="item 2 with a long title because it is long"
+              href="#"
+            />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
