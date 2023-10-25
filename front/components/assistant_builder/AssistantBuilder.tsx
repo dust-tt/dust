@@ -1471,7 +1471,7 @@ function ActionModeSection({
         });
       }}
     >
-      <div className="flex flex-col gap-6 text-justify">{children}</div>
+      <div className="flex flex-col gap-6">{children}</div>
     </Transition>
   );
 }
