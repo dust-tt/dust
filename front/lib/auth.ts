@@ -462,7 +462,7 @@ export async function planForWorkspace(
           "isManagedGithubAllowed",
           "maxNbStaticDataSources",
           "maxNbStaticDocuments",
-          "maxSizeStaticDataSources",
+          "maxSizeMbStaticDataSources",
           "maxUsersInWorkspace",
         ],
       },
@@ -511,7 +511,7 @@ export async function planForWorkspace(
         count: plan.maxNbStaticDataSources,
         documents: {
           count: plan.maxNbStaticDocuments,
-          sizeMb: plan.maxSizeStaticDataSources,
+          sizeMb: plan.maxSizeMbStaticDataSources,
         },
       },
       users: {

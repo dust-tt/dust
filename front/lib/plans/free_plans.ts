@@ -30,7 +30,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   isManagedGithubAllowed: false,
   maxNbStaticDataSources: 10,
   maxNbStaticDocuments: 10,
-  maxSizeStaticDataSources: 2, // 2MB
+  maxSizeMbStaticDataSources: 2,
 };
 
 /**
@@ -51,7 +51,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     isManagedGithubAllowed: true,
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
-    maxSizeStaticDataSources: 2, // 2MB
+    maxSizeMbStaticDataSources: 2,
   },
 ];
 

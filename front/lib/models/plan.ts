@@ -33,7 +33,7 @@ export class Plan extends Model<
   declare isManagedGithubAllowed: boolean;
   declare maxNbStaticDataSources: number;
   declare maxNbStaticDocuments: number;
-  declare maxSizeStaticDataSources: number;
+  declare maxSizeMbStaticDataSources: number;
 }
 Plan.init(
   {
@@ -96,9 +96,10 @@ Plan.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    maxSizeStaticDataSources: {
+    maxSizeMbStaticDataSources: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: 2,
     },
   },
   {
