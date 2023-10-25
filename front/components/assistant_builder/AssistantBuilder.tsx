@@ -906,19 +906,18 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
             >
               <div>
-                The assistant will look exhaustively at all the Data Sources
-                documents, in reverse chronological order (most recent first).
+                The assistant will include as many documents as possible from
+                the Data Sources, using reverse chronological order.
               </div>
               <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-1">
                   <strong>
                     <span className="text-warning-500">Warning!</span>{" "}
-                    Assistants are limited in the quantity of data they can
-                    manage.
+                    Assistants are limited in the amount of data they can
+                    process.
                   </strong>{" "}
-                  To ensure the assistant can handle all relevant data, select
-                  sources with care, and limit processing to the smallest
-                  relevant time frame using the "Collect data from" field below.
+                  Select Data Sources with care, and limit processing to the
+                  shortest relevant time frame.
                 </div>
                 <div className="col-span-1">
                   <strong>Note:</strong> The available data sources are managed
