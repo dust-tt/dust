@@ -17,30 +17,34 @@ export async function getAccessTokenFromNango({
   const cacheKey = `nango_access_token:${integrationId}/${connectionId}`;
   const redis = await redisClient();
 
-  const _setCache = (token: string) =>
-    redis.set(cacheKey, token, {
-      EX: NANGO_ACCESS_TOKEN_TTL_SECONDS,
-    });
+  try {
+    const _setCache = (token: string) =>
+      redis.set(cacheKey, token, {
+        EX: NANGO_ACCESS_TOKEN_TTL_SECONDS,
+      });
 
-  if (!useCache) {
-    const accessToken = await _getAccessTokenFromNango({
-      connectionId,
+    if (!useCache) {
+      const accessToken = await _getAccessTokenFromNango({
+        connectionId,
+        integrationId,
+      });
+      await _setCache(accessToken);
+      return accessToken;
+    }
+
+    const maybeAccessToken = await redis.get(cacheKey);
+    if (maybeAccessToken) {
+      return maybeAccessToken;
+    }
+    const accessToken = await nango_client().getToken(
       integrationId,
-    });
+      connectionId
+    );
     await _setCache(accessToken);
     return accessToken;
+  } finally {
+    redis.quit();
   }
-
-  const maybeAccessToken = await redis.get(cacheKey);
-  if (maybeAccessToken) {
-    return maybeAccessToken;
-  }
-  const accessToken = await nango_client().getToken(
-    integrationId,
-    connectionId
-  );
-  await _setCache(accessToken);
-  return accessToken;
 }
 
 async function _getAccessTokenFromNango({
