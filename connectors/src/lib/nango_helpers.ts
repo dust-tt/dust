@@ -43,7 +43,7 @@ export async function getAccessTokenFromNango({
     await _setCache(accessToken);
     return accessToken;
   } finally {
-    redis.quit();
+    await redis.quit();
   }
 }
 
