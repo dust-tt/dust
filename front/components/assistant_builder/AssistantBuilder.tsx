@@ -737,9 +737,7 @@ export default function AssistantBuilder({
       >
         <div className="flex flex-col space-y-8 pb-8 pt-8">
           <div className="flex w-full flex-col gap-4">
-            <div className="text-2xl font-bold text-element-900">
-              Identity card
-            </div>
+            <div className="text-2xl font-bold text-element-900">Identity</div>
             <div className="flex flex-row items-start gap-8">
               <div className="flex flex-col gap-4">
                 <div className="text-lg font-bold text-element-900">Name</div>
@@ -1452,27 +1450,7 @@ function ActionModeSection({
   children: ReactNode;
   show: boolean;
 }) {
-  return (
-    <Transition
-      show={show}
-      as={Fragment}
-      enterFrom="opacity-0 -translate-y-32"
-      enterTo="opacity-100 translate-y-0"
-      leave="transition-all duration-300"
-      enter="transition-all duration-300"
-      leaveFrom="opacity-100 translate-y-0"
-      leaveTo="opacity-0 -translate-y-32"
-      afterEnter={() => {
-        window.scrollBy({
-          left: 0,
-          top: 140,
-          behavior: "smooth",
-        });
-      }}
-    >
-      <div className="flex flex-col gap-6">{children}</div>
-    </Transition>
-  );
+  return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
