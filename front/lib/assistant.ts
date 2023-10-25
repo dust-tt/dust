@@ -13,7 +13,6 @@ export const GPT_4_32K_MODEL_CONFIG = {
   modelId: GPT_4_32K_MODEL_ID,
   displayName: "GPT 4",
   contextSize: 32768,
-  largeModel: true,
   recommendedTopK: 32,
 } as const;
 
@@ -22,7 +21,6 @@ export const GPT_4_MODEL_CONFIG = {
   modelId: GPT_4_MODEL_ID,
   displayName: "GPT 4",
   contextSize: 8192,
-  largeModel: true,
   recommendedTopK: 16,
 };
 
@@ -31,7 +29,6 @@ export const GPT_3_5_TURBO_16K_MODEL_CONFIG = {
   modelId: "gpt-3.5-turbo-16k",
   displayName: "GPT 3.5 Turbo",
   contextSize: 16384,
-  largeModel: false,
   recommendedTopK: 16,
 } as const;
 
@@ -40,7 +37,6 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
   modelId: "gpt-3.5-turbo",
   displayName: "GPT 3.5 Turbo",
   contextSize: 4096,
-  largeModel: false,
   recommendedTopK: 16,
 } as const;
 
@@ -49,7 +45,6 @@ export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   modelId: "claude-2",
   displayName: "Claude 2",
   contextSize: 100000,
-  largeModel: true,
   recommendedTopK: 32,
 } as const;
 
@@ -58,7 +53,6 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   modelId: "claude-instant-1.2",
   displayName: "Claude Instant 1.2",
   contextSize: 100000,
-  largeModel: false,
   recommendedTopK: 32,
 } as const;
 
@@ -67,7 +61,6 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   modelId: "mistral_7B_instruct",
   displayName: "Mistral 7B",
   contextSize: 8192,
-  largeModel: false,
   recommendedTopK: 16,
 } as const;
 

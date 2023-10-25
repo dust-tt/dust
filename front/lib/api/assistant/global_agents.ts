@@ -7,7 +7,6 @@ const readFileAsync = promisify(fs.readFile);
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  getSupportedModelConfig,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
@@ -83,16 +82,10 @@ async function _getHelperGlobalAgent(
   if (!plan) {
     throw new Error("Unexpected `auth` without `plan`.");
   }
-  const model = plan.limits.largeModels
-    ? {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
-      }
-    : {
-        providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
-      };
-
+  const model = {
+    providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+    modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+  };
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -584,16 +577,7 @@ export async function getGlobalAgent(
     default:
       return null;
   }
-  if (!agentConfiguration) return null;
 
-  // Enforce plan limits: check if large models are allowed and act accordingly
-  if (
-    !plan.limits.largeModels &&
-    agentConfiguration.generation &&
-    getSupportedModelConfig(agentConfiguration.generation?.model).largeModel
-  ) {
-    agentConfiguration.status = "disabled_free_workspace";
-  }
   return agentConfiguration;
 }
 

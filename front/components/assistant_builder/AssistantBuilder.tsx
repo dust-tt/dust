@@ -55,7 +55,7 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
@@ -158,7 +158,6 @@ export type AssistantBuilderInitialState = {
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
-  plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
@@ -203,7 +202,6 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 export default function AssistantBuilder({
   user,
   owner,
-  plan,
   gaTrackingId,
   dataSources,
   dustApps,
@@ -220,9 +218,7 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings: plan.limits.largeModels
-        ? GPT_4_32K_MODEL_CONFIG
-        : GPT_3_5_TURBO_16K_MODEL_CONFIG,
+      modelSettings: GPT_4_32K_MODEL_CONFIG,
     },
   });
 
@@ -843,7 +839,6 @@ export default function AssistantBuilder({
                 />
               </div>
               <AdvancedSettings
-                plan={plan}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
                   setEdited(true);
@@ -1336,11 +1331,9 @@ function AssistantBuilderTextArea({
 }
 
 function AdvancedSettings({
-  plan,
   generationSettings,
   setGenerationSettings,
 }: {
-  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
@@ -1377,27 +1370,22 @@ function AdvancedSettings({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topLeft">
-                {usedModelConfigs
-                  .filter(
-                    (modelConfig) =>
-                      !modelConfig.largeModel || plan.limits.largeModels
-                  )
-                  .map((modelConfig) => (
-                    <DropdownMenu.Item
-                      key={modelConfig.modelId}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel,
-                        });
-                      }}
-                    />
-                  ))}
+                {usedModelConfigs.map((modelConfig) => (
+                  <DropdownMenu.Item
+                    key={modelConfig.modelId}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                          // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                        } as SupportedModel,
+                      });
+                    }}
+                  />
+                ))}
               </DropdownMenu.Items>
             </DropdownMenu>
           </div>
