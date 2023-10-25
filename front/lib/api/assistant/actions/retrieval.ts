@@ -2,7 +2,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
-import { runAction } from "@app/lib/actions/server";
+import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -611,7 +611,7 @@ export async function* runRetrieval(
   // Handle top k.
   config.DATASOURCE.top_k = topK;
 
-  const res = await runAction(auth, "assistant-v2-retrieval", config, [
+  const res = await runActionStreamed(auth, "assistant-v2-retrieval", config, [
     {
       query: params.query,
     },
@@ -639,7 +639,8 @@ export async function* runRetrieval(
     return;
   }
 
-  const run = res.value;
+  const { eventStream } = res.value;
+
   let documents: RetrievalDocumentType[] = [];
 
   // This is not perfect and will be erroneous in case of two data sources with the same id from two
@@ -651,13 +652,13 @@ export async function* runRetrieval(
     dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
   }
 
-  for (const t of run.traces) {
-    if (t[1][0][0].error) {
+  for await (const event of eventStream) {
+    if (event.type === "error") {
       logger.error(
         {
           workspaceId: owner.id,
           conversationId: conversation.id,
-          error: t[1][0][0].error,
+          error: event.content.message,
         },
         "Error running retrieval"
       );
@@ -668,47 +669,78 @@ export async function* runRetrieval(
         messageId: agentMessage.sId,
         error: {
           code: "retrieval_search_error",
-          message: `Error searching data sources: ${t[1][0][0].error}`,
+          message: `Error searching data sources: ${event.content.message}`,
         },
       };
       return;
     }
-    if (t[0][1] === "DATASOURCE") {
-      const v = t[1][0][0].value as {
-        data_source_id: string;
-        created: number;
-        document_id: string;
-        timestamp: number;
-        tags: string[];
-        parents: string[];
-        source_url: string | null;
-        hash: string;
-        text_size: number;
-        chunk_count: number;
-        chunks: { text: string; hash: string; offset: number; score: number }[];
-        token_count: number;
-      }[];
 
-      const refs = getRefs();
-      documents = v.map((d, i) => {
-        const reference = refs[i % refs.length];
-        return {
-          id: 0, // dummy pending database insertion
-          dataSourceWorkspaceId: dataSourcesIdToWorkspaceId[d.data_source_id],
-          dataSourceId: d.data_source_id,
-          documentId: d.document_id,
-          reference,
-          timestamp: d.timestamp,
-          tags: d.tags,
-          sourceUrl: d.source_url ?? null,
-          score: d.chunks.map((c) => c.score)[0],
-          chunks: d.chunks.map((c) => ({
-            text: c.text,
-            offset: c.offset,
-            score: c.score,
-          })),
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        logger.error(
+          {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            error: e.error,
+          },
+          "Error running retrieval"
+        );
+        yield {
+          type: "retrieval_error",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "retrieval_search_error",
+            message: `Error searching data sources: ${e.error}`,
+          },
         };
-      });
+        return;
+      }
+
+      if (event.content.block_name === "DATASOURCE" && e.value) {
+        const v = e.value as {
+          data_source_id: string;
+          created: number;
+          document_id: string;
+          timestamp: number;
+          tags: string[];
+          parents: string[];
+          source_url: string | null;
+          hash: string;
+          text_size: number;
+          chunk_count: number;
+          chunks: {
+            text: string;
+            hash: string;
+            offset: number;
+            score: number;
+          }[];
+          token_count: number;
+        }[];
+
+        const refs = getRefs();
+        documents = v.map((d, i) => {
+          const reference = refs[i % refs.length];
+          return {
+            id: 0, // dummy pending database insertion
+            dataSourceWorkspaceId: dataSourcesIdToWorkspaceId[d.data_source_id],
+            dataSourceId: d.data_source_id,
+            documentId: d.document_id,
+            reference,
+            timestamp: d.timestamp,
+            tags: d.tags,
+            sourceUrl: d.source_url ?? null,
+            score: d.chunks.map((c) => c.score)[0],
+            chunks: d.chunks.map((c) => ({
+              text: c.text,
+              offset: c.offset,
+              score: c.score,
+            })),
+          };
+        });
+      }
     }
   }
 
