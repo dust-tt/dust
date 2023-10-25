@@ -418,7 +418,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-8 flex flex-col gap-4"
+                "s-dark dark col-span-12 flex flex-col gap-4"
               )}
             >
               <H2>Pricing</H2>
@@ -429,22 +429,41 @@ export default function Home({
                   priceLabel=""
                   color="emerald"
                 >
-                  <PriceTable.Item label="One user" variant="dash" />
-                  <PriceTable.Item label="One workspace" variant="dash" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
+                  <PriceTable.Item size="sm" label="One user" variant="dash" />
                   <PriceTable.Item
+                    size="sm"
+                    label="One workspace"
+                    variant="dash"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Privacy and Data Security"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Advanced LLM models (GPT-4, Claude, …)"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Unlimited custom assistants"
+                  />
+                  <PriceTable.Item
+                    size="sm"
                     label="100 messages with Assistants"
                     variant="dash"
                   />
                   <PriceTable.Item
+                    size="sm"
                     label="50 documents as data sources"
                     variant="dash"
                   />
-                  <PriceTable.Item label="No connections" variant="xmark" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="No connections"
+                    variant="xmark"
+                  />
                   <PriceTable.ActionContainer>
-                    <Button variant="primary" label="Start testing" />
+                    <Button variant="primary" size="md" label="Start testing" />
                   </PriceTable.ActionContainer>
                 </PriceTable>
 
@@ -454,48 +473,89 @@ export default function Home({
                   color="sky"
                   priceLabel="/ month / seat"
                 >
-                  <PriceTable.Item label="From 1 user" />
-                  <PriceTable.Item label="One workspace" variant="dash" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Up to 1Go/user of data sources" />
+                  <PriceTable.Item size="sm" label="From 1 user" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="One workspace"
+                    variant="dash"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Privacy and Data Security"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Advanced LLM models (GPT-4, Claude, …)"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Unlimited custom assistants"
+                  />
+                  <PriceTable.Item size="sm" label="Unlimited messages" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Up to 1Go/user of data sources"
+                  />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
-                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
-                  <PriceTable.Item label="Dust Slackbot" />
-                  <PriceTable.Item label="Assistants can execute actions" />
                   <PriceTable.Item
+                    size="sm"
+                    label="Single Sign-on (Google, GitHub)"
+                  />
+                  <PriceTable.Item size="sm" label="Dust Slackbot" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Assistants can execute actions"
+                  />
+                  <PriceTable.Item
+                    size="sm"
                     label="Workspace role and permissions"
                     variant="dash"
                   />
                   <PriceTable.ActionContainer>
-                    <Button variant="primary" label="Start now" />
+                    <Button variant="primary" size="md" label="Start now" />
                   </PriceTable.ActionContainer>
                 </PriceTable>
 
                 <PriceTable title="Enterprise" price="Custom">
-                  <PriceTable.Item label="From 100 users" />
-                  <PriceTable.Item label="Multiple workspaces" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Unlimited data sources" />
+                  <PriceTable.Item size="sm" label="From 100 users" />
+                  <PriceTable.Item size="sm" label="Multiple workspaces" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Privacy and Data Security"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Advanced LLM models (GPT-4, Claude, …)"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Unlimited custom assistants"
+                  />
+                  <PriceTable.Item size="sm" label="Unlimited messages" />
+                  <PriceTable.Item size="sm" label="Unlimited data sources" />
                   <PriceTable.Item
                     label="Connections
 (GitHub, Google Drive, Notion, Slack)"
                   />
-                  <PriceTable.Item label="Single Sign-on" />
-                  <PriceTable.Item label="Dust Slackbot" />
-                  <PriceTable.Item label="Assistants can execute actions" />
-                  <PriceTable.Item label="Advanced workspace role and permissions" />
-                  <PriceTable.Item label="Dedicated account support" />
+                  <PriceTable.Item size="sm" label="Single Sign-on" />
+                  <PriceTable.Item size="sm" label="Dust Slackbot" />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Assistants can execute actions"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Advanced workspace role and permissions"
+                  />
+                  <PriceTable.Item
+                    size="sm"
+                    label="Dedicated account support"
+                  />
                   <PriceTable.ActionContainer>
-                    <Button variant="secondary" label="Contact us" />
+                    <Button variant="secondary" size="md" label="Contact us" />
                   </PriceTable.ActionContainer>
                 </PriceTable>
               </PriceTable.Container>
