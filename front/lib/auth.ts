@@ -20,7 +20,7 @@ const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
   NODE_ENV,
-  DUST_API = "https://dust.tt",
+  DUST_PROD_API = "https://dust.tt",
 } = process.env;
 
 export type RoleType = "admin" | "builder" | "user" | "none";
@@ -558,7 +558,7 @@ export async function prodAPICredentialsForOwner(
 
   if (
     NODE_ENV === "development" &&
-    !DUST_API.startsWith("http://localhost") &&
+    !DUST_PROD_API.startsWith("http://localhost") &&
     !useLocalInDev
   ) {
     if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
