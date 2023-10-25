@@ -729,6 +729,14 @@ function parsePropertyText(
         ? property.title.map((t) => t.plain_text).join(" ")
         : null;
     case "rich_text":
+      if (!Array.isArray(property.rich_text)) {
+        logger.warn(
+          {
+            property,
+          },
+          "Unexpected rich_text structure"
+        );
+      }
       return property.rich_text.map((t) => t.plain_text).join(" ");
     case "people":
       return property.people.length > 0
