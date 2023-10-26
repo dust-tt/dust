@@ -10,6 +10,7 @@ import {
   PaperAirplaneIcon,
   PlanetIcon,
   RobotIcon,
+  ShapesIcon,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
@@ -27,6 +28,7 @@ export type TopNavigationId = "assistant" | "settings";
 export type SubNavigationAdminId =
   | "data_sources_managed"
   | "data_sources_static"
+  | "subscription"
   | "workspace"
   | "members"
   | "developers"
@@ -150,30 +152,44 @@ export const subNavigationAdmin = ({
   });
 
   if (owner.role === "admin") {
+    const menus: SparkleAppLayoutNavigation[] = [];
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      menus.push({
+        id: "subscription",
+        label: "Subscription (Dust only)",
+        icon: ShapesIcon,
+        href: `/w/${owner.sId}/subscription`,
+        current: current === "subscription",
+        subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
+        subMenu: current === "subscription" ? subMenu : undefined,
+      });
+    }
+    menus.push(
+      {
+        id: "workspace",
+        label: "Workspace",
+        icon: PlanetIcon,
+        href: `/w/${owner.sId}/workspace`,
+        current: current === "workspace",
+        subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
+        subMenu: current === "workspace" ? subMenu : undefined,
+      },
+      {
+        id: "members",
+        label: "Members",
+        icon: UsersIcon,
+        href: `/w/${owner.sId}/members`,
+        current: current === "members",
+        subMenuLabel: current === "members" ? subMenuLabel : undefined,
+        subMenu: current === "members" ? subMenu : undefined,
+      }
+    );
+
     nav.push({
       id: "workspace",
       label: "Settings",
       variant: "secondary",
-      menus: [
-        {
-          id: "workspace",
-          label: "Workspace",
-          icon: PlanetIcon,
-          href: `/w/${owner.sId}/workspace`,
-          current: current === "workspace",
-          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-          subMenu: current === "workspace" ? subMenu : undefined,
-        },
-        {
-          id: "members",
-          label: "Members",
-          icon: UsersIcon,
-          href: `/w/${owner.sId}/members`,
-          current: current === "members",
-          subMenuLabel: current === "members" ? subMenuLabel : undefined,
-          subMenu: current === "members" ? subMenu : undefined,
-        },
-      ],
+      menus,
     });
   }
 
