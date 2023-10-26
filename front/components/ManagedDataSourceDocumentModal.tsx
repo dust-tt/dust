@@ -62,11 +62,11 @@ export default function ManagedDataSourceDocumentModal({
       title={title || documentId}
       type="right-side"
     >
-      <div>
+      <div className="w-full">
         <div className="text-left">
           {!downloading && documentId && text?.length ? (
             <>
-              <div className="px-2 py-8">{text}</div>
+              <div className="whitespace-break-spaces px-2 py-8">{text}</div>
             </>
           ) : null}
         </div>
