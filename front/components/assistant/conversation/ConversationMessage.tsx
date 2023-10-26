@@ -292,7 +292,7 @@ export function ConversationMessage({
                     emojiData={emojiData}
                   />
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="ml-2 flex flex-wrap gap-3">
                   {slicedReactions.map((reaction) => {
                     const hasReacted = reaction.users.some(
                       (u) => u.userId === user.id
@@ -346,10 +346,8 @@ export function ButtonEmoji({
   return (
     <div
       className={classNames(
-        variant === "selected"
-          ? "border-structure-200 text-action-500"
-          : "border-structure-200 text-element-800",
-        "flex cursor-pointer items-center gap-1.5 rounded-2xl border px-2 py-1 text-base text-sm font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
+        variant === "selected" ? "text-action-500" : "text-element-800",
+        "text-md flex cursor-pointer items-center gap-1.5 rounded-2xl py-1 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
       )}
       onClick={onClick}
     >
