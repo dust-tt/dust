@@ -1,6 +1,5 @@
 use anyhow::Result;
 use async_std::path::PathBuf;
-use colored::Colorize;
 use std::io::Write;
 use uuid::Uuid;
 
@@ -83,23 +82,23 @@ pub fn utc_date_from(millis: u64) -> String {
 
 // TODO(spolu): maybe make async eventually
 pub fn info(msg: &str) {
-    println!("{} {}", "[i]".yellow(), msg);
+    println!("{} {}", "[i]", msg);
 }
 
 pub fn action(msg: &str) {
-    println!("{} {}", "[·]".blue(), msg);
+    println!("{} {}", "[·]", msg);
 }
 
 pub fn error(msg: &str) {
-    println!("{} {}", "[!]".red(), msg);
+    println!("{} {}", "[!]", msg);
 }
 
 pub fn done(msg: &str) {
-    println!("{} {}", "[✓]".green(), msg);
+    println!("{} {}", "[✓]", msg);
 }
 
 pub fn confirm(msg: &str) -> Result<bool> {
-    print!("{} {} Confirm ([y]/n) ? ", "[?]".cyan(), msg);
+    print!("{} {} Confirm ([y]/n) ? ", "[?]", msg);
     std::io::stdout().flush()?;
 
     let mut input = String::new();
