@@ -1,12 +1,18 @@
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { assertNever, classNames } from "@sparkle/lib/utils";
 
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
 import { Button, ButtonProps } from "./Button";
 
-interface ModalProps {
+const RIGHT_SIDE_MODAL_WIDTH = {
+  normal: "sm:s-w-[448px]",
+  wide: "sm:s-w-[50rem]",
+  "ultra-wide": "sm:s-w-[80rem]",
+} as const;
+
+type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   action?: ButtonProps;
@@ -17,8 +23,15 @@ interface ModalProps {
   isSaving?: boolean;
   savingLabel?: string;
   title?: string;
-  type?: "full-screen" | "right-side" | "default";
-}
+} & (
+  | {
+      type: "right-side";
+      width?: keyof typeof RIGHT_SIDE_MODAL_WIDTH;
+    }
+  | {
+      type: "full-screen" | "default";
+    }
+);
 
 export function Modal({
   isOpen,
@@ -31,7 +44,7 @@ export function Modal({
   isSaving,
   savingLabel,
   title,
-  type = "default",
+  ...props
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
@@ -46,6 +59,81 @@ export function Modal({
         variant: "close",
         onClose: onClose,
       };
+
+  const justifyClass = (() => {
+    switch (props.type) {
+      case "right-side":
+        return "s-justify-end";
+
+      case "full-screen":
+      case "default":
+        return "s-justify-center";
+
+      default:
+        throw assertNever(props);
+    }
+  })();
+
+  const outerContainerClasses = (() => {
+    switch (props.type) {
+      case "right-side":
+      case "full-screen":
+        return "s-h-full s-p-0";
+
+      case "default":
+        return "s-min-h-full s-p-4";
+
+      default:
+        throw assertNever(props);
+    }
+  })();
+
+  const transitionEnterLeaveClasses = (() => {
+    switch (props.type) {
+      case "right-side":
+        return "s-translate-x-full";
+
+      case "full-screen":
+      case "default":
+        return "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95";
+
+      default:
+        throw assertNever(props);
+    }
+  })();
+
+  const panelClasses = (() => {
+    switch (props.type) {
+      case "right-side":
+        return classNames(
+          "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full",
+          RIGHT_SIDE_MODAL_WIDTH[props.width || "normal"]
+        );
+
+      case "full-screen":
+        return "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full";
+
+      case "default":
+        return "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2";
+
+      default:
+        throw assertNever(props);
+    }
+  })();
+
+  const innerContainerClasses = (() => {
+    switch (props.type) {
+      case "right-side":
+      case "full-screen":
+        return "s-h-full s-overflow-y-auto";
+
+      case "default":
+        return "";
+
+      default:
+        throw assertNever(props);
+    }
+  })();
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
@@ -66,42 +154,23 @@ export function Modal({
           <div
             className={classNames(
               "s-flex s-items-center",
-              type === "right-side" ? "s-justify-end" : "s-justify-center",
-              type === "full-screen" || type === "right-side"
-                ? "s-h-full s-p-0"
-                : "s-min-h-full s-p-4"
+              justifyClass,
+              outerContainerClasses
             )}
           >
             <Transition.Child
               as={Fragment}
               enter="s-ease-out s-duration-300"
-              enterFrom={classNames(
-                "s-opacity-0",
-                type === "right-side"
-                  ? "s-translate-x-16"
-                  : "s-translate-y-4 sm:s-translate-y-0 sm:s-scale-95"
-              )}
+              enterFrom={classNames("s-opacity-0", transitionEnterLeaveClasses)}
               enterTo="s-opacity-100 s-translate-y-0 sm:s-scale-100"
               leave="s-ease-in s-duration-200"
               leaveFrom="s-opacity-100 s-translate-y-0 sm:s-scale-100"
-              leaveTo={classNames(
-                "s-opacity-0",
-                type === "right-side"
-                  ? "s-translate-x-full"
-                  : "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95"
-              )}
+              leaveTo={classNames("s-opacity-0", transitionEnterLeaveClasses)}
             >
               <Dialog.Panel
                 className={classNames(
                   "s-relative s-transform s-overflow-hidden s-bg-white s-px-3 s-transition-all sm:s-px-4",
-                  type === "full-screen" || type === "right-side"
-                    ? "s-m-0 s-h-full s-max-h-full"
-                    : "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2",
-                  type === "full-screen"
-                    ? "s-w-full s-max-w-full"
-                    : type === "right-side"
-                    ? "s-w-full s-max-w-full sm:s-w-[448px]"
-                    : ""
+                  panelClasses
                 )}
               >
                 <BarHeader
@@ -110,11 +179,10 @@ export function Modal({
                   rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
                 />
                 <div
-                  className={`s-pb-6 s-pt-14 ${
-                    type === "full-screen" || type === "right-side"
-                      ? "s-h-full s-overflow-y-auto"
-                      : ""
-                  }`}
+                  className={classNames(
+                    "s-pb-6 s-pt-14",
+                    innerContainerClasses
+                  )}
                 >
                   {children}
                 </div>
