@@ -60,6 +60,8 @@ type DataSourceIntegration = {
   setupWithSuffix: string | null;
 };
 
+const REDIRECT_TO_EDIT_PERMISSIONS = ["google_drive", "slack"];
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
@@ -311,7 +313,7 @@ export default function DataSourcesView({
               : ds;
           })
         );
-        if (provider === "google_drive") {
+        if (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)) {
           void router.push(
             `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
           );
