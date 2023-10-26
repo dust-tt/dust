@@ -61,12 +61,13 @@ export default function ManagedDataSourceDocumentModal({
       hasChanged={false}
       title={title || documentId}
       type="right-side"
+      width="ultra-wide"
     >
       <div className="w-full">
         <div className="text-left">
           {!downloading && documentId && text?.length ? (
             <>
-              <div className="whitespace-break-spaces px-2 py-8">{text}</div>
+              <pre className="whitespace-pre-wrap px-2 py-8">{text}</pre>
             </>
           ) : null}
         </div>
