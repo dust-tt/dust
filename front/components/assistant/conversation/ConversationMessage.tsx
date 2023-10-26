@@ -86,34 +86,11 @@ export function ConversationMessage({
     }
   };
 
-  const handleEmojiClick = async (emojiCode: string) => {
-    const reaction = reactions.find((r) => r.emoji === emojiCode);
-    const hasReacted =
-      (reaction &&
-        reaction.users.find((u) => u.userId === user.id) !== undefined) ||
-      false;
-    await handleEmoji({
-      emoji: emojiCode,
-      isToRemove: hasReacted,
-    });
-  };
-
-  // Extracting some of the emoji logic from the render function to make it more readable
-  const reactionUp = reactions.find((r) => r.emoji === "+1");
-  const hasReactedUp =
-    reactionUp?.users.some((u) => u.userId === user.id) ?? false;
-
-  const reactionDown = reactions.find((r) => r.emoji === "-1");
-  const hasReactedDown =
-    reactionDown?.users.some((u) => u.userId === user.id) ?? false;
-
-  let otherReactions = reactions.filter(
-    (r) => r.emoji !== "+1" && r.emoji !== "-1"
-  );
+  let slicedReactions = [...reactions];
   let hasMoreReactions = null;
-  if (otherReactions.length > MAX_MORE_REACTIONS_TO_SHOW) {
-    hasMoreReactions = otherReactions.length - MAX_MORE_REACTIONS_TO_SHOW;
-    otherReactions = otherReactions.slice(0, MAX_MORE_REACTIONS_TO_SHOW);
+  if (slicedReactions.length > MAX_MORE_REACTIONS_TO_SHOW) {
+    hasMoreReactions = slicedReactions.length - MAX_MORE_REACTIONS_TO_SHOW;
+    slicedReactions = slicedReactions.slice(0, MAX_MORE_REACTIONS_TO_SHOW);
   }
 
   return (
@@ -187,21 +164,7 @@ export function ConversationMessage({
               {/* EMOJIS */}
               {enableEmojis && (
                 <div className="flex flex-wrap gap-3">
-                  <ButtonEmoji
-                    variant={hasReactedUp ? "selected" : "unselected"}
-                    emoji="👍"
-                    count={reactionUp ? reactionUp.users.length.toString() : ""}
-                    onClick={async () => await handleEmojiClick("+1")}
-                  />
-                  <ButtonEmoji
-                    variant={hasReactedDown ? "selected" : "unselected"}
-                    emoji="👎"
-                    count={
-                      reactionDown ? reactionDown.users.length.toString() : ""
-                    }
-                    onClick={async () => await handleEmojiClick("-1")}
-                  />
-                  {otherReactions.map((reaction) => {
+                  {slicedReactions.map((reaction) => {
                     const hasReacted = reaction.users.some(
                       (u) => u.userId === user.id
                     );
@@ -213,7 +176,7 @@ export function ConversationMessage({
                     return (
                       <ButtonEmoji
                         key={reaction.emoji}
-                        variant={hasReactedDown ? "selected" : "unselected"}
+                        variant={hasReacted ? "selected" : "unselected"}
                         emoji={nativeEmoji}
                         count={reaction.users.length.toString()}
                         onClick={async () =>
@@ -226,7 +189,7 @@ export function ConversationMessage({
                     );
                   })}
                   {hasMoreReactions && (
-                    <span className="text-xs">+{hasMoreReactions}</span>
+                    <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
                   )}
                 </div>
               )}
@@ -263,7 +226,7 @@ export function ConversationMessage({
           <div className="w-32">
             {/* COPY / RETRY */}
             {buttons && (
-              <div className="mb-6 flex flex-wrap gap-1">
+              <div className="mb-4 flex flex-wrap gap-1">
                 {buttons.map((button, i) => (
                   <Button
                     key={`message-${messageId}-button-${i}`}
@@ -282,52 +245,7 @@ export function ConversationMessage({
             {/* EMOJIS */}
 
             {enableEmojis && (
-              <div className="flex flex-wrap gap-3 pl-2">
-                <ButtonEmoji
-                  variant={hasReactedUp ? "selected" : "unselected"}
-                  emoji="👍"
-                  count={reactionUp ? reactionUp.users.length.toString() : ""}
-                  onClick={async () => await handleEmojiClick("+1")}
-                />
-                <ButtonEmoji
-                  variant={hasReactedDown ? "selected" : "unselected"}
-                  emoji="👎"
-                  count={
-                    reactionDown ? reactionDown.users.length.toString() : ""
-                  }
-                  onClick={async () => await handleEmojiClick("-1")}
-                />
-                {otherReactions.map((reaction) => {
-                  const hasReacted = reaction.users.some(
-                    (u) => u.userId === user.id
-                  );
-                  const emoji = emojiData?.emojis[reaction.emoji];
-                  const nativeEmoji = emoji?.skins[0].native;
-                  if (!nativeEmoji) {
-                    return null;
-                  }
-                  return (
-                    <ButtonEmoji
-                      key={reaction.emoji}
-                      variant={hasReactedDown ? "selected" : "unselected"}
-                      emoji={nativeEmoji}
-                      count={reaction.users.length.toString()}
-                      onClick={async () =>
-                        await handleEmoji({
-                          emoji: reaction.emoji,
-                          isToRemove: hasReacted,
-                        })
-                      }
-                    />
-                  );
-                })}
-                {hasMoreReactions && (
-                  <span className="text-xs">+{hasMoreReactions}</span>
-                )}
-              </div>
-            )}
-            {enableEmojis && (
-              <div className="mt-2">
+              <div className="mb-4">
                 <DropdownMenu>
                   <DropdownMenu.Button>
                     <Button
@@ -363,6 +281,37 @@ export function ConversationMessage({
                 </DropdownMenu>
               </div>
             )}
+            {enableEmojis && (
+              <div className="flex flex-wrap gap-3">
+                {slicedReactions.map((reaction) => {
+                  const hasReacted = reaction.users.some(
+                    (u) => u.userId === user.id
+                  );
+                  const emoji = emojiData?.emojis[reaction.emoji];
+                  const nativeEmoji = emoji?.skins[0].native;
+                  if (!nativeEmoji) {
+                    return null;
+                  }
+                  return (
+                    <ButtonEmoji
+                      key={reaction.emoji}
+                      variant={hasReacted ? "selected" : "unselected"}
+                      emoji={nativeEmoji}
+                      count={reaction.users.length.toString()}
+                      onClick={async () =>
+                        await handleEmoji({
+                          emoji: reaction.emoji,
+                          isToRemove: hasReacted,
+                        })
+                      }
+                    />
+                  );
+                })}
+                {hasMoreReactions && (
+                  <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -386,8 +335,10 @@ export function ButtonEmoji({
   return (
     <div
       className={classNames(
-        variant ? "text-action-500" : "text-element-800",
-        "flex cursor-pointer items-center gap-1.5 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
+        variant === "selected"
+          ? "border-structure-200 text-action-500"
+          : "border-structure-200 text-element-800",
+        "flex cursor-pointer items-center gap-1.5 rounded-2xl border px-2 py-1 text-base text-sm font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
       )}
       onClick={onClick}
     >
