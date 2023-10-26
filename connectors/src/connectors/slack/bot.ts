@@ -609,9 +609,6 @@ async function makeContentFragment(
   startingAtTs: string | null,
   connector: Connector
 ) {
-  const slackChannelPromise = slackClient.conversations.info({
-    channel: channelId,
-  });
   let allMessages: Message[] = [];
 
   let next_cursor = undefined;
@@ -690,7 +687,10 @@ async function makeContentFragment(
     url = permalinkRes.permalink;
   }
   try {
-    const channel = await slackChannelPromise;
+    const channel = await slackClient.conversations.info({
+      channel: channelId,
+    });
+
     if (channel.error) {
       return new Err(new Error(channel.error));
     }
