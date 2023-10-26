@@ -22,6 +22,7 @@ export class Plan extends Model<
 
   declare code: string; // unique
   declare name: string;
+  declare stripeProductId: string | null;
 
   // workspace limitations
   declare maxMessages: number;
@@ -59,6 +60,10 @@ Plan.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    stripeProductId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     maxMessages: {
       type: DataTypes.INTEGER,
