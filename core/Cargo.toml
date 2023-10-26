@@ -17,7 +17,7 @@ shellexpand = "2.1"
 blake3 = "1.3"
 async-trait = "0.1"
 hyper = { version = "0.14", features = ["full"] }
-tokio = { version = "1.25", features = ["full"] }
+tokio = { version = "1.33", features = ["full"] }
 tokio-stream = "0.1"
 hyper-tls = "0.5"
 itertools = "0.10"
@@ -29,11 +29,8 @@ regex = "1.6"
 rand = "0.8"
 uuid = { version = "1.1", features = ["v4"] }
 parking_lot = "0.12"
-chrono = "0.4"
 axum = "0.5"
-rusqlite = { version = "0.28", features = ["bundled", "chrono", "serde_json", "vtab", "array"] }
-r2d2_sqlite = "0.21"
-r2d2 = "0.8"
+rusqlite = { version = "0.29", features = ["bundled"] }
 tokio-postgres = "0.7"
 bb8 = "0.8"
 bb8-postgres = "0.8"
@@ -48,14 +45,8 @@ rustc-hash = "1.1"
 bstr = "0.2"
 base64 = "0.21"
 cloud-storage = { version = "0.11", features = ["global-client"] }
-qdrant-client = "1.4"
+qdrant-client = "1.6"
 tower-http = {version = "0.4", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 deno_core = "0.200"
-
-webpki = "0.22"
-rustls-webpki = "0.100"
-rustix = "0.37"
-openssl = "0.10"
-time = "0.2"
