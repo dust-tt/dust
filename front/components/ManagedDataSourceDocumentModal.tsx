@@ -65,9 +65,14 @@ export default function ManagedDataSourceDocumentModal({
     >
       <div className="w-full">
         <div className="text-left">
+          <div className="mb-4 mt-8 text-sm text-element-900">
+            Content of the document:
+          </div>
           {!downloading && documentId && text?.length ? (
             <>
-              <pre className="whitespace-pre-wrap px-2 py-8">{text}</pre>
+              <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800">
+                {text}
+              </pre>
             </>
           ) : null}
         </div>
