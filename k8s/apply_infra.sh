@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
 
 function apply_deployment {
-    # This function applies a deployment, but if the deployment already exists, 
+    # This function applies a deployment, but if the deployment already exists,
     # it will replace the image with the current image to avoid a rolling update
     DEPLOYMENT_NAME=$1
     YAML_FILE="$(dirname "$0")/deployments/$DEPLOYMENT_NAME.yaml"
@@ -40,7 +40,7 @@ else
     helm repo update
     helm install dust-datadog-agent datadog/datadog -f "$(dirname "$0")/datadog-values.yml" \
         --set datadog.apiKey=$DD_API_KEY \
-        --set datadog.appKey=$DD_APP_KEY 
+        --set datadog.appKey=$DD_APP_KEY
 fi
 
 
