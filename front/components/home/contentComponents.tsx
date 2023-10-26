@@ -2,14 +2,14 @@ import classNames from "classnames";
 import React, { ReactElement, ReactNode } from "react";
 
 const defaultGridClasses =
-  "grid grid-cols-12 gap-x-6 gap-y-10 md:gap-12 px-6 md:px-20 xl:px-0 xl:gap-10";
+  "grid grid-cols-12 gap-x-6 gap-y-10 md:gap-12 px-6 md:px-12 lg:px-20 xl:px-0 xl:gap-10";
 
 export const Grid = ({ children, className = "" }: ContentProps) => (
   <div className={classNames(className, defaultGridClasses)}>{children}</div>
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl drop-shadow-lg",
+  h1: "font-objektiv text-4xl font-bold tracking-tight lg:text-6xl drop-shadow-lg",
   h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl drop-shadow-lg",
   h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2x xl:text-3xl drop-shadow-md",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",

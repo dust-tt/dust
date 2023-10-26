@@ -192,7 +192,7 @@ export default function Home({
               )}
             >
               <div ref={logoRef}>
-                <Logo className="h-[36px] w-[144px] sm:h-[48px] sm:w-[192px]" />
+                <Logo className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]" />
               </div>
               <div className="flex flex-col gap-12">
                 <H1 className="text-slate-100">
@@ -226,7 +226,7 @@ export default function Home({
               </div>
             </div>
           </Grid>
-          <Grid className="items-center md:hidden">
+          <Grid className="items-center lg:hidden">
             <div className="col-span-12 sm:col-span-10 sm:col-start-2">
               <ReactiveImg>
                 <img src="/static/landing/conversation.png" />
@@ -259,13 +259,12 @@ export default function Home({
               <Strong>safe and privacy-obsessed</Strong> application.
             </P>
           </Grid>
-          <Grid className="hidden items-center md:block">
+          <Grid className="hidden items-center lg:grid">
             <div
               className={classNames(
                 defaultFlexClasses,
                 "gap-8",
-                "col-span-12",
-                "md:col-span-5",
+                "col-span-5",
                 "xl:col-span-5 xl:col-start-2",
                 "2xl:col-span-4 2xl:col-start-3"
               )}
@@ -303,7 +302,7 @@ export default function Home({
                 defaultFlexClasses,
                 "flex flex-col gap-4",
                 "col-span-12",
-                "md:col-span-8 md:col-start-4",
+                "lg:col-span-8 lg:col-start-4",
                 "xl:col-span-8 xl:col-start-2",
                 "2xl:col-start-3 2xl:text-right"
               )}
@@ -326,7 +325,7 @@ export default function Home({
             <div
               className={classNames(
                 "flex h-full flex-col justify-center",
-                "col-span-10 col-start-2 sm:col-span-8 sm:col-start-3 md:hidden"
+                "col-span-10 col-start-2 sm:col-span-8 sm:col-start-3 lg:hidden"
               )}
             >
               <ReactiveImg>
@@ -338,7 +337,8 @@ export default function Home({
                 defaultFlexClasses,
                 "gap-8",
                 "col-span-10 col-start-2",
-                "md:col-span-7",
+                "md:col-span-8 md:col-start-3",
+                "lg:col-span-7",
                 "xl:col-span-6 xl:col-start-2",
                 "2xl:col-span-5 2xl:col-start-3"
               )}
@@ -357,7 +357,7 @@ export default function Home({
                 "gap-8",
                 "col-span-10 col-start-2",
                 "sm:col-span-6",
-                "md:col-span-7",
+                "lg:col-span-7",
                 "xl:col-span-6 xl:col-start-2",
                 "2xl:col-span-5 2xl:col-start-3"
               )}
@@ -398,7 +398,7 @@ export default function Home({
                 "gap-8",
                 "col-span-10 col-start-2",
                 "sm:col-span-6",
-                "md:col-span-7",
+                "lg:col-span-7",
                 "xl:col-span-6 xl:col-start-2",
                 "2xl:col-span-5 2xl:col-start-3"
               )}
@@ -433,14 +433,7 @@ export default function Home({
                 </div>
               </div>
             </div>
-            <div
-              className={classNames(
-                "flex h-full flex-col justify-center",
-                "col-span-12 hidden md:block",
-                "md:col-span-5",
-                "xl:col-span-4"
-              )}
-            >
+            <div className="hidden lg:block xl:col-span-4">
               <ReactiveImg>
                 <img src="/static/landing/connect.png" />
               </ReactiveImg>
@@ -615,7 +608,7 @@ export default function Home({
               </P>
             </div>
           </Grid>
-          <Grid className="hidden md:block">
+          <Grid className="hidden lg:block">
             <div
               className={classNames(
                 "pb-8",
