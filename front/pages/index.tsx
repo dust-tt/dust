@@ -4,7 +4,6 @@ import {
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
-  HuggingFaceLogo,
   LightbulbIcon,
   Logo,
   LogoHorizontalWhiteLogo,
@@ -13,6 +12,7 @@ import {
   MoreIcon,
   NotionLogo,
   OpenaiLogo,
+  PlayIcon,
   PriceTable,
   RocketIcon,
   SlackLogo,
@@ -162,7 +162,7 @@ export default function Home({
       <div
         className={classNames(
           "fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]",
-          hasScrolled ? "opacity-30" : "opacity-100"
+          hasScrolled ? "opacity-60" : "opacity-100"
         )}
       >
         <Particles
@@ -193,12 +193,18 @@ export default function Home({
                   Effectively channeling the potential of AI is a competitive
                   edge.
                 </H3>
-                <div className="flex w-full flex-col items-start">
+                <div className="flex w-full items-start gap-6">
                   <Button
                     variant="primary"
                     size="lg"
                     label="Start with Dust now"
                     icon={RocketIcon}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    label="Watch the demo video"
+                    icon={PlayIcon}
                   />
                 </div>
               </div>
@@ -217,8 +223,8 @@ export default function Home({
               </P>
               <P border="amber">
                 Connect Dust to <Strong>your team’s data</Strong> and{" "}
-                <Strong>break down knowledge silos</Strong> with context aware
-                assistants.
+                <Strong>break down knowledge silos</Strong>{" "}
+                with&nbsp;context&#8209;aware assistants.
               </P>
               <P border="red">
                 Empower your teams with{" "}
@@ -226,7 +232,7 @@ export default function Home({
                 concrete use&nbsp;cases.
               </P>
               <P border="emerald">
-                <Strong>Control granularly data access</Strong> with a{" "}
+                <Strong>Control data access granularly</Strong> with a{" "}
                 <Strong>safe and privacy-obsessed</Strong> application.
               </P>
             </div>
@@ -268,9 +274,14 @@ export default function Home({
               )}
             >
               <P border="pink">
-                <Strong>Modular and composable</Strong>, Dust is&nbsp;deeply
-                customizable to&nbsp;your&nbsp;exact needs and will&nbsp;evolve
-                as those&nbsp;needs&nbsp;evolve.
+                Modular and&nbsp;composable: Dust is&nbsp;
+                <Strong>exceptionally&nbsp;adaptable</Strong>, tailoring to your
+                unique&nbsp;requirements,{" "}
+                <Strong>
+                  continuously&nbsp;evolving to&nbsp;meet
+                  your&nbsp;changing&nbsp;needs
+                </Strong>
+                .
               </P>
               <div className="flex flex-wrap gap-4 pl-6">
                 <ReactiveIcon colorHEX="#A26BF7">
@@ -282,11 +293,11 @@ export default function Home({
                 <ReactiveIcon colorHEX="#1A1C20">
                   <MistralLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#3A3B45">
-                  <HuggingFaceLogo />
-                </ReactiveIcon>
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <MicrosoftLogo />
+                </ReactiveIcon>
+                <ReactiveIcon colorHEX="#1E3A8A">
+                  <MoreIcon className="text-slate-50" />
                 </ReactiveIcon>
               </div>
               <P border="emerald">
@@ -352,9 +363,12 @@ export default function Home({
               </P>
               <P variant="big">
                 Dust empowers{" "}
-                <Strong>your most creative and driven team members</Strong>{" "}
-                to&nbsp;<Strong>develop and&nbsp;share</Strong>{" "}
-                their&nbsp;practices throughout your&nbsp;company.
+                <Strong>your most creative and driven team&nbsp;members</Strong>{" "}
+                to&nbsp;
+                <Strong>
+                  develop and&nbsp;share their&nbsp;experience with&nbsp;AI
+                </Strong>{" "}
+                throughout your&nbsp;company.
               </P>
             </div>
           </Grid>
@@ -384,10 +398,10 @@ export default function Home({
               )}
             >
               <P border="amber">
-                Spread good practices &&nbsp;encourage collaboration with{" "}
-                <Strong>conversation sharing</Strong>,{" "}
-                <Strong>@mentions in&nbsp;Dust conversations</Strong> and{" "}
-                <Strong>Slack&nbsp;integration</Strong>.
+                Spread good practices &&nbsp;foster collaboration with{" "}
+                <Strong>shared conversations</Strong>,{" "}
+                <Strong>@mentions in&nbsp;discussions</Strong> and{" "}
+                <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
               </P>
               <P border="pink">
                 Manage workspace invitations seamlessly&nbsp;with{" "}
@@ -457,7 +471,7 @@ export default function Home({
               </H2>
               <P variant="big">
                 Provide{" "}
-                <Strong>developers and tinkerers with a&nbsp;framework</Strong>{" "}
+                <Strong>developers and tinkerers with a&nbsp;platform</Strong>{" "}
                 to&nbsp;build custom actions and&nbsp;application orchestration
                 to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
               </P>
@@ -471,7 +485,7 @@ export default function Home({
           <Grid>
             <div className="col-span-8 col-start-3">
               <H2 color="text-amber-400">
-                Deal with Dust!
+                Start with Dust!
                 <br />
                 <H2 color="text-amber-100" isSpan>
                   Meet our pricing plans.
@@ -496,10 +510,10 @@ export default function Home({
                   <PriceTable.Item label="One user" variant="dash" />
                   <PriceTable.Item label="One workspace" variant="dash" />
                   <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item
-                    label="100 messages with Assistants"
+                    label="100 assistant messages"
                     variant="dash"
                   />
                   <PriceTable.Item
@@ -521,14 +535,14 @@ export default function Home({
                   title="Pro"
                   price="$29"
                   color="sky"
-                  priceLabel="/ month / seat"
+                  priceLabel="/ month / user"
                   size="sm"
                   magnified={false}
                 >
                   <PriceTable.Item label="From 1 user" />
                   <PriceTable.Item label="One workspace" variant="dash" />
                   <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item label="Unlimited messages" />
                   <PriceTable.Item label="Up to 1Go/user of data sources" />
@@ -562,13 +576,13 @@ export default function Home({
                   <PriceTable.Item label="From 100 users" />
                   <PriceTable.Item label="Multiple workspaces" />
                   <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude, …)" />
+                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
                   <PriceTable.Item label="Unlimited custom assistants" />
                   <PriceTable.Item label="Unlimited messages" />
                   <PriceTable.Item label="Unlimited data sources" />
                   <PriceTable.Item
                     label="Connections
-(GitHub, Google Drive, Notion, Slack)"
+(GitHub, Google Drive, Notion, Slack…)"
                   />
                   <PriceTable.Item label="Single Sign-on" />
                   <PriceTable.Item label="Dust Slackbot" />
