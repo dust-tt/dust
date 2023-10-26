@@ -774,6 +774,8 @@ export function getSlackClient(slackAccessToken: string): WebClient {
             throw workflowError;
           }
         }
+
+        throw e;
       }
     },
   };
