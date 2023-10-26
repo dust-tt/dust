@@ -28,6 +28,7 @@ import { ParsedUrlQuery } from "querystring";
 import React, { useEffect, useRef, useState } from "react";
 
 import {
+  A,
   Grid,
   H1,
   H2,
@@ -251,14 +252,12 @@ export default function Home({
                 "col-span-8 col-start-3 flex flex-col gap-4 text-right"
               )}
             >
-              <H1 color="text-sky-500">
+              <H1 colorCSS="text-sky-500">
                 Get the state of the&nbsp;art,
                 <br />
-                <H1 isSpan color="text-sky-200">
-                  today and&nbsp;tomorrow.
-                </H1>
+                <span className="text-sky-200">today and&nbsp;tomorrow.</span>
               </H1>
-              <P variant="big">
+              <P variant="lg">
                 Dust gives you&nbsp;access to the&nbsp;
                 <Strong>leading models</Strong>,<br />
                 and&nbsp; augments them with&nbsp;
@@ -347,21 +346,19 @@ export default function Home({
                 "col-span-8 col-start-3 flex flex-col gap-4"
               )}
             >
-              <H2 color="text-amber-400">
+              <H2 colorCSS="text-amber-400">
                 Bring your&nbsp;team
                 <br />
-                <H2 isSpan color="text-amber-100">
-                  up&nbsp;to&nbsp;speed.
-                </H2>
+                <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
               </H2>
-              <P variant="big">
+              <P variant="lg">
                 Embracing AI is a&nbsp;
                 <Strong>
                   paradigm shift for&nbsp;your team’s&nbsp;workflows
                 </Strong>
                 .
               </P>
-              <P variant="big">
+              <P variant="lg">
                 Dust empowers{" "}
                 <Strong>your most creative and driven team&nbsp;members</Strong>{" "}
                 to&nbsp;
@@ -424,20 +421,18 @@ export default function Home({
                 "col-span-5 col-start-2 flex flex-col gap-4 text-right"
               )}
             >
-              <H2 color="text-red-400">
+              <H2 colorCSS="text-red-400">
                 Designed for security
                 <br />
-                <H2 isSpan color="text-red-200">
-                  and data privacy.
-                </H2>
+                <span className="text-red-200">and data privacy.</span>
               </H2>
             </div>
             <div className="col-span-4 flex flex-col gap-4">
-              <P variant="big">
+              <P variant="lg">
                 <Strong>Your data is private</Strong>, No re-training
                 of&nbsp;models on your internal knowledge.
               </P>
-              <P variant="big">
+              <P variant="lg">
                 <Strong>Enterprise-grade security</Strong> to manage
                 your&nbsp;data access policies with control and&nbsp;confidence.
               </P>
@@ -462,20 +457,18 @@ export default function Home({
                 "col-span-5 flex flex-col gap-8"
               )}
             >
-              <H2 color="text-emerald-500">
+              <H2 colorCSS="text-emerald-500">
                 Need more?
                 <br />
-                <H2 isSpan color="text-emerald-200">
-                  Dust do it!
-                </H2>
+                <span className="text-emerald-200">Dust do it!</span>
               </H2>
-              <P variant="big">
+              <P variant="lg">
                 Provide{" "}
                 <Strong>developers and tinkerers with a&nbsp;platform</Strong>{" "}
                 to&nbsp;build custom actions and&nbsp;application orchestration
                 to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
               </P>
-              <P variant="big">
+              <P variant="lg">
                 Support <Strong>custom plugins</Strong> for assistants to
                 interact with your{" "}
                 <Strong>own databases on advanced use cases</Strong>.
@@ -483,13 +476,11 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <div className="col-span-8 col-start-3">
-              <H2 color="text-amber-400">
+            <div className="col-span-8 col-start-3 pb-8">
+              <H2 colorCSS="text-pink-400">
                 Start with Dust!
                 <br />
-                <H2 color="text-amber-100" isSpan>
-                  Meet our pricing plans.
-                </H2>
+                <span className="text-pink-200">Meet our pricing plans.</span>
               </H2>
             </div>
             <div
@@ -602,7 +593,7 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <H2 color="text-emerald-400 col-span-8 col-start-3">
+            <H2 colorCSS="text-emerald-400 col-span-8 col-start-3">
               Our product constitution
             </H2>
             <div
@@ -727,20 +718,92 @@ const Header = () => {
 
 const Footer = () => {
   return (
-    <div className="mt-48 flex w-full flex-col gap-6 border-t border-slate-800 bg-slate-900 px-12 pb-20 pt-12">
-      <div className="opacity-70">
-        <LogoHorizontalWhiteLogo className="h-6 w-24" />
-      </div>
-      <div className="grid w-full gap-4 text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
-          Legal
-        </Link>
-        <Link href="/website-privacy">Website Privacy</Link>
-        <Link href="/platform-privacy">Platform Privacy</Link>
-        <Link href="/terms">Terms</Link>
-        <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
-          Cookies
-        </Link>
+    <div className="z-11 mt-48 flex w-full flex-col items-center gap-6 border-t border-slate-800 bg-slate-900 pb-20 pt-12">
+      <div className="max-w-8xl container flex flex-col gap-8">
+        <Grid>
+          <div className="col-span-1 col-start-2 opacity-70">
+            <LogoHorizontalWhiteLogo className="h-6 w-24" />
+          </div>
+
+          <div className="col-span-2 col-start-5 flex flex-col gap-3">
+            <P>
+              <Strong>Career</Strong>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/">
+                  Jobs
+                </Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://www.linkedin.com/company/dust-tt/">
+                  LinkedIn
+                </Link>
+              </A>
+            </P>
+          </div>
+          <div className="col-span-2 flex flex-col gap-3">
+            <P>
+              <Strong>About</Strong>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://blog.dust.tt/">Dust's Blog</Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://twitter.com/dust4ai">@dust4ai</Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://github.com/dust-tt">GitHub</Link>
+              </A>
+            </P>
+          </div>
+          <div className="col-span-2 flex flex-col gap-3">
+            <P>
+              <Strong>Privacy</Strong>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="/website-privacy">Website Privacy Policy</Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="/platform-privacy">Platform Privacy Policy</Link>
+              </A>
+            </P>
+          </div>
+          <div className="col-span-2 flex flex-col gap-3">
+            <P>
+              <Strong>Legal</Strong>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
+                  Legal Notice
+                </Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="/terms">Terms of Use</Link>
+              </A>
+            </P>
+            <P variant="xs">
+              <A variant="tertiary">
+                <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
+                  Cookies Policy
+                </Link>
+              </A>
+            </P>
+          </div>
+        </Grid>
       </div>
     </div>
   );

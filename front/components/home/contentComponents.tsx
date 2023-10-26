@@ -5,10 +5,10 @@ const defaultGridClasses = "grid grid-cols-12 gap-10";
 
 export const Grid = ({
   children,
-  color = "text-slate-50",
+  colorCSS = "text-slate-50",
   className = "",
 }: ContentProps) => (
-  <div className={classNames(className, color, defaultGridClasses)}>
+  <div className={classNames(className, colorCSS, defaultGridClasses)}>
     {children}
   </div>
 );
@@ -23,10 +23,7 @@ const hClasses = {
 interface ContentProps {
   children: ReactNode;
   className?: string;
-  variant?: string;
-  color?: string;
-  border?: "pink" | "amber" | "emerald" | "sky" | "red";
-  isSpan?: boolean;
+  colorCSS?: string;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4";
@@ -34,15 +31,11 @@ type TagName = "h1" | "h2" | "h3" | "h4";
 const createHeadingComponent = (Tag: TagName) => {
   const Component: React.FC<ContentProps> = ({
     children,
-    color = "text-slate-50",
+    colorCSS = "text-slate-50",
     className = "",
-    isSpan = false,
   }) => {
-    if (isSpan) {
-      return <span className={classNames(className, color)}>{children}</span>;
-    }
     return (
-      <Tag className={classNames(className, color, hClasses[Tag])}>
+      <Tag className={classNames(className, colorCSS, hClasses[Tag])}>
         {children}
       </Tag>
     );
@@ -55,6 +48,11 @@ export const H1 = createHeadingComponent("h1");
 export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
+
+export const Span = ({ children, colorCSS, className = "" }: ContentProps) => (
+  <span className={classNames(className, colorCSS)}>{children}</span>
+);
+
 const borderColorTable = {
   pink: "border-pink-300",
   amber: "border-amber-400",
@@ -64,26 +62,63 @@ const borderColorTable = {
 };
 
 const pClasses = {
-  normal: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
-  big: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
+  xs: "font-regular text-sm text-slate-400 md:text-base",
+  sm: "font-regular text-base text-slate-400 md:text-lg",
+  md: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
+  lg: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
 };
+
+interface PProps {
+  children: ReactNode;
+  className?: string;
+  variant?: "xs" | "sm" | "md" | "lg";
+  border?: "pink" | "amber" | "emerald" | "sky" | "red";
+}
 
 export const P = ({
   children,
   border,
   className = "",
-  variant,
-}: ContentProps) => (
+  variant = "md",
+}: PProps) => (
   <p
     className={classNames(
       className,
       border ? "border-l-4 pl-4" : "",
       border ? borderColorTable[border] : "",
-      variant === "big" ? pClasses.big : pClasses.normal
+      pClasses[variant]
     )}
   >
     {children}
   </p>
+);
+
+const aClasses = {
+  primary: "text-action-400 hover:text-action-400 active:text-action-600",
+  secondary: "text-slate-200 hover:text-slate-100 active:text-slate-500",
+  tertiary: "text-slate-400 hover:text-slate-100 active:text-slate-500",
+};
+
+interface AProps {
+  children: ReactNode;
+  className?: string;
+  variant?: "primary" | "secondary" | "tertiary";
+}
+
+export const A = ({
+  children,
+  variant = "primary",
+  className = "",
+}: AProps) => (
+  <a
+    className={classNames(
+      className,
+      "font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
+      aClasses[variant]
+    )}
+  >
+    {children}
+  </a>
 );
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
