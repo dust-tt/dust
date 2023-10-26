@@ -4,3 +4,5 @@ metadata:
   name: connectors-backendconfig
 spec:
   timeoutSec: 300
+  securityPolicy:
+    name: "dust-front-ssl-policy"

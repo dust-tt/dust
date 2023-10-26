@@ -7,3 +7,5 @@ spec:
     enabled: true
     oauthclientCredentials:
       secretName: iap-creds
+  securityPolicy:
+    name: "dust-front-ssl-policy"
