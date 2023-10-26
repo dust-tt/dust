@@ -183,6 +183,7 @@ export default function ConnectorPermissionsModal({
         size: "xs",
         icon: Cog6ToothIcon,
       }}
+      type="default"
     >
       <div className="text-left">
         {!isDefaultNewResourcePermissionLoading &&
