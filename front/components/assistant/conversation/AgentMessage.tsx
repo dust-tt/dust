@@ -193,6 +193,20 @@ export function AgentMessage({
     }
   })();
 
+  // Autoscroll is performed when a message is generating and the page is
+  // already scrolled down; but if the user has scrolled the page up after the
+  // start of the message, we do not want to scroll it back down.
+  //
+  // Checking the conversation is already at the bottom of the screen is done
+  // modulo a small margin (50px). This value is small because if large, it
+  // prevents user from scrolling up when the message continues generating
+  // (forces it back down), but it cannot be zero otherwise the scroll does not
+  // happen.
+  //
+  // Keeping a ref on the message's height, and accounting to the height
+  // difference when new parts of the message are generated, allows for the
+  // scroll to happen even if the newly generated parts are larger than 50px
+  // (e.g. citations)
   const messageRef = useRef<HTMLDivElement>(null);
   const messageHeight = useRef<number | null>(null);
   useEffect(() => {
