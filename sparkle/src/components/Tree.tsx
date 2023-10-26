@@ -26,7 +26,9 @@ export function Tree({ children, isLoading }: TreeProps) {
       <Spinner size="sm" />
     </div>
   ) : (
-    <div className="s-flex s-flex-col s-gap-1">{children}</div>
+    <div className="s-flex s-flex-col s-gap-1 s-overflow-hidden">
+      {children}
+    </div>
   );
 }
 
