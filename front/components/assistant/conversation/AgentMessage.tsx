@@ -64,6 +64,14 @@ export function AgentMessage({
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
 
+  const [references, setReferences] = useState<{
+    [key: string]: RetrievalDocumentType;
+  }>({});
+
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: RetrievalDocumentType }[]
+  >([]);
+
   const shouldStream = (() => {
     if (message.status !== "created") {
       return false;
@@ -185,12 +193,16 @@ export function AgentMessage({
     }
   })();
 
+  const messageRef = useRef<HTMLDivElement>(null);
+  const messageHeight = useRef<number | null>(null);
   useEffect(() => {
+    const previousHeight = messageHeight.current || 0;
+    messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
     const mainTag = document.getElementById("main-content");
     if (mainTag && agentMessageToRender.status === "created") {
       if (
         mainTag.offsetHeight + mainTag.scrollTop >=
-        mainTag.scrollHeight - 50
+        mainTag.scrollHeight - (50 + messageHeight.current - previousHeight)
       ) {
         mainTag.scrollTo(0, mainTag.scrollHeight);
       }
@@ -199,6 +211,7 @@ export function AgentMessage({
     agentMessageToRender.content,
     agentMessageToRender.status,
     agentMessageToRender.action,
+    activeReferences.length,
   ]);
 
   // GenerationContext: to know if we are generating or not
@@ -244,12 +257,6 @@ export function AgentMessage({
           },
         ];
 
-  const [references, setReferences] = useState<{
-    [key: string]: RetrievalDocumentType;
-  }>({});
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievalDocumentType }[]
-  >([]);
   function updateActiveReferences(
     document: RetrievalDocumentType,
     index: number
@@ -290,7 +297,9 @@ export function AgentMessage({
       reactions={reactions}
       enableEmojis={true}
     >
-      {renderMessage(agentMessageToRender, references, shouldStream)}
+      <div ref={messageRef}>
+        {renderMessage(agentMessageToRender, references, shouldStream)}
+      </div>
     </ConversationMessage>
   );
 
