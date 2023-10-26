@@ -19,6 +19,10 @@ export const ModalExample = () => {
     useState(false);
   const [isRightSideModalOpen, setIsRightSideModalOpen] = useState(false);
   const [inputValue, setInputValue] = useState("initial value");
+  const [isRightSideWideModalOpen, setIsRightSideWideModalOpen] =
+    useState(false);
+  const [isRightSideUltraWideModalOpen, setIsRightSideUltraWideModalOpen] =
+    useState(false);
   return (
     <Page.Layout gap="md">
       <Modal
@@ -26,6 +30,7 @@ export const ModalExample = () => {
         onClose={() => setIsOpenNoActionNoChange(false)}
         hasChanged={false}
         title="Modal title"
+        type="default"
       >
         <div className="s-mt-4 s-h-72">I'm the modal content</div>
       </Modal>
@@ -62,6 +67,7 @@ export const ModalExample = () => {
         }}
         saveLabel="Save (custom name possible)"
         hasChanged={true}
+        type="default"
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
       </Modal>
@@ -94,6 +100,30 @@ export const ModalExample = () => {
           I'm the modal content
         </div>
       </Modal>
+      <Modal
+        isOpen={isRightSideWideModalOpen}
+        onClose={() => setIsRightSideWideModalOpen(false)}
+        hasChanged={false}
+        type="right-side"
+        title="Modal title"
+        width="wide"
+      >
+        <div className="s-mt-4 s-h-72 s-text-left">
+          I'm the modal content, and I am wide
+        </div>
+      </Modal>
+      <Modal
+        isOpen={isRightSideUltraWideModalOpen}
+        onClose={() => setIsRightSideUltraWideModalOpen(false)}
+        hasChanged={false}
+        type="right-side"
+        title="Modal title"
+        width="ultra-wide"
+      >
+        <div className="s-mt-4 s-h-72 s-text-left">
+          I'm the modal content, and I am ultra-wide
+        </div>
+      </Modal>
       <Button
         label="Modal without action and without changes"
         onClick={() => setIsOpenNoActionNoChange(true)}
@@ -113,6 +143,14 @@ export const ModalExample = () => {
       <Button
         label="Modal right side"
         onClick={() => setIsRightSideModalOpen(true)}
+      />
+      <Button
+        label="Modal right side wide"
+        onClick={() => setIsRightSideWideModalOpen(true)}
+      />
+      <Button
+        label="Modal right side ultra-wide"
+        onClick={() => setIsRightSideUltraWideModalOpen(true)}
       />
     </Page.Layout>
   );

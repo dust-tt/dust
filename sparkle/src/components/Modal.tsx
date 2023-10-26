@@ -6,7 +6,13 @@ import { assertNever, classNames } from "@sparkle/lib/utils";
 import { BarHeader, BarHeaderButtonBarProps } from "./BarHeader";
 import { Button, ButtonProps } from "./Button";
 
-interface ModalProps {
+const RIGHT_SIDE_MODAL_WIDTH = {
+  normal: "sm:s-w-[448px]",
+  wide: "sm:s-w-[50rem]",
+  "ultra-wide": "sm:s-w-[80rem]",
+} as const;
+
+type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   action?: ButtonProps;
@@ -17,8 +23,15 @@ interface ModalProps {
   isSaving?: boolean;
   savingLabel?: string;
   title?: string;
-  type?: "full-screen" | "right-side" | "default" | "right-side-wide";
-}
+} & (
+  | {
+      type: "right-side";
+      width?: keyof typeof RIGHT_SIDE_MODAL_WIDTH;
+    }
+  | {
+      type: "full-screen" | "default";
+    }
+);
 
 export function Modal({
   isOpen,
@@ -31,7 +44,7 @@ export function Modal({
   isSaving,
   savingLabel,
   title,
-  type = "default",
+  ...props
 }: ModalProps) {
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
@@ -48,9 +61,8 @@ export function Modal({
       };
 
   const justifyClass = (() => {
-    switch (type) {
+    switch (props.type) {
       case "right-side":
-      case "right-side-wide":
         return "s-justify-end";
 
       case "full-screen":
@@ -58,14 +70,13 @@ export function Modal({
         return "s-justify-center";
 
       default:
-        throw assertNever(type);
+        throw assertNever(props);
     }
   })();
 
   const outerContainerClasses = (() => {
-    switch (type) {
+    switch (props.type) {
       case "right-side":
-      case "right-side-wide":
       case "full-screen":
         return "s-h-full s-p-0";
 
@@ -73,14 +84,13 @@ export function Modal({
         return "s-min-h-full s-p-4";
 
       default:
-        throw assertNever(type);
+        throw assertNever(props);
     }
   })();
 
   const transitionEnterLeaveClasses = (() => {
-    switch (type) {
+    switch (props.type) {
       case "right-side":
-      case "right-side-wide":
         return "s-translate-x-full";
 
       case "full-screen":
@@ -88,15 +98,17 @@ export function Modal({
         return "s-translate-y-4 sm:s-translate-y-0  sm:s-scale-95";
 
       default:
-        throw assertNever(type);
+        throw assertNever(props);
     }
   })();
 
   const panelClasses = (() => {
-    switch (type) {
+    switch (props.type) {
       case "right-side":
-      case "right-side-wide":
-        return "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full sm:s-w-[448px]";
+        return classNames(
+          "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full",
+          RIGHT_SIDE_MODAL_WIDTH[props.width || "normal"]
+        );
 
       case "full-screen":
         return "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full";
@@ -105,14 +117,13 @@ export function Modal({
         return "s-max-w-2xl s-rounded-lg s-shadow-xl lg:s-w-1/2";
 
       default:
-        throw assertNever(type);
+        throw assertNever(props);
     }
   })();
 
   const innerContainerClasses = (() => {
-    switch (type) {
+    switch (props.type) {
       case "right-side":
-      case "right-side-wide":
       case "full-screen":
         return "s-h-full s-overflow-y-auto";
 
@@ -120,7 +131,7 @@ export function Modal({
         return "";
 
       default:
-        throw assertNever(type);
+        throw assertNever(props);
     }
   })();
 
