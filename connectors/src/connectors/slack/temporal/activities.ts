@@ -526,7 +526,7 @@ export async function syncThread(
       const slackError = e as CodedError;
       if (slackError.code === ErrorCode.PlatformError) {
         const platformError = slackError as WebAPIPlatformError;
-        if (platformError.data.error === "channel_not_found") {
+        if (platformError.data.error === "thread_not_found") {
           break;
         }
       }
