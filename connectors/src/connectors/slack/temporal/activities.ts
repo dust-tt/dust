@@ -664,6 +664,9 @@ export async function getBotUserId(
   }
 
   const authRes = await client.auth.test({});
+  if (!authRes) {
+    throw new Error(`Failed to fetch auth info: received undefined response`);
+  }
   if (authRes.error) {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
