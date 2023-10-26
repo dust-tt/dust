@@ -195,7 +195,11 @@ export function AgentMessage({
         mainTag.scrollTo(0, mainTag.scrollHeight);
       }
     }
-  }, [agentMessageToRender.content, agentMessageToRender.status]);
+  }, [
+    agentMessageToRender.content,
+    agentMessageToRender.status,
+    agentMessageToRender.action,
+  ]);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
