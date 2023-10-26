@@ -718,7 +718,7 @@ const Header = () => {
 
 const Footer = () => {
   return (
-    <div className="z-11 mt-48 flex w-full flex-col items-center gap-6 border-t border-slate-800 bg-slate-900 pb-20 pt-12">
+    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-t border-slate-800 bg-slate-900 py-16">
       <div className="max-w-8xl container flex flex-col gap-8">
         <Grid>
           <div className="col-span-1 col-start-2 opacity-70">
@@ -727,7 +727,7 @@ const Footer = () => {
 
           <div className="col-span-2 col-start-5 flex flex-col gap-3">
             <P>
-              <Strong>Career</Strong>
+              <Strong>Careers</Strong>
             </P>
             <P variant="xs">
               <A variant="tertiary">
@@ -750,12 +750,12 @@ const Footer = () => {
             </P>
             <P variant="xs">
               <A variant="tertiary">
-                <Link href="https://blog.dust.tt/">Dust's Blog</Link>
+                <Link href="https://blog.dust.tt/">Blog</Link>
               </A>
             </P>
             <P variant="xs">
               <A variant="tertiary">
-                <Link href="https://twitter.com/dust4ai">@dust4ai</Link>
+                <Link href="https://x.com/dust4ai">@dust4ai</Link>
               </A>
             </P>
             <P variant="xs">
