@@ -209,52 +209,12 @@ export default function WorkspaceAdmin({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Workspace Settings"
-          icon={PlanetIcon}
-          description="Use this page to manage your workspace."
-        />
-        <Page.Vertical align="stretch" gap="md">
-          <Page.H variant="h5">Workspace name</Page.H>
-          <Page.P variant="secondary">
-            Think GitHub repository names, short and memorable.
-          </Page.P>
-
-          <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-            <div className="flex-grow">
-              <Input
-                name="name"
-                placeholder="Workspace name"
-                value={workspaceName}
-                onChange={(x) => setWorkspaceName(x)}
-                error={workspaceNameError}
-                showErrorLabel={true}
-              />
-            </div>
-            <div className="flex-none">
-              <Button
-                variant="secondary"
-                disabled={disable || updating}
-                onClick={handleUpdateWorkspace}
-                label={updating ? "Updating..." : "Update"}
-              />
-            </div>
-          </div>
-        </Page.Vertical>
-
-        {!!monthOptions.length && (
-          <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h5">Workspace Activity</Page.H>
-            <Page.P variant="secondary">
-              Download monthly workspace activity details.
-            </Page.P>
-      <Page.Vertical align="stretch" gap="xl">
-        <Page.Header
-          title="Workspace"
-          icon={PlanetIcon}
-          description="Use this page to manage your workspace."
-        />
+      <Page.Header
+        title="Workspace Settings"
+        icon={PlanetIcon}
+        description="Use this page to manage your workspace."
+      />
+      <Page.Vertical align="stretch" gap="md">
         <Page.SectionHeader
           title="Workspace name"
           description="Think GitHub repository names, short and memorable."
@@ -278,12 +238,12 @@ export default function WorkspaceAdmin({
           />
         </Page.Horizontal>
         {!!monthOptions.length && (
-          <>
+          <Page.Vertical align="stretch" gap="md">
             <Page.SectionHeader
               title="Workspace Activity"
               description="Download monthly workspace activity details."
             />
-            <div className="align-center flex flex-row gap-2">
+            <Page.Horizontal>
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
@@ -312,9 +272,8 @@ export default function WorkspaceAdmin({
                   void handleDownload(selectedMonth);
                 }}
               />
-            </div>
+            </Page.Horizontal>
           </Page.Vertical>
-          </>
         )}
       </Page.Vertical>
     </AppLayout>
