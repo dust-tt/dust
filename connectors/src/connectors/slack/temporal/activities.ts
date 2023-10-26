@@ -2,6 +2,7 @@ import {
   CodedError,
   ErrorCode,
   WebAPIHTTPError,
+  WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
 import {
@@ -493,31 +494,45 @@ export async function syncThread(
   let next_cursor = undefined;
 
   do {
-    const replies: ConversationsRepliesResponse =
-      await client.conversations.replies({
-        channel: channelId,
-        ts: threadTs,
-        cursor: next_cursor,
-        limit: 100,
-      });
-    // Despite the typing, in practice `replies` can be undefined at times.
-    if (!replies) {
-      const workflowError: WorkflowError = {
-        type: "transient_upstream_activity_error",
-        message:
-          "Received unexpected undefined replies from Slack API in syncThread (generally transient)",
-        __is_dust_error: true,
-      };
-      throw workflowError;
+    try {
+      const replies: ConversationsRepliesResponse =
+        await client.conversations.replies({
+          channel: channelId,
+          ts: threadTs,
+          cursor: next_cursor,
+          limit: 100,
+        });
+      // Despite the typing, in practice `replies` can be undefined at times.
+      if (!replies) {
+        const workflowError: WorkflowError = {
+          type: "transient_upstream_activity_error",
+          message:
+            "Received unexpected undefined replies from Slack API in syncThread (generally transient)",
+          __is_dust_error: true,
+        };
+        throw workflowError;
+      }
+      if (replies.error) {
+        throw new Error(replies.error);
+      }
+      if (!replies.messages) {
+        break;
+      }
+      allMessages = allMessages.concat(
+        replies.messages.filter((m) => !!m.user)
+      );
+      next_cursor = replies.response_metadata?.next_cursor;
+    } catch (e) {
+      const slackError = e as CodedError;
+      if (slackError.code === ErrorCode.PlatformError) {
+        const platformError = slackError as WebAPIPlatformError;
+        if (platformError.data.error === "thread_not_found") {
+          // If the thread is not found we just return and don't upsert anything.
+          return;
+        }
+      }
+      throw e;
     }
-    if (replies.error) {
-      throw new Error(replies.error);
-    }
-    if (!replies.messages) {
-      break;
-    }
-    allMessages = allMessages.concat(replies.messages.filter((m) => !!m.user));
-    next_cursor = replies.response_metadata?.next_cursor;
   } while (next_cursor);
 
   const botUserId = await getBotUserIdMemoized(slackAccessToken);
