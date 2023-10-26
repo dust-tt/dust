@@ -122,7 +122,8 @@ export default function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          window.alert("An unexpected error occurred");
+          const error: { error: { message: string } } = await r.json();
+          window.alert(error.error.message);
         }
 
         await mutate(

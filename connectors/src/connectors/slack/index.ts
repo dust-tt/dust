@@ -1,6 +1,5 @@
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
-import { Op } from "sequelize";
 
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
@@ -30,7 +29,12 @@ import {
   ConnectorResource,
 } from "@connectors/types/resources";
 
-import { getAccessToken, getSlackClient } from "./temporal/activities";
+import {
+  getAccessToken,
+  getChannels,
+  getSlackClient,
+  joinChannel,
+} from "./temporal/activities";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;
@@ -169,15 +173,19 @@ export async function updateSlackConnector(
   const updateParams: Parameters<typeof c.update>[0] = {};
 
   if (connectionId) {
-    const newConnectionRes = await nango_client().getConnection(
-      NANGO_SLACK_CONNECTOR_ID,
-      connectionId,
-      false,
-      false
-    );
-    const newTeamId = newConnectionRes?.team?.id || null;
+    const accessToken = await getAccessToken(connectionId);
+    const slackClient = await getSlackClient(accessToken);
+    const teamInfoRes = await slackClient.team.info();
+    if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
+      return new Err({
+        error: {
+          message: "Can't get the Slack team information.",
+        },
+      });
+    }
 
-    if (!newTeamId || newTeamId !== currentSlackConfig.slackTeamId) {
+    const newTeamId = teamInfoRes.team.id;
+    if (newTeamId !== currentSlackConfig.slackTeamId) {
       return new Err({
         error: {
           type: "connector_oauth_target_mismatch",
@@ -353,20 +361,40 @@ export async function retrieveSlackConnectorPermissions({
       break;
   }
 
-  const slackChannels = await SlackChannel.findAll({
-    where: filterPermission
-      ? {
-          connectorId: connectorId,
-          permission: { [Op.or]: permissionToFilter },
-        }
-      : {
-          connectorId: connectorId,
-        },
-    order: [
-      ["createdAt", "DESC"],
-      ["slackChannelName", "ASC"],
-    ],
-  });
+  const slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    permission: ConnectorPermission;
+  }[] = [];
+
+  const accessToken = await getAccessToken(c.connectionId);
+  const remoteChannels = await getChannels(accessToken, false);
+  for (const remoteChannel of remoteChannels) {
+    if (!remoteChannel.id || !remoteChannel.name) {
+      continue;
+    }
+
+    const permissions =
+      (
+        await SlackChannel.findOne({
+          where: {
+            connectorId: connectorId,
+            slackChannelId: remoteChannel.id,
+          },
+        })
+      )?.permission || (remoteChannel.is_member ? "write" : "none");
+
+    if (
+      permissionToFilter.length === 0 ||
+      permissionToFilter.includes(permissions)
+    ) {
+      slackChannels.push({
+        slackChannelId: remoteChannel.id,
+        slackChannelName: remoteChannel.name,
+        permission: permissions,
+      });
+    }
+  }
 
   const resources: ConnectorResource[] = slackChannels.map((ch) => ({
     provider: "slack",
@@ -427,17 +455,49 @@ export async function setSlackConnectorPermissions(
 
   let shouldGarbageCollect = false;
   for (const [id, permission] of Object.entries(permissions)) {
-    const channel = channels[id];
+    let channel = channels[id];
+    const slackAccessToken = await getAccessToken(connector.connectionId);
+    const slackClient = await getSlackClient(slackAccessToken);
     if (!channel) {
-      logger.error(
-        { connectorId, channelId: id },
-        "Could not find channel in DB"
-      );
-      continue;
+      const remoteChannel = await slackClient.conversations.info({
+        channel: id,
+      });
+      if (!remoteChannel.ok || !remoteChannel.channel?.name) {
+        logger.error(
+          {
+            connectorId,
+            channelId: id,
+            error: remoteChannel.error,
+          },
+          "Could not get the Slack channel information"
+        );
+        return new Err(
+          new Error("Could not get the Slack channel information.")
+        );
+      }
+      const joinRes = await joinChannel(connectorId, id);
+      if (joinRes === "cant_join") {
+        return new Err(
+          new Error(
+            `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust to #${remoteChannel.channel.name} manually.`
+          )
+        );
+      }
+      const slackChannel = await SlackChannel.create({
+        connectorId: connectorId,
+        slackChannelId: id,
+        slackChannelName: remoteChannel.channel.name,
+        permission: "none",
+      });
+      channels[id] = slackChannel;
+      channel = slackChannel;
     }
 
     promises.push(
       q.add(async () => {
+        if (!channel) {
+          return;
+        }
         const oldPermission = channel.permission;
         if (oldPermission === permission) {
           return;
@@ -451,6 +511,16 @@ export async function setSlackConnectorPermissions(
           ["read", "read_write"].includes(permission)
         ) {
           // handle read permission enabled
+          const joinChannelRes = await joinChannel(
+            connectorId,
+            channel.slackChannelId
+          );
+          if (joinChannelRes === "cant_join") {
+            throw new Error(
+              `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust to #${channel.slackChannelName} manually.`
+            );
+          }
+
           const res = await launchSlackBotJoinedWorkflow(
             connectorId.toString(),
             channel.slackChannelId

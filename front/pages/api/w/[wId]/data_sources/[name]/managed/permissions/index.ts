@@ -182,7 +182,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `An error occurred while setting the data source permissions.`,
+            message: connectorsRes.error.error.message,
           },
         });
       }

@@ -351,7 +351,6 @@ async function botAnswerMessage(
   }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
-
   if (lastSlackChatBotMessage?.conversationId) {
     if (buildContentFragmentRes.value) {
       const contentFragmentRes = await dustAPI.postContentFragment({

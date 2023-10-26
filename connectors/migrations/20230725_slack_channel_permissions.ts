@@ -26,7 +26,7 @@ async function main() {
     );
 
     const accessToken = await getAccessToken(c.connectionId);
-    const channelsInSlack = await getChannels(accessToken);
+    const channelsInSlack = await getChannels(accessToken, true);
     const channelIdsInSlackSet = new Set(
       channelsInSlack.map((c) => c.id).filter((id) => id)
     );

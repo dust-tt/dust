@@ -25,7 +25,12 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
-import { SlackChannel, SlackMessages } from "@connectors/lib/models";
+import {
+  Connector,
+  ModelId,
+  SlackChannel,
+  SlackMessages,
+} from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import {
   reportInitialSyncProgress,
@@ -56,7 +61,8 @@ const NETWORK_REQUEST_TIMEOUT_MS = 30000;
  */
 
 export async function getChannels(
-  slackAccessToken: string
+  slackAccessToken: string,
+  joinedOnly: boolean
 ): Promise<Channel[]> {
   const client = getSlackClient(slackAccessToken);
   const allChannels = [];
@@ -79,8 +85,10 @@ export async function getChannels(
       );
     }
     for (const channel of c.channels) {
-      if (channel && channel.id && channel.is_member) {
-        allChannels.push(channel);
+      if (channel && channel.id) {
+        if (!joinedOnly || channel.is_member) {
+          allChannels.push(channel);
+        }
       }
     }
   } while (nextCursor);
@@ -117,6 +125,48 @@ export async function getChannel(
 interface SyncChannelRes {
   nextCursor?: string;
   weeksSynced: Record<number, boolean>;
+}
+
+export async function joinChannel(
+  connectorId: ModelId,
+  channelId: string
+): Promise<"ok" | "already_joined" | "cant_join"> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const accessToken = await getAccessToken(connector.connectionId);
+  const client = getSlackClient(accessToken);
+  try {
+    const channelInfo = await client.conversations.info({ channel: channelId });
+    if (channelInfo.channel?.is_member) {
+      return "already_joined";
+    }
+    const joinRes = await client.conversations.join({ channel: channelId });
+    if (joinRes.ok) {
+      return "ok";
+    } else {
+      return "already_joined";
+    }
+  } catch (e) {
+    const slackError = e as CodedError;
+    if (slackError.code === ErrorCode.PlatformError) {
+      const platformError = slackError as WebAPIPlatformError;
+      if (platformError.data.error === "missing_scope") {
+        logger.info(
+          {
+            channelId,
+            connectorId,
+          },
+          "Could not join channel because of a missing scope. User need to re-authorize it's Slack connection to get the channels:join scope."
+        );
+        return "cant_join";
+      }
+      throw e;
+    }
+  }
+
+  return "cant_join";
 }
 
 export async function syncChannel(
@@ -858,7 +908,7 @@ export async function getChannelsToGarbageCollect(
   );
 
   const remoteChannels = new Set(
-    (await getChannels(slackAccessToken))
+    (await getChannels(slackAccessToken, true))
       .filter((c) => c.id)
       .map((c) => c.id as string)
   );

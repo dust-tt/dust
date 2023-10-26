@@ -27,6 +27,7 @@ const {
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
   deleteChannel,
+  joinChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -52,7 +53,7 @@ export async function workspaceFullSync(
 ): Promise<void> {
   const slackAccessToken = await getAccessToken(nangoConnectionId);
   await fetchUsers(slackAccessToken, connectorId);
-  const channels = await getChannels(slackAccessToken);
+  const channels = await getChannels(slackAccessToken, true);
   let i = 0;
   for (const channel of channels) {
     if (!channel.id || !channel.name) {
@@ -88,6 +89,7 @@ export async function syncOneChannel(
   fromTs: number | null
 ) {
   console.log(`Syncing channel ${channelName} (${channelId})`);
+  await joinChannel(parseInt(connectorId, 10), channelId);
 
   const slackAccessToken = await getAccessToken(nangoConnectionId);
   let messagesCursor: string | undefined = undefined;

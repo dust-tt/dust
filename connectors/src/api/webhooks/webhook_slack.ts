@@ -6,7 +6,6 @@ import {
   getBotUserIdMemoized,
 } from "@connectors/connectors/slack/temporal/activities";
 import {
-  launchSlackBotJoinedWorkflow,
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
@@ -17,7 +16,7 @@ import {
   SlackChannel,
   SlackConfiguration,
 } from "@connectors/lib/models";
-import { Err, Ok } from "@connectors/lib/result";
+import { Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
@@ -323,76 +322,6 @@ const _webhookSlackAPIHandler = async (
             );
             return res.status(200).send();
           }
-        }
-        break;
-      }
-
-      /**
-       * `member_joined_channel` handler.
-       */
-      case "member_joined_channel": {
-        if (!req.body.event?.channel || !req.body.event?.user) {
-          return apiError(req, res, {
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Missing channel or user in request body for member_joined_channel event",
-            },
-            status_code: 400,
-          });
-        }
-        const channel = req.body.event.channel;
-        const user = req.body.event.user;
-        let err: Error | null = null;
-
-        const results = await Promise.all(
-          slackConfigurations.map((c) =>
-            (async (): Promise<Err<Error> | Ok<string>> => {
-              const connector = await Connector.findByPk(c.connectorId);
-              if (!connector) {
-                return new Err(
-                  new Error(`Connector ${c.connectorId} not found`)
-                );
-              }
-
-              const slackAccessToken = await getAccessToken(
-                connector.connectionId
-              );
-              const myUserId = await getBotUserIdMemoized(slackAccessToken);
-              if (myUserId !== user) {
-                return new Ok("");
-              }
-              return await launchSlackBotJoinedWorkflow(
-                c.connectorId.toString(),
-                channel
-              );
-            })()
-          )
-        );
-        for (const r of results) {
-          if (r.isErr()) {
-            err = r.error;
-          }
-        }
-
-        if (err) {
-          return apiError(req, res, {
-            api_error: {
-              type: "internal_server_error",
-              message: err.message,
-            },
-            status_code: 500,
-          });
-        } else {
-          logger.info(
-            {
-              type: req.body.event.type,
-              channel: req.body.event.channel,
-              user: req.body.event.user,
-            },
-            `Successfully processed Slack Webhook`
-          );
-          return res.status(200).send();
         }
         break;
       }
