@@ -347,7 +347,7 @@ export function ButtonEmoji({
     <div
       className={classNames(
         variant === "selected" ? "text-action-500" : "text-element-800",
-        "text-md flex cursor-pointer items-center gap-1.5 rounded-2xl py-1 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
+        "flex cursor-pointer items-center gap-1.5 py-1 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
       )}
       onClick={onClick}
     >
