@@ -1,6 +1,8 @@
+import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import {
+  FREE_TEST_PLAN_CODE,
   FREE_TEST_PLAN_DATA,
   FREE_UPGRADED_PLAN_CODE,
   PlanAttributes,
@@ -151,6 +153,114 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         },
         users: {
           maxUsers: plan.maxUsersInWorkspace,
+        },
+      },
+    };
+  });
+};
+
+export const subscribeWorkspaceToPlan = async (
+  auth: Authenticator,
+  { planCode }: { planCode: string }
+): Promise<PlanType> => {
+  const user = auth.user();
+  const workspace = auth.workspace();
+  const activePlan = auth.plan();
+
+  if (!user || !auth.isAdmin() || !workspace || !activePlan) {
+    throw new Error(
+      "Unauthorized `auth` data: cannot process to subscription of new Plan."
+    );
+  }
+
+  // We prevent the user to subscribe to the FREE_UPGRADED_PLAN: this is an internal plan for Dust workspaces only.
+  if (planCode === FREE_UPGRADED_PLAN_CODE) {
+    throw new Error(
+      `Unauthorized: cannot subscribe to ${FREE_UPGRADED_PLAN_CODE}.`
+    );
+  }
+
+  // Case of a downgrade to the free default plan: we use the internal function
+  if (planCode === FREE_TEST_PLAN_CODE) {
+    return await internalSubscribeWorkspaceToFreeTestPlan({
+      workspaceId: workspace.sId,
+    });
+  }
+
+  const now = new Date();
+
+  return await front_sequelize.transaction(async (t) => {
+    // We get the plan to subscribe to
+    const newPlan = await Plan.findOne({
+      where: { code: planCode },
+      transaction: t,
+    });
+    if (!newPlan) {
+      throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
+    }
+
+    // We search for an active subscription for this workspace
+    const activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspace.id, status: "active" },
+      transaction: t,
+    });
+
+    // We check if the user is already subscribed to this plan
+    if (activeSubscription && activeSubscription.planId === newPlan.id) {
+      throw new Error(
+        `Cannot subscribe to plan ${planCode}:  already subscribed.`
+      );
+    }
+
+    // We end the active subscription if any
+    if (activeSubscription) {
+      await activeSubscription.update(
+        {
+          status: "ended",
+          endDate: now,
+        },
+        { transaction: t }
+      );
+    }
+
+    // We create a new subscription
+    const newSubscription = await Subscription.create(
+      {
+        sId: generateModelSId(),
+        workspaceId: workspace.id,
+        planId: newPlan.id,
+        status: "active",
+        startDate: now,
+      },
+      { transaction: t }
+    );
+
+    return {
+      code: newPlan.code,
+      name: newPlan.name,
+      status: "active",
+      startDate: newSubscription.startDate.getTime(),
+      endDate: newSubscription.endDate?.getTime() || null,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: newPlan.isSlackbotAllowed,
+          maxMessages: newPlan.maxMessages,
+        },
+        connections: {
+          isSlackAllowed: newPlan.isManagedSlackAllowed,
+          isNotionAllowed: newPlan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: newPlan.isManagedGithubAllowed,
+        },
+        dataSources: {
+          count: newPlan.maxNbStaticDataSources,
+          documents: {
+            count: newPlan.maxNbStaticDocuments,
+            sizeMb: newPlan.maxSizeStaticDataSources,
+          },
+        },
+        users: {
+          maxUsers: newPlan.maxUsersInWorkspace,
         },
       },
     };
