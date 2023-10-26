@@ -13,44 +13,40 @@ export type PlanAttributes = Omit<
  * - Pro: plans with a paid subscription, not tailored. -> i.e. the same plan is used by all Pro workspaces.
  * - Entreprise: plans with a paid subscription, tailored to the needs of the entreprise. -> i.e. we will have one plan per "Entreprise".
  *
- * This file about Free plans.
+ * This file about Pro plans.
  */
 
-// Current free plans:
-export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
-export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
+// Current pro plans:
+export const PRO_PLAN_MAU_29_CODE = "PRO_PLAN_MAU_29";
+export const PRO_PLAN_FIXED_1000_CODE = "PRO_PLAN_FIXED_1000";
 
 /**
- * FREE_TEST plan is our default plan: this is the plan used by all workspaces until they subscribe to a plan.
- * It is not stored in the database (as we don't create a subsription).
- */
-export const FREE_TEST_PLAN_DATA: PlanAttributes = {
-  code: FREE_TEST_PLAN_CODE,
-  name: "Test",
-  stripeProductId: null,
-  maxMessages: 100,
-  maxUsersInWorkspace: 1,
-  isSlackbotAllowed: false,
-  isManagedSlackAllowed: false,
-  isManagedNotionAllowed: false,
-  isManagedGoogleDriveAllowed: false,
-  isManagedGithubAllowed: false,
-  maxNbStaticDataSources: 10,
-  maxNbStaticDocuments: 10,
-  maxSizeStaticDataSources: 2, // 2MB
-};
-
-/**
- * Other FREE plans are stored in the database.
+ * Paid plans are stored in the database.
  * We can update existing plans or add new one but never remove anything from this list.
+ * Entreprise custom plans will be created from Poké.
  */
-const FREE_PLANS_DATA: PlanAttributes[] = [
+const PRO_PLANS_DATA: PlanAttributes[] = [
   {
-    code: FREE_UPGRADED_PLAN_CODE,
-    name: "Free Trial",
-    stripeProductId: null,
+    code: "PRO_PLAN_MAU_29",
+    name: "Pro",
+    stripeProductId: "prod_OtB9SOIwFyiQnl",
     maxMessages: -1,
-    maxUsersInWorkspace: -1,
+    maxUsersInWorkspace: 500,
+    isSlackbotAllowed: true,
+    isManagedSlackAllowed: true,
+    isManagedNotionAllowed: true,
+    isManagedGoogleDriveAllowed: true,
+    isManagedGithubAllowed: true,
+    maxNbStaticDataSources: -1,
+    maxNbStaticDocuments: -1,
+    maxSizeStaticDataSources: 2, // 2MB
+  },
+  {
+    code: "PRO_PLAN_FIXED_1000",
+    name: "Pro Fixed",
+    stripeProductId: "prod_OtBhelMswszehT",
+    maxMessages: -1,
+    maxUsersInWorkspace: 50,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
     isManagedNotionAllowed: true,
@@ -65,8 +61,8 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
 /**
  * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
  */
-export const upsertFreePlans = async () => {
-  for (const planData of FREE_PLANS_DATA) {
+export const upsertProPlans = async () => {
+  for (const planData of PRO_PLANS_DATA) {
     const plan = await Plan.findOne({
       where: {
         code: planData.code,
@@ -74,10 +70,10 @@ export const upsertFreePlans = async () => {
     });
     if (plan === null) {
       await Plan.create(planData);
-      console.log(`Free plan ${planData.code} created.`);
+      console.log(`Pro plan ${planData.code} created.`);
     } else {
       await plan.update(planData);
-      console.log(`Free plan ${planData.code} updated.`);
+      console.log(`Pro plan ${planData.code} updated.`);
     }
   }
 };
