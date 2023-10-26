@@ -1,4 +1,9 @@
-import { WebClient } from "@slack/web-api";
+import {
+  CodedError,
+  ErrorCode,
+  WebAPIPlatformError,
+  WebClient,
+} from "@slack/web-api";
 import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
@@ -684,16 +689,27 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
-  const channel = await slackChannelPromise;
-  console.log(channel);
-  if (channel.error) {
-    return new Err(new Error(channel.error));
-  }
+  try {
+    const channel = await slackChannelPromise;
+    if (channel.error) {
+      return new Err(new Error(channel.error));
+    }
 
-  return new Ok({
-    title: `Thread content from #${channel.channel?.name}`,
-    content: text,
-    url: url,
-    contentType: "slack_thread_content",
-  } as PostContentFragmentRequestBody);
+    return new Ok({
+      title: `Thread content from #${channel.channel?.name}`,
+      content: text,
+      url: url,
+      contentType: "slack_thread_content",
+    } as PostContentFragmentRequestBody);
+  } catch (e) {
+    const slackError = e as CodedError;
+    if (slackError.code === ErrorCode.PlatformError) {
+      const platformError = slackError as WebAPIPlatformError;
+      if (platformError.data.error === "missing_scope") {
+        return new Ok(null);
+      }
+      throw e;
+    }
+    return new Ok(null);
+  }
 }
