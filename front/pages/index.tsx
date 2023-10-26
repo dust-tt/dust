@@ -174,36 +174,51 @@ export default function Home({
       </div>
 
       <main className="z-10 flex flex-col items-center">
-        <div className="max-w-8xl container flex flex-col gap-36 py-36">
+        <div
+          className={classNames(
+            "container flex flex-col",
+            "gap-16 py-24",
+            "md:gap-28 md:py-36",
+            "xl:gap-36"
+          )}
+        >
           <Grid>
-            <div className="col-span-8 col-start-3 flex min-h-[60vh] flex-col justify-end gap-24">
+            <div
+              className={classNames(
+                "flex min-h-[60vh] flex-col justify-end gap-16 sm:gap-24",
+                "col-span-12",
+                "xl:col-span-10 xl:col-start-2",
+                "2xl:col-span-8 2xl:col-start-3"
+              )}
+            >
               <div ref={logoRef}>
-                <Logo className="h-[48px] w-[192px]" />
+                <Logo className="h-[36px] w-[144px] sm:h-[48px] sm:w-[192px]" />
               </div>
               <div className="flex flex-col gap-12">
-                <H1>
-                  <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+                <H1 className="text-slate-100">
+                  <span className="text-red-400">
                     Amplify your team's potential
                   </span>{" "}
                   <br />
                   with customizable and secure AI&nbsp;assistants.
                 </H1>
-                <H3 className="col-span-6 col-start-3">
+                <H3 className="text-slate-100">
                   AI is changing the way we work.
                   <br />
-                  Effectively channeling the potential of AI is a competitive
-                  edge.
+                  Effectively channeling its potential{" "}
+                  {/* <br className="lg:hidden" /> */}
+                  is a&nbsp;competitive&nbsp;edge.
                 </H3>
-                <div className="flex w-full items-start gap-6">
+                <div className="sm: flex w-full flex-wrap gap-4 sm:justify-start sm:gap-4 md:gap-6">
                   <Button
                     variant="primary"
-                    size="lg"
+                    size="md"
                     label="Start with Dust now"
                     icon={RocketIcon}
                   />
                   <Button
                     variant="secondary"
-                    size="lg"
+                    size="md"
                     label="Watch the demo video"
                     icon={PlayIcon}
                   />
@@ -211,11 +226,48 @@ export default function Home({
               </div>
             </div>
           </Grid>
-          <Grid className="items-center">
+          <Grid className="items-center md:hidden">
+            <div className="col-span-12 sm:col-span-10 sm:col-start-2">
+              <ReactiveImg>
+                <img src="/static/landing/conversation.png" />
+              </ReactiveImg>
+            </div>
+            <P border="sky" className="col-span-9 sm:col-span-6">
+              Deploy <Strong>the best Large Language Models</Strong> to&nbsp;
+              <Strong>all&nbsp;your&nbsp;company</Strong>,
+              <br className="hidden sm:block" />
+              today.
+            </P>
+            <P
+              border="amber"
+              className="col-span-9 col-start-4 sm:col-span-6 sm:col-start-7"
+            >
+              Connect Dust to <Strong>your team’s data</Strong> and{" "}
+              <Strong>break down knowledge silos</Strong>{" "}
+              with&nbsp;context&#8209;aware assistants.
+            </P>
+            <P border="red" className="col-span-9 sm:col-span-6">
+              Empower your teams with{" "}
+              <Strong>assistants tailored to&nbsp;their needs</Strong> on
+              concrete use&nbsp;cases.
+            </P>
+            <P
+              border="emerald"
+              className="col-span-9 col-start-4 sm:col-span-6 sm:col-start-7"
+            >
+              <Strong>Control data access granularly</Strong> with a{" "}
+              <Strong>safe and privacy-obsessed</Strong> application.
+            </P>
+          </Grid>
+          <Grid className="hidden items-center md:block">
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-4 col-start-3 gap-8"
+                "gap-8",
+                "col-span-12",
+                "md:col-span-5",
+                "xl:col-span-5 xl:col-start-2",
+                "2xl:col-span-4 2xl:col-start-3"
               )}
             >
               <P border="sky">
@@ -237,7 +289,7 @@ export default function Home({
                 <Strong>safe and privacy-obsessed</Strong> application.
               </P>
             </div>
-            <div className="col-span-5">
+            <div className="col-span-12 md:col-span-7 xl:col-span-5">
               <ReactiveImg>
                 <img src="/static/landing/conversation.png" />
               </ReactiveImg>
@@ -249,17 +301,22 @@ export default function Home({
               ref={scrollRef1}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 col-start-3 flex flex-col gap-4 text-right"
+                "flex flex-col gap-4",
+                "col-span-12",
+                "md:col-span-8 md:col-start-4",
+                "xl:col-span-8 xl:col-start-2",
+                "2xl:col-start-3 2xl:text-right"
               )}
             >
-              <H1 colorCSS="text-sky-500">
+              <H2 className="text-sky-500">
                 Get the state of the&nbsp;art,
                 <br />
                 <span className="text-sky-200">today and&nbsp;tomorrow.</span>
-              </H1>
+              </H2>
               <P variant="lg">
                 Dust gives you&nbsp;access to the&nbsp;
-                <Strong>leading models</Strong>,<br />
+                <Strong>leading models</Strong>,
+                <br className="hidden sm:block" />
                 and&nbsp; augments them with&nbsp;
                 <Strong>your&nbsp;company’s internal&nbsp;information</Strong>.
               </P>
@@ -268,8 +325,41 @@ export default function Home({
           <Grid>
             <div
               className={classNames(
+                "flex h-full flex-col justify-center",
+                "col-span-10 col-start-2 sm:col-span-8 sm:col-start-3 md:hidden"
+              )}
+            >
+              <ReactiveImg>
+                <img src="/static/landing/connect.png" />
+              </ReactiveImg>
+            </div>
+            <div
+              className={classNames(
                 defaultFlexClasses,
-                "col-span-5 col-start-3 gap-8"
+                "gap-8",
+                "col-span-10 col-start-2",
+                "md:col-span-7",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:col-span-5 2xl:col-start-3"
+              )}
+            >
+              <P border="sky">
+                Your own knowledge base continuously in&nbsp;sync:{" "}
+                <Strong>
+                  Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
+                </Strong>
+                .
+              </P>
+            </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "gap-8",
+                "col-span-10 col-start-2",
+                "sm:col-span-6",
+                "md:col-span-7",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:col-span-5 2xl:col-start-3"
               )}
             >
               <P border="pink">
@@ -295,19 +385,35 @@ export default function Home({
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <MicrosoftLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <MoreIcon className="text-slate-50" />
-                </ReactiveIcon>
+                <div className="hidden sm:block">
+                  <ReactiveIcon colorHEX="#1E3A8A">
+                    <MoreIcon className="text-slate-50" />
+                  </ReactiveIcon>
+                </div>
               </div>
+            </div>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "gap-8",
+                "col-span-10 col-start-2",
+                "sm:col-span-6",
+                "md:col-span-7",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:col-span-5 2xl:col-start-3"
+              )}
+            >
               <P border="emerald">
                 Proprietary and&nbsp;open-source models suited
                 to&nbsp;your&nbsp;needs:{" "}
                 <Strong>OpenAI,&nbsp;Anthropic,&nbsp;Mistral…</Strong>
               </P>
               <div className="flex flex-wrap gap-4 pl-6">
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <GoogleLogo />
-                </ReactiveIcon>
+                <div className="hidden sm:block">
+                  <ReactiveIcon colorHEX="#1E3A8A">
+                    <GoogleLogo />
+                  </ReactiveIcon>
+                </div>
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <DriveLogo />
                 </ReactiveIcon>
@@ -320,19 +426,21 @@ export default function Home({
                 <ReactiveIcon colorHEX="#1E3A8A">
                   <SlackLogo />
                 </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <MoreIcon className="text-slate-50" />
-                </ReactiveIcon>
+                <div className="hidden xl:block">
+                  <ReactiveIcon colorHEX="#1E3A8A">
+                    <MoreIcon className="text-slate-50" />
+                  </ReactiveIcon>
+                </div>
               </div>
-              <P border="sky">
-                Your own knowledge base continuously in&nbsp;sync:{" "}
-                <Strong>
-                  Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
-                </Strong>
-                .
-              </P>
             </div>
-            <div className="test-right col-span-4 flex h-full flex-col justify-center gap-6">
+            <div
+              className={classNames(
+                "flex h-full flex-col justify-center",
+                "col-span-12 hidden md:block",
+                "md:col-span-5",
+                "xl:col-span-4"
+              )}
+            >
               <ReactiveImg>
                 <img src="/static/landing/connect.png" />
               </ReactiveImg>
@@ -343,10 +451,14 @@ export default function Home({
               ref={scrollRef2}
               className={classNames(
                 defaultFlexClasses,
-                "col-span-8 col-start-3 flex flex-col gap-4"
+                "flex flex-col gap-4",
+                "col-span-12",
+                "md:col-span-8 md:col-start-2",
+                "xl:col-span-7 xl:col-start-2",
+                "2xl:col-start-3"
               )}
             >
-              <H2 colorCSS="text-amber-400">
+              <H2 className="text-amber-400">
                 Bring your&nbsp;team
                 <br />
                 <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
@@ -370,20 +482,33 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <div className="col-span-6 col-start-2">
+            <div
+              className={classNames(
+                "col-span-12 pb-8 sm:pb-0",
+                "sm:col-span-10 sm:col-start-2",
+                "md:col-span-7 md:col-start-1",
+                "xl:col-span-6 xl:col-start-2"
+              )}
+            >
               <ReactiveImg>
                 <img src="/static/landing/builder.png" />
               </ReactiveImg>
             </div>
             <div
-              className={classNames(defaultFlexClasses, "col-span-4 gap-16")}
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-12",
+                "sm:col-span-6",
+                "md:col-span-5 md:gap-12",
+                "xl:col-span-4 xl:gap-16"
+              )}
             >
               <P border="sky">
                 Team members <Strong>imagine new workflows</Strong> and&nbsp;
                 <Strong>package them with assistants</Strong> that&nbsp;others
                 can&nbsp;effortlessly&nbsp;use.
               </P>
-              <div className="w-[75%] pl-4">
+              <div className="hidden w-full pl-4 sm:block xl:w-[90%] xl:pl-4 2xl:w-[75%] ">
                 <ReactiveImg>
                   <img src="/static/landing/assistants.png" />
                 </ReactiveImg>
@@ -391,7 +516,12 @@ export default function Home({
             </div>
             <div
               className={classNames(
-                "col-span-3 col-start-3 flex flex-col justify-center gap-10"
+                "flex flex-col justify-center gap-10",
+                "col-span-12",
+                "sm:col-span-6",
+                "md:col-span-5",
+                "xl:col-span-4 xl:col-start-2",
+                "2xl:col-span-3 2xl:col-start-3"
               )}
             >
               <P border="amber">
@@ -405,7 +535,7 @@ export default function Home({
                 <Strong>single sign&#8209;on</Strong>&nbsp;(SSO).
               </P>
             </div>
-            <div className="col-span-6">
+            <div className="col-span-12 pt-8 sm:pt-0 md:col-span-7 xl:col-span-6">
               <ReactiveImg>
                 <div className="rounded-xl">
                   <img src="/static/landing/slack.png" />
@@ -414,35 +544,27 @@ export default function Home({
             </div>
           </Grid>
           <Grid>
-            <div
-              ref={scrollRef3}
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-5 col-start-2 flex flex-col gap-4 text-right"
-              )}
-            >
-              <H2 colorCSS="text-red-400">
+            <div ref={scrollRef3} className="col-span-12 md:col-span-6">
+              <H2 className="text-red-400">
                 Designed for security
                 <br />
                 <span className="text-red-200">and data privacy.</span>
               </H2>
             </div>
-            <div className="col-span-4 flex flex-col gap-4">
-              <P variant="lg">
-                <Strong>Your data is private</Strong>, No re-training
-                of&nbsp;models on your internal knowledge.
-              </P>
-              <P variant="lg">
-                <Strong>Enterprise-grade security</Strong> to manage
-                your&nbsp;data access policies with control and&nbsp;confidence.
-              </P>
-            </div>
+            <P variant="lg" className="col-span-6">
+              <Strong>Your data is private</Strong>, No re-training
+              of&nbsp;models on your internal knowledge.
+            </P>
+            <P variant="lg" className="col-span-6">
+              <Strong>Enterprise-grade security</Strong> to manage
+              your&nbsp;data access policies with control and&nbsp;confidence.
+            </P>
           </Grid>
           <Grid>
             <div
               className={classNames(
-                defaultFlexClasses,
-                "col-span-4 col-start-3 flex flex-col gap-4"
+                "col-span-12 hidden md:block",
+                "md:col-span-6 xl:col-span-5 xl:col-start-2 2xl:col-span-4 2xl:col-start-3"
               )}
             >
               <div className="w-full pt-12">
@@ -451,33 +573,59 @@ export default function Home({
                 </ReactiveImg>
               </div>
             </div>
+            <H2 className="col-span-12 text-emerald-500">
+              Need more?
+              <br />
+              <span className="text-emerald-200">Dust do it!</span>
+            </H2>
+            <div className="col-span-10 col-start-2 md:hidden">
+              <ReactiveImg paddingCSS="p-1">
+                <img src="/static/landing/apps.png" />
+              </ReactiveImg>
+            </div>
+            <P variant="lg" className="col-span-6">
+              Provide{" "}
+              <Strong>developers and tinkerers with a&nbsp;platform</Strong>{" "}
+              to&nbsp;build custom actions and&nbsp;application orchestration
+              to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
+            </P>
+            <P variant="lg" className="col-span-6">
+              Support <Strong>custom plugins</Strong> for assistants to interact
+              with your <Strong>own databases on advanced use cases</Strong>.
+            </P>
+          </Grid>
+          <Grid className="md:hidden">
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-5 flex flex-col gap-8"
+                "col-span-12 sm:col-span-10 sm:col-start-2"
               )}
             >
-              <H2 colorCSS="text-emerald-500">
-                Need more?
+              <H2 className="text-pink-400">
+                Want to start with Dust?
                 <br />
-                <span className="text-emerald-200">Dust do it!</span>
+                <span className="text-pink-200">
+                  Come check us out on a larger screen!
+                </span>
               </H2>
               <P variant="lg">
-                Provide{" "}
-                <Strong>developers and tinkerers with a&nbsp;platform</Strong>{" "}
-                to&nbsp;build custom actions and&nbsp;application orchestration
-                to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
-              </P>
-              <P variant="lg">
-                Support <Strong>custom plugins</Strong> for assistants to
-                interact with your{" "}
-                <Strong>own databases on advanced use cases</Strong>.
+                We're excited for you to explore our price plans and start
+                your&nbsp;onboarding journey. For the&nbsp;optimal experience,
+                please return on a&nbsp;device with a bigger&nbsp;screen.
               </P>
             </div>
           </Grid>
-          <Grid>
-            <div className="col-span-8 col-start-3 pb-8">
-              <H2 colorCSS="text-pink-400">
+          <Grid className="hidden md:block">
+            <div
+              className={classNames(
+                "pb-8",
+                "col-span-12",
+                "md:col-span-8",
+                "xl:col-start-2",
+                "2xl:col-start-3"
+              )}
+            >
+              <H2 className="text-pink-400">
                 Start with Dust!
                 <br />
                 <span className="text-pink-200">Meet our pricing plans.</span>
@@ -486,10 +634,13 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "s-dark dark col-span-10 col-start-2 flex flex-col gap-4"
+                "s-dark dark gap-4",
+                "hidden md:block",
+                "col-span-12",
+                "xl:col-span-10 xl:col-start-2"
               )}
             >
-              <div className="flex flex-row gap-10">
+              <div className="flex flex-row gap-10 ">
                 <PriceTable
                   title="Free"
                   price="$0"
@@ -592,32 +743,59 @@ export default function Home({
               </div>
             </div>
           </Grid>
-          <Grid>
-            <H2 colorCSS="text-emerald-400 col-span-8 col-start-3">
+          <Grid className="hidden md:block">
+            <H2
+              className={classNames(
+                "text-emerald-400",
+                "col-span-12",
+                "xl:col-span-8 xl:col-start-2"
+              )}
+            >
               Our product constitution
             </H2>
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-3 col-start-3"
+                "col-span-12",
+                "md:col-span-4",
+                "xl:col-span-4 xl:col-start-2",
+                "2xl:col-span-3 2xl:col-start-3"
               )}
             >
-              <H4>Augmenting humans, not&nbsp;replacing&nbsp;them</H4>
+              <H4 className="text-slate-200">
+                Augmenting humans, not&nbsp;replacing&nbsp;them
+              </H4>
               <P>
                 We're optimistic about making work life better for smart people.
                 We're building R2-D2, not Skynet.
               </P>
             </div>
-            <div className={classNames(defaultFlexClasses, "col-span-3")}>
-              <H4>Hard problems over&nbsp;hype</H4>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-12",
+                "md:col-span-4",
+                "xl:col-span-3"
+              )}
+            >
+              <H4 className="text-slate-200">Hard problems over&nbsp;hype</H4>
               <P>
                 There's more to do than wrapping GPT into a chat UI. We're in
                 this to solve hard problems on user experience and product
                 quality.
               </P>
             </div>
-            <div className={classNames(defaultFlexClasses, "col-span-3")}>
-              <H4>Building with an&nbsp;AI&nbsp;core</H4>
+            <div
+              className={classNames(
+                defaultFlexClasses,
+                "col-span-12",
+                "md:col-span-4",
+                "xl:col-span-3"
+              )}
+            >
+              <H4 className="text-slate-200">
+                Building with an&nbsp;AI&nbsp;core
+              </H4>
               <P>
                 We're building with large language models in mind from the
                 ground up, rather than sprinkling them here and&nbsp;there.
@@ -718,14 +896,29 @@ const Header = () => {
 
 const Footer = () => {
   return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-t border-slate-800 bg-slate-900 py-16">
-      <div className="max-w-8xl container flex flex-col gap-8">
+    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-slate-800 bg-slate-900 py-16">
+      <div className="w-full md:mx-12">
         <Grid>
-          <div className="col-span-1 col-start-2 opacity-70">
+          <div
+            className={classNames(
+              "opacity-70",
+              "col-span-12",
+              "md:col-span-3",
+              "xl:col-start-2"
+            )}
+          >
             <LogoHorizontalWhiteLogo className="h-6 w-24" />
           </div>
 
-          <div className="col-span-2 col-start-5 flex flex-col gap-3">
+          <div
+            className={classNames(
+              "flex flex-col gap-3",
+              "col-span-6",
+              "sm:col-span-3",
+              "md:col-start-1",
+              "xl:col-span-2 xl:col-start-4 "
+            )}
+          >
             <P>
               <Strong>Careers</Strong>
             </P>
@@ -744,7 +937,14 @@ const Footer = () => {
               </A>
             </P>
           </div>
-          <div className="col-span-2 flex flex-col gap-3">
+          <div
+            className={classNames(
+              "flex flex-col gap-3",
+              "col-span-6",
+              "sm:col-span-3",
+              "xl:col-span-2"
+            )}
+          >
             <P>
               <Strong>About</Strong>
             </P>
@@ -764,7 +964,14 @@ const Footer = () => {
               </A>
             </P>
           </div>
-          <div className="col-span-2 flex flex-col gap-3">
+          <div
+            className={classNames(
+              "flex flex-col gap-3",
+              "col-span-6",
+              "sm:col-span-3",
+              "xl:col-span-2"
+            )}
+          >
             <P>
               <Strong>Privacy</Strong>
             </P>
@@ -779,7 +986,14 @@ const Footer = () => {
               </A>
             </P>
           </div>
-          <div className="col-span-2 flex flex-col gap-3">
+          <div
+            className={classNames(
+              "flex flex-col gap-3",
+              "col-span-6",
+              "sm:col-span-3",
+              "xl:col-span-2"
+            )}
+          >
             <P>
               <Strong>Legal</Strong>
             </P>

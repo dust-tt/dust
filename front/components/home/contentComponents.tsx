@@ -1,43 +1,31 @@
 import classNames from "classnames";
 import React, { ReactElement, ReactNode } from "react";
 
-const defaultGridClasses = "grid grid-cols-12 gap-10";
+const defaultGridClasses =
+  "grid grid-cols-12 gap-x-6 gap-y-10 md:gap-12 px-6 md:px-20 xl:px-0 xl:gap-10";
 
-export const Grid = ({
-  children,
-  colorCSS = "text-slate-50",
-  className = "",
-}: ContentProps) => (
-  <div className={classNames(className, colorCSS, defaultGridClasses)}>
-    {children}
-  </div>
+export const Grid = ({ children, className = "" }: ContentProps) => (
+  <div className={classNames(className, defaultGridClasses)}>{children}</div>
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-3xl font-bold tracking-tight md:text-5xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight md:text-3xl drop-shadow-md",
-  h4: "font-objektiv text-lg font-bold tracking-tight md:text-2xl drop-shadow-md",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl drop-shadow-lg",
+  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl drop-shadow-lg",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2x xl:text-3xl drop-shadow-md",
+  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",
 };
 
 interface ContentProps {
   children: ReactNode;
   className?: string;
-  colorCSS?: string;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4";
 
 const createHeadingComponent = (Tag: TagName) => {
-  const Component: React.FC<ContentProps> = ({
-    children,
-    colorCSS = "text-slate-50",
-    className = "",
-  }) => {
+  const Component: React.FC<ContentProps> = ({ children, className = "" }) => {
     return (
-      <Tag className={classNames(className, colorCSS, hClasses[Tag])}>
-        {children}
-      </Tag>
+      <Tag className={classNames(className, hClasses[Tag])}>{children}</Tag>
     );
   };
   Component.displayName = Tag.toUpperCase();
@@ -49,8 +37,8 @@ export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
 
-export const Span = ({ children, colorCSS, className = "" }: ContentProps) => (
-  <span className={classNames(className, colorCSS)}>{children}</span>
+export const Span = ({ children, className = "" }: ContentProps) => (
+  <span className={classNames(className)}>{children}</span>
 );
 
 const borderColorTable = {
@@ -64,8 +52,8 @@ const borderColorTable = {
 const pClasses = {
   xs: "font-regular text-sm text-slate-400 md:text-base",
   sm: "font-regular text-base text-slate-400 md:text-lg",
-  md: "font-regular text-lg text-slate-400 md:text-xl drop-shadow",
-  lg: "font-regular text-xl text-slate-400 md:text-2xl drop-shadow",
+  md: "font-regular text-base md:text-lg text-slate-400 lg:text-xl drop-shadow",
+  lg: "font-regular text-lg md:text-xl text-slate-400 lg:text-2xl drop-shadow",
 };
 
 interface PProps {
@@ -84,7 +72,7 @@ export const P = ({
   <p
     className={classNames(
       className,
-      border ? "border-l-4 pl-4" : "",
+      border ? "border-l-2 pl-3 sm:border-l-4 sm:pl-4" : "",
       border ? borderColorTable[border] : "",
       pClasses[variant]
     )}
@@ -205,7 +193,7 @@ export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
     {
       className: classNames(
         singleChild.props.className,
-        "h-12 w-12 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
+        "h-8 w-8 md:h-12 md:w-12 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
       ),
     }
   );
