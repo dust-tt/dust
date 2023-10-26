@@ -31,6 +31,7 @@ import {
   driveObjectToDustType,
   folderHasChildren,
   getAuthObject,
+  getDocumentId,
   getDriveClient,
   getDrivesIds,
   getGoogleCredentials,
@@ -347,6 +348,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
               type: "folder",
               title: fd.name || "",
               sourceUrl: fd.webViewLink || null,
+              dustDocumentId: null,
+              lastUpdatedAt: fd.updatedAtMs || null,
               expandable:
                 (await GoogleDriveFiles.count({
                   where: {
@@ -387,6 +390,11 @@ export async function retrieveGoogleDriveConnectorPermissions({
                   ? "folder"
                   : "file",
               title: f.name || "",
+              dustDocumentId:
+                f.mimeType === "application/vnd.google-apps.folder"
+                  ? null
+                  : getDocumentId(f.driveFileId),
+              lastUpdatedAt: f.lastSeenTs?.getTime() || null,
               sourceUrl: null,
               expandable:
                 (await GoogleDriveFiles.count({
@@ -429,6 +437,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
             type: "folder" as ConnectorResourceType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
+            dustDocumentId: null,
+            lastUpdatedAt: driveObject.updatedAtMs || null,
             expandable: await folderHasChildren(connectorId, driveObject.id),
             permission: (await GoogleDriveFolders.findOne({
               where: {
@@ -489,6 +499,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
             expandable: await folderHasChildren(connectorId, driveObject.id),
+            dustDocumentId: null,
+            lastUpdatedAt: driveObject.updatedAtMs || null,
             permission: (await GoogleDriveFolders.findOne({
               where: {
                 connectorId: connectorId,

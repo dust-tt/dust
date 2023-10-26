@@ -580,6 +580,7 @@ function RevokeInvitationModal({
       hasChanged={false}
       title="Revoke invitation"
       isSaving={isSaving}
+      type="default"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
@@ -741,6 +742,7 @@ function ChangeMemberModal({
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
         hasChanged={false}
+        type="default"
       >
         <div className="mt-6 flex flex-col gap-6 px-2">
           <div>

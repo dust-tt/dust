@@ -308,6 +308,8 @@ export async function retrieveGithubConnectorPermissions({
         sourceUrl: repo.url,
         expandable: false,
         permission: "read" as ConnectorPermission,
+        dustDocumentId: null,
+        lastUpdatedAt: null,
       }))
     );
   }

@@ -1,11 +1,19 @@
-import { Tree } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  ExternalLinkIcon,
+  IconButton,
+  Tooltip,
+  Tree,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import {
   ConnectorPermission,
   ConnectorProvider,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -34,6 +42,7 @@ function PermissionTreeChildren({
   onPermissionUpdate,
   parentIsSelected,
   showExpand,
+  showDocumentModal,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -49,6 +58,7 @@ function PermissionTreeChildren({
   }) => void;
   parentIsSelected?: boolean;
   showExpand?: boolean;
+  showDocumentModal: (documentId: string) => void;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -83,7 +93,7 @@ function PermissionTreeChildren({
 
   return (
     <Tree isLoading={isResourcesLoading}>
-      {resources.map((r) => {
+      {resources.map((r, i) => {
         const titlePrefix = r.type === "channel" ? "#" : "";
         return (
           <Tree.Item
@@ -122,6 +132,48 @@ function PermissionTreeChildren({
                   }
                 : undefined
             }
+            actions={
+              <div className="mr-8 flex flex-row gap-2">
+                {r.lastUpdatedAt ? (
+                  <Tooltip
+                    contentChildren={
+                      <span>{new Date(r.lastUpdatedAt).toLocaleString()}</span>
+                    }
+                    position={i === 0 ? "below" : "above"}
+                  >
+                    <span className="text-xs text-gray-500">
+                      {timeAgoFrom(r.lastUpdatedAt)} ago
+                    </span>
+                  </Tooltip>
+                ) : null}
+                <IconButton
+                  size="xs"
+                  icon={ExternalLinkIcon}
+                  onClick={() => {
+                    if (r.sourceUrl) {
+                      window.open(r.sourceUrl, "_blank");
+                    }
+                  }}
+                  className={classNames(
+                    r.sourceUrl ? "" : "pointer-events-none opacity-0"
+                  )}
+                  disabled={!r.sourceUrl}
+                />
+                <IconButton
+                  size="xs"
+                  icon={BracesIcon}
+                  onClick={() => {
+                    if (r.dustDocumentId) {
+                      showDocumentModal(r.dustDocumentId);
+                    }
+                  }}
+                  className={classNames(
+                    r.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                  )}
+                  disabled={!r.dustDocumentId}
+                />
+              </div>
+            }
           >
             {expanded[r.internalId] && (
               <PermissionTreeChildren
@@ -136,6 +188,7 @@ function PermissionTreeChildren({
                   (parentIsSelected || localStateByInternalId[r.internalId]) ??
                   ["read", "read_write"].includes(r.permission)
                 }
+                showDocumentModal={showDocumentModal}
               />
             )}
           </Tree.Item>
@@ -166,18 +219,38 @@ export function PermissionTree({
   }) => void;
   showExpand?: boolean;
 }) {
+  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
+    null
+  );
+
   return (
-    <div className="overflow-x-auto">
-      <PermissionTreeChildren
+    <>
+      <ManagedDataSourceDocumentModal
         owner={owner}
         dataSource={dataSource}
-        parentId={null}
-        permissionFilter={permissionFilter}
-        canUpdatePermissions={canUpdatePermissions}
-        onPermissionUpdate={onPermissionUpdate}
-        showExpand={showExpand}
-        parentIsSelected={false}
+        documentId={documentToDisplay}
+        isOpen={!!documentToDisplay}
+        setOpen={(open) => {
+          if (!open) {
+            setDocumentToDisplay(null);
+          }
+        }}
       />
-    </div>
+      <div className="overflow-x-auto">
+        <PermissionTreeChildren
+          owner={owner}
+          dataSource={dataSource}
+          parentId={null}
+          permissionFilter={permissionFilter}
+          canUpdatePermissions={canUpdatePermissions}
+          onPermissionUpdate={onPermissionUpdate}
+          showExpand={showExpand}
+          parentIsSelected={false}
+          showDocumentModal={(documentId: string) => {
+            setDocumentToDisplay(documentId);
+          }}
+        />
+      </div>
+    </>
   );
 }
