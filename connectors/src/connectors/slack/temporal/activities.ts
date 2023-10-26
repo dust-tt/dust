@@ -527,17 +527,13 @@ export async function syncThread(
       if (slackError.code === ErrorCode.PlatformError) {
         const platformError = slackError as WebAPIPlatformError;
         if (platformError.data.error === "thread_not_found") {
-          break;
+          // If the thread is not found we just return and don't upsert anything.
+          return;
         }
       }
       throw e;
     }
   } while (next_cursor);
-
-  if (allMessages.length === 0) {
-    // If we have no messages we just return without upserting anything.
-    return;
-  }
 
   const botUserId = await getBotUserIdMemoized(slackAccessToken);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
