@@ -27,6 +27,14 @@ import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
 export function startServer(port: number) {
+  process.on("unhandledRejection", (reason, promise) => {
+    logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+  });
+
+  process.on("uncaughtException", (error) => {
+    logger.error("Uncaught Exception thrown", error);
+  });
+
   const app = express();
 
   // for health check -- doesn't go through auth middleware
