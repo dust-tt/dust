@@ -28,11 +28,11 @@ import { authMiddleware } from "@connectors/middleware/auth";
 
 export function startServer(port: number) {
   process.on("unhandledRejection", (reason, promise) => {
-    logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+    logger.error({ promise, reason }, "Unhandled Rejection");
   });
 
   process.on("uncaughtException", (error) => {
-    logger.error("Uncaught Exception thrown", error);
+    logger.error({ error }, "Uncaught Exception");
   });
 
   const app = express();
