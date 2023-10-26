@@ -35,7 +35,7 @@ export function EmojiSelector({
   }) => void;
   emojiData: EmojiMartData | null;
 }) {
-  const buttonRef = useRef(null);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   return (
     <DropdownMenu>
