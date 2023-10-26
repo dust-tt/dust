@@ -351,10 +351,12 @@ export function AgentMessage({
                 setHoveredReference: setLastHoveredReference,
               }}
             />
-            <Citations
-              activeReferences={activeReferences}
-              lastHoveredReference={lastHoveredReference}
-            />
+            {activeReferences.length > 0 && (
+              <Citations
+                activeReferences={activeReferences}
+                lastHoveredReference={lastHoveredReference}
+              />
+            )}
           </div>
         )}
         {agentMessage.status === "cancelled" && (
