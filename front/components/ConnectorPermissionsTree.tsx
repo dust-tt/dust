@@ -2,6 +2,7 @@ import {
   BracesIcon,
   ExternalLinkIcon,
   IconButton,
+  Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -11,7 +12,7 @@ import {
   ConnectorProvider,
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
@@ -89,7 +90,7 @@ function PermissionTreeChildren({
 
   return (
     <Tree isLoading={isResourcesLoading}>
-      {resources.map((r) => {
+      {resources.map((r, i) => {
         const titlePrefix = r.type === "channel" ? "#" : "";
         return (
           <Tree.Item
@@ -130,6 +131,20 @@ function PermissionTreeChildren({
             }
             actions={
               <div className="flex flex-row gap-2">
+                {r.lastUpdatedAt ? (
+                  <Tooltip
+                    contentChildren={
+                      <span className="mr-12">
+                        {new Date(r.lastUpdatedAt).toLocaleString()}
+                      </span>
+                    }
+                    position={i === 0 ? "below" : "above"}
+                  >
+                    <span className="text-xs text-gray-500">
+                      {timeAgoFrom(r.lastUpdatedAt)} ago
+                    </span>
+                  </Tooltip>
+                ) : null}
                 <IconButton
                   size="xs"
                   icon={ExternalLinkIcon}
@@ -138,7 +153,10 @@ function PermissionTreeChildren({
                       window.open(r.sourceUrl, "_blank");
                     }
                   }}
-                  className={classNames(r.sourceUrl ? "" : "hidden")}
+                  className={classNames(
+                    r.sourceUrl ? "" : "pointer-events-none opacity-0"
+                  )}
+                  disabled={!r.sourceUrl}
                 />
                 <IconButton
                   size="xs"
@@ -155,7 +173,10 @@ function PermissionTreeChildren({
                       );
                     }
                   }}
-                  className={classNames(r.dustDocumentId ? "" : "hidden")}
+                  className={classNames(
+                    r.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                  )}
+                  disabled={!r.dustDocumentId}
                 />
               </div>
             }
