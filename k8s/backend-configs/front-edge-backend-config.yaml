@@ -9,5 +9,3 @@ spec:
   sessionAffinity:
     affinityType: "CLIENT_IP"
   timeoutSec: 300
-  securityPolicy:
-    name: "dust-front-ssl-policy"

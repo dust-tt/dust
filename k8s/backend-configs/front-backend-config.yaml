@@ -7,5 +7,3 @@ spec:
     affinityType: "GENERATED_COOKIE"
     affinityCookieTtlSec: 600
   timeoutSec: 300
-  securityPolicy:
-    name: "dust-front-ssl-policy"
