@@ -3,11 +3,10 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
-  PageHeader,
+  Page,
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
-  SectionHeader,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -113,108 +112,104 @@ export default function AssistantsBuilder({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
     >
-      <PageHeader
-        title="Assistants"
-        icon={RobotIcon}
-        description="Create, manage and deploy Assistants to your collaborators."
-      />
-      <div className="flex flex-col gap-4 pb-4">
-        <div>
-          <SectionHeader
-            title="Dust Assistants"
-            description='Assistants built by Dust for multiple use cases. For instance, use "@help" for any question Dust related, use the handle "@notion" to target specifically knowledge on Notion…'
-          />
-          <ContextItem.List className="mt-8 text-element-900">
-            {dustAgents.map((agent) => (
-              <ContextItem
-                key={agent.sId}
-                title={`@${agent.name}`}
-                visual={
-                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-                }
-                action={
-                  ["helper", "gpt-4"].includes(agent.sId) ? null : agent.sId ===
-                    "dust" ? (
-                    <Button
-                      variant="secondary"
-                      icon={Cog6ToothIcon}
-                      label="Manage"
-                      size="sm"
-                      disabled={!isBuilder}
-                      onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/assistants/dust`
-                        );
-                      }}
-                    />
-                  ) : (
-                    <SliderToggle
-                      size="sm"
-                      onClick={async () => {
-                        await handleToggleAgentStatus(agent);
-                      }}
-                      selected={agent.status === "active"}
-                      disabled={
-                        agent.status === "disabled_missing_datasource" ||
-                        !isBuilder
-                      }
-                    />
-                  )
-                }
-              >
-                <ContextItem.Description>
-                  <div className="text-element-700">{agent.description}</div>
-                </ContextItem.Description>
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </div>
-        <div>
-          <SectionHeader
-            title="Custom Assistants"
-            description="Build your Assistant, tailored to your needs. Write specific instructions, select specific data sources to get better answers."
-            action={{
-              label: "Create a new Assistant",
-              variant: "primary",
-              icon: PlusIcon,
-              size: "sm",
-              disabled: !isBuilder,
-              onClick: () => {
-                void router.push(`/w/${owner.sId}/builder/assistants/new`);
-              },
-            }}
-          />
-          <ContextItem.List className="mt-8  text-element-900">
-            {workspaceAgents.map((agent) => (
-              <ContextItem
-                key={agent.sId}
-                title={`@${agent.name}`}
-                visual={
-                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-                }
-                action={
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Assistants"
+          icon={RobotIcon}
+          description="Create, manage and deploy Assistants to your collaborators."
+        />
+        <Page.SectionHeader
+          title="Dust Assistants"
+          description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@notion" to&nbsp;target specifically knowledge on&nbsp;Notion…'
+        />
+        <ContextItem.List className="mt-8 text-element-900">
+          {dustAgents.map((agent) => (
+            <ContextItem
+              key={agent.sId}
+              title={`@${agent.name}`}
+              visual={
+                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+              }
+              action={
+                ["helper", "gpt-4"].includes(agent.sId) ? null : agent.sId ===
+                  "dust" ? (
                   <Button
                     variant="secondary"
-                    icon={PencilSquareIcon}
-                    label="Edit"
+                    icon={Cog6ToothIcon}
+                    label="Manage"
                     size="sm"
                     disabled={!isBuilder}
                     onClick={() => {
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/${agent.sId}`
+                        `/w/${owner.sId}/builder/assistants/dust`
                       );
                     }}
                   />
-                }
-              >
-                <ContextItem.Description>
-                  <div className="text-element-700">{agent.description}</div>
-                </ContextItem.Description>
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </div>
-      </div>
+                ) : (
+                  <SliderToggle
+                    size="sm"
+                    onClick={async () => {
+                      await handleToggleAgentStatus(agent);
+                    }}
+                    selected={agent.status === "active"}
+                    disabled={
+                      agent.status === "disabled_missing_datasource" ||
+                      !isBuilder
+                    }
+                  />
+                )
+              }
+            >
+              <ContextItem.Description>
+                <div className="text-element-700">{agent.description}</div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+        <Page.SectionHeader
+          title="Custom Assistants"
+          description="Build your Assistant, tailored to your needs. Write specific&nbsp;instructions, select&nbsp;specific data sources to&nbsp;get better&nbsp;answers."
+          action={{
+            label: "Create a new Assistant",
+            variant: "primary",
+            icon: PlusIcon,
+            size: "sm",
+            disabled: !isBuilder,
+            onClick: () => {
+              void router.push(`/w/${owner.sId}/builder/assistants/new`);
+            },
+          }}
+        />
+        <ContextItem.List className="mt-8  text-element-900">
+          {workspaceAgents.map((agent) => (
+            <ContextItem
+              key={agent.sId}
+              title={`@${agent.name}`}
+              visual={
+                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+              }
+              action={
+                <Button
+                  variant="secondary"
+                  icon={PencilSquareIcon}
+                  label="Edit"
+                  size="sm"
+                  disabled={!isBuilder}
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
+                    );
+                  }}
+                />
+              }
+            >
+              <ContextItem.Description>
+                <div className="text-element-700">{agent.description}</div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+      </Page.Vertical>
     </AppLayout>
   );
 }
