@@ -9,6 +9,7 @@ import {
   GithubLogo,
   NotionLogo,
   Page,
+  PageHeader,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
@@ -347,66 +348,48 @@ export default function DataSourcesView({
         current: "data_sources_managed",
       })}
     >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Connections"
-          icon={CloudArrowLeftRightIcon}
-          description="Manage connections to your products and the real-time data feeds Dust has access to."
-        />
+      <Page.Vertical gap="lg" align="stretch">
+        <div className="flex flex-col gap-8 pb-4">
+          <PageHeader
+            title="Connections"
+            icon={CloudArrowLeftRightIcon}
+            description="Manage connections to your products and the real-time data feeds Dust has access to."
+          />
 
-        <ContextItem.List>
-          {localIntegrations.map((ds) => {
-            return (
-              <ContextItem
-                key={
-                  ds.dataSourceName ||
-                  `managed-to-connect-${ds.connectorProvider}`
-                }
-                title={ds.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={(() => {
-                      switch (ds.connectorProvider) {
-                        case "slack":
-                          return SlackLogo;
-                        case "notion":
-                          return NotionLogo;
-                        case "github":
-                          return GithubLogo;
-                        case "google_drive":
-                          return DriveLogo;
-                        default:
-                          return SlackLogo;
-                      }
-                    })()}
-                  />
-                }
-                action={
-                  <Button.List>
-                    {(() => {
-                      const disabled =
-                        !ds.isBuilt ||
-                        isLoadingByProvider[
-                          ds.connectorProvider as ConnectorProvider
-                        ] ||
-                        !isAdmin;
-                      const onclick = canUseManagedDataSources
-                        ? async () => {
-                            await handleEnableManagedDataSource(
-                              ds.connectorProvider as ConnectorProvider,
-                              ds.setupWithSuffix
-                            );
-                          }
-                        : () => {
-                            window.alert(
-                              "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
-                            );
-                          };
-                      const label = !ds.isBuilt
-                        ? "Coming soon"
-                        : !isLoadingByProvider[
+          <ContextItem.List>
+            {localIntegrations.map((ds) => {
+              return (
+                <ContextItem
+                  key={
+                    ds.dataSourceName ||
+                    `managed-to-connect-${ds.connectorProvider}`
+                  }
+                  title={ds.name}
+                  visual={
+                    <ContextItem.Visual
+                      visual={(() => {
+                        switch (ds.connectorProvider) {
+                          case "slack":
+                            return SlackLogo;
+                          case "notion":
+                            return NotionLogo;
+                          case "github":
+                            return GithubLogo;
+                          case "google_drive":
+                            return DriveLogo;
+                          default:
+                            return SlackLogo;
+                        }
+                      })()}
+                    />
+                  }
+                  action={
+                    <Button.List>
+                      {(() => {
+                        const disabled =
+                          !ds.isBuilt ||
+                          isLoadingByProvider[
                             ds.connectorProvider as ConnectorProvider
-<<<<<<< HEAD
                           ] ||
                           !isAdmin;
                         const onclick = async () => {
@@ -495,56 +478,41 @@ export default function DataSourcesView({
                                           , including the Limited Use
                                           requirements.
                                         </div>
-=======
-                          ] && !ds.fetchConnectorError
-                        ? "Connect"
-                        : "Connecting...";
-                      if (!ds || !ds.connector) {
-                        return (
-                          <>
-                            {ds.connectorProvider !== "google_drive" && (
-                              <Button
-                                variant="primary"
-                                icon={CloudArrowLeftRightIcon}
-                                disabled={disabled}
-                                onClick={onclick}
-                                label={label}
-                              />
-                            )}
-                            {ds.connectorProvider === "google_drive" && (
-                              <DropdownMenu>
-                                <DropdownMenu.Button>
-                                  <Button
-                                    variant="primary"
-                                    label={label}
-                                    disabled={disabled}
-                                    icon={CloudArrowLeftRightIcon}
-                                  />
-                                </DropdownMenu.Button>
-                                <DropdownMenu.Items
-                                  origin="topRight"
-                                  width={350}
-                                >
-                                  <div className="flex flex-col gap-y-4 p-4">
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Disclosure
->>>>>>> 8f36eb7c (Polishing Admin Pages)
                                       </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        Dust's use of information received from
-                                        the Google APIs will adhere to{" "}
-                                        <Link
-                                          className="s-text-action-500"
-                                          href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
-                                        >
-                                          Google API Services User Data Policy
-                                        </Link>
-                                        , including the Limited Use
-                                        requirements.
+
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
+                                          Notice on data processing
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          By connecting Google Drive, you
+                                          acknowledge and agree that within your
+                                          Google Drive, the data contained in
+                                          the files and folders that you choose
+                                          to synchronize with Dust will be
+                                          transmitted to third-party entities,
+                                          including but not limited to
+                                          Artificial Intelligence (AI) model
+                                          providers, for the purpose of
+                                          processing and analysis. This process
+                                          is an integral part of the
+                                          functionality of our service and is
+                                          subject to the terms outlined in our
+                                          Privacy Policy and Terms of Service.
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-center">
+                                        <DropdownMenu.Button>
+                                          <Button
+                                            variant="secondary"
+                                            icon={CloudArrowLeftRightIcon}
+                                            disabled={disabled}
+                                            onClick={onclick}
+                                            label="Acknowledge and Connect"
+                                          />
+                                        </DropdownMenu.Button>
                                       </div>
                                     </div>
-<<<<<<< HEAD
                                   </DropdownMenu.Items>
                                 </DropdownMenu>
                               )}
@@ -623,114 +591,6 @@ export default function DataSourcesView({
             })}
           </ContextItem.List>
         </div>
-=======
-
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Notice on data processing
-                                      </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        By connecting Google Drive, you
-                                        acknowledge and agree that within your
-                                        Google Drive, the data contained in the
-                                        files and folders that you choose to
-                                        synchronize with Dust will be
-                                        transmitted to third-party entities,
-                                        including but not limited to Artificial
-                                        Intelligence (AI) model providers, for
-                                        the purpose of processing and analysis.
-                                        This process is an integral part of the
-                                        functionality of our service and is
-                                        subject to the terms outlined in our
-                                        Privacy Policy and Terms of Service.
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center">
-                                      <DropdownMenu.Button>
-                                        <Button
-                                          variant="secondary"
-                                          icon={CloudArrowLeftRightIcon}
-                                          disabled={disabled}
-                                          onClick={onclick}
-                                          label="Acknowledge and Connect"
-                                        />
-                                      </DropdownMenu.Button>
-                                    </div>
-                                  </div>
-                                </DropdownMenu.Items>
-                              </DropdownMenu>
-                            )}
-                          </>
-                        );
-                      } else {
-                        return (
-                          <Button
-                            variant="secondary"
-                            icon={Cog6ToothIcon}
-                            disabled={
-                              !ds.isBuilt ||
-                              isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ] ||
-                              // Can't manage or view if not (admin or not readonly (ie builder)).
-                              !(isAdmin || !readOnly)
-                            }
-                            onClick={() => {
-                              void router.push(
-                                `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
-                              );
-                            }}
-                            label={isAdmin ? "Manage" : "View"}
-                          />
-                        );
-                      }
-                    })()}
-                  </Button.List>
-                }
-              >
-                {ds && ds.connector && (
-                  <div className="mb-1 mt-2">
-                    {ds.fetchConnectorError ? (
-                      <Chip color="warning">errored</Chip>
-                    ) : (
-                      <>
-                        {!ds.connector.lastSyncSuccessfulTime ? (
-                          <Chip color="amber" isBusy>
-                            Synchronizing
-                            {ds.connector?.firstSyncProgress
-                              ? ` (${ds.connector?.firstSyncProgress})`
-                              : null}
-                          </Chip>
-                        ) : (
-                          <>
-                            <Chip color="slate">
-                              Last Sync ~ {ds.synchronizedAgo} ago
-                            </Chip>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-                <ContextItem.Description>
-                  <div className="text-sm text-element-700">
-                    {ds.description}
-                  </div>
-                </ContextItem.Description>
-              </ContextItem>
-            );
-          })}
-        </ContextItem.List>
-        <Page.Vertical>
-          <Page.H>Limitations</Page.H>
-          <Page.P variant="secondary">
-            Dust doesn't synchronize external files shared within a Notion page
-            or a Slack channel. On Google Drive, files with extracted text
-            bigger than 750KB are excluded. On GitHub, the code base is not
-            synchronized.
-          </Page.P>
-        </Page.Vertical>
->>>>>>> 8f36eb7c (Polishing Admin Pages)
       </Page.Vertical>
     </AppLayout>
   );
