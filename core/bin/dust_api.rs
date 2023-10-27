@@ -1722,6 +1722,7 @@ fn main() {
         tracing_subscriber::fmt()
             .with_target(false)
             .compact()
+            .with_ansi(false)
             .init();
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
