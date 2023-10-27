@@ -37,9 +37,14 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
+    // to remove
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
     maxSizeStaticDataSources: 2, // 2MB
+    // to keep
+    maxDataSourcesCount: -1,
+    maxDataSourcesDocumentsCount: -1,
+    maxDataSourcesDocumentsSizeMb: 2,
   },
   {
     code: "PRO_PLAN_FIXED_1000",
@@ -52,9 +57,14 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
+    // to remove
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
     maxSizeStaticDataSources: 2, // 2MB
+    // to keep
+    maxDataSourcesCount: -1,
+    maxDataSourcesDocumentsCount: -1,
+    maxDataSourcesDocumentsSizeMb: 2,
   },
 ];
 
