@@ -35,19 +35,14 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   isManagedNotionAllowed: false,
   isManagedGoogleDriveAllowed: false,
   isManagedGithubAllowed: false,
-
   // to remove
   maxNbStaticDataSources: 10,
-  maxNbStaticDocuments: 50,
+  maxNbStaticDocuments: 10,
   maxSizeStaticDataSources: 2, // 2MB
-<<<<<<< HEAD
   // to keep
   maxDataSourcesCount: 10,
   maxDataSourcesDocumentsCount: 10,
   maxDataSourcesDocumentsSizeMb: 2,
-=======
-  maxSizeMbStaticDataSources: 2,
->>>>>>> 5ab5060b (Introduce duplicated field maxSizeMbStaticDataSources in Plan to rename field)
 };
 
 /**
@@ -71,14 +66,10 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
     maxSizeStaticDataSources: 2, // 2MB
-<<<<<<< HEAD
     // to keep
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
-=======
-    maxSizeMbStaticDataSources: 2,
->>>>>>> 5ab5060b (Introduce duplicated field maxSizeMbStaticDataSources in Plan to rename field)
   },
 ];
 

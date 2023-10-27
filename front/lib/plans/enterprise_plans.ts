@@ -37,11 +37,17 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxNbStaticDocuments: -1,
   maxSizeStaticDataSources: 2, // 2MB
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 22ec322b (Rename all limits to match PlanType)
   // to keep
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,
+<<<<<<< HEAD
 =======
   maxSizeMbStaticDataSources: 2,
 >>>>>>> 5ab5060b (Introduce duplicated field maxSizeMbStaticDataSources in Plan to rename field)
+=======
+>>>>>>> 22ec322b (Rename all limits to match PlanType)
 };
