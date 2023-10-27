@@ -108,9 +108,9 @@ export default function DustAppRunAction({
           </div>
         )}
         {outputVisible && (
-          <div className="col-start-2 row-span-1 max-h-48 overflow-y-auto rounded-md bg-structure-100">
+          <div className="col-start-2 row-span-1 max-h-48 overflow-auto rounded-md bg-structure-100">
             <SyntaxHighlighter
-              className="rounded-md text-xs"
+              className="h-full w-full rounded-md text-xs"
               style={{
                 "hljs-number": {
                   color: amber["500"],
