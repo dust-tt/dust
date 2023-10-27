@@ -32,11 +32,6 @@ export class Plan extends Model<
   declare isManagedNotionAllowed: boolean;
   declare isManagedGoogleDriveAllowed: boolean;
   declare isManagedGithubAllowed: boolean;
-
-  declare maxNbStaticDataSources: number;
-  declare maxNbStaticDocuments: number;
-  declare maxSizeStaticDataSources: number;
-
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -97,18 +92,6 @@ Plan.init(
     isManagedGithubAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },
-    maxNbStaticDataSources: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    maxNbStaticDocuments: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    maxSizeStaticDataSources: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     maxDataSourcesCount: {
       type: DataTypes.INTEGER,

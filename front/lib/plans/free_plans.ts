@@ -35,12 +35,6 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   isManagedNotionAllowed: false,
   isManagedGoogleDriveAllowed: false,
   isManagedGithubAllowed: false,
-
-  // to remove
-  maxNbStaticDataSources: 10,
-  maxNbStaticDocuments: 50,
-  maxSizeStaticDataSources: 2, // 2MB
-  // to keep
   maxDataSourcesCount: 10,
   maxDataSourcesDocumentsCount: 10,
   maxDataSourcesDocumentsSizeMb: 2,
@@ -62,12 +56,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
-
-    // to remove
-    maxNbStaticDataSources: -1,
-    maxNbStaticDocuments: -1,
-    maxSizeStaticDataSources: 2, // 2MB
-    // to keep
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,

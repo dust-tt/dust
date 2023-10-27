@@ -456,9 +456,9 @@ export async function planForWorkspace(
           "isManagedNotionAllowed",
           "isManagedGoogleDriveAllowed",
           "isManagedGithubAllowed",
-          "maxNbStaticDataSources",
-          "maxNbStaticDocuments",
-          "maxSizeStaticDataSources",
+          "maxDataSourcesCount",
+          "maxDataSourcesDocumentsCount",
+          "maxDataSourcesDocumentsSizeMb",
           "maxUsersInWorkspace",
         ],
       },
@@ -504,10 +504,10 @@ export async function planForWorkspace(
         isGithubAllowed: plan.isManagedGithubAllowed,
       },
       dataSources: {
-        count: plan.maxNbStaticDataSources,
+        count: plan.maxDataSourcesCount,
         documents: {
-          count: plan.maxNbStaticDocuments,
-          sizeMb: plan.maxSizeStaticDataSources,
+          count: plan.maxDataSourcesDocumentsCount,
+          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
         },
       },
       users: {

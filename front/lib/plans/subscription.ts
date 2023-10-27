@@ -57,10 +57,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
         isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
       },
       dataSources: {
-        count: freeTestPlan.maxNbStaticDataSources,
+        count: freeTestPlan.maxDataSourcesCount,
         documents: {
-          count: freeTestPlan.maxNbStaticDocuments,
-          sizeMb: freeTestPlan.maxSizeStaticDataSources,
+          count: freeTestPlan.maxDataSourcesDocumentsCount,
+          sizeMb: freeTestPlan.maxDataSourcesDocumentsSizeMb,
         },
       },
       users: {
@@ -145,10 +145,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
           isGithubAllowed: plan.isManagedGithubAllowed,
         },
         dataSources: {
-          count: plan.maxNbStaticDataSources,
+          count: plan.maxDataSourcesCount,
           documents: {
-            count: plan.maxNbStaticDocuments,
-            sizeMb: plan.maxSizeStaticDataSources,
+            count: plan.maxDataSourcesDocumentsCount,
+            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
           },
         },
         users: {
@@ -253,10 +253,10 @@ export const subscribeWorkspaceToPlan = async (
           isGithubAllowed: newPlan.isManagedGithubAllowed,
         },
         dataSources: {
-          count: newPlan.maxNbStaticDataSources,
+          count: newPlan.maxDataSourcesCount,
           documents: {
-            count: newPlan.maxNbStaticDocuments,
-            sizeMb: newPlan.maxSizeStaticDataSources,
+            count: newPlan.maxDataSourcesDocumentsCount,
+            sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
           },
         },
         users: {
