@@ -516,7 +516,7 @@ export async function setSlackConnectorPermissions(
           );
           if (joinChannelRes.isErr()) {
             throw new Error(
-              `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust from #${remoteChannel.channel.name} on Slack.`
+              `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
             );
           }
 
