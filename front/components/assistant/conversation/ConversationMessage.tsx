@@ -2,7 +2,13 @@ import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import { ComponentType, MouseEventHandler, useEffect, useState } from "react";
+import {
+  ComponentType,
+  MouseEventHandler,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import React from "react";
 import { mutate } from "swr";
 
@@ -11,6 +17,63 @@ import { MessageReactionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;
+
+export function EmojiSelector({
+  user,
+  reactions,
+  handleEmoji,
+  emojiData,
+}: {
+  user: UserType;
+  reactions: MessageReactionType[];
+  handleEmoji: ({
+    emoji,
+    isToRemove,
+  }: {
+    emoji: string;
+    isToRemove: boolean;
+  }) => void;
+  emojiData: EmojiMartData | null;
+}) {
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <div ref={buttonRef}>
+          <Button
+            variant="tertiary"
+            size="xs"
+            icon={ReactionIcon}
+            labelVisible={false}
+            label=" "
+            type="menu"
+          />
+        </div>
+      </DropdownMenu.Button>
+      <DropdownMenu.Items width={280} origin="topRight">
+        <Picker
+          theme="light"
+          previewPosition="none"
+          data={emojiData}
+          onEmojiSelect={async (emojiData: Emoji) => {
+            const reaction = reactions.find((r) => r.emoji === emojiData.id);
+            const hasReacted =
+              (reaction &&
+                reaction.users.find((u) => u.userId === user.id) !==
+                  undefined) ||
+              false;
+            await handleEmoji({
+              emoji: emojiData.id,
+              isToRemove: hasReacted,
+            });
+            buttonRef.current?.click();
+          }}
+        />
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
+}
 
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
@@ -86,34 +149,11 @@ export function ConversationMessage({
     }
   };
 
-  const handleEmojiClick = async (emojiCode: string) => {
-    const reaction = reactions.find((r) => r.emoji === emojiCode);
-    const hasReacted =
-      (reaction &&
-        reaction.users.find((u) => u.userId === user.id) !== undefined) ||
-      false;
-    await handleEmoji({
-      emoji: emojiCode,
-      isToRemove: hasReacted,
-    });
-  };
-
-  // Extracting some of the emoji logic from the render function to make it more readable
-  const reactionUp = reactions.find((r) => r.emoji === "+1");
-  const hasReactedUp =
-    reactionUp?.users.some((u) => u.userId === user.id) ?? false;
-
-  const reactionDown = reactions.find((r) => r.emoji === "-1");
-  const hasReactedDown =
-    reactionDown?.users.some((u) => u.userId === user.id) ?? false;
-
-  let otherReactions = reactions.filter(
-    (r) => r.emoji !== "+1" && r.emoji !== "-1"
-  );
+  let slicedReactions = [...reactions];
   let hasMoreReactions = null;
-  if (otherReactions.length > MAX_MORE_REACTIONS_TO_SHOW) {
-    hasMoreReactions = otherReactions.length - MAX_MORE_REACTIONS_TO_SHOW;
-    otherReactions = otherReactions.slice(0, MAX_MORE_REACTIONS_TO_SHOW);
+  if (slicedReactions.length > MAX_MORE_REACTIONS_TO_SHOW) {
+    hasMoreReactions = slicedReactions.length - MAX_MORE_REACTIONS_TO_SHOW;
+    slicedReactions = slicedReactions.slice(0, MAX_MORE_REACTIONS_TO_SHOW);
   }
 
   return (
@@ -150,58 +190,19 @@ export function ConversationMessage({
                     ))}
                   </>
                 )}
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      variant="tertiary"
-                      size="xs"
-                      icon={ReactionIcon}
-                      labelVisible={false}
-                      label=" "
-                      type="menu"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={280} origin="topRight">
-                    <Picker
-                      theme="light"
-                      previewPosition="none"
-                      data={emojiData}
-                      onEmojiSelect={async (emojiData: Emoji) => {
-                        const reaction = reactions.find(
-                          (r) => r.emoji === emojiData.id
-                        );
-                        const hasReacted =
-                          (reaction &&
-                            reaction.users.find((u) => u.userId === user.id) !==
-                              undefined) ||
-                          false;
-                        await handleEmoji({
-                          emoji: emojiData.id,
-                          isToRemove: hasReacted,
-                        });
-                      }}
-                    />
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                {/* EMOJIS */}
+                {enableEmojis && (
+                  <EmojiSelector
+                    user={user}
+                    reactions={reactions}
+                    handleEmoji={handleEmoji}
+                    emojiData={emojiData}
+                  />
+                )}
               </div>
-              {/* EMOJIS */}
               {enableEmojis && (
                 <div className="flex flex-wrap gap-3">
-                  <ButtonEmoji
-                    variant={hasReactedUp ? "selected" : "unselected"}
-                    emoji="👍"
-                    count={reactionUp ? reactionUp.users.length.toString() : ""}
-                    onClick={async () => await handleEmojiClick("+1")}
-                  />
-                  <ButtonEmoji
-                    variant={hasReactedDown ? "selected" : "unselected"}
-                    emoji="👎"
-                    count={
-                      reactionDown ? reactionDown.users.length.toString() : ""
-                    }
-                    onClick={async () => await handleEmojiClick("-1")}
-                  />
-                  {otherReactions.map((reaction) => {
+                  {slicedReactions.map((reaction) => {
                     const hasReacted = reaction.users.some(
                       (u) => u.userId === user.id
                     );
@@ -213,7 +214,7 @@ export function ConversationMessage({
                     return (
                       <ButtonEmoji
                         key={reaction.emoji}
-                        variant={hasReactedDown ? "selected" : "unselected"}
+                        variant={hasReacted ? "selected" : "unselected"}
                         emoji={nativeEmoji}
                         count={reaction.users.length.toString()}
                         onClick={async () =>
@@ -226,7 +227,7 @@ export function ConversationMessage({
                     );
                   })}
                   {hasMoreReactions && (
-                    <span className="text-xs">+{hasMoreReactions}</span>
+                    <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
                   )}
                 </div>
               )}
@@ -263,7 +264,7 @@ export function ConversationMessage({
           <div className="w-32">
             {/* COPY / RETRY */}
             {buttons && (
-              <div className="mb-6 flex flex-wrap gap-1">
+              <div className="mb-4 flex flex-wrap gap-1">
                 {buttons.map((button, i) => (
                   <Button
                     key={`message-${messageId}-button-${i}`}
@@ -282,86 +283,45 @@ export function ConversationMessage({
             {/* EMOJIS */}
 
             {enableEmojis && (
-              <div className="flex flex-wrap gap-3 pl-2">
-                <ButtonEmoji
-                  variant={hasReactedUp ? "selected" : "unselected"}
-                  emoji="👍"
-                  count={reactionUp ? reactionUp.users.length.toString() : ""}
-                  onClick={async () => await handleEmojiClick("+1")}
-                />
-                <ButtonEmoji
-                  variant={hasReactedDown ? "selected" : "unselected"}
-                  emoji="👎"
-                  count={
-                    reactionDown ? reactionDown.users.length.toString() : ""
-                  }
-                  onClick={async () => await handleEmojiClick("-1")}
-                />
-                {otherReactions.map((reaction) => {
-                  const hasReacted = reaction.users.some(
-                    (u) => u.userId === user.id
-                  );
-                  const emoji = emojiData?.emojis[reaction.emoji];
-                  const nativeEmoji = emoji?.skins[0].native;
-                  if (!nativeEmoji) {
-                    return null;
-                  }
-                  return (
-                    <ButtonEmoji
-                      key={reaction.emoji}
-                      variant={hasReactedDown ? "selected" : "unselected"}
-                      emoji={nativeEmoji}
-                      count={reaction.users.length.toString()}
-                      onClick={async () =>
-                        await handleEmoji({
-                          emoji: reaction.emoji,
-                          isToRemove: hasReacted,
-                        })
-                      }
-                    />
-                  );
-                })}
-                {hasMoreReactions && (
-                  <span className="text-xs">+{hasMoreReactions}</span>
-                )}
-              </div>
-            )}
-            {enableEmojis && (
-              <div className="mt-2">
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      variant="tertiary"
-                      size="xs"
-                      icon={ReactionIcon}
-                      labelVisible={false}
-                      label="Add another emoji"
-                      type="menu"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={280}>
-                    <Picker
-                      theme="light"
-                      previewPosition="none"
-                      data={emojiData}
-                      onEmojiSelect={async (emojiData: Emoji) => {
-                        const reaction = reactions.find(
-                          (r) => r.emoji === emojiData.id
-                        );
-                        const hasReacted =
-                          (reaction &&
-                            reaction.users.find((u) => u.userId === user.id) !==
-                              undefined) ||
-                          false;
-                        await handleEmoji({
-                          emoji: emojiData.id,
-                          isToRemove: hasReacted,
-                        });
-                      }}
-                    />
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
+              <>
+                <div className="mb-4">
+                  <EmojiSelector
+                    user={user}
+                    reactions={reactions}
+                    handleEmoji={handleEmoji}
+                    emojiData={emojiData}
+                  />
+                </div>
+                <div className="ml-2 flex flex-wrap gap-3">
+                  {slicedReactions.map((reaction) => {
+                    const hasReacted = reaction.users.some(
+                      (u) => u.userId === user.id
+                    );
+                    const emoji = emojiData?.emojis[reaction.emoji];
+                    const nativeEmoji = emoji?.skins[0].native;
+                    if (!nativeEmoji) {
+                      return null;
+                    }
+                    return (
+                      <ButtonEmoji
+                        key={reaction.emoji}
+                        variant={hasReacted ? "selected" : "unselected"}
+                        emoji={nativeEmoji}
+                        count={reaction.users.length.toString()}
+                        onClick={async () =>
+                          await handleEmoji({
+                            emoji: reaction.emoji,
+                            isToRemove: hasReacted,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                  {hasMoreReactions && (
+                    <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -386,8 +346,8 @@ export function ButtonEmoji({
   return (
     <div
       className={classNames(
-        variant ? "text-action-500" : "text-element-800",
-        "flex cursor-pointer items-center gap-1.5 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
+        variant === "selected" ? "text-action-500" : "text-element-800",
+        "flex cursor-pointer items-center gap-1.5 py-1 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
       )}
       onClick={onClick}
     >
