@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
-import {
-  getAccessToken,
-  getBotUserIdMemoized,
-} from "@connectors/connectors/slack/temporal/activities";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
@@ -182,8 +179,8 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const slackAccessToken = await getAccessToken(connector.connectionId);
-          const myUserId = await getBotUserIdMemoized(slackAccessToken);
+
+          const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
           if (req.body.event?.user === myUserId) {
             // Message sent from the bot itself.
             return res.status(200).send();
@@ -237,7 +234,7 @@ const _webhookSlackAPIHandler = async (
                   return new Ok(undefined);
                 }
                 return launchSlackSyncOneThreadWorkflow(
-                  c.connectorId.toString(),
+                  c.connectorId,
                   channel,
                   thread_ts
                 );
@@ -280,7 +277,7 @@ const _webhookSlackAPIHandler = async (
                   return new Ok(undefined);
                 }
                 return launchSlackSyncOneMessageWorkflow(
-                  c.connectorId.toString(),
+                  c.connectorId,
                   channel,
                   ts
                 );
@@ -346,7 +343,7 @@ const _webhookSlackAPIHandler = async (
 
         const results = await Promise.all(
           slackConfigurations.map((c) => {
-            return launchSlackGarbageCollectWorkflow(c.connectorId.toString());
+            return launchSlackGarbageCollectWorkflow(c.connectorId);
           })
         );
         for (const r of results) {

@@ -6,8 +6,10 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import { ModelId } from "@connectors/lib/models";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { joinChannel } from "../lib/channels";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import {
   botJoinedChanelSignal,
@@ -21,13 +23,11 @@ const {
   syncThread,
   syncNonThreaded,
   syncChannel,
-  getAccessToken,
   fetchUsers,
   saveSuccessSyncActivity,
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
   deleteChannel,
-  joinChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -46,14 +46,13 @@ const {
  *    Promises are sent and awaited by batch of activities.MAX_CONCURRENCY_LEVEL
  */
 export async function workspaceFullSync(
-  connectorId: string,
+  connectorId: ModelId,
   dataSourceConfig: DataSourceConfig,
   nangoConnectionId: string,
   fromTs: number | null
 ): Promise<void> {
-  const slackAccessToken = await getAccessToken(nangoConnectionId);
-  await fetchUsers(slackAccessToken, connectorId);
-  const channels = await getChannels(slackAccessToken, true);
+  await fetchUsers(connectorId);
+  const channels = await getChannels(connectorId, true);
   let i = 0;
   for (const channel of channels) {
     if (!channel.id || !channel.name) {
@@ -61,15 +60,7 @@ export async function workspaceFullSync(
     }
     await executeChild(syncOneChannel, {
       workflowId: syncOneChanneWorkflowlId(connectorId, channel.id),
-      args: [
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        channel.id,
-        channel.name,
-        false,
-        fromTs,
-      ],
+      args: [connectorId, channel.id, channel.name, false, fromTs],
     });
     i++;
     const percentSync = Math.round((i / channels.length) * 100);
@@ -80,27 +71,28 @@ export async function workspaceFullSync(
 }
 
 export async function syncOneChannel(
-  connectorId: string,
-  nangoConnectionId: string,
-  dataSourceConfig: DataSourceConfig,
+  connectorId: ModelId,
   channelId: string,
   channelName: string,
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
   console.log(`Syncing channel ${channelName} (${channelId})`);
-  await joinChannel(parseInt(connectorId, 10), channelId);
+  const joinRes = await joinChannel(connectorId, channelId);
+  if (joinRes.isErr()) {
+    // Here we have a channel that we are supposed to sync but we can't join it.
+    // This should pretty much never happen since we always ask for the channels:join scope when connecting
+    // Slack via OAuth, so if it happens we should surface the error.
+    throw new Error(joinRes.error.message);
+  }
 
-  const slackAccessToken = await getAccessToken(nangoConnectionId);
   let messagesCursor: string | undefined = undefined;
   let weeksSynced: Record<number, boolean> = {};
 
   do {
     const syncChannelRes = await syncChannel(
-      slackAccessToken,
       channelId,
       channelName,
-      dataSourceConfig,
       connectorId,
       fromTs,
       weeksSynced,
@@ -119,9 +111,7 @@ export async function syncOneChannel(
 }
 
 export async function syncOneThreadDebounced(
-  connectorId: string,
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string,
+  connectorId: ModelId,
   channelId: string,
   threadTs: string
 ) {
@@ -140,21 +130,13 @@ export async function syncOneThreadDebounced(
       debounceCount++;
       continue;
     }
-    const slackAccessToken = await getAccessToken(nangoConnectionId);
-    const channel = await getChannel(slackAccessToken, channelId);
+    const channel = await getChannel(connectorId, channelId);
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
 
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
-    await syncThread(
-      dataSourceConfig,
-      slackAccessToken,
-      channelId,
-      channel.name,
-      threadTs,
-      connectorId
-    );
+    await syncThread(channelId, channel.name, threadTs, connectorId);
     await saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
@@ -162,9 +144,7 @@ export async function syncOneThreadDebounced(
 }
 
 export async function syncOneMessageDebounced(
-  connectorId: string,
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string,
+  connectorId: ModelId,
   channelId: string,
   threadTs: string
 ) {
@@ -185,8 +165,8 @@ export async function syncOneMessageDebounced(
       continue;
     }
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
-    const slackAccessToken = await getAccessToken(nangoConnectionId);
-    const channel = await getChannel(slackAccessToken, channelId);
+
+    const channel = await getChannel(connectorId, channelId);
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
@@ -194,8 +174,6 @@ export async function syncOneMessageDebounced(
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
     const endTsMs = getWeekEnd(new Date(messageTs)).getTime();
     await syncNonThreaded(
-      slackAccessToken,
-      dataSourceConfig,
       channelId,
       channel.name,
       startTsMs,
@@ -208,11 +186,7 @@ export async function syncOneMessageDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
-export async function memberJoinedChannel(
-  connectorId: string,
-  nangoConnectionId: string,
-  dataSourceConfig: DataSourceConfig
-): Promise<void> {
+export async function memberJoinedChannel(connectorId: ModelId): Promise<void> {
   const channelsToJoin: string[] = [];
   setHandler(
     botJoinedChanelSignal,
@@ -225,22 +199,14 @@ export async function memberJoinedChannel(
 
   let channelId: string | undefined;
   while ((channelId = channelsToJoin.shift())) {
-    const slackAccessToken = await getAccessToken(nangoConnectionId);
-    const channel = await getChannel(slackAccessToken, channelId);
+    const channel = await getChannel(connectorId, channelId);
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
     const channelName = channel.name;
     await executeChild(syncOneChannel.name, {
       workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-      args: [
-        connectorId,
-        nangoConnectionId,
-        dataSourceConfig,
-        channelId,
-        channelName,
-        true,
-      ],
+      args: [connectorId, channelId, channelName, true],
     });
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
@@ -248,16 +214,12 @@ export async function memberJoinedChannel(
 }
 
 export async function slackGarbageCollectorWorkflow(
-  connectorId: string,
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string
+  connectorId: ModelId
 ): Promise<void> {
-  const slackAccessToken = await getAccessToken(nangoConnectionId);
-
   const { channelsToDeleteFromConnectorsDb, channelsToDeleteFromDataSource } =
-    await getChannelsToGarbageCollect(slackAccessToken, connectorId);
+    await getChannelsToGarbageCollect(connectorId);
   for (const channelId of channelsToDeleteFromDataSource) {
-    await deleteChannel(channelId, dataSourceConfig, connectorId);
+    await deleteChannel(channelId, connectorId);
   }
   await deleteChannelsFromConnectorDb(
     channelsToDeleteFromConnectorsDb,
@@ -266,7 +228,7 @@ export async function slackGarbageCollectorWorkflow(
 }
 
 export function workspaceFullSyncWorkflowId(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ) {
   if (fromTs) {
@@ -276,14 +238,14 @@ export function workspaceFullSyncWorkflowId(
 }
 
 export function syncOneChanneWorkflowlId(
-  connectorId: string,
+  connectorId: ModelId,
   channelId: string
 ) {
   return `slack-syncOneChannel-${connectorId}-${channelId}`;
 }
 
 export function syncOneThreadDebouncedWorkflowId(
-  connectorId: string,
+  connectorId: ModelId,
   channelId: string,
   threadTs: string
 ) {
@@ -291,17 +253,17 @@ export function syncOneThreadDebouncedWorkflowId(
 }
 
 export function syncOneMessageDebouncedWorkflowId(
-  connectorId: string,
+  connectorId: ModelId,
   channelId: string,
   startTsMs: number
 ) {
   return `slack-syncOneMessageDebounced-${connectorId}-${channelId}-${startTsMs}`;
 }
 
-export function botJoinedChannelWorkflowId(connectorId: string) {
+export function botJoinedChannelWorkflowId(connectorId: ModelId) {
   return `slack-botJoinedChannel-${connectorId}`;
 }
 
-export function slackGarbageCollectorWorkflowId(connectorId: string) {
+export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
   return `slack-GarbageCollector-${connectorId}`;
 }

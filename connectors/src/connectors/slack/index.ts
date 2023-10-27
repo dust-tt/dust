@@ -2,6 +2,9 @@ import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { getChannels } from "@connectors/connectors/slack//temporal/activities";
+import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
   launchSlackBotJoinedWorkflow,
   launchSlackGarbageCollectWorkflow,
@@ -28,13 +31,6 @@ import {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
-
-import {
-  getAccessToken,
-  getChannels,
-  getSlackClient,
-  joinChannel,
-} from "./temporal/activities";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;
@@ -173,8 +169,7 @@ export async function updateSlackConnector(
   const updateParams: Parameters<typeof c.update>[0] = {};
 
   if (connectionId) {
-    const accessToken = await getAccessToken(connectionId);
-    const slackClient = await getSlackClient(accessToken);
+    const slackClient = await getSlackClient(c.id);
     const teamInfoRes = await slackClient.team.info();
     if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
       return new Err({
@@ -251,8 +246,8 @@ export async function cleanupSlackConnector(
       if (!SLACK_CLIENT_SECRET) {
         return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
       }
-      const accessToken = await getAccessToken(connector.connectionId);
-      const slackClient = getSlackClient(accessToken);
+
+      const slackClient = await getSlackClient(connector.id);
       const deleteRes = await slackClient.apps.uninstall({
         client_id: SLACK_CLIENT_ID,
         client_secret: SLACK_CLIENT_SECRET,
@@ -367,22 +362,27 @@ export async function retrieveSlackConnectorPermissions({
     permission: ConnectorPermission;
   }[] = [];
 
-  const accessToken = await getAccessToken(c.connectionId);
-  const remoteChannels = await getChannels(accessToken, false);
+  const [remoteChannels, localChannels] = await Promise.all([
+    getChannels(c.id, false),
+    SlackChannel.findAll({
+      where: {
+        connectorId: connectorId,
+      },
+    }),
+  ]);
+  const localChannelsById = localChannels.reduce((acc, ch) => {
+    acc[ch.slackChannelId] = ch;
+    return acc;
+  }, {} as Record<string, SlackChannel>);
+
   for (const remoteChannel of remoteChannels) {
     if (!remoteChannel.id || !remoteChannel.name) {
       continue;
     }
 
     const permissions =
-      (
-        await SlackChannel.findOne({
-          where: {
-            connectorId: connectorId,
-            slackChannelId: remoteChannel.id,
-          },
-        })
-      )?.permission || (remoteChannel.is_member ? "write" : "none");
+      localChannelsById[remoteChannel.id]?.permission ||
+      (remoteChannel.is_member ? "write" : "none");
 
     if (
       permissionToFilter.length === 0 ||
@@ -456,8 +456,7 @@ export async function setSlackConnectorPermissions(
   let shouldGarbageCollect = false;
   for (const [id, permission] of Object.entries(permissions)) {
     let channel = channels[id];
-    const slackAccessToken = await getAccessToken(connector.connectionId);
-    const slackClient = await getSlackClient(slackAccessToken);
+    const slackClient = await getSlackClient(connector.id);
     if (!channel) {
       const remoteChannel = await slackClient.conversations.info({
         channel: id,
@@ -476,7 +475,7 @@ export async function setSlackConnectorPermissions(
         );
       }
       const joinRes = await joinChannel(connectorId, id);
-      if (joinRes === "cant_join") {
+      if (joinRes.isErr()) {
         return new Err(
           new Error(
             `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust to #${remoteChannel.channel.name} manually.`
@@ -515,14 +514,14 @@ export async function setSlackConnectorPermissions(
             connectorId,
             channel.slackChannelId
           );
-          if (joinChannelRes === "cant_join") {
+          if (joinChannelRes.isErr()) {
             throw new Error(
               `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust to #${channel.slackChannelName} manually.`
             );
           }
 
           const res = await launchSlackBotJoinedWorkflow(
-            connectorId.toString(),
+            connectorId,
             channel.slackChannelId
           );
           if (res.isErr()) {
@@ -547,7 +546,7 @@ export async function setSlackConnectorPermissions(
   }
 
   if (shouldGarbageCollect) {
-    const res = await launchSlackGarbageCollectWorkflow(connectorId.toString());
+    const res = await launchSlackGarbageCollectWorkflow(connectorId);
     if (res.isErr()) {
       return res;
     }
