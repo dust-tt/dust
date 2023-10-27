@@ -90,26 +90,18 @@ impl AnthropicLLM {
                         ChatMessageRole::Function => "Human",
                     },
                     match cm.role {
-                        ChatMessageRole::System => "[System Instructions] ".to_string(),
+                        ChatMessageRole::System => "[system_instructions] ".to_string(),
                         ChatMessageRole::Assistant => "".to_string(),
                         ChatMessageRole::User => match cm.name.as_ref() {
-                            Some(name) => format!("[User {}]", name),
+                            Some(name) => format!("[user: {}] ", name),
                             None => "".to_string(),
                         },
                         ChatMessageRole::Function => match cm.name.as_ref() {
-                            Some(name) => format!("[Function Result `{}`]", name),
+                            Some(name) => format!("[function_result: {}] ", name),
                             None => "[Function Result]".to_string(),
                         },
                     },
                     cm.content.as_ref().unwrap_or(&String::from("")).clone(),
-                    // match cm.name.as_ref() {
-                    //     Some(name) => match cm.role {
-                    //         ChatMessageRole::User => format!(" [{}]", name),
-                    //         ChatMessageRole::Function => format!(" [{}]", name),
-                    //         _ => String::from(""),
-                    //     },
-                    //     None => String::from(""),
-                    // },
                 )
             })
             .collect::<Vec<_>>()
