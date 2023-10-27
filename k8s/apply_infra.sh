@@ -2,7 +2,6 @@
 
 set -e
 
-
 function apply_deployment {
     # This function applies a deployment, but if the deployment already exists,
     # it will replace the image with the current image to avoid a rolling update
@@ -57,6 +56,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/connectors-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/blog-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
@@ -100,6 +100,7 @@ apply_deployment blog-deployment
 apply_deployment docs-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
+apply_deployment core-deployment
 
 
 echo "-----------------------------------"
@@ -114,6 +115,7 @@ kubectl apply -f "$(dirname "$0")/services/connectors-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/blog-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/docs-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 
 
 echo "-----------------------------------"
