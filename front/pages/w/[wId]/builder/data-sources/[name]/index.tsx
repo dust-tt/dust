@@ -407,8 +407,7 @@ function SlackBotEnableView({
 const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
   notion: "Explore the Notion pages and databases Dust has access to.",
   google_drive: "Google Drive folders and files Dust has access to.",
-  slack:
-    "To synchronize data from Slack, first visit Slack to invite the @Dust Slack application in the desired channels. You can also select a subset of the channels the @Dust slack application was invited to for synchronization with 'Edit Permissions'. Slack channels Dust has access to.",
+  slack: "Slack channels synchronized with Dust:",
   github: "GitHub repositories Dust has access to.",
 };
 
