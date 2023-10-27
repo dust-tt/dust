@@ -507,7 +507,7 @@ export async function planForWorkspace(
         count: plan.maxNbStaticDataSources,
         documents: {
           count: plan.maxNbStaticDocuments,
-          sizeMb: plan.maxSizeStaticDataSources,
+          sizeMb: plan.maxSizeMbStaticDataSources,
         },
       },
       users: {

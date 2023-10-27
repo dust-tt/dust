@@ -60,7 +60,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
         count: freeTestPlan.maxNbStaticDataSources,
         documents: {
           count: freeTestPlan.maxNbStaticDocuments,
-          sizeMb: freeTestPlan.maxSizeStaticDataSources,
+          sizeMb: freeTestPlan.maxSizeMbStaticDataSources,
         },
       },
       users: {
@@ -148,7 +148,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
           count: plan.maxNbStaticDataSources,
           documents: {
             count: plan.maxNbStaticDocuments,
-            sizeMb: plan.maxSizeStaticDataSources,
+            sizeMb: plan.maxSizeMbStaticDataSources,
           },
         },
         users: {
@@ -256,7 +256,7 @@ export const subscribeWorkspaceToPlan = async (
           count: newPlan.maxNbStaticDataSources,
           documents: {
             count: newPlan.maxNbStaticDocuments,
-            sizeMb: newPlan.maxSizeStaticDataSources,
+            sizeMb: newPlan.maxSizeMbStaticDataSources,
           },
         },
         users: {
