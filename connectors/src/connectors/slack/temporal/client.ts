@@ -1,5 +1,4 @@
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
+import { Connector, ModelId } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -40,10 +39,15 @@ export async function launchSlackSyncWorkflow(
   };
   const nangoConnectionId = connector.connectionId;
 
-  const workflowId = workspaceFullSyncWorkflowId(connectorId, fromTs);
+  const workflowId = workspaceFullSyncWorkflowId(parseInt(connectorId), fromTs);
   try {
     await client.workflow.start(workspaceFullSync, {
-      args: [connectorId, dataSourceConfig, nangoConnectionId, fromTs],
+      args: [
+        parseInt(connectorId),
+        dataSourceConfig,
+        nangoConnectionId,
+        fromTs,
+      ],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
     });
@@ -69,7 +73,7 @@ export async function launchSlackSyncWorkflow(
 }
 
 export async function launchSlackSyncOneThreadWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   channelId: string,
   threadTs: string
 ) {
@@ -78,12 +82,6 @@ export async function launchSlackSyncOneThreadWorkflow(
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
   const client = await getTemporalClient();
-  const dataSourceConfig: DataSourceConfig = {
-    workspaceAPIKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-  };
-  const nangoConnectionId = connector.connectionId;
 
   const workflowId = syncOneThreadDebouncedWorkflowId(
     connectorId,
@@ -94,13 +92,7 @@ export async function launchSlackSyncOneThreadWorkflow(
     const handle = await client.workflow.signalWithStart(
       syncOneThreadDebounced,
       {
-        args: [
-          connectorId,
-          dataSourceConfig,
-          nangoConnectionId,
-          channelId,
-          threadTs,
-        ],
+        args: [connectorId, channelId, threadTs],
         taskQueue: QUEUE_NAME,
         workflowId: workflowId,
         signal: newWebhookSignal,
@@ -115,7 +107,7 @@ export async function launchSlackSyncOneThreadWorkflow(
 }
 
 export async function launchSlackSyncOneMessageWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   channelId: string,
   threadTs: string
 ) {
@@ -124,13 +116,6 @@ export async function launchSlackSyncOneMessageWorkflow(
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
   const client = await getTemporalClient();
-
-  const dataSourceConfig: DataSourceConfig = {
-    workspaceAPIKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-  };
-  const nangoConnectionId = connector.connectionId;
 
   const messageTs = parseInt(threadTs as string) * 1000;
   const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
@@ -143,13 +128,7 @@ export async function launchSlackSyncOneMessageWorkflow(
     const handle = await client.workflow.signalWithStart(
       syncOneMessageDebounced,
       {
-        args: [
-          connectorId,
-          dataSourceConfig,
-          nangoConnectionId,
-          channelId,
-          threadTs,
-        ],
+        args: [connectorId, channelId, threadTs],
         taskQueue: QUEUE_NAME,
         workflowId: workflowId,
         signal: newWebhookSignal,
@@ -163,8 +142,8 @@ export async function launchSlackSyncOneMessageWorkflow(
   }
 }
 
-export async function launchSlackBotJoinedWorkflow(
-  connectorId: string,
+export async function launchSlackSyncOneChannelDebouncedWorkflow(
+  connectorId: ModelId,
   channelId: string
 ) {
   const connector = await Connector.findByPk(connectorId);
@@ -173,17 +152,10 @@ export async function launchSlackBotJoinedWorkflow(
   }
   const client = await getTemporalClient();
 
-  const dataSourceConfig: DataSourceConfig = {
-    workspaceAPIKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-  };
-  const nangoConnectionId = connector.connectionId;
-
   const workflowId = botJoinedChannelWorkflowId(connectorId);
   try {
     await client.workflow.signalWithStart(memberJoinedChannel, {
-      args: [connectorId, nangoConnectionId, dataSourceConfig],
+      args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       signal: botJoinedChanelSignal,
@@ -191,7 +163,7 @@ export async function launchSlackBotJoinedWorkflow(
     });
     logger.info(
       {
-        workspaceId: dataSourceConfig.workspaceId,
+        workspaceId: connector.workspaceId,
         workflowId,
       },
       `Started workflow.`
@@ -200,7 +172,7 @@ export async function launchSlackBotJoinedWorkflow(
   } catch (e) {
     logger.error(
       {
-        workspaceId: dataSourceConfig.workspaceId,
+        workspaceId: connector.workspaceId,
         workflowId,
         error: e,
       },
@@ -210,27 +182,22 @@ export async function launchSlackBotJoinedWorkflow(
   }
 }
 
-export async function launchSlackGarbageCollectWorkflow(connectorId: string) {
+export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
   const client = await getTemporalClient();
 
-  const dataSourceConfig: DataSourceConfig =
-    dataSourceConfigFromConnector(connector);
-  const nangoConnectionId = connector.connectionId;
-
   const workflowId = slackGarbageCollectorWorkflowId(connectorId);
   try {
     await client.workflow.start(slackGarbageCollectorWorkflow, {
-      args: [connectorId, dataSourceConfig, nangoConnectionId],
+      args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
     });
     logger.info(
       {
-        workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
       `Started slackGarbageCollector workflow.`
@@ -239,7 +206,6 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: string) {
   } catch (e) {
     logger.error(
       {
-        workspaceId: dataSourceConfig.workspaceId,
         workflowId,
         error: e,
       },

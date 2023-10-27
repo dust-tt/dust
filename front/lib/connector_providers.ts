@@ -40,7 +40,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
     description:
-      "Authorize granular access to your Slack on a channel-by-channel basis.",
+      "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     logoComponent: SlackLogo,
     isNested: false,
   },

@@ -8,6 +8,7 @@ import { Message } from "@slack/web-api/dist/response/ConversationsHistoryRespon
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
 
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
   AgentActionType,
   AgentConfigurationType,
@@ -31,9 +32,7 @@ import logger from "@connectors/logger/logger";
 
 import {
   formatMessagesForUpsert,
-  getAccessToken,
   getBotUserIdMemoized,
-  getSlackClient,
   getUserName,
 } from "./temporal/activities";
 
@@ -92,8 +91,8 @@ export async function botAnswerMessageWithErrorHandling(
     } else {
       errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
     }
-    const accessToken = await getAccessToken(connector.connectionId);
-    const slackClient = getSlackClient(accessToken);
+
+    const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
       text: errorMessage,
@@ -152,8 +151,7 @@ async function botAnswerMessage(
     conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
-  const accessToken = await getAccessToken(connector.connectionId);
-  const slackClient = getSlackClient(accessToken);
+  const slackClient = await getSlackClient(connector.id);
   // Start computing the content fragment as early as possible since it's independent from all the other I/O operations
   // and a lot of the subsequent I/O operations can only be done sequentially.
   const contentFragmentPromise = makeContentFragment(
@@ -217,17 +215,13 @@ async function botAnswerMessage(
   // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(accessToken);
+    const mySlackUser = await getBotUserIdMemoized(connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
         message = message.replace(m, "");
       } else {
-        const userName = await getUserName(
-          userId,
-          connector.id.toString(),
-          slackClient
-        );
+        const userName = await getUserName(userId, connector.id, slackClient);
         message = message.replace(m, `@${userName}`);
       }
     }
@@ -351,7 +345,6 @@ async function botAnswerMessage(
   }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
-
   if (lastSlackChatBotMessage?.conversationId) {
     if (buildContentFragmentRes.value) {
       const contentFragmentRes = await dustAPI.postContentFragment({
@@ -672,7 +665,7 @@ async function makeContentFragment(
   const text = await formatMessagesForUpsert(
     channelId,
     allMessages,
-    connector.id.toString(),
+    connector.id,
     slackClient
   );
   let url: string | null = null;

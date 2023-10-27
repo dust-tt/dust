@@ -26,8 +26,7 @@ const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
   ConnectorProvider,
   string | null
 > = {
-  slack:
-    "Dust's Slack application (@Dust) was invited to the channels below from your Slack workspace. Select below which channels you wish to also synchronize the data from as part of the Slack managed data source.",
+  slack: "Select which channels to synchronize with Dust from the list below:",
   notion: null,
   google_drive: null,
   github: null,
@@ -37,7 +36,7 @@ const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
   ConnectorProvider,
   string | null
 > = {
-  slack: "Automatically synchronize data from channels Dust is invited to.",
+  slack: null,
   notion: null,
   google_drive: null,
   github: null,
@@ -122,7 +121,8 @@ export default function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          window.alert("An unexpected error occurred");
+          const error: { error: { message: string } } = await r.json();
+          window.alert(error.error.message);
         }
 
         await mutate(

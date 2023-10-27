@@ -1,7 +1,6 @@
 import {
   CodedError,
   ErrorCode,
-  WebAPIHTTPError,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
@@ -18,15 +17,24 @@ import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
-import { upsertSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
+import {
+  joinChannel,
+  upsertSlackChannelInConnectorsDb,
+} from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
-import { SlackChannel, SlackMessages } from "@connectors/lib/models";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import {
+  Connector,
+  ModelId,
+  SlackChannel,
+  SlackMessages,
+} from "@connectors/lib/models";
 import {
   reportInitialSyncProgress,
   syncSucceeded,
@@ -36,14 +44,10 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 
-const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
-
-// Timeout in ms for all network requests;
-const NETWORK_REQUEST_TIMEOUT_MS = 30000;
 
 /**
  * Slack API rate limit TLDR:
@@ -56,9 +60,10 @@ const NETWORK_REQUEST_TIMEOUT_MS = 30000;
  */
 
 export async function getChannels(
-  slackAccessToken: string
+  connectorId: ModelId,
+  joinedOnly: boolean
 ): Promise<Channel[]> {
-  const client = getSlackClient(slackAccessToken);
+  const client = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
   do {
@@ -79,8 +84,10 @@ export async function getChannels(
       );
     }
     for (const channel of c.channels) {
-      if (channel && channel.id && channel.is_member) {
-        allChannels.push(channel);
+      if (channel && channel.id) {
+        if (!joinedOnly || channel.is_member) {
+          allChannels.push(channel);
+        }
       }
     }
   } while (nextCursor);
@@ -89,10 +96,10 @@ export async function getChannels(
 }
 
 export async function getChannel(
-  slackAccessToken: string,
+  connectorId: ModelId,
   channelId: string
 ): Promise<Channel> {
-  const client = getSlackClient(slackAccessToken);
+  const client = await getSlackClient(connectorId);
   const res = await client.conversations.info({ channel: channelId });
   // Despite the typing, in practice `conversations.info` can be undefined at times.
   if (!res) {
@@ -120,19 +127,23 @@ interface SyncChannelRes {
 }
 
 export async function syncChannel(
-  slackAccessToken: string,
   channelId: string,
   channelName: string,
-  dataSourceConfig: DataSourceConfig,
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null,
   weeksSynced: Record<number, boolean>,
   messagesCursor?: string
 ): Promise<SyncChannelRes | undefined> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const channel = await upsertSlackChannelInConnectorsDb({
     slackChannelId: channelId,
     slackChannelName: channelName,
-    connectorId: parseInt(connectorId),
+    connectorId: connectorId,
   });
   if (!["read", "read_write"].includes(channel.permission)) {
     logger.info(
@@ -148,7 +159,7 @@ export async function syncChannel(
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
   const messages = await getMessagesForChannel(
-    slackAccessToken,
+    connectorId,
     channelId,
     100,
     messagesCursor
@@ -220,7 +231,6 @@ export async function syncChannel(
 
   await syncThreads(
     dataSourceConfig,
-    slackAccessToken,
     channelId,
     channelName,
     threadsToSync,
@@ -232,7 +242,6 @@ export async function syncChannel(
   );
 
   await syncMultipleNoNThreaded(
-    slackAccessToken,
     dataSourceConfig,
     channelId,
     channelName,
@@ -248,12 +257,12 @@ export async function syncChannel(
 }
 
 export async function getMessagesForChannel(
-  slackAccessToken: string,
+  connectorId: ModelId,
   channelId: string,
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const client = getSlackClient(slackAccessToken);
+  const client = await getSlackClient(connectorId);
 
   const c: ConversationsHistoryResponse = await client.conversations.history({
     channel: channelId,
@@ -287,12 +296,11 @@ export async function getMessagesForChannel(
 }
 
 export async function syncMultipleNoNThreaded(
-  slackAccessToken: string,
   dataSourceConfig: DataSourceConfig,
   channelId: string,
   channelName: string,
   timestampsMs: number[],
-  connectorId: string
+  connectorId: ModelId
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
 
@@ -300,8 +308,6 @@ export async function syncMultipleNoNThreaded(
   for (const startTsMs of timestampsMs) {
     const p = queue.add(() =>
       syncNonThreaded(
-        slackAccessToken,
-        dataSourceConfig,
         channelId,
         channelName,
         startTsMs,
@@ -316,16 +322,19 @@ export async function syncMultipleNoNThreaded(
 }
 
 export async function syncNonThreaded(
-  slackAccessToken: string,
-  dataSourceConfig: DataSourceConfig,
   channelId: string,
   channelName: string,
   startTsMs: number,
   endTsMs: number,
-  connectorId: string,
+  connectorId: ModelId,
   isBatchSync = false
 ) {
-  const client = getSlackClient(slackAccessToken);
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const client = await getSlackClient(connectorId);
   const nextCursor: string | undefined = undefined;
   const messages: Message[] = [];
 
@@ -403,7 +412,7 @@ export async function syncNonThreaded(
 
   const tags = getTagsForPage(documentId, channelId, channelName);
   await SlackMessages.upsert({
-    connectorId: parseInt(connectorId),
+    connectorId: connectorId,
     channelId: channelId,
     messageTs: undefined,
     documentId: documentId,
@@ -424,11 +433,10 @@ export async function syncNonThreaded(
 
 export async function syncThreads(
   dataSourceConfig: DataSourceConfig,
-  slackAccessToken: string,
   channelId: string,
   channelName: string,
   threadsTs: string[],
-  connectorId: string
+  connectorId: ModelId
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
 
@@ -464,8 +472,6 @@ export async function syncThreads(
       }
 
       return syncThread(
-        dataSourceConfig,
-        slackAccessToken,
         channelId,
         channelName,
         threadTs,
@@ -479,15 +485,18 @@ export async function syncThreads(
 }
 
 export async function syncThread(
-  dataSourceConfig: DataSourceConfig,
-  slackAccessToken: string,
   channelId: string,
   channelName: string,
   threadTs: string,
-  connectorId: string,
+  connectorId: ModelId,
   isBatchSync = false
 ) {
-  const client = getSlackClient(slackAccessToken);
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const slackClient = await getSlackClient(connectorId);
 
   let allMessages: Message[] = [];
 
@@ -496,7 +505,7 @@ export async function syncThread(
   do {
     try {
       const replies: ConversationsRepliesResponse =
-        await client.conversations.replies({
+        await slackClient.conversations.replies({
           channel: channelId,
           ts: threadTs,
           cursor: next_cursor,
@@ -535,14 +544,14 @@ export async function syncThread(
     }
   } while (next_cursor);
 
-  const botUserId = await getBotUserIdMemoized(slackAccessToken);
+  const botUserId = await getBotUserIdMemoized(slackClient);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
   const text = await formatMessagesForUpsert(
     channelId,
     allMessages,
     connectorId,
-    client
+    slackClient
   );
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 
@@ -550,7 +559,7 @@ export async function syncThread(
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
-    const linkRes = await client.chat.getPermalink({
+    const linkRes = await slackClient.chat.getPermalink({
       channel: channelId,
       message_ts: firstMessage.ts,
     });
@@ -566,7 +575,7 @@ export async function syncThread(
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 
   await SlackMessages.upsert({
-    connectorId: parseInt(connectorId),
+    connectorId: connectorId,
     channelId: channelId,
     messageTs: threadTs,
     documentId: documentId,
@@ -587,7 +596,7 @@ export async function syncThread(
 
 async function processMessageForMentions(
   message: string,
-  connectorId: string,
+  connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string> {
   const matches = message.match(/<@[A-Z-0-9]+>/g);
@@ -612,7 +621,7 @@ async function processMessageForMentions(
 export async function formatMessagesForUpsert(
   channelId: string,
   messages: Message[],
-  connectorId: string,
+  connectorId: ModelId,
   slackClient: WebClient
 ) {
   return (
@@ -638,12 +647,9 @@ export async function formatMessagesForUpsert(
   ).join("\n");
 }
 
-export async function fetchUsers(
-  slackAccessToken: string,
-  connectorId: string
-) {
+export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
-  const client = getSlackClient(slackAccessToken);
+  const client = await getSlackClient(connectorId);
   do {
     const res = await client.users.list({
       cursor: cursor,
@@ -664,18 +670,16 @@ export async function fetchUsers(
   } while (cursor);
 }
 
+export async function getBotUserId(slackClient: WebClient): Promise<string>;
+export async function getBotUserId(connectorId: ModelId): Promise<string>;
 export async function getBotUserId(
-  slackAccessToken: WebClient
-): Promise<string>;
-export async function getBotUserId(slackAccessToken: string): Promise<string>;
-export async function getBotUserId(
-  slackAccessToken: string | WebClient
+  connectorIdOrSlackClient: ModelId | WebClient
 ): Promise<string> {
   let client: WebClient | undefined = undefined;
-  if (slackAccessToken instanceof WebClient) {
-    client = slackAccessToken;
+  if (connectorIdOrSlackClient instanceof WebClient) {
+    client = connectorIdOrSlackClient;
   } else {
-    client = getSlackClient(slackAccessToken);
+    client = await getSlackClient(connectorIdOrSlackClient);
   }
 
   const authRes = await client.auth.test({});
@@ -691,39 +695,26 @@ export async function getBotUserId(
 
 export const getBotUserIdMemoized = memoize(getBotUserId);
 
-export async function getAccessToken(
-  nangoConnectionId: string
-): Promise<string> {
-  if (!NANGO_SLACK_CONNECTOR_ID) {
-    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-  }
-  return getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: NANGO_SLACK_CONNECTOR_ID,
-    useCache: true,
-  });
-}
-
-export async function saveSuccessSyncActivity(connectorId: string) {
+export async function saveSuccessSyncActivity(connectorId: ModelId) {
   logger.info(
     {
       connectorId,
     },
     "Saving success sync activity for connector"
   );
-  await syncSucceeded(parseInt(connectorId));
+  await syncSucceeded(connectorId);
 }
 
 export async function reportInitialSyncProgressActivity(
-  connectorId: string,
+  connectorId: ModelId,
   progress: string
 ) {
-  await reportInitialSyncProgress(parseInt(connectorId), progress);
+  await reportInitialSyncProgress(connectorId, progress);
 }
 
 export async function getUserName(
   slackUserId: string,
-  connectorId: string,
+  connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string | undefined> {
   const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
@@ -740,7 +731,7 @@ export async function getUserName(
   return;
 }
 
-function getUserCacheKey(userId: string, connectorId: string) {
+function getUserCacheKey(userId: string, connectorId: ModelId) {
   return `slack-userid2name-${connectorId}-${userId}`;
 }
 
@@ -752,52 +743,6 @@ export function formatDateForUpsert(date: Date) {
   const minutes = date.getMinutes().toString().padStart(2, "0");
 
   return `${year}${month}${day} ${hours}:${minutes}`;
-}
-
-export function getSlackClient(slackAccessToken: string): WebClient {
-  const slackClient = new WebClient(slackAccessToken, {
-    timeout: NETWORK_REQUEST_TIMEOUT_MS,
-    retryConfig: {
-      retries: 1,
-      factor: 1,
-    },
-  });
-
-  const handler: ProxyHandler<WebClient> = {
-    get: function (target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (["function", "object"].indexOf(typeof value) > -1) {
-        return new Proxy(value, handler);
-      }
-
-      return Reflect.get(target, prop, receiver);
-    },
-    apply: async function (target, thisArg, argumentsList) {
-      try {
-        // @ts-expect-error can't get typescript to be happy with this, but it works.
-        return await Reflect.apply(target, thisArg, argumentsList);
-      } catch (e) {
-        const slackError = e as CodedError;
-        if (slackError.code === ErrorCode.HTTPError) {
-          const httpError = slackError as WebAPIHTTPError;
-          if (httpError.statusCode === 503) {
-            const workflowError: WorkflowError = {
-              type: "upstream_is_down_activity_error",
-              message: `Slack is down: ${httpError.message}`,
-              __is_dust_error: true,
-            };
-            throw workflowError;
-          }
-        }
-
-        throw e;
-      }
-    },
-  };
-
-  const proxied = new Proxy(slackClient, handler);
-
-  return proxied;
 }
 
 function getTagsForPage(
@@ -838,8 +783,7 @@ export function formatDateForThreadTitle(date: Date) {
 }
 
 export async function getChannelsToGarbageCollect(
-  slackAccessToken: string,
-  connectorId: string
+  connectorId: ModelId
 ): Promise<{
   // either no longer visible to the integration, or bot no longer has read permission on
   channelsToDeleteFromDataSource: string[];
@@ -858,7 +802,7 @@ export async function getChannelsToGarbageCollect(
   );
 
   const remoteChannels = new Set(
-    (await getChannels(slackAccessToken))
+    (await getChannels(connectorId, true))
       .filter((c) => c.id)
       .map((c) => c.id as string)
   );
@@ -890,14 +834,15 @@ export async function getChannelsToGarbageCollect(
   };
 }
 
-export async function deleteChannel(
-  channelId: string,
-  dataSourceConfig: DataSourceConfig,
-  connectorId: string
-) {
+export async function deleteChannel(channelId: string, connectorId: ModelId) {
   const maxMessages = 1000;
   let nbDeleted = 0;
 
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Could not find connector ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let slackMessages: SlackMessages[] = [];
   do {
     slackMessages = await SlackMessages.findAll({
@@ -923,7 +868,7 @@ export async function deleteChannel(
 
 export async function deleteChannelsFromConnectorDb(
   channelsToDeleteFromConnectorsDb: string[],
-  connectorId: string
+  connectorId: ModelId
 ) {
   await SlackChannel.destroy({
     where: {
@@ -940,4 +885,13 @@ export async function deleteChannelsFromConnectorDb(
     },
     "Deleted channels from connectors db while garbage collecting."
   );
+}
+
+export async function joinChannelAct(connectorId: ModelId, channelId: string) {
+  const res = await joinChannel(connectorId, channelId);
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  return res.value;
 }
