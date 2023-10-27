@@ -35,4 +35,5 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxNbStaticDataSources: -1,
   maxNbStaticDocuments: -1,
   maxSizeStaticDataSources: 2, // 2MB
+  maxSizeMbStaticDataSources: 2,
 };

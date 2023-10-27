@@ -35,6 +35,7 @@ export class Plan extends Model<
   declare maxNbStaticDataSources: number;
   declare maxNbStaticDocuments: number;
   declare maxSizeStaticDataSources: number;
+  declare maxSizeMbStaticDataSources: number;
 }
 Plan.init(
   {
@@ -104,6 +105,11 @@ Plan.init(
     maxSizeStaticDataSources: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    maxSizeMbStaticDataSources: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 2,
     },
   },
   {
