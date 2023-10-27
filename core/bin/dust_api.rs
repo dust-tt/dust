@@ -30,7 +30,10 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    sync::mpsc::unbounded_channel,
+};
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
@@ -78,6 +81,23 @@ impl APIState {
         run_manager.pending_apps.push((app, credentials));
     }
 
+    async fn stop_loop(&self) {
+        loop {
+            let pending_runs = {
+                let manager = self.run_manager.lock();
+                utils::info(&format!(
+                    "[GRACEFUL] {} stop_loop pending runs",
+                    manager.pending_runs.len()
+                ));
+                manager.pending_runs.len()
+            };
+            if pending_runs == 0 {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
+        }
+    }
+
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
         loop {
@@ -121,8 +141,8 @@ impl APIState {
                 });
             });
             loop_count += 1;
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            if loop_count % (10 * 10) == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(4)).await;
+            if loop_count % 1024 == 0 {
                 let manager = self.run_manager.lock();
                 utils::info(&format!("{} pending runs", manager.pending_runs.len()));
             }
@@ -1813,30 +1833,44 @@ fn main() {
         .layer(extract::Extension(state.clone()));
 
         // Start the APIState run loop.
-        let state = state.clone();
-        tokio::task::spawn(async move { state.run_loop().await });
+        let runloop_state = state.clone();
+        tokio::task::spawn(async move { runloop_state.run_loop().await });
 
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
+        let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
+
         let srv = axum::Server::bind(&"[::]:3001".parse().unwrap())
             .serve(app.into_make_service())
             .with_graceful_shutdown(async {
-                rx.await.ok();
+                rx1.await.ok();
             });
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
-                eprintln!("server error: {}", e);
+                utils::error(&format!("server error: {}", e));
             }
+            utils::info("[GRACEFUL] Server stopped");
+            tx2.send(()).ok();
         });
 
-        // Wait for `ctrl+c` and stop the server
-        tokio::signal::ctrl_c().await.unwrap();
-        println!("Ctrl+C received, stopping server...");
-        let _ = tx.send(());
+        utils::info(&format!("Current PID: {}", std::process::id()));
 
-        // Wait for another `ctrl+c` and exit
-        tokio::signal::ctrl_c().await.unwrap();
+        let mut stream = signal(SignalKind::terminate()).unwrap();
+        stream.recv().await;
 
+        // Gracefully shut down the server
+        utils::info("[GRACEFUL] SIGTERM received, stopping server...");
+        tx1.send(()).ok();
+
+        // Wait for the server to shutdown
+        utils::info("[GRACEFUL] Awaiting server shutdown...");
+        rx2.await.ok();
+
+        // Wait for the run loop to finish.
+        utils::info("[GRACEFUL] Awaiting stop loop...");
+        state.stop_loop().await;
+
+        utils::info("[GRACEFUL] Exiting!");
         Ok::<(), anyhow::Error>(())
     });
 }

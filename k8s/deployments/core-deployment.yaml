@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: core
+  template:
+    metadata:
+      labels:
+        app: core
+        name: core-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "core","service": "core","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/core-image:latest
+          command: ["cargo", "run", "--release", "--bin", "dust-api"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+
+          envFrom:
+            - configMapRef:
+                name: core-config
+            - secretRef:
+                name: core-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          volumeMounts:
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 2.5Gi
+            limits:
+              cpu: 1000m
+              memory: 2.5Gi
+
+      volumes:
+        - name: service-account-volume
+          secret:
+            secretName: gcp-service-account-secret
