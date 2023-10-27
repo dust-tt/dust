@@ -142,7 +142,7 @@ export async function launchSlackSyncOneMessageWorkflow(
   }
 }
 
-export async function launchSlackBotJoinedWorkflow(
+export async function launchSlackSyncOneChannelDebouncedWorkflow(
   connectorId: ModelId,
   channelId: string
 ) {

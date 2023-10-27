@@ -17,7 +17,10 @@ import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
-import { upsertSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
+import {
+  joinChannel,
+  upsertSlackChannelInConnectorsDb,
+} from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
@@ -882,4 +885,13 @@ export async function deleteChannelsFromConnectorDb(
     },
     "Deleted channels from connectors db while garbage collecting."
   );
+}
+
+export async function joinChannelAct(connectorId: ModelId, channelId: string) {
+  const res = await joinChannel(connectorId, channelId);
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  return res.value;
 }

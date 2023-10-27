@@ -9,7 +9,6 @@ import type * as activities from "@connectors/connectors/slack/temporal/activiti
 import { ModelId } from "@connectors/lib/models";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { joinChannel } from "../lib/channels";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import {
   botJoinedChanelSignal,
@@ -27,6 +26,7 @@ const {
   saveSuccessSyncActivity,
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
+  joinChannelAct,
   deleteChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
@@ -78,13 +78,7 @@ export async function syncOneChannel(
   fromTs: number | null
 ) {
   console.log(`Syncing channel ${channelName} (${channelId})`);
-  const joinRes = await joinChannel(connectorId, channelId);
-  if (joinRes.isErr()) {
-    // Here we have a channel that we are supposed to sync but we can't join it.
-    // This should pretty much never happen since we always ask for the channels:join scope when connecting
-    // Slack via OAuth, so if it happens we should surface the error.
-    throw new Error(joinRes.error.message);
-  }
+  await joinChannelAct(connectorId, channelId);
 
   let messagesCursor: string | undefined = undefined;
   let weeksSynced: Record<number, boolean> = {};

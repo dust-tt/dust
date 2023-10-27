@@ -6,8 +6,8 @@ import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
-  launchSlackBotJoinedWorkflow,
   launchSlackGarbageCollectWorkflow,
+  launchSlackSyncOneChannelDebouncedWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client.js";
 import {
@@ -520,7 +520,7 @@ export async function setSlackConnectorPermissions(
             );
           }
 
-          const res = await launchSlackBotJoinedWorkflow(
+          const res = await launchSlackSyncOneChannelDebouncedWorkflow(
             connectorId,
             channel.slackChannelId
           );
