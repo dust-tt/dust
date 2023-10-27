@@ -262,23 +262,21 @@ export default function NewApp({
         <div className="flex flex-row py-8">
           <div className="flex flex-1"></div>
           <div className="flex">
-            <Button
-              variant="tertiary"
-              disabled={creating}
-              onClick={async () => {
-                void router.push(`/w/${owner.sId}/a`);
-              }}
-              label="Cancel"
-            />
-          </div>
-          <div className="flex">
-            <div className="flex items-end">
+            <Button.List>
+              <Button
+                variant="tertiary"
+                disabled={creating}
+                onClick={async () => {
+                  void router.push(`/w/${owner.sId}/a`);
+                }}
+                label="Cancel"
+              />
               <Button
                 onClick={handleCreate}
                 disabled={disable || creating}
                 label={creating ? "Creating..." : "Create"}
               />
-            </div>
+            </Button.List>
           </div>
         </div>
       </div>
