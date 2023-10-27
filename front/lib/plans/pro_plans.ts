@@ -41,10 +41,14 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
     maxSizeStaticDataSources: 2, // 2MB
+<<<<<<< HEAD
     // to keep
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+=======
+    maxSizeMbStaticDataSources: 2,
+>>>>>>> 5ab5060b (Introduce duplicated field maxSizeMbStaticDataSources in Plan to rename field)
   },
   {
     code: "PRO_PLAN_FIXED_1000",
@@ -61,10 +65,14 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     maxNbStaticDataSources: -1,
     maxNbStaticDocuments: -1,
     maxSizeStaticDataSources: 2, // 2MB
+<<<<<<< HEAD
     // to keep
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+=======
+    maxSizeMbStaticDataSources: 2,
+>>>>>>> 5ab5060b (Introduce duplicated field maxSizeMbStaticDataSources in Plan to rename field)
   },
 ];
 
