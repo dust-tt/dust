@@ -54,7 +54,9 @@ const MIME_TYPES_TO_SYNC = [
   "application/vnd.google-apps.folder",
 ];
 
-const FILES_IGNORE_LIST: string[] = [];
+const FILES_IGNORE_LIST: string[] = [
+  "1HMXBdJq3A5i7SF_KaWC7nipU0YgNKsk_tmGOHumM2n0",
+];
 
 export const statsDClient = new StatsD();
 
