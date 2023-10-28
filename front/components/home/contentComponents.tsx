@@ -98,7 +98,7 @@ export const A = ({
   variant = "primary",
   className = "",
 }: AProps) => (
-  <a
+  <span
     className={classNames(
       className,
       "font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
@@ -106,7 +106,7 @@ export const A = ({
     )}
   >
     {children}
-  </a>
+  </span>
 );
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
