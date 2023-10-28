@@ -54,6 +54,10 @@ const MIME_TYPES_TO_SYNC = [
   "application/vnd.google-apps.folder",
 ];
 
+const FILES_IGNORE_LIST: string[] = [
+  "1HMXBdJq3A5i7SF_KaWC7nipU0YgNKsk_tmGOHumM2n0",
+];
+
 export const statsDClient = new StatsD();
 
 type NangoGetConnectionRes = {
@@ -293,19 +297,55 @@ async function syncOneFile(
 ): Promise<boolean> {
   const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
+
+  if (FILES_IGNORE_LIST.includes(file.id)) {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        fileId: file.id,
+        title: file.name,
+      },
+      `Google Drive document in ignore list, skipping`
+    );
+    return false;
+  }
+
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
-    const res = await drive.files.export({
-      fileId: file.id,
-      mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
-    });
-    if (res.status !== 200) {
-      throw new Error(
-        `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+    try {
+      const res = await drive.files.export({
+        fileId: file.id,
+        mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
+      });
+      if (res.status !== 200) {
+        logger.error(
+          {
+            documentId,
+            dataSourceConfig,
+            fileId: file.id,
+            title: file.name,
+          },
+          "Error exporting Google document"
+        );
+        throw new Error(
+          `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+        );
+      }
+      if (typeof res.data === "string") {
+        documentContent = res.data;
+      }
+    } catch (e) {
+      logger.error(
+        {
+          documentId,
+          dataSourceConfig,
+          fileId: file.id,
+          title: file.name,
+        },
+        "Error exporting Google document"
       );
-    }
-    if (typeof res.data === "string") {
-      documentContent = res.data;
+      throw e;
     }
   } else if (MIME_TYPES_TO_DOWNLOAD.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
