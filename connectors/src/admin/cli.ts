@@ -9,6 +9,7 @@ import {
 } from "@connectors/connectors";
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
+import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 
@@ -272,6 +273,36 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
       await throwOnError(toggleSlackbot(connector.id, true));
+      break;
+    }
+
+    case "sync-thread": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.threadId) {
+        throw new Error("Missing --threadId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: args.wId,
+          type: "slack",
+        },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+      await throwOnError(
+        launchSlackSyncOneThreadWorkflow(
+          connector.id,
+          args.channelId,
+          args.threadId
+        )
+      );
+
       break;
     }
   }
