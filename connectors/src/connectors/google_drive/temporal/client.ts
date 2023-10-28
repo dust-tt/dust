@@ -28,7 +28,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
 
   if (fromTs) {
     return new Err(
-      new Error("Github connector does not support partial resync")
+      new Error("Google Drive connector does not support partial resync")
     );
   }
 
