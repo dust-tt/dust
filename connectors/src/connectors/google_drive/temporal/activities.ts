@@ -56,6 +56,7 @@ const MIME_TYPES_TO_SYNC = [
 
 const FILES_IGNORE_LIST: string[] = [
   "1HMXBdJq3A5i7SF_KaWC7nipU0YgNKsk_tmGOHumM2n0",
+  "1oyMdVT_Rur_8xyp6YlOuamZNLM_sq-0qkpDrP7hab-U",
 ];
 
 export const statsDClient = new StatsD();
