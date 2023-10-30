@@ -34,6 +34,11 @@ export type PlanType = {
   code: string;
   name: string;
   status: "active" | "ended";
+  subscriptionId: string | null; // null for the free test plan that is not in db
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
+  stripeProductId: string | null;
+  billingType: "fixed" | "monthly_active_users" | "free";
   startDate: number | null;
   endDate: number | null;
   limits: LimitsType;

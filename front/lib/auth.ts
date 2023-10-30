@@ -440,27 +440,20 @@ export async function planForWorkspace(
   w: Workspace
 ): Promise<Promise<PlanType>> {
   const activeSubscription = await Subscription.findOne({
-    attributes: ["id", "startDate", "endDate"],
+    attributes: [
+      "id",
+      "sId",
+      "stripeSubscriptionId",
+      "stripeCustomerId",
+      "startDate",
+      "endDate",
+    ],
     where: { workspaceId: w.id, status: "active" },
     include: [
       {
         model: Plan,
         as: "plan",
         required: true,
-        attributes: [
-          "code",
-          "name",
-          "isSlackbotAllowed",
-          "maxMessages",
-          "isManagedSlackAllowed",
-          "isManagedNotionAllowed",
-          "isManagedGoogleDriveAllowed",
-          "isManagedGithubAllowed",
-          "maxDataSourcesCount",
-          "maxDataSourcesDocumentsCount",
-          "maxDataSourcesDocumentsSizeMb",
-          "maxUsersInWorkspace",
-        ],
       },
     ],
   });
@@ -490,6 +483,11 @@ export async function planForWorkspace(
     code: plan.code,
     name: plan.name,
     status: "active",
+    subscriptionId: activeSubscription?.sId || null,
+    stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+    stripeProductId: plan.stripeProductId,
+    billingType: plan.billingType,
     startDate: startDate?.getTime() || null,
     endDate: endDate?.getTime() || null,
     limits: {

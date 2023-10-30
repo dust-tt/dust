@@ -7,6 +7,7 @@ import {
   FREE_UPGRADED_PLAN_CODE,
   PlanAttributes,
 } from "@app/lib/plans/free_plans";
+//import { createCheckoutSession } from "@app/lib/plans/stripe"; PART OF NEXT PR
 import { generateModelSId } from "@app/lib/utils";
 import { PlanType } from "@app/types/user";
 
@@ -43,6 +44,11 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     code: freeTestPlan.code,
     name: freeTestPlan.name,
     status: "active",
+    subscriptionId: null,
+    stripeSubscriptionId: null,
+    stripeCustomerId: null,
+    stripeProductId: null,
+    billingType: freeTestPlan.billingType,
     startDate: null,
     endDate: null,
     limits: {
@@ -123,6 +129,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         planId: plan.id,
         status: "active",
         startDate: now,
+        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
       },
       { transaction: t }
     );
@@ -131,6 +138,11 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       code: plan.code,
       name: plan.name,
       status: "active",
+      subscriptionId: newSubscription.sId,
+      stripeSubscriptionId: newSubscription.stripeSubscriptionId,
+      stripeCustomerId: newSubscription.stripeCustomerId,
+      stripeProductId: null,
+      billingType: "free",
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {
@@ -162,7 +174,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 export const subscribeWorkspaceToPlan = async (
   auth: Authenticator,
   { planCode }: { planCode: string }
-): Promise<PlanType> => {
+): Promise<string | void> => {
   const user = auth.user();
   const workspace = auth.workspace();
   const activePlan = auth.plan();
@@ -182,87 +194,68 @@ export const subscribeWorkspaceToPlan = async (
 
   // Case of a downgrade to the free default plan: we use the internal function
   if (planCode === FREE_TEST_PLAN_CODE) {
-    return await internalSubscribeWorkspaceToFreeTestPlan({
+    await internalSubscribeWorkspaceToFreeTestPlan({
       workspaceId: workspace.sId,
     });
+    return;
   }
 
-  const now = new Date();
+  // We make sure the user is not trying to subscribe to a plan he already has
+  const newPlan = await Plan.findOne({
+    where: { code: planCode },
+  });
+  if (!newPlan) {
+    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
+  }
+  const activeSubscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+  });
+  if (activeSubscription && activeSubscription.planId === newPlan.id) {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}:  already subscribed.`
+    );
+  }
 
-  return await front_sequelize.transaction(async (t) => {
-    // We get the plan to subscribe to
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-      transaction: t,
-    });
-    if (!newPlan) {
-      throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
-    }
-
-    // We search for an active subscription for this workspace
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-      transaction: t,
-    });
-
-    // We check if the user is already subscribed to this plan
-    if (activeSubscription && activeSubscription.planId === newPlan.id) {
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}:  already subscribed.`
-      );
-    }
-
-    // We end the active subscription if any
-    if (activeSubscription) {
-      await activeSubscription.update(
+  if (newPlan.billingType === "free") {
+    // We can immediately subscribe to a free plan: end the current subscription if any and create a new active one.
+    const now = new Date();
+    await front_sequelize.transaction(async (t) => {
+      if (activeSubscription) {
+        await activeSubscription.update(
+          {
+            status: "ended",
+            endDate: now,
+          },
+          { transaction: t }
+        );
+      }
+      await Subscription.create(
         {
-          status: "ended",
-          endDate: now,
+          sId: generateModelSId(),
+          workspaceId: workspace.id,
+          planId: newPlan.id,
+          status: "active",
+          startDate: now,
+          stripeCustomerId: activeSubscription?.stripeCustomerId || null,
         },
         { transaction: t }
       );
-    }
-
-    // We create a new subscription
-    const newSubscription = await Subscription.create(
-      {
-        sId: generateModelSId(),
-        workspaceId: workspace.id,
-        planId: newPlan.id,
-        status: "active",
-        startDate: now,
-      },
-      { transaction: t }
+    });
+  } else if (newPlan.stripeProductId) {
+    // We enter Stripe Checkout flow
+    // const checkoutUrl = await createCheckoutSession({     COMMENTED CAUSE PART OF THE NEXT PR
+    //   owner: workspace,
+    //   planCode: newPlan.code,
+    //   productId: newPlan.stripeProductId,
+    //   isFixedPriceBilling: true,
+    //   stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+    // });
+    // if (checkoutUrl) {
+    //   return checkoutUrl;
+    // }
+  } else {
+    throw new Error(
+      `Plan with code ${planCode} is not a free plan and has no Stripe Product ID.`
     );
-
-    return {
-      code: newPlan.code,
-      name: newPlan.name,
-      status: "active",
-      startDate: newSubscription.startDate.getTime(),
-      endDate: newSubscription.endDate?.getTime() || null,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: newPlan.isSlackbotAllowed,
-          maxMessages: newPlan.maxMessages,
-        },
-        connections: {
-          isSlackAllowed: newPlan.isManagedSlackAllowed,
-          isNotionAllowed: newPlan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: newPlan.isManagedGithubAllowed,
-        },
-        dataSources: {
-          count: newPlan.maxDataSourcesCount,
-          documents: {
-            count: newPlan.maxDataSourcesDocumentsCount,
-            sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: newPlan.maxUsersInWorkspace,
-        },
-      },
-    };
-  });
+  }
 };

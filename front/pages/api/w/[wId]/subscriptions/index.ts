@@ -1,17 +1,18 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import { ReturnedAPIErrorType } from "@app/lib/error";
 import { subscribeWorkspaceToPlan } from "@app/lib/plans/subscription";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PlanType } from "@app/types/user";
 
-export type GetSubscriptionResponseBody = {
-  plan: PlanType;
+export type PostSubscriptionResponseBody = {
+  checkoutUrl: string | null;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetSubscriptionResponseBody>
+  res: NextApiResponse<PostSubscriptionResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -43,29 +44,29 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      // Should return the list of featured plans
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Not implemented yet.",
-        },
-      });
-
     case "POST":
-      const newPlan = await subscribeWorkspaceToPlan(auth, {
-        planCode: req.body.planCode,
-      });
-      res.status(200).json({ plan: newPlan });
-      return;
-
+      try {
+        const stripeCheckoutUrl = await subscribeWorkspaceToPlan(auth, {
+          planCode: req.body.planCode,
+        });
+        return res.status(200).json({ checkoutUrl: stripeCheckoutUrl || null });
+      } catch (error) {
+        logger.error({ error }, "Error while subscribing workspace to plan");
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "subscription_error",
+            message: "Error while subscribing workspace to plan",
+          },
+        });
+      }
+      break;
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }

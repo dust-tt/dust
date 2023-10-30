@@ -23,6 +23,7 @@ export class Plan extends Model<
   declare code: string; // unique
   declare name: string;
   declare stripeProductId: string | null;
+  declare billingType: "fixed" | "monthly_active_users" | "free";
 
   // workspace limitations
   declare maxMessages: number;
@@ -64,6 +65,14 @@ Plan.init(
     stripeProductId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    billingType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "fixed",
+      validate: {
+        isIn: [["fixed", "monthly_active_users", "free"]],
+      },
     },
     maxMessages: {
       type: DataTypes.INTEGER,
@@ -134,6 +143,9 @@ export class Subscription extends Model<
 
   declare planId: ForeignKey<Plan["id"]>;
   declare plan: NonAttribute<Plan>;
+
+  declare stripeCustomerId: string | null;
+  declare stripeSubscriptionId: string | null;
 }
 Subscription.init(
   {
@@ -169,6 +181,14 @@ Subscription.init(
     },
     endDate: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    stripeCustomerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    stripeSubscriptionId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },
