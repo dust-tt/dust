@@ -27,7 +27,6 @@ export class Workspace extends Model<
   declare allowedDomain: string | null;
   declare plan: string | null;
 
-  declare stripeCustomerId: string | null;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
@@ -67,10 +66,6 @@ Workspace.init(
     },
     plan: {
       type: DataTypes.STRING,
-    },
-    stripeCustomerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
   },
   {

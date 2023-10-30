@@ -36,6 +36,7 @@ export type PlanType = {
   status: "active" | "ended" | "processing" | "cancelled";
   subscriptionId: string;
   stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
   stripeProductId: string | null;
   billingType: "fixed" | "monthly_active_users" | "free";
   startDate: number | null;
@@ -49,7 +50,6 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
-  stripeCustomerId: string | null;
 };
 
 export type UserProviderType = "github" | "google";

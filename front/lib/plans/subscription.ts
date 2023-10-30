@@ -45,6 +45,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     status: "active",
     subscriptionId: "no_subscription_id",
     stripeSubscriptionId: null,
+    stripeCustomerId: null,
     stripeProductId: null,
     billingType: freeTestPlan.billingType,
     startDate: null,
@@ -127,6 +128,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
         planId: plan.id,
         status: "active",
         startDate: now,
+        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
       },
       { transaction: t }
     );
@@ -137,6 +139,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       status: "active",
       subscriptionId: newSubscription.sId,
       stripeSubscriptionId: newSubscription.stripeSubscriptionId,
+      stripeCustomerId: newSubscription.stripeCustomerId,
       stripeProductId: null,
       billingType: "free",
       startDate: newSubscription.startDate.getTime(),
@@ -239,6 +242,7 @@ export const subscribeWorkspaceToPlan = async (
         planId: newPlan.id,
         status: newPlan.billingType === "free" ? "active" : "processing",
         startDate: now,
+        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
       },
       { transaction: t }
     );
@@ -249,6 +253,7 @@ export const subscribeWorkspaceToPlan = async (
       status: newSubscription.status,
       subscriptionId: newSubscription.sId,
       stripeSubscriptionId: newSubscription.stripeSubscriptionId,
+      stripeCustomerId: newSubscription.stripeCustomerId,
       stripeProductId: newPlan.stripeProductId,
       billingType: newPlan.billingType,
       startDate: newSubscription.startDate.getTime(),

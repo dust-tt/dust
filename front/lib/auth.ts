@@ -268,7 +268,6 @@ export class Authenticator {
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
-          stripeCustomerId: this._workspace.stripeCustomerId || null,
         }
       : null;
   }
@@ -376,7 +375,6 @@ export async function getUserFromSession(
         name: w.name,
         allowedDomain: w.allowedDomain || null,
         role,
-        stripeCustomerId: w.stripeCustomerId || null,
       };
     }),
     isDustSuperUser: user.isDustSuperUser,
@@ -480,6 +478,7 @@ export async function planForWorkspace(
     status: "active",
     subscriptionId: activeSubscription?.sId || "no_subscription_id",
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     stripeProductId: plan.stripeProductId,
     billingType: plan.billingType,
     startDate: startDate?.getTime() || null,

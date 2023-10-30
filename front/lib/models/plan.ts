@@ -144,6 +144,7 @@ export class Subscription extends Model<
   declare planId: ForeignKey<Plan["id"]>;
   declare plan: NonAttribute<Plan>;
 
+  declare stripeCustomerId: string | null;
   declare stripeSubscriptionId: string | null;
 }
 Subscription.init(
@@ -180,6 +181,10 @@ Subscription.init(
     },
     endDate: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    stripeCustomerId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     stripeSubscriptionId: {
