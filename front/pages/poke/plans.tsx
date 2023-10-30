@@ -228,7 +228,15 @@ const PLAN_FIELDS = {
     width: "large",
     title: "Stripe Product ID",
     error: (plan: EditingPlanType) => {
-      const regex = /^prod_[a-zA-Z0-9]{14}$/;
+      if (plan.stripeProductId) {
+        return null;
+      }
+
+      if (plan.isNewPlan) {
+        return "Stripe Product ID is required";
+      }
+
+      return null;
     },
   },
   code: {
@@ -240,6 +248,16 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.code,
     width: "large",
     title: "Plan Code",
+    error: (plan: EditingPlanType) => {
+      if (!plan.code) {
+        return "Plan Code is required";
+      }
+
+      // only alphanumeric and underscore
+      if (!/^[a-zA-Z0-9_]+$/.test(plan.code)) {
+        return "Plan Code must only contain alphanumeric characters and underscores";
+      }
+    },
   },
   isSlackBotAllowed: {
     type: "boolean",
@@ -337,6 +355,26 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.count,
     width: "small",
     title: "# DS",
+    error: (plan: EditingPlanType) => {
+      if (!plan.limits.dataSources.count) {
+        return "Data Sources count is required";
+      }
+
+      const parsed: number =
+        typeof plan.limits.dataSources.count === "number"
+          ? plan.limits.dataSources.count
+          : parseInt(plan.limits.dataSources.count, 10);
+
+      if (isNaN(parsed)) {
+        return "Data Sources count must be a number";
+      }
+
+      if (parsed < -1) {
+        return "Data Sources count must be positive or -1 (unlimited)";
+      }
+
+      return null;
+    },
   },
   dataSourcesDocumentsCount: {
     type: "number",
@@ -356,6 +394,26 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.documents.count,
     width: "small",
     title: "# Docs",
+    error: (plan: EditingPlanType) => {
+      if (!plan.limits.dataSources.documents.count) {
+        return "Data Sources Documents count is required";
+      }
+
+      const parsed: number =
+        typeof plan.limits.dataSources.documents.count === "number"
+          ? plan.limits.dataSources.documents.count
+          : parseInt(plan.limits.dataSources.documents.count, 10);
+
+      if (isNaN(parsed)) {
+        return "Data Sources Documents count must be a number";
+      }
+
+      if (parsed < -1) {
+        return "Data Sources Documents count must be positive or -1 (unlimited)";
+      }
+
+      return null;
+    },
   },
   dataSourcesDocumentsSizeMb: {
     type: "number",
@@ -375,6 +433,26 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.documents.sizeMb,
     width: "small",
     title: "Size (MB)",
+    error: (plan: EditingPlanType) => {
+      if (!plan.limits.dataSources.documents.sizeMb) {
+        return "Data Sources Documents size is required";
+      }
+
+      const parsed: number =
+        typeof plan.limits.dataSources.documents.sizeMb === "number"
+          ? plan.limits.dataSources.documents.sizeMb
+          : parseInt(plan.limits.dataSources.documents.sizeMb, 10);
+
+      if (isNaN(parsed)) {
+        return "Data Sources Documents size must be a number";
+      }
+
+      if (parsed < -1) {
+        return "Data Sources Documents size must be positive or -1 (unlimited)";
+      }
+
+      return null;
+    },
   },
 } as const;
 
@@ -410,6 +488,7 @@ const Field: React.FC<FieldProps> = ({
               setEditingPlan({ ...field.set(editingPlan, x) });
             }}
             readOnlyValue={field.value(plan)}
+            error={editingPlan && field.error(editingPlan)}
           />
         );
       case "boolean":
@@ -440,6 +519,7 @@ const Field: React.FC<FieldProps> = ({
               setEditingPlan(field.set(editingPlan, x));
             }}
             readOnlyValue={field.value(plan).toString()}
+            error={editingPlan && field.error(editingPlan)}
           />
         );
       default:
@@ -470,6 +550,7 @@ type TextFieldProps = {
   onChange: (x: string) => void;
   name: string;
   readOnlyValue?: string | null;
+  error?: string | null;
 };
 
 const TextField: React.FC<TextFieldProps> = ({
@@ -478,9 +559,17 @@ const TextField: React.FC<TextFieldProps> = ({
   onChange,
   name,
   readOnlyValue,
+  error,
 }) => {
   return isEditing ? (
-    <Input value={value || ""} onChange={onChange} placeholder="" name={name} />
+    <Input
+      value={value || ""}
+      onChange={onChange}
+      placeholder=""
+      name={name}
+      error={error}
+      showErrorLabel={true}
+    />
   ) : (
     <div
       className={classNames(
@@ -498,6 +587,7 @@ type NumberFieldProps = {
   onChange: (x: string) => void;
   name: string;
   readOnlyValue?: string | null;
+  error?: string | null;
 };
 
 const NumberField: React.FC<NumberFieldProps> = ({
@@ -506,6 +596,7 @@ const NumberField: React.FC<NumberFieldProps> = ({
   onChange,
   name,
   readOnlyValue,
+  error,
 }) => {
   return isEditing ? (
     <Input
@@ -513,6 +604,8 @@ const NumberField: React.FC<NumberFieldProps> = ({
       onChange={onChange}
       placeholder=""
       name={name}
+      error={error}
+      showErrorLabel={true}
     />
   ) : (
     <div
