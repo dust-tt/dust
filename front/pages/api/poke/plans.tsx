@@ -1,17 +1,40 @@
+import * as t from "io-ts";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PlanType } from "@app/types/user";
 
-export type PokePlanType = {
-  code: string;
-  name: string;
-  limits: PlanType["limits"];
-  stripeProductId: string | null;
-};
+export const PokePlanTypeSchema = t.type({
+  code: t.string,
+  name: t.string,
+  limits: t.type({
+    assistant: t.type({
+      isSlackBotAllowed: t.boolean,
+      maxMessages: t.number,
+    }),
+    connections: t.type({
+      isSlackAllowed: t.boolean,
+      isNotionAllowed: t.boolean,
+      isGoogleDriveAllowed: t.boolean,
+      isGithubAllowed: t.boolean,
+    }),
+    dataSources: t.type({
+      count: t.number,
+      documents: t.type({
+        count: t.number,
+        sizeMb: t.number,
+      }),
+    }),
+    users: t.type({
+      maxUsers: t.number,
+    }),
+  }),
+  stripeProductId: t.union([t.string, t.null]),
+});
+
+export type PokePlanType = t.TypeOf<typeof PokePlanTypeSchema>;
 
 export type GetPokePlansResponseBody = {
   plans: PokePlanType[];
