@@ -1,5 +1,6 @@
 import useSWR, { Fetcher } from "swr";
 
+import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
@@ -374,6 +375,18 @@ export function usePokeWorkspaces({
     workspaces: data ? data.workspaces : [],
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
+  };
+}
+
+export function usePokePlans() {
+  const plansFetcher: Fetcher<GetPokePlansResponseBody> = fetcher;
+
+  const { data, error } = useSWR("/api/poke/plans", plansFetcher);
+
+  return {
+    plans: data ? data.plans : [],
+    isPlansLoading: !error && !data,
+    isPlansError: error,
   };
 }
 
