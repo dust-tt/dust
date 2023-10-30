@@ -1,6 +1,6 @@
 import { Dataset, Example, ProblemId, Test } from "../datasets";
 import * as fs from "fs";
-import { evaluate, parse } from "mathjs";
+// import { evaluate, parse } from "mathjs";
 
 type Example24 = {
   problem: string;
@@ -38,9 +38,9 @@ class Game24 extends Dataset {
       `Given a set of 4 input numbers, find a mathematical expression using each number` +
       ` only once that symbolically evaluates to 24 (Game of 24).` +
       ` The available operators are [+,-,*,/]` +
-      ` (the division operator / is the classical division (eg: 3-5/2 = 1)).` +
+      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).` +
       ` The answer should be a valid solution expression without space` +
-      ` (eg: \`(6+1+1)*3\`).`
+      ` (eg: \`(6+1+1)*3\` or \`12/(1-1/2)\`).`
     );
   }
 
@@ -74,21 +74,21 @@ class Game24 extends Dataset {
   const train = d.examples({ problem: "", count: 10 });
 
   console.log(train[0].answer);
-  const node = parse(train[0].answer);
+  // const node = parse(train[0].answer);
 
-  node.traverse(function (node, path, parent) {
-    switch (node.type) {
-      case "OperatorNode":
-        console.log(node.type, node.op);
-        break;
-      case "ConstantNode":
-        console.log(node.type, node.value);
-        break;
-      case "SymbolNode":
-        console.log(node.type, node.name);
-        break;
-      default:
-        console.log(node.type);
-    }
-  });
+  // node.traverse(function (node, path, parent) {
+  //   switch (node.type) {
+  //     case "OperatorNode":
+  //       console.log(node.type, node.op);
+  //       break;
+  //     case "ConstantNode":
+  //       console.log(node.type, node.value);
+  //       break;
+  //     case "SymbolNode":
+  //       console.log(node.type, node.name);
+  //       break;
+  //     default:
+  //       console.log(node.type);
+  //   }
+  // });
 })();
