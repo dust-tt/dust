@@ -7,8 +7,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostSubscriptionResponseBody = {
-  success: boolean;
-  checkoutUrl?: string;
+  checkoutUrl: string | null;
 };
 
 async function handler(
@@ -50,9 +49,7 @@ async function handler(
         const stripeCheckoutUrl = await subscribeWorkspaceToPlan(auth, {
           planCode: req.body.planCode,
         });
-        return res
-          .status(200)
-          .json({ success: true, checkoutUrl: stripeCheckoutUrl || undefined });
+        return res.status(200).json({ checkoutUrl: stripeCheckoutUrl || null });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {
