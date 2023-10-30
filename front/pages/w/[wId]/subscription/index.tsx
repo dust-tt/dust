@@ -76,18 +76,40 @@ export default function Subscription({
         description: "Failed to subscribe to a new plan.",
       });
     } else {
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: `Successfully subscribed to the new plan.`,
-      });
+      const content = await res.json();
+      if (content.checkoutUrl) {
+        await router.push(content.checkoutUrl);
+      } else if (content.success) {
+        await router.reload(); // We cannot swr the plan so we just reload the page.
+      }
     }
     setIsProcessing(false);
+  }
 
-    // Reload the page to update the plan (that we load from the server)
-    setTimeout(function () {
-      router.reload();
-    }, 1000);
+  async function handleGoToStripePortal(): Promise<void> {
+    setIsProcessing(true);
+    const res = await fetch("/api/stripe/portal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        workspaceId: owner.sId,
+      }),
+    });
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to open billing dashboard",
+        description: "Failed to open billing dashboard.",
+      });
+    } else {
+      const content = await res.json();
+      if (content.portalUrl) {
+        window.open(content.portalUrl, "_blank");
+      }
+    }
+    setIsProcessing(false);
   }
 
   return (
@@ -130,6 +152,14 @@ export default function Subscription({
                 await handleSubscribeToPlan("PRO_PLAN_FIXED_1000")
               }
             />
+            {plan.stripeCustomerId && (
+              <Button
+                variant="primary"
+                label="Visit Dust's billing dashboard on Stripe"
+                disabled={isProcessing}
+                onClick={async () => await handleGoToStripePortal()}
+              />
+            )}
           </div>
         </Page.Vertical>
       </Page.Vertical>
