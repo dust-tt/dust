@@ -114,23 +114,59 @@ export const PricePlans = ({
   );
   if (isTabs) {
     return (
-      <div className={classNames("mx-4", className)}>
+      <div
+        className={classNames(
+          "mx-8 sm:mx-24",
+          "w-full max-w-md px-2 py-16 sm:px-0",
+          className
+        )}
+      >
         <Tab.Group>
-          <Tab.List className="flex space-x-1">
-            <Tab>
-              <Button label="Free" />
+          <Tab.List className="flex space-x-1 rounded-xl border border-slate-600/40 bg-slate-900/40 p-1 backdrop-blur">
+            <Tab
+              className={({ selected }) =>
+                classNames(
+                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "ring-0 focus:outline-none",
+                  selected
+                    ? "bg-emerald-500 text-white shadow"
+                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                )
+              }
+            >
+              Free
             </Tab>
-            <Tab>
-              <Button label="Pro" />
+            <Tab
+              className={({ selected }) =>
+                classNames(
+                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "ring-0 focus:outline-none",
+                  selected
+                    ? "bg-sky-500 text-white shadow"
+                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                )
+              }
+            >
+              Pro
             </Tab>
-            <Tab>
-              <Button label="Enterprise" />
+            <Tab
+              className={({ selected }) =>
+                classNames(
+                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "ring-0 focus:outline-none",
+                  selected
+                    ? "bg-pink-500 text-white shadow"
+                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                )
+              }
+            >
+              Enterprise
             </Tab>
           </Tab.List>
-          <Tab.Panels className="mt-2">
-            <Tab.Panel>{FreePriceTable(size)}</Tab.Panel>
-            <Tab.Panel>{ProPriceTable(size)}</Tab.Panel>
-            <Tab.Panel>{EnterprisePriceTable(size)}</Tab.Panel>
+          <Tab.Panels className="mt-8">
+            <Tab.Panel>{FreePriceTable("sm")}</Tab.Panel>
+            <Tab.Panel>{ProPriceTable("sm")}</Tab.Panel>
+            <Tab.Panel>{EnterprisePriceTable("sm")}</Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
       </div>
