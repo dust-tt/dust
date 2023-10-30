@@ -14,11 +14,11 @@ import { useState } from "react";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { usePokePlans } from "@app/lib/swr";
 import { assertNever, classNames } from "@app/lib/utils";
 
 import { PokePlanType } from "../api/poke/plans";
-
 export const getServerSideProps: GetServerSideProps<object> = async (
   _context
 ) => {
@@ -44,6 +44,8 @@ const PlansPage = (
 ) => {
   void _props;
 
+  const sendNotification = React.useContext(SendNotificationsContext);
+
   const { plans, isPlansLoading } = usePokePlans();
 
   const [editingPlan, setEditingPlan] = useState<EditingPlanType | null>(null);
@@ -56,11 +58,78 @@ const PlansPage = (
   };
 
   const handleSavePlan = () => {
+    if (!editingPlan) {
+      sendNotification({
+        title: "Error saving plan",
+        type: "error",
+        description: "Something went wrong (editingPlan is null)",
+      });
+      return;
+    }
+    const errors = Object.keys(PLAN_FIELDS).map((fieldName) => {
+      const field = PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
+      if ("error" in field) {
+        return field.error?.(editingPlan);
+      }
+    });
+
+    if (errors.some((x) => !!x)) {
+      sendNotification({
+        title: "Error saving plan",
+        type: "error",
+        description: "Some fields are invalid",
+      });
+      return;
+    }
+
+    // check if plan code is unique
+    const plansWithSameCode = plans?.filter(
+      (plan) => plan.code.trim() === editingPlan.code.trim()
+    );
+    if (
+      (editingPlan.isNewPlan && plansWithSameCode.length > 0) ||
+      (!editingPlan.isNewPlan && plansWithSameCode.length > 1)
+    ) {
+      sendNotification({
+        title: "Error saving plan",
+        type: "error",
+        description: "Plan code must be unique",
+      });
+      return;
+    }
+
+    // check if stripe product id is unique
+    if (editingPlan.stripeProductId) {
+      const plansWithSameStripeProductId = plans?.filter(
+        (plan) =>
+          plan.stripeProductId &&
+          plan.stripeProductId.trim() === editingPlan.stripeProductId?.trim()
+      );
+      if (
+        (editingPlan.isNewPlan && plansWithSameStripeProductId.length > 0) ||
+        (!editingPlan.isNewPlan && plansWithSameStripeProductId.length > 1)
+      ) {
+        sendNotification({
+          title: "Error saving plan",
+          type: "error",
+          description: "Stripe Product ID must be unique",
+        });
+        return;
+      }
+    }
+
+    if (editingPlan.isNewPlan) {
+      // TODO: create plan
+    } else {
+      // TODO: update plan
+    }
+
     setEditingPlan(null);
     setEditingPlanCode(null);
     if (isCreatingPlan) {
       setIsCreatingPlan(false);
     }
+    // spinner + await mutate (put the buttons in disabled)
   };
 
   const handleAddPlan = () => {
@@ -114,19 +183,7 @@ const PlansPage = (
                   {Object.keys(PLAN_FIELDS).map((fieldName) => {
                     const field =
                       PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
-                    return (
-                      <th
-                        key={fieldName}
-                        className={classNames(
-                          "px-4 py-2",
-                          field.width === "small"
-                            ? "w-24 min-w-[8rem]"
-                            : "w-72 min-w-[12rem]"
-                        )}
-                      >
-                        {field.title}
-                      </th>
-                    );
+                    return <th key={fieldName}>{field.title}</th>;
                   })}
                   <th className="px-4 py-2">Edit</th>
                 </tr>
@@ -156,23 +213,21 @@ const PlansPage = (
                           />
                         </React.Fragment>
                       ))}
-                      <td className="w-24 min-w-[6rem] flex-none border px-4 py-2">
+                      <td className="w-12 min-w-[4rem] flex-none border px-4 py-2">
                         {editingPlanCode === plan.code || plan.isNewPlan ? (
                           <div className="flex flex-row justify-center">
                             <IconButton
                               icon={CheckIcon}
                               onClick={handleSavePlan}
                             />
-                            {isCreatingPlan && (
-                              <IconButton
-                                icon={XMarkIcon}
-                                onClick={() => {
-                                  setEditingPlan(null);
-                                  setEditingPlanCode(null);
-                                  setIsCreatingPlan(false);
-                                }}
-                              />
-                            )}
+                            <IconButton
+                              icon={XMarkIcon}
+                              onClick={() => {
+                                setEditingPlan(null);
+                                setEditingPlanCode(null);
+                                setIsCreatingPlan(false);
+                              }}
+                            />
                           </div>
                         ) : (
                           <div className="flex flex-row justify-center">
@@ -214,7 +269,7 @@ const PLAN_FIELDS = {
       name: value,
     }),
     value: (plan: EditingPlanType) => plan.name,
-    width: "large",
+    width: "medium",
     title: "Name",
     error: (plan: EditingPlanType) => (plan.name ? null : "Name is required"),
   },
@@ -228,12 +283,13 @@ const PLAN_FIELDS = {
     width: "large",
     title: "Stripe Product ID",
     error: (plan: EditingPlanType) => {
-      if (plan.stripeProductId) {
+      if (!plan.stripeProductId) {
         return null;
       }
 
-      if (plan.isNewPlan) {
-        return "Stripe Product ID is required";
+      // only alphanumeric and underscore
+      if (!/^[a-zA-Z0-9_]+$/.test(plan.stripeProductId)) {
+        return "Stripe Product ID must only contain alphanumeric characters and underscores";
       }
 
       return null;
@@ -272,8 +328,8 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.assistant.isSlackBotAllowed,
-    width: "small",
-    title: "Slack Bot",
+    width: "tiny",
+    title: "Bot",
   },
   isSlackAllowed: {
     type: "boolean",
@@ -288,7 +344,7 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.connections.isSlackAllowed,
-    width: "small",
+    width: "tiny",
     title: "Slack",
   },
   isNotionAllowed: {
@@ -304,7 +360,7 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.connections.isNotionAllowed,
-    width: "small",
+    width: "tiny",
     title: "Notion",
   },
   isGoogleDriveAllowed: {
@@ -321,7 +377,7 @@ const PLAN_FIELDS = {
     }),
     value: (plan: EditingPlanType) =>
       plan.limits.connections.isGoogleDriveAllowed,
-    width: "small",
+    width: "tiny",
     title: "Drive",
   },
   isGithubAllowed: {
@@ -337,7 +393,7 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.connections.isGithubAllowed,
-    width: "small",
+    width: "tiny",
     title: "Github",
   },
   dataSourcesCount: {
@@ -353,10 +409,14 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.dataSources.count,
-    width: "small",
+    width: "medium",
     title: "# DS",
     error: (plan: EditingPlanType) => {
-      if (!plan.limits.dataSources.count) {
+      if (
+        plan.limits.dataSources.count === undefined ||
+        plan.limits.dataSources.count === null ||
+        plan.limits.dataSources.count === ""
+      ) {
         return "Data Sources count is required";
       }
 
@@ -392,7 +452,7 @@ const PLAN_FIELDS = {
       },
     }),
     value: (plan: EditingPlanType) => plan.limits.dataSources.documents.count,
-    width: "small",
+    width: "medium",
     title: "# Docs",
     error: (plan: EditingPlanType) => {
       if (!plan.limits.dataSources.documents.count) {
@@ -449,6 +509,42 @@ const PLAN_FIELDS = {
 
       if (parsed < -1) {
         return "Data Sources Documents size must be positive or -1 (unlimited)";
+      }
+
+      return null;
+    },
+  },
+  maxUsers: {
+    type: "number",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        users: {
+          ...plan.limits.users,
+          maxUsers: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.users.maxUsers,
+    width: "medium",
+    title: "# Users",
+    error: (plan: EditingPlanType) => {
+      if (!plan.limits.users.maxUsers) {
+        return "Max users is required";
+      }
+
+      const parsed: number =
+        typeof plan.limits.users.maxUsers === "number"
+          ? plan.limits.users.maxUsers
+          : parseInt(plan.limits.users.maxUsers, 10);
+
+      if (isNaN(parsed)) {
+        return "Max users must be a number";
+      }
+
+      if (parsed < -1) {
+        return "Max users must be positive or -1 (unlimited)";
       }
 
       return null;
@@ -533,6 +629,10 @@ const Field: React.FC<FieldProps> = ({
         return "w-24 min-w-[6rem]";
       case "large":
         return "w-72 min-w-[12rem]";
+      case "medium":
+        return "max-w-48 min-w-[8rem]";
+      case "tiny":
+        return "min-w-[3rem]";
       default:
         assertNever(field);
     }
