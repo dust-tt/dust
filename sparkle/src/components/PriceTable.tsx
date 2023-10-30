@@ -67,28 +67,12 @@ export function PriceTable({
     <div
       className={classNames(
         "s-w-full",
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8fa7eac1 (New alpha Sparkle)
         "s-flex s-cursor-default s-flex-col s-border s-border-white/30",
         sizeTable[size],
         magnified
           ? "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100"
           : "",
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-        "s-flex s-cursor-default s-flex-col s-rounded-xl s-p-1 s-shadow-xl",
-        "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100",
->>>>>>> df0d8fa8 (wip)
         colorTable[color],
-=======
-        size === "xs" ? colorTable[color] : bigColorTable[color],
->>>>>>> 8fa7eac1 (New alpha Sparkle)
-=======
-        colorTable[color],
->>>>>>> 6793f0f1 (New alpha Sparkle)
         className
       )}
     >
