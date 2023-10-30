@@ -60,7 +60,7 @@ export default function Subscription({
 
   async function handleSubscribeToPlan(planCode: string): Promise<void> {
     setIsProcessing(true);
-    const res = await fetch(`/api/w/${owner.sId}/subscription`, {
+    const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

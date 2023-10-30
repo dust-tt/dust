@@ -440,7 +440,14 @@ export async function planForWorkspace(
   w: Workspace
 ): Promise<Promise<PlanType>> {
   const activeSubscription = await Subscription.findOne({
-    attributes: ["id", "sId", "stripeSubscriptionId", "startDate", "endDate"],
+    attributes: [
+      "id",
+      "sId",
+      "stripeSubscriptionId",
+      "stripeCustomerId",
+      "startDate",
+      "endDate",
+    ],
     where: { workspaceId: w.id, status: "active" },
     include: [
       {

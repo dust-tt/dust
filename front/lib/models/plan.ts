@@ -134,7 +134,7 @@ export class Subscription extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string; // unique
-  declare status: "active" | "ended" | "processing" | "cancelled";
+  declare status: "active" | "ended";
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -172,7 +172,7 @@ Subscription.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["active", "ended", "processing", "cancelled"]],
+        isIn: [["active", "ended"]],
       },
     },
     startDate: {

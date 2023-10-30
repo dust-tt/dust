@@ -46,7 +46,10 @@ export type APIErrorType =
   | "message_not_found"
   | "message_reaction_error"
   | "test_plan_message_limit_reached"
-  | "global_agent_error";
+  | "global_agent_error"
+  | "subscription_error"
+  | "stripe_webhook_error"
+  | "stripe_api_error";
 
 export type APIError = {
   type: APIErrorType;

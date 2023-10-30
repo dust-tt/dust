@@ -33,7 +33,7 @@ export type LimitsType = {
 export type PlanType = {
   code: string;
   name: string;
-  status: "active" | "ended" | "processing" | "cancelled";
+  status: "active" | "ended";
   subscriptionId: string | null; // null for the free test plan that is not in db
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
