@@ -183,22 +183,12 @@ export async function githubUpsertIssueActivity(
     throw new Error(`Connector not found (installationId: ${installationId})`);
   }
 
-  const existingIssueInDb = await GithubIssue.findOne({
-    where: {
-      repoId: repoId.toString(),
-      issueNumber,
-      connectorId: connector.id,
-    },
+  localLogger.info("Upserting GitHub issue in DB.");
+  await GithubIssue.upsert({
+    repoId: repoId.toString(),
+    issueNumber,
+    connectorId: connector.id,
   });
-
-  if (!existingIssueInDb) {
-    localLogger.info("Creating new GitHub issue in DB.");
-    await GithubIssue.create({
-      repoId: repoId.toString(),
-      issueNumber,
-      connectorId: connector.id,
-    });
-  }
 }
 
 export async function githubUpsertDiscussionActivity(
