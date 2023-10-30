@@ -2,21 +2,40 @@ import classNames from "classnames";
 import React, { ReactElement, ReactNode } from "react";
 
 const defaultGridClasses =
-  "grid grid-cols-12 gap-x-6 gap-y-10 md:gap-12 px-6 md:px-12 lg:px-20 xl:px-0 xl:gap-10";
+  "grid grid-cols-12 gap-x-6 gap-y-8 px-6 md:px-12 lg:px-20 2xl:px-0";
 
-export const Grid = ({ children, className = "" }: ContentProps) => (
-  <div className={classNames(className, defaultGridClasses)}>{children}</div>
+const verticalGridClasses = {
+  top: "items-start",
+  center: "items-center",
+  bottom: "items-end",
+};
+
+export const Grid = ({
+  children,
+  verticalAlign = "top",
+  className = "",
+}: ContentProps) => (
+  <div
+    className={classNames(
+      className,
+      defaultGridClasses,
+      verticalGridClasses[verticalAlign]
+    )}
+  >
+    {children}
+  </div>
 );
 
 const hClasses = {
   h1: "font-objektiv text-4xl font-bold tracking-tight lg:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2x xl:text-3xl drop-shadow-md",
+  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-4xl xl:text-5xl drop-shadow-lg",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl drop-shadow-md",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",
 };
 
 interface ContentProps {
   children: ReactNode;
+  verticalAlign?: "top" | "center" | "bottom";
   className?: string;
 }
 
@@ -41,14 +60,6 @@ export const Span = ({ children, className = "" }: ContentProps) => (
   <span className={classNames(className)}>{children}</span>
 );
 
-const borderColorTable = {
-  pink: "border-pink-300",
-  amber: "border-amber-400",
-  sky: "border-sky-400",
-  emerald: "border-emerald-400",
-  red: "border-red-400",
-};
-
 const pClasses = {
   xs: "font-regular text-sm text-slate-400 md:text-base",
   sm: "font-regular text-base text-slate-400 md:text-lg",
@@ -60,20 +71,20 @@ interface PProps {
   children: ReactNode;
   className?: string;
   variant?: "xs" | "sm" | "md" | "lg";
-  border?: "pink" | "amber" | "emerald" | "sky" | "red";
+  borderCSS?: string;
 }
 
 export const P = ({
   children,
-  border,
+  borderCSS = "",
   className = "",
   variant = "md",
 }: PProps) => (
   <p
     className={classNames(
+      borderCSS,
       className,
-      border ? "border-l-2 pl-3 sm:border-l-4 sm:pl-4" : "",
-      border ? borderColorTable[border] : "",
+      borderCSS ? "border-l-4 pb-1 pl-4" : "",
       pClasses[variant]
     )}
   >
@@ -178,7 +189,11 @@ export const ReactiveImg = ({
   );
 };
 
-export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
+export const ReactiveIcon = ({
+  children,
+  className = "",
+  colorHEX,
+}: ReactImgProps) => {
   const singleChild = React.Children.only(children);
 
   if (!React.isValidElement(singleChild)) {
@@ -198,7 +213,12 @@ export const ReactiveIcon = ({ children, colorHEX }: ReactImgProps) => {
     }
   );
   return (
-    <ReactiveImg colorHEX={colorHEX} className="w-fit" paddingCSS="p-4" isSmall>
+    <ReactiveImg
+      colorHEX={colorHEX}
+      className={classNames("w-fit", className)}
+      paddingCSS="p-4"
+      isSmall
+    >
       {modifiedChild}
     </ReactiveImg>
   );
