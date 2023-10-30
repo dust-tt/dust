@@ -16,12 +16,6 @@ export const ButtonExamples = () => (
     <div className="s-flex s-items-center s-gap-4">
       <Button
         variant="primary"
-        size="lg"
-        label="Settings"
-        icon={Cog6ToothIcon}
-      />
-      <Button
-        variant="primary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -61,12 +55,6 @@ export const ButtonExamples = () => (
       />
     </div>
     <div className="s-flex s-items-center s-gap-4">
-      <Button
-        variant="primaryWarning"
-        size="lg"
-        label="Settings"
-        icon={Cog6ToothIcon}
-      />
       <Button
         variant="primaryWarning"
         size="md"
@@ -110,12 +98,6 @@ export const ButtonExamples = () => (
     <div className="s-flex s-items-center s-gap-4">
       <Button
         variant="secondary"
-        size="lg"
-        label="Settings"
-        icon={Cog6ToothIcon}
-      />
-      <Button
-        variant="secondary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -155,12 +137,6 @@ export const ButtonExamples = () => (
       />
     </div>
     <div className="s-flex s-items-center s-gap-4">
-      <Button
-        variant="secondaryWarning"
-        size="lg"
-        label="Settings"
-        icon={Cog6ToothIcon}
-      />
       <Button
         variant="secondaryWarning"
         size="md"
@@ -204,12 +180,6 @@ export const ButtonExamples = () => (
     <div className="s-flex s-items-center s-gap-4">
       <Button
         variant="tertiary"
-        size="lg"
-        label="Settings"
-        icon={Cog6ToothIcon}
-      />
-      <Button
-        variant="tertiary"
         size="md"
         label="Settings"
         icon={Cog6ToothIcon}
@@ -249,12 +219,6 @@ export const ButtonExamples = () => (
       />
     </div>
     <div className="s-flex s-items-center s-gap-4">
-      <Button
-        variant="avatar"
-        size="lg"
-        label="@soupinou"
-        avatar="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
-      />
       <Button
         variant="avatar"
         size="md"
