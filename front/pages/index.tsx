@@ -618,7 +618,7 @@ export default function Home({
               with your <Strong>own databases on advanced use cases</Strong>.
             </P>
           </Grid>
-          <Grid className="md:hidden">
+          {/* <Grid className="md:hidden">
             <div
               className={classNames(
                 defaultFlexClasses,
@@ -638,17 +638,9 @@ export default function Home({
                 please return on a&nbsp;device with a bigger&nbsp;screen.
               </P>
             </div>
-          </Grid>
-          <Grid className="hidden md:grid">
-            <div
-              className={classNames(
-                "pb-8",
-                "col-span-12",
-                "md:col-span-8",
-                "xl:col-start-2",
-                "2xl:col-start-3"
-              )}
-            >
+          </Grid> */}
+          <Grid>
+            <div className="col-span-12 text-center">
               <H2 className="text-pink-400">
                 Start with Dust!
                 <br />
