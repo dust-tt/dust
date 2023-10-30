@@ -150,6 +150,7 @@ async function handler(
           name: ws.name,
           allowedDomain: ws.allowedDomain || null,
           role: "admin",
+          stripeCustomerId: ws.stripeCustomerId || null,
         })),
       });
     default:

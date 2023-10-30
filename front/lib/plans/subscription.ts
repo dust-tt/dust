@@ -43,6 +43,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     code: freeTestPlan.code,
     name: freeTestPlan.name,
     status: "active",
+    subscriptionId: "no_subscription_id",
+    stripeSubscriptionId: null,
+    stripeProductId: null,
+    billingType: freeTestPlan.billingType,
     startDate: null,
     endDate: null,
     limits: {
@@ -131,6 +135,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       code: plan.code,
       name: plan.name,
       status: "active",
+      subscriptionId: newSubscription.sId,
+      stripeSubscriptionId: newSubscription.stripeSubscriptionId,
+      stripeProductId: null,
+      billingType: "free",
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {
@@ -212,8 +220,8 @@ export const subscribeWorkspaceToPlan = async (
       );
     }
 
-    // We end the active subscription if any
-    if (activeSubscription) {
+    // We end the active subscription if any and if the new plan is a free plan for which we don't need to wait for the paiement to be processed
+    if (activeSubscription && newPlan.billingType === "free") {
       await activeSubscription.update(
         {
           status: "ended",
@@ -223,13 +231,13 @@ export const subscribeWorkspaceToPlan = async (
       );
     }
 
-    // We create a new subscription
+    // We create a new subscription, in processing state if there's payment involved (we need to wait for the paiement to be processed)
     const newSubscription = await Subscription.create(
       {
         sId: generateModelSId(),
         workspaceId: workspace.id,
         planId: newPlan.id,
-        status: "active",
+        status: newPlan.billingType === "free" ? "active" : "processing",
         startDate: now,
       },
       { transaction: t }
@@ -238,7 +246,11 @@ export const subscribeWorkspaceToPlan = async (
     return {
       code: newPlan.code,
       name: newPlan.name,
-      status: "active",
+      status: newSubscription.status,
+      subscriptionId: newSubscription.sId,
+      stripeSubscriptionId: newSubscription.stripeSubscriptionId,
+      stripeProductId: newPlan.stripeProductId,
+      billingType: newPlan.billingType,
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
       limits: {

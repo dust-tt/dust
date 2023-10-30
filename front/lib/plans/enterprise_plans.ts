@@ -25,6 +25,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   code: ENT_PLAN_FAKE_CODE,
   name: "Entreprise",
   stripeProductId: null,
+  billingType: "fixed",
   maxMessages: -1,
   maxUsersInWorkspace: -1,
   isSlackbotAllowed: true,

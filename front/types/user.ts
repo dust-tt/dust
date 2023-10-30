@@ -33,7 +33,11 @@ export type LimitsType = {
 export type PlanType = {
   code: string;
   name: string;
-  status: "active" | "ended";
+  status: "active" | "ended" | "processing" | "cancelled";
+  subscriptionId: string;
+  stripeSubscriptionId: string | null;
+  stripeProductId: string | null;
+  billingType: "fixed" | "monthly_active_users" | "free";
   startDate: number | null;
   endDate: number | null;
   limits: LimitsType;
@@ -45,6 +49,7 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
+  stripeCustomerId: string | null;
 };
 
 export type UserProviderType = "github" | "google";

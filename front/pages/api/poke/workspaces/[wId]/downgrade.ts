@@ -79,6 +79,7 @@ async function handler(
           name: workspace.name,
           allowedDomain: workspace.allowedDomain || null,
           role: "admin",
+          stripeCustomerId: workspace.stripeCustomerId || null,
         },
       });
 

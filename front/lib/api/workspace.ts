@@ -28,6 +28,7 @@ export async function getWorkspaceInfos(
     name: workspace.name,
     allowedDomain: workspace.allowedDomain,
     role: "none",
+    stripeCustomerId: workspace.stripeCustomerId,
   };
 }
 
