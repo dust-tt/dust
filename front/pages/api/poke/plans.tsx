@@ -52,10 +52,10 @@ async function handler(
             isGithubAllowed: plan.isManagedGithubAllowed,
           },
           dataSources: {
-            count: plan.maxNbStaticDataSources,
+            count: plan.maxDataSourcesCount,
             documents: {
-              count: plan.maxNbStaticDocuments,
-              sizeMb: plan.maxSizeStaticDataSources,
+              count: plan.maxDataSourcesDocumentsCount,
+              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
             },
           },
           users: {
