@@ -158,13 +158,22 @@ const PlansPage = (
       stripeProductId: editingPlan.stripeProductId?.trim() || null,
     };
 
-    await fetch("/api/poke/plans", {
+    const r = await fetch("/api/poke/plans", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     });
+    if (!r.ok) {
+      sendNotification({
+        title: "Error saving plan",
+        type: "error",
+        description: `Something went wrong: ${r.status} ${await r.text()}`,
+      });
+      return;
+    }
+
     await mutate("/api/poke/plans");
 
     setEditingPlan(null);
@@ -304,6 +313,25 @@ const PlansPage = (
 
 export default PlansPage;
 
+const errorCheckNumber = (value: string | number | undefined | null) => {
+  if (value === undefined || value === null || value === "") {
+    return "This field is required";
+  }
+
+  const parsed: number =
+    typeof value === "number" ? value : parseInt(value.toString(), 10);
+
+  if (isNaN(parsed)) {
+    return "This field must be a number";
+  }
+
+  if (parsed < -1) {
+    return "This field must be positive or -1 (unlimited)";
+  }
+
+  return null;
+};
+
 const PLAN_FIELDS = {
   name: {
     type: "string",
@@ -345,7 +373,7 @@ const PLAN_FIELDS = {
       code: value,
     }),
     value: (plan: EditingPlanType) => plan.code,
-    width: "large",
+    width: "medium",
     title: "Plan Code",
     error: (plan: EditingPlanType) => {
       if (!plan.code) {
@@ -455,30 +483,8 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.count,
     width: "medium",
     title: "# DS",
-    error: (plan: EditingPlanType) => {
-      if (
-        plan.limits.dataSources.count === undefined ||
-        plan.limits.dataSources.count === null ||
-        plan.limits.dataSources.count === ""
-      ) {
-        return "Data Sources count is required";
-      }
-
-      const parsed: number =
-        typeof plan.limits.dataSources.count === "number"
-          ? plan.limits.dataSources.count
-          : parseInt(plan.limits.dataSources.count, 10);
-
-      if (isNaN(parsed)) {
-        return "Data Sources count must be a number";
-      }
-
-      if (parsed < -1) {
-        return "Data Sources count must be positive or -1 (unlimited)";
-      }
-
-      return null;
-    },
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.limits.dataSources.count),
   },
   dataSourcesDocumentsCount: {
     type: "number",
@@ -498,26 +504,8 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.documents.count,
     width: "medium",
     title: "# Docs",
-    error: (plan: EditingPlanType) => {
-      if (!plan.limits.dataSources.documents.count) {
-        return "Data Sources Documents count is required";
-      }
-
-      const parsed: number =
-        typeof plan.limits.dataSources.documents.count === "number"
-          ? plan.limits.dataSources.documents.count
-          : parseInt(plan.limits.dataSources.documents.count, 10);
-
-      if (isNaN(parsed)) {
-        return "Data Sources Documents count must be a number";
-      }
-
-      if (parsed < -1) {
-        return "Data Sources Documents count must be positive or -1 (unlimited)";
-      }
-
-      return null;
-    },
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.limits.dataSources.documents.count),
   },
   dataSourcesDocumentsSizeMb: {
     type: "number",
@@ -537,26 +525,8 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.dataSources.documents.sizeMb,
     width: "small",
     title: "Size (MB)",
-    error: (plan: EditingPlanType) => {
-      if (!plan.limits.dataSources.documents.sizeMb) {
-        return "Data Sources Documents size is required";
-      }
-
-      const parsed: number =
-        typeof plan.limits.dataSources.documents.sizeMb === "number"
-          ? plan.limits.dataSources.documents.sizeMb
-          : parseInt(plan.limits.dataSources.documents.sizeMb, 10);
-
-      if (isNaN(parsed)) {
-        return "Data Sources Documents size must be a number";
-      }
-
-      if (parsed < -1) {
-        return "Data Sources Documents size must be positive or -1 (unlimited)";
-      }
-
-      return null;
-    },
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.limits.dataSources.documents.sizeMb),
   },
   maxUsers: {
     type: "number",
@@ -573,26 +543,8 @@ const PLAN_FIELDS = {
     value: (plan: EditingPlanType) => plan.limits.users.maxUsers,
     width: "medium",
     title: "# Users",
-    error: (plan: EditingPlanType) => {
-      if (!plan.limits.users.maxUsers) {
-        return "Max users is required";
-      }
-
-      const parsed: number =
-        typeof plan.limits.users.maxUsers === "number"
-          ? plan.limits.users.maxUsers
-          : parseInt(plan.limits.users.maxUsers, 10);
-
-      if (isNaN(parsed)) {
-        return "Max users must be a number";
-      }
-
-      if (parsed < -1) {
-        return "Max users must be positive or -1 (unlimited)";
-      }
-
-      return null;
-    },
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.limits.users.maxUsers),
   },
 } as const;
 
@@ -686,7 +638,9 @@ const Field: React.FC<FieldProps> = ({
   })();
 
   return (
-    <td className={classNames("flex-none border px-4 py-2", widthClass)}>
+    <td
+      className={classNames("flex-none border px-4 py-2 text-sm", widthClass)}
+    >
       {fieldNode}
     </td>
   );
@@ -710,20 +664,22 @@ const TextField: React.FC<TextFieldProps> = ({
   error,
   disabled,
 }) => {
-  return isEditing ? (
-    <Input
-      value={value || ""}
-      onChange={onChange}
-      placeholder=""
-      name={name}
-      error={error}
-      showErrorLabel={true}
-      disabled={disabled}
-    />
+  return isEditing && !disabled ? (
+    <div className="min-h-[6rem]">
+      <Input
+        value={value || ""}
+        onChange={onChange}
+        placeholder=""
+        name={name}
+        error={error}
+        showErrorLabel={true}
+      />
+    </div>
   ) : (
     <div
       className={classNames(
-        readOnlyValue === null ? "italic text-element-600" : ""
+        readOnlyValue === null ? "italic text-element-600" : "",
+        isEditing ? "min-h-[6rem]" : ""
       )}
     >
       {readOnlyValue === null ? "NULL" : readOnlyValue}
@@ -751,15 +707,17 @@ const NumberField: React.FC<NumberFieldProps> = ({
   disabled,
 }) => {
   return isEditing ? (
-    <Input
-      value={value?.toString() || ""}
-      onChange={onChange}
-      placeholder=""
-      name={name}
-      error={error}
-      showErrorLabel={true}
-      disabled={disabled}
-    />
+    <div className="min-h-[6rem]">
+      <Input
+        value={value?.toString() || ""}
+        onChange={onChange}
+        placeholder=""
+        name={name}
+        error={error}
+        showErrorLabel={true}
+        disabled={disabled}
+      />
+    </div>
   ) : (
     <div
       className={classNames(
@@ -794,10 +752,12 @@ const BooleanField: React.FC<BooleanFieldProps> = ({
 }) => {
   void name;
   return (
-    <Checkbox
-      checked={(isEditing ? checked : readOnlyChecked) || false}
-      onChange={onChange}
-      disabled={!isEditing || disabled}
-    />
+    <div className={classNames(isEditing ? "min-h-[6rem]" : "")}>
+      <Checkbox
+        checked={(isEditing ? checked : readOnlyChecked) || false}
+        onChange={onChange}
+        disabled={!isEditing || disabled}
+      />
+    </div>
   );
 };
