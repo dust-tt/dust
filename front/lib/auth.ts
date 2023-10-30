@@ -476,7 +476,7 @@ export async function planForWorkspace(
     code: plan.code,
     name: plan.name,
     status: "active",
-    subscriptionId: activeSubscription?.sId || "no_subscription_id",
+    subscriptionId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     stripeProductId: plan.stripeProductId,

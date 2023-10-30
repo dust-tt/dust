@@ -43,7 +43,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     code: freeTestPlan.code,
     name: freeTestPlan.name,
     status: "active",
-    subscriptionId: "no_subscription_id",
+    subscriptionId: null,
     stripeSubscriptionId: null,
     stripeCustomerId: null,
     stripeProductId: null,

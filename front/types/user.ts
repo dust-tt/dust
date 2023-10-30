@@ -34,7 +34,7 @@ export type PlanType = {
   code: string;
   name: string;
   status: "active" | "ended" | "processing" | "cancelled";
-  subscriptionId: string;
+  subscriptionId: string | null; // null for the free test plan that is not in db
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
