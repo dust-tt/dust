@@ -11,7 +11,6 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
 import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
@@ -23,7 +22,6 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  connector?: ConnectorType | null;
   fetchConnectorError?: boolean;
   gaTrackingId: string;
 }> = async (context) => {
@@ -48,20 +46,10 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
-  if (!dataSource) {
+  if (!dataSource || dataSource.connectorProvider) {
     return {
       notFound: true,
     };
-  }
-
-  let connector: ConnectorType | null = null;
-  if (dataSource.connectorId) {
-    const connectorRes = await ConnectorsAPI.getConnector(
-      dataSource.connectorId
-    );
-    if (connectorRes.isOk()) {
-      connector = connectorRes.value;
-    }
   }
 
   return {
@@ -69,7 +57,6 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       dataSource,
-      connector,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -79,11 +66,8 @@ export default function DataSourceSettings({
   user,
   owner,
   dataSource,
-  connector,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const managed = !!dataSource.connectorId && !!connector;
-
   const router = useRouter();
 
   const handleUpdate = async (
@@ -116,8 +100,7 @@ export default function DataSourceSettings({
       );
     }
   };
-
-  return !managed ? (
+  return (
     <StandardDataSourceSettings
       owner={owner}
       user={user}
@@ -127,16 +110,6 @@ export default function DataSourceSettings({
         visibility: DataSourceVisibility;
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
-      gaTrackingId={gaTrackingId}
-    />
-  ) : (
-    <ManagedDataSourceSettings
-      owner={owner}
-      user={user}
-      dataSource={dataSource}
-      handleUpdate={(settings: { assistantDefaultSelected: boolean }) =>
-        handleUpdate(settings)
-      }
       gaTrackingId={gaTrackingId}
     />
   );
@@ -421,106 +394,6 @@ function StandardDataSourceSettings({
                   </div>
                 </DropdownMenu.Items>
               </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AppLayout>
-  );
-}
-
-function ManagedDataSourceSettings({
-  owner,
-  user,
-  dataSource,
-  handleUpdate,
-  gaTrackingId,
-}: {
-  owner: WorkspaceType;
-  user: UserType;
-  dataSource: DataSourceType;
-  handleUpdate: (settings: {
-    assistantDefaultSelected: boolean;
-  }) => Promise<void>;
-  gaTrackingId: string;
-}) {
-  const router = useRouter();
-
-  const [isEdited, setIsEdited] = useState(false);
-  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
-
-  const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
-    dataSource.assistantDefaultSelected
-  );
-
-  const formValidation = useCallback(() => {
-    let edited = false;
-    if (assistantDefaultSelected === !dataSource.assistantDefaultSelected) {
-      edited = true;
-    }
-    setIsEdited(edited);
-  }, [dataSource, assistantDefaultSelected]);
-
-  useEffect(() => {
-    formValidation();
-  }, [formValidation]);
-
-  return (
-    <AppLayout
-      user={user}
-      owner={owner}
-      gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "data_sources_managed",
-      })}
-      titleChildren={
-        <AppLayoutSimpleSaveCancelTitle
-          title="Data Source Settings"
-          onCancel={() => {
-            void router.push(
-              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
-            );
-          }}
-          onSave={
-            isEdited
-              ? async () => {
-                  setIsSavingOrDeleting(true);
-                  await handleUpdate({
-                    assistantDefaultSelected,
-                  });
-                  setIsSavingOrDeleting(false);
-                }
-              : undefined
-          }
-          isSaving={isSavingOrDeleting}
-        />
-      }
-      hideSidebar={true}
-    >
-      <div className="flex flex-col pt-8">
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-            <div className="mt-2 sm:col-span-6">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="assistantDefaultSelected"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Availability to @dust
-                </label>
-              </div>
-              <div className="mt-2 flex items-center">
-                <Checkbox
-                  checked={assistantDefaultSelected}
-                  onChange={(checked) => setAssistantDefaultSelected(checked)}
-                />
-                <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Make this Data Source available to the{" "}
-                  <span className="font-semibold">@dust</span> assistant.
-                </p>
-              </div>
             </div>
           </div>
         </div>

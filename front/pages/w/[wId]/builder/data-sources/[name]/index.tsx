@@ -582,20 +582,6 @@ function ManagedDataSourceView({
                     : ""
                 }`
           }
-          action={
-            readOnly
-              ? undefined
-              : {
-                  label: "Settings",
-                  variant: "tertiary",
-                  icon: Cog6ToothIcon,
-                  onClick: () => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
-                    );
-                  },
-                }
-          }
         />
         <div className="flex flex-row py-8">
           <div className="flex flex-1"></div>

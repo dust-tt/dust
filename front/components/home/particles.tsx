@@ -7,7 +7,7 @@ let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let particleSystem: THREE.Points;
-const backgroundColor = 0x0f172a;
+const backgroundColor = 0x1e293b;
 const colorsArray = [
   0x059669, 0x4ade80, 0xf87171, 0xf9a8d4, 0x7dd3fc, 0x3b82f6, 0xfbbf24,
 ];
