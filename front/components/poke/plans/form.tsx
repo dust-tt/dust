@@ -248,58 +248,62 @@ export const Field: React.FC<FieldProps> = ({
 }) => {
   const field = PLAN_FIELDS[fieldName];
   const isImmutable = "immutable" in field && field.immutable;
+  const disabled = !editingPlan?.isNewPlan && isImmutable;
+
   const fieldNode = (() => {
     switch (field.type) {
       case "string":
-        return (
-          <TextField
-            name={fieldName}
-            isEditing={isEditing}
-            value={(editingPlan && field.value(editingPlan)) || ""}
+      case "number":
+        return isEditing && !disabled ? (
+          <Input
+            value={
+              editingPlan &&
+              (field.type === "number"
+                ? field.value(editingPlan).toString()
+                : field.value(editingPlan))
+            }
             onChange={(x) => {
               if (!editingPlan) {
                 return;
               }
               setEditingPlan({ ...field.set(editingPlan, x) });
             }}
-            readOnlyValue={field.value(plan)}
+            placeholder=""
+            name={fieldName}
             error={editingPlan && field.error(editingPlan)}
-            disabled={!editingPlan?.isNewPlan && isImmutable}
+            showErrorLabel={false}
           />
+        ) : (
+          <div
+            className={classNames(
+              field.value(plan) === null ? "italic text-element-600" : ""
+            )}
+          >
+            {field.value(plan) === null
+              ? "NULL"
+              : field.type == "number" && field.value(plan) === "-1"
+              ? "∞"
+              : field.value(plan)?.toString()}
+          </div>
         );
       case "boolean":
         return (
-          <BooleanField
-            name={fieldName}
-            isEditing={isEditing}
-            checked={(editingPlan && field.value(editingPlan)) || false}
+          <Checkbox
+            checked={
+              editingPlan && isEditing
+                ? field.value(editingPlan)
+                : field.value(plan)
+            }
             onChange={(x) => {
               if (!editingPlan) {
                 return;
               }
-              setEditingPlan(field.set(editingPlan, x));
+              setEditingPlan({ ...field.set(editingPlan, x) });
             }}
-            readOnlyChecked={field.value(plan)}
-            disabled={!editingPlan?.isNewPlan && isImmutable}
+            disabled={!isEditing || disabled}
           />
         );
-      case "number":
-        return (
-          <NumberField
-            name={fieldName}
-            isEditing={isEditing}
-            value={editingPlan && field.value(editingPlan || "").toString()}
-            onChange={(x) => {
-              if (!editingPlan) {
-                return;
-              }
-              setEditingPlan(field.set(editingPlan, x));
-            }}
-            readOnlyValue={field.value(plan).toString()}
-            error={editingPlan && field.error(editingPlan)}
-            disabled={!editingPlan?.isNewPlan && isImmutable}
-          />
-        );
+
       default:
         assertNever(field);
     }
@@ -326,115 +330,6 @@ export const Field: React.FC<FieldProps> = ({
     >
       {fieldNode}
     </td>
-  );
-};
-type TextFieldProps = {
-  isEditing: boolean;
-  value?: string | null;
-  onChange: (x: string) => void;
-  name: string;
-  readOnlyValue?: string | null;
-  error?: string | null;
-  disabled: boolean;
-};
-
-const TextField: React.FC<TextFieldProps> = ({
-  isEditing,
-  value,
-  onChange,
-  name,
-  readOnlyValue,
-  error,
-  disabled,
-}) => {
-  return isEditing && !disabled ? (
-    <Input
-      value={value || ""}
-      onChange={onChange}
-      placeholder=""
-      name={name}
-      error={error}
-      showErrorLabel={false}
-    />
-  ) : (
-    <div
-      className={classNames(
-        readOnlyValue === null ? "italic text-element-600" : ""
-      )}
-    >
-      {readOnlyValue === null ? "NULL" : readOnlyValue}
-    </div>
-  );
-};
-
-type NumberFieldProps = {
-  isEditing: boolean;
-  value?: string | null;
-  onChange: (x: string) => void;
-  name: string;
-  readOnlyValue?: string | null;
-  error?: string | null;
-  disabled: boolean;
-};
-
-const NumberField: React.FC<NumberFieldProps> = ({
-  isEditing,
-  value,
-  onChange,
-  name,
-  readOnlyValue,
-  error,
-  disabled,
-}) => {
-  return isEditing ? (
-    <Input
-      value={value?.toString() || ""}
-      onChange={onChange}
-      placeholder=""
-      name={name}
-      error={error}
-      showErrorLabel={false}
-      disabled={disabled}
-    />
-  ) : (
-    <div
-      className={classNames(
-        readOnlyValue === null ? "italic text-element-600" : ""
-      )}
-    >
-      {readOnlyValue === null
-        ? "NULL"
-        : readOnlyValue === "-1"
-        ? "∞"
-        : readOnlyValue?.toString()}
-    </div>
-  );
-};
-
-type BooleanFieldProps = {
-  isEditing: boolean;
-  checked?: boolean | null;
-  onChange: (x: boolean) => void;
-  name: string;
-  readOnlyChecked?: boolean | null;
-  disabled: boolean;
-};
-
-const BooleanField: React.FC<BooleanFieldProps> = ({
-  isEditing,
-  checked,
-  onChange,
-  name,
-  readOnlyChecked,
-  disabled,
-}) => {
-  void name;
-  return (
-    <Checkbox
-      checked={(isEditing ? checked : readOnlyChecked) || false}
-      onChange={onChange}
-      disabled={!isEditing || disabled}
-    />
   );
 };
 
