@@ -1,55 +1,23 @@
-import { IconButton, PencilSquareIcon, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  CheckIcon,
+  IconButton,
+  Input,
+  PencilSquareIcon,
+  PlusIcon,
+  Spinner,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
+import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { usePokePlans } from "@app/lib/swr";
+import { assertNever, classNames } from "@app/lib/utils";
 
 import { PokePlanType } from "../api/poke/plans";
-
-// const PlanForm: React.FC<PlanFormProps> = ({ onSave, onCancel }) => {
-//   return (
-//     <Modal
-//       isOpen={true}
-//       type="full-screen"
-//       title="Edit Plan"
-//       onClose={onCancel}
-//       // onSave={() => currentPlan && onSave(currentPlan)}
-//       hasChanged={false}
-//     >
-//       <div className="mx-auto max-w-2xl">
-//         <div className="pt-8" />
-//         <Form
-//           schema={PlanFormSchema}
-//           onSubmit={() => {
-//             alert("submit");
-//           }}
-//           props={{
-//             code: {
-//               placeholder: "",
-//               title: "Code",
-//             },
-//             name: {
-//               placeholder: "",
-//               title: "Name",
-//             },
-//             stripeProductId: {
-//               placeholder: "",
-//               title: "Stripe product ID",
-//             },
-//             isSlackBotAllowed: {
-//               title: "Slack bot allowed",
-//             },
-//             dataSourcesCount: {
-//               placeholder: "",
-//               title: "Data sources count",
-//             },
-//           }}
-//         />
-//       </div>
-//     </Modal>
-//   );
-// };
 
 export const getServerSideProps: GetServerSideProps<object> = async (
   _context
@@ -59,6 +27,17 @@ export const getServerSideProps: GetServerSideProps<object> = async (
     props: {},
   };
 };
+type DeepNumbersAsStrings<T> = {
+  [K in keyof T]: T[K] extends number
+    ? string | number
+    : T[K] extends object
+    ? DeepNumbersAsStrings<T[K]>
+    : T[K];
+};
+
+type EditingPlanType = DeepNumbersAsStrings<PokePlanType> & {
+  isNewPlan?: boolean;
+};
 
 const PlansPage = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
@@ -66,11 +45,59 @@ const PlansPage = (
   void _props;
 
   const { plans, isPlansLoading } = usePokePlans();
-  const [, setSelectedPlan] = useState<PokePlanType | null>(null);
 
-  const handleEditPlan = (plan: PokePlanType) => {
-    setSelectedPlan(plan);
+  const [editingPlan, setEditingPlan] = useState<EditingPlanType | null>(null);
+  const [editingPlanCode, setEditingPlanCode] = useState<string | null>(null);
+  const [isCreatingPlan, setIsCreatingPlan] = useState<boolean>(false);
+
+  const handleEditPlan = (plan: EditingPlanType) => {
+    setEditingPlan({ ...plan });
+    setEditingPlanCode(plan.code);
   };
+
+  const handleSavePlan = () => {
+    setEditingPlan(null);
+    setEditingPlanCode(null);
+    if (isCreatingPlan) {
+      setIsCreatingPlan(false);
+    }
+  };
+
+  const handleAddPlan = () => {
+    const newPlan: EditingPlanType = {
+      isNewPlan: true,
+      name: "",
+      stripeProductId: "",
+      code: "",
+      limits: {
+        users: {
+          maxUsers: "",
+        },
+        assistant: {
+          isSlackBotAllowed: false,
+          maxMessages: "",
+        },
+        connections: {
+          isSlackAllowed: false,
+          isNotionAllowed: false,
+          isGoogleDriveAllowed: false,
+          isGithubAllowed: false,
+        },
+        dataSources: {
+          count: "",
+          documents: {
+            count: "",
+            sizeMb: "",
+          },
+        },
+      },
+    };
+    setEditingPlan(newPlan);
+    setIsCreatingPlan(true);
+  };
+
+  const plansToRender: EditingPlanType[] =
+    plans && isCreatingPlan && editingPlan ? [...plans, editingPlan] : plans;
 
   return (
     <div className="min-h-screen bg-structure-50">
@@ -78,72 +105,98 @@ const PlansPage = (
       {isPlansLoading ? (
         <Spinner />
       ) : (
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center ">
           <div className="py-8 text-2xl font-bold">Plans</div>
-          <div className="flex flex-col gap-8">
-            {plans?.map((plan) => (
-              <div key={plan.code} className="flex flex-col gap-2">
-                <div className="text-xl font-bold">{plan.name}</div>
-                <div className="text-sm">
-                  Stripe product ID: {plan.stripeProductId || "None"}
-                </div>
-                <div className="text-sm">Plan code: {plan.code}</div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-row gap-2">
-                    <div className="text-sm font-bold">Assistant</div>
-                    <div className="text-sm">
-                      {plan.limits.assistant.isSlackBotAllowed
-                        ? "Slack bot allowed"
-                        : "Slack bot not allowed"}
-                    </div>
-                    <div className="text-sm">
-                      {nbOrInfinite(plan.limits.assistant.maxMessages)} messages
-                    </div>
-                  </div>
-                  <div className="flex flex-row gap-2">
-                    <div className="text-sm font-bold">Connections</div>
-                    <div className="text-sm">
-                      {plan.limits.connections.isSlackAllowed
-                        ? "Slack allowed"
-                        : "Slack not allowed"}
-                    </div>
-                    <div className="text-sm">
-                      {plan.limits.connections.isNotionAllowed
-                        ? "Notion allowed"
-                        : "Notion not allowed"}
-                    </div>
-                    <div className="text-sm">
-                      {plan.limits.connections.isGoogleDriveAllowed
-                        ? "Google Drive allowed"
-                        : "Google Drive not allowed"}
-                    </div>
-                    <div className="text-sm">
-                      {plan.limits.connections.isGithubAllowed
-                        ? "Github allowed"
-                        : "Github not allowed"}
-                    </div>
-                  </div>
-                  <div className="flex flex-row gap-2">
-                    <div className="text-sm font-bold">Data sources</div>
-                    <div className="text-sm">
-                      {nbOrInfinite(plan.limits.dataSources.count)} data sources
-                    </div>
-                    <div className="text-sm">
-                      {nbOrInfinite(plan.limits.dataSources.documents.count)}{" "}
-                      documents
-                    </div>
-                    <div className="text-sm">
-                      {nbOrInfinite(plan.limits.dataSources.documents.sizeMb)}{" "}
-                      MB
-                    </div>
-                  </div>
-                  <IconButton
-                    icon={PencilSquareIcon}
-                    onClick={() => handleEditPlan(plan)}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="w-full overflow-x-auto">
+            <table className="mx-auto table-auto rounded-lg">
+              <thead className="bg-gray-50">
+                <tr>
+                  {Object.keys(PLAN_FIELDS).map((fieldName) => {
+                    const field =
+                      PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
+                    return (
+                      <th
+                        key={fieldName}
+                        className={classNames(
+                          "px-4 py-2",
+                          field.width === "small"
+                            ? "w-24 min-w-[8rem]"
+                            : "w-72 min-w-[12rem]"
+                        )}
+                      >
+                        {field.title}
+                      </th>
+                    );
+                  })}
+                  <th className="px-4 py-2">Edit</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white text-gray-700 shadow-md">
+                {plansToRender?.map((plan) => {
+                  const planId = plan.isNewPlan ? "newPlan" : plan.code;
+
+                  return (
+                    <tr key={planId}>
+                      {Object.keys(PLAN_FIELDS).map((fieldName) => (
+                        <React.Fragment key={`${planId}:${fieldName}`}>
+                          <Field
+                            plan={plan}
+                            fieldName={fieldName as keyof typeof PLAN_FIELDS}
+                            isEditing={
+                              !!(
+                                (!isCreatingPlan &&
+                                  editingPlanCode === plan.code) ||
+                                (isCreatingPlan &&
+                                  editingPlan &&
+                                  plan?.isNewPlan)
+                              )
+                            }
+                            setEditingPlan={setEditingPlan}
+                            editingPlan={editingPlan}
+                          />
+                        </React.Fragment>
+                      ))}
+                      <td className="w-24 min-w-[6rem] flex-none border px-4 py-2">
+                        {editingPlanCode === plan.code || plan.isNewPlan ? (
+                          <div className="flex flex-row justify-center">
+                            <IconButton
+                              icon={CheckIcon}
+                              onClick={handleSavePlan}
+                            />
+                            {isCreatingPlan && (
+                              <IconButton
+                                icon={XMarkIcon}
+                                onClick={() => {
+                                  setEditingPlan(null);
+                                  setEditingPlanCode(null);
+                                  setIsCreatingPlan(false);
+                                }}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-row justify-center">
+                            <IconButton
+                              icon={PencilSquareIcon}
+                              onClick={() => handleEditPlan(plan)}
+                            />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="pt-8">
+            <Button
+              icon={PlusIcon}
+              label="Create a new plan"
+              variant="secondary"
+              onClick={handleAddPlan}
+              disabled={isCreatingPlan || !!editingPlan}
+            />
           </div>
         </div>
       )}
@@ -153,9 +206,350 @@ const PlansPage = (
 
 export default PlansPage;
 
-const nbOrInfinite = (nb: number): string => {
-  if (nb === -1) {
-    return "∞";
-  }
-  return nb.toString();
+const PLAN_FIELDS = {
+  name: {
+    type: "string",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      name: value,
+    }),
+    value: (plan: EditingPlanType) => plan.name,
+    width: "large",
+    title: "Name",
+    error: (plan: EditingPlanType) => (plan.name ? null : "Name is required"),
+  },
+  stripeProductId: {
+    type: "string",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      stripeProductId: value,
+    }),
+    value: (plan: EditingPlanType) => plan.stripeProductId,
+    width: "large",
+    title: "Stripe Product ID",
+    error: (plan: EditingPlanType) => {
+      const regex = /^prod_[a-zA-Z0-9]{14}$/;
+    },
+  },
+  code: {
+    type: "string",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      code: value,
+    }),
+    value: (plan: EditingPlanType) => plan.code,
+    width: "large",
+    title: "Plan Code",
+  },
+  isSlackBotAllowed: {
+    type: "boolean",
+    set: (plan: EditingPlanType, value: boolean) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        assistant: {
+          ...plan.limits.assistant,
+          isSlackBotAllowed: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.assistant.isSlackBotAllowed,
+    width: "small",
+    title: "Slack Bot",
+  },
+  isSlackAllowed: {
+    type: "boolean",
+    set: (plan: EditingPlanType, value: boolean) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        connections: {
+          ...plan.limits.connections,
+          isSlackAllowed: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.connections.isSlackAllowed,
+    width: "small",
+    title: "Slack",
+  },
+  isNotionAllowed: {
+    type: "boolean",
+    set: (plan: EditingPlanType, value: boolean) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        connections: {
+          ...plan.limits.connections,
+          isNotionAllowed: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.connections.isNotionAllowed,
+    width: "small",
+    title: "Notion",
+  },
+  isGoogleDriveAllowed: {
+    type: "boolean",
+    set: (plan: EditingPlanType, value: boolean) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        connections: {
+          ...plan.limits.connections,
+          isGoogleDriveAllowed: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) =>
+      plan.limits.connections.isGoogleDriveAllowed,
+    width: "small",
+    title: "Drive",
+  },
+  isGithubAllowed: {
+    type: "boolean",
+    set: (plan: EditingPlanType, value: boolean) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        connections: {
+          ...plan.limits.connections,
+          isGithubAllowed: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.connections.isGithubAllowed,
+    width: "small",
+    title: "Github",
+  },
+  dataSourcesCount: {
+    type: "number",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        dataSources: {
+          ...plan.limits.dataSources,
+          count: value,
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.dataSources.count,
+    width: "small",
+    title: "# DS",
+  },
+  dataSourcesDocumentsCount: {
+    type: "number",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        dataSources: {
+          ...plan.limits.dataSources,
+          documents: {
+            ...plan.limits.dataSources.documents,
+            count: value,
+          },
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.dataSources.documents.count,
+    width: "small",
+    title: "# Docs",
+  },
+  dataSourcesDocumentsSizeMb: {
+    type: "number",
+    set: (plan: EditingPlanType, value: string) => ({
+      ...plan,
+      limits: {
+        ...plan.limits,
+        dataSources: {
+          ...plan.limits.dataSources,
+          documents: {
+            ...plan.limits.dataSources.documents,
+            sizeMb: value,
+          },
+        },
+      },
+    }),
+    value: (plan: EditingPlanType) => plan.limits.dataSources.documents.sizeMb,
+    width: "small",
+    title: "Size (MB)",
+  },
+} as const;
+
+type FieldProps = {
+  plan: EditingPlanType;
+  fieldName: keyof typeof PLAN_FIELDS;
+  isEditing: boolean;
+  setEditingPlan: React.Dispatch<React.SetStateAction<EditingPlanType | null>>;
+  editingPlan: EditingPlanType | null;
+};
+
+const Field: React.FC<FieldProps> = ({
+  plan,
+  fieldName,
+  isEditing,
+  setEditingPlan,
+  editingPlan,
+}) => {
+  const field = PLAN_FIELDS[fieldName];
+
+  const fieldNode = (() => {
+    switch (field.type) {
+      case "string":
+        return (
+          <TextField
+            name={fieldName}
+            isEditing={isEditing}
+            value={(editingPlan && field.value(editingPlan)) || ""}
+            onChange={(x) => {
+              if (!editingPlan) {
+                return;
+              }
+              setEditingPlan({ ...field.set(editingPlan, x) });
+            }}
+            readOnlyValue={field.value(plan)}
+          />
+        );
+      case "boolean":
+        return (
+          <BooleanField
+            name={fieldName}
+            isEditing={isEditing}
+            checked={(editingPlan && field.value(editingPlan)) || false}
+            onChange={(x) => {
+              if (!editingPlan) {
+                return;
+              }
+              setEditingPlan(field.set(editingPlan, x));
+            }}
+            readOnlyChecked={field.value(plan)}
+          />
+        );
+      case "number":
+        return (
+          <NumberField
+            name={fieldName}
+            isEditing={isEditing}
+            value={editingPlan && field.value(editingPlan || "").toString()}
+            onChange={(x) => {
+              if (!editingPlan) {
+                return;
+              }
+              setEditingPlan(field.set(editingPlan, x));
+            }}
+            readOnlyValue={field.value(plan).toString()}
+          />
+        );
+      default:
+        assertNever(field);
+    }
+  })();
+
+  const widthClass = (() => {
+    switch (field.width) {
+      case "small":
+        return "w-24 min-w-[6rem]";
+      case "large":
+        return "w-72 min-w-[12rem]";
+      default:
+        assertNever(field);
+    }
+  })();
+
+  return (
+    <td className={classNames("flex-none border px-4 py-2", widthClass)}>
+      {fieldNode}
+    </td>
+  );
+};
+type TextFieldProps = {
+  isEditing: boolean;
+  value?: string | null;
+  onChange: (x: string) => void;
+  name: string;
+  readOnlyValue?: string | null;
+};
+
+const TextField: React.FC<TextFieldProps> = ({
+  isEditing,
+  value,
+  onChange,
+  name,
+  readOnlyValue,
+}) => {
+  return isEditing ? (
+    <Input value={value || ""} onChange={onChange} placeholder="" name={name} />
+  ) : (
+    <div
+      className={classNames(
+        readOnlyValue === null ? "italic text-element-600" : ""
+      )}
+    >
+      {readOnlyValue === null ? "NULL" : readOnlyValue}
+    </div>
+  );
+};
+
+type NumberFieldProps = {
+  isEditing: boolean;
+  value?: string | null;
+  onChange: (x: string) => void;
+  name: string;
+  readOnlyValue?: string | null;
+};
+
+const NumberField: React.FC<NumberFieldProps> = ({
+  isEditing,
+  value,
+  onChange,
+  name,
+  readOnlyValue,
+}) => {
+  return isEditing ? (
+    <Input
+      value={value?.toString() || ""}
+      onChange={onChange}
+      placeholder=""
+      name={name}
+    />
+  ) : (
+    <div
+      className={classNames(
+        readOnlyValue === null ? "italic text-element-600" : ""
+      )}
+    >
+      {readOnlyValue === null
+        ? "NULL"
+        : readOnlyValue === "-1"
+        ? "∞"
+        : readOnlyValue?.toString()}
+    </div>
+  );
+};
+
+type BooleanFieldProps = {
+  isEditing: boolean;
+  checked?: boolean | null;
+  onChange: (x: boolean) => void;
+  name: string;
+  readOnlyChecked?: boolean | null;
+};
+
+const BooleanField: React.FC<BooleanFieldProps> = ({
+  isEditing,
+  checked,
+  onChange,
+  name,
+  readOnlyChecked,
+}) => {
+  void name;
+  return (
+    <Checkbox
+      checked={(isEditing ? checked : readOnlyChecked) || false}
+      onChange={onChange}
+      disabled={!isEditing}
+    />
+  );
 };
