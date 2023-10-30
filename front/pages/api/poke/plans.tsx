@@ -6,10 +6,11 @@ import { Plan } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PlanType } from "@app/types/user";
 
-type PokePlanType = {
+export type PokePlanType = {
   code: string;
   name: string;
   limits: PlanType["limits"];
+  stripeProductId: string | null;
 };
 
 export type GetPokePlansResponseBody = {
@@ -39,6 +40,7 @@ async function handler(
       const plans: PokePlanType[] = planModels.map((plan) => ({
         code: plan.code,
         name: plan.name,
+        stripeProductId: plan.stripeProductId,
         status: "active",
         limits: {
           assistant: {
