@@ -1,5 +1,5 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { compareAgentsForSort } from "@app/lib/assistant";
@@ -22,6 +22,7 @@ export function AgentSuggestion({
   userMessage: UserMessageType;
   conversation: ConversationType;
 }) {
+  const editingMessage = useRef(0);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
@@ -74,29 +75,40 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: editedContent,
-          mentions: [
-            {
-              type: "agent",
-              configurationId: agent.sId,
+    if (editingMessage.current === 0) {
+      try {
+        editingMessage.current++;
+        const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+        const mRes = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          ],
-        }),
-      }
-    );
+            body: JSON.stringify({
+              content: editedContent,
+              mentions: [
+                {
+                  type: "agent",
+                  configurationId: agent.sId,
+                },
+              ],
+            }),
+          }
+        );
 
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      window.alert(`Error adding mention to message: ${data.error.message}`);
+        if (!mRes.ok) {
+          const data = await mRes.json();
+          window.alert(
+            `Error adding mention to message: ${data.error.message}`
+          );
+        }
+      } finally {
+        editingMessage.current--;
+      }
+    } else {
+      console.error("already editing message");
     }
   }
 
