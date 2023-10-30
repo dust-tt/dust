@@ -1,4 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
@@ -59,7 +61,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planModels = await Plan.findAll();
+      const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
       const plans: PokePlanType[] = planModels.map((plan) => ({
         code: plan.code,
         name: plan.name,
@@ -92,6 +94,40 @@ async function handler(
         plans: plans,
       });
       return;
+
+    case "POST":
+      const bodyValidation = PokePlanTypeSchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The request body is invalid: ${pathError}`,
+          },
+        });
+      }
+      const body = bodyValidation.right;
+      await Plan.upsert({
+        code: body.code,
+        name: body.name,
+        stripeProductId: body.stripeProductId,
+        isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
+        maxMessages: body.limits.assistant.maxMessages,
+        isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
+        isManagedNotionAllowed: body.limits.connections.isNotionAllowed,
+        isManagedGoogleDriveAllowed:
+          body.limits.connections.isGoogleDriveAllowed,
+        isManagedGithubAllowed: body.limits.connections.isGithubAllowed,
+        maxDataSourcesCount: body.limits.dataSources.count,
+        maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
+        maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
+        maxUsersInWorkspace: body.limits.users.maxUsers,
+      });
+      res.status(200).json({
+        plans: [body],
+      });
+      break;
 
     default:
       return apiError(req, res, {

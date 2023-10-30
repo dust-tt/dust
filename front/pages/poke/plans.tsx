@@ -12,6 +12,7 @@ import {
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import React from "react";
+import { useSWRConfig } from "swr";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -43,6 +44,7 @@ const PlansPage = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   void _props;
+  const { mutate } = useSWRConfig();
 
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -57,7 +59,7 @@ const PlansPage = (
     setEditingPlanCode(plan.code);
   };
 
-  const handleSavePlan = () => {
+  const handleSavePlan = async () => {
     if (!editingPlan) {
       sendNotification({
         title: "Error saving plan",
@@ -118,11 +120,52 @@ const PlansPage = (
       }
     }
 
-    if (editingPlan.isNewPlan) {
-      // TODO: create plan
-    } else {
-      // TODO: update plan
-    }
+    const requestBody: PokePlanType = {
+      code: editingPlan.code.trim(),
+      name: editingPlan.name.trim(),
+      limits: {
+        assistant: {
+          isSlackBotAllowed: editingPlan.limits.assistant.isSlackBotAllowed,
+          maxMessages: parseInt(
+            editingPlan.limits.assistant.maxMessages.toString(),
+            10
+          ),
+        },
+        connections: {
+          isSlackAllowed: editingPlan.limits.connections.isSlackAllowed,
+          isNotionAllowed: editingPlan.limits.connections.isNotionAllowed,
+          isGoogleDriveAllowed:
+            editingPlan.limits.connections.isGoogleDriveAllowed,
+          isGithubAllowed: editingPlan.limits.connections.isGithubAllowed,
+        },
+        dataSources: {
+          count: parseInt(editingPlan.limits.dataSources.count.toString(), 10),
+          documents: {
+            count: parseInt(
+              editingPlan.limits.dataSources.documents.count.toString(),
+              10
+            ),
+            sizeMb: parseInt(
+              editingPlan.limits.dataSources.documents.sizeMb.toString(),
+              10
+            ),
+          },
+        },
+        users: {
+          maxUsers: parseInt(editingPlan.limits.users.maxUsers.toString(), 10),
+        },
+      },
+      stripeProductId: editingPlan.stripeProductId?.trim() || null,
+    };
+
+    await fetch("/api/poke/plans", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+    await mutate("/api/poke/plans");
 
     setEditingPlan(null);
     setEditingPlanCode(null);
@@ -314,6 +357,7 @@ const PLAN_FIELDS = {
         return "Plan Code must only contain alphanumeric characters and underscores";
       }
     },
+    immutable: true,
   },
   isSlackBotAllowed: {
     type: "boolean",
@@ -568,7 +612,7 @@ const Field: React.FC<FieldProps> = ({
   editingPlan,
 }) => {
   const field = PLAN_FIELDS[fieldName];
-
+  const isImmutable = "immutable" in field && field.immutable;
   const fieldNode = (() => {
     switch (field.type) {
       case "string":
@@ -585,6 +629,7 @@ const Field: React.FC<FieldProps> = ({
             }}
             readOnlyValue={field.value(plan)}
             error={editingPlan && field.error(editingPlan)}
+            disabled={!editingPlan?.isNewPlan && isImmutable}
           />
         );
       case "boolean":
@@ -600,6 +645,7 @@ const Field: React.FC<FieldProps> = ({
               setEditingPlan(field.set(editingPlan, x));
             }}
             readOnlyChecked={field.value(plan)}
+            disabled={!editingPlan?.isNewPlan && isImmutable}
           />
         );
       case "number":
@@ -616,6 +662,7 @@ const Field: React.FC<FieldProps> = ({
             }}
             readOnlyValue={field.value(plan).toString()}
             error={editingPlan && field.error(editingPlan)}
+            disabled={!editingPlan?.isNewPlan && isImmutable}
           />
         );
       default:
@@ -651,6 +698,7 @@ type TextFieldProps = {
   name: string;
   readOnlyValue?: string | null;
   error?: string | null;
+  disabled: boolean;
 };
 
 const TextField: React.FC<TextFieldProps> = ({
@@ -660,6 +708,7 @@ const TextField: React.FC<TextFieldProps> = ({
   name,
   readOnlyValue,
   error,
+  disabled,
 }) => {
   return isEditing ? (
     <Input
@@ -669,6 +718,7 @@ const TextField: React.FC<TextFieldProps> = ({
       name={name}
       error={error}
       showErrorLabel={true}
+      disabled={disabled}
     />
   ) : (
     <div
@@ -688,6 +738,7 @@ type NumberFieldProps = {
   name: string;
   readOnlyValue?: string | null;
   error?: string | null;
+  disabled: boolean;
 };
 
 const NumberField: React.FC<NumberFieldProps> = ({
@@ -697,6 +748,7 @@ const NumberField: React.FC<NumberFieldProps> = ({
   name,
   readOnlyValue,
   error,
+  disabled,
 }) => {
   return isEditing ? (
     <Input
@@ -706,6 +758,7 @@ const NumberField: React.FC<NumberFieldProps> = ({
       name={name}
       error={error}
       showErrorLabel={true}
+      disabled={disabled}
     />
   ) : (
     <div
@@ -728,6 +781,7 @@ type BooleanFieldProps = {
   onChange: (x: boolean) => void;
   name: string;
   readOnlyChecked?: boolean | null;
+  disabled: boolean;
 };
 
 const BooleanField: React.FC<BooleanFieldProps> = ({
@@ -736,13 +790,14 @@ const BooleanField: React.FC<BooleanFieldProps> = ({
   onChange,
   name,
   readOnlyChecked,
+  disabled,
 }) => {
   void name;
   return (
     <Checkbox
       checked={(isEditing ? checked : readOnlyChecked) || false}
       onChange={onChange}
-      disabled={!isEditing}
+      disabled={!isEditing || disabled}
     />
   );
 };
