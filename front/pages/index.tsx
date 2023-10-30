@@ -4,7 +4,6 @@ import {
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
-  LightbulbIcon,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -13,10 +12,8 @@ import {
   NotionLogo,
   OpenaiLogo,
   PlayIcon,
-  PriceTable,
   RocketIcon,
   SlackLogo,
-  SparklesIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -33,7 +30,6 @@ import {
   H1,
   H2,
   H3,
-  H4,
   P,
   ReactiveIcon,
   ReactiveImg,
@@ -44,6 +40,7 @@ const defaultFlexClasses = "flex flex-col gap-4";
 
 import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
+import { PricePlans } from "@app/components/home/pricePlans";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
@@ -226,85 +223,86 @@ export default function Home({
               </div>
             </div>
           </Grid>
-          <Grid className="items-center lg:hidden">
-            <div className="col-span-12 sm:col-span-10 sm:col-start-2">
-              <ReactiveImg>
-                <img src="/static/landing/conversation.png" />
-              </ReactiveImg>
-            </div>
-            <P border="sky" className="col-span-9 sm:col-span-6">
+          <Grid className="items-center">
+            <ReactiveImg
+              className={classNames(
+                "col-span-12",
+                "sm:col-span-10 sm:col-start-2",
+                "lg:col-span-7 lg:col-start-auto lg:row-span-4",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:col-span-5 2xl:col-start-3"
+              )}
+            >
+              <img src="/static/landing/conversation.png" />
+            </ReactiveImg>
+            <P
+              borderCSS="border-sky-400"
+              className={classNames(
+                "col-span-9",
+                "sm:col-span-6",
+                "lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:col-span-3"
+              )}
+            >
               Deploy <Strong>the best Large Language Models</Strong> to&nbsp;
               <Strong>all&nbsp;your&nbsp;company</Strong>,
               <br className="hidden sm:block" />
               today.
             </P>
             <P
-              border="amber"
-              className="col-span-9 col-start-4 sm:col-span-6 sm:col-start-7"
+              borderCSS="border-amber-400"
+              className={classNames(
+                "col-span-9 col-start-4",
+                "sm:col-span-6 sm:col-start-auto",
+                "lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:col-span-3"
+              )}
             >
               Connect Dust to <Strong>your team’s data</Strong> and{" "}
               <Strong>break down knowledge silos</Strong>{" "}
               with&nbsp;context&#8209;aware assistants.
             </P>
-            <P border="red" className="col-span-9 sm:col-span-6">
+            <P
+              borderCSS="border-red-400"
+              className={classNames(
+                "col-span-9",
+                "sm:col-span-6",
+                "lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:col-span-3"
+              )}
+            >
               Empower your teams with{" "}
               <Strong>assistants tailored to&nbsp;their needs</Strong> on
               concrete use&nbsp;cases.
             </P>
             <P
-              border="emerald"
-              className="col-span-9 col-start-4 sm:col-span-6 sm:col-start-7"
+              borderCSS="border-emerald-400"
+              className={classNames(
+                "col-span-9 col-start-4",
+                "sm:col-span-6 sm:col-start-auto",
+                "lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:col-span-3"
+              )}
             >
               <Strong>Control data access granularly</Strong> with a{" "}
               <Strong>safe and privacy-obsessed</Strong> application.
             </P>
           </Grid>
-          <Grid className="hidden items-center lg:grid">
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "gap-8",
-                "col-span-5",
-                "xl:col-span-5 xl:col-start-2",
-                "2xl:col-span-4 2xl:col-start-3"
-              )}
-            >
-              <P border="sky">
-                Deploy <Strong>the best Large Language Models</Strong> to{" "}
-                <Strong>all&nbsp;your&nbsp;company</Strong>, today.
-              </P>
-              <P border="amber">
-                Connect Dust to <Strong>your team’s data</Strong> and{" "}
-                <Strong>break down knowledge silos</Strong>{" "}
-                with&nbsp;context&#8209;aware assistants.
-              </P>
-              <P border="red">
-                Empower your teams with{" "}
-                <Strong>assistants tailored to&nbsp;their needs</Strong> on
-                concrete use&nbsp;cases.
-              </P>
-              <P border="emerald">
-                <Strong>Control data access granularly</Strong> with a{" "}
-                <Strong>safe and privacy-obsessed</Strong> application.
-              </P>
-            </div>
-            <div className="col-span-12 md:col-span-7 xl:col-span-5">
-              <ReactiveImg>
-                <img src="/static/landing/conversation.png" />
-              </ReactiveImg>
-            </div>
-          </Grid>
 
+          {/* Get state of the art*/}
           <Grid>
             <div
               ref={scrollRef1}
               className={classNames(
                 defaultFlexClasses,
-                "flex flex-col gap-4",
                 "col-span-12",
-                "lg:col-span-8 lg:col-start-4",
-                "xl:col-span-8 xl:col-start-2",
-                "2xl:col-start-3 2xl:text-right"
+                "lg:col-span-10 lg:col-start-2",
+                "xl:col-span-8 xl:col-start-5 xl:text-right",
+                "2xl:col-start-3"
               )}
             >
               <H2 className="text-sky-500">
@@ -314,139 +312,135 @@ export default function Home({
               </H2>
               <P variant="lg">
                 Dust gives you&nbsp;access to the&nbsp;
-                <Strong>leading models</Strong>,
-                <br className="hidden sm:block" />
-                and&nbsp; augments them with&nbsp;
+                <Strong>leading models</Strong>, <br />
+                and&nbsp;augments them with&nbsp;
                 <Strong>your&nbsp;company’s internal&nbsp;information</Strong>.
               </P>
             </div>
           </Grid>
+
+          {/* Get state of the art: Content*/}
           <Grid>
-            <div
+            <ReactiveImg
               className={classNames(
-                "flex h-full flex-col justify-center",
-                "col-span-10 col-start-2 sm:col-span-8 sm:col-start-3 lg:hidden"
-              )}
-            >
-              <ReactiveImg>
-                <img src="/static/landing/connect.png" />
-              </ReactiveImg>
-            </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "gap-8",
-                "col-span-10 col-start-2",
-                "md:col-span-8 md:col-start-3",
-                "lg:col-span-7",
-                "xl:col-span-6 xl:col-start-2",
-                "2xl:col-span-5 2xl:col-start-3"
-              )}
-            >
-              <P border="sky">
-                Your own knowledge base continuously in&nbsp;sync:{" "}
-                <Strong>
-                  Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
-                </Strong>
-                .
-              </P>
-            </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "gap-8",
-                "col-span-10 col-start-2",
+                "order-1 col-span-12",
                 "sm:col-span-6",
-                "lg:col-span-7",
-                "xl:col-span-6 xl:col-start-2",
-                "2xl:col-span-5 2xl:col-start-3"
+                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3",
+                "2xl:order-3 2xl:col-span-4 2xl:col-start-2 2xl:row-span-3"
               )}
             >
-              <P border="pink">
-                Modular and&nbsp;composable: Dust is&nbsp;
-                <Strong>exceptionally&nbsp;adaptable</Strong>, tailoring to your
-                unique&nbsp;requirements,{" "}
-                <Strong>
-                  continuously&nbsp;evolving to&nbsp;meet
-                  your&nbsp;changing&nbsp;needs
-                </Strong>
-                .
-              </P>
-              <div className="flex flex-wrap gap-4 pl-6">
-                <ReactiveIcon colorHEX="#A26BF7">
-                  <OpenaiLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#D4A480">
-                  <AnthropicLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1A1C20">
-                  <MistralLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <MicrosoftLogo />
-                </ReactiveIcon>
-                <div className="hidden sm:block">
-                  <ReactiveIcon colorHEX="#1E3A8A">
-                    <MoreIcon className="text-slate-50" />
-                  </ReactiveIcon>
-                </div>
-              </div>
-            </div>
+              <img src="/static/landing/connect.png" />
+            </ReactiveImg>
+
+            <P
+              borderCSS="border-sky-400"
+              className={classNames(
+                "order-2 col-span-12",
+                "sm:col-span-6 sm:self-center",
+                "xl:order-1 xl:col-span-6 xl:col-start-auto xl:self-end",
+                "2xl:order-1 2xl:col-span-5  2xl:col-start-2 2xl:self-end"
+              )}
+            >
+              Your own knowledge base continuously in&nbsp;sync: <br />
+              <Strong>
+                Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
+              </Strong>
+              .
+            </P>
+
             <div
               className={classNames(
-                defaultFlexClasses,
-                "gap-8",
-                "col-span-10 col-start-2",
-                "sm:col-span-6",
-                "lg:col-span-7",
-                "xl:col-span-6 xl:col-start-2",
-                "2xl:col-span-5 2xl:col-start-3"
+                "flex w-full flex-wrap justify-center gap-4",
+                "order-3 col-span-12",
+                "sm:col-span-6 sm:justify-end",
+                "xl:order-2 xl:col-span-6 xl:justify-start xl:self-start",
+                "2xl:order-2 2xl:col-span-6"
               )}
             >
-              <P border="emerald">
-                Proprietary and&nbsp;open-source models suited
-                to&nbsp;your&nbsp;needs:{" "}
-                <Strong>OpenAI,&nbsp;Anthropic,&nbsp;Mistral…</Strong>
-              </P>
-              <div className="flex flex-wrap gap-4 pl-6">
-                <div className="hidden sm:block">
-                  <ReactiveIcon colorHEX="#1E3A8A">
-                    <GoogleLogo />
-                  </ReactiveIcon>
-                </div>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <DriveLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <NotionLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <GithubWhiteLogo />
-                </ReactiveIcon>
-                <ReactiveIcon colorHEX="#1E3A8A">
-                  <SlackLogo />
-                </ReactiveIcon>
-                <div className="hidden xl:block">
-                  <ReactiveIcon colorHEX="#1E3A8A">
-                    <MoreIcon className="text-slate-50" />
-                  </ReactiveIcon>
-                </div>
-              </div>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <GoogleLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <DriveLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <NotionLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <GithubWhiteLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <SlackLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A" className="xl:hidden 2xl:block">
+                <MoreIcon className="text-slate-50" />
+              </ReactiveIcon>
             </div>
-            <div className="hidden lg:block xl:col-span-4">
-              <ReactiveImg>
-                <img src="/static/landing/connect.png" />
-              </ReactiveImg>
+            <P
+              borderCSS="border-sky-400"
+              className={classNames(
+                "order-4 col-span-12",
+                "sm:col-span-6 sm:self-center",
+                "xl:order-4 xl:col-start-7 xl:self-start",
+                "2xl:col-span-5 2xl:col-start-7"
+              )}
+            >
+              Modular and&nbsp;composable: Dust is&nbsp;
+              <Strong>exceptionally&nbsp;adaptable</Strong>, tailoring
+              to&nbsp;your unique requirements,{" "}
+              <Strong>
+                continuously&nbsp;evolving to&nbsp;meet
+                your&nbsp;changing&nbsp;needs
+              </Strong>
+              .
+            </P>
+            <div
+              className={classNames(
+                "flex w-full flex-wrap justify-center gap-4",
+                "order-5 col-span-12",
+                "sm:col-span-6 sm:justify-end",
+                "xl:order-5 xl:col-start-7 xl:justify-start"
+              )}
+            >
+              <ReactiveIcon colorHEX="#A26BF7">
+                <OpenaiLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#D4A480">
+                <AnthropicLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1A1C20">
+                <MistralLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <MicrosoftLogo />
+              </ReactiveIcon>
+              <ReactiveIcon colorHEX="#1E3A8A">
+                <MoreIcon className="text-slate-50" />
+              </ReactiveIcon>
             </div>
+            <P
+              borderCSS="border-sky-400"
+              className={classNames(
+                "order-6 col-span-12",
+                "sm:order-5 sm:col-span-6 sm:self-center",
+                "xl:col-start-7 xl:self-start",
+                "2xl:col-span-5 2xl:col-start-7"
+              )}
+            >
+              Proprietary and&nbsp;open-source models suited
+              to&nbsp;your&nbsp;needs:{" "}
+              <Strong>OpenAI,&nbsp;Anthropic,&nbsp;Mistral…</Strong>
+            </P>
           </Grid>
+
+          {/* Bring your team*/}
           <Grid>
             <div
               ref={scrollRef2}
               className={classNames(
                 defaultFlexClasses,
-                "flex flex-col gap-4",
                 "col-span-12",
-                "md:col-span-8 md:col-start-2",
+                "lg:col-span-10 lg:col-start-2",
                 "xl:col-span-7 xl:col-start-2",
                 "2xl:col-start-3"
               )}
@@ -474,115 +468,152 @@ export default function Home({
               </P>
             </div>
           </Grid>
-          <Grid>
-            <div
+
+          {/* Bring your team: Content*/}
+          <Grid verticalAlign="center">
+            <ReactiveImg
               className={classNames(
-                "col-span-12 pb-8 sm:pb-0",
+                "order-1",
+                "col-span-12",
                 "sm:col-span-10 sm:col-start-2",
-                "md:col-span-7 md:col-start-1",
-                "xl:col-span-6 xl:col-start-2"
+                "md:col-span-8 md:col-start-auto",
+                "lg:order-1 lg:col-span-7 lg:row-span-3 lg:self-end",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:order-1 2xl:col-span-5 2xl:col-start-3 2xl:row-span-2 2xl:self-start"
               )}
             >
-              <ReactiveImg>
-                <img src="/static/landing/builder.png" />
-              </ReactiveImg>
-            </div>
-            <div
+              <img src="/static/landing/builder.png" />
+            </ReactiveImg>
+
+            <ReactiveImg
               className={classNames(
-                defaultFlexClasses,
+                "order-2",
+                "col-span-6 row-span-3 hidden sm:block",
+                "md:col-span-6",
+                "lg:row-span-auto lg:order-5 lg:col-span-4 lg:col-start-auto lg:self-start",
+                "xl:col-start-2",
+                "2xl:order-3 2xl:col-span-3 2xl:col-start-auto"
+              )}
+            >
+              <img src="/static/landing/assistants.png" />
+            </ReactiveImg>
+
+            <P
+              borderCSS="border-amber-400"
+              className={classNames(
+                "order-3",
                 "col-span-12",
                 "sm:col-span-6",
-                "md:col-span-5 md:gap-12",
-                "xl:col-span-4 xl:gap-16"
+                "md:order-1 md:col-span-4",
+                "lg:order-2 lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:order-2 2xl:col-span-4 2xl:mt-8"
               )}
             >
-              <P border="sky">
-                Team members <Strong>imagine new workflows</Strong> and&nbsp;
-                <Strong>package them with assistants</Strong> that&nbsp;others
-                can&nbsp;effortlessly&nbsp;use.
-              </P>
-              <div className="hidden w-full pl-4 sm:block xl:w-[90%] xl:pl-4 2xl:w-[75%] ">
-                <ReactiveImg>
-                  <img src="/static/landing/assistants.png" />
-                </ReactiveImg>
+              Team members <Strong>imagine new workflows</Strong> and&nbsp;
+              <Strong>package them with assistants</Strong> that&nbsp;others
+              can&nbsp;effortlessly&nbsp;use.
+            </P>
+
+            <P
+              borderCSS="border-amber-400"
+              className={classNames(
+                "order-4",
+                "col-span-12",
+                "sm:col-span-6",
+                "md:order-3",
+                "lg:order-3 lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:order-5 2xl:col-span-4 2xl:self-start"
+              )}
+            >
+              Spread good practices &&nbsp;foster collaboration with{" "}
+              <Strong>shared conversations</Strong>,{" "}
+              <Strong>@mentions in&nbsp;discussions</Strong> and{" "}
+              <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
+            </P>
+            <P
+              borderCSS="border-amber-400"
+              className={classNames(
+                "order-5",
+                "col-span-12",
+                "sm:col-span-6",
+                "md:order-4",
+                "lg-order-4 lg:col-span-4",
+                "2xl:order-6 2xl:col-span-3 2xl:self-start"
+              )}
+            >
+              Manage workspace invitations seamlessly&nbsp;with{" "}
+              <Strong>single sign&#8209;on</Strong>&nbsp;(SSO).
+            </P>
+
+            <ReactiveImg
+              className={classNames(
+                "order-6",
+                "col-span-12 sm:hidden",
+                "md:col-span-10 md:col-start-2 lg:block",
+                "md:order-5",
+                "lg:order-6 lg:col-span-8 lg:col-start-auto",
+                "xl:col-span-7",
+                "2xl:order-4 2xl:col-span-5 2xl:col-start-2 2xl:row-span-4"
+              )}
+            >
+              <div className="rounded-xl">
+                <img src="/static/landing/slack.png" />
               </div>
-            </div>
-            <div
-              className={classNames(
-                "flex flex-col justify-center gap-10",
-                "col-span-12",
-                "sm:col-span-6",
-                "md:col-span-5",
-                "xl:col-span-4 xl:col-start-2",
-                "2xl:col-span-3 2xl:col-start-3"
-              )}
-            >
-              <P border="amber">
-                Spread good practices &&nbsp;foster collaboration with{" "}
-                <Strong>shared conversations</Strong>,{" "}
-                <Strong>@mentions in&nbsp;discussions</Strong> and{" "}
-                <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
-              </P>
-              <P border="pink">
-                Manage workspace invitations seamlessly&nbsp;with{" "}
-                <Strong>single sign&#8209;on</Strong>&nbsp;(SSO).
-              </P>
-            </div>
-            <div className="col-span-12 pt-8 sm:pt-0 md:col-span-7 xl:col-span-6">
-              <ReactiveImg>
-                <div className="rounded-xl">
-                  <img src="/static/landing/slack.png" />
-                </div>
-              </ReactiveImg>
-            </div>
+            </ReactiveImg>
           </Grid>
+
+          {/* Design for security */}
           <Grid>
-            <div ref={scrollRef3} className="col-span-12 md:col-span-6">
-              <H2 className="text-red-400">
-                Designed for security
-                <br />
-                <span className="text-red-200">and data privacy.</span>
-              </H2>
-            </div>
-            <P variant="lg" className="col-span-6">
+            <H2 className="col-span-12 text-red-400 md:col-span-6 md:row-span-2 xl:col-span-5 xl:col-start-2 2xl:col-span-4 2xl:col-start-3">
+              Designed for security
+              <br />
+              <span className="text-red-200">and data privacy.</span>
+            </H2>
+            <P variant="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
               <Strong>Your data is private</Strong>, No re-training
               of&nbsp;models on your internal knowledge.
             </P>
-            <P variant="lg" className="col-span-6">
+            <P variant="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
               <Strong>Enterprise-grade security</Strong> to manage
               your&nbsp;data access policies with control and&nbsp;confidence.
             </P>
           </Grid>
+
+          {/* Need more? */}
           <Grid>
-            <div
-              className={classNames(
-                "col-span-12 hidden md:block",
-                "md:col-span-6 xl:col-span-5 xl:col-start-2 2xl:col-span-4 2xl:col-start-3"
-              )}
-            >
-              <div className="w-full pt-12">
-                <ReactiveImg paddingCSS="p-1">
-                  <img src="/static/landing/apps.png" />
-                </ReactiveImg>
-              </div>
-            </div>
-            <H2 className="col-span-12 text-emerald-500">
+            <H2 className="order-1 col-span-12 text-emerald-500 md:col-span-6 xl:col-span-5  xl:col-start-2">
               Need more?
               <br />
               <span className="text-emerald-200">Dust do it!</span>
             </H2>
-            <div className="col-span-10 col-start-2 md:hidden">
-              <ReactiveImg paddingCSS="p-1">
-                <img src="/static/landing/apps.png" />
-              </ReactiveImg>
-            </div>
-            <P variant="lg" className="col-span-6">
+            <ReactiveImg
+              paddingCSS="p-1"
+              className={classNames(
+                "order-2",
+                "col-span-10 col-start-2",
+                "sm:col-span-8 sm:col-start-3",
+                "md:col-span-6 md:col-start-auto md:row-span-3 md:self-center",
+                "xl:col-span-5",
+                "2xl:col-span-4"
+              )}
+            >
+              <img src="/static/landing/apps.png" />
+            </ReactiveImg>
+            <P
+              variant="lg"
+              className="order-3 col-span-6 lg:col-span-5 xl:col-start-2"
+            >
               Provide{" "}
               <Strong>developers and tinkerers with a&nbsp;platform</Strong>{" "}
               to&nbsp;build custom actions and&nbsp;application orchestration
               to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
             </P>
-            <P variant="lg" className="col-span-6">
+            <P
+              variant="lg"
+              className="order-4 col-span-6 lg:col-span-5 xl:col-start-2"
+            >
               Support <Strong>custom plugins</Strong> for assistants to interact
               with your <Strong>own databases on advanced use cases</Strong>.
             </P>
@@ -608,7 +639,7 @@ export default function Home({
               </P>
             </div>
           </Grid>
-          <Grid className="hidden lg:block">
+          <Grid className="hidden md:grid">
             <div
               className={classNames(
                 "pb-8",
@@ -624,122 +655,17 @@ export default function Home({
                 <span className="text-pink-200">Meet our pricing plans.</span>
               </H2>
             </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "s-dark dark gap-4",
-                "hidden md:block",
-                "col-span-12",
-                "xl:col-span-10 xl:col-start-2"
-              )}
-            >
-              <div className="flex flex-row gap-10 ">
-                <PriceTable
-                  title="Free"
-                  price="$0"
-                  priceLabel=""
-                  color="emerald"
-                  size="sm"
-                  magnified={false}
-                >
-                  <PriceTable.Item label="One user" variant="dash" />
-                  <PriceTable.Item label="One workspace" variant="dash" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item
-                    label="100 assistant messages"
-                    variant="dash"
-                  />
-                  <PriceTable.Item
-                    label="50 documents as data sources"
-                    variant="dash"
-                  />
-                  <PriceTable.Item label="No connections" variant="xmark" />
-                  <PriceTable.ActionContainer>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      label="Start testing"
-                      icon={LightbulbIcon}
-                    />
-                  </PriceTable.ActionContainer>
-                </PriceTable>
-
-                <PriceTable
-                  title="Pro"
-                  price="$29"
-                  color="sky"
-                  priceLabel="/ month / user"
-                  size="sm"
-                  magnified={false}
-                >
-                  <PriceTable.Item label="From 1 user" />
-                  <PriceTable.Item label="One workspace" variant="dash" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Up to 1Go/user of data sources" />
-                  <PriceTable.Item
-                    label="Connections
-(GitHub, Google Drive, Notion, Slack)"
-                  />
-                  <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
-                  <PriceTable.Item label="Dust Slackbot" />
-                  <PriceTable.Item label="Assistants can execute actions" />
-                  <PriceTable.Item
-                    label="Workspace role and permissions"
-                    variant="dash"
-                  />
-                  <PriceTable.ActionContainer>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      label="Start now"
-                      icon={RocketIcon}
-                    />
-                  </PriceTable.ActionContainer>
-                </PriceTable>
-
-                <PriceTable
-                  title="Enterprise"
-                  price="Custom"
-                  size="sm"
-                  magnified={false}
-                >
-                  <PriceTable.Item label="From 100 users" />
-                  <PriceTable.Item label="Multiple workspaces" />
-                  <PriceTable.Item label="Privacy and Data Security" />
-                  <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
-                  <PriceTable.Item label="Unlimited custom assistants" />
-                  <PriceTable.Item label="Unlimited messages" />
-                  <PriceTable.Item label="Unlimited data sources" />
-                  <PriceTable.Item
-                    label="Connections
-(GitHub, Google Drive, Notion, Slack…)"
-                  />
-                  <PriceTable.Item label="Single Sign-on" />
-                  <PriceTable.Item label="Dust Slackbot" />
-                  <PriceTable.Item label="Assistants can execute actions" />
-                  <PriceTable.Item label="Advanced workspace role and permissions" />
-                  <PriceTable.Item label="Dedicated account support" />
-                  <PriceTable.ActionContainer>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      label="Contact us"
-                      icon={SparklesIcon}
-                    />
-                  </PriceTable.ActionContainer>
-                </PriceTable>
-              </div>
+            <div className="s-dark col-span-12 lg:px-2 2xl:px-24">
+              <PricePlans size="xs" className="lg:hidden" isTabs />
+              <PricePlans size="xs" className="hidden lg:flex xl:hidden" />
+              <PricePlans className="hidden xl:flex" />
             </div>
           </Grid>
-          <Grid className="hidden md:block">
+          {/* 
+          <Grid className="hidden md:grid">
             <H2
               className={classNames(
-                "text-emerald-400",
+                "text-amber-400",
                 "col-span-12",
                 "xl:col-span-8 xl:col-start-2"
               )}
@@ -749,8 +675,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-12",
-                "md:col-span-4",
+                "col-span-6",
                 "xl:col-span-4 xl:col-start-2",
                 "2xl:col-span-3 2xl:col-start-3"
               )}
@@ -766,8 +691,8 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-12",
-                "md:col-span-4",
+                "col-span-6",
+                "md:col-span-6",
                 "xl:col-span-3"
               )}
             >
@@ -781,8 +706,7 @@ export default function Home({
             <div
               className={classNames(
                 defaultFlexClasses,
-                "col-span-12",
-                "md:col-span-4",
+                "col-span-6",
                 "xl:col-span-3"
               )}
             >
@@ -794,7 +718,7 @@ export default function Home({
                 ground up, rather than sprinkling them here and&nbsp;there.
               </P>
             </div>
-          </Grid>
+          </Grid> */}
         </div>
 
         <Footer />
