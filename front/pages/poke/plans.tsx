@@ -56,18 +56,20 @@ const PlansPage = (
       });
       return;
     }
-    const errors = Object.keys(PLAN_FIELDS).map((fieldName) => {
-      const field = PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
-      if ("error" in field) {
-        return field.error?.(editingPlan);
-      }
-    });
+    const errors = Object.keys(PLAN_FIELDS)
+      .map((fieldName) => {
+        const field = PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
+        if ("error" in field) {
+          return field.error?.(editingPlan);
+        }
+      })
+      .filter((x) => !!x);
 
-    if (errors.some((x) => !!x)) {
+    if (errors.length) {
       sendNotification({
         title: "Error saving plan",
         type: "error",
-        description: "Some fields are invalid",
+        description: `${errors[0]}`,
       });
       return;
     }
