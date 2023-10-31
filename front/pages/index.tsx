@@ -2,8 +2,11 @@ import {
   AnthropicLogo,
   Button,
   DriveLogo,
+  DropdownMenu,
+  GithubLogo,
   GithubWhiteLogo,
   GoogleLogo,
+  LoginIcon,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -110,10 +113,26 @@ export default function Home({
     <>
       <Header />
       <ScrollingHeader showItemY={logoY}>
-        <div className="flex h-full w-full items-center px-4">
+        <div className="flex h-full w-full items-center gap-10 px-4">
           <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
-          <div className="flex-grow" />
-          <div className="flex items-center gap-2">
+          <div className="invisibleFirst flex flex-grow flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out">
+            <P size="xs">
+              <A variant="tertiary" href="#sectionProduct">
+                The Product
+              </A>
+            </P>
+            <P size="xs">
+              <A variant="tertiary" href="#sectionPricing">
+                Price Plans
+              </A>
+            </P>
+            {/* <P size="xs">
+              <A variant="tertiary" href="#section3">
+                Testimonials
+              </A>
+            </P> */}
+          </div>
+          <div className="flex hidden items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="font-regular font-objektiv text-xs text-slate-400">
                 Sign in with{" "}
@@ -141,6 +160,41 @@ export default function Home({
               <span className="ml-2 mr-1">Sign in with Google</span>
             </GoogleSignInButton>
           </div>
+          <Button.List>
+            <Button
+              variant="primary"
+              size="sm"
+              label="Start with Dust"
+              className="invisibleFirst opacity-0 transition-all duration-500 ease-out"
+              icon={RocketIcon}
+            />
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  label="Sign-in"
+                  icon={LoginIcon}
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topRight" width={240}>
+                <div className="flex flex-col gap-2 p-4">
+                  <Button
+                    variant="tertiary"
+                    size="md"
+                    label="With Google"
+                    icon={GoogleLogo}
+                  />
+                  <Button
+                    variant="tertiary"
+                    size="md"
+                    label="With GitHub"
+                    icon={GithubLogo}
+                  />
+                </div>
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </Button.List>
         </div>
       </ScrollingHeader>
 
@@ -225,6 +279,7 @@ export default function Home({
             </ReactiveImg>
             <div
               ref={scrollRef0}
+              id="sectionProduct"
               className={classNames(
                 "col-span-9",
                 "sm:col-span-6",
@@ -300,7 +355,7 @@ export default function Home({
                 <br />
                 <span className="text-sky-200">today and&nbsp;tomorrow.</span>
               </H2>
-              <P variant="lg">
+              <P size="lg">
                 Dust gives you&nbsp;access to the&nbsp;
                 <Strong>leading models</Strong>, <br />
                 and&nbsp;augments them with&nbsp;
@@ -440,14 +495,14 @@ export default function Home({
                 <br />
                 <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
               </H2>
-              <P variant="lg">
+              <P size="lg">
                 Adopting AI is a&nbsp;
                 <Strong>
                   fundamental shift for&nbsp;your team’s&nbsp;workflows
                 </Strong>
                 .
               </P>
-              <P variant="lg">
+              <P size="lg">
                 Dust empowers{" "}
                 <Strong>your most creative and driven team&nbsp;members</Strong>{" "}
                 to&nbsp;
@@ -566,11 +621,11 @@ export default function Home({
                 <span className="text-red-200">and data privacy.</span>
               </H2>
             </div>
-            <P variant="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
+            <P size="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
               <Strong>Your data is private</Strong>, No re-training
               of&nbsp;models on your internal knowledge.
             </P>
-            <P variant="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
+            <P size="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
               <Strong>Enterprise-grade security</Strong> to manage
               your&nbsp;data access policies with control and&nbsp;confidence.
             </P>
@@ -597,7 +652,7 @@ export default function Home({
               <img src="/static/landing/apps.png" />
             </ReactiveImg>
             <P
-              variant="lg"
+              size="lg"
               className="order-3 col-span-6 lg:col-span-5 xl:col-start-2"
             >
               Provide{" "}
@@ -606,7 +661,7 @@ export default function Home({
               to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
             </P>
             <P
-              variant="lg"
+              size="lg"
               className="order-4 col-span-6 lg:col-span-5 xl:col-start-2"
             >
               Support <Strong>custom plugins</Strong> for assistants to interact
@@ -627,7 +682,7 @@ export default function Home({
                   Come check us out on a larger screen!
                 </span>
               </H2>
-              <P variant="lg">
+              <P size="lg">
                 We're excited for you to explore our price plans and start
                 your&nbsp;onboarding journey. For the&nbsp;optimal experience,
                 please return on a&nbsp;device with a bigger&nbsp;screen.
@@ -637,6 +692,7 @@ export default function Home({
           <Grid>
             <div
               ref={scrollRef4}
+              id="sectionPricing"
               className="col-span-12 text-center md:pb-6 xl:pb-10"
             >
               <H2 className="text-slate-50">
@@ -831,14 +887,14 @@ const Footer = () => {
             <P>
               <Strong>Careers</Strong>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/">
                   Jobs
                 </Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://www.linkedin.com/company/dust-tt/">
                   LinkedIn
@@ -857,17 +913,17 @@ const Footer = () => {
             <P>
               <Strong>About</Strong>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://blog.dust.tt/">Blog</Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://x.com/dust4ai">@dust4ai</Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://github.com/dust-tt">GitHub</Link>
               </A>
@@ -884,12 +940,12 @@ const Footer = () => {
             <P>
               <Strong>Privacy</Strong>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="/website-privacy">Website Privacy Policy</Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="/platform-privacy">Platform Privacy Policy</Link>
               </A>
@@ -906,19 +962,19 @@ const Footer = () => {
             <P>
               <Strong>Legal</Strong>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
                   Legal Notice
                 </Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="/terms">Terms of Use</Link>
               </A>
             </P>
-            <P variant="xs">
+            <P size="xs">
               <A variant="tertiary">
                 <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
                   Cookies Policy
