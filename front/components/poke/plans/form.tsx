@@ -248,6 +248,24 @@ export const Field: React.FC<FieldProps> = ({
   const isImmutable = "immutable" in field && field.immutable;
   const disabled = !editingPlan?.isNewPlan && isImmutable;
 
+  const renderPlanFieldValue = (x: unknown) => {
+    let strValue: string = x?.toString() || "";
+    let classNames = "";
+    if (typeof x === "string") {
+      if (!x) {
+        strValue = "NULL";
+        classNames = "italic text-element-600";
+      }
+    }
+    if (typeof x === "number") {
+      if (x === -1) {
+        strValue = "∞";
+      }
+    }
+
+    return <div className={classNames}>{strValue}</div>;
+  };
+
   const fieldNode = (() => {
     switch (field.type) {
       case "string":
@@ -267,17 +285,7 @@ export const Field: React.FC<FieldProps> = ({
             showErrorLabel={false}
           />
         ) : (
-          <div
-            className={classNames(
-              plan[fieldName] === null ? "italic text-element-600" : ""
-            )}
-          >
-            {plan[fieldName] === null
-              ? "NULL"
-              : field.type == "number" && plan[fieldName] === "-1"
-              ? "∞"
-              : plan[fieldName]?.toString()}
-          </div>
+          renderPlanFieldValue(plan[fieldName])
         );
       case "boolean":
         return (
@@ -330,10 +338,10 @@ export const Field: React.FC<FieldProps> = ({
           </DropdownMenu>
         ) : (
           <div>
-            {
+            {renderPlanFieldValue(
               field.choices.find((choice) => choice.value === plan[fieldName])
                 ?.label
-            }
+            )}
           </div>
         );
       default:
