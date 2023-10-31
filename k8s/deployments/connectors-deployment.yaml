@@ -16,6 +16,7 @@ spec:
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "connectors","service": "connectors","tags": ["env:prod"]}]'
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
