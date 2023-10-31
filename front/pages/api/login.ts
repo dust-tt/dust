@@ -10,10 +10,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import {
-  internalSubscribeWorkspaceToFreeTestPlan,
-  internalSubscribeWorkspaceToFreeUpgradedPlan,
-} from "@app/lib/plans/subscription";
+import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -21,13 +18,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { authOptions } from "./auth/[...nextauth]";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
-
-// List of emails for which all worksapces should be upgraded
-// at sign-up time.
-const EMAILS_TO_AUTO_UPGRADE = [
-  "oauthtest121@gmail.com",
-  "oauthtest222@gmail.com",
-];
 
 async function handler(
   req: NextApiRequest,
@@ -179,15 +169,9 @@ async function handler(
             invitationFlow: "personal",
           });
 
-          if (EMAILS_TO_AUTO_UPGRADE.includes(user.email)) {
-            await internalSubscribeWorkspaceToFreeUpgradedPlan({
-              workspaceId: w.sId,
-            });
-          } else {
-            await internalSubscribeWorkspaceToFreeTestPlan({
-              workspaceId: w.sId,
-            });
-          }
+          await internalSubscribeWorkspaceToFreeTestPlan({
+            workspaceId: w.sId,
+          });
           isAdminOnboarding = true;
         }
       }
