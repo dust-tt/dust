@@ -71,24 +71,19 @@ interface PProps {
   children: ReactNode;
   className?: string;
   size?: "xs" | "sm" | "md" | "lg";
-  borderCSS?: string;
+  dotCSS?: string;
 }
 
 export const P = ({
   children,
-  borderCSS = "",
+  dotCSS = "",
   className = "",
   size = "md",
 }: PProps) => {
-  if (borderCSS) {
+  if (dotCSS) {
     return (
       <div className={classNames(className, "flex gap-4")}>
-        <div
-          className={classNames(
-            borderCSS,
-            "mt-0.5 h-6 w-3 flex-shrink-0 bg-emerald-400"
-          )}
-        />
+        <div className={classNames(dotCSS, "mt-0.5 h-6 w-3 flex-shrink-0")} />
         <p className={classNames(pClasses[size])}>{children}</p>
       </div>
     );

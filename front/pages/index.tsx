@@ -289,7 +289,7 @@ export default function Home({
                 "2xl:col-span-3"
               )}
             >
-              <P borderCSS="bg-sky-400">
+              <P dotCSS="bg-sky-400">
                 Deploy <Strong>the best Large Language Models</Strong> to&nbsp;
                 <Strong>all&nbsp;your&nbsp;company</Strong>,
                 <br className="hidden sm:block" />
@@ -297,7 +297,7 @@ export default function Home({
               </P>
             </div>
             <P
-              borderCSS="bg-amber-300"
+              dotCSS="bg-amber-300"
               className={classNames(
                 "col-span-9 col-start-4",
                 "sm:col-span-6 sm:col-start-auto",
@@ -311,7 +311,7 @@ export default function Home({
               with&nbsp;context&#8209;aware assistants.
             </P>
             <P
-              borderCSS="bg-red-400"
+              dotCSS="bg-red-400"
               className={classNames(
                 "col-span-9",
                 "sm:col-span-6",
@@ -325,7 +325,7 @@ export default function Home({
               concrete use&nbsp;cases.
             </P>
             <P
-              borderCSS="bg-emerald-400"
+              dotCSS="bg-emerald-400"
               className={classNames(
                 "col-span-9 col-start-4",
                 "sm:col-span-6 sm:col-start-auto",
@@ -379,7 +379,7 @@ export default function Home({
             </ReactiveImg>
 
             <P
-              borderCSS="bg-sky-400"
+              dotCSS="bg-sky-400"
               className={classNames(
                 "order-2 col-span-12",
                 "sm:col-span-6 sm:self-center",
@@ -423,7 +423,7 @@ export default function Home({
               </ReactiveIcon>
             </div>
             <P
-              borderCSS="bg-sky-400"
+              dotCSS="bg-sky-400"
               className={classNames(
                 "order-4 col-span-12",
                 "sm:col-span-6 sm:self-center",
@@ -465,7 +465,7 @@ export default function Home({
               </ReactiveIcon>
             </div>
             <P
-              borderCSS="bg-sky-400"
+              dotCSS="bg-sky-400"
               className={classNames(
                 "order-6 col-span-12",
                 "sm:order-5 sm:col-span-6 sm:self-center",
@@ -545,7 +545,7 @@ export default function Home({
             </ReactiveImg>
 
             <P
-              borderCSS="bg-amber-300"
+              dotCSS="bg-amber-300"
               className={classNames(
                 "order-3",
                 "col-span-12",
@@ -562,7 +562,7 @@ export default function Home({
             </P>
 
             <P
-              borderCSS="bg-amber-300"
+              dotCSS="bg-amber-300"
               className={classNames(
                 "order-4",
                 "col-span-12",
@@ -579,7 +579,7 @@ export default function Home({
               <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
             </P>
             <P
-              borderCSS="bg-amber-300"
+              dotCSS="bg-amber-300"
               className={classNames(
                 "order-5",
                 "col-span-12",
