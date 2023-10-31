@@ -41,7 +41,7 @@ export const PricePlans = ({
       <PriceTable.ActionContainer>
         <Button
           variant="primary"
-          size={size == "sm" ? "lg" : "md"}
+          size={size == "sm" ? "md" : "sm"}
           label="Start testing"
           icon={LightbulbIcon}
         />
@@ -76,7 +76,7 @@ export const PricePlans = ({
       <PriceTable.ActionContainer>
         <Button
           variant="primary"
-          size={size == "sm" ? "lg" : "md"}
+          size={size == "sm" ? "md" : "sm"}
           label="Start now"
           icon={RocketIcon}
         />
@@ -105,7 +105,7 @@ export const PricePlans = ({
       <PriceTable.ActionContainer>
         <Button
           variant="primary"
-          size={size == "sm" ? "lg" : "md"}
+          size={size == "sm" ? "md" : "sm"}
           label="Contact us"
           icon={SparklesIcon}
         />
@@ -116,17 +116,19 @@ export const PricePlans = ({
     return (
       <div
         className={classNames(
-          "mx-8 sm:mx-24",
+          "mx-0 sm:mx-24",
           "w-full max-w-md px-2 py-16 sm:px-0",
           className
         )}
       >
         <Tab.Group>
-          <Tab.List className="flex space-x-1 rounded-xl border border-slate-600/40 bg-slate-900/40 p-1 backdrop-blur">
+          <Tab.List className="flex space-x-1 rounded-full border border-slate-600/40 bg-slate-900/40 p-1 backdrop-blur">
             <Tab
               className={({ selected }) =>
                 classNames(
-                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                  "py-2 text-sm",
+                  "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-emerald-500 text-white shadow"
@@ -139,7 +141,9 @@ export const PricePlans = ({
             <Tab
               className={({ selected }) =>
                 classNames(
-                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                  "py-2 text-sm",
+                  "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-sky-500 text-white shadow"
@@ -152,7 +156,9 @@ export const PricePlans = ({
             <Tab
               className={({ selected }) =>
                 classNames(
-                  "w-full rounded-lg py-3 text-lg font-semibold transition-all duration-300 ease-out",
+                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                  "py-2 text-sm",
+                  "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-pink-500 text-white shadow"

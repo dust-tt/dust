@@ -84,6 +84,7 @@ export default function Home({
   const logoRef = useRef<HTMLDivElement | null>(null);
   const [hasScrolled, setHasScrolled] = useState<boolean>(false);
 
+  const scrollRef0 = useRef<HTMLDivElement | null>(null);
   const scrollRef1 = useRef<HTMLDivElement | null>(null);
   const scrollRef2 = useRef<HTMLDivElement | null>(null);
   const scrollRef3 = useRef<HTMLDivElement | null>(null);
@@ -164,7 +165,7 @@ export default function Home({
         )}
       >
         <Particles
-          scrollRef1={scrollRef1}
+          scrollRef0={scrollRef0}
           scrollRef2={scrollRef2}
           scrollRef3={scrollRef3}
         />
@@ -235,8 +236,8 @@ export default function Home({
             >
               <img src="/static/landing/conversation.png" />
             </ReactiveImg>
-            <P
-              borderCSS="border-sky-400"
+            <div
+              ref={scrollRef1}
               className={classNames(
                 "col-span-9",
                 "sm:col-span-6",
@@ -245,13 +246,15 @@ export default function Home({
                 "2xl:col-span-3"
               )}
             >
-              Deploy <Strong>the best Large Language Models</Strong> to&nbsp;
-              <Strong>all&nbsp;your&nbsp;company</Strong>,
-              <br className="hidden sm:block" />
-              today.
-            </P>
+              <P borderCSS="bg-sky-400">
+                Deploy <Strong>the best Large Language Models</Strong> to&nbsp;
+                <Strong>all&nbsp;your&nbsp;company</Strong>,
+                <br className="hidden sm:block" />
+                today.
+              </P>
+            </div>
             <P
-              borderCSS="border-amber-400"
+              borderCSS="bg-amber-400"
               className={classNames(
                 "col-span-9 col-start-4",
                 "sm:col-span-6 sm:col-start-auto",
@@ -265,7 +268,7 @@ export default function Home({
               with&nbsp;context&#8209;aware assistants.
             </P>
             <P
-              borderCSS="border-red-400"
+              borderCSS="bg-red-400"
               className={classNames(
                 "col-span-9",
                 "sm:col-span-6",
@@ -279,7 +282,7 @@ export default function Home({
               concrete use&nbsp;cases.
             </P>
             <P
-              borderCSS="border-emerald-400"
+              borderCSS="bg-emerald-400"
               className={classNames(
                 "col-span-9 col-start-4",
                 "sm:col-span-6 sm:col-start-auto",
@@ -296,7 +299,7 @@ export default function Home({
           {/* Get state of the art*/}
           <Grid>
             <div
-              ref={scrollRef1}
+              ref={scrollRef0}
               className={classNames(
                 defaultFlexClasses,
                 "col-span-12",
@@ -333,7 +336,7 @@ export default function Home({
             </ReactiveImg>
 
             <P
-              borderCSS="border-sky-400"
+              borderCSS="bg-sky-400"
               className={classNames(
                 "order-2 col-span-12",
                 "sm:col-span-6 sm:self-center",
@@ -377,7 +380,7 @@ export default function Home({
               </ReactiveIcon>
             </div>
             <P
-              borderCSS="border-sky-400"
+              borderCSS="bg-sky-400"
               className={classNames(
                 "order-4 col-span-12",
                 "sm:col-span-6 sm:self-center",
@@ -419,7 +422,7 @@ export default function Home({
               </ReactiveIcon>
             </div>
             <P
-              borderCSS="border-sky-400"
+              borderCSS="bg-sky-400"
               className={classNames(
                 "order-6 col-span-12",
                 "sm:order-5 sm:col-span-6 sm:self-center",
@@ -451,9 +454,9 @@ export default function Home({
                 <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
               </H2>
               <P variant="lg">
-                Embracing AI is a&nbsp;
+                Adopting AI is a&nbsp;
                 <Strong>
-                  paradigm shift for&nbsp;your team’s&nbsp;workflows
+                  fundamental shift for&nbsp;your team’s&nbsp;workflows
                 </Strong>
                 .
               </P>
@@ -499,7 +502,7 @@ export default function Home({
             </ReactiveImg>
 
             <P
-              borderCSS="border-amber-400"
+              borderCSS="bg-amber-400"
               className={classNames(
                 "order-3",
                 "col-span-12",
@@ -516,7 +519,7 @@ export default function Home({
             </P>
 
             <P
-              borderCSS="border-amber-400"
+              borderCSS="bg-amber-400"
               className={classNames(
                 "order-4",
                 "col-span-12",
@@ -533,7 +536,7 @@ export default function Home({
               <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
             </P>
             <P
-              borderCSS="border-amber-400"
+              borderCSS="bg-amber-400"
               className={classNames(
                 "order-5",
                 "col-span-12",
@@ -566,7 +569,7 @@ export default function Home({
 
           {/* Design for security */}
           <Grid>
-            <H2 className="col-span-12 text-red-400 md:col-span-6 md:row-span-2 xl:col-span-5 xl:col-start-2 2xl:col-span-4 2xl:col-start-3">
+            <H2 className="col-span-12 text-red-400 md:col-span-6 md:row-span-2 xl:col-span-5 xl:col-start-2">
               Designed for security
               <br />
               <span className="text-red-200">and data privacy.</span>
@@ -640,14 +643,16 @@ export default function Home({
             </div>
           </Grid> */}
           <Grid>
-            <div className="col-span-12 text-center">
-              <H2 className="text-pink-400">
+            <div className="col-span-12 text-center md:pb-6 xl:pb-10">
+              <H2 className="text-slate-50">
                 Start with Dust!
                 <br />
-                <span className="text-pink-200">Meet our pricing plans.</span>
+                <span className="text-slate-200/50">
+                  Meet our pricing plans.
+                </span>
               </H2>
             </div>
-            <div className="s-dark col-span-12 lg:px-2 2xl:px-24">
+            <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
               <PricePlans size="xs" className="lg:hidden" isTabs />
               <PricePlans size="xs" className="hidden lg:flex xl:hidden" />
               <PricePlans className="hidden xl:flex" />

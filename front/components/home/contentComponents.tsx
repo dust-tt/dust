@@ -27,8 +27,8 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight lg:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-4xl xl:text-5xl drop-shadow-lg",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl drop-shadow-lg",
+  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl drop-shadow-lg",
   h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl drop-shadow-md",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",
 };
@@ -79,18 +79,25 @@ export const P = ({
   borderCSS = "",
   className = "",
   variant = "md",
-}: PProps) => (
-  <p
-    className={classNames(
-      borderCSS,
-      className,
-      borderCSS ? "border-l-4 pb-1 pl-4" : "",
-      pClasses[variant]
-    )}
-  >
-    {children}
-  </p>
-);
+}: PProps) => {
+  if (borderCSS) {
+    return (
+      <div className={classNames(className, "flex gap-4")}>
+        <div
+          className={classNames(
+            borderCSS,
+            "mt-0.5 h-6 w-3 flex-shrink-0 bg-emerald-400"
+          )}
+        />
+        <p className={classNames(pClasses[variant])}>{children}</p>
+      </div>
+    );
+  } else {
+    return (
+      <p className={classNames(className, pClasses[variant])}>{children}</p>
+    );
+  }
+};
 
 const aClasses = {
   primary: "text-action-400 hover:text-action-400 active:text-action-600",
