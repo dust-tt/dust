@@ -591,10 +591,24 @@ export default function DataSourcesView({
         <Page.Vertical>
           <Page.H>Limitations</Page.H>
           <Page.P variant="secondary">
-            Dust doesn't synchronize external files shared within a Notion page
-            or a Slack channel. On Google Drive, files with extracted text
-            bigger than 750KB are excluded. On GitHub, the code base is not
-            synchronized.
+            <ul>
+              <li>
+                <span className="font-bold">Slack</span>: Dust doesn't take into
+                account external files or content behind a url.
+              </li>
+              <li>
+                <span className="font-bold">Notion</span>: Dust doesn't take
+                into account external files or content behind a url.
+              </li>
+              <li>
+                <span className="font-bold">Google Drive</span>: Dust doesn't
+                take into account files with more than 750Kb of extracted text.
+              </li>
+              <li>
+                <span className="font-bold">Github</span>: take into account
+                files with more than 750Kb of extracted text.
+              </li>
+            </ul>
           </Page.P>
         </Page.Vertical>
       </Page.Vertical>
