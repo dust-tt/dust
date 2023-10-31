@@ -90,8 +90,11 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       }
     );
     await Promise.all(
-      slackChannels.map((slackChannel) =>
-        slackChannel.update({ agentConfigurationId }, { transaction: t })
+      slackChannelIds.map((slackChannelId) =>
+        SlackChannel.update(
+          { agentConfigurationId },
+          { where: { connectorId, slackChannelId }, transaction: t }
+        )
       )
     );
   });
