@@ -239,7 +239,7 @@ export default function Welcome({
             <p className="font-objektiv text-2xl font-bold tracking-tighter text-green-400 sm:font-objektiv md:font-objektiv">
               You're ready to go!
             </p>
-            <p>Here is a 3 minutes video to get you started with Dust.</p>
+            <p>Here is a short video to get you started with Dust.</p>
           </div>
           <div>
             <YoutubeIframe youtubeId={youtubeId} />
