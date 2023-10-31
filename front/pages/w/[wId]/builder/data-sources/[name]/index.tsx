@@ -241,7 +241,7 @@ function StandardDataSourceView({
               <Button
                 variant="primary"
                 icon={PlusIcon}
-                label="Document"
+                label="Add document"
                 onClick={() => {
                   // Enforce plan limits: DataSource documents count.
                   if (
