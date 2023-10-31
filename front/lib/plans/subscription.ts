@@ -7,7 +7,7 @@ import {
   FREE_UPGRADED_PLAN_CODE,
   PlanAttributes,
 } from "@app/lib/plans/free_plans";
-//import { createCheckoutSession } from "@app/lib/plans/stripe"; PART OF NEXT PR
+import { createCheckoutSession } from "@app/lib/plans/stripe";
 import { generateModelSId } from "@app/lib/utils";
 import { PlanType } from "@app/types/user";
 
@@ -243,16 +243,16 @@ export const subscribeWorkspaceToPlan = async (
     });
   } else if (newPlan.stripeProductId) {
     // We enter Stripe Checkout flow
-    // const checkoutUrl = await createCheckoutSession({     COMMENTED CAUSE PART OF THE NEXT PR
-    //   owner: workspace,
-    //   planCode: newPlan.code,
-    //   productId: newPlan.stripeProductId,
-    //   isFixedPriceBilling: true,
-    //   stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-    // });
-    // if (checkoutUrl) {
-    //   return checkoutUrl;
-    // }
+    const checkoutUrl = await createCheckoutSession({
+      owner: workspace,
+      planCode: newPlan.code,
+      productId: newPlan.stripeProductId,
+      isFixedPriceBilling: true,
+      stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+    });
+    if (checkoutUrl) {
+      return checkoutUrl;
+    }
   } else {
     throw new Error(
       `Plan with code ${planCode} is not a free plan and has no Stripe Product ID.`
