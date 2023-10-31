@@ -1143,6 +1143,20 @@ export async function* editUserMessage(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
+      const newerMessage = await Message.findOne({
+        where: {
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          version: {
+            [Op.gt]: messageRow.version,
+          },
+        },
+      });
+      if (newerMessage) {
+        throw new Error(
+          "Unexpected: Message to edit is not the latest version"
+        );
+      }
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(messageRow: Message) {
@@ -1433,6 +1447,18 @@ export async function* retryAgentMessage(
 
     if (!messageRow || !messageRow.agentMessage) {
       return null;
+    }
+    const newerMessage = await Message.findOne({
+      where: {
+        rank: messageRow.rank,
+        conversationId: conversation.id,
+        version: {
+          [Op.gt]: messageRow.version,
+        },
+      },
+    });
+    if (newerMessage) {
+      throw new Error("Unexpected: Message to retry is not the latest version");
     }
     const agentMessageRow = await AgentMessage.create(
       {
