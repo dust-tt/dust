@@ -50,6 +50,9 @@ export async function launchSlackSyncWorkflow(
       ],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {
@@ -97,6 +100,9 @@ export async function launchSlackSyncOneThreadWorkflow(
         workflowId: workflowId,
         signal: newWebhookSignal,
         signalArgs: undefined,
+        memo: {
+          connectorId: connectorId,
+        },
       }
     );
 
@@ -133,6 +139,9 @@ export async function launchSlackSyncOneMessageWorkflow(
         workflowId: workflowId,
         signal: newWebhookSignal,
         signalArgs: undefined,
+        memo: {
+          connectorId: connectorId,
+        },
       }
     );
 
@@ -160,6 +169,9 @@ export async function launchSlackSyncOneChannelDebouncedWorkflow(
       workflowId: workflowId,
       signal: botJoinedChanelSignal,
       signalArgs: [{ channelId: channelId }],
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {
@@ -195,6 +207,9 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {

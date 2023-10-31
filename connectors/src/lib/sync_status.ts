@@ -72,7 +72,6 @@ export async function syncSucceeded(connectorId: ModelId, at?: Date) {
  */
 export async function syncFailed(
   connectorId: ModelId,
-  errorMessage: string,
   errorType: ConnectorErrorType,
   at?: Date
 ) {

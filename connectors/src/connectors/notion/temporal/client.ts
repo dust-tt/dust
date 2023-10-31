@@ -43,6 +43,9 @@ export async function launchNotionSyncWorkflow(
     args: [{ connectorId, startFromTs, forceResync }],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
+    memo: {
+      connectorId: connectorId,
+    },
   });
 
   logger.info(

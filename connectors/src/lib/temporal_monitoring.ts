@@ -86,11 +86,7 @@ export class ActivityInboundLogInterceptor
 
         const connectorId = await getConnectorId(workflowId);
         if (connectorId) {
-          await syncFailed(
-            connectorId,
-            "Oops! It seems that our access to your account has been revoked. Please re-authorize this Data Source to keep your data up to date on Dust.",
-            "oauth_token_revoked"
-          );
+          await syncFailed(connectorId, "oauth_token_revoked");
 
           this.logger.info("Cancelling workflow because of expired token.");
           await cancelWorkflow(workflowId);

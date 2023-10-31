@@ -97,6 +97,7 @@ export async function googleDriveFullSync(
     await executeChild(googleDriveGarbageCollectorWorkflow, {
       workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
       args: [connectorId, startSyncTs],
+      memo: workflowInfo().memo,
     });
   }
   console.log("googleDriveFullSync done for connectorId", connectorId);

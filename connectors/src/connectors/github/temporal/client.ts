@@ -58,6 +58,9 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
     args: [dataSourceConfig, githubInstallationId],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }
 
@@ -107,6 +110,9 @@ export async function launchGithubReposSyncWorkflow(
     args: [dataSourceConfig, githubInstallationId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }
 
@@ -145,6 +151,9 @@ export async function launchGithubIssueSyncWorkflow(
     workflowId,
     signal: newWebhookSignal,
     signalArgs: undefined,
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }
 
@@ -184,6 +193,9 @@ export async function launchGithubDiscussionSyncWorkflow(
     workflowId,
     signal: newWebhookSignal,
     signalArgs: undefined,
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }
 
@@ -217,6 +229,9 @@ export async function launchGithubIssueGarbageCollectWorkflow(
       repoId,
       issueNumber
     ),
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }
 
@@ -244,6 +259,9 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
       repoId.toString(),
       discussionNumber,
     ],
+    memo: {
+      connectorId: connectorId,
+    },
     taskQueue: QUEUE_NAME,
     workflowId: getDiscussionGarbageCollectWorkflowId(
       connectorId,
@@ -274,5 +292,8 @@ export async function launchGithubRepoGarbageCollectWorkflow(
     args: [dataSourceConfig, githubInstallationId, repoId.toString()],
     taskQueue: QUEUE_NAME,
     workflowId: getRepoGarbageCollectWorkflowId(dataSourceConfig, repoId),
+    memo: {
+      connectorId: connectorId,
+    },
   });
 }

@@ -6,6 +6,7 @@ import {
   proxyActivities,
   setHandler,
   sleep,
+  workflowInfo,
 } from "@temporalio/workflow";
 import PQueue from "p-queue";
 
@@ -258,6 +259,7 @@ export async function upsertPageWorkflow({
         )}-page-${pageId}-block-${block}-children`,
         args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
       });
     }
     for (const databaseId of childDatabases) {
@@ -267,6 +269,7 @@ export async function upsertPageWorkflow({
         )}-page-${pageId}-child-database-${databaseId}`,
         args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
       });
     }
   } while (cursor);
@@ -320,6 +323,7 @@ export async function notionProcessBlockChildrenWorkflow({
         )}-page-${pageId}-block-${block}-children`,
         args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
       });
     }
     for (const databaseId of childDatabases) {
@@ -329,6 +333,7 @@ export async function notionProcessBlockChildrenWorkflow({
         )}-page-${pageId}-child-database-${databaseId}`,
         args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
       });
     }
   } while (cursor);
@@ -381,6 +386,7 @@ export async function syncResultPageWorkflow({
           workflowId: `${getWorkflowIdV2(connectorId)}-upsert-page-${pageId}`,
           args: [{ connectorId, pageId, runTimestamp, isBatchSync, pageIndex }],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          memo: workflowInfo().memo,
         })
       )
     );
@@ -549,6 +555,7 @@ async function performUpserts({
               },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            memo: workflowInfo().memo,
           })
         )
       );
@@ -590,6 +597,7 @@ async function performUpserts({
               },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            memo: workflowInfo().memo,
           })
         )
       );
