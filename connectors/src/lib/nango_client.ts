@@ -1,7 +1,7 @@
 import { Nango } from "@nangohq/node";
 import axios from "axios";
 
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOauthTokenError, WorkflowError } from "@connectors/lib/error";
 
 import { Err, Ok, Result } from "./result";
 
@@ -36,8 +36,15 @@ class CustomNango extends Nango {
             }
           }
         }
+        if (e.status === 520 && e.code === "ERR_BAD_RESPONSE") {
+          const workflowError: WorkflowError = {
+            type: "transient_nango_activity_error",
+            message: `Nango transient 520 errors`,
+            __is_dust_error: true,
+          };
+          throw workflowError;
+        }
       }
-
       throw e;
     }
   }
