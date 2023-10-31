@@ -126,6 +126,11 @@ export const PLAN_FIELDS = {
     type: "string",
     width: "large",
     title: "Stripe Product ID",
+    targetUrl: (plan: EditingPlanType) =>
+      plan.stripeProductId
+        ? `https://dashboard.stripe.com/products/${plan.stripeProductId}`
+        : null,
+
     error: (plan: EditingPlanType) => {
       if (!plan.stripeProductId) {
         return null;
@@ -247,14 +252,15 @@ export const Field: React.FC<FieldProps> = ({
   const field = PLAN_FIELDS[fieldName];
   const isImmutable = "immutable" in field && field.immutable;
   const disabled = !editingPlan?.isNewPlan && isImmutable;
+  const targetUrl = "targetUrl" in field && field.targetUrl(plan);
 
   const renderPlanFieldValue = (x: unknown) => {
     let strValue: string = x?.toString() || "";
-    let classNames = "";
+    let classes = targetUrl ? "cursor-pointer text-action-600" : "";
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classNames = "italic text-element-600";
+        classes = classNames(classes, "italic text-element-600");
       }
     }
     if (typeof x === "number") {
@@ -263,7 +269,14 @@ export const Field: React.FC<FieldProps> = ({
       }
     }
 
-    return <div className={classNames}>{strValue}</div>;
+    return (
+      <div
+        className={classes}
+        onClick={targetUrl ? () => window.open(targetUrl, "_blank") : undefined}
+      >
+        {strValue}
+      </div>
+    );
   };
 
   const fieldNode = (() => {
