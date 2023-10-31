@@ -232,7 +232,7 @@ function calculateTargetPositions() {
         //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
         break;
       case 1: // sphere
-        radius = geometricObjectSize * 1.5;
+        radius = geometricObjectSize * 2;
         phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
         theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
 
@@ -282,13 +282,13 @@ function calculateTargetPositions() {
 }
 
 type ParticulesComponentProps = {
-  scrollRef1: RefObject<HTMLDivElement>;
+  scrollRef0: RefObject<HTMLDivElement>;
   scrollRef2: RefObject<HTMLDivElement>;
   scrollRef3: RefObject<HTMLDivElement>;
 };
 
 export default function Particules({
-  scrollRef1,
+  scrollRef0,
   scrollRef2,
   scrollRef3,
 }: ParticulesComponentProps) {
@@ -303,7 +303,7 @@ export default function Particules({
       const offset = window.innerHeight / 2;
       const yPositions = [
         0,
-        scrollRef1.current?.offsetTop || 0,
+        scrollRef0.current?.offsetTop || 0,
         scrollRef2.current?.offsetTop || 0,
         scrollRef3.current?.offsetTop || 0,
       ];
@@ -337,7 +337,7 @@ export default function Particules({
       //window.removeEventListener("scroll", onScroll, false);
       renderer.dispose();
     };
-  }, [scrollRef1, scrollRef2, scrollRef3]);
+  }, [scrollRef0, scrollRef2, scrollRef3]);
 
   return (
     <div id="canvas-container">
