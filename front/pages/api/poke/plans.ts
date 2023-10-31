@@ -34,6 +34,11 @@ export const PokePlanTypeSchema = t.type({
     }),
   }),
   stripeProductId: t.union([t.string, t.null]),
+  billingType: t.union([
+    t.literal("fixed"),
+    t.literal("monthly_active_users"),
+    t.literal("free"),
+  ]),
 });
 
 export type PokePlanType = t.TypeOf<typeof PokePlanTypeSchema>;
@@ -89,6 +94,7 @@ async function handler(
             maxUsers: plan.maxUsersInWorkspace,
           },
         },
+        billingType: plan.billingType,
       }));
       res.status(200).json({
         plans: plans,
@@ -123,6 +129,7 @@ async function handler(
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
+        billingType: body.billingType,
       });
       res.status(200).json({
         plans: [body],

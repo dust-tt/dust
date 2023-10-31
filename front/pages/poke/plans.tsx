@@ -8,14 +8,16 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import {
   EditingPlanType,
   Field,
+  fromPokePlanType,
   PLAN_FIELDS,
+  toPokePlanType,
+  useEditingPlan,
 } from "@app/components/poke/plans/form";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -42,14 +44,8 @@ const PlansPage = (
 
   const { plans, isPlansLoading } = usePokePlans();
 
-  const [editingPlan, setEditingPlan] = useState<EditingPlanType | null>(null);
-  const [editingPlanCode, setEditingPlanCode] = useState<string | null>(null);
-  const [isCreatingPlan, setIsCreatingPlan] = useState<boolean>(false);
-
-  const handleEditPlan = (plan: EditingPlanType) => {
-    setEditingPlan({ ...plan });
-    setEditingPlanCode(plan.code);
-  };
+  const { editingPlan, resetEditingPlan, createNewPlan, setEditingPlan } =
+    useEditingPlan();
 
   const handleSavePlan = async () => {
     if (!editingPlan) {
@@ -112,43 +108,7 @@ const PlansPage = (
       }
     }
 
-    const requestBody: PokePlanType = {
-      code: editingPlan.code.trim(),
-      name: editingPlan.name.trim(),
-      limits: {
-        assistant: {
-          isSlackBotAllowed: editingPlan.limits.assistant.isSlackBotAllowed,
-          maxMessages: parseInt(
-            editingPlan.limits.assistant.maxMessages.toString(),
-            10
-          ),
-        },
-        connections: {
-          isSlackAllowed: editingPlan.limits.connections.isSlackAllowed,
-          isNotionAllowed: editingPlan.limits.connections.isNotionAllowed,
-          isGoogleDriveAllowed:
-            editingPlan.limits.connections.isGoogleDriveAllowed,
-          isGithubAllowed: editingPlan.limits.connections.isGithubAllowed,
-        },
-        dataSources: {
-          count: parseInt(editingPlan.limits.dataSources.count.toString(), 10),
-          documents: {
-            count: parseInt(
-              editingPlan.limits.dataSources.documents.count.toString(),
-              10
-            ),
-            sizeMb: parseInt(
-              editingPlan.limits.dataSources.documents.sizeMb.toString(),
-              10
-            ),
-          },
-        },
-        users: {
-          maxUsers: parseInt(editingPlan.limits.users.maxUsers.toString(), 10),
-        },
-      },
-      stripeProductId: editingPlan.stripeProductId?.trim() || null,
-    };
+    const requestBody: PokePlanType = toPokePlanType(editingPlan);
 
     const r = await fetch("/api/poke/plans", {
       method: "POST",
@@ -168,49 +128,13 @@ const PlansPage = (
 
     await mutate("/api/poke/plans");
 
-    setEditingPlan(null);
-    setEditingPlanCode(null);
-    if (isCreatingPlan) {
-      setIsCreatingPlan(false);
-    }
-    // spinner + await mutate (put the buttons in disabled)
+    resetEditingPlan();
   };
 
-  const handleAddPlan = () => {
-    const newPlan: EditingPlanType = {
-      isNewPlan: true,
-      name: "",
-      stripeProductId: "",
-      code: "",
-      limits: {
-        users: {
-          maxUsers: "",
-        },
-        assistant: {
-          isSlackBotAllowed: false,
-          maxMessages: "",
-        },
-        connections: {
-          isSlackAllowed: false,
-          isNotionAllowed: false,
-          isGoogleDriveAllowed: false,
-          isGithubAllowed: false,
-        },
-        dataSources: {
-          count: "",
-          documents: {
-            count: "",
-            sizeMb: "",
-          },
-        },
-      },
-    };
-    setEditingPlan(newPlan);
-    setIsCreatingPlan(true);
-  };
-
-  const plansToRender: EditingPlanType[] =
-    plans && isCreatingPlan && editingPlan ? [...plans, editingPlan] : plans;
+  const plansToRender: EditingPlanType[] = (plans || []).map(fromPokePlanType);
+  if (editingPlan?.isNewPlan) {
+    plansToRender.push(editingPlan);
+  }
 
   return (
     <div className="min-h-screen bg-structure-50">
@@ -244,13 +168,9 @@ const PlansPage = (
                             plan={plan}
                             fieldName={fieldName as keyof typeof PLAN_FIELDS}
                             isEditing={
-                              !!(
-                                (!isCreatingPlan &&
-                                  editingPlanCode === plan.code) ||
-                                (isCreatingPlan &&
-                                  editingPlan &&
-                                  plan?.isNewPlan)
-                              )
+                              (!editingPlan?.isNewPlan &&
+                                editingPlan?.code === plan.code) ||
+                              (!!editingPlan?.isNewPlan && !!plan.isNewPlan)
                             }
                             setEditingPlan={setEditingPlan}
                             editingPlan={editingPlan}
@@ -258,7 +178,7 @@ const PlansPage = (
                         </React.Fragment>
                       ))}
                       <td className="w-12 min-w-[4rem] flex-none border px-4 py-2">
-                        {editingPlanCode === plan.code || plan.isNewPlan ? (
+                        {plan.code === editingPlan?.code || plan.isNewPlan ? (
                           <div className="flex flex-row justify-center">
                             <IconButton
                               icon={CheckIcon}
@@ -266,18 +186,14 @@ const PlansPage = (
                             />
                             <IconButton
                               icon={XMarkIcon}
-                              onClick={() => {
-                                setEditingPlan(null);
-                                setEditingPlanCode(null);
-                                setIsCreatingPlan(false);
-                              }}
+                              onClick={resetEditingPlan}
                             />
                           </div>
                         ) : (
                           <div className="flex flex-row justify-center">
                             <IconButton
                               icon={PencilSquareIcon}
-                              onClick={() => handleEditPlan(plan)}
+                              onClick={() => setEditingPlan(plan)}
                             />
                           </div>
                         )}
@@ -293,8 +209,8 @@ const PlansPage = (
               icon={PlusIcon}
               label="Create a new plan"
               variant="secondary"
-              onClick={handleAddPlan}
-              disabled={isCreatingPlan || !!editingPlan}
+              onClick={() => createNewPlan()}
+              disabled={editingPlan?.isNewPlan || !!editingPlan}
             />
           </div>
         </div>

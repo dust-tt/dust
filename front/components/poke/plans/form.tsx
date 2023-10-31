@@ -1,39 +1,121 @@
 import { Checkbox, Input } from "@dust-tt/sparkle";
+import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
 import { PokePlanType } from "@app/pages/api/poke/plans";
 
-// convert all numbers to strings
-type DeepNumbersAsStrings<T> = {
-  [K in keyof T]: T[K] extends number
-    ? string | number
-    : T[K] extends object
-    ? DeepNumbersAsStrings<T[K]>
-    : T[K];
-};
-export type EditingPlanType = DeepNumbersAsStrings<PokePlanType> & {
+export type EditingPlanType = {
+  name: string;
+  stripeProductId: string;
+  code: string;
+  isSlackBotAllowed: boolean;
+  isSlackAllowed: boolean;
+  isNotionAllowed: boolean;
+  isGoogleDriveAllowed: boolean;
+  isGithubAllowed: boolean;
+  maxMessages: string | number;
+  dataSourcesCount: string | number;
+  dataSourcesDocumentsCount: string | number;
+  dataSourcesDocumentsSizeMb: string | number;
+  maxUsers: string | number;
+  billingType: "fixed" | "free" | "monthly_active_users";
   isNewPlan?: boolean;
+};
+
+export const fromPokePlanType = (plan: PokePlanType): EditingPlanType => {
+  return {
+    name: plan.name,
+    stripeProductId: plan.stripeProductId || "",
+    code: plan.code,
+    isSlackBotAllowed: plan.limits.assistant.isSlackBotAllowed,
+    isSlackAllowed: plan.limits.connections.isSlackAllowed,
+    isNotionAllowed: plan.limits.connections.isNotionAllowed,
+    isGoogleDriveAllowed: plan.limits.connections.isGoogleDriveAllowed,
+    isGithubAllowed: plan.limits.connections.isGithubAllowed,
+    maxMessages: plan.limits.assistant.maxMessages,
+    dataSourcesCount: plan.limits.dataSources.count,
+    dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
+    dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
+    maxUsers: plan.limits.users.maxUsers,
+    billingType: plan.billingType,
+  };
+};
+
+export const toPokePlanType = (editingPlan: EditingPlanType): PokePlanType => {
+  return {
+    code: editingPlan.code.trim(),
+    name: editingPlan.name.trim(),
+    stripeProductId: editingPlan.stripeProductId.trim() || null,
+    limits: {
+      assistant: {
+        isSlackBotAllowed: editingPlan.isSlackBotAllowed,
+        maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
+      },
+      connections: {
+        isSlackAllowed: editingPlan.isSlackAllowed,
+        isNotionAllowed: editingPlan.isNotionAllowed,
+        isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
+        isGithubAllowed: editingPlan.isGithubAllowed,
+      },
+      dataSources: {
+        count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
+        documents: {
+          count: parseInt(editingPlan.dataSourcesDocumentsCount.toString(), 10),
+          sizeMb: parseInt(
+            editingPlan.dataSourcesDocumentsSizeMb.toString(),
+            10
+          ),
+        },
+      },
+      users: {
+        maxUsers: parseInt(editingPlan.maxUsers.toString(), 10),
+      },
+    },
+    billingType: editingPlan.billingType,
+  };
+};
+
+const getEmptyPlan = (): EditingPlanType => ({
+  name: "",
+  stripeProductId: "",
+  code: "",
+  isSlackBotAllowed: false,
+  isSlackAllowed: false,
+  isNotionAllowed: false,
+  isGoogleDriveAllowed: false,
+  isGithubAllowed: false,
+  maxMessages: "",
+  dataSourcesCount: "",
+  dataSourcesDocumentsCount: "",
+  dataSourcesDocumentsSizeMb: "",
+  maxUsers: "",
+  isNewPlan: true,
+  billingType: "fixed",
+});
+
+export const useEditingPlan = () => {
+  const [editingPlan, setEditingPlan] = useState<EditingPlanType | null>(null);
+
+  const createNewPlan = useCallback(() => {
+    setEditingPlan(getEmptyPlan());
+  }, []);
+
+  const resetEditingPlan = useCallback(() => {
+    setEditingPlan(null);
+  }, []);
+
+  return { editingPlan, resetEditingPlan, createNewPlan, setEditingPlan };
 };
 
 export const PLAN_FIELDS = {
   name: {
     type: "string",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      name: value,
-    }),
-    value: (plan: EditingPlanType) => plan.name,
     width: "medium",
     title: "Name",
     error: (plan: EditingPlanType) => (plan.name ? null : "Name is required"),
   },
   stripeProductId: {
     type: "string",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      stripeProductId: value,
-    }),
-    value: (plan: EditingPlanType) => plan.stripeProductId,
     width: "large",
     title: "Stripe Product ID",
     error: (plan: EditingPlanType) => {
@@ -51,11 +133,6 @@ export const PLAN_FIELDS = {
   },
   code: {
     type: "string",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      code: value,
-    }),
-    value: (plan: EditingPlanType) => plan.code,
     width: "medium",
     title: "Plan Code",
     error: (plan: EditingPlanType) => {
@@ -72,162 +149,60 @@ export const PLAN_FIELDS = {
   },
   isSlackBotAllowed: {
     type: "boolean",
-    set: (plan: EditingPlanType, value: boolean) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        assistant: {
-          ...plan.limits.assistant,
-          isSlackBotAllowed: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.assistant.isSlackBotAllowed,
     width: "tiny",
     title: "Bot",
   },
   isSlackAllowed: {
     type: "boolean",
-    set: (plan: EditingPlanType, value: boolean) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        connections: {
-          ...plan.limits.connections,
-          isSlackAllowed: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.connections.isSlackAllowed,
     width: "tiny",
     title: "Slack",
   },
   isNotionAllowed: {
     type: "boolean",
-    set: (plan: EditingPlanType, value: boolean) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        connections: {
-          ...plan.limits.connections,
-          isNotionAllowed: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.connections.isNotionAllowed,
     width: "tiny",
     title: "Notion",
   },
   isGoogleDriveAllowed: {
     type: "boolean",
-    set: (plan: EditingPlanType, value: boolean) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        connections: {
-          ...plan.limits.connections,
-          isGoogleDriveAllowed: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) =>
-      plan.limits.connections.isGoogleDriveAllowed,
     width: "tiny",
     title: "Drive",
   },
   isGithubAllowed: {
     type: "boolean",
-    set: (plan: EditingPlanType, value: boolean) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        connections: {
-          ...plan.limits.connections,
-          isGithubAllowed: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.connections.isGithubAllowed,
     width: "tiny",
     title: "Github",
   },
+  maxMessages: {
+    type: "number",
+    width: "medium",
+    title: "# Messages",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
+  },
   dataSourcesCount: {
     type: "number",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        dataSources: {
-          ...plan.limits.dataSources,
-          count: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.dataSources.count,
     width: "medium",
     title: "# DS",
-    error: (plan: EditingPlanType) =>
-      errorCheckNumber(plan.limits.dataSources.count),
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.dataSourcesCount),
   },
   dataSourcesDocumentsCount: {
     type: "number",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        dataSources: {
-          ...plan.limits.dataSources,
-          documents: {
-            ...plan.limits.dataSources.documents,
-            count: value,
-          },
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.dataSources.documents.count,
     width: "medium",
     title: "# Docs",
     error: (plan: EditingPlanType) =>
-      errorCheckNumber(plan.limits.dataSources.documents.count),
+      errorCheckNumber(plan.dataSourcesDocumentsCount),
   },
   dataSourcesDocumentsSizeMb: {
     type: "number",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        dataSources: {
-          ...plan.limits.dataSources,
-          documents: {
-            ...plan.limits.dataSources.documents,
-            sizeMb: value,
-          },
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.dataSources.documents.sizeMb,
     width: "small",
     title: "Size (MB)",
     error: (plan: EditingPlanType) =>
-      errorCheckNumber(plan.limits.dataSources.documents.sizeMb),
+      errorCheckNumber(plan.dataSourcesDocumentsSizeMb),
   },
   maxUsers: {
     type: "number",
-    set: (plan: EditingPlanType, value: string) => ({
-      ...plan,
-      limits: {
-        ...plan.limits,
-        users: {
-          ...plan.limits.users,
-          maxUsers: value,
-        },
-      },
-    }),
-    value: (plan: EditingPlanType) => plan.limits.users.maxUsers,
     width: "medium",
     title: "# Users",
-    error: (plan: EditingPlanType) =>
-      errorCheckNumber(plan.limits.users.maxUsers),
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
   },
 } as const;
 
@@ -256,17 +231,12 @@ export const Field: React.FC<FieldProps> = ({
       case "number":
         return isEditing && !disabled ? (
           <Input
-            value={
-              editingPlan &&
-              (field.type === "number"
-                ? field.value(editingPlan).toString()
-                : field.value(editingPlan))
-            }
+            value={editingPlan && editingPlan[fieldName].toString()}
             onChange={(x) => {
               if (!editingPlan) {
                 return;
               }
-              setEditingPlan({ ...field.set(editingPlan, x) });
+              setEditingPlan({ ...editingPlan, [fieldName]: x });
             }}
             placeholder=""
             name={fieldName}
@@ -276,14 +246,14 @@ export const Field: React.FC<FieldProps> = ({
         ) : (
           <div
             className={classNames(
-              field.value(plan) === null ? "italic text-element-600" : ""
+              plan[fieldName] === null ? "italic text-element-600" : ""
             )}
           >
-            {field.value(plan) === null
+            {plan[fieldName] === null
               ? "NULL"
-              : field.type == "number" && field.value(plan) === "-1"
+              : field.type == "number" && plan[fieldName] === "-1"
               ? "∞"
-              : field.value(plan)?.toString()}
+              : plan[fieldName]?.toString()}
           </div>
         );
       case "boolean":
@@ -291,14 +261,14 @@ export const Field: React.FC<FieldProps> = ({
           <Checkbox
             checked={
               editingPlan && isEditing
-                ? field.value(editingPlan)
-                : field.value(plan)
+                ? !!editingPlan[fieldName]
+                : !!plan[fieldName]
             }
             onChange={(x) => {
               if (!editingPlan) {
                 return;
               }
-              setEditingPlan({ ...field.set(editingPlan, x) });
+              setEditingPlan({ ...editingPlan, [fieldName]: x });
             }}
             disabled={!isEditing || disabled}
           />
