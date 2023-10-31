@@ -29,10 +29,7 @@ and finally performing vector search queries.
 
 ## Data Source creation
 
-Creating a Data Source consists in providing a name, description, an embedding model to use as well
-as `max_chunk_size`, the targeted number of tokens for each chunks. The embedding model must be
-provided at Data Source creation and cannot be changed in the future (since the model used when
-embedding documents chunks and search quries must be consistent).
+Creating a Data Source simply consists in providing a name and a description.
 
 ### Parameters
 
@@ -48,41 +45,10 @@ embedding documents chunks and search quries must be consistent).
     One of _public_ or _private_. Only you can edit your own Data Sources. If
     _public_ other users can view the Data Source and query from it.
   </Property>
-  <Property name="embedded" type="model">
-    The model to use for the Data Source. This is set at creation and cannot be
-    changed later (as it would require re-embedding the entire Data Source).
-    This is the model used to embed document chunks when they are ingested as
-    well as queries when searches are peformed (the same model must be used for
-    both).
-  </Property>
-  <Property name="max_chunk_size" type="integer">
-    The number of tokens to use when chunking documents before embedding the
-    resulting chunks. Note that chunks at the end of documents may be shorter
-    then the provided value.
-  </Property>
 </Properties>
 
 Data sources are created empty. Their description can be edited from the Settings panel. They cannot
 be renamed but they can be deleted from the same panel.
-
-### Choosing a chunk size
-
-Choosing a chunk size depends on the usage you will have of the retrieved chunks.
-
-If the goal is to present these chunks to a model to do _retrieval-augmented generation_ then you'll
-want to choose a chunk size in tokens that is not too high: imagine a model with ~4k tokens of
-context and that you want at least 1k of context to generate a completion. Then you have ~3k of
-context left for retrieval. If you want some amount of diversity in the information retrieved you'll
-want maybe a half-dozen or a dozen chunks returned, meaning a chunk size between **256** and
-**512**.
-
-Conversely, if you plan to process the retrieved documents with subsequent calls to models (for
-example using recursive summarization) then you want to pick a higher chunk size such that
-the semantic retrieval step covers as much information as possible.
-
-These decisions really depend on the quality and speed constraints you have to design your app and
-we advise that you experiment with various approaches to find the one that suits your use case the
-best.
 
 ## Document insertion
 
