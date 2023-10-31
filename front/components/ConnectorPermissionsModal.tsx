@@ -131,7 +131,11 @@ export default function ConnectorPermissionsModal({
         }
 
         await mutate(
-          `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
+          (key) =>
+            typeof key === "string" &&
+            key.startsWith(
+              `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
+            )
         );
       }
 
