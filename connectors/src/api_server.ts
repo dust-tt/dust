@@ -102,7 +102,27 @@ export function startServer(port: number) {
     webhookGithubAPIHandler
   );
 
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);
   });
+
+  const gracefulShutdown = () => {
+    logger.info("[GRACEFUL] Received kill signal, shutting down gracefully.");
+    server.close(() => {
+      logger.info("[GRACEFUL] Closed out remaining connections.");
+      process.exit();
+    });
+
+    setTimeout(() => {
+      logger.error(
+        "[GRACEFUL] Could not close connections within 30s, forcefully shutting down"
+      );
+      process.exit(1);
+    }, 30 * 1000);
+  };
+
+  // listen for TERM signal .e.g. kill
+  process.on("SIGTERM", gracefulShutdown);
+  // listen for INT signal e.g. Ctrl-C
+  process.on("SIGINT", gracefulShutdown);
 }
