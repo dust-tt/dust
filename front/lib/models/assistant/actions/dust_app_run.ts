@@ -46,7 +46,6 @@ AgentDustAppRunConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     appWorkspaceId: {
       type: DataTypes.STRING,
@@ -59,6 +58,12 @@ AgentDustAppRunConfiguration.init(
   },
   {
     modelName: "agent_dust_app_run_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+      },
+    ],
     sequelize: front_sequelize,
   }
 );
