@@ -1,4 +1,12 @@
-import { Checkbox, Input } from "@dust-tt/sparkle";
+import {
+  Checkbox,
+  DriveLogo,
+  DropdownMenu,
+  GithubLogo,
+  Input,
+  NotionLogo,
+  SlackLogo,
+} from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
@@ -156,21 +164,25 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Slack",
+    IconComponent: () => <SlackLogo className="h-4 w-4" />,
   },
   isNotionAllowed: {
     type: "boolean",
     width: "tiny",
     title: "Notion",
+    IconComponent: () => <NotionLogo className="h-4 w-4" />,
   },
   isGoogleDriveAllowed: {
     type: "boolean",
     width: "tiny",
     title: "Drive",
+    IconComponent: () => <DriveLogo className="h-4 w-4" />,
   },
   isGithubAllowed: {
     type: "boolean",
     width: "tiny",
     title: "Github",
+    IconComponent: () => <GithubLogo className="h-4 w-4" />,
   },
   maxMessages: {
     type: "number",
@@ -203,6 +215,17 @@ export const PLAN_FIELDS = {
     width: "medium",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  billingType: {
+    type: "select",
+    choices: [
+      { value: "fixed", label: "Fixed" },
+      { value: "free", label: "Free" },
+      { value: "monthly_active_users", label: "MAU" },
+    ],
+    width: "small",
+    title: "Billing",
+    error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),
   },
 } as const;
 
@@ -273,7 +296,45 @@ export const Field: React.FC<FieldProps> = ({
             disabled={!isEditing || disabled}
           />
         );
-
+      case "select":
+        return isEditing && !disabled ? (
+          <DropdownMenu className="flex">
+            <DropdownMenu.Button
+              label={
+                field.choices.find(
+                  (choice) => choice.value === editingPlan?.[fieldName]
+                )?.label
+              }
+              disabled={!isEditing || disabled}
+            />
+            <DropdownMenu.Items origin="topLeft">
+              {field.choices.map((choice) => {
+                return (
+                  <DropdownMenu.Item
+                    key={choice.value}
+                    onClick={() => {
+                      if (!editingPlan) {
+                        return;
+                      }
+                      setEditingPlan({
+                        ...editingPlan,
+                        [fieldName]: choice.value,
+                      });
+                    }}
+                    label={choice.label}
+                  />
+                );
+              })}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        ) : (
+          <div>
+            {
+              field.choices.find((choice) => choice.value === plan[fieldName])
+                ?.label
+            }
+          </div>
+        );
       default:
         assertNever(field);
     }
@@ -288,7 +349,7 @@ export const Field: React.FC<FieldProps> = ({
       case "medium":
         return "max-w-48 min-w-[8rem]";
       case "tiny":
-        return "min-w-[3rem]";
+        return "min-w-[1rem]";
       default:
         assertNever(field);
     }
@@ -296,7 +357,7 @@ export const Field: React.FC<FieldProps> = ({
 
   return (
     <td
-      className={classNames("flex-none border px-4 py-2 text-sm", widthClass)}
+      className={classNames("flex-none border px-1 py-2 text-sm", widthClass)}
     >
       {fieldNode}
     </td>

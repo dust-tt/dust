@@ -151,7 +151,17 @@ const PlansPage = (
                   {Object.keys(PLAN_FIELDS).map((fieldName) => {
                     const field =
                       PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
-                    return <th key={fieldName}>{field.title}</th>;
+                    return (
+                      <th key={fieldName}>
+                        {"IconComponent" in field ? (
+                          <div className="flex flex-row justify-center">
+                            <field.IconComponent />
+                          </div>
+                        ) : (
+                          field.title
+                        )}
+                      </th>
+                    );
                   })}
                   <th className="px-4 py-2">Edit</th>
                 </tr>
