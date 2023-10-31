@@ -50,14 +50,14 @@ export async function launchSlackSyncWorkflow(
       ],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
-        memo: {
-          connectorId: connectorId,
-        },
       },
       `Started Slack sync workflow.`
     );

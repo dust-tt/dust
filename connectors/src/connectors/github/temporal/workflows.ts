@@ -4,6 +4,7 @@ import {
   proxyActivities,
   setHandler,
   sleep,
+  workflowInfo,
 } from "@temporalio/workflow";
 import PQueue from "p-queue";
 
@@ -85,6 +86,7 @@ export async function githubFullSyncWorkflow(
               repo.login,
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            memo: workflowInfo().memo,
           })
         )
       );
@@ -120,6 +122,7 @@ export async function githubReposSyncWorkflow(
             orgLogin,
           ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          memo: workflowInfo().memo,
         })
       )
     );

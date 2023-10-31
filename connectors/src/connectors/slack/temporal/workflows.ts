@@ -3,6 +3,7 @@ import {
   proxyActivities,
   setHandler,
   sleep,
+  workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
@@ -61,6 +62,7 @@ export async function workspaceFullSync(
     await executeChild(syncOneChannel, {
       workflowId: syncOneChanneWorkflowlId(connectorId, channel.id),
       args: [connectorId, channel.id, channel.name, false, fromTs],
+      memo: workflowInfo().memo,
     });
     i++;
     const percentSync = Math.round((i / channels.length) * 100);
@@ -201,6 +203,7 @@ export async function memberJoinedChannel(connectorId: ModelId): Promise<void> {
     await executeChild(syncOneChannel.name, {
       workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
       args: [connectorId, channelId, channelName, true],
+      memo: workflowInfo().memo,
     });
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
