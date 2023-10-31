@@ -115,15 +115,15 @@ export default function Home({
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center gap-10 px-4">
           <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
-          <div className="invisibleFirst flex flex-grow flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out">
+          <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
             <P size="xs">
               <A variant="tertiary" href="#sectionProduct">
-                The Product
+                The product
               </A>
             </P>
             <P size="xs">
               <A variant="tertiary" href="#sectionPricing">
-                Price Plans
+                Price plans
               </A>
             </P>
             {/* <P size="xs">
@@ -132,7 +132,8 @@ export default function Home({
               </A>
             </P> */}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex-grow" />
+          <div className="flex hidden items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="font-regular font-objektiv text-xs text-slate-400">
                 Sign in with{" "}
@@ -165,7 +166,7 @@ export default function Home({
               variant="primary"
               size="sm"
               label="Start with Dust"
-              className="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out"
+              className="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out lg:block"
               icon={RocketIcon}
             />
             <DropdownMenu>
@@ -296,7 +297,7 @@ export default function Home({
               </P>
             </div>
             <P
-              borderCSS="bg-amber-400"
+              borderCSS="bg-amber-300"
               className={classNames(
                 "col-span-9 col-start-4",
                 "sm:col-span-6 sm:col-start-auto",
@@ -544,7 +545,7 @@ export default function Home({
             </ReactiveImg>
 
             <P
-              borderCSS="bg-amber-400"
+              borderCSS="bg-amber-300"
               className={classNames(
                 "order-3",
                 "col-span-12",
@@ -561,7 +562,7 @@ export default function Home({
             </P>
 
             <P
-              borderCSS="bg-amber-400"
+              borderCSS="bg-amber-300"
               className={classNames(
                 "order-4",
                 "col-span-12",
@@ -578,7 +579,7 @@ export default function Home({
               <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
             </P>
             <P
-              borderCSS="bg-amber-400"
+              borderCSS="bg-amber-300"
               className={classNames(
                 "order-5",
                 "col-span-12",
