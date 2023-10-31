@@ -42,9 +42,9 @@ export class NotionCastKnownErrorsInterceptor
           };
         }
       } else if (UnknownHTTPResponseError.isUnknownHTTPResponseError(err)) {
-        if ([502, 504].includes(err.status)) {
-          // sometimes notion returns 502/504s, they are transient and look
-          // like rate limiting errors
+        if ([502, 504, 530].includes(err.status)) {
+          // Sometimes notion returns 502/504s, they are transient and look like rate limiting
+          // errors. 530 is transient and looks like DNS errors.
           throw {
             __is_dust_error: true,
             message: err.message,

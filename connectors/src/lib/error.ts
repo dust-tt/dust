@@ -33,6 +33,7 @@ export function errorFromAny(e: any): Error {
 export type WorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "transient_upstream_activity_error"
+  | "transient_nango_activity_error"
   | "upstream_is_down_activity_error";
 
 export type WorkflowError = {
