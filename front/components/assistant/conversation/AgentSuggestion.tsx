@@ -1,7 +1,8 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useContext, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -22,9 +23,11 @@ export function AgentSuggestion({
   userMessage: UserMessageType;
   conversation: ConversationType;
 }) {
+  const isEditingMessage = useRef(0);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
+  const sendNotification = useContext(SendNotificationsContext);
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
   agents.sort((a, b) => compareAgentSuggestions(a, b));
@@ -74,29 +77,43 @@ export function AgentSuggestion({
   );
 
   async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: editedContent,
-          mentions: [
-            {
-              type: "agent",
-              configurationId: agent.sId,
+    if (isEditingMessage.current === 0) {
+      try {
+        isEditingMessage.current++;
+        const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+        const mRes = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          ],
-        }),
-      }
-    );
+            body: JSON.stringify({
+              content: editedContent,
+              mentions: [
+                {
+                  type: "agent",
+                  configurationId: agent.sId,
+                },
+              ],
+            }),
+          }
+        );
 
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      window.alert(`Error adding mention to message: ${data.error.message}`);
+        if (!mRes.ok) {
+          const data = await mRes.json();
+          window.alert(
+            `Error adding mention to message: ${data.error.message}`
+          );
+          sendNotification({
+            type: "error",
+            title: "Invite sent",
+            description: `Error adding mention to message: ${data.error.message}`,
+          });
+        }
+      } finally {
+        isEditingMessage.current--;
+      }
     }
   }
 
