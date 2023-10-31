@@ -1,6 +1,6 @@
 import { Checkbox, Modal } from "@dust-tt/sparkle";
 import { Cog6ToothIcon } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -14,6 +14,7 @@ import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
+import { SendNotificationsContext } from "./sparkle/Notification";
 
 const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
   notion: "top-level Notion pages or databases",
@@ -67,6 +68,9 @@ export default function ConnectorPermissionsModal({
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
     useState<Record<string, ConnectorPermission>>({});
 
+  const [saving, setSaving] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
+
   const {
     defaultNewResourcePermission,
     isDefaultNewResourcePermissionLoading,
@@ -100,6 +104,7 @@ export default function ConnectorPermissionsModal({
     CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT[connector.type];
 
   async function save() {
+    setSaving(true);
     try {
       if (Object.keys(updatedPermissionByInternalId).length) {
         const r = await fetch(
@@ -158,12 +163,16 @@ export default function ConnectorPermissionsModal({
           );
         }
       }
+      closeModal();
     } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Error saving permissions",
+        description: "An unexpected error occurred while saving permissions.",
+      });
       console.error(e);
-      window.alert("An unexpected error occurred");
     }
-
-    closeModal();
+    setSaving(false);
   }
 
   return (
@@ -171,6 +180,9 @@ export default function ConnectorPermissionsModal({
       isOpen={isOpen}
       onClose={closeModal}
       onSave={save}
+      saveLabel="Save"
+      savingLabel="Saving..."
+      isSaving={saving}
       hasChanged={
         !!Object.keys(updatedPermissionByInternalId).length ||
         automaticallyIncludeNewResources !== null

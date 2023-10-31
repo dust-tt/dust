@@ -268,6 +268,7 @@ export function useConnectorPermissions({
   if (filterPermission) {
     url += `&filterPermission=${filterPermission}`;
   }
+  console.log("URL", url);
 
   const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
 
