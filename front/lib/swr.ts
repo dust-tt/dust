@@ -261,7 +261,7 @@ export function useConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?source=client`;
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
