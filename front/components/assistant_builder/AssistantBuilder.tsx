@@ -301,10 +301,10 @@ export default function AssistantBuilder({
 
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<
-    | {
-        channelId: string;
-        channelName: string;
-      }[]
+    {
+      channelId: string;
+      channelName: string;
+    }[]
   >([]);
   // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
