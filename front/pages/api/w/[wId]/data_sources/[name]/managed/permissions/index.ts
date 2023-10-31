@@ -115,8 +115,6 @@ async function handler(
         }
       }
 
-      console.log("filterPermission", filterPermission);
-
       const permissionsRes = await ConnectorsAPI.getConnectorPermissions({
         connectorId: dataSource.connectorId,
         parentId,
