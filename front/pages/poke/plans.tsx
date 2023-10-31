@@ -142,10 +142,10 @@ const PlansPage = (
       {isPlansLoading ? (
         <Spinner />
       ) : (
-        <div className="flex flex-col items-center justify-center ">
-          <div className="py-8 text-2xl font-bold">Plans</div>
-          <div className="w-full overflow-x-auto">
-            <table className="mx-auto table-auto rounded-lg">
+        <div className="flex h-full flex-col items-center justify-center">
+          <div className="h-full py-8 text-2xl font-bold">Plans</div>
+          <div className="h-full w-full overflow-x-auto pb-24 pt-12">
+            <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
               <thead className="bg-gray-50">
                 <tr>
                   {Object.keys(PLAN_FIELDS).map((fieldName) => {
@@ -166,7 +166,7 @@ const PlansPage = (
                   <th className="px-4 py-2">Edit</th>
                 </tr>
               </thead>
-              <tbody className="bg-white text-gray-700 shadow-md">
+              <tbody className="h-full bg-white pb-48 text-gray-700 shadow-md">
                 {plansToRender?.map((plan) => {
                   const planId = plan.isNewPlan ? "newPlan" : plan.code;
 
@@ -214,7 +214,7 @@ const PlansPage = (
               </tbody>
             </table>
           </div>
-          <div className="pt-8">
+          <div>
             <Button
               icon={PlusIcon}
               label="Create a new plan"

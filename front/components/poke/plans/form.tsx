@@ -306,8 +306,9 @@ export const Field: React.FC<FieldProps> = ({
                 )?.label
               }
               disabled={!isEditing || disabled}
+              tooltipPosition="above"
             />
-            <DropdownMenu.Items origin="topLeft">
+            <DropdownMenu.Items origin={"auto"}>
               {field.choices.map((choice) => {
                 return (
                   <DropdownMenu.Item
