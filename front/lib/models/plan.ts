@@ -23,7 +23,11 @@ export class Plan extends Model<
   declare code: string; // unique
   declare name: string;
   declare stripeProductId: string | null;
-  declare billingType: "fixed" | "monthly_active_users" | "free";
+  declare billingType:
+    | "free"
+    | "fixed"
+    | "monthly_active_users"
+    | "monthly_active_seats";
 
   // workspace limitations
   declare maxMessages: number;
@@ -71,7 +75,9 @@ Plan.init(
       allowNull: false,
       defaultValue: "fixed",
       validate: {
-        isIn: [["fixed", "monthly_active_users", "free"]],
+        isIn: [
+          ["free", "free", "monthly_active_users", "monthly_active_seats"],
+        ],
       },
     },
     maxMessages: {

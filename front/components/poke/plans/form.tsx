@@ -11,6 +11,7 @@ import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
 import { PokePlanType } from "@app/pages/api/poke/plans";
+import { PaidBillingType } from "@app/types/user";
 
 export type EditingPlanType = {
   name: string;
@@ -26,7 +27,7 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
-  billingType: "fixed" | "free" | "monthly_active_users";
+  billingType: "free" | PaidBillingType;
   isNewPlan?: boolean;
 };
 

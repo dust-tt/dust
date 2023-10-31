@@ -30,6 +30,11 @@ export type LimitsType = {
   };
 };
 
+export type PaidBillingType =
+  | "fixed"
+  | "monthly_active_users"
+  | "monthly_active_seats";
+
 export type PlanType = {
   code: string;
   name: string;
@@ -38,7 +43,7 @@ export type PlanType = {
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
-  billingType: "fixed" | "monthly_active_users" | "free";
+  billingType: "free" | PaidBillingType;
   startDate: number | null;
   endDate: number | null;
   limits: LimitsType;

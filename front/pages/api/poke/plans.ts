@@ -39,6 +39,7 @@ export const PokePlanTypeSchema = t.type({
   billingType: t.union([
     t.literal("fixed"),
     t.literal("monthly_active_users"),
+    t.literal("monthly_active_seats"),
     t.literal("free"),
   ]),
 });
