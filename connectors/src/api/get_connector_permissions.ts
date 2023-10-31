@@ -35,10 +35,16 @@ const _getConnectorPermissions = async (
   let filterPermission: ConnectorPermission | null = null;
   if (
     req.query.filterPermission &&
-    typeof req.query.filterPermission === "string" &&
-    ["read"].includes(req.query.filterPermission)
+    typeof req.query.filterPermission === "string"
   ) {
-    filterPermission = "read";
+    switch (req.query.filterPermission) {
+      case "read":
+        filterPermission = "read";
+        break;
+      case "write":
+        filterPermission = "write";
+        break;
+    }
   }
 
   const connector = await Connector.findByPk(req.params.connector_id);

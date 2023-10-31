@@ -102,10 +102,16 @@ async function handler(
       let filterPermission: ConnectorPermission | undefined = undefined;
       if (
         req.query.filterPermission &&
-        typeof req.query.filterPermission === "string" &&
-        ["read"].includes(req.query.filterPermission)
+        typeof req.query.filterPermission === "string"
       ) {
-        filterPermission = "read";
+        switch (req.query.filterPermission) {
+          case "read":
+            filterPermission = "read";
+            break;
+          case "write":
+            filterPermission = "write";
+            break;
+        }
       }
 
       const permissionsRes = await ConnectorsAPI.getConnectorPermissions({
