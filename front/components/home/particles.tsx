@@ -8,10 +8,10 @@ const postExplodeSpeed = 0.03;
 const shapes = [
   { name: "grid", opacity: 1, speed: 0.03 },
   { name: "grid", opacity: 1, speed: 0.03 },
-  { name: "wave", opacity: 0.5, speed: 0.01 },
-  { name: "bigSphere", opacity: 0.7, speed: 0.03 },
-  { name: "sphere", opacity: 0.5, speed: 0.015 },
-  { name: "bigCube", opacity: 0.8, speed: 0.03 },
+  { name: "wave", opacity: 0.7, speed: 0.01 },
+  { name: "bigSphere", opacity: 1, speed: 0.03 },
+  { name: "sphere", opacity: 0.6, speed: 0.015 },
+  { name: "bigCube", opacity: 1, speed: 0.03 },
 ];
 //{ name: "cube", opacity: 0.5, speed: 0.03 },
 const totalShapes = Object.keys(shapes).length;
@@ -28,7 +28,7 @@ const colorsArray = [
 const originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles
 const numParticles = 10000; // number of particles
-const particleSize = 0.015; // Size of the particles
+const particleSize = 0.01; // Size of the particles
 const geometricObjectSize = 1.25;
 const rotationActive = true; // Activate the rotation of the scene
 
