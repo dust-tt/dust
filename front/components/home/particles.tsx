@@ -3,6 +3,19 @@ import * as THREE from "three";
 
 const hasScrollBehavior = true;
 
+let speed = 0.1;
+const postExplodeSpeed = 0.03;
+const shapes = [
+  { name: "grid", opacity: 1, speed: 0.03 },
+  { name: "grid", opacity: 1, speed: 0.03 },
+  { name: "wave", opacity: 0.5, speed: 0.01 },
+  { name: "bigSphere", opacity: 0.7, speed: 0.03 },
+  { name: "sphere", opacity: 0.5, speed: 0.015 },
+  { name: "bigCube", opacity: 0.8, speed: 0.03 },
+];
+//{ name: "cube", opacity: 0.5, speed: 0.03 },
+const totalShapes = Object.keys(shapes).length;
+
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
@@ -18,14 +31,12 @@ const numParticles = 10000; // number of particles
 const particleSize = 0.015; // Size of the particles
 const geometricObjectSize = 1.25;
 const rotationActive = true; // Activate the rotation of the scene
-let speed = 0.1;
-const postExplosionSpeed = 0.03;
+
 // Center of the animation
 const sceneFocusX = 0;
 const sceneFocusY = 0;
 const sceneFocusZ = 0;
-let currentShape = 0; // 0 = cube, 1 = sphere, etc...
-const totalShapes = 4;
+let currentShape = 0; // 0 = cube, 1 = sphere, etc...;
 let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
 
 function init() {
@@ -71,6 +82,7 @@ function init() {
   const material = new THREE.PointsMaterial({
     size: particleSize, // Particles size
     vertexColors: true,
+    transparent: true,
   });
 
   particleSystem = new THREE.Points(geometry, material);
@@ -166,7 +178,7 @@ function animateImplode() {
 
   if (allParticlesInside && !explode) {
     explode = true;
-    speed = postExplosionSpeed;
+    speed = postExplodeSpeed;
   }
 }
 
@@ -204,26 +216,34 @@ function animateExplode() {
 function calculateTargetPositions() {
   targetPositions = []; // Reset the target positions
 
+  const opacity = shapes[currentShape].opacity;
+  (particleSystem.material as THREE.PointsMaterial).opacity = opacity;
+
   for (let i = 0; i < numParticles; i++) {
     let targetPositionX = 0,
       targetPositionY = 0,
       targetPositionZ = 0,
+      gridSpacing,
+      gridX,
+      gridY,
       ix,
       iy,
       iz,
       phi,
       theta,
-      radius;
+      radius,
+      particlesPerSide,
+      cubeSize,
+      gridSize = 16;
 
-    switch (currentShape) {
-      case 0: // grid
-        const gridSize = 16;
-        const gridNum = 48;
-        const gridSpacing = gridSize / gridNum; // spacing between particles in the grid
+    const gridNum = 48;
+    switch (shapes[currentShape].name) {
+      case "grid":
+        gridSpacing = gridSize / gridNum; // spacing between particles in the grid
 
         // Calculate indices along x and y axis
-        const gridX = i % gridNum;
-        const gridY = Math.floor(i / 3 / gridNum) % gridNum;
+        gridX = i % gridNum;
+        gridY = Math.floor(i / 3 / gridNum) % gridNum;
 
         // Calculate positions so that the grid is centered at the origin
         targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
@@ -231,8 +251,32 @@ function calculateTargetPositions() {
         targetPositionZ = 0; // flat grid on the x/y plane
         //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
         break;
-      case 1: // sphere
-        radius = geometricObjectSize * 2;
+      case "wave":
+        gridSize = 6;
+        gridSpacing = gridSize / gridNum; // spacing between particles in the grid
+        const rippleAmplitude = 0.1; // the amplitude of the ripple
+        const rippleFrequency = (12 * Math.PI) / gridSize; // the frequency of the ripple
+
+        // Calculate indices along x and y axis
+        gridX = i % gridNum;
+        gridY = Math.floor(i / 3 / gridNum) % gridNum;
+
+        // Calculate positions so that the grid is centered at the origin
+        targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
+        targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
+
+        // Calculate the distance from the center of the grid
+        const dx = targetPositionX;
+        const dy = targetPositionY;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate position along z-axis (height of the ripple)
+        targetPositionZ =
+          rippleAmplitude * Math.sin(rippleFrequency * distanceFromCenter);
+
+        break;
+      case "sphere":
+        radius = geometricObjectSize * 1.4;
         phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
         theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
 
@@ -240,7 +284,7 @@ function calculateTargetPositions() {
         targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
         targetPositionZ = radius * Math.cos(phi);
         break;
-      case 2: // Bigger sphere
+      case "bigSphere":
         radius = geometricObjectSize * 4;
         phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
         theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
@@ -249,9 +293,22 @@ function calculateTargetPositions() {
         targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
         targetPositionZ = radius * Math.cos(phi);
         break;
-      case 3: // cube
-        const cubeSize = geometricObjectSize * 12; // size of the cube
-        const particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
+      case "cube":
+        cubeSize = geometricObjectSize * 3; // size of the cube
+        particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
+
+        ix = i % particlesPerSide; // index along x-axis
+        iy = Math.floor((i / particlesPerSide) % particlesPerSide); // index along y-axis
+        iz = Math.floor(i / (particlesPerSide * particlesPerSide)); // index along z-axis
+
+        targetPositionX = (ix * cubeSize) / particlesPerSide - cubeSize / 2;
+        targetPositionY = (iy * cubeSize) / particlesPerSide - cubeSize / 2;
+        targetPositionZ =
+          (5 * (iz * cubeSize)) / particlesPerSide - cubeSize / 2;
+        break;
+      case "bigCube":
+        cubeSize = geometricObjectSize * 12; // size of the cube
+        particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
 
         ix = i % particlesPerSide; // index along x-axis
         iy = Math.floor((i / particlesPerSide) % particlesPerSide); // index along y-axis
@@ -260,6 +317,9 @@ function calculateTargetPositions() {
         targetPositionX = (ix * cubeSize) / particlesPerSide - cubeSize / 2;
         targetPositionY = (iy * cubeSize) / particlesPerSide - cubeSize / 2;
         targetPositionZ = (iz * cubeSize) / particlesPerSide - cubeSize / 2;
+        break;
+      default:
+        console.log("Not a known shape");
         break;
     }
 
@@ -283,14 +343,18 @@ function calculateTargetPositions() {
 
 type ParticulesComponentProps = {
   scrollRef0: RefObject<HTMLDivElement>;
+  scrollRef1: RefObject<HTMLDivElement>;
   scrollRef2: RefObject<HTMLDivElement>;
   scrollRef3: RefObject<HTMLDivElement>;
+  scrollRef4: RefObject<HTMLDivElement>;
 };
 
 export default function Particules({
   scrollRef0,
+  scrollRef1,
   scrollRef2,
   scrollRef3,
+  scrollRef4,
 }: ParticulesComponentProps) {
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -304,8 +368,10 @@ export default function Particules({
       const yPositions = [
         0,
         scrollRef0.current?.offsetTop || 0,
+        scrollRef1.current?.offsetTop || 0,
         scrollRef2.current?.offsetTop || 0,
         scrollRef3.current?.offsetTop || 0,
+        scrollRef4.current?.offsetTop || 0,
       ];
 
       const scrollPosition =
@@ -318,6 +384,8 @@ export default function Particules({
         ) {
           if (currentShape !== i) {
             currentShape = i;
+            speed = shapes[currentShape].speed;
+            console.log(speed);
             calculateTargetPositions();
           }
           break;
@@ -337,7 +405,7 @@ export default function Particules({
       //window.removeEventListener("scroll", onScroll, false);
       renderer.dispose();
     };
-  }, [scrollRef0, scrollRef2, scrollRef3]);
+  }, [scrollRef0, scrollRef1, scrollRef2, scrollRef3, scrollRef4]);
 
   return (
     <div id="canvas-container">

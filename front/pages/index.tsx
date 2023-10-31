@@ -82,29 +82,18 @@ export default function Home({
   const router = useRouter();
   const [logoY, setLogoY] = useState<number>(0);
   const logoRef = useRef<HTMLDivElement | null>(null);
-  const [hasScrolled, setHasScrolled] = useState<boolean>(false);
 
   const scrollRef0 = useRef<HTMLDivElement | null>(null);
   const scrollRef1 = useRef<HTMLDivElement | null>(null);
   const scrollRef2 = useRef<HTMLDivElement | null>(null);
   const scrollRef3 = useRef<HTMLDivElement | null>(null);
+  const scrollRef4 = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (logoRef.current) {
       const logoPosition = logoRef.current.offsetTop;
       setLogoY(logoPosition);
     }
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setHasScrolled(currentScrollY > 600);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
   }, []);
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
@@ -158,16 +147,13 @@ export default function Home({
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
-      <div
-        className={classNames(
-          "fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]",
-          hasScrolled ? "opacity-60" : "opacity-100"
-        )}
-      >
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]">
         <Particles
           scrollRef0={scrollRef0}
+          scrollRef1={scrollRef1}
           scrollRef2={scrollRef2}
           scrollRef3={scrollRef3}
+          scrollRef4={scrollRef4}
         />
       </div>
 
@@ -177,7 +163,8 @@ export default function Home({
             "container flex flex-col",
             "gap-16 py-24",
             "md:gap-28 md:py-36",
-            "xl:gap-36"
+            "xl:gap-36",
+            "2xl:gap-48"
           )}
         >
           <Grid>
@@ -237,7 +224,7 @@ export default function Home({
               <img src="/static/landing/conversation.png" />
             </ReactiveImg>
             <div
-              ref={scrollRef1}
+              ref={scrollRef0}
               className={classNames(
                 "col-span-9",
                 "sm:col-span-6",
@@ -299,7 +286,7 @@ export default function Home({
           {/* Get state of the art*/}
           <Grid>
             <div
-              ref={scrollRef0}
+              ref={scrollRef1}
               className={classNames(
                 defaultFlexClasses,
                 "col-span-12",
@@ -569,11 +556,16 @@ export default function Home({
 
           {/* Design for security */}
           <Grid>
-            <H2 className="col-span-12 text-red-400 md:col-span-6 md:row-span-2 xl:col-span-5 xl:col-start-2">
-              Designed for security
-              <br />
-              <span className="text-red-200">and data privacy.</span>
-            </H2>
+            <div
+              ref={scrollRef3}
+              className="col-span-12 md:col-span-6 md:row-span-2 xl:col-span-5 xl:col-start-2"
+            >
+              <H2 className="text-red-400">
+                Designed for security
+                <br />
+                <span className="text-red-200">and data privacy.</span>
+              </H2>
+            </div>
             <P variant="lg" className="col-span-6 xl:col-span-5 2xl:col-span-4">
               <Strong>Your data is private</Strong>, No re-training
               of&nbsp;models on your internal knowledge.
@@ -643,7 +635,10 @@ export default function Home({
             </div>
           </Grid> */}
           <Grid>
-            <div className="col-span-12 text-center md:pb-6 xl:pb-10">
+            <div
+              ref={scrollRef4}
+              className="col-span-12 text-center md:pb-6 xl:pb-10"
+            >
               <H2 className="text-slate-50">
                 Start with Dust!
                 <br />
