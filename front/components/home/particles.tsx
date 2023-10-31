@@ -39,6 +39,11 @@ const sceneFocusZ = 0;
 let currentShape = 0; // 0 = cube, 1 = sphere, etc...;
 let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
 
+function handleContextLost(event: Event) {
+  event.preventDefault();
+  renderer.domElement.style.display = "none";
+}
+
 function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(backgroundColor);
@@ -58,6 +63,13 @@ function init() {
   if (container) {
     container.appendChild(renderer.domElement);
   }
+
+  // Add WebGL context lost event listener
+  renderer.domElement.addEventListener(
+    "webglcontextlost",
+    handleContextLost,
+    false
+  );
 
   const geometry = new THREE.BufferGeometry();
   const vertices = [];
@@ -402,7 +414,13 @@ export default function Particules({
     return () => {
       window.removeEventListener("keydown", onKeydown, false);
       window.removeEventListener("resize", onWindowResize, false);
-      //window.removeEventListener("scroll", onScroll, false);
+      if (hasScrollBehavior) {
+        window.removeEventListener("scroll", onScroll, false);
+      }
+      renderer.domElement.removeEventListener(
+        "webglcontextlost",
+        handleContextLost
+      );
       renderer.dispose();
     };
   }, [scrollRef0, scrollRef1, scrollRef2, scrollRef3, scrollRef4]);
