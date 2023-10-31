@@ -1,7 +1,8 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -26,6 +27,7 @@ export function AgentSuggestion({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
+  const sendNotification = useContext(SendNotificationsContext);
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
   agents.sort((a, b) => compareAgentSuggestions(a, b));
@@ -103,12 +105,15 @@ export function AgentSuggestion({
           window.alert(
             `Error adding mention to message: ${data.error.message}`
           );
+          sendNotification({
+            type: "error",
+            title: "Invite sent",
+            description: `Error adding mention to message: ${data.error.message}`,
+          });
         }
       } finally {
         isEditingMessage.current--;
       }
-    } else {
-      console.error("already editing message");
     }
   }
 
