@@ -70,7 +70,7 @@ const pClasses = {
 interface PProps {
   children: ReactNode;
   className?: string;
-  variant?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   borderCSS?: string;
 }
 
@@ -78,7 +78,7 @@ export const P = ({
   children,
   borderCSS = "",
   className = "",
-  variant = "md",
+  size = "md",
 }: PProps) => {
   if (borderCSS) {
     return (
@@ -89,13 +89,11 @@ export const P = ({
             "mt-0.5 h-6 w-3 flex-shrink-0 bg-emerald-400"
           )}
         />
-        <p className={classNames(pClasses[variant])}>{children}</p>
+        <p className={classNames(pClasses[size])}>{children}</p>
       </div>
     );
   } else {
-    return (
-      <p className={classNames(className, pClasses[variant])}>{children}</p>
-    );
+    return <p className={classNames(className, pClasses[size])}>{children}</p>;
   }
 };
 
@@ -108,6 +106,7 @@ const aClasses = {
 interface AProps {
   children: ReactNode;
   className?: string;
+  href?: string;
   variant?: "primary" | "secondary" | "tertiary";
 }
 
@@ -115,17 +114,35 @@ export const A = ({
   children,
   variant = "primary",
   className = "",
-}: AProps) => (
-  <span
-    className={classNames(
-      className,
-      "font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
-      aClasses[variant]
-    )}
-  >
-    {children}
-  </span>
-);
+  href,
+}: AProps) => {
+  if (href) {
+    return (
+      <a
+        className={classNames(
+          className,
+          "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
+          aClasses[variant]
+        )}
+        href={href}
+      >
+        {children}
+      </a>
+    );
+  } else {
+    return (
+      <span
+        className={classNames(
+          className,
+          "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
+          aClasses[variant]
+        )}
+      >
+        {children}
+      </span>
+    );
+  }
+};
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
   <strong className={classNames(className, "font-medium text-slate-200")}>
