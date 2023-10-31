@@ -102,8 +102,7 @@ async function handler(
       let filterPermission: ConnectorPermission | undefined = undefined;
       if (
         req.query.filterPermission &&
-        typeof req.query.filterPermission === "string" &&
-        ["read", "write"].includes(req.query.filterPermission)
+        typeof req.query.filterPermission === "string"
       ) {
         switch (req.query.filterPermission) {
           case "read":

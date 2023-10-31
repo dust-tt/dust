@@ -35,8 +35,7 @@ const _getConnectorPermissions = async (
   let filterPermission: ConnectorPermission | null = null;
   if (
     req.query.filterPermission &&
-    typeof req.query.filterPermission === "string" &&
-    ["read", "write"].includes(req.query.filterPermission)
+    typeof req.query.filterPermission === "string"
   ) {
     switch (req.query.filterPermission) {
       case "read":
