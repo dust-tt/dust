@@ -132,7 +132,7 @@ export default function Home({
               </A>
             </P> */}
           </div>
-          <div className="flex hidden items-center gap-2">
+          <div className="flex items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="font-regular font-objektiv text-xs text-slate-400">
                 Sign in with{" "}
@@ -165,7 +165,7 @@ export default function Home({
               variant="primary"
               size="sm"
               label="Start with Dust"
-              className="invisibleFirst opacity-0 transition-all duration-500 ease-out"
+              className="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out"
               icon={RocketIcon}
             />
             <DropdownMenu>

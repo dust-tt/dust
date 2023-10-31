@@ -15,9 +15,7 @@ export default function OnboardingLayout({
   gaTrackingId: string;
   children: React.ReactNode;
 }) {
-  const scrollRef1 = useRef<HTMLDivElement | null>(null);
-  const scrollRef2 = useRef<HTMLDivElement | null>(null);
-  const scrollRef3 = useRef<HTMLDivElement | null>(null);
+  const scrollRef0 = useRef<HTMLDivElement | null>(null);
 
   return (
     <>
@@ -75,13 +73,15 @@ export default function OnboardingLayout({
       </Head>
 
       {/* Keeping the background dark */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
         <Particles
-          scrollRef1={scrollRef1}
-          scrollRef2={scrollRef2}
-          scrollRef3={scrollRef3}
+          scrollRef0={scrollRef0}
+          scrollRef1={scrollRef0}
+          scrollRef2={scrollRef0}
+          scrollRef3={scrollRef0}
+          scrollRef4={scrollRef0}
         />
       </div>
 
