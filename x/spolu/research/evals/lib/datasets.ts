@@ -5,14 +5,13 @@ export type ProblemId = string;
 export type Example = {
   id: ProblemId;
   question: string;
-  reasoning: string;
+  reasoning: string[];
   answer: string;
 };
 
 export type Test = {
   id: ProblemId;
   question: string;
-  answer: string;
 };
 
 export abstract class Dataset {
@@ -31,4 +30,12 @@ export abstract class Dataset {
     problem: ProblemId;
     count: number;
   }): Example[];
+
+  abstract check({
+    test,
+    answer,
+  }: {
+    test: Test;
+    answer: string;
+  }): Promise<boolean>;
 }

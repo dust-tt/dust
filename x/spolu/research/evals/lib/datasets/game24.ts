@@ -1,11 +1,15 @@
 import { Dataset, Example, ProblemId, Test } from "../datasets";
 import * as fs from "fs";
-// import { evaluate, parse } from "mathjs";
+import { ConstantNode, OperatorNode, evaluate, parse } from "mathjs";
 
 type Example24 = {
   problem: string;
   rank: number;
   solutions: string[];
+  // Above is parsed from 24.jsonl, below is filled by picking a solution and building the
+  // associated reasoning.
+  solution?: string;
+  reasoning?: string[];
 };
 
 class Game24 extends Dataset {
@@ -17,7 +21,75 @@ class Game24 extends Dataset {
     super();
   }
 
-  async load(): Promise<void> {
+  build_reasoning({ problem }: { problem: Example24 }): {
+    solution: string;
+    reasoning: string[];
+  } {
+    const solution = problem.solutions[0];
+    const node = parse(solution);
+    let formula: (string | number)[] = [];
+    node.traverse(function (node, path, parent) {
+      switch (node.type) {
+        case "OperatorNode":
+          formula.push((node as OperatorNode).op);
+          break;
+        case "ConstantNode":
+          formula.push((node as ConstantNode).value);
+          break;
+        case "ParenthesisNode":
+          break;
+        default:
+          break;
+      }
+    });
+    // console.log(">> " + formula.join(" "));
+
+    let reasoning = [];
+    while (formula.length > 1) {
+      // Find the first operator followed by numbers.
+      let index = 0;
+      while (index < formula.length - 2) {
+        if (
+          typeof formula[index] === "string" &&
+          typeof formula[index + 1] === "number" &&
+          typeof formula[index + 2] === "number"
+        ) {
+          break;
+        }
+        index++;
+      }
+
+      // Apply the operator to the two numbers.
+      const op = formula[index] as string;
+      const a = formula[index + 1] as number;
+      const b = formula[index + 2] as number;
+      // console.log(`${a} ${op} ${b}`);
+      const result = evaluate(`${a} ${op} ${b}`);
+
+      // Replace 3 entries with the result.
+      formula.splice(index, 3, result);
+
+      if (formula.length > 1) {
+        const r = `${a}${op}${b}=${result}, left: ${formula
+          .filter((a) => typeof a === "number")
+          .join(" ")}`;
+        reasoning.push(r);
+      } else {
+        if (result !== 24) {
+          throw new Error("Unexpected non 24 result");
+        }
+        const r = `${a}${op}${b}=${result}`;
+        reasoning.push(r);
+      }
+    }
+
+    return {
+      solution,
+      reasoning,
+    };
+  }
+
+  async load() {
     const data = await fs.promises.readFile("datasets/24/24.jsonl", "utf8");
     const lines = data.split("\n");
     const examples = lines
@@ -27,6 +99,12 @@ class Game24 extends Dataset {
     const shuffled = examples.sort(() => Math.random() - 0.5);
     this.train = shuffled.slice(0, 128);
     this.test = shuffled.slice(128, 256);
+
+    this.train.forEach((e) => {
+      let { solution, reasoning } = this.build_reasoning({ problem: e });
+      e.solution = solution;
+      e.reasoning = reasoning;
+    });
 
     console.log(
       `Loaded dataset: dataset=Game24 train_count=${this.train.length} test_count=${this.test.length}`
@@ -48,7 +126,6 @@ class Game24 extends Dataset {
     return this.test.slice(0, count).map((e) => ({
       id: e.problem,
       question: e.problem,
-      answer: e.solutions[0],
     }));
   }
 
@@ -62,33 +139,31 @@ class Game24 extends Dataset {
     return this.train.slice(0, count).map((e) => ({
       id: e.problem,
       question: e.problem,
-      reasoning: e.solutions[0],
-      answer: e.solutions[0],
+      reasoning: e.reasoning || [],
+      answer: e.solution || e.solutions[0],
     }));
+  }
+
+  async check({ test, answer }: { test: Test; answer: string }) {
+    const result = evaluate(answer);
+    if (result === 24) {
+      return true;
+    }
+    return false;
   }
 }
 
 (async () => {
   const d = new Game24();
   await d.load();
-  const train = d.examples({ problem: "", count: 10 });
+  const train = d.examples({ problem: "", count: 8 });
 
-  console.log(train[0].answer);
-  // const node = parse(train[0].answer);
+  console.log(train[0]);
 
-  // node.traverse(function (node, path, parent) {
-  //   switch (node.type) {
-  //     case "OperatorNode":
-  //       console.log(node.type, node.op);
-  //       break;
-  //     case "ConstantNode":
-  //       console.log(node.type, node.value);
-  //       break;
-  //     case "SymbolNode":
-  //       console.log(node.type, node.name);
-  //       break;
-  //     default:
-  //       console.log(node.type);
-  //   }
-  // });
+  console.log(
+    d.check({
+      test: { id: train[0].id, question: train[0].question },
+      answer: train[0].answer,
+    })
+  );
 })();
