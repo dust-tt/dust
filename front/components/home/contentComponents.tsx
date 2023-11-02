@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React, { ReactElement, ReactNode } from "react";
+import React, { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
 
 const defaultGridClasses =
   "grid grid-cols-12 gap-x-6 gap-y-8 px-6 md:px-12 lg:px-20 2xl:px-0";
@@ -98,10 +98,9 @@ const aClasses = {
   tertiary: "text-slate-400 hover:text-slate-100 active:text-slate-500",
 };
 
-interface AProps {
+interface AProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children: ReactNode;
   className?: string;
-  href?: string;
   variant?: "primary" | "secondary" | "tertiary";
 }
 
@@ -110,10 +109,12 @@ export const A = ({
   variant = "primary",
   className = "",
   href,
+  ...props
 }: AProps) => {
   if (href) {
     return (
       <a
+        {...props}
         className={classNames(
           className,
           "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
