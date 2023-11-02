@@ -1,3 +1,4 @@
+import { Tooltip } from "@dust-tt/sparkle";
 import classNames from "classnames";
 import React, { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
 
@@ -82,8 +83,13 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames(className, "flex gap-4")}>
-        <div className={classNames(dotCSS, "mt-0.5 h-6 w-3 flex-shrink-0")} />
+      <div className={classNames(className, "flex gap-2 lg:gap-4")}>
+        <div
+          className={classNames(
+            dotCSS,
+            "mt-1 h-4 w-2 flex-shrink-0 md:mt-1.5 lg:mt-0.5 lg:h-6 lg:w-3"
+          )}
+        />
         <p className={classNames(pClasses[size])}>{children}</p>
       </div>
     );
@@ -154,6 +160,7 @@ interface ReactImgProps {
   className?: string;
   src?: string;
   isSmall?: boolean;
+  tooltipLabel?: string;
 }
 
 export const ReactiveImg = ({
@@ -163,6 +170,7 @@ export const ReactiveImg = ({
   paddingCSS = "p-3",
   className = "",
   isSmall = false,
+  tooltipLabel,
 }: ReactImgProps) => {
   const singleChild = React.Children.only(children);
 
@@ -190,7 +198,7 @@ export const ReactiveImg = ({
       }
     : undefined;
 
-  return (
+  const image = (
     <div className={classNames("group", className)}>
       <div
         style={style}
@@ -207,12 +215,19 @@ export const ReactiveImg = ({
       </div>
     </div>
   );
+
+  return tooltipLabel ? (
+    <Tooltip label={tooltipLabel}>{image}</Tooltip>
+  ) : (
+    <>{image}</>
+  );
 };
 
 export const ReactiveIcon = ({
   children,
   className = "",
   colorHEX,
+  tooltipLabel,
 }: ReactImgProps) => {
   const singleChild = React.Children.only(children);
 
@@ -237,6 +252,7 @@ export const ReactiveIcon = ({
       colorHEX={colorHEX}
       className={classNames("w-fit", className)}
       paddingCSS="p-4"
+      tooltipLabel={tooltipLabel}
       isSmall
     >
       {modifiedChild}

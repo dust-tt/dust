@@ -3,17 +3,18 @@ import * as THREE from "three";
 
 const hasScrollBehavior = true;
 
-let speed = 0.1;
+let speed = 0.08;
 const postExplodeSpeed = 0.03;
+const particleSize = 0.016; // Size of the particles
+let targetSize = particleSize; // initial target size
 const shapes = [
-  { name: "grid", opacity: 1, speed: 0.03 },
-  { name: "grid", opacity: 1, speed: 0.03 },
-  { name: "wave", opacity: 0.7, speed: 0.01 },
-  { name: "bigSphere", opacity: 1, speed: 0.03 },
-  { name: "sphere", opacity: 0.6, speed: 0.015 },
-  { name: "bigCube", opacity: 1, speed: 0.03 },
+  { name: "grid", opacity: 1, speed: 0.03, size: particleSize },
+  { name: "grid", opacity: 1, speed: 0.03, size: particleSize },
+  { name: "wave", opacity: 1, speed: 0.02, size: particleSize / 2 },
+  { name: "bigSphere", opacity: 1, speed: 0.03, size: particleSize / 2 },
+  { name: "sphere", opacity: 1, speed: 0.02, size: particleSize / 2 },
+  { name: "bigCube", opacity: 1, speed: 0.03, size: particleSize },
 ];
-//{ name: "cube", opacity: 0.5, speed: 0.03 },
 const totalShapes = Object.keys(shapes).length;
 
 let scene: THREE.Scene;
@@ -28,7 +29,6 @@ const colorsArray = [
 const originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles
 const numParticles = 10000; // number of particles
-const particleSize = 0.01; // Size of the particles
 const geometricObjectSize = 1.25;
 const rotationActive = true; // Activate the rotation of the scene
 
@@ -98,8 +98,11 @@ function init() {
   });
 
   particleSystem = new THREE.Points(geometry, material);
-  particleSystem.rotation.x = 0.7;
-  particleSystem.rotation.y = -0.3;
+  // particleSystem.rotation.x = 0.7;
+  // particleSystem.rotation.y = -0.3;
+  // particleSystem.rotation.z = 0;
+  particleSystem.rotation.x = -1.2;
+  particleSystem.rotation.y = 0;
   particleSystem.rotation.z = 0;
   scene.add(particleSystem);
 
@@ -138,10 +141,28 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function animate() {
+  // Get the current size
+  const currentSize = (particleSystem.material as THREE.PointsMaterial).size;
+
+  // Calculate the difference between the current size and the target size
+  const sizeDifference = targetSize - currentSize;
+
+  // If the difference is too small, directly set to targetSize to avoid endless tiny oscillations
+  if (Math.abs(sizeDifference) < 0.001) {
+    (particleSystem.material as THREE.PointsMaterial).size = targetSize;
+  } else {
+    // Gradually change the size
+    (particleSystem.material as THREE.PointsMaterial).size +=
+      sizeDifference * 0.01; // 0.01 is the speed of size change, adjust this value to your need
+  }
+
   requestAnimationFrame(animate);
   if (rotationActive) {
-    particleSystem.rotation.x += 0.0002;
-    particleSystem.rotation.y += 0.00005;
+    // particleSystem.rotation.x += 0.0002;
+    // particleSystem.rotation.y += 0.00005;
+    // particleSystem.rotation.z += 0.0002;
+    particleSystem.rotation.x += 0.0;
+    particleSystem.rotation.y += 0.0;
     particleSystem.rotation.z += 0.0002;
   }
   if (!explode) {
@@ -228,8 +249,9 @@ function animateExplode() {
 function calculateTargetPositions() {
   targetPositions = []; // Reset the target positions
 
-  const opacity = shapes[currentShape].opacity;
-  (particleSystem.material as THREE.PointsMaterial).opacity = opacity;
+  //const opacity = shapes[currentShape].opacity;
+  targetSize = shapes[currentShape].size;
+  //(particleSystem.material as THREE.PointsMaterial).opacity = opacity;
 
   for (let i = 0; i < numParticles; i++) {
     let targetPositionX = 0,
@@ -264,7 +286,7 @@ function calculateTargetPositions() {
         //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
         break;
       case "wave":
-        gridSize = 6;
+        gridSize = 8;
         gridSpacing = gridSize / gridNum; // spacing between particles in the grid
         const rippleAmplitude = 0.1; // the amplitude of the ripple
         const rippleFrequency = (12 * Math.PI) / gridSize; // the frequency of the ripple
