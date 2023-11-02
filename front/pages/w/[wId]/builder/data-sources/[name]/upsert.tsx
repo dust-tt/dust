@@ -13,7 +13,6 @@ import {
   EyeSlashIcon,
   Input,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
