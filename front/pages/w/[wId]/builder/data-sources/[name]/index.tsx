@@ -2,6 +2,9 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  DocumentTextIcon,
+  Page,
+  PencilSquareIcon,
   PlusIcon,
   SectionHeader,
   SlackLogo,
@@ -9,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
@@ -29,10 +31,7 @@ import {
   ConnectorsAPI,
   ConnectorType,
 } from "@app/lib/connectors_api";
-import {
-  getDisplayNameForDocument,
-  getProviderLogoPathForDataSource,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
@@ -150,8 +149,6 @@ function StandardDataSourceView({
     Record<string, string>
   >({});
 
-  const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -177,154 +174,148 @@ function StandardDataSourceView({
   }
 
   return (
-    <div className="flex flex-col">
-      <SectionHeader
-        title={`Data Source ${dataSource.name}`}
-        description="Use this page to view and upload documents to your data source."
-        action={
-          readOnly
-            ? undefined
-            : {
-                label: "Settings",
-                variant: "tertiary",
-                icon: Cog6ToothIcon,
-                onClick: () => {
-                  void router.push(
-                    `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
-                  );
-                },
-              }
-        }
-      />
+    <div className="pt-6">
+      <Page.Vertical align="stretch">
+        <Page.SectionHeader
+          title={`Data Source ${dataSource.name}`}
+          description="Use this page to view and upload documents to your data source."
+          action={
+            readOnly
+              ? undefined
+              : {
+                  label: "Settings",
+                  variant: "tertiary",
+                  icon: Cog6ToothIcon,
+                  onClick: () => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
+                    );
+                  },
+                }
+          }
+        />
 
-      <div className="mt-16 flex flex-row">
-        <div className="flex flex-1">
-          <div className="flex flex-col">
-            <div className="flex flex-row">
-              <div className="flex flex-initial gap-x-2">
+        <div className="mt-16 flex flex-row">
+          <div className="flex flex-1">
+            <div className="flex flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-initial gap-x-2">
+                  <Button
+                    variant="tertiary"
+                    disabled={offset < limit}
+                    onClick={() => {
+                      if (offset >= limit) {
+                        setOffset(offset - limit);
+                      } else {
+                        setOffset(0);
+                      }
+                    }}
+                    label="Previous"
+                  />
+                  <Button
+                    variant="tertiary"
+                    label="Next"
+                    disabled={offset + limit >= total}
+                    onClick={() => {
+                      if (offset + limit < total) {
+                        setOffset(offset + limit);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                {total > 0 && (
+                  <span>
+                    Showing documents {offset + 1} - {last} of {total} documents
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {readOnly ? null : (
+            <div className="">
+              <div className="mt-0 flex-none">
                 <Button
-                  variant="tertiary"
-                  disabled={offset < limit}
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Add document"
                   onClick={() => {
-                    if (offset >= limit) {
-                      setOffset(offset - limit);
+                    // Enforce plan limits: DataSource documents count.
+                    if (
+                      plan.limits.dataSources.documents.count != -1 &&
+                      total >= plan.limits.dataSources.documents.count
+                    ) {
+                      window.alert(
+                        "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
+                      );
+                      return;
                     } else {
-                      setOffset(0);
-                    }
-                  }}
-                  label="Previous"
-                />
-                <Button
-                  variant="tertiary"
-                  label="Next"
-                  disabled={offset + limit >= total}
-                  onClick={() => {
-                    if (offset + limit < total) {
-                      setOffset(offset + limit);
+                      void router.push(
+                        `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
+                      );
                     }
                   }}
                 />
               </div>
             </div>
-
-            <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-              {total > 0 && (
-                <span>
-                  Showing documents {offset + 1} - {last} of {total} documents
-                </span>
-              )}
-            </div>
-          </div>
+          )}
         </div>
-        {readOnly ? null : (
-          <div className="">
-            <div className="mt-0 flex-none">
-              <Button
-                variant="primary"
-                icon={PlusIcon}
-                label="Document"
-                onClick={() => {
-                  // Enforce plan limits: DataSource documents count.
-                  if (
-                    plan.limits.dataSources.documents.count != -1 &&
-                    total >= plan.limits.dataSources.documents.count
-                  ) {
-                    window.alert(
-                      "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
-                    );
-                    return;
-                  } else {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
-                    );
-                  }
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
 
-      <div className="mt-8 overflow-hidden pb-8">
-        <ul role="list" className="space-y-4">
-          {documents.map((d) => (
-            <li
-              key={d.document_id}
-              className="group rounded border border-gray-300 px-2 px-4"
-            >
-              <Link
-                href={`/w/${owner.sId}/builder/data-sources/${
-                  dataSource.name
-                }/upsert?documentId=${encodeURIComponent(d.document_id)}`}
-                className="block"
+        <div className="py-8">
+          <ContextItem.List>
+            {documents.map((d) => (
+              <ContextItem
+                key={d.document_id}
+                title={displayNameByDocId[d.document_id]}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      DocumentTextIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
+                }
+                action={
+                  <Button.List>
+                    <Button
+                      variant="secondary"
+                      icon={PencilSquareIcon}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${
+                            dataSource.name
+                          }/upsert?documentId=${encodeURIComponent(
+                            d.document_id
+                          )}`
+                        );
+                      }}
+                      label="Edit"
+                      labelVisible={false}
+                    />
+                  </Button.List>
+                }
               >
-                <div className="mx-2 py-4">
-                  <div className="grid grid-cols-5 items-center justify-between">
-                    <div className="col-span-4">
-                      <div className="flex">
-                        {documentPoviderIconPath ? (
-                          <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
-                            <img src={documentPoviderIconPath}></img>
-                          </div>
-                        ) : null}
-                        <p className="truncate text-base font-bold text-action-600">
-                          {displayNameByDocId[d.document_id]}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="col-span-1">
-                      <div className="ml-2 flex flex-row">
-                        <div className="flex flex-1"></div>
-                        <div className="mt-0 flex items-center">
-                          <p className="text-sm text-gray-500">
-                            {timeAgoFrom(d.timestamp)} ago
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                <ContextItem.Description>
+                  <div className="pt-2 text-sm text-element-700">
+                    {Math.floor(d.text_size / 1024)} kb,{" "}
+                    {timeAgoFrom(d.timestamp)} ago
                   </div>
-                  <div className="mt-2 flex justify-between">
-                    <div className="flex flex-initial">
-                      <p className="text-sm text-gray-300">
-                        {Math.floor(d.text_size / 1024)} kb / {d.chunk_count}{" "}
-                        chunks{" "}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
           {documents.length == 0 ? (
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
               <p>No documents found for this Data Source.</p>
-              <p className="mt-2">
-                You can upload documents manually or by API.
-              </p>
+              <p className="mt-2">You can add documents manually or by API.</p>
             </div>
           ) : null}
-        </ul>
-      </div>
+        </div>
+      </Page.Vertical>
     </div>
   );
 }

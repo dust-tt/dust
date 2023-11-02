@@ -2,22 +2,25 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
 import {
   Button,
   DocumentPlusIcon,
   DropdownMenu,
-  IconButton,
+  EyeIcon,
+  EyeSlashIcon,
+  Input,
+  Page,
   PlusIcon,
   TrashIcon,
-  XCircleIcon,
 } from "@dust-tt/sparkle";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
@@ -95,6 +98,10 @@ export default function DataSourceUpsert({
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
+
+  const sendNotification = useContext(SendNotificationsContext);
+
   useEffect(() => {
     setDisabled(!documentId || !text);
   }, [documentId, text]);
@@ -124,11 +131,11 @@ export default function DataSourceUpsert({
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
   const alertDataSourcesLimit = () => {
-    window.alert(
-      "DataSource document upload size is limited to " +
-        `${plan.limits.dataSources.documents.sizeMb}MB (of raw text)` +
-        ". Contact team@dust.tt if you want to increase this limit."
-    );
+    sendNotification({
+      type: "error",
+      title: "Upload size limit",
+      description: `Data Source document upload size is limited to ${plan.limits.dataSources.documents.count}MB (of raw text) Contact team@dust.tt if you want to increase this limit.`,
+    });
   };
 
   const handleFileLoadedText = (e: any) => {
@@ -182,7 +189,12 @@ export default function DataSourceUpsert({
       fileData.onloadend = handleFileLoadedText;
       fileData.readAsText(file);
     } else {
-      window.alert("File type not supported.");
+      sendNotification({
+        type: "error",
+        title: "File type not supported",
+        description: `Supported file types are: .txt, .pdf, .md, .csv.`,
+      });
+      setUploading(false);
     }
   };
 
@@ -214,7 +226,11 @@ export default function DataSourceUpsert({
     } else {
       const data = await res.json();
       console.log("UPSERT Error", data.error);
-      window.alert(`Error upserting document: ${data.error.message}`);
+      sendNotification({
+        type: "error",
+        title: "Error upserting document",
+        description: data.error.message,
+      });
       setLoading(false);
     }
   };
@@ -266,7 +282,7 @@ export default function DataSourceUpsert({
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
-          title="Upsert a document"
+          title={loadDocumentId ? "Edit document" : "Add a new document"}
           onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
@@ -284,213 +300,156 @@ export default function DataSourceUpsert({
       }
       hideSidebar={true}
     >
-      <div className="flex flex-col pt-8">
-        <div className="space-y-2">
-          <div className="flex flex-1">
-            <div className="w-full">
-              <div className="grid gap-x-4 gap-y-4 sm:grid-cols-5">
-                <div className="sm:col-span-5">
-                  <label
-                    htmlFor="documentId"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Document ID
-                  </label>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <input
-                      type="text"
-                      name="document"
-                      id="document"
-                      readOnly={readOnly}
-                      className={classNames(
-                        "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
-                        "border-gray-300",
-                        readOnly
-                          ? "focus:border-gray-300 focus:ring-0"
-                          : "focus:border-action-500 focus:ring-action-500"
-                      )}
-                      value={documentId}
-                      onChange={(e) => setDocumentId(e.target.value)}
-                    />
-                  </div>
-                  <p className="my-2 text-sm text-gray-500">
-                    The ID of the document (it can be anything such as a file
-                    name or title). Upserting with the ID of a document that
-                    already exists will replace it.
-                  </p>
-                </div>
-              </div>
+      <div className="pt-6">
+        <Page.Vertical align="stretch">
+          <div className="pt-4">
+            <Page.SectionHeader title="Document title" />
+            <div className="pt-4">
+              <Input
+                placeholder="Document title"
+                name="document"
+                disabled={readOnly || !!loadDocumentId}
+                value={documentId}
+                onChange={(v) => setDocumentId(v)}
+              />
             </div>
           </div>
 
-          <div className="flex flex-1">
-            <div className="mb-4 w-full">
-              <div className="mt-2 grid grid-cols-5 gap-x-4 gap-y-4">
-                <div className="col-span-3">
-                  <label
-                    htmlFor="tags"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Tags
-                  </label>
-                  {tags.map((tag, index) => (
-                    <div
-                      key={index}
-                      className="group mt-1 flex rounded-md shadow-sm"
-                    >
-                      <input
-                        type="text"
-                        name="document"
-                        id="document"
-                        readOnly={readOnly}
-                        className={classNames(
-                          "block w-full min-w-0 flex-1 rounded-md text-sm",
-                          "border-gray-300",
-                          readOnly
-                            ? "focus:border-gray-300 focus:ring-0"
-                            : "focus:border-action-500 focus:ring-action-500"
-                        )}
-                        value={tag}
-                        onChange={(e) => handleTagUpdate(index, e.target.value)}
-                      />
-                      {!readOnly ? (
-                        <IconButton
-                          icon={XCircleIcon}
-                          variant="tertiary"
-                          onClick={() => {
-                            handleTagDelete(index);
-                          }}
-                          className="ml-1"
-                        />
-                      ) : null}
-                    </div>
-                  ))}
-                  {!readOnly ? (
-                    <div className="mt-2 flex flex-row">
-                      <Button
-                        size="xs"
-                        label="Add tag"
-                        icon={PlusIcon}
-                        variant="tertiary"
-                        onClick={() => handleAddTag()}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+          <div className="pt-4">
+            <Page.SectionHeader
+              title="Associated URL"
+              description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+            />
+            <div className="pt-4">
+              <Input
+                placeholder="https://..."
+                name="document"
+                disabled={readOnly}
+                value={sourceUrl}
+                onChange={(v) => setSourceUrl(v)}
+              />
             </div>
           </div>
 
-          <div className="w-full pb-4">
-            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-5">
-              <div className="sm:col-span-5">
-                <label
-                  htmlFor="documentId"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Source URL
-                </label>
-                <div className="mt-1 flex rounded-md shadow-sm">
-                  <input
-                    type="text"
-                    name="document"
-                    id="document"
-                    readOnly={readOnly}
-                    className={classNames(
-                      "block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm",
-                      "border-gray-300",
-                      readOnly
-                        ? "focus:border-gray-300 focus:ring-0"
-                        : "focus:border-action-500 focus:ring-action-500"
-                    )}
-                    value={sourceUrl}
-                    onChange={(e) => setSourceUrl(e.target.value)}
-                  />
-                </div>
-                <p className="my-2 text-sm text-gray-500">
-                  The URL of the source document (if any). This will be used to
-                  link users to the original document in assistants citations.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex w-full flex-1">
-            <div className="w-full sm:col-span-5">
-              <div className="flex flex-row items-center">
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Text Content
-                  </h3>
-                  <p className="my-2 text-sm text-gray-500">
-                    Upload (text or PDF) or copy the text data for the document
-                    you want to create or replace (upsert).
-                  </p>
-                </div>
-                {!readOnly ? (
-                  <div className="ml-2 mt-0 flex-initial">
-                    <input
-                      className="hidden"
-                      type="file"
-                      accept=".txt, .pdf, .md, .csv"
-                      ref={fileInputRef}
-                      onChange={async (e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          await handleFileUpload(e.target.files[0]);
-                        }
-                      }}
-                    ></input>
-                    <Button
-                      variant="tertiary"
-                      onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.click();
-                        }
-                      }}
-                      icon={DocumentPlusIcon}
-                      disabled={readOnly || uploading}
-                      label={uploading ? "Uploading..." : "Upload"}
-                    ></Button>
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <textarea
-                  name="text"
-                  id="text"
-                  rows={20}
-                  readOnly={readOnly}
-                  className={classNames(
-                    "font-mono block w-full min-w-0 flex-1 rounded-md text-xs",
-                    "border-gray-300",
-                    readOnly
-                      ? "focus:border-gray-300 focus:ring-0"
-                      : "focus:border-action-500 focus:ring-action-500",
-                    downloading ? "text-gray-300" : ""
-                  )}
-                  disabled={downloading}
-                  value={
-                    downloading
-                      ? "Downloading..."
-                      : uploading
-                      ? "Uploading..."
-                      : text
+          <div className="pt-4">
+            {!readOnly && (
+              <input
+                className="hidden"
+                type="file"
+                accept=".txt, .pdf, .md, .csv"
+                ref={fileInputRef}
+                onChange={async (e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    await handleFileUpload(e.target.files[0]);
                   }
-                  onChange={(e) => setText(e.target.value)}
-                />
-              </div>
+                }}
+              ></input>
+            )}
+            <Page.SectionHeader
+              title="Text content"
+              description="Copy paste content or upload a file (text or PDF)."
+              action={{
+                label: uploading ? "Uploading..." : "Upload file",
+                variant: "secondary",
+                icon: DocumentPlusIcon,
+                onClick: () => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.click();
+                  }
+                },
+              }}
+            />
+            <div className="pt-4">
+              <textarea
+                name="text"
+                id="text"
+                rows={20}
+                readOnly={readOnly}
+                className={classNames(
+                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                  "border-structure-200 bg-structure-50",
+                  readOnly
+                    ? "focus:border-gray-300 focus:ring-0"
+                    : "focus:border-action-300 focus:ring-action-300",
+                  downloading ? "text-element-600" : " text-element-900"
+                )}
+                disabled={downloading}
+                value={
+                  downloading
+                    ? "Downloading..."
+                    : uploading
+                    ? "Uploading..."
+                    : text
+                }
+                onChange={(e) => setText(e.target.value)}
+              />
             </div>
           </div>
+          <div className="pt-4">
+            <Page.SectionHeader
+              title="Developer Options"
+              action={{
+                label: developerOptionsVisible ? "Hide" : "Show",
+                variant: "tertiary",
+                icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
+                onClick: () => {
+                  setDeveloperOptionsVisible(!developerOptionsVisible);
+                },
+              }}
+            />
+          </div>
+
+          {developerOptionsVisible && (
+            <div className="pt-4">
+              <Page.SectionHeader
+                title=""
+                description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                action={{
+                  label: "Add tag",
+                  variant: "tertiary",
+                  icon: PlusIcon,
+                  onClick: () => handleAddTag(),
+                }}
+              />
+              <div className="pt-4">
+                {tags.map((tag, index) => (
+                  <div key={index} className="flex flex-grow flex-row">
+                    <div className="flex flex-1 flex-row gap-8">
+                      <div className="flex flex-1 flex-col">
+                        <Input
+                          className="w-full"
+                          placeholder="Tag"
+                          name="tag"
+                          disabled={readOnly}
+                          value={tag}
+                          onChange={(v) => handleTagUpdate(index, v)}
+                        />
+                      </div>
+                      <div className="flex">
+                        <Button
+                          label="Remove"
+                          icon={TrashIcon}
+                          variant="secondaryWarning"
+                          onClick={() => handleTagDelete(index)}
+                          labelVisible={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {!readOnly && loadDocumentId && (
-            <div className="flex pt-16">
+            <div className="flex py-16">
               <div className="flex">
                 <DropdownMenu>
                   <DropdownMenu.Button>
                     <Button
-                      variant="secondaryWarning"
+                      variant="primaryWarning"
                       icon={TrashIcon}
-                      label={"Delete this Document"}
+                      label={"Remove document"}
                     />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items width={280}>
@@ -524,7 +483,7 @@ export default function DataSourceUpsert({
               </div>
             </div>
           )}
-        </div>
+        </Page.Vertical>
       </div>
     </AppLayout>
   );

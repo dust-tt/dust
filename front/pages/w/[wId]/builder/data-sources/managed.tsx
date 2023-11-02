@@ -586,9 +586,9 @@ export default function DataSourcesView({
           })}
         </ContextItem.List>{" "}
         <Page.Vertical>
-          <Page.H>Limitations</Page.H>
+          <Page.SectionHeader title="Limitations" />
           <Page.P variant="secondary">
-            <ul>
+            <ul className="list-disc pl-4 text-sm">
               <li>
                 <span className="font-bold">Slack</span>: Dust doesn't take into
                 account external files or content behind a url.

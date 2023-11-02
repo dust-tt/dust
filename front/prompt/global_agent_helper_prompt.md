@@ -51,7 +51,7 @@ Large Language Models (LLMs) embedding refers to the process of transforming tex
 
 ### How to invite members to the workspace
 
-As an Admin, go to 🗝️ Admin > `Workspace` > Members. You can invite members by email via `Member list` or define a whitelisted email domain in `Invitation Link` > `Settings` and then share the invitation Link. Once the members accept the invitation, select their users role: admin, builder or user.
+As an Admin, go to ️Admin > `Workspace` > Members. You can invite members by email via `Member list` or define a whitelisted email domain in `Invitation Link` > `Settings` and then share the invitation Link. Once the members accept the invitation, select their users role: admin, builder or user.
 
 ### What are the users’ different roles?
 
@@ -68,7 +68,7 @@ As an Admin, go to 🗝️ Admin > `Workspace` > Members. You can invite memb
 - Edit member roles.
 - Link and update Connections to the Workspace.
 
-### [](https://github.com/dust-tt/dust/blob/main/front/prompt/global_agent_helper_prompt.md#how-do-i-install-the-dust-assistant-in-slack)**How do I install the @Dust assistant in Slack?**
+### **How do I install the @Dust assistant in Slack?**
 
 Dust assistant in Slack is only available to paid plans and you need to connect Slack as a Connection to activate the bot. To get Dust in Slack, an admin needs to install it. Ensure the Dust app is installed and authorized in your workspace before you invite it to a channel.
 
@@ -99,9 +99,7 @@ To export your @dust conversation history in Slack, keep in mind that it's like 
 
 Connections are available only for paid plans.
 
-As an Admin, go to 🗝️ Admin > Connections > Select the desired Connection and click `Connect` > Authenticate your account and select the data you wish to synchronize with Dust.
-
-If you want the @dust assistant to default to using specific data for answers, as an admin, go to `Settings` inside the chosen Connection then select "Make this Data Source available to the @dust assistant" below `Availability to @dust`.
+As an Admin, go to ️Admin > Connections > Select the desired Connection and click `Connect` > Authenticate your account and select the data you wish to synchronize with Dust.
 
 ##Slack
 
@@ -113,17 +111,17 @@ To synchronize Notion pages, the admin can only select top level pages. To add l
 
 **How to update Connections**
 
-As an admin, 🗝️ Admin > `Connections` > Select the desired Connection and click `Manage` > `Edit permissions` > Explore and either select or deselect the data you want to synchronize with Dust.
+As an admin, ️Admin > `Connections` > Select the desired Connection and click `Manage` > `Edit permissions` > Explore and either select or deselect the data you want to synchronize with Dust.
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
-Dust synchronization is run in seconds or a few minutes depending on the Connection. You can check the last sync of a Connection in 🗝️ Admin > `Connections`> “last sync ~ x s ago,” and check if a document has been synced and what's in there by searching and clicking on the needed document from the search bar.
+Dust synchronization is run in seconds or a few minutes depending on the Connection. You can check the last sync of a Connection in ️Admin > `Connections`> “last sync ~ x s ago,” and check if a document has been synced and what's in there by searching and clicking on the needed document from the search bar.
 
 ### How to add data that are not supported as a Connection by Dust
 
 As a user, you can add your data to a connected platform like Notion or Google Drive. Dust will then automatically sync it through @dust, @notion, or @googledrive.
 
-As an admin or builder go to 🗝️ Admin > `Data Sources` > select the button `Add a new Data Source` > give your data source a name and optionally a description. If you want to add this data source to @dust by default select `Make this Data Source available to the @dust assistant` > then validate `create` .
+As an admin or builder go to ️Admin > `Data Sources` > select the button `Add a new Data Source` > give your data source a name and optionally a description. Then click on `create` .
 
 ### **Does Dust use user and company data to train its models?**
 
@@ -132,6 +130,10 @@ No, Dust does not use user or company data to retrain its models. Any data sent 
 ### How many words are there in a 750KB document?
 
 A 750KB plain text document could contain around 125,000 words, assuming an average of 5 characters per word. But remember, this is a rough estimate. The actual word count can vary based on the document's format and content.
+
+### How to configure which data sources @dust has access to
+
+To configure the @dust assistant, got to `Admin` > `Assistants` and click on the `Manage` button next to the @dust assistant. You'll be enable / disable @dust and select which data sources it has access to.
 
 ## Dust’s plans
 
@@ -198,7 +200,7 @@ The key parts to set up when creating a custom assistant are `Instructions`, `
 
 **Actions:** This gives the assistant context thanks to Data Sources. The more specific the data source, the better the assistant's answers. If the assistant's task doesn't need specific knowledge, you can skip adding a data source. You can use a Dust Application to create custom assistants that perform tasks, allowing you to leverage apps for advanced use cases.
 
-Dust apps are Large Language Model (LLM) apps. As an admin or a builder, to create Dust apps go to 🗝️ Admin > Developers > Tools > select Create App. From there, you can give the app a name and decide who can access the app. A Large Language Model app uses one or more calls to models or services like APIs or Data Sources to do a specific task. They're like a layer on top of a model that makes it work a certain way.
+Dust apps are Large Language Model (LLM) apps. As an admin or a builder, to create Dust apps go to ️`Admin` > `Developers` > `Tools` and click `Create App`. From there, you can give the app a name and decide who can access the app. A Large Language Model app uses one or more calls to models or services like APIs or Data Sources to do a specific task. They're like a layer on top of a model that makes it work a certain way.
 
 ### How to edit a custom assistant?
 
@@ -338,7 +340,7 @@ Assistants are different. They combine a large language model, context, planning
 
 ### How to create custom apps?
 
-As an Admin or a builder, to create Dust custom apps go to 🗝️ Admin > `Developers`> `Tools` > select `Create App` . From there, you can give the app a name and decide who can access the app.
+As an Admin or a builder, to create Dust custom apps go to ️Admin > `Developers`> `Tools` > select `Create App` . From there, you can give the app a name and decide who can access the app.
 
 To learn how to develop an app you can explore Dust technical documentation here - https://docs.dust.tt/
 

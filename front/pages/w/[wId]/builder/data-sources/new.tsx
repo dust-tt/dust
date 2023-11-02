@@ -116,8 +116,8 @@ export default function DataSourceNew({
   }, [
     dataSourceName,
     dataSourceDescription,
-    assistantDefaultSelected,
     dataSources,
+    assistantDefaultSelected,
   ]);
 
   useEffect(() => {
