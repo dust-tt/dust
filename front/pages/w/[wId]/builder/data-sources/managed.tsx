@@ -606,8 +606,9 @@ export default function DataSourcesView({
               </li>
               <li>
                 <span className="font-bold">Github</span>: Dust only gathers
-                data from issues and discussions (not from pull requests, nor
-                the actual code, nor any other data)
+                data from issues, discussions, and top-level pull requests
+                comments (but not in-code comments in pull requests, nor the
+                actual source code or other github data)
               </li>
             </ul>
           </Page.P>
