@@ -176,7 +176,10 @@ export default function AssistantConversation({
           stickyMentions={stickyMentions}
           conversationId={conversationId}
         />
-        <LimitReachedPopup planLimitReached={planLimitReached} />
+        <LimitReachedPopup
+          planLimitReached={planLimitReached}
+          workspaceId={owner.sId}
+        />
       </AppLayout>
     </GenerationContextProvider>
   );
