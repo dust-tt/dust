@@ -37,6 +37,7 @@ export function SignInButton({
       variant="tertiary"
       icon={icon}
       onClick={onClick}
+      size="md"
     ></Button>
   );
 }
