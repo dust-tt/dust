@@ -122,8 +122,6 @@ export default function Subscription({
 
   const chipColor = plan.code === "FREE_TEST_PLAN" ? "emerald" : "sky";
 
-  const onClickTestPlan = async () =>
-    await handleSubscribeToPlan("FREE_TEST_PLAN");
   const onClickProPlan = async () =>
     await handleSubscribeToPlan("PRO_PLAN_SEAT_29");
   const onClickEnterprisePlan = () => {
@@ -179,7 +177,6 @@ export default function Subscription({
                 className="xl:hidden"
                 isTabs
                 plan={plan}
-                onClickTestPlan={onClickTestPlan}
                 onClickProPlan={onClickProPlan}
                 onClickEnterprisePlan={onClickEnterprisePlan}
                 isProcessing={isProcessing}
@@ -188,7 +185,6 @@ export default function Subscription({
                 size="xs"
                 className="hidden xl:flex"
                 plan={plan}
-                onClickTestPlan={onClickTestPlan}
                 onClickProPlan={onClickProPlan}
                 onClickEnterprisePlan={onClickEnterprisePlan}
                 isProcessing={isProcessing}

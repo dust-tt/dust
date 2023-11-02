@@ -1,10 +1,4 @@
-import {
-  Button,
-  LightbulbIcon,
-  PriceTable,
-  RocketIcon,
-  SparklesIcon,
-} from "@dust-tt/sparkle";
+import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
@@ -17,27 +11,15 @@ interface PricePlanProps {
   isTabs?: boolean;
   plan: PlanType;
   onClickProPlan: () => void;
-  onClickTestPlan: () => void;
   onClickEnterprisePlan: () => void;
   isProcessing: boolean;
 }
 
-function FreePriceTable({
-  size,
-  plan,
-  onClick,
-  isProcessing,
-}: {
-  size: "sm" | "xs";
-  plan: PlanType;
-  onClick: () => void;
-  isProcessing: boolean;
-}) {
-  const biggerButtonSize = size === "xs" ? "sm" : "md";
+function FreePriceTable({ size }: { size: "sm" | "xs" }) {
   return (
     <PriceTable
       title="Free"
-      price="$0"
+      price="0€"
       priceLabel=""
       color="emerald"
       size={size}
@@ -51,18 +33,6 @@ function FreePriceTable({
       <PriceTable.Item label="100 assistant messages" variant="dash" />
       <PriceTable.Item label="50 documents as data sources" variant="dash" />
       <PriceTable.Item label="No connections" variant="xmark" />
-      <PriceTable.ActionContainer>
-        {plan.code !== "FREE_TEST_PLAN" && (
-          <Button
-            variant="primary"
-            size={biggerButtonSize}
-            label="Downgrade to Free"
-            disabled={isProcessing}
-            icon={LightbulbIcon}
-            onClick={onClick}
-          />
-        )}
-      </PriceTable.ActionContainer>
     </PriceTable>
   );
 }
@@ -166,7 +136,6 @@ export function PricePlans({
   className = "",
   plan,
   onClickProPlan,
-  onClickTestPlan,
   onClickEnterprisePlan,
   isProcessing,
 }: PricePlanProps) {
@@ -229,12 +198,7 @@ export function PricePlans({
           </Tab.List>
           <Tab.Panels className="mt-8">
             <Tab.Panel>
-              <FreePriceTable
-                size={size}
-                plan={plan}
-                isProcessing={isProcessing}
-                onClick={onClickTestPlan}
-              />
+              <FreePriceTable size={size} />
             </Tab.Panel>
             <Tab.Panel>
               <ProPriceTable
@@ -263,12 +227,7 @@ export function PricePlans({
           className
         )}
       >
-        <FreePriceTable
-          size={size}
-          plan={plan}
-          isProcessing={isProcessing}
-          onClick={onClickTestPlan}
-        />
+        <FreePriceTable size={size} />
         <ProPriceTable
           size={size}
           plan={plan}
