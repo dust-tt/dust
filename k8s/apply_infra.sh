@@ -66,6 +66,7 @@ kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/front-edge-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
+kubectl apply -f "$(dirname "$0")/backend-configs/core-backend-config.yaml"
 
 echo "-----------------------------------"
 echo "Applying managed certificates"
