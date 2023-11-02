@@ -1,5 +1,6 @@
 import { Attributes } from "sequelize";
 
+import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models";
 
 export type PlanAttributes = Omit<
@@ -25,30 +26,17 @@ export const PRO_PLAN_FIXED_1000_CODE = "PRO_PLAN_FIXED_1000";
  * We can update existing plans or add new one but never remove anything from this list.
  * Entreprise custom plans will be created from Poké.
  */
+
 const PRO_PLANS_DATA: PlanAttributes[] = [
   {
-    code: "PRO_PLAN_MAU_29",
+    code: "PRO_PLAN_SEAT_29",
     name: "Pro",
-    stripeProductId: "prod_OtB9SOIwFyiQnl",
-    billingType: "monthly_active_users",
+    stripeProductId: isDevelopment()
+      ? "prod_OvrzyxfSDz5Jqd" // Pro plan in Stripe Test env
+      : "prod_OvDLYMqgnjKK1I", // Pro plan in Stripe Prod env
+    billingType: "per_seat",
     maxMessages: -1,
     maxUsersInWorkspace: 500,
-    isSlackbotAllowed: true,
-    isManagedSlackAllowed: true,
-    isManagedNotionAllowed: true,
-    isManagedGoogleDriveAllowed: true,
-    isManagedGithubAllowed: true,
-    maxDataSourcesCount: -1,
-    maxDataSourcesDocumentsCount: -1,
-    maxDataSourcesDocumentsSizeMb: 2,
-  },
-  {
-    code: "PRO_PLAN_FIXED_1000",
-    name: "Pro Fixed",
-    stripeProductId: "prod_OtBhelMswszehT",
-    billingType: "fixed",
-    maxMessages: -1,
-    maxUsersInWorkspace: 50,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
     isManagedNotionAllowed: true,
