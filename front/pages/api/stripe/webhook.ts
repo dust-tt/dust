@@ -165,17 +165,29 @@ async function handler(
         case "invoice.paid":
           // This is what confirms the subscription is active and payments are being made.
           // Should we store the last invoice date in the subscription?
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.invoice.paid event."
+          );
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
           // We keep active and email the user and us to manually manage those cases first?
+          logger.warn(
+            { event },
+            "[Stripe Webhook] Received invoice.payment_failed event."
+          );
           break;
         case "customer.subscription.updated":
           // Occurs when the subscription is updated:
           // - when the number of seats changes for a metered billing.
           // - when the subscription is canceled by the user: it is ended at the of the billing period, and we will receive a "customer.subscription.deleted" event.
           // - when the subscription is activated again after being canceled but before the end of the billing period.
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.subscription.updated event."
+          );
           break;
         case "customer.subscription.deleted":
           // Occurs when the subscription is canceled by the user or by us.
@@ -199,6 +211,11 @@ async function handler(
               status: "ended",
               endDate: new Date(),
             });
+          } else {
+            logger.warn(
+              { event },
+              "[Stripe Webhook] Received customer.subscription.deleted event but the subscription is not canceled."
+            );
           }
           break;
         default:
