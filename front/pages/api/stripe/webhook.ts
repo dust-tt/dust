@@ -171,6 +171,36 @@ async function handler(
           // The stripe subscription becomes "past_due".
           // We keep active and email the user and us to manually manage those cases first?
           break;
+        case "customer.subscription.updated":
+          // Occurs when the subscription is updated:
+          // - when the number of seats changes for a metered billing.
+          // - when the subscription is canceled by the user: it is ended at the of the billing period, and we will receive a "customer.subscription.deleted" event.
+          // - when the subscription is activated again after being canceled but before the end of the billing period.
+          break;
+        case "customer.subscription.deleted":
+          // Occurs when the subscription is canceled by the user or by us.
+          const stripeSubscription = event.data.object as Stripe.Subscription;
+          if (stripeSubscription.status === "canceled") {
+            // We can end the subscription in our database.
+            const activeSubscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+            });
+            if (!activeSubscription) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "stripe_webhook_error",
+                  message:
+                    "Error handling customer.subscription.deleted. Subscription not found.",
+                },
+              });
+            }
+            await activeSubscription.update({
+              status: "ended",
+              endDate: new Date(),
+            });
+          }
+          break;
         default:
         // Unhandled event type
       }
