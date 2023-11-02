@@ -12,6 +12,7 @@ import {
 import React from "react";
 import { mutate } from "swr";
 
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import { MessageReactionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
@@ -23,6 +24,7 @@ export function EmojiSelector({
   reactions,
   handleEmoji,
   emojiData,
+  disabled = false,
 }: {
   user: UserType;
   reactions: MessageReactionType[];
@@ -34,6 +36,7 @@ export function EmojiSelector({
     isToRemove: boolean;
   }) => void;
   emojiData: EmojiMartData | null;
+  disabled?: boolean;
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +51,7 @@ export function EmojiSelector({
             labelVisible={false}
             label=" "
             type="menu"
+            disabled={disabled}
           />
         </div>
       </DropdownMenu.Button>
@@ -123,31 +127,28 @@ export function ConversationMessage({
     void loadEmojiData();
   }, []);
 
-  const handleEmoji = async ({
-    emoji,
-    isToRemove,
-  }: {
-    emoji: string;
-    isToRemove: boolean;
-  }) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/reactions`,
-      {
-        method: isToRemove ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          reaction: emoji,
-        }),
+  const { submit: handleEmoji, isSubmitting: isSubmittingEmoji } =
+    useSubmitFunction(
+      async ({ emoji, isToRemove }: { emoji: string; isToRemove: boolean }) => {
+        const res = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/reactions`,
+          {
+            method: isToRemove ? "DELETE" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              reaction: emoji,
+            }),
+          }
+        );
+        if (res.ok) {
+          await mutate(
+            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
+          );
+        }
       }
     );
-    if (res.ok) {
-      await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
-      );
-    }
-  };
 
   let slicedReactions = [...reactions];
   let hasMoreReactions = null;
@@ -197,6 +198,7 @@ export function ConversationMessage({
                     reactions={reactions}
                     handleEmoji={handleEmoji}
                     emojiData={emojiData}
+                    disabled={isSubmittingEmoji}
                   />
                 )}
               </div>
