@@ -259,7 +259,7 @@ export default function Home({
                   <Button
                     variant="secondary"
                     size="md"
-                    label="Watch the demo video"
+                    label="Watch the video"
                     icon={PlayIcon}
                   />
                 </div>
@@ -299,7 +299,7 @@ export default function Home({
             <P
               dotCSS="bg-amber-300"
               className={classNames(
-                "col-span-9 col-start-4",
+                "col-span-10 col-start-3",
                 "sm:col-span-6 sm:col-start-auto",
                 "lg:col-span-5",
                 "xl:col-span-4",
@@ -327,7 +327,7 @@ export default function Home({
             <P
               dotCSS="bg-emerald-400"
               className={classNames(
-                "col-span-9 col-start-4",
+                "col-span-10 col-start-3",
                 "sm:col-span-6 sm:col-start-auto",
                 "lg:col-span-5",
                 "xl:col-span-4",
@@ -357,10 +357,12 @@ export default function Home({
                 <span className="text-sky-200">today and&nbsp;tomorrow.</span>
               </H2>
               <P size="lg">
-                Dust gives you&nbsp;access to the&nbsp;
-                <Strong>leading models</Strong>, <br />
-                and&nbsp;augments them with&nbsp;
-                <Strong>your&nbsp;company’s internal&nbsp;information</Strong>.
+                Dust gives you&nbsp;access to the&nbsp; leading models, <br />
+                <Strong>
+                  augmented with&nbsp; your&nbsp;company’s
+                  internal&nbsp;information
+                </Strong>
+                .
               </P>
             </div>
           </Grid>
@@ -403,22 +405,26 @@ export default function Home({
                 "2xl:order-2 2xl:col-span-6"
               )}
             >
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Google Workspace">
                 <GoogleLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Google Drive">
                 <DriveLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Notion">
                 <NotionLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Github">
                 <GithubWhiteLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Slack">
                 <SlackLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A" className="xl:hidden 2xl:block">
+              <ReactiveIcon
+                colorHEX="#1E3A8A"
+                className="xl:hidden 2xl:block"
+                tooltipLabel="More coming…"
+              >
                 <MoreIcon className="text-slate-50" />
               </ReactiveIcon>
             </div>
@@ -431,14 +437,13 @@ export default function Home({
                 "2xl:col-span-5 2xl:col-start-7"
               )}
             >
-              Modular and&nbsp;composable: Dust is&nbsp;
-              <Strong>exceptionally&nbsp;adaptable</Strong>, tailoring
-              to&nbsp;your unique requirements,{" "}
+              With the support of multiple source of data and models,{" "}
               <Strong>
-                continuously&nbsp;evolving to&nbsp;meet
-                your&nbsp;changing&nbsp;needs
+                Dust is&nbsp; exceptionally modular and&nbsp;adaptable
               </Strong>
-              .
+              , tailoring to&nbsp;your unique requirements,
+              continuously&nbsp;evolving to&nbsp;meet
+              your&nbsp;changing&nbsp;needs .
             </P>
             <div
               className={classNames(
@@ -448,19 +453,22 @@ export default function Home({
                 "xl:order-5 xl:col-start-7 xl:justify-start"
               )}
             >
-              <ReactiveIcon colorHEX="#A26BF7">
+              <ReactiveIcon
+                colorHEX="#A26BF7"
+                tooltipLabel="OpenAI, GPT3.5 and GPT4"
+              >
                 <OpenaiLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#D4A480">
+              <ReactiveIcon colorHEX="#D4A480" tooltipLabel="Anthropic Claude">
                 <AnthropicLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1A1C20">
+              <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral 7B">
                 <MistralLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Microsoft Azure">
                 <MicrosoftLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A">
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="And more…">
                 <MoreIcon className="text-slate-50" />
               </ReactiveIcon>
             </div>
@@ -487,7 +495,7 @@ export default function Home({
                 defaultFlexClasses,
                 "col-span-12",
                 "lg:col-span-10 lg:col-start-2",
-                "xl:col-span-7 xl:col-start-2",
+                "xl:col-span-9 xl:col-start-2",
                 "2xl:col-start-3"
               )}
             >
@@ -497,20 +505,16 @@ export default function Home({
                 <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
               </H2>
               <P size="lg">
-                Adopting AI is a&nbsp;
-                <Strong>
-                  fundamental shift for&nbsp;your team’s&nbsp;workflows
-                </Strong>
-                .
+                Adopting AI is a&nbsp;fundamental shift for&nbsp;your
+                team’s&nbsp;workflows.
               </P>
               <P size="lg">
-                Dust empowers{" "}
-                <Strong>your most creative and driven team&nbsp;members</Strong>{" "}
-                to&nbsp;
                 <Strong>
-                  develop and&nbsp;share their&nbsp;experience with&nbsp;AI
-                </Strong>{" "}
-                throughout your&nbsp;company.
+                  Dust helps you identify your most creative and driven
+                  team&nbsp;members, develop and&nbsp;share
+                  their&nbsp;experience with&nbsp;AI throughout
+                  your&nbsp;company.
+                </Strong>
               </P>
             </div>
           </Grid>
@@ -557,7 +561,7 @@ export default function Home({
               )}
             >
               Team members <Strong>imagine new workflows</Strong> and&nbsp;
-              <Strong>package them with assistants</Strong> that&nbsp;others
+              <Strong>package them</Strong> with assistants that&nbsp;others
               can&nbsp;effortlessly&nbsp;use.
             </P>
 
@@ -573,10 +577,9 @@ export default function Home({
                 "2xl:order-5 2xl:col-span-4 2xl:self-start"
               )}
             >
-              Spread good practices &&nbsp;foster collaboration with{" "}
-              <Strong>shared conversations</Strong>,{" "}
-              <Strong>@mentions in&nbsp;discussions</Strong> and{" "}
-              <Strong>our&nbsp;Slackbot&nbsp;integration</Strong>.
+              <Strong>Spread good practices</Strong> &&nbsp;foster collaboration
+              with shared conversations, @mentions in&nbsp;discussions and{" "}
+              our&nbsp;Slackbot&nbsp;integration.
             </P>
             <P
               dotCSS="bg-amber-300"
@@ -589,8 +592,8 @@ export default function Home({
                 "2xl:order-6 2xl:col-span-3 2xl:self-start"
               )}
             >
-              Manage workspace invitations seamlessly&nbsp;with{" "}
-              <Strong>single sign&#8209;on</Strong>&nbsp;(SSO).
+              <Strong>Manage workspace invitations seamlessly</Strong>&nbsp;with{" "}
+              single sign&#8209;on&nbsp;(SSO).
             </P>
 
             <ReactiveImg
