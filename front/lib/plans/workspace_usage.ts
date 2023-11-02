@@ -17,7 +17,7 @@ export async function countActiveSeatsInWorkspace(
     where: {
       workspaceId: workspace.id,
       role: {
-        [Op.in]: ["user", "builder", "admin"],
+        [Op.notIn]: ["none", "revoked"],
       },
     },
   });

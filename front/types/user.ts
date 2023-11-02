@@ -30,10 +30,15 @@ export type LimitsType = {
   };
 };
 
-export type PaidBillingType =
-  | "fixed"
-  | "monthly_active_users"
-  | "monthly_active_seats";
+export const FREE_BILLING_TYPES = ["free"] as const;
+export const PAID_BILLING_TYPES = [
+  "fixed",
+  "monthly_active_users",
+  "monthly_active_seats",
+] as const;
+
+export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
+export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 
 export type PlanType = {
   code: string;
@@ -43,7 +48,7 @@ export type PlanType = {
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
-  billingType: "free" | PaidBillingType;
+  billingType: FreeBillingType | PaidBillingType;
   startDate: number | null;
   endDate: number | null;
   limits: LimitsType;

@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
-import logger from "@app/logger/logger";
+import { assertNever } from "@app/lib/utils";
 import { PaidBillingType, PlanType, WorkspaceType } from "@app/types/user";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
@@ -74,9 +74,7 @@ export const createCheckoutSession = async ({
       };
       break;
     default:
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}:  unknown billing type ${billingType}.`
-      );
+      assertNever(billingType);
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -149,28 +147,16 @@ export const updateStripeSubscriptionQuantity = async ({
   });
 
   if (stripeSubscriptions.data.length !== 1) {
-    logger.error(
-      {
-        stripeSubscriptionId,
-        stripeCustomerId,
-        nbSubscriptions: stripeSubscriptions.data.length,
-      },
-      `Cannot update subscription quantity: expected 1 subscription.`
+    throw new Error(
+      "Cannot update subscription quantity: expected 1 subscription."
     );
-    return;
   }
 
   const stripeSubscription = stripeSubscriptions.data[0];
   if (stripeSubscription.id !== stripeSubscriptionId) {
-    logger.error(
-      {
-        customerId: stripeCustomerId,
-        idOnDust: stripeSubscriptionId,
-        idOnStripe: stripeSubscription.id,
-      },
-      `Cannot update subscription quantity: stripe subscription ID mismatch.`
+    throw new Error(
+      "Cannot update subscription quantity: stripe subscription ID mismatch."
     );
-    return;
   }
 
   const currentQuantity = stripeSubscriptions.data[0].items.data[0].quantity;
@@ -181,9 +167,8 @@ export const updateStripeSubscriptionQuantity = async ({
 
   const priceId = await getPriceId(stripeProductId);
   if (!priceId) {
-    logger.error(
-      { stripeProductId, stripeSubscriptionId, stripeCustomerId },
-      `Cannot update subscription quantity: stripe Price ID not found for this Product id.`
+    throw new Error(
+      "Cannot update subscription quantity: stripe Price ID not found for this Product id."
     );
   }
 

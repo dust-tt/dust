@@ -13,6 +13,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { generateModelSId } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { PlanType } from "@app/types/user";
 
 /**
@@ -308,10 +309,16 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
 
   // We update the subscription usage
   const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
-  await updateStripeSubscriptionQuantity({
-    stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
-    stripeCustomerId: activeSubscription.stripeCustomerId,
-    stripeProductId: activeSubscription.plan.stripeProductId,
-    quantity: activeSeats,
-  });
+  try {
+    await updateStripeSubscriptionQuantity({
+      stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
+      stripeCustomerId: activeSubscription.stripeCustomerId,
+      stripeProductId: activeSubscription.plan.stripeProductId,
+      quantity: activeSeats,
+    });
+  } catch (err) {
+    logger.error(
+      `Error while updating Stripe subscription quantity for workspace ${workspace.sId}: ${err}`
+    );
+  }
 };
