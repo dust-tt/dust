@@ -32,11 +32,8 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import {
-  ManageDataSourcesLimitsType,
-  UserType,
-  WorkspaceType,
-} from "@app/types/user";
+import { ManageDataSourcesLimitsType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",

@@ -11,7 +11,7 @@ import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
 import { PokePlanType } from "@app/pages/api/poke/plans";
-import { FreeBillingType, PaidBillingType } from "@app/types/user";
+import { FreeBillingType, PaidBillingType } from "@app/types/plan";
 
 export type EditingPlanType = {
   name: string;
