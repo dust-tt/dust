@@ -511,7 +511,7 @@ export default function Home({
               </P>
               <P size="lg">
                 <Strong>
-                  Dust helps you identify your most creative and driven
+                  Dust helps identify your most creative and driven
                   team&nbsp;members, develop and&nbsp;share
                   their&nbsp;experience with&nbsp;AI throughout
                   your&nbsp;company.
