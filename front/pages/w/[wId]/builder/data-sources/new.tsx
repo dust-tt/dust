@@ -1,4 +1,4 @@
-import { SectionHeader } from "@dust-tt/sparkle";
+import { Checkbox, SectionHeader } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -66,6 +66,8 @@ export default function DataSourceNew({
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
+  const [assistantDefaultSelected, setAssistantDefaultSelected] =
+    useState(true);
 
   const [dataSourceDescription, setDataSourceDescription] = useState("");
 
@@ -105,9 +107,18 @@ export default function DataSourceNew({
       edited = true;
     }
 
+    if (assistantDefaultSelected === false) {
+      edited = true;
+    }
+
     setIsEdited(edited);
     setIsValid(valid);
-  }, [dataSourceName, dataSourceDescription, dataSources]);
+  }, [
+    dataSourceName,
+    dataSourceDescription,
+    dataSources,
+    assistantDefaultSelected,
+  ]);
 
   useEffect(() => {
     formValidation();
@@ -126,7 +137,7 @@ export default function DataSourceNew({
         name: dataSourceName,
         description: dataSourceDescription,
         visibility: "private",
-        assistantDefaultSelected: false,
+        assistantDefaultSelected,
       }),
     });
     if (res.ok) {
@@ -232,6 +243,27 @@ export default function DataSourceNew({
                 A good description will help users discover and understand the
                 purpose of your Data Source.
               </p>
+            </div>
+
+            <div className="mt-2 sm:col-span-6">
+              <div className="flex justify-between">
+                <label
+                  htmlFor="assistantDefaultSelected"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Availability to @dust
+                </label>
+              </div>
+              <div className="mt-2 flex items-center">
+                <Checkbox
+                  checked={assistantDefaultSelected}
+                  onChange={(checked) => setAssistantDefaultSelected(checked)}
+                />
+                <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
+                  Make this Data Source available to the{" "}
+                  <span className="font-semibold">@dust</span> assistant.
+                </p>
+              </div>
             </div>
           </div>
         </div>

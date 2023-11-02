@@ -345,7 +345,8 @@ function StandardDataSourceSettings({
                       </div>
 
                       <div className="text-sm font-normal text-element-700">
-                        This will delete the Data Source for everyone.
+                        This will delete the Data Source and all associated
+                        Documents for everyone.
                       </div>
                     </div>
                     <div className="flex justify-center">

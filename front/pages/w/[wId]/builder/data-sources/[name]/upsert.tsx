@@ -9,8 +9,12 @@ import {
   Button,
   DocumentPlusIcon,
   DropdownMenu,
+  EyeIcon,
+  EyeSlashIcon,
   Input,
   Page,
+  PencilSquareIcon,
+  PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 
@@ -93,6 +97,8 @@ export default function DataSourceUpsert({
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -235,6 +241,16 @@ export default function DataSourceUpsert({
     setTags(newTags);
   };
 
+  const handleAddTag = () => {
+    setTags([...tags, ""]);
+  };
+
+  const handleTagDelete = (index: number) => {
+    const newTags = [...tags];
+    newTags.splice(index, 1);
+    setTags(newTags);
+  };
+
   const handleDelete = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${
@@ -369,23 +385,56 @@ export default function DataSourceUpsert({
               />
             </div>
           </div>
+          <div className="pt-4">
+            <Page.SectionHeader
+              title="Developer Options"
+              action={{
+                label: developerOptionsVisible ? "Hide" : "Show",
+                variant: "tertiary",
+                icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
+                onClick: () => {
+                  setDeveloperOptionsVisible(!developerOptionsVisible);
+                },
+              }}
+            />
+          </div>
 
-          {tags.length > 0 && (
+          {developerOptionsVisible && (
             <div className="pt-4">
               <Page.SectionHeader
-                title="Developer Tags"
-                description="Tags can be set by API to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents."
+                title=""
+                description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                action={{
+                  label: "Add tag",
+                  variant: "tertiary",
+                  icon: PlusIcon,
+                  onClick: () => handleAddTag(),
+                }}
               />
               <div className="pt-4">
                 {tags.map((tag, index) => (
-                  <div key={index}>
-                    <Input
-                      placeholder="Tag"
-                      name="tag"
-                      disabled={true}
-                      value={tag}
-                      onChange={(v) => handleTagUpdate(index, v)}
-                    />
+                  <div key={index} className="flex flex-grow flex-row">
+                    <div className="flex flex-1 flex-row gap-8">
+                      <div className="flex flex-1 flex-col">
+                        <Input
+                          className="w-full"
+                          placeholder="Tag"
+                          name="tag"
+                          disabled={readOnly}
+                          value={tag}
+                          onChange={(v) => handleTagUpdate(index, v)}
+                        />
+                      </div>
+                      <div className="flex">
+                        <Button
+                          label="Remove"
+                          icon={TrashIcon}
+                          variant="secondaryWarning"
+                          onClick={() => handleTagDelete(index)}
+                          labelVisible={false}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
