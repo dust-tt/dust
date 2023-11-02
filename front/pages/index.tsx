@@ -437,7 +437,8 @@ export default function Home({
                 "2xl:col-span-5 2xl:col-start-7"
               )}
             >
-              With the support of multiple source of data and models,{" "}
+              With the support of&nbsp;multiple sources of&nbsp;data
+              and&nbsp;models,{" "}
               <Strong>
                 Dust is&nbsp; exceptionally modular and&nbsp;adaptable
               </Strong>
