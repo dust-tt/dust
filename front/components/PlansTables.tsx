@@ -3,7 +3,7 @@ import { Tab } from "@headlessui/react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
-import { PlanType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
 
 interface PricePlanProps {
   size: "sm" | "xs";
