@@ -36,7 +36,7 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
       : "prod_OvrkkwZwLUOlpx", // Pro plan in Stripe Prod env
     billingType: "per_seat",
     maxMessages: -1,
-    maxUsersInWorkspace: 500,
+    maxUsersInWorkspace: 1000,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
     isManagedNotionAllowed: true,

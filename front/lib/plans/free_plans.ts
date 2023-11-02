@@ -26,7 +26,7 @@ export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
  */
 export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   code: FREE_TEST_PLAN_CODE,
-  name: "Test",
+  name: "Free",
   stripeProductId: null,
   billingType: "free",
   maxMessages: 100,

@@ -35,6 +35,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   const activeSubscription = await Subscription.findOne({
     where: { workspaceId: workspace.id, status: "active" },
   });
+
   if (activeSubscription) {
     await activeSubscription.update({
       status: "ended",
