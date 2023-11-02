@@ -605,8 +605,9 @@ export default function DataSourcesView({
                 take into account files with more than 750Kb of extracted text.
               </li>
               <li>
-                <span className="font-bold">Github</span>: take into account
-                files with more than 750Kb of extracted text.
+                <span className="font-bold">Github</span>: Dust only gathers
+                data from issues and discussions (not from pull requests, nor
+                the actual code, nor any other data)
               </li>
             </ul>
           </Page.P>
