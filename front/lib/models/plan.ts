@@ -11,6 +11,12 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import {
+  FREE_BILLING_TYPES,
+  FreeBillingType,
+  PAID_BILLING_TYPES,
+  PaidBillingType,
+} from "@app/types/user";
 
 export class Plan extends Model<
   InferAttributes<Plan>,
@@ -23,7 +29,7 @@ export class Plan extends Model<
   declare code: string; // unique
   declare name: string;
   declare stripeProductId: string | null;
-  declare billingType: "fixed" | "monthly_active_users" | "free";
+  declare billingType: FreeBillingType | PaidBillingType;
 
   // workspace limitations
   declare maxMessages: number;
@@ -71,7 +77,7 @@ Plan.init(
       allowNull: false,
       defaultValue: "fixed",
       validate: {
-        isIn: [["fixed", "monthly_active_users", "free"]],
+        isIn: [[...FREE_BILLING_TYPES, ...PAID_BILLING_TYPES]],
       },
     },
     maxMessages: {

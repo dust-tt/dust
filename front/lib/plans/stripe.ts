@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 
-import { PlanType, WorkspaceType } from "@app/types/user";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { assertNever } from "@app/lib/utils";
+import { PaidBillingType, PlanType, WorkspaceType } from "@app/types/user";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -30,13 +32,13 @@ export const createCheckoutSession = async ({
   owner,
   planCode,
   productId,
-  isFixedPriceBilling,
+  billingType,
   stripeCustomerId,
 }: {
   owner: WorkspaceType;
   planCode: string;
   productId: string;
-  isFixedPriceBilling: boolean;
+  billingType: PaidBillingType;
   stripeCustomerId: string | null;
 }): Promise<string | null> => {
   const priceId = await getPriceId(productId);
@@ -46,14 +48,34 @@ export const createCheckoutSession = async ({
     );
   }
 
-  const item = isFixedPriceBilling
-    ? {
+  let item: { price: string; quantity?: number } | null = null;
+
+  switch (billingType) {
+    case "fixed":
+      // For a fixed price, quantity is 1 and will not change.
+      item = {
         price: priceId,
-        quantity: 1, // Fix the quantity to 1 for fixed price billing
-      }
-    : {
+        quantity: 1,
+      };
+      break;
+    case "per_seat":
+      // For a metered billing based on the number of seats, we create a line item with quantity = number of users in the workspace.
+      // We will update the quantity of the line item when the number of users changes.
+      item = {
+        price: priceId,
+        quantity: await countActiveSeatsInWorkspace(owner.sId),
+      };
+      break;
+    case "monthly_active_users":
+      // For a metered billing based on the usage, we create a line item with no quantity.
+      // We will notify Stripe of the usage when users are active in the workspace: when they post a message.
+      item = {
         price: priceId,
       };
+      break;
+    default:
+      assertNever(billingType);
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -102,4 +124,56 @@ export const getProduct = async (
 ): Promise<Stripe.Product> => {
   const product = await stripe.products.retrieve(productId);
   return product;
+};
+
+/**
+ * Calls the Stripe API to update the quantity of a subscription.
+ * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
+ */
+export const updateStripeSubscriptionQuantity = async ({
+  stripeSubscriptionId,
+  stripeProductId,
+  stripeCustomerId,
+  quantity,
+}: {
+  stripeSubscriptionId: string;
+  stripeProductId: string;
+  stripeCustomerId: string;
+  quantity: number;
+}): Promise<void> => {
+  // First, we get the current subscription
+  const stripeSubscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+  });
+
+  if (stripeSubscriptions.data.length !== 1) {
+    throw new Error(
+      "Cannot update subscription quantity: expected 1 subscription."
+    );
+  }
+
+  const stripeSubscription = stripeSubscriptions.data[0];
+  if (stripeSubscription.id !== stripeSubscriptionId) {
+    throw new Error(
+      "Cannot update subscription quantity: stripe subscription ID mismatch."
+    );
+  }
+
+  const currentQuantity = stripeSubscriptions.data[0].items.data[0].quantity;
+  if (currentQuantity === quantity) {
+    // No need to update the subscription
+    return;
+  }
+
+  const priceId = await getPriceId(stripeProductId);
+  if (!priceId) {
+    throw new Error(
+      "Cannot update subscription quantity: stripe Price ID not found for this Product id."
+    );
+  }
+
+  const subscriptionItemId = stripeSubscription.items.data[0].id;
+  await stripe.subscriptions.update(stripeSubscriptionId, {
+    items: [{ id: subscriptionItemId, quantity, price: priceId || undefined }],
+  });
 };

@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Membership, Workspace } from "@app/lib/models";
+import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type RevokeUserResponseBody = {
@@ -96,6 +97,9 @@ async function handler(
 
       await m.update({
         role: "revoked",
+      });
+      await updateWorkspacePerSeatSubscriptionUsage({
+        workspaceId: workspace.sId,
       });
 
       return res.status(200).json({ success: true });

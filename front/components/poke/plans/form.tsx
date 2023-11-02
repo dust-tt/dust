@@ -11,6 +11,7 @@ import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
 import { PokePlanType } from "@app/pages/api/poke/plans";
+import { FreeBillingType, PaidBillingType } from "@app/types/user";
 
 export type EditingPlanType = {
   name: string;
@@ -26,7 +27,7 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
-  billingType: "fixed" | "free" | "monthly_active_users";
+  billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
 };
 
@@ -113,6 +114,16 @@ export const useEditingPlan = () => {
   }, []);
 
   return { editingPlan, resetEditingPlan, createNewPlan, setEditingPlan };
+};
+
+const BILLING_TYPE_SELECT_CHOICES: Record<
+  FreeBillingType | PaidBillingType,
+  string
+> = {
+  fixed: "Fixed",
+  free: "Free",
+  monthly_active_users: "MAU",
+  per_seat: "Per Seat",
 };
 
 export const PLAN_FIELDS = {
@@ -223,11 +234,12 @@ export const PLAN_FIELDS = {
   },
   billingType: {
     type: "select",
-    choices: [
-      { value: "fixed", label: "Fixed" },
-      { value: "free", label: "Free" },
-      { value: "monthly_active_users", label: "MAU" },
-    ],
+    choices: Object.entries(BILLING_TYPE_SELECT_CHOICES).map(
+      ([value, label]) => ({
+        value,
+        label,
+      })
+    ),
     width: "small",
     title: "Billing",
     error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),

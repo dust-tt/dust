@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership, User } from "@app/lib/models";
+import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { UserType } from "@app/types/user";
 
@@ -95,6 +96,11 @@ async function handler(
       await membership.update({
         role: req.body.role,
       });
+      if (req.body.role === "revoked") {
+        await updateWorkspacePerSeatSubscriptionUsage({
+          workspaceId: owner.sId,
+        });
+      }
 
       const w = { ...owner };
       w.role = "none";

@@ -10,7 +10,10 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
+import {
+  internalSubscribeWorkspaceToFreeTestPlan,
+  updateWorkspacePerSeatSubscriptionUsage,
+} from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -162,11 +165,9 @@ async function handler(
           });
 
           await _createAndLogMembership({
-            workspaceId: w.id,
-            workspaceName: w.name,
+            workspace: w,
             userId: user.id,
             role: "admin",
-            invitationFlow: "personal",
           });
 
           await internalSubscribeWorkspaceToFreeTestPlan({
@@ -190,11 +191,9 @@ async function handler(
 
         if (!m) {
           m = await _createAndLogMembership({
-            workspaceId: workspaceInvite.id,
-            workspaceName: workspaceInvite.name,
+            workspace: workspaceInvite,
             userId: user.id,
             role: "user",
-            invitationFlow: "domain",
           });
         }
 
@@ -242,11 +241,9 @@ async function handler(
 
         if (!m) {
           m = await _createAndLogMembership({
-            workspaceId: targetWorkspace.id,
-            workspaceName: targetWorkspace.name,
+            workspace: targetWorkspace,
             userId: user.id,
             role: "user",
-            invitationFlow: "email",
           });
         }
         membershipInvite.status = "consumed";
@@ -310,27 +307,24 @@ async function handler(
   }
 }
 
-async function _createAndLogMembership(data: {
+async function _createAndLogMembership({
+  userId,
+  workspace,
+  role,
+}: {
   userId: number;
-  workspaceId: number;
-  workspaceName: string;
+  workspace: Workspace;
   role: "admin" | "user";
-  invitationFlow: "domain" | "email" | "personal";
 }) {
   const m = await Membership.create({
-    role: data.role,
-    userId: data.userId,
-    workspaceId: data.workspaceId,
+    role: role,
+    userId: userId,
+    workspaceId: workspace.id,
   });
 
-  // const tags = [
-  //   `workspace_id:${data.workspaceId}`,
-  //   `workspace_name:${data.workspaceName}`,
-  //   `user_id:${data.userId}`,
-  //   `role:${data.role}`,
-  //   `invitation_flow:${data.invitationFlow}`,
-  // ];
-  // statsDClient.increment("workspace.membership_created", 1, tags);
+  // If the user is joining a workspace with a subscription based on per_seat,
+  // we need to update the Stripe subscription quantity.
+  void updateWorkspacePerSeatSubscriptionUsage({ workspaceId: workspace.sId });
 
   return m;
 }
