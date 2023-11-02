@@ -1,11 +1,15 @@
 import { Button, Chip } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
+import { useRouter } from "next/router";
 
 export function LimitReachedPopup({
   planLimitReached,
+  workspaceId,
 }: {
   planLimitReached: boolean;
+  workspaceId: string;
 }) {
+  const router = useRouter();
   return (
     <Transition
       show={planLimitReached}
@@ -28,11 +32,9 @@ export function LimitReachedPopup({
         <Button
           variant="primary"
           size="sm"
-          label="Contact us" // TODO replace with "Check Dust plans"
-          onClick={() => {
-            window.open(
-              "mailto:team@dust.tt?subject=Upgrading to paid plan" // TODO replace with the link to the plans page
-            );
+          label="Check Dust plans"
+          onClick={async () => {
+            await router.push(`/w/${workspaceId}/subscription`);
           }}
         />
       </div>

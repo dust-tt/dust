@@ -362,7 +362,10 @@ export default function AssistantNew({
             onSubmit={handleSubmit}
             conversationId={conversation?.sId || null}
           />
-          <LimitReachedPopup planLimitReached={planLimitReached} />
+          <LimitReachedPopup
+            planLimitReached={planLimitReached}
+            workspaceId={owner.sId}
+          />
         </AppLayout>
       </GenerationContextProvider>
     </InputBarContext.Provider>
