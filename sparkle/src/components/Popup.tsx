@@ -1,6 +1,8 @@
 import { Transition } from "@headlessui/react";
-import { classNames } from "@sparkle/lib/utils";
 import React from "react";
+
+import { classNames } from "@sparkle/lib/utils";
+
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 
