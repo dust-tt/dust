@@ -26,6 +26,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type {
   PostConversationsRequestBodySchema,
@@ -97,53 +98,57 @@ export default function AssistantNew({
     ? activeAgents
     : activeAgents.slice(0, 4);
 
-  const handleSubmit = async (input: string, mentions: MentionType[]) => {
-    const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
-      title: null,
-      visibility: "unlisted",
-      message: {
-        content: input,
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-          profilePictureUrl: user.image,
+  const { submit: handleSubmit } = useSubmitFunction(
+    async (input: string, mentions: MentionType[]) => {
+      const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
+        title: null,
+        visibility: "unlisted",
+        message: {
+          content: input,
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            profilePictureUrl: user.image,
+          },
+          mentions,
         },
-        mentions,
-      },
-    };
+      };
 
-    // Create new conversation and post the initial message at the same time.
-    const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+      // Create new conversation and post the initial message at the same time.
+      const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
-    if (!cRes.ok) {
-      const data = await cRes.json();
-      if (data.error.type === "test_plan_message_limit_reached") {
-        setPlanLimitReached(true);
-      } else {
-        sendNotification({
-          title: "Your message could not be sent",
-          description: data.error.message || "Please try again or contact us.",
-          type: "error",
-        });
+      if (!cRes.ok) {
+        const data = await cRes.json();
+        if (data.error.type === "test_plan_message_limit_reached") {
+          setPlanLimitReached(true);
+        } else {
+          sendNotification({
+            title: "Your message could not be sent",
+            description:
+              data.error.message || "Please try again or contact us.",
+            type: "error",
+          });
+        }
+        return;
       }
-      return;
+
+      const conversation = (
+        (await cRes.json()) as PostConversationsResponseBody
+      ).conversation;
+
+      // We use this to clear the UI start rendering the conversation immediately to give an
+      // impression of instantaneity.
+      setConversation(conversation);
+
+      // We start the push before creating the message to optimize for instantaneity as well.
+      void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
     }
-
-    const conversation = ((await cRes.json()) as PostConversationsResponseBody)
-      .conversation;
-
-    // We use this to clear the UI start rendering the conversation immediately to give an
-    // impression of instantaneity.
-    setConversation(conversation);
-
-    // We start the push before creating the message to optimize for instantaneity as well.
-    void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
-  };
+  );
 
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
 
