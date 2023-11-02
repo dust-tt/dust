@@ -76,6 +76,9 @@ export { Searchbar };
 import { RadioButton } from "./components/RadioButton";
 export { RadioButton };
 
+import { Popup } from "./components/Popup";
+export { Popup };
+
 //TO BE REMOVED SOON
 import { SectionHeader } from "./components/SectionHeader";
 export { SectionHeader };
