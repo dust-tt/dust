@@ -139,17 +139,9 @@ export default function Subscription({
             <Button
               variant="primary"
               label="Subscribe to Pro"
-              disabled={isProcessing || plan.code === "PRO_PLAN_MAU_29"}
+              disabled={isProcessing || plan.code === "PRO_PLAN_SEAT_29"}
               onClick={async () =>
-                await handleSubscribeToPlan("PRO_PLAN_MAU_29")
-              }
-            />
-            <Button
-              variant="primary"
-              label="Subscribe to Pro Fixed"
-              disabled={isProcessing || plan.code === "PRO_PLAN_FIXED_1000"}
-              onClick={async () =>
-                await handleSubscribeToPlan("PRO_PLAN_FIXED_1000")
+                await handleSubscribeToPlan("PRO_PLAN_SEAT_29")
               }
             />
             {plan.stripeCustomerId && (
