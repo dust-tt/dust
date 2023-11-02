@@ -156,7 +156,7 @@ export const subNavigationAdmin = ({
     if (isDevelopmentOrDustWorkspace(owner)) {
       menus.push({
         id: "subscription",
-        label: "Subscription (Dust only)",
+        label: "Subscription",
         icon: ShapesIcon,
         href: `/w/${owner.sId}/subscription`,
         current: current === "subscription",

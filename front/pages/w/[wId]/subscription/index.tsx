@@ -7,7 +7,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { PlanType, UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -28,12 +27,6 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !auth.isAdmin() || !plan) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (!isDevelopmentOrDustWorkspace(owner)) {
     return {
       notFound: true,
     };
