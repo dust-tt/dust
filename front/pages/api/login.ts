@@ -322,9 +322,9 @@ async function _createAndLogMembership({
     workspaceId: workspace.id,
   });
 
-  // If the user is joining a workspace with a subscription based on monthly_active_seats,
+  // If the user is joining a workspace with a subscription based on per_seat,
   // we need to update the Stripe subscription quantity.
-  await updateWorkspacePerSeatSubscriptionUsage({ workspaceId: workspace.sId });
+  void updateWorkspacePerSeatSubscriptionUsage({ workspaceId: workspace.sId });
 
   return m;
 }

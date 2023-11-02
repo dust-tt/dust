@@ -123,7 +123,7 @@ const BILLING_TYPE_SELECT_CHOICES: Record<
   fixed: "Fixed",
   free: "Free",
   monthly_active_users: "MAU",
-  monthly_active_seats: "Seats",
+  per_seat: "Per Seat",
 };
 
 export const PLAN_FIELDS = {

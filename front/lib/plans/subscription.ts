@@ -270,46 +270,47 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
 }: {
   workspaceId: string;
 }): Promise<void> => {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(
-      "Cannot process update usage in subscription: workspace not found."
-    );
-  }
-
-  const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
-    include: [
-      {
-        model: Plan,
-        as: "plan",
-        required: true,
-      },
-    ],
-  });
-  if (!activeSubscription) {
-    // No active subscription: the workspace is in the free default plan
-    return;
-  }
-  if (activeSubscription.plan.billingType !== "monthly_active_seats") {
-    // We only update the usage for plans with billingType === "monthly_active_seats"
-    return;
-  }
-  if (
-    !activeSubscription.stripeSubscriptionId ||
-    !activeSubscription.stripeCustomerId ||
-    !activeSubscription.plan.stripeProductId
-  ) {
-    throw new Error(
-      "Cannot update usage in monthly_active_seats subscription: missing Stripe subscription ID or Stripe customer ID."
-    );
-  }
-
-  // We update the subscription usage
-  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
   try {
+    const workspace = await Workspace.findOne({
+      where: { sId: workspaceId },
+    });
+    if (!workspace) {
+      throw new Error(
+        "Cannot process update usage in subscription: workspace not found."
+      );
+    }
+
+    const activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspace.id, status: "active" },
+      include: [
+        {
+          model: Plan,
+          as: "plan",
+          required: true,
+        },
+      ],
+    });
+    if (!activeSubscription) {
+      // No active subscription: the workspace is in the free default plan
+      return;
+    }
+    if (activeSubscription.plan.billingType !== "per_seat") {
+      // We only update the usage for plans with billingType === "per_seat"
+      return;
+    }
+    if (
+      !activeSubscription.stripeSubscriptionId ||
+      !activeSubscription.stripeCustomerId ||
+      !activeSubscription.plan.stripeProductId
+    ) {
+      throw new Error(
+        "Cannot update usage in per_seat subscription: missing Stripe subscription ID or Stripe customer ID."
+      );
+    }
+
+    // We update the subscription usage
+    const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+
     await updateStripeSubscriptionQuantity({
       stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
       stripeCustomerId: activeSubscription.stripeCustomerId,
@@ -318,7 +319,7 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
     });
   } catch (err) {
     logger.error(
-      `Error while updating Stripe subscription quantity for workspace ${workspace.sId}: ${err}`
+      `Error while updating Stripe subscription quantity for workspace ${workspaceId}: ${err}`
     );
   }
 };

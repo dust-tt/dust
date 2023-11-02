@@ -58,7 +58,7 @@ export const createCheckoutSession = async ({
         quantity: 1,
       };
       break;
-    case "monthly_active_seats":
+    case "per_seat":
       // For a metered billing based on the number of seats, we create a line item with quantity = number of users in the workspace.
       // We will update the quantity of the line item when the number of users changes.
       item = {

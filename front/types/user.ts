@@ -34,7 +34,7 @@ export const FREE_BILLING_TYPES = ["free"] as const;
 export const PAID_BILLING_TYPES = [
   "fixed",
   "monthly_active_users",
-  "monthly_active_seats",
+  "per_seat",
 ] as const;
 
 export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
