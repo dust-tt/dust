@@ -12,8 +12,12 @@ export function useSubmitFunction<T extends unknown[]>(
       }
 
       setIsSubmitting(true);
-      await submitFn(...data);
-      setIsSubmitting(false);
+
+      try {
+        await submitFn(...data);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
     [isSubmitting, submitFn]
   );
