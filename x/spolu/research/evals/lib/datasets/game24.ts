@@ -6,8 +6,8 @@ type Example24 = {
   problem: string;
   rank: number;
   solutions: string[];
-  // Above is parsed from 24.jsonl, below is filled by picking a solution and building the
-  // associated reasoning.
+  // Above is parsed from 24.jsonl.
+  // Below is filled by picking a solution and building the associated reasoning.
   solution?: string;
   reasoning?: string[];
 };
