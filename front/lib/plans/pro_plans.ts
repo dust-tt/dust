@@ -33,7 +33,7 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     name: "Pro",
     stripeProductId: isDevelopment()
       ? "prod_OvrzyxfSDz5Jqd" // Pro plan in Stripe Test env
-      : "prod_OvDLYMqgnjKK1I", // Pro plan in Stripe Prod env
+      : "prod_OvrkkwZwLUOlpx", // Pro plan in Stripe Prod env
     billingType: "per_seat",
     maxMessages: -1,
     maxUsersInWorkspace: 500,
