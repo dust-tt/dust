@@ -93,3 +93,13 @@ export const createCustomerPortalSession = async ({
 
   return portalSession.url;
 };
+
+/**
+ * Calls the Stripe API to retrieve a product by its ID.
+ */
+export const getProduct = async (
+  productId: string
+): Promise<Stripe.Product> => {
+  const product = await stripe.products.retrieve(productId);
+  return product;
+};

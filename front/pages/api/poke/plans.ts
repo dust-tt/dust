@@ -2,10 +2,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
+import Stripe from "stripe";
 
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan } from "@app/lib/models";
+import { getProduct } from "@app/lib/plans/stripe";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const PokePlanTypeSchema = t.type({
@@ -43,13 +45,19 @@ export const PokePlanTypeSchema = t.type({
 
 export type PokePlanType = t.TypeOf<typeof PokePlanTypeSchema>;
 
+export type UpsertPokePlanResponseBody = {
+  plan: PokePlanType;
+};
+
 export type GetPokePlansResponseBody = {
   plans: PokePlanType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetPokePlansResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    GetPokePlansResponseBody | UpsertPokePlanResponseBody | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const user = await getUserFromSession(session);
@@ -96,8 +104,30 @@ async function handler(
         },
         billingType: plan.billingType,
       }));
+
+      const stripeProductIds = plans
+        .filter(
+          (plan): plan is PokePlanType & { stripeProductId: string } =>
+            !!plan.stripeProductId
+        )
+        .map((plan) => plan.stripeProductId);
+
+      const productById = (
+        await Promise.all(
+          stripeProductIds.map((stripeProductId) => getProduct(stripeProductId))
+        )
+      ).reduce((acc, product) => {
+        acc[product.id] = product;
+        return acc;
+      }, {} as { [key: string]: Stripe.Product });
+
       res.status(200).json({
-        plans: plans,
+        plans: plans.map((plan) => ({
+          ...plan,
+          stripeProduct: plan.stripeProductId
+            ? productById[plan.stripeProductId]
+            : null,
+        })),
       });
       return;
 
@@ -114,6 +144,28 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
+      if (body.stripeProductId) {
+        try {
+          await getProduct(body.stripeProductId);
+        } catch (e) {
+          if (!(e instanceof Stripe.errors.StripeError)) {
+            throw e;
+          }
+          switch (e.type) {
+            case "StripeInvalidRequestError":
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "stripe_invalid_product_id_error",
+                  message: `The stripe product id seems invalid: ${e.message}`,
+                },
+              });
+            default:
+              throw e;
+          }
+        }
+      }
+
       await Plan.upsert({
         code: body.code,
         name: body.name,
@@ -132,7 +184,7 @@ async function handler(
         billingType: body.billingType,
       });
       res.status(200).json({
-        plans: [body],
+        plan: body,
       });
       break;
 

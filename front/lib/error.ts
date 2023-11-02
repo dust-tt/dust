@@ -49,7 +49,8 @@ export type APIErrorType =
   | "global_agent_error"
   | "subscription_error"
   | "stripe_webhook_error"
-  | "stripe_api_error";
+  | "stripe_api_error"
+  | "stripe_invalid_product_id_error";
 
 export type APIError = {
   type: APIErrorType;
