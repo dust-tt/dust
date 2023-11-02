@@ -141,9 +141,14 @@ To configure the @dust assistant, got to `Admin` > `Assistants` and click on the
 
 - creation of custom workflows
 - create and use the assistants on a data source with up to 32 documents of 750KB each.
-- access to GPT3.5
+- access to GPT4
+- 100 messages limit
 
-If you're looking for additional features such as access to GPT4 and Claude, connecting Notion, Google Drive, GitHub and Slack you will need to upgrade to the paid plans available. Contact us at [team@dust.tt](mailto:teamm@dust.tt).
+### **Dust Paid plans**
+
+If you're looking for additional features such as access to GPT4 and Claude without limit, connecting Notion, Google Drive, GitHub, and Slack, and access to the Dust Slackbot you will need to upgrade to the paid plans available. 
+
+You can upgrade your account by subscribing to our Pro plan inside `Admin` > `Subscription` > Pro Plan. 
 
 ---
 
