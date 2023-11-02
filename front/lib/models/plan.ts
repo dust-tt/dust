@@ -16,7 +16,7 @@ import {
   FreeBillingType,
   PAID_BILLING_TYPES,
   PaidBillingType,
-} from "@app/types/user";
+} from "@app/types/plan";
 
 export class Plan extends Model<
   InferAttributes<Plan>,

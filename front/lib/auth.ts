@@ -20,7 +20,8 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
 

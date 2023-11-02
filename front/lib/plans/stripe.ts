@@ -2,7 +2,8 @@ import Stripe from "stripe";
 
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { assertNever } from "@app/lib/utils";
-import { PaidBillingType, PlanType, WorkspaceType } from "@app/types/user";
+import { PaidBillingType, PlanType } from "@app/types/plan";
+import { WorkspaceType } from "@app/types/user";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 

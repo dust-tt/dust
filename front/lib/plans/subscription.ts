@@ -14,7 +14,7 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { PlanType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.

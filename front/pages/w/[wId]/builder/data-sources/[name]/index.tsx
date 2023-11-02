@@ -38,7 +38,8 @@ import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",

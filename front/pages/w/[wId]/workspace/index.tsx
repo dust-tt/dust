@@ -12,7 +12,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
