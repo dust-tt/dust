@@ -30,6 +30,7 @@ import {
   AgentMessageSuccessEvent,
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   isRetrievalActionType,
   RetrievalDocumentType,
@@ -482,6 +483,11 @@ function ErrorMessage({
 }) {
   const fullMessage =
     "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+
+  const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
+    async () => retryHandler()
+  );
+
   return (
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
@@ -527,7 +533,8 @@ function ErrorMessage({
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"
-          onClick={retryHandler}
+          onClick={retry}
+          disabled={isRetrying}
         />
       </div>
     </div>
