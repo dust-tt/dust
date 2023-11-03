@@ -7,10 +7,16 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
+import { getDocumentId } from "@connectors/connectors/google_drive/temporal/activities";
 import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
+import {
+  Connector,
+  GoogleDriveFiles,
+  NotionDatabase,
+  NotionPage,
+} from "@connectors/lib/models";
 import { Result } from "@connectors/lib/result";
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -249,10 +255,57 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const google = async (command: string) => {
+const google = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
+      return;
+    }
+    case "skip-file": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
+        );
+      }
+
+      const existingFile = await GoogleDriveFiles.findOne({
+        where: {
+          driveFileId: args.fileId,
+          connectorId: connector.id,
+        },
+      });
+      if (existingFile) {
+        await existingFile.update({
+          skipReason: args.reason || "blacklisted",
+        });
+      } else {
+        await GoogleDriveFiles.create({
+          driveFileId: args.fileId,
+          dustFileId: getDocumentId(args.fileId),
+          name: "unknown",
+          mimeType: "unknown",
+          connectorId: connector.id,
+          skipReason: args.reason || "blacklisted",
+        });
+      }
+
+      return;
     }
   }
 };
@@ -367,7 +420,7 @@ const main = async () => {
       await notion(command, argv);
       return;
     case "google":
-      await google(command);
+      await google(command, argv);
       return;
     case "slack":
       await slack(command, argv);

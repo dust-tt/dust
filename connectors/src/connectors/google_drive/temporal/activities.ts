@@ -299,6 +299,26 @@ async function syncOneFile(
   const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
 
+  const fileInDb = await GoogleDriveFiles.findOne({
+    where: {
+      connectorId: connectorId,
+      driveFileId: file.id,
+    },
+  });
+
+  if (fileInDb?.skipReason) {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        fileId: file.id,
+        title: file.name,
+      },
+      `Google Drive document skipped with skip reason ${fileInDb.skipReason}`
+    );
+    return false;
+  }
+
   if (FILES_IGNORE_LIST.includes(file.id)) {
     logger.info(
       {
