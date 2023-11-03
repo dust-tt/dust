@@ -1,9 +1,10 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import { useContext, useRef, useState } from "react";
+import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -23,7 +24,6 @@ export function AgentSuggestion({
   userMessage: UserMessageType;
   conversation: ConversationType;
 }) {
-  const isEditingMessage = useRef(0);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
   });
@@ -47,7 +47,8 @@ export function AgentSuggestion({
                 size="xs"
                 variant="avatar"
                 label={`@${agent.name}`}
-                onClick={() => selectSuggestionHandler(agent)}
+                onClick={() => handleSelectSuggestion(agent)}
+                disabled={isSelectingSuggestion}
                 avatar={agent.pictureUrl}
               />
             </div>
@@ -58,7 +59,7 @@ export function AgentSuggestion({
             onItemClick={async (agent) => {
               if (!loading) {
                 setLoading(true);
-                await selectSuggestionHandler(agent);
+                await handleSelectSuggestion(agent);
                 setLoading(false);
               }
             }}
@@ -76,46 +77,40 @@ export function AgentSuggestion({
     </div>
   );
 
-  async function selectSuggestionHandler(agent: AgentConfigurationType) {
-    if (isEditingMessage.current === 0) {
-      try {
-        isEditingMessage.current++;
-        const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-        const mRes = await fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
+  const {
+    submit: handleSelectSuggestion,
+    isSubmitting: isSelectingSuggestion,
+  } = useSubmitFunction(async (agent: AgentConfigurationType) => {
+    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editedContent,
+          mentions: [
+            {
+              type: "agent",
+              configurationId: agent.sId,
             },
-            body: JSON.stringify({
-              content: editedContent,
-              mentions: [
-                {
-                  type: "agent",
-                  configurationId: agent.sId,
-                },
-              ],
-            }),
-          }
-        );
-
-        if (!mRes.ok) {
-          const data = await mRes.json();
-          window.alert(
-            `Error adding mention to message: ${data.error.message}`
-          );
-          sendNotification({
-            type: "error",
-            title: "Invite sent",
-            description: `Error adding mention to message: ${data.error.message}`,
-          });
-        }
-      } finally {
-        isEditingMessage.current--;
+          ],
+        }),
       }
+    );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      window.alert(`Error adding mention to message: ${data.error.message}`);
+      sendNotification({
+        type: "error",
+        title: "Invite sent",
+        description: `Error adding mention to message: ${data.error.message}`,
+      });
     }
-  }
+  });
 
   /**
    * Compare agents by whom was last mentioned in conversation from this user. If none has been
