@@ -1,5 +1,4 @@
 import { Checkbox, Modal } from "@dust-tt/sparkle";
-import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -54,14 +53,12 @@ export default function ConnectorPermissionsModal({
   dataSource,
   isOpen,
   setOpen,
-  onEditPermission,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;
   dataSource: DataSourceType;
   isOpen: boolean;
   setOpen: (open: boolean) => void;
-  onEditPermission: () => void;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -181,6 +178,7 @@ export default function ConnectorPermissionsModal({
 
   return (
     <Modal
+      title="Add / Remove data"
       isOpen={isOpen}
       onClose={closeModal}
       onSave={save}
@@ -191,17 +189,9 @@ export default function ConnectorPermissionsModal({
         !!Object.keys(updatedPermissionByInternalId).length ||
         automaticallyIncludeNewResources !== null
       }
-      action={{
-        onClick: onEditPermission,
-        labelVisible: true,
-        label: "Re-authorize",
-        variant: "tertiary",
-        size: "xs",
-        icon: Cog6ToothIcon,
-      }}
-      type="default"
+      type="full-screen"
     >
-      <div className="text-left">
+      <div className="mx-auto max-w-4xl text-left">
         {!isDefaultNewResourcePermissionLoading &&
         defaultNewResourcePermission ? (
           <>

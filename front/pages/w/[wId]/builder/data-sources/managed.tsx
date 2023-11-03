@@ -4,12 +4,8 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContextItem,
-  DriveLogo,
   DropdownMenu,
-  GithubLogo,
-  NotionLogo,
   Page,
-  SlackLogo,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -363,20 +359,10 @@ export default function DataSourcesView({
                 title={ds.name}
                 visual={
                   <ContextItem.Visual
-                    visual={(() => {
-                      switch (ds.connectorProvider) {
-                        case "slack":
-                          return SlackLogo;
-                        case "notion":
-                          return NotionLogo;
-                        case "github":
-                          return GithubLogo;
-                        case "google_drive":
-                          return DriveLogo;
-                        default:
-                          return SlackLogo;
-                      }
-                    })()}
+                    visual={
+                      CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
+                        .logoComponent
+                    }
                   />
                 }
                 action={
@@ -409,7 +395,11 @@ export default function DataSourcesView({
                               planConnectionsLimits.isGoogleDriveAllowed;
                             break;
                           default:
-                            isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
+                            ((p: never) => {
+                              throw new Error(
+                                `Unknown connector provider ${p}`
+                              );
+                            })(ds.connectorProvider);
                         }
 
                         if (isDataSourceAllowedInPlan) {
@@ -588,26 +578,26 @@ export default function DataSourcesView({
         <Page.Vertical>
           <Page.SectionHeader title="Limitations" />
           <Page.P variant="secondary">
-            <ul className="list-disc pl-4 text-sm">
-              <li>
+            <div className="text-sm">
+              <div>
                 <span className="font-bold">Slack</span>: Dust doesn't take into
                 account external files or content behind a url.
-              </li>
-              <li>
+              </div>
+              <div>
                 <span className="font-bold">Notion</span>: Dust doesn't take
                 into account external files or content behind a url.
-              </li>
-              <li>
+              </div>
+              <div>
                 <span className="font-bold">Google Drive</span>: Dust doesn't
                 take into account files with more than 750Kb of extracted text.
-              </li>
-              <li>
+              </div>
+              <div>
                 <span className="font-bold">Github</span>: Dust only gathers
                 data from issues, discussions, and top-level pull requests
                 comments (but not in-code comments in pull requests, nor the
                 actual source code or other github data)
-              </li>
-            </ul>
+              </div>
+            </div>
           </Page.P>
         </Page.Vertical>
       </Page.Vertical>
