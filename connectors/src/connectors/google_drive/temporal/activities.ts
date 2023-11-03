@@ -54,11 +54,6 @@ const MIME_TYPES_TO_SYNC = [
   "application/vnd.google-apps.folder",
 ];
 
-const FILES_IGNORE_LIST: string[] = [
-  "1HMXBdJq3A5i7SF_KaWC7nipU0YgNKsk_tmGOHumM2n0",
-  "1oyMdVT_Rur_8xyp6YlOuamZNLM_sq-0qkpDrP7hab-U",
-];
-
 export const statsDClient = new StatsD();
 
 type NangoGetConnectionRes = {
@@ -315,19 +310,6 @@ async function syncOneFile(
         title: file.name,
       },
       `Google Drive document skipped with skip reason ${fileInDb.skipReason}`
-    );
-    return false;
-  }
-
-  if (FILES_IGNORE_LIST.includes(file.id)) {
-    logger.info(
-      {
-        documentId,
-        dataSourceConfig,
-        fileId: file.id,
-        title: file.name,
-      },
-      `Google Drive document in ignore list, skipping`
     );
     return false;
   }
