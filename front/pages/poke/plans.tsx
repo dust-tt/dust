@@ -146,7 +146,7 @@ const PlansPage = (
       ) : (
         <div className="flex h-full flex-col items-center justify-center">
           <div className="h-full py-8 text-2xl font-bold">Plans</div>
-          <div className="h-full w-full overflow-x-auto pb-32 pt-12">
+          <div className="h-full w-full overflow-x-auto pb-52 pt-12">
             <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
               <thead className="bg-gray-50">
                 <tr>
