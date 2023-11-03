@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -93,7 +94,7 @@ export default function Welcome({
     );
   }, [firstName, lastName, expertise, adminInterest, isAdmin]);
 
-  const handleSubmit = async () => {
+  const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
       method: "PATCH",
       headers: {
@@ -125,7 +126,7 @@ export default function Welcome({
     } else {
       await redirectToApp();
     }
-  };
+  });
 
   const redirectToApp = async () => {
     if (conversationId) {
@@ -224,8 +225,8 @@ export default function Welcome({
           <div className="flex justify-center pt-6">
             <Button
               label={youtubeId ? "Next" : "Start with Dust!"}
-              disabled={!isFormValid}
-              onClick={handleSubmit}
+              disabled={!isFormValid || isSubmitting}
+              onClick={submit}
             />
           </div>
         </div>
@@ -239,7 +240,7 @@ export default function Welcome({
             <p className="font-objektiv text-2xl font-bold tracking-tighter text-green-400 sm:font-objektiv md:font-objektiv">
               You're ready to go!
             </p>
-            <p>Here is a 3 minutes video to get you started with Dust.</p>
+            <p>Here is a short video to get you started with Dust.</p>
           </div>
           <div>
             <YoutubeIframe youtubeId={youtubeId} />

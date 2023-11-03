@@ -195,7 +195,7 @@ export const ConnectorsAPI = {
     parentId?: string;
     filterPermission?: ConnectorPermission;
   }): Promise<ConnectorsAPIResponse<{ resources: ConnectorResource[] }>> {
-    let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions?source=front`;
+    let url = `${CONNECTORS_API}/connectors/${connectorId}/permissions?`;
     if (parentId) {
       url += `&parentId=${parentId}`;
     }

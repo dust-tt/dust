@@ -32,11 +32,8 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import {
-  ManageDataSourcesLimitsType,
-  UserType,
-  WorkspaceType,
-} from "@app/types/user";
+import { ManageDataSourcesLimitsType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",
@@ -589,12 +586,28 @@ export default function DataSourcesView({
           })}
         </ContextItem.List>{" "}
         <Page.Vertical>
-          <Page.H>Limitations</Page.H>
+          <Page.SectionHeader title="Limitations" />
           <Page.P variant="secondary">
-            Dust doesn't synchronize external files shared within a Notion page
-            or a Slack channel. On Google Drive, files with extracted text
-            bigger than 750KB are excluded. On GitHub, the code base is not
-            synchronized.
+            <ul className="list-disc pl-4 text-sm">
+              <li>
+                <span className="font-bold">Slack</span>: Dust doesn't take into
+                account external files or content behind a url.
+              </li>
+              <li>
+                <span className="font-bold">Notion</span>: Dust doesn't take
+                into account external files or content behind a url.
+              </li>
+              <li>
+                <span className="font-bold">Google Drive</span>: Dust doesn't
+                take into account files with more than 750Kb of extracted text.
+              </li>
+              <li>
+                <span className="font-bold">Github</span>: Dust only gathers
+                data from issues, discussions, and top-level pull requests
+                comments (but not in-code comments in pull requests, nor the
+                actual source code or other github data)
+              </li>
+            </ul>
           </Page.P>
         </Page.Vertical>
       </Page.Vertical>

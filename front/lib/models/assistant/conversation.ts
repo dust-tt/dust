@@ -57,7 +57,6 @@ Conversation.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     title: {
       type: DataTypes.TEXT,
@@ -441,7 +440,6 @@ Message.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     version: {
       type: DataTypes.INTEGER,
@@ -464,11 +462,11 @@ Message.init(
     indexes: [
       {
         unique: true,
-        fields: ["conversationId", "rank", "version"],
+        fields: ["sId"],
       },
       {
         unique: true,
-        fields: ["sId"],
+        fields: ["conversationId", "rank", "version"],
       },
     ],
     hooks: {

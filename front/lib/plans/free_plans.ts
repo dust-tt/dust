@@ -26,8 +26,9 @@ export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
  */
 export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   code: FREE_TEST_PLAN_CODE,
-  name: "Test",
+  name: "Free",
   stripeProductId: null,
+  billingType: "free",
   maxMessages: 100,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
@@ -49,6 +50,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     code: FREE_UPGRADED_PLAN_CODE,
     name: "Free Trial",
     stripeProductId: null,
+    billingType: "free",
     maxMessages: -1,
     maxUsersInWorkspace: -1,
     isSlackbotAllowed: true,

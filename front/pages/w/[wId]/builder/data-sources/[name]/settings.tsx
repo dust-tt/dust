@@ -1,4 +1,4 @@
-import { Button, Checkbox, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
+import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -139,10 +139,6 @@ function StandardDataSourceSettings({
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
   );
-  const [assistantDefaultSelected, setAssistantDefaultSelected] = useState(
-    dataSource.assistantDefaultSelected
-  );
-
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
 
@@ -153,11 +149,8 @@ function StandardDataSourceSettings({
     if (dataSourceDescription !== dataSource.description) {
       edited = true;
     }
-    if (assistantDefaultSelected === !dataSource.assistantDefaultSelected) {
-      edited = true;
-    }
     setIsEdited(edited);
-  }, [dataSource, dataSourceDescription, assistantDefaultSelected]);
+  }, [dataSource, dataSourceDescription]);
 
   useEffect(() => {
     formValidation();
@@ -209,7 +202,8 @@ function StandardDataSourceSettings({
                   await handleUpdate({
                     description: dataSourceDescription,
                     visibility: "private",
-                    assistantDefaultSelected,
+                    assistantDefaultSelected:
+                      dataSource.assistantDefaultSelected,
                   });
                   setIsSavingOrDeleting(false);
                 }
@@ -287,29 +281,6 @@ function StandardDataSourceSettings({
                     the purpose of your Data Source.
                   </p>
                 </div>
-
-                <div className="mt-2 sm:col-span-6">
-                  <div className="flex justify-between">
-                    <label
-                      htmlFor="assistantDefaultSelected"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Availability to @dust
-                    </label>
-                  </div>
-                  <div className="mt-2 flex items-center">
-                    <Checkbox
-                      checked={assistantDefaultSelected}
-                      onChange={(checked) =>
-                        setAssistantDefaultSelected(checked)
-                      }
-                    />
-                    <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                      Make this Data Source available to the{" "}
-                      <span className="font-semibold">@dust</span> assistant.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -374,7 +345,8 @@ function StandardDataSourceSettings({
                       </div>
 
                       <div className="text-sm font-normal text-element-700">
-                        This will delete the Data Source for everyone.
+                        This will delete the Data Source and all associated
+                        Documents for everyone.
                       </div>
                     </div>
                     <div className="flex justify-center">

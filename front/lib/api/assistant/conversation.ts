@@ -50,7 +50,8 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { PlanType, WorkspaceType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
+import { WorkspaceType } from "@app/types/user";
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
 import { renderRetrievalActionByModelId } from "./actions/retrieval";

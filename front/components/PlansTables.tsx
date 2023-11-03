@@ -1,58 +1,58 @@
-import {
-  Button,
-  LightbulbIcon,
-  PriceTable,
-  RocketIcon,
-  SparklesIcon,
-} from "@dust-tt/sparkle";
+import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
+import { PlanType } from "@app/types/plan";
 
 interface PricePlanProps {
-  size?: "sm" | "xs";
+  size: "sm" | "xs";
   className?: string;
   isTabs?: boolean;
+  plan: PlanType;
+  onClickProPlan: () => void;
+  onClickEnterprisePlan: () => void;
+  isProcessing: boolean;
 }
 
-export const PricePlans = ({
-  size = "sm",
-  isTabs = false,
-  className = "",
-}: PricePlanProps) => {
-  const FreePriceTable = (size: "sm" | "xs") => (
+function FreePriceTable({ size }: { size: "sm" | "xs" }) {
+  return (
     <PriceTable
       title="Free"
-      price="$0"
+      price="0€"
       priceLabel=""
       color="emerald"
       size={size}
       magnified={false}
     >
-      <PriceTable.Item label="One user" variant="dash" />
-      <PriceTable.Item label="One workspace" variant="dash" />
+      <PriceTable.Item size={size} label="One user" variant="dash" />
+      <PriceTable.Item size={size} label="One workspace" variant="dash" />
       <PriceTable.Item label="Privacy and Data Security" />
       <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="100 assistant messages" variant="dash" />
       <PriceTable.Item label="50 documents as data sources" variant="dash" />
       <PriceTable.Item label="No connections" variant="xmark" />
-      <PriceTable.ActionContainer>
-        <Button
-          variant="primary"
-          size={size == "sm" ? "md" : "sm"}
-          label="Start testing"
-          icon={LightbulbIcon}
-        />
-      </PriceTable.ActionContainer>
     </PriceTable>
   );
+}
 
-  const ProPriceTable = (size: "sm" | "xs") => (
+function ProPriceTable({
+  size,
+  plan,
+  onClick,
+  isProcessing,
+}: {
+  size: "sm" | "xs";
+  plan: PlanType;
+  onClick: () => void;
+  isProcessing: boolean;
+}) {
+  const biggerButtonSize = size === "xs" ? "sm" : "md";
+  return (
     <PriceTable
       title="Pro"
-      price="$29"
+      price="29€"
       color="sky"
       priceLabel="/ month / user"
       size={size}
@@ -67,24 +67,38 @@ export const PricePlans = ({
       <PriceTable.Item label="Up to 1Go/user of data sources" />
       <PriceTable.Item
         label="Connections
-(GitHub, Google Drive, Notion, Slack)"
+  (GitHub, Google Drive, Notion, Slack)"
       />
       <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
       <PriceTable.Item label="Dust Slackbot" />
       <PriceTable.Item label="Assistants can execute actions" />
       <PriceTable.Item label="Workspace role and permissions" variant="dash" />
       <PriceTable.ActionContainer>
-        <Button
-          variant="primary"
-          size={size == "sm" ? "md" : "sm"}
-          label="Start now"
-          icon={RocketIcon}
-        />
+        {plan.code !== "PRO_PLAN_SEAT_29" && (
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Start now"
+            icon={RocketIcon}
+            disabled={isProcessing || plan.code === "PRO_PLAN_SEAT_29"}
+            onClick={onClick}
+          />
+        )}
       </PriceTable.ActionContainer>
     </PriceTable>
   );
-
-  const EnterprisePriceTable = (size: "sm" | "xs") => (
+}
+function EnterprisePriceTable({
+  size,
+  onClick,
+  isProcessing,
+}: {
+  size: "sm" | "xs";
+  onClick: () => void;
+  isProcessing: boolean;
+}) {
+  const biggerButtonSize = size === "xs" ? "sm" : "md";
+  return (
     <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
       <PriceTable.Item label="From 100 users" />
       <PriceTable.Item label="Multiple workspaces" />
@@ -95,7 +109,7 @@ export const PricePlans = ({
       <PriceTable.Item label="Unlimited data sources" />
       <PriceTable.Item
         label="Connections
-(GitHub, Google Drive, Notion, Slack…)"
+  (GitHub, Google Drive, Notion, Slack…)"
       />
       <PriceTable.Item label="Single Sign-on" />
       <PriceTable.Item label="Dust Slackbot" />
@@ -105,13 +119,26 @@ export const PricePlans = ({
       <PriceTable.ActionContainer>
         <Button
           variant="primary"
-          size={size == "sm" ? "md" : "sm"}
+          size={biggerButtonSize}
           label="Contact us"
           icon={SparklesIcon}
+          disabled={isProcessing}
+          onClick={onClick}
         />
       </PriceTable.ActionContainer>
     </PriceTable>
   );
+}
+
+export function PricePlans({
+  size = "sm",
+  isTabs = false,
+  className = "",
+  plan,
+  onClickProPlan,
+  onClickEnterprisePlan,
+  isProcessing,
+}: PricePlanProps) {
   if (isTabs) {
     return (
       <div
@@ -170,9 +197,24 @@ export const PricePlans = ({
             </Tab>
           </Tab.List>
           <Tab.Panels className="mt-8">
-            <Tab.Panel>{FreePriceTable("sm")}</Tab.Panel>
-            <Tab.Panel>{ProPriceTable("sm")}</Tab.Panel>
-            <Tab.Panel>{EnterprisePriceTable("sm")}</Tab.Panel>
+            <Tab.Panel>
+              <FreePriceTable size={size} />
+            </Tab.Panel>
+            <Tab.Panel>
+              <ProPriceTable
+                size={size}
+                plan={plan}
+                isProcessing={isProcessing}
+                onClick={onClickProPlan}
+              />
+            </Tab.Panel>
+            <Tab.Panel>
+              <EnterprisePriceTable
+                size={size}
+                isProcessing={isProcessing}
+                onClick={onClickEnterprisePlan}
+              />
+            </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
       </div>
@@ -185,10 +227,19 @@ export const PricePlans = ({
           className
         )}
       >
-        {FreePriceTable(size)}
-        {ProPriceTable(size)}
-        {EnterprisePriceTable(size)}
+        <FreePriceTable size={size} />
+        <ProPriceTable
+          size={size}
+          plan={plan}
+          isProcessing={isProcessing}
+          onClick={onClickProPlan}
+        />
+        <EnterprisePriceTable
+          size={size}
+          isProcessing={isProcessing}
+          onClick={onClickEnterprisePlan}
+        />
       </div>
     );
   }
-};
+}

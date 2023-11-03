@@ -12,7 +12,8 @@ import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType, UserType, WorkspaceType } from "@app/types/user";
+import { PlanType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
