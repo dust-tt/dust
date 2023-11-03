@@ -15,7 +15,7 @@ export const PopupExample = () => (
     <Popup
       show={true}
       chipLabel={"Basic"}
-      description={"Yes"}
+      description={"Basic popup"}
       buttonLabel={"Ok"}
       buttonClick={function (): void {
         alert("Onclick fn");
@@ -24,13 +24,26 @@ export const PopupExample = () => (
 
     <Popup
       show={true}
-      chipLabel={"Positioned"}
-      description={"Positioned bottom via className"}
+      chipLabel={"Closeable"}
+      description={"Using onClose prop"}
       buttonLabel={"Ok"}
       buttonClick={function (): void {
         alert("Onclick fn");
       }}
-      className="s-fixed s-bottom-16"
+      onClose={function (): void {
+        alert("OnClose fn");
+      }}
+    />
+
+    <Popup
+      show={true}
+      chipLabel={"Positioned"}
+      description={"Positioned right via className"}
+      buttonLabel={"Ok"}
+      buttonClick={function (): void {
+        alert("Onclick fn");
+      }}
+      className="s-fixed s-right-16"
     />
   </div>
 );

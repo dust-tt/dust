@@ -1,8 +1,10 @@
 import { Transition } from "@headlessui/react";
 import React from "react";
 
+import { XMark } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
+import { IconButton } from "..";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 
@@ -13,6 +15,7 @@ type PopupProps = {
   buttonLabel: string;
   buttonClick: () => void;
   className?: string;
+  onClose?: () => void;
 };
 
 export function Popup({
@@ -22,11 +25,13 @@ export function Popup({
   buttonLabel,
   buttonClick,
   className,
+  onClose,
 }: PopupProps) {
   return (
     <Transition
       show={show}
       enter="s-transition-opacity s-duration-300"
+      appear={true}
       enterFrom="s-opacity-0"
       enterTo="s-opacity-100"
       leave="s-transition-opacity s-duration-300"
@@ -37,8 +42,13 @@ export function Popup({
         className || ""
       )}
     >
-      <div>
+      <div className="s-flex">
         <Chip color="red">{chipLabel}</Chip>
+        {onClose && (
+          <div className="s-flex s-grow s-items-start s-justify-end">
+            <IconButton icon={XMark} onClick={onClose} />
+          </div>
+        )}
       </div>
       <div className="s-text-sm s-font-normal s-text-element-900">
         {description}
