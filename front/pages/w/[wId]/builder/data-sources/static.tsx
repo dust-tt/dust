@@ -81,7 +81,7 @@ export default function DataSourcesView({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
-    useState<boolean>(false);
+    useState(false);
 
   const handleCreateDataSource = async () => {
     // Enforce plan limits: DataSources count.
