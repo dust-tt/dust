@@ -7,16 +7,19 @@ import {
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
+  Searchbar,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
+import { subFilter } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -63,10 +66,15 @@ export default function AssistantsBuilder({
     useAgentConfigurations({
       workspaceId: owner.sId,
     });
+  const [assistantSearch, setAssistantSearch] = useState<string>("");
 
   const workspaceAgents = agentConfigurations.filter(
     (a) => a.scope === "workspace"
   );
+  const filtered = workspaceAgents.filter((a) => {
+    return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
+  });
+
   const dustAgents = agentConfigurations.filter((a) => a.scope === "global");
   dustAgents.sort(compareAgentsForSort);
 
@@ -180,8 +188,16 @@ export default function AssistantsBuilder({
             },
           }}
         />
-        <ContextItem.List className="mt-8  text-element-900">
-          {workspaceAgents.map((agent) => (
+        <Searchbar
+          name="search"
+          placeholder="AssistantName"
+          value={assistantSearch}
+          onChange={(s) => {
+            setAssistantSearch(s);
+          }}
+        />
+        <ContextItem.List className="text-element-900">
+          {filtered.map((agent) => (
             <ContextItem
               key={agent.sId}
               title={`@${agent.name}`}
