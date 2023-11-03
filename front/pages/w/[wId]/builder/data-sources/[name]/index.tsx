@@ -248,8 +248,8 @@ function StandardDataSourceView({
                   chipLabel="Free plan"
                   description="You have reached the limit of documents per data source for the free plan. Upgrade to a paid plan to add more documents."
                   buttonLabel="Check Dust plans"
-                  buttonClick={async () => {
-                    await router.push(`/w/${owner.sId}/subscription`);
+                  buttonClick={() => {
+                    void router.push(`/w/${owner.sId}/subscription`);
                   }}
                   onClose={() => {
                     setShowDocumentsLimitPopup(false);

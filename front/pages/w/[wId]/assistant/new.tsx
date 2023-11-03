@@ -439,8 +439,8 @@ export function LimitReachedPopup({
       chipLabel="Free plan"
       description="Looks like you've used up all your messages. Check out our paid plans to get unlimited messages."
       buttonLabel="Check Dust plans"
-      buttonClick={async () => {
-        await router.push(`/w/${workspaceId}/subscription`);
+      buttonClick={() => {
+        void router.push(`/w/${workspaceId}/subscription`);
       }}
       className="fixed bottom-16 right-16"
     />

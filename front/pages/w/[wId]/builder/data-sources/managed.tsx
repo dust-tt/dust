@@ -539,8 +539,8 @@ export default function DataSourcesView({
                       chipLabel="Free plan"
                       description="Unlock this managed data source by upgrading to a paid plan."
                       buttonLabel="Check Dust plans"
-                      buttonClick={async () => {
-                        await router.push(`/w/${owner.sId}/subscription`);
+                      buttonClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
                       }}
                       onClose={() => {
                         setShowUpgradePopupForProvider(null);

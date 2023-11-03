@@ -17,6 +17,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { PlanType } from "@app/types/plan";
@@ -83,7 +84,10 @@ export default function DataSourcesView({
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
 
-  const handleCreateDataSource = async () => {
+  const {
+    submit: handleCreateDataSource,
+    isSubmitting: isSubmittingCreateDataSource,
+  } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
       plan.limits.dataSources.count != -1 &&
@@ -93,7 +97,7 @@ export default function DataSourcesView({
     } else {
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
-  };
+  });
 
   return (
     <AppLayout
@@ -127,6 +131,7 @@ export default function DataSourcesView({
                       onClick: async () => {
                         await handleCreateDataSource();
                       },
+                      disabled: isSubmittingCreateDataSource,
                     }
                   : undefined
               }
@@ -136,8 +141,8 @@ export default function DataSourcesView({
               chipLabel="Free plan"
               description="You have reached the limit of data sources for the free plan. Upgrade to a paid plan to add more data sources."
               buttonLabel="Check Dust plans"
-              buttonClick={async () => {
-                await router.push(`/w/${owner.sId}/subscription`);
+              buttonClick={() => {
+                void router.push(`/w/${owner.sId}/subscription`);
               }}
               onClose={() => {
                 setShowDatasourceLimitPopup(false);
