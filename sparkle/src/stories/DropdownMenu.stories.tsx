@@ -7,6 +7,7 @@ import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  Collapsible,
   DropdownMenu,
   PlanetIcon,
   SliderToggle,
@@ -191,5 +192,64 @@ export const DropdownExample = () => {
         </DropdownMenu>
       </div>
     </>
+  );
+};
+
+export const DropdownExampleZIndex = () => {
+  return (
+    <div className="s-flex s-flex-col s-gap-8 s-py-24">
+      <div>Underlying model:</div>
+      <Collapsible>
+        <Collapsible.Button label="Advanced settings" />
+        <Collapsible.Panel>
+          <DropdownMenu>
+            <DropdownMenu.Button>
+              <Button
+                type="select"
+                labelVisible={true}
+                label={"GPT-4"}
+                variant="secondary"
+                hasMagnifying={false}
+                size="sm"
+              />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="topLeft">
+              {[
+                { k: "1", l: "Test 1" },
+                { k: "2", l: "Test 2" },
+                { k: "3", l: "Test 3" },
+                { k: "4", l: "Test 4" },
+                { k: "5", l: "Test 5" },
+              ].map(({ k, l }) => (
+                <DropdownMenu.Item key={k} label={l} />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </Collapsible.Panel>
+      </Collapsible>
+      <DropdownMenu>
+        <DropdownMenu.Button>
+          <Button
+            type="select"
+            labelVisible={true}
+            label={"GPT-4"}
+            variant="secondary"
+            hasMagnifying={false}
+            size="sm"
+          />
+        </DropdownMenu.Button>
+        <DropdownMenu.Items origin="topLeft">
+          {[
+            { k: "1", l: "Test 1" },
+            { k: "2", l: "Test 2" },
+            { k: "3", l: "Test 3" },
+            { k: "4", l: "Test 4" },
+            { k: "5", l: "Test 5" },
+          ].map(({ k, l }) => (
+            <DropdownMenu.Item key={k} label={l} />
+          ))}
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    </div>
   );
 };
