@@ -9,10 +9,10 @@ interface PricePlanProps {
   size: "sm" | "xs";
   className?: string;
   isTabs?: boolean;
-  plan: PlanType;
-  onClickProPlan: () => void;
-  onClickEnterprisePlan: () => void;
-  isProcessing: boolean;
+  plan?: PlanType;
+  onClickProPlan?: () => void;
+  onClickEnterprisePlan?: () => void;
+  isProcessing?: boolean;
 }
 
 function FreePriceTable({ size }: { size: "sm" | "xs" }) {
@@ -44,9 +44,9 @@ function ProPriceTable({
   isProcessing,
 }: {
   size: "sm" | "xs";
-  plan: PlanType;
-  onClick: () => void;
-  isProcessing: boolean;
+  plan?: PlanType;
+  onClick?: () => void;
+  isProcessing?: boolean;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
@@ -74,7 +74,7 @@ function ProPriceTable({
       <PriceTable.Item label="Assistants can execute actions" />
       <PriceTable.Item label="Workspace role and permissions" variant="dash" />
       <PriceTable.ActionContainer>
-        {plan.code !== "PRO_PLAN_SEAT_29" && (
+        {plan && plan.code !== "PRO_PLAN_SEAT_29" && (
           <Button
             variant="primary"
             size={biggerButtonSize}
@@ -94,8 +94,8 @@ function EnterprisePriceTable({
   isProcessing,
 }: {
   size: "sm" | "xs";
-  onClick: () => void;
-  isProcessing: boolean;
+  onClick?: () => void;
+  isProcessing?: boolean;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
@@ -117,14 +117,16 @@ function EnterprisePriceTable({
       <PriceTable.Item label="Advanced workspace role and permissions" />
       <PriceTable.Item label="Dedicated account support" />
       <PriceTable.ActionContainer>
-        <Button
-          variant="primary"
-          size={biggerButtonSize}
-          label="Contact us"
-          icon={SparklesIcon}
-          disabled={isProcessing}
-          onClick={onClick}
-        />
+        {onClick && (
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Contact us"
+            icon={SparklesIcon}
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        )}
       </PriceTable.ActionContainer>
     </PriceTable>
   );

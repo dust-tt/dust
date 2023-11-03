@@ -43,8 +43,8 @@ const defaultFlexClasses = "flex flex-col gap-4";
 
 import { GoogleSignInButton } from "@app/components/Button";
 import Particles from "@app/components/home/particles";
-import { PricePlans } from "@app/components/home/pricePlans";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
+import { PricePlans } from "@app/components/PlansTables";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 
@@ -711,7 +711,7 @@ export default function Home({
             <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
               <PricePlans size="xs" className="lg:hidden" isTabs />
               <PricePlans size="xs" className="hidden lg:flex xl:hidden" />
-              <PricePlans className="hidden xl:flex" />
+              <PricePlans size="sm" className="hidden xl:flex" />
             </div>
           </Grid>
           {/* 
