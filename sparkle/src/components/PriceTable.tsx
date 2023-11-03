@@ -17,11 +17,13 @@ interface PriceTableProps {
 }
 
 const colorTable = {
-  pink: "s-bg-pink-400 dark:s-bg-pink-500",
-  amber: "s-bg-amber-400 dark:s-bg-amber-500",
-  sky: "s-bg-sky-400 dark:s-bg-sky-500",
-  blue: "s-bg-blue-400 dark:s-bg-blue-500",
-  emerald: "s-bg-emerald-400 dark:s-bg-emerald-500",
+  pink: "s-bg-gradient-to-r s-from-pink-400 s-to-red-300 dark:s-bg-pink-500",
+  amber:
+    "s-bg-gradient-to-r s-from-amber-400 s-to-yellow-300 s-bg-amber-400 dark:s-bg-amber-500",
+  sky: "s-bg-gradient-to-r s-from-sky-400 s-to-blue-400 s-bg-sky-400 dark:s-bg-sky-500",
+  blue: "s-bg-gradient-to-r s-from-blue-400 s-to-indigo-300 s-bg-blue-400 dark:s-bg-blue-500",
+  emerald:
+    "s-bg-gradient-to-r s-from-emerald-400 s-to-green-400 s-bg-emerald-400 dark:s-bg-emerald-500",
 };
 
 const textColorTable = {
@@ -33,8 +35,8 @@ const textColorTable = {
 };
 
 const sizeTable = {
-  sm: "s-rounded-2xl s-p-1.5 s-shadow-2xl",
-  xs: "s-rounded-xl s-p-1 s-shadow-xl",
+  sm: "s-rounded-2xl s-p-px s-shadow-2xl",
+  xs: "s-rounded-2xl s-p-px s-shadow-xl",
 };
 
 export function PriceTable({
@@ -77,7 +79,7 @@ export function PriceTable({
       <div
         className={classNames(
           "s-flex s-flex-col",
-          size === "xs" ? "s-px-3 s-py-2" : "s-px-4 s-py-3"
+          size === "xs" ? "s-px-4 s-py-3" : "s-px-5 s-py-4"
         )}
       >
         <div
@@ -110,8 +112,13 @@ export function PriceTable({
         </div>
       </div>
       <div
+        style={{
+          borderBottomRightRadius: "15px",
+          borderBottomLeftRadius: "15px",
+          borderTopRightRadius: "4px",
+          borderTopLeftRadius: "4px",
+        }}
         className={classNames(
-          size === "xs" ? "s-rounded-lg" : "s-rounded-xl",
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
           "s-bg-white dark:s-bg-structure-100-dark"
         )}
