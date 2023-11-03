@@ -1101,6 +1101,7 @@ export class GoogleDriveFiles extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
+  declare lastUpsertedTs: Date | null;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
@@ -1127,6 +1128,10 @@ GoogleDriveFiles.init(
       defaultValue: DataTypes.NOW,
     },
     lastSeenTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastUpsertedTs: {
       type: DataTypes.DATE,
       allowNull: true,
     },
