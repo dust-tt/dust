@@ -1369,7 +1369,7 @@ function AdvancedSettings({
                   size="sm"
                 />
               </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft">
+              <DropdownMenu.Items origin="bottomRight">
                 {usedModelConfigs.map((modelConfig) => (
                   <DropdownMenu.Item
                     key={modelConfig.modelId}
@@ -1408,7 +1408,7 @@ function AdvancedSettings({
                   size="sm"
                 />
               </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft">
+              <DropdownMenu.Items origin="bottomRight">
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
                   <DropdownMenu.Item
                     key={label}
