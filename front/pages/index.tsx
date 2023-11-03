@@ -2,11 +2,8 @@ import {
   AnthropicLogo,
   Button,
   DriveLogo,
-  DropdownMenu,
-  GithubLogo,
   GithubWhiteLogo,
   GoogleLogo,
-  LoginIcon,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -14,8 +11,6 @@ import {
   MoreIcon,
   NotionLogo,
   OpenaiLogo,
-  PlayIcon,
-  RocketIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -41,7 +36,10 @@ import {
 
 const defaultFlexClasses = "flex flex-col gap-4";
 
-import { GoogleSignInButton } from "@app/components/Button";
+import {
+  SignInDropDownButton,
+  SignUpDropDownButton,
+} from "@app/components/Button";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
@@ -133,68 +131,30 @@ export default function Home({
             </P> */}
           </div>
           <div className="flex-grow" />
-          <div className="flex items-center gap-2">
-            {!(router.query.signIn && router.query.signIn !== "github") && (
-              <div className="font-regular font-objektiv text-xs text-slate-400">
-                Sign in with{" "}
-                <span
-                  className="cursor-pointer font-bold hover:text-blue-400"
-                  onClick={() => {
-                    void signIn("github", {
-                      callbackUrl: getCallbackUrl(router.query),
-                    });
-                  }}
-                >
-                  GitHub
-                </span>{" "}
-                or
-              </div>
-            )}
-            <GoogleSignInButton
-              onClick={() =>
+          <Button.List>
+            <SignUpDropDownButton
+              buttonClassname="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out lg:flex"
+              onClickGoogle={() =>
                 signIn("google", {
                   callbackUrl: getCallbackUrl(router.query),
                 })
               }
-            >
-              <img src="/static/google_white_32x32.png" className="h-4 w-4" />
-              <span className="ml-2 mr-1">Sign in with Google</span>
-            </GoogleSignInButton>
-          </div>
-          <Button.List>
-            <Button
-              variant="primary"
-              size="sm"
-              label="Start with Dust"
-              className="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out lg:block"
-              icon={RocketIcon}
             />
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  label="Sign-in"
-                  icon={LoginIcon}
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight" width={240}>
-                <div className="flex flex-col gap-2 p-4">
-                  <Button
-                    variant="tertiary"
-                    size="md"
-                    label="With Google"
-                    icon={GoogleLogo}
-                  />
-                  <Button
-                    variant="tertiary"
-                    size="md"
-                    label="With GitHub"
-                    icon={GithubLogo}
-                  />
-                </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
+            <SignInDropDownButton
+              shouldDisplayGithub={
+                !(router.query.signIn && router.query.signIn !== "github")
+              }
+              onClickGithub={() => {
+                void signIn("github", {
+                  callbackUrl: getCallbackUrl(router.query),
+                });
+              }}
+              onClickGoogle={() =>
+                signIn("google", {
+                  callbackUrl: getCallbackUrl(router.query),
+                })
+              }
+            />
           </Button.List>
         </div>
       </ScrollingHeader>
@@ -250,17 +210,13 @@ export default function Home({
                   is a&nbsp;competitive&nbsp;edge.
                 </H3>
                 <div className="sm: flex w-full flex-wrap gap-4 sm:justify-start sm:gap-4 md:gap-6">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    label="Start with Dust now"
-                    icon={RocketIcon}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    label="Watch the video"
-                    icon={PlayIcon}
+                  <SignUpDropDownButton
+                    buttonLabel="Start with Dust Now"
+                    onClickGoogle={() =>
+                      signIn("google", {
+                        callbackUrl: getCallbackUrl(router.query),
+                      })
+                    }
                   />
                 </div>
               </div>
