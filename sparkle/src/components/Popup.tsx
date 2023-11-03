@@ -31,6 +31,7 @@ export function Popup({
     <Transition
       show={show}
       enter="s-transition-opacity s-duration-300"
+      appear={true}
       enterFrom="s-opacity-0"
       enterTo="s-opacity-100"
       leave="s-transition-opacity s-duration-300"
