@@ -6,6 +6,7 @@ import {
   ContextItem,
   DropdownMenu,
   Page,
+  Popup,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -241,7 +242,8 @@ export default function DataSourcesView({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
-
+  const [showUpgradePopupForProvider, setShowUpgradePopupForProvider] =
+    useState<ConnectorProvider | null>(null);
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -366,167 +368,185 @@ export default function DataSourcesView({
                   />
                 }
                 action={
-                  <Button.List>
-                    {(() => {
-                      const disabled =
-                        !ds.isBuilt ||
-                        isLoadingByProvider[
-                          ds.connectorProvider as ConnectorProvider
-                        ] ||
-                        !isAdmin;
-                      const onclick = async () => {
-                        let isDataSourceAllowedInPlan: boolean;
+                  <div className="relative">
+                    <Button.List>
+                      {(() => {
+                        const disabled =
+                          !ds.isBuilt ||
+                          isLoadingByProvider[
+                            ds.connectorProvider as ConnectorProvider
+                          ] ||
+                          !isAdmin;
+                        const onclick = async () => {
+                          let isDataSourceAllowedInPlan: boolean;
 
-                        switch (ds.connectorProvider) {
-                          case "slack":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isSlackAllowed;
-                            break;
-                          case "notion":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isNotionAllowed;
-                            break;
-                          case "github":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isGithubAllowed;
-                            break;
-                          case "google_drive":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isGoogleDriveAllowed;
-                            break;
-                          default:
-                            ((p: never) => {
-                              throw new Error(
-                                `Unknown connector provider ${p}`
-                              );
-                            })(ds.connectorProvider);
-                        }
+                          switch (ds.connectorProvider) {
+                            case "slack":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isSlackAllowed;
+                              break;
+                            case "notion":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isNotionAllowed;
+                              break;
+                            case "github":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isGithubAllowed;
+                              break;
+                            case "google_drive":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isGoogleDriveAllowed;
+                              break;
+                            default:
+                              ((p: never) => {
+                                throw new Error(
+                                  `Unknown connector provider ${p}`
+                                );
+                              })(ds.connectorProvider);
+                          }
 
-                        if (isDataSourceAllowedInPlan) {
-                          await handleEnableManagedDataSource(
-                            ds.connectorProvider as ConnectorProvider,
-                            ds.setupWithSuffix
+                          if (isDataSourceAllowedInPlan) {
+                            await handleEnableManagedDataSource(
+                              ds.connectorProvider as ConnectorProvider,
+                              ds.setupWithSuffix
+                            );
+                          } else {
+                            setShowUpgradePopupForProvider(
+                              ds.connectorProvider as ConnectorProvider
+                            );
+                          }
+                          return;
+                        };
+                        const label = !ds.isBuilt
+                          ? "Coming soon"
+                          : !isLoadingByProvider[
+                              ds.connectorProvider as ConnectorProvider
+                            ] && !ds.fetchConnectorError
+                          ? "Connect"
+                          : "Connecting...";
+                        if (!ds || !ds.connector) {
+                          return (
+                            <>
+                              {ds.connectorProvider !== "google_drive" && (
+                                <Button
+                                  variant="primary"
+                                  icon={CloudArrowLeftRightIcon}
+                                  disabled={disabled}
+                                  onClick={onclick}
+                                  label={label}
+                                />
+                              )}
+                              {ds.connectorProvider === "google_drive" && (
+                                <DropdownMenu>
+                                  <DropdownMenu.Button>
+                                    <Button
+                                      variant="primary"
+                                      label={label}
+                                      disabled={disabled}
+                                      icon={CloudArrowLeftRightIcon}
+                                    />
+                                  </DropdownMenu.Button>
+                                  <DropdownMenu.Items
+                                    origin="topRight"
+                                    width={350}
+                                  >
+                                    <div className="flex flex-col gap-y-4 p-4">
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
+                                          Disclosure
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          Dust's use of information received
+                                          from the Google APIs will adhere to{" "}
+                                          <Link
+                                            className="s-text-action-500"
+                                            href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+                                          >
+                                            Google API Services User Data Policy
+                                          </Link>
+                                          , including the Limited Use
+                                          requirements.
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
+                                          Notice on data processing
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          By connecting Google Drive, you
+                                          acknowledge and agree that within your
+                                          Google Drive, the data contained in
+                                          the files and folders that you choose
+                                          to synchronize with Dust will be
+                                          transmitted to third-party entities,
+                                          including but not limited to
+                                          Artificial Intelligence (AI) model
+                                          providers, for the purpose of
+                                          processing and analysis. This process
+                                          is an integral part of the
+                                          functionality of our service and is
+                                          subject to the terms outlined in our
+                                          Privacy Policy and Terms of Service.
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-center">
+                                        <DropdownMenu.Button>
+                                          <Button
+                                            variant="secondary"
+                                            icon={CloudArrowLeftRightIcon}
+                                            disabled={disabled}
+                                            onClick={onclick}
+                                            label="Acknowledge and Connect"
+                                          />
+                                        </DropdownMenu.Button>
+                                      </div>
+                                    </div>
+                                  </DropdownMenu.Items>
+                                </DropdownMenu>
+                              )}
+                            </>
                           );
                         } else {
-                          window.alert(
-                            "Managed Data Sources are only available on our paid plans. Contact us at team@dust.tt to get access."
+                          return (
+                            <Button
+                              variant="secondary"
+                              icon={Cog6ToothIcon}
+                              disabled={
+                                !ds.isBuilt ||
+                                isLoadingByProvider[
+                                  ds.connectorProvider as ConnectorProvider
+                                ] ||
+                                // Can't manage or view if not (admin or not readonly (ie builder)).
+                                !(isAdmin || !readOnly)
+                              }
+                              onClick={() => {
+                                void router.push(
+                                  `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
+                                );
+                              }}
+                              label={isAdmin ? "Manage" : "View"}
+                            />
                           );
                         }
-                        return;
-                      };
-                      const label = !ds.isBuilt
-                        ? "Coming soon"
-                        : !isLoadingByProvider[
-                            ds.connectorProvider as ConnectorProvider
-                          ] && !ds.fetchConnectorError
-                        ? "Connect"
-                        : "Connecting...";
-                      if (!ds || !ds.connector) {
-                        return (
-                          <>
-                            {ds.connectorProvider !== "google_drive" && (
-                              <Button
-                                variant="primary"
-                                icon={CloudArrowLeftRightIcon}
-                                disabled={disabled}
-                                onClick={onclick}
-                                label={label}
-                              />
-                            )}
-                            {ds.connectorProvider === "google_drive" && (
-                              <DropdownMenu>
-                                <DropdownMenu.Button>
-                                  <Button
-                                    variant="primary"
-                                    label={label}
-                                    disabled={disabled}
-                                    icon={CloudArrowLeftRightIcon}
-                                  />
-                                </DropdownMenu.Button>
-                                <DropdownMenu.Items
-                                  origin="topRight"
-                                  width={350}
-                                >
-                                  <div className="flex flex-col gap-y-4 p-4">
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Disclosure
-                                      </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        Dust's use of information received from
-                                        the Google APIs will adhere to{" "}
-                                        <Link
-                                          className="s-text-action-500"
-                                          href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
-                                        >
-                                          Google API Services User Data Policy
-                                        </Link>
-                                        , including the Limited Use
-                                        requirements.
-                                      </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-y-2">
-                                      <div className="grow text-sm font-medium text-element-800">
-                                        Notice on data processing
-                                      </div>
-                                      <div className="text-sm font-normal text-element-700">
-                                        By connecting Google Drive, you
-                                        acknowledge and agree that within your
-                                        Google Drive, the data contained in the
-                                        files and folders that you choose to
-                                        synchronize with Dust will be
-                                        transmitted to third-party entities,
-                                        including but not limited to Artificial
-                                        Intelligence (AI) model providers, for
-                                        the purpose of processing and analysis.
-                                        This process is an integral part of the
-                                        functionality of our service and is
-                                        subject to the terms outlined in our
-                                        Privacy Policy and Terms of Service.
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center">
-                                      <DropdownMenu.Button>
-                                        <Button
-                                          variant="secondary"
-                                          icon={CloudArrowLeftRightIcon}
-                                          disabled={disabled}
-                                          onClick={onclick}
-                                          label="Acknowledge and Connect"
-                                        />
-                                      </DropdownMenu.Button>
-                                    </div>
-                                  </div>
-                                </DropdownMenu.Items>
-                              </DropdownMenu>
-                            )}
-                          </>
-                        );
-                      } else {
-                        return (
-                          <Button
-                            variant="secondary"
-                            icon={Cog6ToothIcon}
-                            disabled={
-                              !ds.isBuilt ||
-                              isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ] ||
-                              // Can't manage or view if not (admin or not readonly (ie builder)).
-                              !(isAdmin || !readOnly)
-                            }
-                            onClick={() => {
-                              void router.push(
-                                `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
-                              );
-                            }}
-                            label={isAdmin ? "Manage" : "View"}
-                          />
-                        );
+                      })()}
+                    </Button.List>
+                    <Popup
+                      show={
+                        showUpgradePopupForProvider === ds.connectorProvider
                       }
-                    })()}
-                  </Button.List>
+                      className="absolute bottom-8 right-0"
+                      chipLabel="Free plan"
+                      description="Unlock this managed data source by upgrading to a paid plan."
+                      buttonLabel="Check Dust plans"
+                      buttonClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
+                      }}
+                      onClose={() => {
+                        setShowUpgradePopupForProvider(null);
+                      }}
+                    />
+                  </div>
                 }
               >
                 {ds && ds.connector && (

@@ -6,15 +6,18 @@ import {
   FolderOpenIcon,
   Page,
   PlusIcon,
+  Popup,
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { PlanType } from "@app/types/plan";
@@ -78,21 +81,23 @@ export default function DataSourcesView({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
+    useState(false);
 
-  const handleCreateDataSource = async () => {
+  const {
+    submit: handleCreateDataSource,
+    isSubmitting: isSubmittingCreateDataSource,
+  } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
       plan.limits.dataSources.count != -1 &&
       dataSources.length >= plan.limits.dataSources.count
     ) {
-      window.alert(
-        "You are limited to 1 DataSource on our free plan. Contact team@dust.tt if you want to increase this limit."
-      );
-      return;
+      setShowDatasourceLimitPopup(true);
     } else {
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
-  };
+  });
 
   return (
     <AppLayout
@@ -113,26 +118,42 @@ export default function DataSourcesView({
         />
 
         {dataSources.length > 0 ? (
-          <SectionHeader
-            title=""
-            description=""
-            action={
-              !readOnly
-                ? {
-                    label: "Add a new Data Source",
-                    variant: "primary",
-                    icon: PlusIcon,
-                    onClick: async () => {
-                      await handleCreateDataSource();
-                    },
-                  }
-                : undefined
-            }
-          />
+          <div className="relative">
+            <SectionHeader
+              title=""
+              description=""
+              action={
+                !readOnly
+                  ? {
+                      label: "Add a new Data Source",
+                      variant: "primary",
+                      icon: PlusIcon,
+                      onClick: async () => {
+                        await handleCreateDataSource();
+                      },
+                      disabled: isSubmittingCreateDataSource,
+                    }
+                  : undefined
+              }
+            />
+            <Popup
+              show={showDatasourceLimitPopup}
+              chipLabel="Free plan"
+              description="You have reached the limit of data sources for the free plan. Upgrade to a paid plan to add more data sources."
+              buttonLabel="Check Dust plans"
+              buttonClick={() => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }}
+              onClose={() => {
+                setShowDatasourceLimitPopup(false);
+              }}
+              className="absolute bottom-8 right-0"
+            />
+          </div>
         ) : (
           <div
             className={classNames(
-              "mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+              "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
             )}
           >
             <Button

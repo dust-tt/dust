@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
   Page,
   PlusIcon,
+  Popup,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
@@ -20,7 +21,6 @@ import {
   FixedAssistantInputBar,
   InputBarContext,
 } from "@app/components/assistant/conversation/InputBar";
-import { LimitReachedPopup } from "@app/components/assistant/conversation/LimitReachedPopup";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -424,3 +424,25 @@ const AvatarListItem = function ({
     </div>
   );
 };
+
+export function LimitReachedPopup({
+  planLimitReached,
+  workspaceId,
+}: {
+  planLimitReached: boolean;
+  workspaceId: string;
+}) {
+  const router = useRouter();
+  return (
+    <Popup
+      show={planLimitReached}
+      chipLabel="Free plan"
+      description="Looks like you've used up all your messages. Check out our paid plans to get unlimited messages."
+      buttonLabel="Check Dust plans"
+      buttonClick={() => {
+        void router.push(`/w/${workspaceId}/subscription`);
+      }}
+      className="fixed bottom-16 right-16"
+    />
+  );
+}

@@ -9,6 +9,7 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
+  Popup,
   SectionHeader,
   SlackLogo,
   SliderToggle,
@@ -147,6 +148,7 @@ function StandardDataSourceView({
 
   const { documents, total, isDocumentsLoading, isDocumentsError } =
     useDocuments(owner, dataSource, limit, offset);
+  const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
@@ -240,7 +242,21 @@ function StandardDataSourceView({
 
           {readOnly ? null : (
             <div className="">
-              <div className="mt-0 flex-none">
+              <div className="relative mt-0 flex-none">
+                <Popup
+                  show={showDocumentsLimitPopup}
+                  chipLabel="Free plan"
+                  description="You have reached the limit of documents per data source for the free plan. Upgrade to a paid plan to add more documents."
+                  buttonLabel="Check Dust plans"
+                  buttonClick={() => {
+                    void router.push(`/w/${owner.sId}/subscription`);
+                  }}
+                  onClose={() => {
+                    setShowDocumentsLimitPopup(false);
+                  }}
+                  className="absolute bottom-8 right-0"
+                />
+
                 <Button
                   variant="primary"
                   icon={PlusIcon}
@@ -251,10 +267,7 @@ function StandardDataSourceView({
                       plan.limits.dataSources.documents.count != -1 &&
                       total >= plan.limits.dataSources.documents.count
                     ) {
-                      window.alert(
-                        "Data Sources are limited to 32 documents on our free plan. Contact team@dust.tt if you want to increase this limit."
-                      );
-                      return;
+                      setShowDocumentsLimitPopup(true);
                     } else {
                       void router.push(
                         `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
