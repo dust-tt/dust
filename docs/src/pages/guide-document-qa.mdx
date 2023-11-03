@@ -33,13 +33,6 @@ We will use a Data Source to automatically chunk, embed and index 4 IPCC reports
 [AR6-WG1](https://www.ipcc.ch/report/ar6/wg2/), [AR6-WG2](https://www.ipcc.ch/report/ar6/wg2/),
 [AR6-WG3](https://www.ipcc.ch/report/ar6/wg2/) and [AR6-SYR](https://www.ipcc.ch/report/ar6/syr/).
 
-<Note>
-  You can review this section without the need to actually create the data
-  source, and use the pre-filled public Data Source
-  [ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6) in the
-  rest of the guide.
-</Note>
-
 You can create your first Data Source from your Dust home page by selecting the **Data Sources** tab
 and clicking on the **New DataSource** button. You'll need to provide a name and description as well
 as select OpenAI's embedding model `text-embedding-ada-002`. Finally, it is important to pick a
@@ -94,15 +87,12 @@ example.
   number of chunks that were created, embedded and indexed is also reported._
 </Image>
 
-Now that your Data Source is ready (or you plan to use
-[ipcc-ar6](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6)), you can move on to the next section to create
-a Q&A app that will use it.
+Now that your Data Source is ready, you can move on to the next section to create a Q&A app that will use it.
 
 ## Creating a Q&A app
 
 In this section we'll provide step-by-step instructions to create a Q&A app that will use the data
-source to answer user-provided questions. You can find a finalized version of the app
-[here](https://dust.tt/w/3e26b0e764/builder/data-sources/ipcc-ar6).
+source to answer user-provided questions.
 
 ### `input` block
 
@@ -136,8 +126,8 @@ value:
 ```
 
 <Image src="/guide_document_qa_ds_block.png" alt="Dust `data_source` block">
-  _The Dust `data_source` block pointing to the public `ipcc-ar6` Data Source.
-  The query is set to the input value question field using templating._
+  _The Dust `data_source` block pointing to the `ipcc-ar6` Data Source. The
+  query is set to the input value question field using templating._
 </Image>
 
 At this point you can run your app and introspect the outputs of the `data_source` block.
