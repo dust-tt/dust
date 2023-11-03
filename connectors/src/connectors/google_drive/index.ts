@@ -347,17 +347,16 @@ export async function retrieveGoogleDriveConnectorPermissions({
               parentInternalId: null,
               type: "folder",
               title: fd.name || "",
-              sourceUrl: fd.webViewLink || null,
+              sourceUrl: null, // Out of consistency we don't send `fd.webViewLink`.
               dustDocumentId: null,
               lastUpdatedAt: fd.updatedAtMs || null,
               expandable:
-                (await GoogleDriveFiles.count({
+                (await GoogleDriveFiles.findOne({
                   where: {
                     connectorId: connectorId,
                     parentId: f.folderId,
-                    mimeType: "application/vnd.google-apps.folder",
                   },
-                })) > 0,
+                })) !== null,
               permission: "read",
             };
           })
@@ -397,13 +396,12 @@ export async function retrieveGoogleDriveConnectorPermissions({
               lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
               sourceUrl: null,
               expandable:
-                (await GoogleDriveFiles.count({
+                (await GoogleDriveFiles.findOne({
                   where: {
                     connectorId: connectorId,
                     parentId: f.driveFileId,
-                    mimeType: "application/vnd.google-apps.folder",
                   },
-                })) > 0,
+                })) !== null,
               permission: "read",
             };
           })();
