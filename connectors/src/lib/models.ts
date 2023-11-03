@@ -1102,6 +1102,7 @@ export class GoogleDriveFiles extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
   declare lastUpsertedTs: Date | null;
+  declare skipReason: string | null;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
@@ -1133,6 +1134,10 @@ GoogleDriveFiles.init(
     },
     lastUpsertedTs: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     connectorId: {
