@@ -25,8 +25,7 @@ export function LimitReachedPopup({
         <Chip color="red">Free plan</Chip>
       </div>
       <div className="text-sm font-normal text-element-900">
-        Looks like you've used up all your messages. Contact us to know more
-        about our paid plans.
+        Looks like you've used up all your messages. Take a peek at our plans.
       </div>
       <div className="self-center">
         <Button
