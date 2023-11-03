@@ -11,9 +11,9 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
+import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

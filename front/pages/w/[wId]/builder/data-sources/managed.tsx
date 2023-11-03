@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   Page,
   Popup,
-  SlackLogo,
 } from "@dust-tt/sparkle";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -381,30 +380,30 @@ export default function DataSourcesView({
                         const onclick = async () => {
                           let isDataSourceAllowedInPlan: boolean;
 
-                        switch (ds.connectorProvider) {
-                          case "slack":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isSlackAllowed;
-                            break;
-                          case "notion":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isNotionAllowed;
-                            break;
-                          case "github":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isGithubAllowed;
-                            break;
-                          case "google_drive":
-                            isDataSourceAllowedInPlan =
-                              planConnectionsLimits.isGoogleDriveAllowed;
-                            break;
-                          default:
-                            ((p: never) => {
-                              throw new Error(
-                                `Unknown connector provider ${p}`
-                              );
-                            })(ds.connectorProvider);
-                        }
+                          switch (ds.connectorProvider) {
+                            case "slack":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isSlackAllowed;
+                              break;
+                            case "notion":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isNotionAllowed;
+                              break;
+                            case "github":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isGithubAllowed;
+                              break;
+                            case "google_drive":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isGoogleDriveAllowed;
+                              break;
+                            default:
+                              ((p: never) => {
+                                throw new Error(
+                                  `Unknown connector provider ${p}`
+                                );
+                              })(ds.connectorProvider);
+                          }
 
                           if (isDataSourceAllowedInPlan) {
                             await handleEnableManagedDataSource(
