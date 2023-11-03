@@ -133,7 +133,7 @@ export default function Home({
             </P> */}
           </div>
           <div className="flex-grow" />
-          <div className="flex hidden items-center gap-2">
+          <div className="flex items-center gap-2">
             {!(router.query.signIn && router.query.signIn !== "github") && (
               <div className="font-regular font-objektiv text-xs text-slate-400">
                 Sign in with{" "}
