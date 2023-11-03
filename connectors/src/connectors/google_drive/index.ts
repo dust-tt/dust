@@ -394,7 +394,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
                 f.mimeType === "application/vnd.google-apps.folder"
                   ? null
                   : getDocumentId(f.driveFileId),
-              lastUpdatedAt: f.lastSeenTs?.getTime() || null,
+              lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
               sourceUrl: null,
               expandable:
                 (await GoogleDriveFiles.count({

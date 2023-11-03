@@ -19,7 +19,7 @@ import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
-import { literal, Op } from "sequelize";
+import { CreationAttributes, literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
@@ -447,15 +447,7 @@ async function syncOneFile(
   }
   tags.push(`mimeType:${file.mimeType}`);
 
-  await GoogleDriveFiles.upsert({
-    connectorId: connectorId,
-    dustFileId: documentId,
-    driveFileId: file.id,
-    name: file.name,
-    mimeType: file.mimeType,
-    parentId: file.parent,
-    lastSeenTs: new Date(),
-  });
+  let upsertTimestampMs: number | undefined = undefined;
 
   if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
     const parents = (
@@ -476,8 +468,7 @@ async function syncOneFile(
         sync_type: isBatchSync ? "batch" : "incremental",
       },
     });
-
-    return true;
+    upsertTimestampMs = file.updatedAtMs;
   } else {
     logger.info(
       {
@@ -490,7 +481,23 @@ async function syncOneFile(
     );
   }
 
-  return false;
+  const params: CreationAttributes<GoogleDriveFiles> = {
+    connectorId: connectorId,
+    dustFileId: documentId,
+    driveFileId: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    parentId: file.parent,
+    lastSeenTs: new Date(),
+  };
+
+  if (upsertTimestampMs) {
+    params.lastUpsertedTs = new Date(upsertTimestampMs);
+  }
+
+  await GoogleDriveFiles.upsert(params);
+
+  return !!upsertTimestampMs;
 }
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
