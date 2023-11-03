@@ -1,8 +1,11 @@
 import {
   Button,
+  Chip,
   Cog6ToothIcon,
   ContextItem,
   DocumentTextIcon,
+  ListCheckIcon,
+  LockIcon,
   Page,
   PencilSquareIcon,
   PlusIcon,
@@ -435,6 +438,8 @@ function ManagedDataSourceView({
 }) {
   const router = useRouter();
 
+  const sendNotification = useContext(SendNotificationsContext);
+
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
     null
@@ -491,7 +496,11 @@ function ManagedDataSourceView({
         provider
       );
       if (updateRes.error) {
-        window.alert(updateRes.error);
+        sendNotification({
+          type: "error",
+          title: "Failed to update the permissions of the Data Source",
+          description: updateRes.error,
+        });
       }
     } else if (provider === "github") {
       const installationId = await githubAuth(githubAppUrl).catch((e) => {
@@ -499,16 +508,22 @@ function ManagedDataSourceView({
       });
 
       if (!installationId) {
-        window.alert(
-          "Failed to update the Github permissions. Please contact-us at team@dust.tt"
-        );
+        sendNotification({
+          type: "error",
+          title: "Failed to update the Github permissions",
+          description: "Please contact-us at team@dust.tt",
+        });
       } else {
         const updateRes = await updateConnectorConnectionId(
           installationId,
           provider
         );
         if (updateRes.error) {
-          window.alert(updateRes.error);
+          sendNotification({
+            type: "error",
+            title: "Failed to update the permissions of the Data Source",
+            description: updateRes.error,
+          });
         }
       }
     }
@@ -556,54 +571,101 @@ function ManagedDataSourceView({
         dataSource={dataSource}
         isOpen={showPermissionModal}
         setOpen={setShowPermissionModal}
-        onEditPermission={() => {
-          void handleUpdatePermissions();
-        }}
       />
-      <div className="flex flex-col">
-        <SectionHeader
-          title={`Managed ${CONNECTOR_CONFIGURATIONS[connectorProvider].name} Data Source`}
-          description={
-            synchronizedTimeAgo
-              ? `Last Sync ~ ${synchronizedTimeAgo}`
-              : `Synchronizing ${
-                  connector.firstSyncProgress
-                    ? `(${connector.firstSyncProgress})`
-                    : ""
-                }`
-          }
+      <div className="flex flex-col pt-4">
+        <Page.Header
+          title={`Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`}
+          icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
         />
-        <div className="flex flex-row py-8">
-          <div className="flex flex-1"></div>
-          <Button.List>
-            <Button
-              label="Search"
-              variant="secondary"
-              onClick={() => {
-                void router.push(
-                  `/w/${owner.sId}/builder/data-sources/${dataSource.name}/search`
-                );
-              }}
-            />
-            {isAdmin && (
-              <Button
-                label="Edit permissions"
-                variant="secondary"
-                onClick={() => {
-                  if (["slack", "google_drive"].includes(connectorProvider)) {
-                    setShowPermissionModal(true);
-                  } else {
-                    void handleUpdatePermissions();
-                  }
-                }}
-              />
-            )}
-          </Button.List>
+        <div className="pt-2">
+          {(() => {
+            if (connector.errorType) {
+              return (
+                <Chip color="warning">
+                  Oops! It seems that our access to your account has been
+                  revoked. Please re-authorize this Data Source to keep your
+                  data up to date on Dust.
+                </Chip>
+              );
+            } else if (!connector.lastSyncSuccessfulTime) {
+              return (
+                <Chip color="amber" isBusy>
+                  Synchronizing
+                  {connector?.firstSyncProgress
+                    ? ` (${connector?.firstSyncProgress})`
+                    : null}
+                </Chip>
+              );
+            } else {
+              return (
+                <Chip color="slate">Last Sync ~ {synchronizedTimeAgo} ago</Chip>
+              );
+            }
+          })()}
         </div>
 
-        {connectorProvider === "slack" && (
-          <SlackBotEnableView {...{ owner, readOnly, isAdmin, dataSource }} />
+        {isAdmin && (
+          <>
+            <div className="flex flex-row py-8">
+              <Button.List>
+                {(() => {
+                  switch (connectorProvider) {
+                    case "slack":
+                    case "google_drive":
+                      return (
+                        <>
+                          <Button
+                            label="Add / Remove data"
+                            variant="primary"
+                            icon={ListCheckIcon}
+                            disabled={readOnly || !isAdmin}
+                            onClick={() => {
+                              setShowPermissionModal(true);
+                            }}
+                          />
+                          <Button
+                            label="Manage permissions"
+                            variant="secondary"
+                            icon={LockIcon}
+                            disabled={readOnly || !isAdmin}
+                            onClick={() => {
+                              void handleUpdatePermissions();
+                            }}
+                          />
+                        </>
+                      );
+                    case "notion":
+                    case "github":
+                      return (
+                        <Button
+                          label="Add / Remove data, manage permissions"
+                          variant="primary"
+                          icon={ListCheckIcon}
+                          onClick={() => {
+                            void handleUpdatePermissions();
+                          }}
+                        />
+                      );
+                    default:
+                      ((p: never) => {
+                        throw new Error(`Unknown connector provider ${p}`);
+                      })(connectorProvider);
+                  }
+                })()}
+              </Button.List>
+            </div>
+
+            {connectorProvider === "slack" && (
+              <SlackBotEnableView
+                {...{ owner, readOnly, isAdmin, dataSource }}
+              />
+            )}
+          </>
         )}
+
+        <div className="pt-6">
+          <div className="border-t border-structure-200" />
+        </div>
 
         <div className="flex flex-col gap-y-8">
           <SectionHeader
