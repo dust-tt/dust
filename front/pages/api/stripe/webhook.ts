@@ -89,6 +89,33 @@ async function handler(
           const stripeSubscriptionId = session.subscription;
           const planCode = session?.metadata?.planCode || null;
 
+          if (session.status === "open" || session.status === "expired") {
+            // Open: The checkout session is still in progress. Payment processing has not started.
+            // Expired: The checkout session has expired (e.g., because of lack of payment).
+            logger.info(
+              {
+                workspaceId,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                planCode,
+              },
+              `[Stripe Webhook] Received checkout.session.completed with status "${session.status}". Ignoring event.`
+            );
+            return;
+          }
+          if (session.status !== "complete") {
+            logger.error(
+              {
+                workspaceId,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                planCode,
+              },
+              `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
+            );
+            return;
+          }
+
           try {
             if (
               workspaceId === null ||
