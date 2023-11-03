@@ -34,6 +34,41 @@ export function AgentSuggestion({
 
   const [loading, setLoading] = useState(false);
 
+  const {
+    submit: handleSelectSuggestion,
+    isSubmitting: isSelectingSuggestion,
+  } = useSubmitFunction(async (agent: AgentConfigurationType) => {
+    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editedContent,
+          mentions: [
+            {
+              type: "agent",
+              configurationId: agent.sId,
+            },
+          ],
+        }),
+      }
+    );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      window.alert(`Error adding mention to message: ${data.error.message}`);
+      sendNotification({
+        type: "error",
+        title: "Invite sent",
+        description: `Error adding mention to message: ${data.error.message}`,
+      });
+    }
+  });
+
   return (
     <div className="pt-4">
       <div className="text-xs font-bold text-element-600">
@@ -76,41 +111,6 @@ export function AgentSuggestion({
       </div>
     </div>
   );
-
-  const {
-    submit: handleSelectSuggestion,
-    isSubmitting: isSelectingSuggestion,
-  } = useSubmitFunction(async (agent: AgentConfigurationType) => {
-    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: editedContent,
-          mentions: [
-            {
-              type: "agent",
-              configurationId: agent.sId,
-            },
-          ],
-        }),
-      }
-    );
-
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      window.alert(`Error adding mention to message: ${data.error.message}`);
-      sendNotification({
-        type: "error",
-        title: "Invite sent",
-        description: `Error adding mention to message: ${data.error.message}`,
-      });
-    }
-  });
 
   /**
    * Compare agents by whom was last mentioned in conversation from this user. If none has been
