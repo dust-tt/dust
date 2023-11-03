@@ -36,7 +36,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   isManagedNotionAllowed: false,
   isManagedGoogleDriveAllowed: false,
   isManagedGithubAllowed: false,
-  maxDataSourcesCount: 10,
+  maxDataSourcesCount: 5,
   maxDataSourcesDocumentsCount: 10,
   maxDataSourcesDocumentsSizeMb: 2,
 };
