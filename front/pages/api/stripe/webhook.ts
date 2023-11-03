@@ -121,6 +121,24 @@ async function handler(
                 where: { workspaceId: workspace.id, status: "active" },
                 transaction: t,
               });
+
+              if (
+                activeSubscription &&
+                activeSubscription.stripeSubscriptionId === stripeSubscriptionId
+              ) {
+                // We already have a subscription for this workspace and this stripe subscription.
+                logger.info(
+                  {
+                    workspaceId,
+                    stripeCustomerId,
+                    stripeSubscriptionId,
+                    planCode,
+                  },
+                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this workspace and this stripe subscription. Ignoring event"
+                );
+                return;
+              }
+
               if (activeSubscription) {
                 await activeSubscription.update(
                   {
