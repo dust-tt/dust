@@ -19,6 +19,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -79,27 +80,38 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
     {} as { [key: string]: boolean }
   );
 
-  const handleGenerate = async () => {
-    await fetch(`/api/w/${owner.sId}/keys`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+  const { submit: handleGenerate, isSubmitting: isGenerating } =
+    useSubmitFunction(async () => {
+      await fetch(`/api/w/${owner.sId}/keys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      // const data = await res.json();
+      await mutate(`/api/w/${owner.sId}/keys`);
+      // scroll to bottom
+      const mainTag = document.querySelector("main");
+      if (mainTag) {
+        mainTag.scrollTo({
+          top: document.body.scrollHeight,
+          behavior: "smooth",
+        });
+      }
     });
-    // const data = await res.json();
-    await mutate(`/api/w/${owner.sId}/keys`);
-  };
 
-  const handleRevoke = async (key: KeyType) => {
-    await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    // const data = await res.json();
-    await mutate(`/api/w/${owner.sId}/keys`);
-  };
+  const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
+    async (key: KeyType) => {
+      await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      // const data = await res.json();
+      await mutate(`/api/w/${owner.sId}/keys`);
+    }
+  );
 
   return (
     <>
@@ -113,6 +125,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
             await handleGenerate();
           },
           icon: PlusIcon,
+          disabled: isGenerating || isRevoking,
         }}
       />
       <div className="space-y-4 divide-y divide-gray-200">
@@ -175,7 +188,9 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                   <div>
                     <Button
                       variant="secondaryWarning"
-                      disabled={key.status != "active"}
+                      disabled={
+                        key.status != "active" || isRevoking || isGenerating
+                      }
                       onClick={async () => {
                         await handleRevoke(key);
                       }}
