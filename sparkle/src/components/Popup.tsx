@@ -38,15 +38,20 @@ export function Popup({
       leaveFrom="s-opacity-100"
       leaveTo="s-opacity-0"
       className={classNames(
-        "s-z-30 s-flex s-w-64 s-flex-col s-gap-3 s-rounded-lg s-border s-border-amber-100 s-bg-amber-50 s-p-4 s-shadow-lg",
+        "relative s-z-30 s-flex s-w-64 s-flex-col s-gap-3 s-rounded-xl s-border s-border-pink-100 s-bg-pink-50 s-p-4 s-shadow-xl",
         className || ""
       )}
     >
       <div className="s-flex">
-        <Chip color="red">{chipLabel}</Chip>
+        <Chip color="pink">{chipLabel}</Chip>
         {onClose && (
-          <div className="s-flex s-grow s-items-start s-justify-end">
-            <IconButton icon={XMark} onClick={onClose} />
+          <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
+            <IconButton
+              icon={XMark}
+              onClick={onClose}
+              variant="secondary"
+              size="sm"
+            />
           </div>
         )}
       </div>
