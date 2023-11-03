@@ -469,8 +469,6 @@ async function syncOneFile(
       },
     });
     upsertTimestampMs = file.updatedAtMs;
-
-    return true;
   } else {
     logger.info(
       {
@@ -499,7 +497,7 @@ async function syncOneFile(
 
   await GoogleDriveFiles.upsert(params);
 
-  return false;
+  return !!upsertTimestampMs;
 }
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
