@@ -1,0 +1,122 @@
+import { SparkleIcon } from '@/components/SparkleIcon'
+import { generateRssFeed } from '@/lib/generateRssFeed'
+
+export async function getStaticProps() {
+  if (process.env.NODE_ENV === 'production') {
+    await generateRssFeed()
+  }
+  return { props: {} }
+}
+export const Line = () => (
+  <>
+    <hline className="block border-b" />
+  </>
+)
+
+---
+
+## Automate SQL Query Generation with a Custom Dust Assistant {{ date: '2023-09-28T00:00Z', id: '2023-09-28-automating-sql-query' }}
+
+Take the load off your data analysts with a Dust assistant specialized in SQL.
+
+From wide-scale rollouts, we've seen immense value in AI assistants that automatically generate SQL queries.
+
+This article outlines building a Dust Custom assistant that outputs analysis-ready SQL. Simply include your most relevant table schemas in the prompt, and direct your assistant to produce queries that plug right into your data tools (Metabase, Snowflake, etc.). Ask it to generate SQL that answers specific questions - no coding needed!
+
+While this use case is straightforward, feel free to ask any questions. With the right schema info and prompts, your custom Dust assistant can become an SQL query-generating machine.
+
+## SQL assistant
+
+### Overview
+
+- The goal of this assistant is simply to generate SQL queries based on informal instructions to accelerate engineers and data-analyst but also empower non technical users to shape iterate and leverage a SQL query to answer a question they have about the business.
+- We prompt the assistant by providing a full description of the database schemas, as well as a general translation of business terms to table and field names if necessary. This name correspondence is useful if table or column names are not clearly aligned with the general business terminology used within the company. As an example: it can be useful to define what your company consider an active user and similar concepts.
+- If your company is large, the number of tables may be prohibitively large (say 100+). In that case, we encourage shipping one custom assistant per team or function focusing on the tables that are useful to their general use cases. We sugget to not exceed 50 table definitions per assistant. We’re here to help, get in touch in case of doubt: team@dust.tt
+
+In the instructions below we prompt the model to follow instructions specific to our systems. You can obviously adapt these instructions to your own systems.
+
+### Assistant specification
+
+**Instructions**
+
+You are a SQL specialist. You are aware of the database schema of our backend, and you help team mates by writing their SQL queries for them. When column names are in camel case, we need to use "columnName" for queries to work (otherwise it is treated as case-insensitive). Those double quotes are EXTREMELY important, never forget to use them.
+
+Here are our table schema:
+
+```
+Table agent_configurations {
+  id integer [pk]
+  createdAt timestamp
+  updatedAt timestamp
+  sId varchar(255)
+  version integer [default: 0]
+  status varchar(255) [default: 'active']
+  name text
+  description text
+  pictureUrl text
+  workspaceId integer
+  generationConfigurationId integer
+  retrievalConfigurationId integer
+}
+
+Table agent_data_source_configurations {
+  id integer [pk]
+  createdAt timestamp
+  updatedAt timestamp
+  tagsIn varchar(255)[]
+  tagsNotIn varchar(255)[]
+  parentsIn varchar(255)[]
+  parentsNotIn varchar(255)[]
+  retrievalConfigurationId integer
+  dataSourceId integer
+}
+
+…
+```
+
+When generating a query, take into account the following mapping from table/column names to names commonly used at \{COMPANY\}:
+
+```
+- `agent` are generally called Agents, Assistants and sometime Bots.
+- A `User` is active on a period if he created at least one `UserMessage` during that period.
+```
+
+**Advanced Settings**
+
+Model: GPT-4
+
+Creativity: Factual
+
+**Data Sources**
+
+No data sources
+
+**Potential Name**
+@SQLdraft
+@ProductSQL
+@EngineeringSQL
+
+### Usage
+
+- The assistant should be used to generate a SQL query ready to be pasted in a data analysis tool (Metabase, Redshift, Snowflake) to answer a business question.
+- The assistant can be used by data analysts for non-advanced query creation, by engineers or non-technical team members looking to get an answer to a question without having to wait for a data analyst to shape a query for them.
+- It is important to note that for business-critical questions users should still verify the validity of the query themselves or by asking an expert.
+- Despite this caveat, we’ve had reports of significant productivity gains for business teams and a general ease of the load imposed on data analyst teams. It’s indeed much faster to check a query (in case critical) than to shape one from scratch.
+
+**Patterns:**
+
+_DAUs by Workspace_
+
+Number of workspaces by number of members of the workspace
+
+_List of workspace ordered by number of messages created over the past week_
+
+_List of users that created more than one custom assistant_
+
+How many users added an emoji to a message?
+
+**Anti-patterns**
+
+**N/A**
+
+_The Dust Team_
