@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { getProductIdFromStripeSubscriptionId } from "@app/lib/plans/stripe";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -88,6 +89,7 @@ async function handler(
           const stripeCustomerId = session.customer;
           const stripeSubscriptionId = session.subscription;
           const planCode = session?.metadata?.planCode || null;
+          const now = new Date();
 
           if (session.status === "open" || session.status === "expired") {
             // Open: The checkout session is still in progress. Payment processing has not started.
@@ -116,56 +118,92 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
+          if (
+            stripeCustomerId === null ||
+            typeof stripeCustomerId !== "string"
+          ) {
+            logger.error(
+              {
+                stripeCustomerId,
+              },
+              `[Stripe Webhook] Received checkout.session.completed with missing stripe customer id. Ignoring event.`
+            );
+            return res.status(200).json({ success: true });
+          }
+          if (
+            stripeSubscriptionId === null ||
+            typeof stripeSubscriptionId !== "string"
+          ) {
+            logger.error(
+              {
+                stripeCustomerId,
+              },
+              `[Stripe Webhook] Received checkout.session.completed with missing stripe subscription id. Ignoring event.`
+            );
+            return res.status(200).json({ success: true });
+          }
+
+          // If we already have a subscription for this workspace and this stripe subscription we can ignore the event.
+          const activeSubscriptionForCustomer = await Subscription.findOne({
+            where: {
+              stripeCustomerId: stripeCustomerId,
+              status: "active",
+            },
+          });
+          if (
+            activeSubscriptionForCustomer &&
+            activeSubscriptionForCustomer.stripeSubscriptionId ===
+              stripeSubscriptionId
+          ) {
+            logger.info(
+              {
+                workspaceId,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                planCode,
+              },
+              "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this workspace and this stripe subscription. Ignoring event"
+            );
+            return res.status(200).json({ success: true });
+          }
+
+          // We should have the workspace id in the session.client_reference_id field, but it seems that it is not always the case.
+          // If we don't have it, we can try to find it from the active subscription of the customer.
+          const workspace = workspaceId
+            ? await Workspace.findOne({
+                where: {
+                  sId: workspaceId,
+                },
+              })
+            : activeSubscriptionForCustomer
+            ? await Workspace.findOne({
+                where: {
+                  id: activeSubscriptionForCustomer.workspaceId,
+                },
+              })
+            : null;
+          if (!workspace) {
+            logger.error(
+              {
+                workspaceId,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                planCode,
+              },
+              "[Stripe Webhook] Received checkout.session.completed with missing workspace id. Ignoring event."
+            );
+            return res.status(200).json({ success: true });
+          }
+
           try {
-            if (
-              workspaceId === null ||
-              stripeCustomerId === null ||
-              planCode === null ||
-              typeof stripeCustomerId !== "string" ||
-              typeof stripeSubscriptionId !== "string"
-            ) {
-              throw new Error("Missing required data in event.");
-            }
-
-            const workspace = await Workspace.findOne({
-              where: { sId: workspaceId },
-            });
-            if (!workspace) {
-              throw new Error(`Cannot find workspace ${workspaceId}`);
-            }
-            const plan = await Plan.findOne({
-              where: { code: planCode },
-            });
-            if (!plan) {
-              throw new Error(
-                `Cannot subscribe to plan ${planCode}:  not found.`
-              );
-            }
-
             await front_sequelize.transaction(async (t) => {
-              const now = new Date();
+              // If we already have a subscription for this workspace but with a different stripe subscription, we can end the active one and create a new one.
               const activeSubscription = await Subscription.findOne({
-                where: { workspaceId: workspace.id, status: "active" },
-                transaction: t,
+                where: {
+                  workspaceId: workspace.id,
+                  status: "active",
+                },
               });
-
-              if (
-                activeSubscription &&
-                activeSubscription.stripeSubscriptionId === stripeSubscriptionId
-              ) {
-                // We already have a subscription for this workspace and this stripe subscription.
-                logger.info(
-                  {
-                    workspaceId,
-                    stripeCustomerId,
-                    stripeSubscriptionId,
-                    planCode,
-                  },
-                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this workspace and this stripe subscription. Ignoring event"
-                );
-                return;
-              }
-
               if (activeSubscription) {
                 await activeSubscription.update(
                   {
@@ -175,6 +213,35 @@ async function handler(
                   { transaction: t }
                 );
               }
+
+              // We should have the plan code in the session.metadata field, but it seems that it is not always the case.
+              // If we don't have it, we can try to find it from fetching the product id from the stripe subscription.
+              let plan: Plan | null = null;
+              if (planCode) {
+                plan = await Plan.findOne({
+                  where: {
+                    code: planCode,
+                  },
+                });
+              } else {
+                const productId = await getProductIdFromStripeSubscriptionId(
+                  stripeSubscriptionId
+                );
+                if (productId) {
+                  plan = await Plan.findOne({
+                    where: {
+                      stripeProductId: productId,
+                    },
+                  });
+                }
+              }
+
+              if (!plan) {
+                throw new Error(
+                  `[Stripe Webhook] Received checkout.session.completed with missing planCode in metadata. Cannot find the plan for the subscription ${stripeSubscriptionId}.`
+                );
+              }
+
               await Subscription.create(
                 {
                   sId: generateModelSId(),

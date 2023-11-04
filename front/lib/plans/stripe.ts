@@ -25,6 +25,22 @@ async function getPriceId(productId: string): Promise<string | null> {
 }
 
 /**
+ * Calls the Stripe API to get the productId from a subscription ID.
+ */
+export const getProductIdFromStripeSubscriptionId = async (
+  subscriptionId: string
+): Promise<string | null> => {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  if (
+    subscription.items.data.length &&
+    typeof subscription.items.data[0].price.product === "string"
+  ) {
+    return subscription.items.data[0].price.product;
+  }
+  return null;
+};
+
+/**
  * Calls the Stripe API to create a checkout session for a given workspace/plan.
  * We return the URL of the checkout session.
  * Once the users has completed the checkout, we will receive an event on our Stripe webhook
