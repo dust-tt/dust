@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { Plan, Subscription, Workspace } from "@app/lib/models";
-import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/free_plans";
+import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { generateModelSId } from "@app/lib/utils";
 
 async function main() {

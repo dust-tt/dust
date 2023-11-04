@@ -1,6 +1,7 @@
 import { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
+import { ENT_PLAN_FAKE_CODE } from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -17,10 +18,6 @@ export type PlanAttributes = Omit<
  * As entreprise plans are custom, we won't create them in this file, but directly from Poké.
  */
 
-/**
- * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
- */
-export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   code: ENT_PLAN_FAKE_CODE,
   name: "Entreprise",

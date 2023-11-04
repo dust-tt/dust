@@ -17,9 +17,6 @@ export type PlanAttributes = Omit<
  * This file about Pro plans.
  */
 
-// Current pro plans:
-export const PRO_PLAN_CODE = "PRO_PLAN_SEAT_29";
-
 /**
  * Paid plans are stored in the database.
  * We can update existing plans or add new one but never remove anything from this list.
