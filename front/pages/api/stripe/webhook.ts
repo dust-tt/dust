@@ -101,7 +101,7 @@ async function handler(
               },
               `[Stripe Webhook] Received checkout.session.completed with status "${session.status}". Ignoring event.`
             );
-            return;
+            return res.status(200).json({ success: true });
           }
           if (session.status !== "complete") {
             logger.error(
@@ -113,7 +113,7 @@ async function handler(
               },
               `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
             );
-            return;
+            return res.status(200).json({ success: true });
           }
 
           try {
@@ -142,7 +142,7 @@ async function handler(
               );
             }
 
-            return await front_sequelize.transaction(async (t) => {
+            await front_sequelize.transaction(async (t) => {
               const now = new Date();
               const activeSubscription = await Subscription.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
@@ -188,6 +188,8 @@ async function handler(
                 { transaction: t }
               );
             });
+
+            return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(
               {
@@ -199,6 +201,7 @@ async function handler(
               },
               "Error creating subscription."
             );
+
             return apiError(req, res, {
               status_code: 500,
               api_error: {
@@ -267,7 +270,7 @@ async function handler(
         // Unhandled event type
       }
 
-      return;
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {
