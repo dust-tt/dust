@@ -1750,5 +1750,5 @@ async function isMessagesLimitReached({
     limit: plan.limits.assistant.maxMessages,
   });
 
-  return messages.length === plan.limits.assistant.maxMessages;
+  return messages.length >= plan.limits.assistant.maxMessages;
 }
