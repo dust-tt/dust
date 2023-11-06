@@ -58,6 +58,9 @@ export { IconToggleButton };
 import { Tooltip } from "./components/Tooltip";
 export { Tooltip };
 
+import { ContentMessage } from "./components/ContentMessage";
+export { ContentMessage };
+
 import { Avatar } from "./components/Avatar";
 export { Avatar };
 

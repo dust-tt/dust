@@ -1,6 +1,10 @@
 import { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
+import {
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -16,10 +20,6 @@ export type PlanAttributes = Omit<
  * This file about Free plans.
  */
 
-// Current free plans:
-export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
-export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
-
 /**
  * FREE_TEST plan is our default plan: this is the plan used by all workspaces until they subscribe to a plan.
  * It is not stored in the database (as we don't create a subsription).
@@ -29,7 +29,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   name: "Free",
   stripeProductId: null,
   billingType: "free",
-  maxMessages: 100,
+  maxMessages: 50,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
   isManagedSlackAllowed: false,

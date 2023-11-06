@@ -3,6 +3,8 @@ import { Attributes } from "sequelize";
 import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models";
 
+import { PRO_PLAN_SEAT_29_CODE } from "./plan_codes";
+
 export type PlanAttributes = Omit<
   Attributes<Plan>,
   "id" | "createdAt" | "updatedAt"
@@ -17,23 +19,19 @@ export type PlanAttributes = Omit<
  * This file about Pro plans.
  */
 
-// Current pro plans:
-export const PRO_PLAN_MAU_29_CODE = "PRO_PLAN_MAU_29";
-export const PRO_PLAN_FIXED_1000_CODE = "PRO_PLAN_FIXED_1000";
-
 /**
  * Paid plans are stored in the database.
  * We can update existing plans or add new one but never remove anything from this list.
  * Entreprise custom plans will be created from Poké.
  */
 
-const PRO_PLANS_DATA: PlanAttributes[] = [
-  {
-    code: "PRO_PLAN_SEAT_29",
+const PRO_PLANS_DATA: PlanAttributes[] = [];
+
+if (isDevelopment()) {
+  PRO_PLANS_DATA.push({
+    code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
-    stripeProductId: isDevelopment()
-      ? "prod_OvrzyxfSDz5Jqd" // Pro plan in Stripe Test env
-      : "prod_OvrkkwZwLUOlpx", // Pro plan in Stripe Prod env
+    stripeProductId: "prod_OwKvN4XrUwFw5a",
     billingType: "per_seat",
     maxMessages: -1,
     maxUsersInWorkspace: 1000,
@@ -45,8 +43,8 @@ const PRO_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
-  },
-];
+  });
+}
 
 /**
  * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
