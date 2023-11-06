@@ -15,6 +15,10 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import {
+  FREE_TEST_PLAN_CODE,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -114,10 +118,10 @@ export default function Subscription({
     setIsProcessing(false);
   }
 
-  const chipColor = plan.code === "FREE_TEST_PLAN" ? "emerald" : "sky";
+  const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
 
   const onClickProPlan = async () =>
-    await handleSubscribeToPlan("PRO_PLAN_SEAT_29");
+    await handleSubscribeToPlan(PRO_PLAN_SEAT_29_CODE);
   const onClickEnterprisePlan = () => {
     window.open("mailto:team@dust.tt?subject=Upgrading to Enteprise plan");
   };

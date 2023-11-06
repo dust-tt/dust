@@ -3,6 +3,8 @@ import { Attributes } from "sequelize";
 import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models";
 
+import { PRO_PLAN_SEAT_29_CODE } from "./plan_codes";
+
 export type PlanAttributes = Omit<
   Attributes<Plan>,
   "id" | "createdAt" | "updatedAt"
@@ -27,7 +29,7 @@ const PRO_PLANS_DATA: PlanAttributes[] = [];
 
 if (isDevelopment()) {
   PRO_PLANS_DATA.push({
-    code: PRO_PLAN_CODE,
+    code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
     stripeProductId: "prod_OwKvN4XrUwFw5a",
     billingType: "per_seat",
