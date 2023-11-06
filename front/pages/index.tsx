@@ -1010,17 +1010,21 @@ const CookieBanner = ({
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
       className={classNames(
-        "z-30 flex w-72 flex-col gap-3 rounded-xl border border-pink-100 bg-pink-50 p-4 shadow-xl",
+        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
         className || ""
       )}
     >
       <div className="text-sm font-normal text-element-900">
-        We use cookies to improve your experience on our site. By using our
-        service, you agree to our{" "}
-        <A variant="tertiary">
-          <Link href="/terms">Terms of Use</Link>
-        </A>
-        .
+        We use{" "}
+        <A variant="primary">
+          <Link
+            href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
+            target="_blank"
+          >
+            cookies
+          </Link>
+        </A>{" "}
+        to improve your experience on our site.
       </div>
       <div className="flex gap-2">
         <Button
