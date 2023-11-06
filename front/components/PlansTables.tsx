@@ -2,7 +2,6 @@ import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
-import { PRO_PLAN_CODE } from "@app/lib/plans/pro_plans";
 import { classNames } from "@app/lib/utils";
 import { PlanType } from "@app/types/plan";
 
@@ -75,13 +74,13 @@ function ProPriceTable({
       <PriceTable.Item label="Assistants can execute actions" />
       <PriceTable.Item label="Workspace role and permissions" variant="dash" />
       <PriceTable.ActionContainer>
-        {plan.code !== PRO_PLAN_CODE && (
+        {plan.code !== "PRO_PLAN_SEAT_29" && (
           <Button
             variant="primary"
             size={biggerButtonSize}
             label="Start now"
             icon={RocketIcon}
-            disabled={isProcessing || plan.code === PRO_PLAN_CODE}
+            disabled={isProcessing || plan.code === "PRO_PLAN_SEAT_29"}
             onClick={onClick}
           />
         )}
