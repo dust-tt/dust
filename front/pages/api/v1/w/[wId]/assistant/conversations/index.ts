@@ -73,6 +73,17 @@ async function handler(
     });
   }
 
+  if (owner.sId === "178fcf913a") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "You exceedded the rate limit for API access. Please contact team@dust.tt.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const bodyValidation = PostConversationsRequestBodySchema.decode(
