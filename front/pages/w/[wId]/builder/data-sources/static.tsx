@@ -138,8 +138,8 @@ export default function DataSourcesView({
             />
             <Popup
               show={showDatasourceLimitPopup}
-              chipLabel="Free plan"
-              description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade to a paid plan for unlimited documents and data sources.`}
+              chipLabel={`${plan.name} plan`}
+              description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
               buttonLabel="Check Dust plans"
               buttonClick={() => {
                 void router.push(`/w/${owner.sId}/subscription`);

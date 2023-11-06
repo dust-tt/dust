@@ -29,7 +29,7 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { ManageDataSourcesLimitsType } from "@app/types/plan";
+import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
@@ -62,7 +62,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   isAdmin: boolean;
   integrations: DataSourceIntegration[];
-  planConnectionsLimits: ManageDataSourcesLimitsType;
+  plan: PlanType;
   gaTrackingId: string;
   nangoConfig: {
     publicKey: string;
@@ -213,7 +213,7 @@ export const getServerSideProps: GetServerSideProps<{
       readOnly,
       isAdmin,
       integrations,
-      planConnectionsLimits: plan.limits.connections,
+      plan,
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
@@ -232,11 +232,12 @@ export default function DataSourcesView({
   readOnly,
   isAdmin,
   integrations,
-  planConnectionsLimits,
+  plan,
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const planConnectionsLimits = plan.limits.connections;
   const [localIntegrations, setLocalIntegrations] = useState(integrations);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -536,8 +537,8 @@ export default function DataSourcesView({
                         showUpgradePopupForProvider === ds.connectorProvider
                       }
                       className="absolute bottom-8 right-0"
-                      chipLabel="Free plan"
-                      description="Unlock this managed data source by upgrading to a paid plan."
+                      chipLabel={`${plan.name} plan`}
+                      description="Unlock this managed data source by upgrading your plan."
                       buttonLabel="Check Dust plans"
                       buttonClick={() => {
                         void router.push(`/w/${owner.sId}/subscription`);

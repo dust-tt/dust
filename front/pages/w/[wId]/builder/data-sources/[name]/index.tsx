@@ -245,8 +245,8 @@ function StandardDataSourceView({
               <div className="relative mt-0 flex-none">
                 <Popup
                   show={showDocumentsLimitPopup}
-                  chipLabel="Free plan"
-                  description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade to a paid plan for unlimited documents and data sources.`}
+                  chipLabel={`${plan.name} plan`}
+                  description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
                   buttonLabel="Check Dust plans"
                   buttonClick={() => {
                     void router.push(`/w/${owner.sId}/subscription`);
@@ -341,11 +341,13 @@ function SlackBotEnableView({
   readOnly,
   isAdmin,
   dataSource,
+  plan,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;
   dataSource: DataSourceType;
+  plan: PlanType;
 }) {
   const { botEnabled, mutateBotEnabled } = useConnectorBotEnabled({
     owner: owner,
@@ -353,9 +355,9 @@ function SlackBotEnableView({
   });
 
   const sendNotification = useContext(SendNotificationsContext);
-
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-
+  const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
@@ -389,14 +391,31 @@ function SlackBotEnableView({
         title="Slack Bot"
         visual={<ContextItem.Visual visual={SlackLogo} />}
         action={
-          <SliderToggle
-            size="sm"
-            onClick={async () => {
-              await handleSetBotEnabled(!botEnabled);
-            }}
-            selected={botEnabled || false}
-            disabled={readOnly || !isAdmin || loading}
-          />
+          <div className="relative">
+            <SliderToggle
+              size="sm"
+              onClick={async () => {
+                if (!plan.limits.assistant.isSlackBotAllowed)
+                  setShowNoSlackBotPopup(true);
+                else await handleSetBotEnabled(!botEnabled);
+              }}
+              selected={botEnabled || false}
+              disabled={readOnly || !isAdmin || loading}
+            />
+            <Popup
+              show={showNoSlackBotPopup}
+              className="absolute bottom-8 right-0"
+              chipLabel={`${plan.name} plan`}
+              description="Your plan does not allow for the Slack bot to be enabled. Upgrade your plan to chat with Dust assistants on Slack."
+              buttonLabel="Check Dust plans"
+              buttonClick={() => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }}
+              onClose={() => {
+                setShowNoSlackBotPopup(false);
+              }}
+            />
+          </div>
         }
       >
         <ContextItem.Description>
@@ -435,6 +454,7 @@ function ManagedDataSourceView({
   connector,
   nangoConfig,
   githubAppUrl,
+  plan,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
@@ -448,6 +468,7 @@ function ManagedDataSourceView({
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
+  plan: PlanType;
 }) {
   const router = useRouter();
 
@@ -670,7 +691,7 @@ function ManagedDataSourceView({
 
             {connectorProvider === "slack" && (
               <SlackBotEnableView
-                {...{ owner, readOnly, isAdmin, dataSource }}
+                {...{ owner, readOnly, isAdmin, dataSource, plan }}
               />
             )}
           </>
@@ -751,6 +772,7 @@ export default function DataSourceView({
             connector,
             nangoConfig,
             githubAppUrl,
+            plan,
           }}
         />
       ) : (

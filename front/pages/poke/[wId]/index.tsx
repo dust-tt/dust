@@ -10,6 +10,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { PlanType } from "@app/types/plan";
@@ -252,8 +253,6 @@ const WorkspacePage = ({
   const workspaceHasManagedDataSources = dataSources.some(
     (ds) => !!ds.connectorProvider
   );
-
-  const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
 
   return (
     <div className="min-h-screen bg-structure-50">

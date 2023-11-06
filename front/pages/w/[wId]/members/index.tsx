@@ -11,10 +11,12 @@ import {
   Modal,
   Page,
   PlusIcon,
+  Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React, { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -27,9 +29,11 @@ import {
   getUserFromSession,
   RoleType,
 } from "@app/lib/auth";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
+import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -39,6 +43,7 @@ const CLOSING_ANIMATION_DURATION = 200;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  plan: PlanType;
   gaTrackingId: string;
   url: string;
 }> = async (context) => {
@@ -48,9 +53,9 @@ export const getServerSideProps: GetServerSideProps<{
     session,
     context.params?.wId as string
   );
-
+  const plan = auth.plan();
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
+  if (!owner || !auth.isAdmin() || !plan) {
     return {
       notFound: true,
     };
@@ -60,6 +65,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       gaTrackingId: GA_TRACKING_ID,
       url: URL,
     },
@@ -69,13 +75,15 @@ export const getServerSideProps: GetServerSideProps<{
 export default function WorkspaceAdmin({
   user,
   owner,
+  plan,
   gaTrackingId,
   url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const inviteLink =
     owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
+  const router = useRouter();
+  const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
-
   return (
     <AppLayout
       user={user}
@@ -134,13 +142,28 @@ export default function WorkspaceAdmin({
                     }}
                   />
                 </div>
-                <div className="flex-none">
+                <div className="relative flex-none">
                   <Button
                     variant="secondary"
                     label="Settings"
                     size="sm"
                     icon={Cog6ToothIcon}
-                    onClick={() => setInviteSettingsModalOpen(true)}
+                    onClick={() => {
+                      if (plan.code === FREE_TEST_PLAN_CODE)
+                        setShowNoInviteLinkPopup(true);
+                      else setInviteSettingsModalOpen(true);
+                    }}
+                  />
+                  <Popup
+                    show={showNoInviteLinkPopup}
+                    chipLabel="Free plan"
+                    description="You cannot create an invitation link with the free plan. Upgrade your plan to invite other members."
+                    buttonLabel="Check Dust plans"
+                    buttonClick={() => {
+                      void router.push(`/w/${owner.sId}/subscription`);
+                    }}
+                    className="absolute bottom-8 right-0"
+                    onClose={() => setShowNoInviteLinkPopup(false)}
                   />
                 </div>
               </div>
@@ -159,6 +182,7 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
+    const [showNoInviteEmailPopup, setShowNoInviteEmailPopup] = useState(false);
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
     const { invitations, isInvitationsLoading } =
@@ -239,13 +263,28 @@ export default function WorkspaceAdmin({
                 name={""}
               />
             </div>
-            <div className="flex-none">
+            <div className="relative flex-none">
               <Button
                 variant="primary"
                 label="Invite members"
                 size="sm"
                 icon={PlusIcon}
-                onClick={() => setInviteEmailModalOpen(true)}
+                onClick={() => {
+                  if (plan.code === FREE_TEST_PLAN_CODE)
+                    setShowNoInviteEmailPopup(true);
+                  else setInviteEmailModalOpen(true);
+                }}
+              />
+              <Popup
+                show={showNoInviteEmailPopup}
+                chipLabel="Free plan"
+                description="You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
+                buttonLabel="Check Dust plans"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                className="absolute bottom-8 right-0"
+                onClose={() => setShowNoInviteEmailPopup(false)}
               />
             </div>
           </div>

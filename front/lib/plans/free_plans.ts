@@ -1,6 +1,10 @@
 import { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
+import {
+  FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -15,10 +19,6 @@ export type PlanAttributes = Omit<
  *
  * This file about Free plans.
  */
-
-// Current free plans:
-export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
-export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
 
 /**
  * FREE_TEST plan is our default plan: this is the plan used by all workspaces until they subscribe to a plan.

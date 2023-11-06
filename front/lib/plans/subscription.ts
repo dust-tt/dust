@@ -1,12 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  FREE_TEST_PLAN_DATA,
   FREE_UPGRADED_PLAN_CODE,
-  PlanAttributes,
-} from "@app/lib/plans/free_plans";
+} from "@app/lib/plans/plan_codes";
 import {
   createCheckoutSession,
   updateStripeSubscriptionQuantity,
