@@ -74,7 +74,7 @@ Dust assistant in Slack is only available to paid plans and you need to connect 
 
 To synchronize Slack channels with Dust:
 
-- Inside `Admin` > `Connections` > `Slack`; 
+- Inside `Admin` > `Connections` > `Slack`;
 - Navigate to the Slack data source settings;
 - Select the Slack channels you want to synchronize with Dust;
 - The @Dust bot will automatically join the selected channels.
@@ -89,8 +89,8 @@ If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users
 
 - Mentioning @dust in a public channel.
 - @dust doesn't work in private channels.
-- Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello!  if you want to interact with @gpt4 for example.
-- Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`. 
+- Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello! if you want to interact with @gpt4 for example.
+- Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`.
 
 To export your @dust conversation history in Slack, keep in mind that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Business+ or Enterprise Grid account on Slack.
 
@@ -137,7 +137,7 @@ As an admin or builder go to ️Admin > `Data Sources` > select the button `
 
 ### What are Data Sources' current limits?
 
-Documents up to 2MB can be uploaded manually via Data Sources. 
+Documents up to 2MB can be uploaded manually via Data Sources.
 
 ### **Does Dust use user and company data to train its models?**
 
