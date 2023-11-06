@@ -12,6 +12,7 @@ import {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
+  AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
@@ -1434,6 +1435,7 @@ export async function* retryAgentMessage(
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
+  | AgentMessageErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1442,154 +1444,176 @@ export async function* retryAgentMessage(
   | AgentMessageSuccessEvent,
   void
 > {
-  const agentMessageResult: {
-    agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
-  } | null = await front_sequelize.transaction(async (t) => {
-    await getConversationRankVersionLock(conversation, t);
+  class AgentMessageError extends Error {}
+  try {
+    const agentMessageResult: {
+      agentMessage: AgentMessageType;
+      agentMessageRow: AgentMessage;
+    } | null = await front_sequelize.transaction(async (t) => {
+      await getConversationRankVersionLock(conversation, t);
 
-    const messageRow = await Message.findOne({
-      where: {
-        conversationId: conversation.id,
-        id: message.id,
-      },
-      include: [
-        {
-          model: AgentMessage,
-          as: "agentMessage",
-          required: true,
+      const messageRow = await Message.findOne({
+        where: {
+          conversationId: conversation.id,
+          id: message.id,
         },
-      ],
-      transaction: t,
-    });
-
-    if (!messageRow || !messageRow.agentMessage) {
-      return null;
-    }
-    const newerMessage = await Message.findOne({
-      where: {
-        rank: messageRow.rank,
-        conversationId: conversation.id,
-        version: {
-          [Op.gt]: messageRow.version,
-        },
-      },
-    });
-    if (newerMessage) {
-      throw new Error("Unexpected: Message to retry is not the latest version");
-    }
-    const agentMessageRow = await AgentMessage.create(
-      {
-        status: "created",
-        agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
-        agentConfigurationVersion:
-          messageRow.agentMessage.agentConfigurationVersion,
-      },
-      { transaction: t }
-    );
-    const m = await Message.create(
-      {
-        sId: generateModelSId(),
-        rank: messageRow.rank,
-        conversationId: conversation.id,
-        parentId: messageRow.parentId,
-        version: messageRow.version + 1,
-        agentMessageId: agentMessageRow.id,
-      },
-      {
+        include: [
+          {
+            model: AgentMessage,
+            as: "agentMessage",
+            required: true,
+          },
+        ],
         transaction: t,
+      });
+
+      if (!messageRow || !messageRow.agentMessage) {
+        return null;
       }
-    );
-    const agentMessage: AgentMessageType = {
-      id: m.id,
-      created: m.createdAt.getTime(),
-      sId: m.sId,
-      type: "agent_message",
-      visibility: m.visibility,
-      version: m.version,
-      parentMessageId: message.parentMessageId,
-      status: "created",
-      action: null,
-      content: null,
-      error: null,
-      configuration: message.configuration,
-    };
-    return {
-      agentMessage,
-      agentMessageRow,
-    };
-  });
+      const newerMessage = await Message.findOne({
+        where: {
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          version: messageRow.version + 1,
+        },
+      });
+      if (newerMessage) {
+        throw new AgentMessageError(
+          "Unexpected: Message to retry is not the latest version"
+        );
+      }
+      const agentMessageRow = await AgentMessage.create(
+        {
+          status: "created",
+          agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
+          agentConfigurationVersion:
+            messageRow.agentMessage.agentConfigurationVersion,
+        },
+        { transaction: t }
+      );
+      const m = await Message.create(
+        {
+          sId: generateModelSId(),
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          parentId: messageRow.parentId,
+          version: messageRow.version + 1,
+          agentMessageId: agentMessageRow.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      const agentMessage: AgentMessageType = {
+        id: m.id,
+        created: m.createdAt.getTime(),
+        sId: m.sId,
+        type: "agent_message",
+        visibility: m.visibility,
+        version: m.version,
+        parentMessageId: message.parentMessageId,
+        status: "created",
+        action: null,
+        content: null,
+        error: null,
+        configuration: message.configuration,
+      };
+      return {
+        agentMessage,
+        agentMessageRow,
+      };
+    });
 
-  if (!agentMessageResult) {
+    if (!agentMessageResult) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: message.configuration.sId,
+        messageId: message.sId,
+        error: {
+          code: "message_not_found",
+          message: "The message to retry was not found",
+        },
+      };
+      return;
+    }
+
+    const { agentMessage, agentMessageRow } = agentMessageResult;
+
     yield {
-      type: "agent_error",
+      type: "agent_message_new",
       created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "message_not_found",
-        message: "The message to retry was not found",
-      },
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
     };
-    return;
-  }
 
-  const { agentMessage, agentMessageRow } = agentMessageResult;
+    // We stitch the conversation to retry the agent message correctly: no other
+    // messages than this agent's past its parent message.
 
-  yield {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: agentMessage.configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
+    // First, find the array of the parent message in conversation.content.
+    const parentMessageIndex = conversation.content.findIndex((messages) => {
+      return messages.some((m) => m.sId === agentMessage.parentMessageId);
+    });
+    if (parentMessageIndex === -1) {
+      throw new Error(
+        `Parent message ${agentMessage.parentMessageId} not found in conversation`
+      );
+    }
 
-  // We stitch the conversation to retry the agent message correctly: no other
-  // messages than this agent's past its parent message.
+    // Then, find this agentmessage's array in conversation.content and add the
+    // new agent message to it.
+    const agentMessageArray = conversation.content.find((messages) => {
+      return messages.some(
+        (m) => m.sId === message.sId && isAgentMessageType(m)
+      );
+    }) as AgentMessageType[];
+    agentMessageArray.push(agentMessage);
 
-  // First, find the array of the parent message in conversation.content.
-  const parentMessageIndex = conversation.content.findIndex((messages) => {
-    return messages.some((m) => m.sId === agentMessage.parentMessageId);
-  });
-  if (parentMessageIndex === -1) {
-    throw new Error(
-      `Parent message ${agentMessage.parentMessageId} not found in conversation`
-    );
-  }
-
-  // Then, find this agentmessage's array in conversation.content and add the
-  // new agent message to it.
-  const agentMessageArray = conversation.content.find((messages) => {
-    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
-  }) as AgentMessageType[];
-  agentMessageArray.push(agentMessage);
-
-  // Finally, stitch the conversation.
-  const newContent = [
-    ...conversation.content.slice(0, parentMessageIndex + 1),
-    [...agentMessageArray, agentMessage],
-  ];
-
-  const userMessage =
-    conversation.content[parentMessageIndex][
-      conversation.content[parentMessageIndex].length - 1
+    // Finally, stitch the conversation.
+    const newContent = [
+      ...conversation.content.slice(0, parentMessageIndex + 1),
+      [...agentMessageArray, agentMessage],
     ];
-  if (!isUserMessageType(userMessage)) {
-    throw new Error("Unreachable: parent message must be a user message");
+
+    const userMessage =
+      conversation.content[parentMessageIndex][
+        conversation.content[parentMessageIndex].length - 1
+      ];
+    if (!isUserMessageType(userMessage)) {
+      throw new Error("Unreachable: parent message must be a user message");
+    }
+
+    const eventStream = runAgent(
+      auth,
+      agentMessage.configuration,
+      {
+        ...conversation,
+        content: newContent,
+      },
+      userMessage,
+      agentMessage
+    );
+
+    yield* streamRunAgentEvents(
+      auth,
+      eventStream,
+      agentMessage,
+      agentMessageRow
+    );
+  } catch (e) {
+    if (e instanceof AgentMessageError) {
+      yield {
+        type: "agent_message_error",
+        created: Date.now(),
+        configurationId: message.configuration.sId,
+        error: {
+          code: "retry_failed",
+          message: e.message,
+        },
+      };
+    }
   }
-
-  const eventStream = runAgent(
-    auth,
-    agentMessage.configuration,
-    {
-      ...conversation,
-      content: newContent,
-    },
-    userMessage,
-    agentMessage
-  );
-
-  yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
 }
 
 // Injects a new content fragment in the conversation.

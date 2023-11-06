@@ -158,6 +158,17 @@ export async function generateActionInputs(
  * Agent execution.
  */
 
+// Event sent when an agent error occured before we have a agent message in the database.
+export type AgentMessageErrorEvent = {
+  type: "agent_message_error";
+  created: number;
+  configurationId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
 // Generic event sent when an error occured (whether it's during the action or the message generation).
 export type AgentErrorEvent = {
   type: "agent_error";
