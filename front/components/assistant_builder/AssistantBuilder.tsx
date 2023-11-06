@@ -898,6 +898,12 @@ export default function AssistantBuilder({
                             </strong>
                           </div>
                         );
+                      case "none":
+                        return <></>;
+                      default:
+                        ((x: never) => {
+                          throw new Error("Unkonwn role " + x);
+                        })(owner.role);
                     }
                   })()}
                 </div>
