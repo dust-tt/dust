@@ -29,7 +29,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   name: "Free",
   stripeProductId: null,
   billingType: "free",
-  maxMessages: 100,
+  maxMessages: 50,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
   isManagedSlackAllowed: false,

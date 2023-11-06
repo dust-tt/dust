@@ -142,7 +142,7 @@ To configure the @dust assistant, got to `Admin` > `Assistants` and click on the
 - creation of custom workflows
 - create and use the assistants on a data source with up to 32 documents of 750KB each.
 - access to GPT4
-- 100 messages limit
+- 50 messages limit
 
 ### **Dust Paid plans**
 
