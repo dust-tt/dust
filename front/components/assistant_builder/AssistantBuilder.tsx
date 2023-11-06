@@ -852,7 +852,9 @@ export default function AssistantBuilder({
           </div>
 
           <div className="flex flex-col gap-6 text-sm text-element-700">
-            <div className="text-2xl font-bold text-element-900">Actions</div>
+            <div className="text-2xl font-bold text-element-900">
+              Data Sources & Actions
+            </div>
             <div>
               You can ask the assistant to perform actions before answering,
               like{" "}
