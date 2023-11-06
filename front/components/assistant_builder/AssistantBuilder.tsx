@@ -4,6 +4,7 @@ import {
   Avatar,
   Button,
   Collapsible,
+  ContentMessage,
   ContextItem,
   DropdownMenu,
   Input,
@@ -855,6 +856,10 @@ export default function AssistantBuilder({
             <div className="text-2xl font-bold text-element-900">
               Data Sources & Actions
             </div>
+            <ContentMessage
+              title="You don't have any active data source or connection"
+              message="Assistants can answer using existing knowledge.\n\nThere are two types of"
+            />
             <div>
               You can ask the assistant to perform actions before answering,
               like{" "}
