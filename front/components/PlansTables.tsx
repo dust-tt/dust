@@ -65,7 +65,7 @@ function ProPriceTable({
       <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="Unlimited messages" />
-      <PriceTable.Item label="Up to 1Go/user of data sources" />
+      <PriceTable.Item label="Up to 1Gb/user of data sources" />
       <PriceTable.Item
         label="Connections
   (GitHub, Google Drive, Notion, Slack)"
