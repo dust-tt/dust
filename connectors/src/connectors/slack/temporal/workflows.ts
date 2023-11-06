@@ -8,7 +8,6 @@ import {
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import {
@@ -48,8 +47,6 @@ const {
  */
 export async function workspaceFullSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
-  nangoConnectionId: string,
   fromTs: number | null
 ): Promise<void> {
   await fetchUsers(connectorId);

@@ -37,17 +37,11 @@ export async function launchSlackSyncWorkflow(
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   };
-  const nangoConnectionId = connector.connectionId;
 
   const workflowId = workspaceFullSyncWorkflowId(parseInt(connectorId), fromTs);
   try {
     await client.workflow.start(workspaceFullSync, {
-      args: [
-        parseInt(connectorId),
-        dataSourceConfig,
-        nangoConnectionId,
-        fromTs,
-      ],
+      args: [parseInt(connectorId), fromTs],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {
