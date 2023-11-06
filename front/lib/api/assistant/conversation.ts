@@ -1124,286 +1124,230 @@ export async function* editUserMessage(
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
 
+  let userMessage: UserMessageType | null = null;
+  let agentMessages: AgentMessageType[] = [];
+  let agentMessageRows: AgentMessage[] = [];
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-    const { userMessage, agentMessages, agentMessageRows } =
-      await front_sequelize.transaction(async (t) => {
-        await getConversationRankVersionLock(conversation, t);
+    const result = await front_sequelize.transaction(async (t) => {
+      await getConversationRankVersionLock(conversation, t);
 
-        const messageRow = await Message.findOne({
-          where: {
-            sId: message.sId,
-            conversationId: conversation.id,
+      const messageRow = await Message.findOne({
+        where: {
+          sId: message.sId,
+          conversationId: conversation.id,
+        },
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
           },
-          include: [
-            {
-              model: UserMessage,
-              as: "userMessage",
-              required: true,
-            },
-          ],
-        });
-        if (!messageRow || !messageRow.userMessage) {
-          throw new Error(
-            "Unexpected: Message or UserMessage to edit not found in DB"
-          );
-        }
-        const newerMessage = await Message.findOne({
-          where: {
+        ],
+      });
+      if (!messageRow || !messageRow.userMessage) {
+        throw new Error(
+          "Unexpected: Message or UserMessage to edit not found in DB"
+        );
+      }
+      const newerMessage = await Message.findOne({
+        where: {
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          version: messageRow.version + 1,
+        },
+      });
+      if (newerMessage) {
+        throw new UserMessageError(
+          "Invalid user message edit request, this message was already edited."
+        );
+      }
+      const userMessageRow = messageRow.userMessage;
+      // adding messageRow as param otherwise Ts doesn't get it can't be null
+      async function createMessageAndUserMessage(messageRow: Message) {
+        return await Message.create(
+          {
+            sId: generateModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
+            parentId: messageRow.parentId,
             version: messageRow.version + 1,
-          },
-        });
-        if (newerMessage) {
-          throw new UserMessageError(
-            "Invalid user message edit request, this message was already edited."
-          );
-        }
-        const userMessageRow = messageRow.userMessage;
-        // adding messageRow as param otherwise Ts doesn't get it can't be null
-        async function createMessageAndUserMessage(messageRow: Message) {
-          return await Message.create(
-            {
-              sId: generateModelSId(),
-              rank: messageRow.rank,
-              conversationId: conversation.id,
-              parentId: messageRow.parentId,
-              version: messageRow.version + 1,
-              userMessageId: (
-                await UserMessage.create(
-                  {
-                    content,
-                    userContextUsername: userMessageRow.userContextUsername,
-                    userContextTimezone: userMessageRow.userContextTimezone,
-                    userContextFullName: userMessageRow.userContextFullName,
-                    userContextEmail: userMessageRow.userContextEmail,
-                    userContextProfilePictureUrl:
-                      userMessageRow.userContextProfilePictureUrl,
-                    userId: userMessageRow.userId,
-                  },
-                  { transaction: t }
-                )
-              ).id,
-            },
-            {
-              transaction: t,
-            }
-          );
-        }
-        async function createOrUpdateParticipation() {
-          if (user) {
-            const participant = await ConversationParticipant.findOne({
-              where: {
-                conversationId: conversation.id,
-                userId: user.id,
-              },
-              transaction: t,
-            });
-            if (participant) {
-              return await participant.update(
+            userMessageId: (
+              await UserMessage.create(
                 {
-                  action: "posted",
+                  content,
+                  userContextUsername: userMessageRow.userContextUsername,
+                  userContextTimezone: userMessageRow.userContextTimezone,
+                  userContextFullName: userMessageRow.userContextFullName,
+                  userContextEmail: userMessageRow.userContextEmail,
+                  userContextProfilePictureUrl:
+                    userMessageRow.userContextProfilePictureUrl,
+                  userId: userMessageRow.userId,
+                },
+                { transaction: t }
+              )
+            ).id,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
+      async function createOrUpdateParticipation() {
+        if (user) {
+          const participant = await ConversationParticipant.findOne({
+            where: {
+              conversationId: conversation.id,
+              userId: user.id,
+            },
+            transaction: t,
+          });
+          if (participant) {
+            return await participant.update(
+              {
+                action: "posted",
+              },
+              { transaction: t }
+            );
+          } else {
+            throw new Error(
+              "Unreachable: edited message implies participation"
+            );
+          }
+        }
+      }
+      const result = await Promise.all([
+        createMessageAndUserMessage(messageRow),
+        createOrUpdateParticipation(),
+      ]);
+
+      const m = result[0];
+      const userMessage: UserMessageType = {
+        id: m.id,
+        created: m.createdAt.getTime(),
+        sId: m.sId,
+        type: "user_message",
+        visibility: m.visibility,
+        version: m.version,
+        user: user,
+        mentions,
+        content,
+        context: message.context,
+      };
+
+      // For now agent messages are appended at the end of conversation
+      // it is fine since for now editing with new mentions is only supported
+      // for the last user message
+      let nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
+            conversationId: conversation.id,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
+        await Promise.all(
+          mentions.filter(isAgentMention).map((mention) => {
+            // For each assistant/agent mention, create an "empty" agent message.
+            return (async () => {
+              // `getAgentConfiguration` checks that we're only pulling a configuration from the
+              // same workspace or a global one.
+              const configuration = await getAgentConfiguration(
+                auth,
+                mention.configurationId
+              );
+              if (!configuration) {
+                return null;
+              }
+
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  agentConfigurationId: configuration.sId,
                 },
                 { transaction: t }
               );
-            } else {
-              throw new Error(
-                "Unreachable: edited message implies participation"
-              );
-            }
-          }
-        }
-        const result = await Promise.all([
-          createMessageAndUserMessage(messageRow),
-          createOrUpdateParticipation(),
-        ]);
 
-        const m = result[0];
-        const userMessage: UserMessageType = {
-          id: m.id,
-          created: m.createdAt.getTime(),
-          sId: m.sId,
-          type: "user_message",
-          visibility: m.visibility,
-          version: m.version,
-          user: user,
-          mentions,
-          content,
-          context: message.context,
-        };
-
-        // For now agent messages are appended at the end of conversation
-        // it is fine since for now editing with new mentions is only supported
-        // for the last user message
-        let nextMessageRank =
-          ((await Message.max<number | null, Message>("rank", {
-            where: {
-              conversationId: conversation.id,
-            },
-            transaction: t,
-          })) ?? -1) + 1;
-        const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
-          await Promise.all(
-            mentions.filter(isAgentMention).map((mention) => {
-              // For each assistant/agent mention, create an "empty" agent message.
-              return (async () => {
-                // `getAgentConfiguration` checks that we're only pulling a configuration from the
-                // same workspace or a global one.
-                const configuration = await getAgentConfiguration(
-                  auth,
-                  mention.configurationId
-                );
-                if (!configuration) {
-                  return null;
-                }
-
-                await Mention.create(
-                  {
-                    messageId: m.id,
-                    agentConfigurationId: configuration.sId,
-                  },
-                  { transaction: t }
-                );
-
-                const agentMessageRow = await AgentMessage.create(
-                  {
-                    status: "created",
-                    agentConfigurationId: configuration.sId,
-                    agentConfigurationVersion: configuration.version,
-                  },
-                  { transaction: t }
-                );
-                const messageRow = await Message.create(
-                  {
-                    sId: generateModelSId(),
-                    rank: nextMessageRank++,
-                    conversationId: conversation.id,
-                    parentId: userMessage.id,
-                    agentMessageId: agentMessageRow.id,
-                  },
-                  {
-                    transaction: t,
-                  }
-                );
-
-                return {
-                  row: agentMessageRow,
-                  m: {
-                    id: messageRow.id,
-                    created: agentMessageRow.createdAt.getTime(),
-                    sId: messageRow.sId,
-                    type: "agent_message",
-                    visibility: "visible",
-                    version: 0,
-                    parentMessageId: userMessage.sId,
-                    status: "created",
-                    action: null,
-                    content: null,
-                    error: null,
-                    configuration,
-                  },
-                };
-              })();
-            })
-          );
-
-        await Promise.all(
-          mentions.filter(isUserMention).map((mention) => {
-            return (async () => {
-              const user = await User.findOne({
-                where: {
-                  provider: mention.provider,
-                  providerId: mention.providerId,
+              const agentMessageRow = await AgentMessage.create(
+                {
+                  status: "created",
+                  agentConfigurationId: configuration.sId,
+                  agentConfigurationVersion: configuration.version,
                 },
-              });
+                { transaction: t }
+              );
+              const messageRow = await Message.create(
+                {
+                  sId: generateModelSId(),
+                  rank: nextMessageRank++,
+                  conversationId: conversation.id,
+                  parentId: userMessage.id,
+                  agentMessageId: agentMessageRow.id,
+                },
+                {
+                  transaction: t,
+                }
+              );
 
-              if (user) {
-                await Mention.create(
-                  {
-                    messageId: m.id,
-                    userId: user.id,
-                  },
-                  { transaction: t }
-                );
-              }
+              return {
+                row: agentMessageRow,
+                m: {
+                  id: messageRow.id,
+                  created: agentMessageRow.createdAt.getTime(),
+                  sId: messageRow.sId,
+                  type: "agent_message",
+                  visibility: "visible",
+                  version: 0,
+                  parentMessageId: userMessage.sId,
+                  status: "created",
+                  action: null,
+                  content: null,
+                  error: null,
+                  configuration,
+                },
+              };
             })();
           })
         );
 
-        const nonNullResults = results.filter((r) => r !== null) as {
-          row: AgentMessage;
-          m: AgentMessageType;
-        }[];
-        return {
-          userMessage,
-          agentMessages: nonNullResults.map(({ m }) => m),
-          agentMessageRows: nonNullResults.map(({ row }) => row),
-        };
-      });
+      await Promise.all(
+        mentions.filter(isUserMention).map((mention) => {
+          return (async () => {
+            const user = await User.findOne({
+              where: {
+                provider: mention.provider,
+                providerId: mention.providerId,
+              },
+            });
 
-    if (agentMessageRows.length !== agentMessages.length) {
-      throw new Error(
-        "Unreachable: agentMessageRows and agentMessages mismatch"
-      );
-    }
-
-    yield {
-      type: "user_message_new",
-      created: Date.now(),
-      messageId: userMessage.sId,
-      message: userMessage,
-    };
-
-    for (let i = 0; i < agentMessages.length; i++) {
-      const agentMessage = agentMessages[i];
-
-      yield {
-        type: "agent_message_new",
-        created: Date.now(),
-        configurationId: agentMessage.configuration.sId,
-        messageId: agentMessage.sId,
-        message: agentMessage,
-      };
-    }
-
-    const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const eventStream = runAgent(
-        auth,
-        agentMessage.configuration,
-        {
-          ...conversation,
-          content: [...conversation.content, [userMessage], [agentMessage]],
-        },
-        userMessage,
-        agentMessage
-      );
-
-      return streamRunAgentEvents(
-        auth,
-        eventStream,
-        agentMessages[i],
-        agentMessageRows[i]
-      );
-    });
-
-    const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
-    while (eventStreamsPromises.length > 0) {
-      const winner = await Promise.race(
-        eventStreamsPromises.map(async (p, i) => {
-          return { v: await p, offset: i };
+            if (user) {
+              await Mention.create(
+                {
+                  messageId: m.id,
+                  userId: user.id,
+                },
+                { transaction: t }
+              );
+            }
+          })();
         })
       );
-      if (winner.v.done) {
-        eventStreamGenerators.splice(winner.offset, 1);
-        eventStreamsPromises.splice(winner.offset, 1);
-      } else {
-        eventStreamsPromises[winner.offset] =
-          eventStreamGenerators[winner.offset].next();
-        yield winner.v.value;
-      }
+
+      const nonNullResults = results.filter((r) => r !== null) as {
+        row: AgentMessage;
+        m: AgentMessageType;
+      }[];
+      return {
+        userMessage,
+        agentMessages: nonNullResults.map(({ m }) => m),
+        agentMessageRows: nonNullResults.map(({ row }) => row),
+      };
+    });
+    userMessage = result.userMessage;
+    agentMessages = result.agentMessages;
+    agentMessageRows = result.agentMessageRows;
+    if (!userMessage) {
+      throw new UserMessageError("Unreachable: userMessage is null");
     }
   } catch (e) {
     if (e instanceof UserMessageError) {
@@ -1415,8 +1359,74 @@ export async function* editUserMessage(
           message: e.message,
         },
       };
+      return;
     } else {
       throw e;
+    }
+  }
+
+  if (agentMessageRows.length !== agentMessages.length) {
+    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
+  }
+
+  yield {
+    type: "user_message_new",
+    created: Date.now(),
+    messageId: userMessage.sId,
+    message: userMessage,
+  };
+
+  for (let i = 0; i < agentMessages.length; i++) {
+    const agentMessage = agentMessages[i];
+
+    yield {
+      type: "agent_message_new",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+    };
+  }
+
+  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
+    if (!userMessage) {
+      throw new Error("Unreachable: userMessage is null");
+    }
+    // We stitch the conversation to add the user message and only that agent message
+    // so that it can be used to prompt the agent.
+    const eventStream = runAgent(
+      auth,
+      agentMessage.configuration,
+      {
+        ...conversation,
+        content: [...conversation.content, [userMessage], [agentMessage]],
+      },
+      userMessage,
+      agentMessage
+    );
+
+    return streamRunAgentEvents(
+      auth,
+      eventStream,
+      agentMessages[i],
+      agentMessageRows[i]
+    );
+  });
+
+  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
+  while (eventStreamsPromises.length > 0) {
+    const winner = await Promise.race(
+      eventStreamsPromises.map(async (p, i) => {
+        return { v: await p, offset: i };
+      })
+    );
+    if (winner.v.done) {
+      eventStreamGenerators.splice(winner.offset, 1);
+      eventStreamsPromises.splice(winner.offset, 1);
+    } else {
+      eventStreamsPromises[winner.offset] =
+        eventStreamGenerators[winner.offset].next();
+      yield winner.v.value;
     }
   }
 }
@@ -1445,11 +1455,12 @@ export async function* retryAgentMessage(
   void
 > {
   class AgentMessageError extends Error {}
+  let agentMessageResult: {
+    agentMessage: AgentMessageType;
+    agentMessageRow: AgentMessage;
+  } | null = null;
   try {
-    const agentMessageResult: {
-      agentMessage: AgentMessageType;
-      agentMessageRow: AgentMessage;
-    } | null = await front_sequelize.transaction(async (t) => {
+    agentMessageResult = await front_sequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1523,84 +1534,6 @@ export async function* retryAgentMessage(
         agentMessageRow,
       };
     });
-
-    if (!agentMessageResult) {
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: message.configuration.sId,
-        messageId: message.sId,
-        error: {
-          code: "message_not_found",
-          message: "The message to retry was not found",
-        },
-      };
-      return;
-    }
-
-    const { agentMessage, agentMessageRow } = agentMessageResult;
-
-    yield {
-      type: "agent_message_new",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-    };
-
-    // We stitch the conversation to retry the agent message correctly: no other
-    // messages than this agent's past its parent message.
-
-    // First, find the array of the parent message in conversation.content.
-    const parentMessageIndex = conversation.content.findIndex((messages) => {
-      return messages.some((m) => m.sId === agentMessage.parentMessageId);
-    });
-    if (parentMessageIndex === -1) {
-      throw new Error(
-        `Parent message ${agentMessage.parentMessageId} not found in conversation`
-      );
-    }
-
-    // Then, find this agentmessage's array in conversation.content and add the
-    // new agent message to it.
-    const agentMessageArray = conversation.content.find((messages) => {
-      return messages.some(
-        (m) => m.sId === message.sId && isAgentMessageType(m)
-      );
-    }) as AgentMessageType[];
-    agentMessageArray.push(agentMessage);
-
-    // Finally, stitch the conversation.
-    const newContent = [
-      ...conversation.content.slice(0, parentMessageIndex + 1),
-      [...agentMessageArray, agentMessage],
-    ];
-
-    const userMessage =
-      conversation.content[parentMessageIndex][
-        conversation.content[parentMessageIndex].length - 1
-      ];
-    if (!isUserMessageType(userMessage)) {
-      throw new Error("Unreachable: parent message must be a user message");
-    }
-
-    const eventStream = runAgent(
-      auth,
-      agentMessage.configuration,
-      {
-        ...conversation,
-        content: newContent,
-      },
-      userMessage,
-      agentMessage
-    );
-
-    yield* streamRunAgentEvents(
-      auth,
-      eventStream,
-      agentMessage,
-      agentMessageRow
-    );
   } catch (e) {
     if (e instanceof AgentMessageError) {
       yield {
@@ -1614,6 +1547,77 @@ export async function* retryAgentMessage(
       };
     }
   }
+
+  if (!agentMessageResult) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_not_found",
+        message: "The message to retry was not found",
+      },
+    };
+    return;
+  }
+
+  const { agentMessage, agentMessageRow } = agentMessageResult;
+
+  yield {
+    type: "agent_message_new",
+    created: Date.now(),
+    configurationId: agentMessage.configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
+  };
+
+  // We stitch the conversation to retry the agent message correctly: no other
+  // messages than this agent's past its parent message.
+
+  // First, find the array of the parent message in conversation.content.
+  const parentMessageIndex = conversation.content.findIndex((messages) => {
+    return messages.some((m) => m.sId === agentMessage.parentMessageId);
+  });
+  if (parentMessageIndex === -1) {
+    throw new Error(
+      `Parent message ${agentMessage.parentMessageId} not found in conversation`
+    );
+  }
+
+  // Then, find this agentmessage's array in conversation.content and add the
+  // new agent message to it.
+  const agentMessageArray = conversation.content.find((messages) => {
+    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
+  }) as AgentMessageType[];
+  agentMessageArray.push(agentMessage);
+
+  // Finally, stitch the conversation.
+  const newContent = [
+    ...conversation.content.slice(0, parentMessageIndex + 1),
+    [...agentMessageArray, agentMessage],
+  ];
+
+  const userMessage =
+    conversation.content[parentMessageIndex][
+      conversation.content[parentMessageIndex].length - 1
+    ];
+  if (!isUserMessageType(userMessage)) {
+    throw new Error("Unreachable: parent message must be a user message");
+  }
+
+  const eventStream = runAgent(
+    auth,
+    agentMessage.configuration,
+    {
+      ...conversation,
+      content: newContent,
+    },
+    userMessage,
+    agentMessage
+  );
+
+  yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
 }
 
 // Injects a new content fragment in the conversation.
