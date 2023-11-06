@@ -155,7 +155,9 @@ export async function googleDriveIncrementalSync(
   if (pass.no > 0) {
     await sleep(pass.delay);
     await executeChild(googleDriveIncrementalSync, {
-      workflowId: workflowInfo().workflowId,
+      workflowId: `${workflowInfo().workflowId}-pass-${
+        pass.no
+      }-${new Date().getTime()}`,
       args: [connectorId, dataSourceConfig, pass],
       memo: workflowInfo().memo,
     });
