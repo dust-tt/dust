@@ -17,7 +17,7 @@ import {
 } from "@dust-tt/sparkle";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
-import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
@@ -856,10 +856,53 @@ export default function AssistantBuilder({
             <div className="text-2xl font-bold text-element-900">
               Data Sources & Actions
             </div>
-            <ContentMessage
-              title="You don't have any active data source or connection"
-              message="Assistants can answer using existing knowledge.\n\nThere are two types of"
-            />
+            {configurableDataSources.length === 0 && (
+              <ContentMessage title="You don't have any active data source or connection">
+                <div className="flex flex-col gap-y-3">
+                  <div>Assistants can answer using existing knowledge.</div>
+                  <div>
+                    There are two types of knowledge sources:{" "}
+                    <strong>Data Sources</strong> (Files you can upload) and{" "}
+                    <strong>Connections</strong> (Automatically synchronized
+                    with platforms like Notion, Slack, ...).
+                  </div>
+                  {(() => {
+                    switch (owner.role) {
+                      case "admin":
+                        return (
+                          <div>
+                            <strong>
+                              Visit the "Data Sources" and "Connections"
+                              sections in your workspace admin panel to add new
+                              sources of knowledge.
+                            </strong>
+                          </div>
+                        );
+                      case "builder":
+                        return (
+                          <div>
+                            <strong>
+                              Only Admins can activate Connections.
+                              <br />
+                              You can Data Sources by visiting "Data Source" in
+                              your workspace admin panel.
+                            </strong>
+                          </div>
+                        );
+                      case "user":
+                        return (
+                          <div>
+                            <strong>
+                              Only Admins and Builders can activate Connections
+                              and Data Sources.
+                            </strong>
+                          </div>
+                        );
+                    }
+                  })()}
+                </div>
+              </ContentMessage>
+            )}
             <div>
               You can ask the assistant to perform actions before answering,
               like{" "}
