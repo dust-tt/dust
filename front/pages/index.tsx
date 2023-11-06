@@ -212,6 +212,7 @@ export default function Home({
                 <div className="sm: flex w-full flex-wrap gap-4 sm:justify-start sm:gap-4 md:gap-6">
                   <SignUpDropDownButton
                     buttonLabel="Start with Dust Now"
+                    buttonSize="md"
                     onClickGoogle={() =>
                       signIn("google", {
                         callbackUrl: getCallbackUrl(router.query),
@@ -656,13 +657,24 @@ export default function Home({
               id="sectionPricing"
               className="col-span-12 text-center md:pb-6 xl:pb-10"
             >
-              <H2 className="text-slate-50">
+              <H2 className="text-slate-50 md:pb-6 xl:pb-10">
                 Start with Dust!
                 <br />
                 <span className="text-slate-200/50">
                   Meet our pricing plans.
                 </span>
               </H2>
+              <div className="lg:px-2 2xl:px-24">
+                <SignUpDropDownButton
+                  buttonLabel="Start with Dust Now"
+                  buttonSize="md"
+                  onClickGoogle={() =>
+                    signIn("google", {
+                      callbackUrl: getCallbackUrl(router.query),
+                    })
+                  }
+                />
+              </div>
             </div>
             <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
               <PricePlans size="xs" className="lg:hidden" isTabs />

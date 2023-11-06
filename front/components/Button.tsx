@@ -105,12 +105,14 @@ export function SignInDropDownButton({
 export function SignUpDropDownButton({
   buttonVariant = "primary",
   buttonLabel = "Start with Dust",
+  buttonSize = "sm",
   buttonIcon = RocketIcon,
   buttonClassname = "",
   onClickGoogle,
 }: {
   buttonVariant?: "primary" | "secondary" | "tertiary";
   buttonLabel?: string;
+  buttonSize?: "sm" | "md" | "lg";
   buttonIcon?: typeof Icon;
   buttonClassname?: string;
   onClickGoogle: () => void;
@@ -121,7 +123,7 @@ export function SignUpDropDownButton({
         <Button
           variant={buttonVariant}
           className={buttonClassname}
-          size="sm"
+          size={buttonSize}
           label={buttonLabel}
           icon={buttonIcon}
         />
