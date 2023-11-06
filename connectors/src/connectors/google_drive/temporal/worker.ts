@@ -29,3 +29,24 @@ export async function runGoogleWorker() {
 
   await worker.run();
 }
+
+export async function runGoogleWorkerOldQueueTmp() {
+  const { connection, namespace } = await getTemporalWorkerConnection();
+  const worker = await Worker.create({
+    workflowsPath: require.resolve("./workflows"),
+    activities: { ...activities, ...sync_status },
+    taskQueue: "google-queue",
+    maxConcurrentActivityTaskExecutions: 1,
+    connection,
+    namespace,
+    interceptors: {
+      activityInbound: [
+        (ctx: Context) => {
+          return new ActivityInboundLogInterceptor(ctx, logger);
+        },
+      ],
+    },
+  });
+
+  await worker.run();
+}

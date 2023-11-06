@@ -6,6 +6,7 @@ import { Err, Ok, Result } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 
+import { QUEUE_NAME } from "./config";
 import { newWebhookSignal } from "./signals";
 import {
   googleDriveFullSync,
@@ -50,7 +51,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
     }
     await client.workflow.start(googleDriveFullSync, {
       args: [connectorIdModelId, dataSourceConfig],
-      taskQueue: "google-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
 
       memo: {
@@ -94,7 +95,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   try {
     await client.workflow.signalWithStart(googleDriveIncrementalSync, {
       args: [connectorIdModelId, dataSourceConfig],
-      taskQueue: "google-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       signal: newWebhookSignal,
       signalArgs: undefined,
@@ -140,7 +141,7 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
   try {
     await client.workflow.start(googleDriveRenewWebhooks, {
       args: [],
-      taskQueue: "google-queue",
+      taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "0 * * * *", // every hour, on the hour
     });
