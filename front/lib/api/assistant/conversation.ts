@@ -1545,7 +1545,9 @@ export async function* retryAgentMessage(
           message: e.message,
         },
       };
+      return;
     }
+    throw e;
   }
 
   if (!agentMessageResult) {
