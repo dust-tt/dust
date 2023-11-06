@@ -75,7 +75,7 @@ function ProPriceTable({
       <PriceTable.Item label="Assistants can execute actions" />
       <PriceTable.Item label="Workspace role and permissions" variant="dash" />
       <PriceTable.ActionContainer>
-        {plan.code !== PRO_PLAN_SEAT_29_CODE && (
+        {plan && plan.code !== PRO_PLAN_SEAT_29_CODE && (
           <Button
             variant="primary"
             size={biggerButtonSize}
