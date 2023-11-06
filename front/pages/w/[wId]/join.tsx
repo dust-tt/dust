@@ -3,6 +3,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
+import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { WorkspaceType } from "@app/types/user";
@@ -109,51 +110,61 @@ export default function Join({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <OnboardingLayout owner={workspace} gaTrackingId={gaTrackingId}>
-      <div className="grid grid-cols-1">
-        <div>
+      <div className="flex flex-col gap-12">
+        <div className="my-20">
           <Logo className="h-[48px] w-[192px] px-1" />
         </div>
-        <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
-          <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-            Secure AI assistant
-          </span>{" "}
+        <H1 className="text-slate-100">
+          <span className="text-red-400">Amplify your team's potential</span>{" "}
           <br />
-          with your company’s knowledge
-          <br />
-        </p>
-      </div>
-      <div className="h-10"></div>
-      <div className="font-regular text-lg text-slate-200">
-        <p>Glad to see you!</p>
-
-        {onboardingType === "domain_conversation_link" ? (
-          <p>
-            Please log in or sign up with your company email to access this
-            conversation.
-          </p>
-        ) : (
-          <p>
-            You've been invited to join the {workspace.name} workspace on Dust.
-          </p>
-        )}
+          with customizable and secure AI&nbsp;assistants.
+        </H1>
+        <div className="flex flex-col gap-1">
+          <P>Welcome aboard!</P>
+          {onboardingType === "domain_conversation_link" ? (
+            <P>
+              Please log in or sign up with your company email to access this
+              conversation.
+            </P>
+          ) : (
+            <P>
+              You've been invited to join the{" "}
+              <Strong>{workspace.name} workspace on Dust</Strong>.
+            </P>
+          )}
+        </div>
 
         {onboardingType === "email_invite" && (
-          <p>How would you like to connect?</p>
+          <P>How would you like to connect?</P>
         )}
-      </div>
 
-      <div className="h-16" />
-
-      <div className="flex flex-col items-center justify-center gap-4">
-        <SignInButton
-          label="Sign up with Google"
-          icon={GoogleLogo}
-          onClick={() => {
-            void signIn("google", {
-              callbackUrl: signUpCallbackUrl,
-            });
-          }}
-        />
+        <div className="flex flex-col items-center justify-center gap-4 ">
+          <SignInButton
+            label="Sign up with Google"
+            icon={GoogleLogo}
+            onClick={() => {
+              void signIn("google", {
+                callbackUrl: signUpCallbackUrl,
+              });
+            }}
+          />
+        </div>
+        <div className="flex flex-col gap-3">
+          <P>
+            <Strong>Dust</Strong> is a platform giving you access to{" "}
+            <Strong>the best AI assistants</Strong>.
+            <br />
+            It's easy to&nbsp;use and it's a&nbsp;great place for teams
+            to&nbsp;collaborate.
+          </P>
+          <P>
+            Learn more about Dust on{" "}
+            <A href="https://dust.tt/" target="_blank" variant="secondary">
+              our homepage
+            </A>
+            .
+          </P>
+        </div>
       </div>
     </OnboardingLayout>
   );

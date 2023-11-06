@@ -1,4 +1,12 @@
-import { Button } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  GithubLogo,
+  GoogleLogo,
+  Icon,
+  LoginIcon,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 
 import { classNames } from "@app/lib/utils";
 
@@ -37,6 +45,98 @@ export function SignInButton({
       variant="tertiary"
       icon={icon}
       onClick={onClick}
+      size="md"
     ></Button>
+  );
+}
+
+export function SignInDropDownButton({
+  buttonVariant = "tertiary",
+  buttonLabel = "Sign in",
+  buttonIcon = LoginIcon,
+  buttonClassname = "",
+  shouldDisplayGithub,
+  onClickGithub,
+  onClickGoogle,
+}: {
+  buttonVariant?: "primary" | "secondary" | "tertiary";
+  buttonLabel?: string;
+  buttonIcon?: typeof Icon;
+  buttonClassname?: string;
+  shouldDisplayGithub: boolean;
+  onClickGithub: () => void;
+  onClickGoogle: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button
+          variant={buttonVariant}
+          className={buttonClassname}
+          size="sm"
+          label={buttonLabel}
+          icon={buttonIcon}
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items origin="topRight" width={240}>
+        <div className="flex flex-col gap-2 p-4">
+          <Button
+            variant="tertiary"
+            size="md"
+            label="With Google"
+            icon={GoogleLogo}
+            onClick={onClickGoogle}
+          />
+          {shouldDisplayGithub && (
+            <Button
+              variant="tertiary"
+              size="md"
+              label="With GitHub"
+              icon={GithubLogo}
+              onClick={onClickGithub}
+            />
+          )}
+        </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
+}
+
+export function SignUpDropDownButton({
+  buttonVariant = "primary",
+  buttonLabel = "Start with Dust",
+  buttonIcon = RocketIcon,
+  buttonClassname = "",
+  onClickGoogle,
+}: {
+  buttonVariant?: "primary" | "secondary" | "tertiary";
+  buttonLabel?: string;
+  buttonIcon?: typeof Icon;
+  buttonClassname?: string;
+  onClickGoogle: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button
+          variant={buttonVariant}
+          className={buttonClassname}
+          size="sm"
+          label={buttonLabel}
+          icon={buttonIcon}
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items origin="topRight" width={260}>
+        <div className="flex flex-col gap-2 p-4">
+          <Button
+            variant="tertiary"
+            size="md"
+            label="Sign up with Google"
+            icon={GoogleLogo}
+            onClick={onClickGoogle}
+          />
+        </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
   );
 }
