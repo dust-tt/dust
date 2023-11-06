@@ -6,13 +6,13 @@ import { Icon, InformationCircleIcon } from "..";
 
 export interface ContentMessageProps {
   title: string;
-  message: string;
+  children: React.ReactNode;
   className?: string;
 }
 
 export function ContentMessage({
   title,
-  message,
+  children,
   className = "",
 }: ContentMessageProps) {
   return (
@@ -31,7 +31,7 @@ export function ContentMessage({
         <div className="s-text-base s-font-semibold s-text-amber-600">
           {title}
         </div>
-        <div className="s-text-sm s-text-element-800">{message}</div>
+        <div className="s-text-sm s-text-element-800">{children}</div>
       </div>
     </div>
   );
