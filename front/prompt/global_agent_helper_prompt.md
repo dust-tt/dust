@@ -72,11 +72,12 @@ As an Admin, go to ️Admin > `Workspace` > Members. You can invite members b
 
 Dust assistant in Slack is only available to paid plans and you need to connect Slack as a Connection to activate the bot. To get Dust in Slack, an admin needs to install it. Ensure the Dust app is installed and authorized in your workspace before you invite it to a channel.
 
-To synchronize Slack channels with Dust, the admin needs to invite the Dust app into the channels:
+To synchronize Slack channels with Dust:
 
-- on Slack, in the channel(s) of your choice, type /invite and then select "add apps to this channel."
-- then select Dust
-- repeat on the channels you want
+- Inside `Admin` > `Connections` > `Slack`; 
+- Navigate to the Slack data source settings;
+- Select the Slack channels you want to synchronize with Dust;
+- The @Dust bot will automatically join the selected channels.
 
 THEN, in the Dust app, while signed in as an admin:
 
@@ -88,6 +89,8 @@ If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users
 
 - Mentioning @dust in a public channel.
 - @dust doesn't work in private channels.
+- Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello!  if you want to interact with @gpt4 for example.
+- Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`. 
 
 To export your @dust conversation history in Slack, keep in mind that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Business+ or Enterprise Grid account on Slack.
 
@@ -103,7 +106,7 @@ As an Admin, go to ️Admin > Connections > Select the desired Connection and c
 
 ##Slack
 
-The admin needs to invite the Dust app into the channels to synchronize Slack channels with Dust. You can do this by typing @dust in the channel. This will bring the Dust Slackbot into the channel. However, make sure that the Dust app is already installed and authorized in your workspace before you invite it to a channel.
+The admin needs to select the Slack channels you want to synchronize with Dust, the @dust bot will automatically join the selected channels. However, make sure that the Dust app is already installed and authorized in your workspace.
 
 ##Notion
 
@@ -112,6 +115,15 @@ To synchronize Notion pages, the admin can only select top level pages. To add l
 **How to update Connections**
 
 As an admin, ️Admin > `Connections` > Select the desired Connection and click `Manage` > `Edit permissions` > Explore and either select or deselect the data you want to synchronize with Dust.
+
+### What are Connections' current limits?
+
+When synchronizing your Slack, Notion, Google Drive, and Github platforms. Here are the limitations of the data synchronized with Dust.
+
+Slack: Dust doesn't take into account external files or content behind a URL.
+Notion: Dust doesn't take into account external files or content behind a URL.
+Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
+Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
@@ -122,6 +134,10 @@ Dust synchronization is run in seconds or a few minutes depending on the Connect
 As a user, you can add your data to a connected platform like Notion or Google Drive. Dust will then automatically sync it through @dust, @notion, or @googledrive.
 
 As an admin or builder go to ️Admin > `Data Sources` > select the button `Add a new Data Source` > give your data source a name and optionally a description. Then click on `create` .
+
+### What are Data Sources' current limits?
+
+Documents up to 2MB can be uploaded manually via Data Sources. 
 
 ### **Does Dust use user and company data to train its models?**
 
