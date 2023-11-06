@@ -1157,7 +1157,7 @@ export async function* editUserMessage(
         });
         if (newerMessage) {
           throw new UserMessageError(
-            "Unexpected: Message to edit is not the latest version"
+            "Invalid user message edit request, this message was already edited."
           );
         }
         const userMessageRow = messageRow.userMessage;
@@ -1411,7 +1411,7 @@ export async function* editUserMessage(
         type: "user_message_error",
         created: Date.now(),
         error: {
-          code: "edition_unsupported",
+          code: "edit_invalid_error",
           message: e.message,
         },
       };
@@ -1479,7 +1479,7 @@ export async function* retryAgentMessage(
       });
       if (newerMessage) {
         throw new AgentMessageError(
-          "Unexpected: Message to retry is not the latest version"
+          "Invalid agent message retry request, this message was already retried."
         );
       }
       const agentMessageRow = await AgentMessage.create(
