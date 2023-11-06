@@ -10,7 +10,7 @@ const meta = {
 
 export default meta;
 
-export const PopupExample = () => (
+export const ContentExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
     <ContentMessage
       title="This is a title"
