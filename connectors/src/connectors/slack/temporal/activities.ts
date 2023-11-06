@@ -85,6 +85,9 @@ export async function getChannels(
     }
     for (const channel of c.channels) {
       if (channel && channel.id) {
+        if (channel.is_archived) {
+          continue;
+        }
         if (!joinedOnly || channel.is_member) {
           allChannels.push(channel);
         }
