@@ -94,7 +94,11 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
   try {
     await client.workflow.signalWithStart(googleDriveIncrementalSync, {
-      args: [connectorIdModelId, dataSourceConfig],
+      args: [
+        connectorIdModelId,
+        dataSourceConfig,
+        { no: 2, delay: 60 * 5 * 1000 },
+      ],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       signal: newWebhookSignal,
