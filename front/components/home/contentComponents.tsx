@@ -1,4 +1,12 @@
-import { Tooltip } from "@dust-tt/sparkle";
+import {
+  CircleIcon,
+  HexagonIcon,
+  Icon,
+  RectangleIcon,
+  SquareIcon,
+  Tooltip,
+  TriangleIcon,
+} from "@dust-tt/sparkle";
 import classNames from "classnames";
 import React, { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
 
@@ -73,22 +81,31 @@ interface PProps {
   className?: string;
   size?: "xs" | "sm" | "md" | "lg";
   dotCSS?: string;
+  shape?: "square" | "circle" | "triangle" | "hexagon" | "rectangle";
 }
+
+const shapeClasses = {
+  square: SquareIcon,
+  circle: CircleIcon,
+  triangle: TriangleIcon,
+  hexagon: HexagonIcon,
+  rectangle: RectangleIcon,
+};
 
 export const P = ({
   children,
   dotCSS = "",
   className = "",
   size = "md",
+  shape = "square",
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames(className, "flex gap-2 lg:gap-4")}>
-        <div
-          className={classNames(
-            dotCSS,
-            "mt-1 h-4 w-2 flex-shrink-0 md:mt-1.5 lg:mt-0.5 lg:h-6 lg:w-3"
-          )}
+      <div className={classNames(className, "flex gap-2 lg:gap-3")}>
+        <Icon
+          visual={shapeClasses[shape]}
+          className={classNames("mt-0.5 shrink-0", dotCSS)}
+          size="md"
         />
         <p className={classNames(pClasses[size])}>{children}</p>
       </div>
