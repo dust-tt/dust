@@ -17,7 +17,9 @@ export type UserType = {
   providerId: string;
   username: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
   image: string | null;
   workspaces: WorkspaceType[];
   isDustSuperUser: boolean;

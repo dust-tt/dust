@@ -1,15 +1,14 @@
-import { Op } from "sequelize";
-
 import { User } from "@app/lib/models";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 
 async function main() {
-  const users = await User.findAll({
-    where: {
-      firstName: {
-        [Op.or]: [null, ""],
-      },
-    },
+  const users: User[] = await User.findAll({
+    // Was run with this were but then we make first name non nullable and linter is not happy
+    // where: {
+    //   firstName: {
+    //     [Op.or]: [null, ""],
+    //   },
+    // },
   });
 
   console.log(`Found ${users.length} users to update`);
@@ -23,7 +22,7 @@ async function main() {
     console.log(`Processing chunk ${i}/${chunks.length}...`);
     const chunk = chunks[i];
     await Promise.all(
-      chunk.map((u) => {
+      chunk.map((u: User) => {
         return (async () => {
           if (!u.firstName) {
             const { firstName, lastName } = guessFirstandLastNameFromFullName(

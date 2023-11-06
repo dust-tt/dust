@@ -105,7 +105,7 @@ const MembershipsPage = ({
               >
                 <div className="flex items-center justify-between">
                   <h3 className="mb-2 text-lg font-semibold">
-                    {m.username} ({m.name})
+                    {m.username} ({m.fullName})
                   </h3>
                 </div>
                 <p>

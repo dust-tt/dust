@@ -118,7 +118,7 @@ async function handler(
         user: user,
         context: {
           username: user.username,
-          fullName: user.name,
+          fullName: user.fullName,
         },
         reaction: bodyValidation.right.reaction,
       });
@@ -142,7 +142,7 @@ async function handler(
         user: user,
         context: {
           username: user.username,
-          fullName: user.name,
+          fullName: user.fullName,
         },
         reaction: bodyValidation.right.reaction,
       });

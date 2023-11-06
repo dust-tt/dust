@@ -65,7 +65,7 @@ async function _getHelperGlobalAgent(
   const user = auth.user();
   if (user) {
     const role = auth.role();
-    prompt = `The user you're interacting with is granted with the role ${role}. Their name is ${user.name}. `;
+    prompt = `The user you're interacting with is granted with the role ${role}. Their name is ${user.fullName}. `;
   }
 
   const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
