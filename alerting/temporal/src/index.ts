@@ -80,25 +80,44 @@ const labelsResponseDataSchema = z.object({
 const getMetricNames = async (): Promise<{
   countMetricNames: string[];
   histogramMetricNames: string[];
-}> => {
-  const metricNamesResponse = await axios.get(PROM_LABELS_URL, {
-    httpsAgent,
-  });
+} | void> => {
+  const maxRetries = 3;
+  const retryDelay = 1000;
 
-  const { data: metricNames } = labelsResponseDataSchema.parse(
-    metricNamesResponse.data
-  );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const metricNamesResponse = await axios.get(PROM_LABELS_URL, {
+        httpsAgent,
+      });
+      const { data: metricNames } = labelsResponseDataSchema.parse(
+        metricNamesResponse.data
+      );
 
-  const countMetricNames = metricNames.filter(
-    (metricName) =>
-      TARGET_METRIC_NAMES.includes(metricName) && metricName.endsWith("_count")
-  );
-  const histogramMetricNames = metricNames.filter(
-    (metricName) =>
-      TARGET_METRIC_NAMES.includes(metricName) && metricName.endsWith("_bucket")
-  );
+      const countMetricNames = metricNames.filter(
+        (metricName) =>
+          TARGET_METRIC_NAMES.includes(metricName) &&
+          metricName.endsWith("_count")
+      );
+      const histogramMetricNames = metricNames.filter(
+        (metricName) =>
+          TARGET_METRIC_NAMES.includes(metricName) &&
+          metricName.endsWith("_bucket")
+      );
 
-  return { countMetricNames, histogramMetricNames };
+      return { countMetricNames, histogramMetricNames };
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.log({
+          level: "error",
+          message: `Error getting metric names from Prometheus after ${maxRetries} attempts`,
+          error,
+        });
+        return; // We give up
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+  }
 };
 
 const queryResponseDataSchema = z.object({
@@ -152,17 +171,25 @@ const queryPrometheusCount = async (
   metricName: string,
   queryWindow: QueryWindow
 ): Promise<MetricData> => {
-  const response = await axios.get(PROM_QUERY_URL, {
-    httpsAgent,
-    params: {
-      ...basePrometheusQueryParams,
-      query: `rate(${metricName}[1m])`,
-      start: queryWindow.startSecondsSinceEpoch.toFixed(0),
-      end: queryWindow.endSecondsSinceEpoch.toFixed(0),
-    },
-  });
-
-  return queryResponseDataSchema.parse(response.data).data;
+  try {
+    const response = await axios.get(PROM_QUERY_URL, {
+      httpsAgent,
+      params: {
+        ...basePrometheusQueryParams,
+        query: `rate(${metricName}[1m])`,
+        start: queryWindow.startSecondsSinceEpoch.toFixed(0),
+        end: queryWindow.endSecondsSinceEpoch.toFixed(0),
+      },
+    });
+    return queryResponseDataSchema.parse(response.data).data;
+  } catch (error) {
+    console.log({
+      level: "info",
+      message: "Error querying prometheus to get count metric",
+      error,
+    });
+    return { resultType: "matrix", result: [] };
+  }
 };
 
 const convertPrometheusCountToDatadogRateSeries = (
@@ -193,17 +220,25 @@ const queryPrometheusHistogram = async (
   quantile: number,
   queryWindow: QueryWindow
 ): Promise<MetricData> => {
-  const response = await axios.get(PROM_QUERY_URL, {
-    httpsAgent,
-    params: {
-      ...basePrometheusQueryParams,
-      query: `histogram_quantile(${quantile}, sum(rate(${metricName}[1m])) by (temporal_account,temporal_namespace,operation,le))`,
-      start: queryWindow.startSecondsSinceEpoch.toFixed(0),
-      end: queryWindow.endSecondsSinceEpoch.toFixed(0),
-    },
-  });
-
-  return queryResponseDataSchema.parse(response.data).data;
+  try {
+    const response = await axios.get(PROM_QUERY_URL, {
+      httpsAgent,
+      params: {
+        ...basePrometheusQueryParams,
+        query: `histogram_quantile(${quantile}, sum(rate(${metricName}[1m])) by (temporal_account,temporal_namespace,operation,le))`,
+        start: queryWindow.startSecondsSinceEpoch.toFixed(0),
+        end: queryWindow.endSecondsSinceEpoch.toFixed(0),
+      },
+    });
+    return queryResponseDataSchema.parse(response.data).data;
+  } catch (error) {
+    console.log({
+      level: "info",
+      message: "Error querying prometheus to get histogram metric",
+      error,
+    });
+    return { resultType: "matrix", result: [] };
+  }
 };
 
 const convertPrometheusHistogramToDatadogGuageSeries = (
@@ -233,14 +268,11 @@ const convertPrometheusHistogramToDatadogGuageSeries = (
   }));
 
 const main = async () => {
-  const { countMetricNames, histogramMetricNames } = await getMetricNames();
-
-  console.log({
-    level: "info",
-    message: "Polling metrics",
-    countMetricNames,
-    histogramMetricNames,
-  });
+  const metricsName = await getMetricNames();
+  if (!metricsName) {
+    return;
+  }
+  const { countMetricNames, histogramMetricNames } = metricsName;
 
   while (true) {
     const queryWindow = generateQueryWindow();
