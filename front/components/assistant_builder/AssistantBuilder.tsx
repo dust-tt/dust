@@ -859,7 +859,10 @@ export default function AssistantBuilder({
             {configurableDataSources.length === 0 && (
               <ContentMessage title="You don't have any active data source or connection">
                 <div className="flex flex-col gap-y-3">
-                  <div>Assistants can answer using existing knowledge.</div>
+                  <div>
+                    Assistants can incorporate existing company data and
+                    knowledge to formulate answers.
+                  </div>
                   <div>
                     There are two types of knowledge sources:{" "}
                     <strong>Data Sources</strong> (Files you can upload) and{" "}
