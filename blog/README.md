@@ -1,13 +1,16 @@
 # Dust Blog
+
 Source code for the dust blog
 
 ## How to add a post
+
 ### Blog post file
+
 - Create a .mdx file in src/pages
-  - copy-paste 
+  - copy-paste
 - name it [date]-[keyword-list-with-hyphens].mdx
-  - [date]-[keyword-list-with-hyphens] is your post's *id*
-- put all the media files for the post under the directory *src/media/[post-id]*
+  - [date]-[keyword-list-with-hyphens] is your post's _id_
+- put all the media files for the post under the directory _src/media/[post-id]_
 - copy paste the markdown for your blog post in the file
   - don't forget the JS header as in other files
   - use a h2 header for your main title, h3 for subs
@@ -15,12 +18,17 @@ Source code for the dust blog
 - update references to media in the blog post .mdx file (img1.gif -> @/media/[post-id]/img1.gif)
 
 See [this example post](src/pages/2023-06-02-speculative-sampling.mdx) for reference
+
 ### !! Caveats
-- triple-dash must be converted to <Line> component
-- mailto links must be hand corrected
+
+- braces `{}` must be escaped `\{ \}`
+- triple-dash must be converted to `<Line>` component
+- `mailto` links must be hand corrected
 
 ### Blog post listing in homepage
+
 Add the post listing on top of the file src/pages/index.mdx. Follow this example
+
 ```
 ![](@/media/2023-06-02-speculative-sampling/example.gif)
 
@@ -31,13 +39,15 @@ Behind the beautiful name of _Speculative sampling_ lies a neat technique to hav
 ```
 
 Main elements
+
 - Header 2 with full article title, {{ date: THE DATE, id: YOUR ARTICLE ID}}
 - Article id MUST BE the name of the .mdx file of your blog post
 - image at the top
 - 3 hyphens at the end
 
 # Dev info
-This blog is based on the *Commit* template.
+
+This blog is based on the _Commit_ template.
 Commit is a [Tailwind UI](https://tailwindui.com) site template built using [Tailwind CSS](https://tailwindcss.com) and [Next.js](https://nextjs.org).
 
 ## Getting started
