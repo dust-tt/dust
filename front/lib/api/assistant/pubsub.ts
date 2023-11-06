@@ -230,6 +230,19 @@ export async function retryAgentMessageWithPubSub(
                 resolve(new Ok(event.message));
                 break;
               }
+              case "agent_message_error": {
+                didResolve = true;
+                resolve(
+                  new Err({
+                    status_code: 400,
+                    api_error: {
+                      type: "invalid_request_error",
+                      message: event.error.message,
+                    },
+                  })
+                );
+                break;
+              }
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":

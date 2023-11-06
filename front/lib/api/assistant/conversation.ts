@@ -12,6 +12,7 @@ import {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
+  AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
   runAgent,
 } from "@app/lib/api/assistant/agent";
@@ -1123,9 +1124,15 @@ export async function* editUserMessage(
     return;
   }
 
-  // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages, agentMessageRows } =
-    await front_sequelize.transaction(async (t) => {
+  // local error class to differentiate from other errors
+  class UserMessageError extends Error {}
+
+  let userMessage: UserMessageType | null = null;
+  let agentMessages: AgentMessageType[] = [];
+  let agentMessageRows: AgentMessage[] = [];
+  try {
+    // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+    const result = await front_sequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1144,6 +1151,18 @@ export async function* editUserMessage(
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
           "Unexpected: Message or UserMessage to edit not found in DB"
+        );
+      }
+      const newerMessage = await Message.findOne({
+        where: {
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          version: messageRow.version + 1,
+        },
+      });
+      if (newerMessage) {
+        throw new UserMessageError(
+          "Invalid user message edit request, this message was already edited."
         );
       }
       const userMessageRow = messageRow.userMessage;
@@ -1327,6 +1346,27 @@ export async function* editUserMessage(
         agentMessageRows: nonNullResults.map(({ row }) => row),
       };
     });
+    userMessage = result.userMessage;
+    agentMessages = result.agentMessages;
+    agentMessageRows = result.agentMessageRows;
+    if (!userMessage) {
+      throw new UserMessageError("Unreachable: userMessage is null");
+    }
+  } catch (e) {
+    if (e instanceof UserMessageError) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "edit_invalid_error",
+          message: e.message,
+        },
+      };
+      return;
+    } else {
+      throw e;
+    }
+  }
 
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
@@ -1352,6 +1392,9 @@ export async function* editUserMessage(
   }
 
   const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
+    if (!userMessage) {
+      throw new Error("Unreachable: userMessage is null");
+    }
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
     const eventStream = runAgent(
@@ -1405,6 +1448,7 @@ export async function* retryAgentMessage(
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
+  | AgentMessageErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1413,71 +1457,101 @@ export async function* retryAgentMessage(
   | AgentMessageSuccessEvent,
   void
 > {
-  const agentMessageResult: {
+  class AgentMessageError extends Error {}
+  let agentMessageResult: {
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
-  } | null = await front_sequelize.transaction(async (t) => {
-    await getConversationRankVersionLock(conversation, t);
+  } | null = null;
+  try {
+    agentMessageResult = await front_sequelize.transaction(async (t) => {
+      await getConversationRankVersionLock(conversation, t);
 
-    const messageRow = await Message.findOne({
-      where: {
-        conversationId: conversation.id,
-        id: message.id,
-      },
-      include: [
-        {
-          model: AgentMessage,
-          as: "agentMessage",
-          required: true,
+      const messageRow = await Message.findOne({
+        where: {
+          conversationId: conversation.id,
+          id: message.id,
         },
-      ],
-      transaction: t,
-    });
-
-    if (!messageRow || !messageRow.agentMessage) {
-      return null;
-    }
-    const agentMessageRow = await AgentMessage.create(
-      {
-        status: "created",
-        agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
-        agentConfigurationVersion:
-          messageRow.agentMessage.agentConfigurationVersion,
-      },
-      { transaction: t }
-    );
-    const m = await Message.create(
-      {
-        sId: generateModelSId(),
-        rank: messageRow.rank,
-        conversationId: conversation.id,
-        parentId: messageRow.parentId,
-        version: messageRow.version + 1,
-        agentMessageId: agentMessageRow.id,
-      },
-      {
+        include: [
+          {
+            model: AgentMessage,
+            as: "agentMessage",
+            required: true,
+          },
+        ],
         transaction: t,
+      });
+
+      if (!messageRow || !messageRow.agentMessage) {
+        return null;
       }
-    );
-    const agentMessage: AgentMessageType = {
-      id: m.id,
-      created: m.createdAt.getTime(),
-      sId: m.sId,
-      type: "agent_message",
-      visibility: m.visibility,
-      version: m.version,
-      parentMessageId: message.parentMessageId,
-      status: "created",
-      action: null,
-      content: null,
-      error: null,
-      configuration: message.configuration,
-    };
-    return {
-      agentMessage,
-      agentMessageRow,
-    };
-  });
+      const newerMessage = await Message.findOne({
+        where: {
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          version: messageRow.version + 1,
+        },
+      });
+      if (newerMessage) {
+        throw new AgentMessageError(
+          "Invalid agent message retry request, this message was already retried."
+        );
+      }
+      const agentMessageRow = await AgentMessage.create(
+        {
+          status: "created",
+          agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
+          agentConfigurationVersion:
+            messageRow.agentMessage.agentConfigurationVersion,
+        },
+        { transaction: t }
+      );
+      const m = await Message.create(
+        {
+          sId: generateModelSId(),
+          rank: messageRow.rank,
+          conversationId: conversation.id,
+          parentId: messageRow.parentId,
+          version: messageRow.version + 1,
+          agentMessageId: agentMessageRow.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      const agentMessage: AgentMessageType = {
+        id: m.id,
+        created: m.createdAt.getTime(),
+        sId: m.sId,
+        type: "agent_message",
+        visibility: m.visibility,
+        version: m.version,
+        parentMessageId: message.parentMessageId,
+        status: "created",
+        action: null,
+        content: null,
+        error: null,
+        configuration: message.configuration,
+      };
+      return {
+        agentMessage,
+        agentMessageRow,
+      };
+    });
+  } catch (e) {
+    if (e instanceof AgentMessageError) {
+      yield {
+        type: "agent_message_error",
+        created: Date.now(),
+        configurationId: message.configuration.sId,
+        error: {
+          code: "retry_failed",
+          message: e.message,
+        },
+      };
+      return;
+    }
+    throw e;
+  }
 
   if (!agentMessageResult) {
     yield {
