@@ -36,7 +36,6 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 
 export async function googleDriveFullSync(
   connectorId: ModelId,
-  nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   garbageCollect = true,
   foldersToBrowse: string[] | undefined = undefined,
@@ -63,7 +62,6 @@ export async function googleDriveFullSync(
     do {
       const res = await syncFiles(
         connectorId,
-        nangoConnectionId,
         dataSourceConfig,
         folder,
         startSyncTs,
@@ -82,7 +80,6 @@ export async function googleDriveFullSync(
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveFullSync>(
         connectorId,
-        nangoConnectionId,
         dataSourceConfig,
         garbageCollect,
         foldersToBrowse,
@@ -109,7 +106,6 @@ export function googleDriveFullSyncWorkflowId(connectorId: string) {
 
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
-  nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig
 ) {
   let signaled = false;
@@ -128,14 +124,13 @@ export async function googleDriveIncrementalSync(
       }
     }
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
-    const drivesIds = await getDrivesIds(nangoConnectionId);
+    const drivesIds = await getDrivesIds(connectorId);
     const startSyncTs = new Date().getTime();
     for (const googleDrive of drivesIds) {
       let nextPageToken: undefined | string = undefined;
       do {
         nextPageToken = await incrementalSync(
           connectorId,
-          nangoConnectionId,
           dataSourceConfig,
           googleDrive.id,
           googleDrive.sharedDrive,

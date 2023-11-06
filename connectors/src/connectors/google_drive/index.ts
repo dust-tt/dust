@@ -421,7 +421,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
   } else if (filterPermission === null) {
     if (parentInternalId === null) {
       // Return the list of remote shared drives.
-      const drives = await getDrivesIds(c.connectionId);
+      const drives = await getDrivesIds(c.id);
       const resources: ConnectorResource[] = await Promise.all(
         drives.map(async (d): Promise<ConnectorResource> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);

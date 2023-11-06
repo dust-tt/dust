@@ -129,14 +129,19 @@ export async function getDriveClient(
   throw new Error("Invalid auth_credentials type");
 }
 
-export async function getDrivesIds(nangoConnectionId: string): Promise<
+export async function getDrivesIds(connectorId: ModelId): Promise<
   {
     id: string;
     name: string;
     sharedDrive: boolean;
   }[]
 > {
-  const drive = await getDriveClient(nangoConnectionId);
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const drive = await getDriveClient(connector.connectionId);
+
   let nextPageToken: string | undefined | null = undefined;
   const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
   const myDriveRes = await drive.files.get({ fileId: "root" });
@@ -177,7 +182,6 @@ export async function getDrivesIds(nangoConnectionId: string): Promise<
 
 export async function syncFiles(
   connectorId: ModelId,
-  nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveFolderId: string,
   startSyncTs: number,
@@ -187,7 +191,11 @@ export async function syncFiles(
   count: number;
   subfolders: string[];
 }> {
-  const authCredentials = await getAuthObject(nangoConnectionId);
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject(
     authCredentials,
     driveFolderId
@@ -575,7 +583,6 @@ async function objectIsInFolders(
 
 export async function incrementalSync(
   connectorId: ModelId,
-  nangoConnectionId: string,
   dataSourceConfig: DataSourceConfig,
   driveId: string,
   sharedDrive: boolean,
@@ -586,23 +593,21 @@ export async function incrementalSync(
     provider: "google_drive",
     connectorId: connectorId,
     driveId: driveId,
-    nangoConnectionId: nangoConnectionId,
     activity: "incrementalSync",
     runInstance: uuid4(),
   });
   try {
+    const connector = await Connector.findByPk(connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${connectorId} not found`);
+    }
     if (!nextPageToken) {
-      nextPageToken = await getSyncPageToken(
-        connectorId,
-        nangoConnectionId,
-        driveId,
-        sharedDrive
-      );
+      nextPageToken = await getSyncPageToken(connectorId, driveId, sharedDrive);
     }
 
     const selectedFoldersIds = await getFoldersToSync(connectorId);
 
-    const authCredentials = await getAuthObject(nangoConnectionId);
+    const authCredentials = await getAuthObject(connector.connectionId);
     const driveClient = await getDriveClient(authCredentials);
 
     let opts: drive_v3.Params$Resource$Changes$List = {
@@ -739,10 +744,13 @@ export async function incrementalSync(
 
 async function getSyncPageToken(
   connectorId: ModelId,
-  nangoConnectionId: string,
   driveId: string,
   sharedDrive: boolean
 ) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
   const last = await GoogleDriveSyncToken.findOne({
     where: {
       connectorId: connectorId,
@@ -752,7 +760,7 @@ async function getSyncPageToken(
   if (last) {
     return last.syncToken;
   }
-  const driveClient = await getDriveClient(nangoConnectionId);
+  const driveClient = await getDriveClient(connector.connectionId);
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
     let opts = {};
@@ -947,11 +955,10 @@ export async function populateSyncTokens(connectorId: ModelId) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const drivesIds = await getDrivesIds(connector.connectionId);
+  const drivesIds = await getDrivesIds(connector.id);
   for (const drive of drivesIds) {
     const lastSyncToken = await getSyncPageToken(
       connectorId,
-      connector.connectionId,
       drive.id,
       drive.sharedDrive
     );

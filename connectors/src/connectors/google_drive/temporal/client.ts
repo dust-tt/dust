@@ -36,7 +36,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
   const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const nangoConnectionId = connector.connectionId;
 
   const workflowId = googleDriveFullSyncWorkflowId(connectorId);
   try {
@@ -50,7 +49,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
       }
     }
     await client.workflow.start(googleDriveFullSync, {
-      args: [connectorIdModelId, nangoConnectionId, dataSourceConfig],
+      args: [connectorIdModelId, dataSourceConfig],
       taskQueue: "google-queue",
       workflowId: workflowId,
 
@@ -90,12 +89,11 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const nangoConnectionId = connector.connectionId;
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
   try {
     await client.workflow.signalWithStart(googleDriveIncrementalSync, {
-      args: [connectorIdModelId, nangoConnectionId, dataSourceConfig],
+      args: [connectorIdModelId, dataSourceConfig],
       taskQueue: "google-queue",
       workflowId: workflowId,
       signal: newWebhookSignal,
