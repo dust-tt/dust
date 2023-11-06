@@ -25,9 +25,9 @@ export function ContentMessage({
       <Icon
         size="md"
         visual={InformationCircleIcon}
-        className="s-text-amber-600"
+        className="s-shrink-0 s-text-amber-600"
       />
-      <div className="s-flex s-flex-col s-gap-1">
+      <div className="s-flex s-flex-col s-gap-2">
         <div className="s-text-base s-font-semibold s-text-amber-600">
           {title}
         </div>
