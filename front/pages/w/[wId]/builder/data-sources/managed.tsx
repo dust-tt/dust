@@ -3,6 +3,7 @@ import {
   Chip,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
+  ContentMessage,
   ContextItem,
   DropdownMenu,
   Page,
@@ -351,6 +352,11 @@ export default function DataSourcesView({
           icon={CloudArrowLeftRightIcon}
           description="Manage connections to your products and the real-time data feeds Dust has access to."
         />
+        {owner.role !== "admin" && (
+          <ContentMessage title="Roles">
+            Only Admins can activate and manage Connections.
+          </ContentMessage>
+        )}
         <ContextItem.List>
           {localIntegrations.map((ds) => {
             return (
