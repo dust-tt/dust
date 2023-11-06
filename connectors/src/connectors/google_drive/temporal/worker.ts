@@ -7,12 +7,14 @@ import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
+import { QUEUE_NAME } from "./config";
+
 export async function runGoogleWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
-    taskQueue: "google-queue",
+    taskQueue: QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 1,
     connection,
     namespace,
