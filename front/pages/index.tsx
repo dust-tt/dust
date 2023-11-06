@@ -1028,16 +1028,16 @@ const CookieBanner = ({
       </div>
       <div className="flex gap-2">
         <Button
+          variant="tertiary"
+          size="sm"
+          label="Reject"
+          onClick={onClickRefuse}
+        />
+        <Button
           variant="primary"
           size="sm"
           label="Accept All"
           onClick={onClickAccept}
-        />
-        <Button
-          variant="tertiary"
-          size="sm"
-          label="Reject All"
-          onClick={onClickRefuse}
         />
       </div>
     </Transition>
