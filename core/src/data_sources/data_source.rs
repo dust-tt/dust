@@ -337,6 +337,7 @@ impl DataSource {
                         qdrant::VectorParams {
                             size: embedder.embedding_size() as u64,
                             distance: qdrant::Distance::Cosine.into(),
+                            on_disk: Some(true),
                             ..Default::default()
                         },
                     )),
