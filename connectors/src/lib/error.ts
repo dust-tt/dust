@@ -34,7 +34,8 @@ export type WorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "transient_upstream_activity_error"
   | "transient_nango_activity_error"
-  | "upstream_is_down_activity_error";
+  | "upstream_is_down_activity_error"
+  | "connector_rate_limit_activity_error";
 
 export type WorkflowError = {
   type: WorkflowErrorType;
