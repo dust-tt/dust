@@ -7,7 +7,7 @@ import {
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import router from "next/router";
+import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
 import { PricePlans } from "@app/components/PlansTables";
@@ -68,6 +68,7 @@ export default function Subscription({
   planInvitation,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
