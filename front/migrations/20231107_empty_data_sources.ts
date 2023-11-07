@@ -38,7 +38,9 @@ async function main() {
       SELECT * FROM data_sources_documents WHERE data_source = ${dsData[0].id} AND status='latest' LIMIT 1;
     `)) as [any[], { rowCount?: number }];
 
-    if (docData.length === 0 && !ds.connectorId) {
+    const is1DayOld = ds.createdAt < new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    if (docData.length === 0 && !ds.connectorId && is1DayOld) {
       countDeleted += 1;
       console.log(
         `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name} ${dsData[0].internal_id}`
