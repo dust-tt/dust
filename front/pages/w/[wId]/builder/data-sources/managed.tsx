@@ -604,28 +604,27 @@ export default function DataSourcesView({
         </ContextItem.List>{" "}
         <Page.Vertical>
           <Page.SectionHeader title="Limitations" />
-          <Page.P variant="secondary">
-            <div className="text-sm">
-              <div>
-                <span className="font-bold">Slack</span>: Dust doesn't take into
-                account external files or content behind a url.
-              </div>
-              <div>
-                <span className="font-bold">Notion</span>: Dust doesn't take
-                into account external files or content behind a url.
-              </div>
-              <div>
-                <span className="font-bold">Google Drive</span>: Dust doesn't
-                take into account files with more than 750Kb of extracted text.
-              </div>
-              <div>
-                <span className="font-bold">Github</span>: Dust only gathers
-                data from issues, discussions, and top-level pull requests
-                comments (but not in-code comments in pull requests, nor the
-                actual source code or other github data)
-              </div>
+
+          <div className="text-sm">
+            <div>
+              <span className="font-bold">Slack</span>: Dust doesn't take into
+              account external files or content behind a url.
             </div>
-          </Page.P>
+            <div>
+              <span className="font-bold">Notion</span>: Dust doesn't take into
+              account external files or content behind a url.
+            </div>
+            <div>
+              <span className="font-bold">Google Drive</span>: Dust doesn't take
+              into account files with more than 750Kb of extracted text.
+            </div>
+            <div>
+              <span className="font-bold">Github</span>: Dust only gathers data
+              from issues, discussions, and top-level pull requests comments
+              (but not in-code comments in pull requests, nor the actual source
+              code or other Github data).
+            </div>
+          </div>
         </Page.Vertical>
       </Page.Vertical>
     </AppLayout>
