@@ -72,17 +72,26 @@ Page.Separator = function () {
 
 interface PagePProps {
   children: React.ReactNode;
+  size?: "sm" | "md" | "lg";
   variant?: "primary" | "secondary";
 }
 
-Page.P = function ({ children, variant }: PagePProps) {
+const PsizeClasses = {
+  xs: "s-text-xs",
+  sm: "s-text-sm",
+  md: "s-text-base",
+  lg: "s-text-lg",
+};
+
+Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
   return (
     <p
-      className={
+      className={classNames(
+        PsizeClasses[size],
         variant === "secondary"
           ? "s-text-element-700 dark:s-text-element-600-dark"
           : "s-text-element-800 dark:s-text-element-800-dark"
-      }
+      )}
     >
       {children}
     </p>

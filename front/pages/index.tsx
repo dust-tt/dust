@@ -117,8 +117,16 @@ export default function Home({
       <Header />
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center gap-10 px-4">
-          <Logo className="logo invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block" />
-          <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
+          <div
+            style={{ opacity: 0 }}
+            className="invisibleFirst hidden h-[24px] w-[96px] transition-all duration-500 ease-out md:block"
+          >
+            <Logo className="h-[24px] w-[96px]" />
+          </div>
+          <div
+            style={{ opacity: 0 }}
+            className="invisibleFirst hidden flex-row justify-start gap-6 transition-all duration-500 ease-out lg:flex"
+          >
             <P size="xs">
               <A variant="tertiary" href="#sectionProduct">
                 The product
@@ -137,14 +145,18 @@ export default function Home({
           </div>
           <div className="flex-grow" />
           <Button.List>
-            <SignUpDropDownButton
-              buttonClassname="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out"
-              onClickGoogle={() =>
-                signIn("google", {
-                  callbackUrl: getCallbackUrl(router.query),
-                })
-              }
-            />
+            <div
+              style={{ opacity: 0 }}
+              className="invisibleFirst transition-all duration-500 ease-out"
+            >
+              <SignUpDropDownButton
+                onClickGoogle={() =>
+                  signIn("google", {
+                    callbackUrl: getCallbackUrl(router.query),
+                  })
+                }
+              />
+            </div>
             <SignInDropDownButton
               shouldDisplayGithub={
                 !(router.query.signIn && router.query.signIn !== "github")
