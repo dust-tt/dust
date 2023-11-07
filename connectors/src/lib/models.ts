@@ -48,7 +48,7 @@ export class Connector extends Model<
   declare errorType: ConnectorErrorType | null;
   declare lastSyncStartTime?: Date;
   declare lastSyncFinishTime?: Date;
-  declare lastSyncSuccessfulTime?: Date;
+  declare lastSyncSuccessfulTime?: Date | null;
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
   declare lastGCTime: Date | null;
