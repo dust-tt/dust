@@ -77,7 +77,7 @@ interface PagePProps {
 
 Page.P = function ({ children, variant }: PagePProps) {
   return (
-    <p
+    <div
       className={
         variant === "secondary"
           ? "s-text-element-700 dark:s-text-element-600-dark"
@@ -85,7 +85,7 @@ Page.P = function ({ children, variant }: PagePProps) {
       }
     >
       {children}
-    </p>
+    </div>
   );
 };
 
