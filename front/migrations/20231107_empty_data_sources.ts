@@ -14,6 +14,8 @@ async function main() {
   const dataSources = await DataSource.findAll({});
   console.log(`Processing ${dataSources.length} data sources.`);
 
+  let countDeleted = 0;
+
   for (const ds of dataSources) {
     const dustAPIProjectId = ds.dustAPIProjectId;
 
@@ -37,8 +39,9 @@ async function main() {
     `)) as [any[], { rowCount?: number }];
 
     if (docData.length === 0 && !ds.connectorId) {
+      countDeleted += 1;
       console.log(
-        `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name}`
+        `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name} ${dsData[0].internal_id}`
       );
       if (LIVE) {
         const coreDeleteRes = await CoreAPI.deleteDataSource({
@@ -76,12 +79,10 @@ async function main() {
           dustAPIProjectId,
         });
       }
-    } else {
-      console.log(
-        `[SKIP] Data Source: dustAPIProjectId=${dustAPIProjectId} dataSource.id=${ds.id} dataSource.name=${ds.name} dataSource.connectorId=${ds.connectorId}`
-      );
     }
   }
+
+  console.log(`Deleted ${countDeleted} data sources.`);
 }
 
 main()
