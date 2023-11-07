@@ -117,7 +117,6 @@ export function SignUpDropDownButton({
         hasChanged={false}
         title="Start with Dust"
         type="right-side"
-        width="wide"
       >
         <div className="flex h-full items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-16 px-2">
