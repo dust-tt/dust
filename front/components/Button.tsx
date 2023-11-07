@@ -5,30 +5,10 @@ import {
   GoogleLogo,
   Icon,
   LoginIcon,
+  Modal,
   RocketIcon,
 } from "@dust-tt/sparkle";
-
-import { classNames } from "@app/lib/utils";
-
-export function GoogleSignInButton({
-  onClick = null,
-  children,
-}: React.PropsWithChildren<{
-  onClick?: any;
-}>) {
-  return (
-    <button
-      type="button"
-      className={classNames(
-        "inline-flex items-center rounded-md border  px-3 py-1 text-sm leading-6 shadow-sm" +
-          "font-roboto border-gray-700 bg-white text-gray-800 hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2"
-      )}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
+import { useState } from "react";
 
 export function SignInButton({
   label,
@@ -117,28 +97,54 @@ export function SignUpDropDownButton({
   buttonClassname?: string;
   onClickGoogle: () => void;
 }) {
+  const [showModal, setShowModal] = useState<boolean>(false);
+
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <>
+      <div className={buttonClassname}>
         <Button
           variant={buttonVariant}
-          className={buttonClassname}
           size={buttonSize}
           label={buttonLabel}
           icon={buttonIcon}
+          onClick={() => setShowModal(!showModal)}
         />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topRight" width={260}>
-        <div className="flex flex-col gap-2 p-4">
-          <Button
-            variant="tertiary"
-            size="md"
-            label="Sign up with Google"
-            icon={GoogleLogo}
-            onClick={onClickGoogle}
-          />
+      </div>
+
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        hasChanged={false}
+        title="Start with Dust"
+        type="right-side"
+      >
+        <div className="flex h-full items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-16 px-2">
+            <div>
+              <Button
+                variant="tertiary"
+                size="md"
+                label="Sign up with Google"
+                icon={GoogleLogo}
+                onClick={onClickGoogle}
+              />
+            </div>
+
+            <p className="text-center text-lg">
+              By signing up, you accept
+              <br />
+              Dust's{" "}
+              <a
+                href="/terms"
+                className="cursor-pointer font-semibold text-action-400 transition-all duration-300 ease-out hover:text-action-400 hover:underline hover:underline-offset-4 active:text-action-600"
+              >
+                terms and conditions
+              </a>
+              .
+            </p>
+          </div>
         </div>
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      </Modal>
+    </>
   );
 }

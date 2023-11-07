@@ -138,7 +138,7 @@ export default function Home({
           <div className="flex-grow" />
           <Button.List>
             <SignUpDropDownButton
-              buttonClassname="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out lg:flex"
+              buttonClassname="invisibleFirst hidden opacity-0 transition-all duration-500 ease-out"
               onClickGoogle={() =>
                 signIn("google", {
                   callbackUrl: getCallbackUrl(router.query),

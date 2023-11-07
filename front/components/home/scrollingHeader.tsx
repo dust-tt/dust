@@ -31,8 +31,10 @@ const ScrollingHeader = ({
     invisibleFirstElements.forEach((element) => {
       if (isScrolled2) {
         element.classList.remove("opacity-0");
+        element.classList.remove("hidden");
       } else {
         element.classList.add("opacity-0");
+        element.classList.add("hidden");
       }
     });
   }, [isScrolled2]);
