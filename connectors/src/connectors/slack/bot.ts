@@ -40,6 +40,8 @@ const { DUST_CLIENT_FACING_URL } = process.env;
 
 class SlackExternalUserError extends Error {}
 
+const BLACKLISTED_BOT_NAME = ["Slackbot", "tidybot"];
+
 export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
@@ -135,32 +137,9 @@ async function botAnswerMessage(
       limit: 1,
     });
   }
-  const slackChatBotMessage = await SlackChatBotMessage.create({
-    connectorId: connector.id,
-    message: message,
-    slackUserId: slackUserId,
-    slackEmail: "",
-    slackUserName: "unknown",
-    slackFullName: "",
-    slackTimezone: null,
-    slackAvatar: null,
-    channelId: slackChannel,
-    messageTs: slackMessageTs,
-    threadTs:
-      slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
-    conversationId: lastSlackChatBotMessage?.conversationId,
-  });
 
+  // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
-  // Start computing the content fragment as early as possible since it's independent from all the other I/O operations
-  // and a lot of the subsequent I/O operations can only be done sequentially.
-  const contentFragmentPromise = makeContentFragment(
-    slackClient,
-    slackChannel,
-    lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector
-  );
   const slackUserInfo = await slackClient.users.info({
     user: slackUserId,
   });
@@ -175,29 +154,58 @@ async function botAnswerMessage(
       )
     );
   }
+
+  const displayName = slackUserInfo.user.profile?.display_name;
+  const realName = slackUserInfo.user.profile?.real_name;
+
+  if (
+    slackUserInfo.user.is_bot &&
+    (BLACKLISTED_BOT_NAME.includes(displayName || "") ||
+      BLACKLISTED_BOT_NAME.includes(realName || ""))
+  ) {
+    logger.info(
+      {
+        user: slackUserInfo.user,
+      },
+      "Ignoring bot message"
+    );
+    // We throw (which will create an unhandled API error for now) and don't reply anything.
+    throw new Error(
+      `Ignoring bot message: ${JSON.stringify(slackUserInfo.user)}`
+    );
+  }
+
   const slackUser = slackUserInfo.user;
-  if (slackUser.profile?.email) {
-    slackChatBotMessage.slackEmail = slackUser.profile.email;
-  }
-  if (slackUser.profile?.display_name) {
-    slackChatBotMessage.slackUserName = slackUser.profile.display_name;
-  } else if (slackUser.profile?.real_name) {
-    // A slack bot has no display name but just a real name so we use it if we could not find the
-    // display name.
-    slackChatBotMessage.slackUserName = slackUser.profile.real_name;
-  }
 
-  if (slackUser.profile?.real_name) {
-    slackChatBotMessage.slackFullName = slackUser.profile.real_name;
-  }
-  if (slackUser.profile?.image_512) {
-    slackChatBotMessage.slackAvatar = slackUser.profile.image_512;
-  }
-  if (slackUser.tz) {
-    slackChatBotMessage.slackTimezone = slackUser.tz;
-  }
+  const slackChatBotMessage = await SlackChatBotMessage.create({
+    connectorId: connector.id,
+    message: message,
+    slackUserId: slackUserId,
+    slackEmail: slackUser.profile?.email || "unknown",
+    slackUserName:
+      // A slack bot has no display name but just a real name so we use it if we could not find the
+      // display name.
+      displayName || realName || "unknown",
+    slackFullName: slackUser.profile?.real_name || "unknown",
+    slackTimezone: slackUser.tz || null,
+    slackAvatar: slackUser.profile?.image_512 || null,
+    channelId: slackChannel,
+    messageTs: slackMessageTs,
+    threadTs:
+      slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
+    conversationId: lastSlackChatBotMessage?.conversationId,
+  });
 
-  await slackChatBotMessage.save();
+  // Start computing the content fragment as early as possible since it's independent from all the
+  // other I/O operations and a lot of the subsequent I/O operations can only be done sequentially.
+  const contentFragmentPromise = makeContentFragment(
+    slackClient,
+    slackChannel,
+    lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector
+  );
+
   const dustAPI = new DustAPI({
     workspaceId: connector.workspaceId,
     apiKey: connector.workspaceAPIKey,
@@ -211,7 +219,8 @@ async function botAnswerMessage(
 
   // Slack sends the message with user ids when someone is mentionned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
-  // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc <@U91J1JEQZ1A>) ?
+  // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
+  // <@U91J1JEQZ1A>) ?
   // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
