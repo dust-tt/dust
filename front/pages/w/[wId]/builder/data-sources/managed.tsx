@@ -30,7 +30,7 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
@@ -63,7 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
   readOnly: boolean;
   isAdmin: boolean;
   integrations: DataSourceIntegration[];
-  plan: PlanType;
+  plan: SubscriptionType;
   gaTrackingId: string;
   nangoConfig: {
     publicKey: string;

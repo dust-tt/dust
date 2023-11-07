@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { assertNever } from "@app/lib/utils";
-import { PaidBillingType, PlanType } from "@app/types/plan";
+import { PaidBillingType, SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
@@ -106,7 +106,7 @@ export const createCustomerPortalSession = async ({
   plan,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
+  plan: SubscriptionType;
 }): Promise<string | null> => {
   if (!plan.stripeCustomerId) {
     throw new Error("No customer ID found for the workspace");

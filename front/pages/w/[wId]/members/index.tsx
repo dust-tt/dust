@@ -33,7 +33,7 @@ import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
-import { PlanType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -43,7 +43,7 @@ const CLOSING_ANIMATION_DURATION = 200;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  plan: PlanType;
+  plan: SubscriptionType;
   gaTrackingId: string;
   url: string;
 }> = async (context) => {

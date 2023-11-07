@@ -20,7 +20,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlanType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
@@ -45,14 +45,14 @@ export class Authenticator {
   _workspace: Workspace | null;
   _user: User | null;
   _role: RoleType;
-  _plan: PlanType | null;
+  _plan: SubscriptionType | null;
 
   // Should only be called from the static methods below.
   constructor(
     workspace: Workspace | null,
     user: User | null,
     role: RoleType,
-    plan: PlanType | null
+    plan: SubscriptionType | null
   ) {
     this._workspace = workspace;
     this._user = user;
@@ -92,7 +92,7 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
-    let plan: PlanType | null = null;
+    let plan: SubscriptionType | null = null;
 
     if (user && workspace) {
       [role, plan] = await Promise.all([
@@ -273,7 +273,7 @@ export class Authenticator {
       : null;
   }
 
-  plan(): PlanType | null {
+  plan(): SubscriptionType | null {
     return this._plan;
   }
 
@@ -439,13 +439,13 @@ export async function getAPIKey(
 }
 
 /**
- * Construct the PlanType for the provided workspace.
+ * Construct the SubscriptionType for the provided workspace.
  * @param w WorkspaceType the workspace to get the plan for
- * @returns PlanType
+ * @returns SubscriptionType
  */
 export async function planForWorkspace(
   w: Workspace
-): Promise<Promise<PlanType>> {
+): Promise<Promise<SubscriptionType>> {
   const activeSubscription = await Subscription.findOne({
     attributes: [
       "id",
