@@ -9,8 +9,9 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan } from "@app/lib/models";
 import { getProduct } from "@app/lib/plans/stripe";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PlanType } from "@app/types/plan";
 
-export const PokePlanTypeSchema = t.type({
+export const PlanTypeSchema = t.type({
   code: t.string,
   name: t.string,
   limits: t.type({
@@ -44,14 +45,12 @@ export const PokePlanTypeSchema = t.type({
   ]),
 });
 
-export type PokePlanType = t.TypeOf<typeof PokePlanTypeSchema>;
-
 export type UpsertPokePlanResponseBody = {
-  plan: PokePlanType;
+  plan: PlanType;
 };
 
 export type GetPokePlansResponseBody = {
-  plans: PokePlanType[];
+  plans: PlanType[];
 };
 
 async function handler(
@@ -76,7 +75,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
-      const plans: PokePlanType[] = planModels.map((plan) => ({
+      const plans: PlanType[] = planModels.map((plan) => ({
         code: plan.code,
         name: plan.name,
         stripeProductId: plan.stripeProductId,
@@ -108,7 +107,7 @@ async function handler(
 
       const stripeProductIds = plans
         .filter(
-          (plan): plan is PokePlanType & { stripeProductId: string } =>
+          (plan): plan is PlanType & { stripeProductId: string } =>
             !!plan.stripeProductId
         )
         .map((plan) => plan.stripeProductId);
@@ -133,7 +132,7 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PokePlanTypeSchema.decode(req.body);
+      const bodyValidation = PlanTypeSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {

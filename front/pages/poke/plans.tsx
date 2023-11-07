@@ -14,16 +14,15 @@ import { useSWRConfig } from "swr";
 import {
   EditingPlanType,
   Field,
-  fromPokePlanType,
+  fromPlanType,
   PLAN_FIELDS,
-  toPokePlanType,
+  toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { usePokePlans } from "@app/lib/swr";
-
-import { PokePlanType } from "../api/poke/plans";
+import { PlanType } from "@app/types/plan";
 
 export const getServerSideProps: GetServerSideProps<object> = async (
   _context
@@ -110,7 +109,7 @@ const PlansPage = (
       }
     }
 
-    const requestBody: PokePlanType = toPokePlanType(editingPlan);
+    const requestBody: PlanType = toPlanType(editingPlan);
 
     const r = await fetch("/api/poke/plans", {
       method: "POST",
@@ -133,7 +132,7 @@ const PlansPage = (
     resetEditingPlan();
   };
 
-  const plansToRender: EditingPlanType[] = (plans || []).map(fromPokePlanType);
+  const plansToRender: EditingPlanType[] = (plans || []).map(fromPlanType);
   if (editingPlan?.isNewPlan) {
     plansToRender.push(editingPlan);
   }
