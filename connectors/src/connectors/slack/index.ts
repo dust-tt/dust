@@ -5,11 +5,7 @@ import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import {
-  launchSlackGarbageCollectWorkflow,
-  launchSlackSyncOneChannelDebouncedWorkflow,
-  launchSlackSyncWorkflow,
-} from "@connectors/connectors/slack/temporal/client.js";
+import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
   Connector,
   ModelId,
@@ -109,14 +105,6 @@ export async function createSlackConnector(
 
   if (res.isErr()) {
     return res;
-  }
-
-  const launchRes = await launchSlackSyncWorkflow(
-    res.value.id.toString(),
-    null
-  );
-  if (launchRes.isErr()) {
-    return new Err(launchRes.error);
   }
 
   return new Ok(res.value.id.toString());
@@ -453,7 +441,7 @@ export async function setSlackConnectorPermissions(
   const q = new PQueue({ concurrency: 10 });
   const promises: Promise<void>[] = [];
 
-  let shouldGarbageCollect = false;
+  const slackChannelsToSync: string[] = [];
   for (const [id, permission] of Object.entries(permissions)) {
     let channel = channels[id];
     const slackClient = await getSlackClient(connector.id);
@@ -510,6 +498,7 @@ export async function setSlackConnectorPermissions(
           ["read", "read_write"].includes(permission)
         ) {
           // handle read permission enabled
+          slackChannelsToSync.push(channel.slackChannelId);
           const joinChannelRes = await joinChannel(
             connectorId,
             channel.slackChannelId
@@ -519,21 +508,6 @@ export async function setSlackConnectorPermissions(
               `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
             );
           }
-
-          const res = await launchSlackSyncOneChannelDebouncedWorkflow(
-            connectorId,
-            channel.slackChannelId
-          );
-          if (res.isErr()) {
-            throw res.error;
-          }
-        }
-        if (
-          ["read", "read_write"].includes(oldPermission) &&
-          !["read", "read_write"].includes(permission)
-        ) {
-          // handle read permission disabled
-          shouldGarbageCollect = true;
         }
       })
     );
@@ -541,15 +515,17 @@ export async function setSlackConnectorPermissions(
 
   try {
     await Promise.all(promises);
+    const workflowRes = await launchSlackSyncWorkflow(
+      connectorId.toString(),
+      null,
+      slackChannelsToSync
+    );
+
+    if (workflowRes.isErr()) {
+      return new Err(workflowRes.error);
+    }
   } catch (e) {
     return new Err(e as Error);
-  }
-
-  if (shouldGarbageCollect) {
-    const res = await launchSlackGarbageCollectWorkflow(connectorId);
-    if (res.isErr()) {
-      return res;
-    }
   }
 
   return new Ok(undefined);

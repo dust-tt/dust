@@ -44,6 +44,7 @@ export async function reportInitialSyncProgress(
     return new Err(new Error("Connector not found"));
   }
   connector.firstSyncProgress = progress;
+  connector.lastSyncSuccessfulTime = null;
   await connector.save();
 
   return new Ok(undefined);

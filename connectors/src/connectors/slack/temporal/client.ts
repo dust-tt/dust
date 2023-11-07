@@ -5,11 +5,10 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
+import { getChannelsToSync } from "./activities";
 import { QUEUE_NAME } from "./config";
-import { botJoinedChanelSignal, newWebhookSignal } from "./signals";
+import { newWebhookSignal, syncChannelSignal } from "./signals";
 import {
-  botJoinedChannelWorkflowId,
-  memberJoinedChannel,
   slackGarbageCollectorWorkflow,
   slackGarbageCollectorWorkflowId,
   syncOneMessageDebounced,
@@ -24,11 +23,17 @@ const logger = mainLogger.child({ provider: "slack" });
 
 export async function launchSlackSyncWorkflow(
   connectorId: string,
-  fromTs: number | null
+  fromTs: number | null,
+  channelsToSync: string[] | null = null
 ) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  if (channelsToSync === null) {
+    channelsToSync = (await getChannelsToSync(parseInt(connectorId)))
+      .map((c) => c.id)
+      .flatMap((c) => (c ? [c] : []));
   }
   const client = await getTemporalClient();
 
@@ -40,10 +45,12 @@ export async function launchSlackSyncWorkflow(
 
   const workflowId = workspaceFullSyncWorkflowId(parseInt(connectorId), fromTs);
   try {
-    await client.workflow.start(workspaceFullSync, {
+    await client.workflow.signalWithStart(workspaceFullSync, {
       args: [parseInt(connectorId), fromTs],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      signal: syncChannelSignal,
+      signalArgs: [{ channelIds: channelsToSync ? channelsToSync : [] }],
       memo: {
         connectorId: connectorId,
       },
@@ -141,49 +148,6 @@ export async function launchSlackSyncOneMessageWorkflow(
 
     return new Ok(handle);
   } catch (e) {
-    return new Err(e as Error);
-  }
-}
-
-export async function launchSlackSyncOneChannelDebouncedWorkflow(
-  connectorId: ModelId,
-  channelId: string
-) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const workflowId = botJoinedChannelWorkflowId(connectorId);
-  try {
-    await client.workflow.signalWithStart(memberJoinedChannel, {
-      args: [connectorId],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      signal: botJoinedChanelSignal,
-      signalArgs: [{ channelId: channelId }],
-      memo: {
-        connectorId: connectorId,
-      },
-    });
-    logger.info(
-      {
-        workspaceId: connector.workspaceId,
-        workflowId,
-      },
-      `Started workflow.`
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workspaceId: connector.workspaceId,
-        workflowId,
-        error: e,
-      },
-      `Failed to start worklfow.`
-    );
     return new Err(e as Error);
   }
 }

@@ -5,20 +5,16 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import { ModelId } from "@connectors/lib/models";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
-import {
-  botJoinedChanelSignal,
-  botJoinedChanelSignalInput,
-  newWebhookSignal,
-} from "./signals";
+import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
   getChannel,
-  getChannelsToSync,
   syncThread,
   syncNonThreaded,
   syncChannel,
@@ -49,22 +45,41 @@ export async function workspaceFullSync(
   connectorId: ModelId,
   fromTs: number | null
 ): Promise<void> {
-  await fetchUsers(connectorId);
-  const channels = await getChannelsToSync(connectorId);
-  let i = 0;
-  for (const channel of channels) {
-    if (!channel.id || !channel.name) {
-      throw new Error(`Channel ${channel.name} has no id`);
+  let i = 1;
+  const promises: Promise<void>[] = [];
+  const childWorkflowQueue = new PQueue({
+    concurrency: 1,
+  });
+  setHandler(syncChannelSignal, async (input) => {
+    for (const channelId of input.channelIds) {
+      promises.push(
+        childWorkflowQueue.add(async () => {
+          const percentSync = Math.round(
+            (i / Math.max(promises.length, input.channelIds.length)) * 100
+          );
+          await reportInitialSyncProgressActivity(
+            connectorId,
+            `${percentSync}%`
+          );
+          return await executeChild(syncOneChannel, {
+            workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+            args: [connectorId, channelId, false, fromTs],
+            memo: workflowInfo().memo,
+          });
+          i++;
+        })
+      );
     }
-    await executeChild(syncOneChannel, {
-      workflowId: syncOneChanneWorkflowlId(connectorId, channel.id),
-      args: [connectorId, channel.id, channel.name, false, fromTs],
-      memo: workflowInfo().memo,
-    });
-    i++;
-    const percentSync = Math.round((i / channels.length) * 100);
-    await reportInitialSyncProgressActivity(connectorId, `${percentSync}%`);
-  }
+  });
+  await fetchUsers(connectorId);
+  await Promise.all(promises);
+
+  await executeChild(slackGarbageCollectorWorkflow, {
+    workflowId: slackGarbageCollectorWorkflowId(connectorId),
+    args: [connectorId],
+    memo: workflowInfo().memo,
+  });
+
   await saveSuccessSyncActivity(connectorId);
   console.log(`Workspace sync done for connector ${connectorId}`);
 }
@@ -72,11 +87,9 @@ export async function workspaceFullSync(
 export async function syncOneChannel(
   connectorId: ModelId,
   channelId: string,
-  channelName: string,
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  console.log(`Syncing channel ${channelName} (${channelId})`);
   await joinChannelAct(connectorId, channelId);
 
   let messagesCursor: string | undefined = undefined;
@@ -85,7 +98,6 @@ export async function syncOneChannel(
   do {
     const syncChannelRes = await syncChannel(
       channelId,
-      channelName,
       connectorId,
       fromTs,
       weeksSynced,
@@ -97,7 +109,6 @@ export async function syncOneChannel(
     }
   } while (messagesCursor);
 
-  console.log(`Syncing channel ${channelName} (${channelId}) done`);
   if (updateSyncStatus) {
     await saveSuccessSyncActivity(connectorId);
   }
@@ -179,34 +190,6 @@ export async function syncOneMessageDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
-export async function memberJoinedChannel(connectorId: ModelId): Promise<void> {
-  const channelsToJoin: string[] = [];
-  setHandler(
-    botJoinedChanelSignal,
-    ({ channelId }: botJoinedChanelSignalInput) => {
-      if (channelsToJoin.indexOf(channelId) === -1) {
-        channelsToJoin.push(channelId);
-      }
-    }
-  );
-
-  let channelId: string | undefined;
-  while ((channelId = channelsToJoin.shift())) {
-    const channel = await getChannel(connectorId, channelId);
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
-    }
-    const channelName = channel.name;
-    await executeChild(syncOneChannel.name, {
-      workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-      args: [connectorId, channelId, channelName, true],
-      memo: workflowInfo().memo,
-    });
-  }
-  // /!\ Any signal received outside of the while loop will be lost, so don't make any async
-  // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
-}
-
 export async function slackGarbageCollectorWorkflow(
   connectorId: ModelId
 ): Promise<void> {
@@ -252,10 +235,6 @@ export function syncOneMessageDebouncedWorkflowId(
   startTsMs: number
 ) {
   return `slack-syncOneMessageDebounced-${connectorId}-${channelId}-${startTsMs}`;
-}
-
-export function botJoinedChannelWorkflowId(connectorId: ModelId) {
-  return `slack-botJoinedChannel-${connectorId}`;
 }
 
 export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {

@@ -1,9 +1,10 @@
 import { defineSignal } from "@temporalio/workflow";
 
 export const newWebhookSignal = defineSignal<[void]>("new_webhook_signal");
-export interface botJoinedChanelSignalInput {
-  channelId: string;
+
+export interface syncChannelSignalInput {
+  channelIds: string[];
 }
-export const botJoinedChanelSignal = defineSignal<[botJoinedChanelSignalInput]>(
-  "bot_joined_channel_signal"
+export const syncChannelSignal = defineSignal<[syncChannelSignalInput]>(
+  "sync_channel_signal"
 );

@@ -149,7 +149,6 @@ interface SyncChannelRes {
 
 export async function syncChannel(
   channelId: string,
-  channelName: string,
   connectorId: ModelId,
   fromTs: number | null,
   weeksSynced: Record<number, boolean>,
@@ -159,11 +158,16 @@ export async function syncChannel(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const remoteChannel = await getChannel(connectorId, channelId);
+  if (!remoteChannel.name) {
+    throw new Error(`Could not find channel name for channel ${channelId}`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const channel = await upsertSlackChannelInConnectorsDb({
     slackChannelId: channelId,
-    slackChannelName: channelName,
+    slackChannelName: remoteChannel.name,
     connectorId: connectorId,
   });
   if (!["read", "read_write"].includes(channel.permission)) {
@@ -171,7 +175,7 @@ export async function syncChannel(
       {
         connectorId,
         channelId,
-        channelName,
+        channelName: remoteChannel.name,
       },
       "Channel is not indexed, skipping"
     );
@@ -210,7 +214,7 @@ export async function syncChannel(
           {
             workspaceId: dataSourceConfig.workspaceId,
             channelId,
-            channelName,
+            channelName: remoteChannel.name,
             threadTs,
             fromTs,
           },
@@ -232,7 +236,7 @@ export async function syncChannel(
           {
             workspaceId: dataSourceConfig.workspaceId,
             channelId,
-            channelName,
+            channelName: remoteChannel.name,
             messageTs,
             fromTs,
             weekEndTsMs,
@@ -253,7 +257,7 @@ export async function syncChannel(
   await syncThreads(
     dataSourceConfig,
     channelId,
-    channelName,
+    remoteChannel.name,
     threadsToSync,
     connectorId
   );
@@ -265,7 +269,7 @@ export async function syncChannel(
   await syncMultipleNoNThreaded(
     dataSourceConfig,
     channelId,
-    channelName,
+    remoteChannel.name,
     Array.from(unthreadedTimeframesToSync.values()),
     connectorId
   );
