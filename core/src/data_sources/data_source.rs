@@ -350,6 +350,15 @@ impl DataSource {
                     memmap_threshold: Some(8192),
                     ..Default::default()
                 }),
+                quantization_config: Some(qdrant::QuantizationConfig {
+                    quantization: Some(qdrant::quantization_config::Quantization::Scalar(
+                        qdrant::ScalarQuantization {
+                            r#type: qdrant::QuantizationType::Int8.into(),
+                            quantile: Some(0.99),
+                            always_ram: Some(true),
+                        },
+                    )),
+                }),
                 // We keep the entire payload on disk and index on document_id and tags.
                 on_disk_payload: Some(true),
                 ..Default::default()
