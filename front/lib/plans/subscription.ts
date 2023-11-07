@@ -13,7 +13,7 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { PlanType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.
@@ -23,7 +23,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<PlanType> => {
+}): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
   });
@@ -89,7 +89,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<PlanType> => {
+}): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
   });

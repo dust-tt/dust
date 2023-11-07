@@ -37,7 +37,7 @@ export const PAID_BILLING_TYPES = [
 export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
 export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 
-export type PlanType = {
+export type SubscriptionType = {
   code: string;
   name: string;
   status: "active" | "ended";

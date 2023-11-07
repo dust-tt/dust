@@ -51,7 +51,7 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { PlanType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 import { renderDustAppRunActionByModelId } from "./actions/dust_app_run";
@@ -1806,7 +1806,7 @@ async function isMessagesLimitReached({
   plan,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
+  plan: SubscriptionType;
 }): Promise<boolean> {
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
