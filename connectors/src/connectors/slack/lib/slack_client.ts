@@ -64,7 +64,15 @@ export async function getSlackClient(
             throw workflowError;
           }
         }
-
+        if (slackError.code === ErrorCode.RateLimitedError) {
+          // If we get rate limited, we throw a known error. The activity will be
+          // automatically retried, no need to generate an alert
+          throw {
+            __is_dust_error: true,
+            message: slackError.message,
+            type: "connector_rate_limit_activity_error",
+          };
+        }
         throw e;
       }
     },
