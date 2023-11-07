@@ -225,8 +225,6 @@ async function botAnswerMessage(
     conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
-  // Start computing the content fragment as early as possible since it's independent from all the
-  // other I/O operations and a lot of the subsequent I/O operations can only be done sequentially.
   const buildContentFragmentRes = await makeContentFragment(
     slackClient,
     slackChannel,
