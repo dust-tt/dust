@@ -19,7 +19,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   workspace: WorkspaceType;
-  plan: SubscriptionType;
+  subscription: SubscriptionType;
   dataSources: DataSourceType[];
   slackbotEnabled?: boolean;
   documentCounts: Record<string, number>;
@@ -53,9 +53,9 @@ export const getServerSideProps: GetServerSideProps<{
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const workspace = auth.workspace();
-  const plan = auth.plan();
+  const subscription = auth.subscription();
 
-  if (!workspace || !plan) {
+  if (!workspace || !subscription) {
     return {
       notFound: true,
     };
@@ -132,7 +132,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       workspace,
-      plan,
+      subscription,
       dataSources,
       slackbotEnabled,
       documentCounts: docCountByDsName,
@@ -143,7 +143,7 @@ export const getServerSideProps: GetServerSideProps<{
 
 const WorkspacePage = ({
   workspace,
-  plan,
+  subscription,
   dataSources,
   slackbotEnabled,
   documentCounts,
@@ -273,7 +273,7 @@ const WorkspacePage = ({
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Plan:</h2>
-            <JsonViewer value={plan} rootName={false} />
+            <JsonViewer value={subscription} rootName={false} />
             <div>
               <div className="mt-4 flex-row">
                 <Button
@@ -281,7 +281,7 @@ const WorkspacePage = ({
                   variant="secondaryWarning"
                   onClick={onDowngrade}
                   disabled={
-                    plan.code === FREE_TEST_PLAN_CODE ||
+                    subscription.plan.code === FREE_TEST_PLAN_CODE ||
                     workspaceHasManagedDataSources
                   }
                 />
@@ -290,11 +290,11 @@ const WorkspacePage = ({
                   label="Upgrade"
                   variant="secondary"
                   onClick={onUpgrade}
-                  disabled={plan.code !== FREE_TEST_PLAN_CODE}
+                  disabled={subscription.plan.code !== FREE_TEST_PLAN_CODE}
                 />
               </div>
             </div>
-            {plan.code !== FREE_TEST_PLAN_CODE &&
+            {subscription.plan.code !== FREE_TEST_PLAN_CODE &&
               workspaceHasManagedDataSources && (
                 <span className="mx-2 w-1/3">
                   <p className="text-warning mb-4 text-sm ">

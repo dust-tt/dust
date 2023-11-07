@@ -41,7 +41,7 @@ import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { SubscriptionType } from "@app/types/plan";
+import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
@@ -56,7 +56,7 @@ const {
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  plan: PlanType;
   readOnly: boolean;
   isAdmin: boolean;
   dataSource: DataSourceType;
@@ -139,7 +139,7 @@ function StandardDataSourceView({
   dataSource,
 }: {
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
 }) {
@@ -347,7 +347,7 @@ function SlackBotEnableView({
   readOnly: boolean;
   isAdmin: boolean;
   dataSource: DataSourceType;
-  plan: SubscriptionType;
+  plan: PlanType;
 }) {
   const { botEnabled, mutateBotEnabled } = useConnectorBotEnabled({
     owner: owner,
@@ -468,7 +468,7 @@ function ManagedDataSourceView({
     googleDriveConnectorId: string;
   };
   githubAppUrl: string;
-  plan: SubscriptionType;
+  plan: PlanType;
 }) {
   const router = useRouter();
 

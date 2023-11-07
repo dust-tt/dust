@@ -25,7 +25,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { SubscriptionType } from "@app/types/plan";
+import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -33,7 +33,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
   loadDocumentId: string | null;

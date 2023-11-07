@@ -20,7 +20,7 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { SubscriptionType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
@@ -45,19 +45,19 @@ export class Authenticator {
   _workspace: Workspace | null;
   _user: User | null;
   _role: RoleType;
-  _plan: SubscriptionType | null;
+  _subscription: SubscriptionType | null;
 
   // Should only be called from the static methods below.
   constructor(
     workspace: Workspace | null,
     user: User | null,
     role: RoleType,
-    plan: SubscriptionType | null
+    subscription: SubscriptionType | null
   ) {
     this._workspace = workspace;
     this._user = user;
     this._role = role;
-    this._plan = plan;
+    this._subscription = subscription;
   }
 
   /**
@@ -92,10 +92,10 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
-    let plan: SubscriptionType | null = null;
+    let subscription: SubscriptionType | null = null;
 
     if (user && workspace) {
-      [role, plan] = await Promise.all([
+      [role, subscription] = await Promise.all([
         (async (): Promise<RoleType> => {
           const membership = await Membership.findOne({
             where: {
@@ -108,11 +108,11 @@ export class Authenticator {
             ? (membership.role as RoleType)
             : "none";
         })(),
-        planForWorkspace(workspace),
+        subscriptionForWorkspace(workspace),
       ]);
     }
 
-    return new Authenticator(workspace, user, role, plan);
+    return new Authenticator(workspace, user, role, subscription);
   }
 
   /**
@@ -150,13 +150,15 @@ export class Authenticator {
       })(),
     ]);
 
-    const plan = workspace ? await planForWorkspace(workspace) : null;
+    const subscription = workspace
+      ? await subscriptionForWorkspace(workspace)
+      : null;
 
     if (!user || !user.isDustSuperUser) {
-      return new Authenticator(workspace, user, "none", plan);
+      return new Authenticator(workspace, user, "none", subscription);
     }
 
-    return new Authenticator(workspace, user, "admin", plan);
+    return new Authenticator(workspace, user, "admin", subscription);
   }
 
   /**
@@ -198,10 +200,12 @@ export class Authenticator {
       }
     }
 
-    const plan = workspace ? await planForWorkspace(workspace) : null;
+    const subscription = workspace
+      ? await subscriptionForWorkspace(workspace)
+      : null;
 
     return {
-      auth: new Authenticator(workspace, null, role, plan),
+      auth: new Authenticator(workspace, null, role, subscription),
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
@@ -222,9 +226,11 @@ export class Authenticator {
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
-    const plan = workspace ? await planForWorkspace(workspace) : null;
+    const subscription = workspace
+      ? await subscriptionForWorkspace(workspace)
+      : null;
 
-    return new Authenticator(workspace, null, "builder", plan);
+    return new Authenticator(workspace, null, "builder", subscription);
   }
 
   role(): RoleType {
@@ -273,8 +279,12 @@ export class Authenticator {
       : null;
   }
 
-  plan(): SubscriptionType | null {
-    return this._plan;
+  subscription(): SubscriptionType | null {
+    return this._subscription;
+  }
+
+  plan(): PlanType | null {
+    return this._subscription ? this._subscription.plan : null;
   }
 
   /**
@@ -443,7 +453,7 @@ export async function getAPIKey(
  * @param w WorkspaceType the workspace to get the plan for
  * @returns SubscriptionType
  */
-export async function planForWorkspace(
+export async function subscriptionForWorkspace(
   w: Workspace
 ): Promise<Promise<SubscriptionType>> {
   const activeSubscription = await Subscription.findOne({
@@ -487,36 +497,38 @@ export async function planForWorkspace(
   }
 
   return {
-    code: plan.code,
-    name: plan.name,
     status: "active",
     subscriptionId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-    stripeProductId: plan.stripeProductId,
-    billingType: plan.billingType,
     startDate: startDate?.getTime() || null,
     endDate: endDate?.getTime() || null,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: plan.isSlackbotAllowed,
-        maxMessages: plan.maxMessages,
-      },
-      connections: {
-        isSlackAllowed: plan.isManagedSlackAllowed,
-        isNotionAllowed: plan.isManagedNotionAllowed,
-        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-        isGithubAllowed: plan.isManagedGithubAllowed,
-      },
-      dataSources: {
-        count: plan.maxDataSourcesCount,
-        documents: {
-          count: plan.maxDataSourcesDocumentsCount,
-          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+    plan: {
+      code: plan.code,
+      name: plan.name,
+      stripeProductId: plan.stripeProductId,
+      billingType: plan.billingType,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: plan.isSlackbotAllowed,
+          maxMessages: plan.maxMessages,
         },
-      },
-      users: {
-        maxUsers: plan.maxUsersInWorkspace,
+        connections: {
+          isSlackAllowed: plan.isManagedSlackAllowed,
+          isNotionAllowed: plan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: plan.isManagedGithubAllowed,
+        },
+        dataSources: {
+          count: plan.maxDataSourcesCount,
+          documents: {
+            count: plan.maxDataSourcesDocumentsCount,
+            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+          },
+        },
+        users: {
+          maxUsers: plan.maxUsersInWorkspace,
+        },
       },
     },
   };

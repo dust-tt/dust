@@ -103,17 +103,17 @@ export const createCheckoutSession = async ({
  */
 export const createCustomerPortalSession = async ({
   owner,
-  plan,
+  subscription,
 }: {
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  subscription: SubscriptionType;
 }): Promise<string | null> => {
-  if (!plan.stripeCustomerId) {
+  if (!subscription.stripeCustomerId) {
     throw new Error("No customer ID found for the workspace");
   }
 
   const portalSession = await stripe.billingPortal.sessions.create({
-    customer: plan.stripeCustomerId,
+    customer: subscription.stripeCustomerId,
     return_url: `${URL}/w/${owner.sId}/subscription`,
   });
 

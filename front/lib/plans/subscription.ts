@@ -46,36 +46,38 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   const freeTestPlan: PlanAttributes = FREE_TEST_PLAN_DATA;
 
   return {
-    code: freeTestPlan.code,
-    name: freeTestPlan.name,
     status: "active",
     subscriptionId: null,
     stripeSubscriptionId: null,
     stripeCustomerId: null,
-    stripeProductId: null,
-    billingType: freeTestPlan.billingType,
     startDate: null,
     endDate: null,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: freeTestPlan.isSlackbotAllowed,
-        maxMessages: freeTestPlan.maxMessages,
-      },
-      connections: {
-        isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
-        isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
-        isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
-        isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
-      },
-      dataSources: {
-        count: freeTestPlan.maxDataSourcesCount,
-        documents: {
-          count: freeTestPlan.maxDataSourcesDocumentsCount,
-          sizeMb: freeTestPlan.maxDataSourcesDocumentsSizeMb,
+    plan: {
+      code: freeTestPlan.code,
+      name: freeTestPlan.name,
+      stripeProductId: null,
+      billingType: freeTestPlan.billingType,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: freeTestPlan.isSlackbotAllowed,
+          maxMessages: freeTestPlan.maxMessages,
         },
-      },
-      users: {
-        maxUsers: freeTestPlan.maxUsersInWorkspace,
+        connections: {
+          isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
+          isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
+        },
+        dataSources: {
+          count: freeTestPlan.maxDataSourcesCount,
+          documents: {
+            count: freeTestPlan.maxDataSourcesDocumentsCount,
+            sizeMb: freeTestPlan.maxDataSourcesDocumentsSizeMb,
+          },
+        },
+        users: {
+          maxUsers: freeTestPlan.maxUsersInWorkspace,
+        },
       },
     },
   };
@@ -140,36 +142,38 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     );
 
     return {
-      code: plan.code,
-      name: plan.name,
       status: "active",
       subscriptionId: newSubscription.sId,
       stripeSubscriptionId: newSubscription.stripeSubscriptionId,
       stripeCustomerId: newSubscription.stripeCustomerId,
-      stripeProductId: null,
-      billingType: "free",
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: plan.isSlackbotAllowed,
-          maxMessages: plan.maxMessages,
-        },
-        connections: {
-          isSlackAllowed: plan.isManagedSlackAllowed,
-          isNotionAllowed: plan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: plan.isManagedGithubAllowed,
-        },
-        dataSources: {
-          count: plan.maxDataSourcesCount,
-          documents: {
-            count: plan.maxDataSourcesDocumentsCount,
-            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+      plan: {
+        code: plan.code,
+        name: plan.name,
+        stripeProductId: null,
+        billingType: "free",
+        limits: {
+          assistant: {
+            isSlackBotAllowed: plan.isSlackbotAllowed,
+            maxMessages: plan.maxMessages,
           },
-        },
-        users: {
-          maxUsers: plan.maxUsersInWorkspace,
+          connections: {
+            isSlackAllowed: plan.isManagedSlackAllowed,
+            isNotionAllowed: plan.isManagedNotionAllowed,
+            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+            isGithubAllowed: plan.isManagedGithubAllowed,
+          },
+          dataSources: {
+            count: plan.maxDataSourcesCount,
+            documents: {
+              count: plan.maxDataSourcesDocumentsCount,
+              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+            },
+          },
+          users: {
+            maxUsers: plan.maxUsersInWorkspace,
+          },
         },
       },
     };
