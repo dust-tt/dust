@@ -33,6 +33,7 @@ import logger from "@connectors/logger/logger";
 import {
   formatMessagesForUpsert,
   getBotUserIdMemoized,
+  getChannels,
   getUserName,
 } from "./temporal/activities";
 
@@ -67,53 +68,70 @@ export async function botAnswerMessageWithErrorHandling(
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
-  const res = await botAnswerMessage(
-    message,
-    slackTeamId,
-    slackChannel,
-    slackUserId,
-    slackMessageTs,
-    slackThreadTs,
-    connector
-  );
-  if (res.isErr()) {
-    logger.error(
-      {
-        error: res.error,
-        slackTeamId: slackTeamId,
-        slackChannel: slackChannel,
-        slackUserId: slackUserId,
-        slackMessageTs: slackMessageTs,
-      },
-      "Failed answering to Slack Chat Bot message"
+  try {
+    const res = await botAnswerMessage(
+      message,
+      slackTeamId,
+      slackChannel,
+      slackUserId,
+      slackMessageTs,
+      slackThreadTs,
+      connector
     );
-    let errorMessage: string | undefined = undefined;
-    if (res.error instanceof SlackExternalUserError) {
-      errorMessage = res.error.message;
+    if (res.isErr()) {
+      logger.error(
+        {
+          error: res.error,
+          slackTeamId: slackTeamId,
+          slackChannel: slackChannel,
+          slackUserId: slackUserId,
+          slackMessageTs: slackMessageTs,
+        },
+        "Failed answering to Slack Chat Bot message"
+      );
+      let errorMessage: string | undefined = undefined;
+      if (res.error instanceof SlackExternalUserError) {
+        errorMessage = res.error.message;
+      } else {
+        errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
+      }
+
+      const slackClient = await getSlackClient(connector.id);
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: errorMessage,
+        thread_ts: slackMessageTs,
+      });
     } else {
-      errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
+      logger.info(
+        {
+          slackTeamId: slackTeamId,
+          slackChannel: slackChannel,
+          slackUserId: slackUserId,
+          slackMessageTs: slackMessageTs,
+          message: message,
+        },
+        `Successfully answered to Slack Chat Bot message`
+      );
     }
 
+    return res;
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+      },
+      `Unexpected exception answering to Slack Chat Bot message`
+    );
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: errorMessage,
+      text: `An unexpected error occured. Our team has been notified.`,
       thread_ts: slackMessageTs,
     });
-  } else {
-    logger.info(
-      {
-        slackTeamId: slackTeamId,
-        slackChannel: slackChannel,
-        slackUserId: slackUserId,
-        slackMessageTs: slackMessageTs,
-        message: message,
-      },
-      `Successfully answered to Slack Chat Bot message`
-    );
-  }
 
-  return res;
+    return new Err(new Error(`An unexpected error occured`));
+  }
 }
 
 async function botAnswerMessage(
@@ -125,6 +143,17 @@ async function botAnswerMessage(
   slackThreadTs: string | null,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+  const slackChannelsICanSee = (await getChannels(connector.id, false))
+    .map((c) => c.id)
+    .flatMap((c) => (c ? [c] : []));
+  if (!slackChannelsICanSee.includes(slackChannel)) {
+    return new Err(
+      new SlackExternalUserError(
+        "Sorry, but I can only answer to public channels."
+      )
+    );
+  }
+
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
@@ -196,9 +225,7 @@ async function botAnswerMessage(
     conversationId: lastSlackChatBotMessage?.conversationId,
   });
 
-  // Start computing the content fragment as early as possible since it's independent from all the
-  // other I/O operations and a lot of the subsequent I/O operations can only be done sequentially.
-  const contentFragmentPromise = makeContentFragment(
+  const buildContentFragmentRes = await makeContentFragment(
     slackClient,
     slackChannel,
     lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
@@ -348,7 +375,6 @@ async function botAnswerMessage(
     },
   };
 
-  const buildContentFragmentRes = await contentFragmentPromise;
   if (buildContentFragmentRes.isErr()) {
     return new Err(new Error(buildContentFragmentRes.error.message));
   }
