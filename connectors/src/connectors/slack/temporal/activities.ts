@@ -98,6 +98,24 @@ export async function getChannels(
   return allChannels;
 }
 
+export async function getChannelsToSync(connectorId: number) {
+  const [remoteChannels, localChannels] = await Promise.all([
+    await getChannels(connectorId, true),
+    await SlackChannel.findAll({
+      where: {
+        connectorId: connectorId,
+        permission: {
+          [Op.or]: ["read", "read_write"],
+        },
+      },
+    }),
+  ]);
+  const readAllowedChannels = new Set(
+    localChannels.map((c) => c.slackChannelId)
+  );
+  return remoteChannels.filter((c) => c.id && readAllowedChannels.has(c.id));
+}
+
 export async function getChannel(
   connectorId: ModelId,
   channelId: string

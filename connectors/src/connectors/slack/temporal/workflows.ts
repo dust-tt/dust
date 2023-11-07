@@ -18,7 +18,7 @@ import {
 
 const {
   getChannel,
-  getChannels,
+  getChannelsToSync,
   syncThread,
   syncNonThreaded,
   syncChannel,
@@ -50,7 +50,7 @@ export async function workspaceFullSync(
   fromTs: number | null
 ): Promise<void> {
   await fetchUsers(connectorId);
-  const channels = await getChannels(connectorId, true);
+  const channels = await getChannelsToSync(connectorId);
   let i = 0;
   for (const channel of channels) {
     if (!channel.id || !channel.name) {
