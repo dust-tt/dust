@@ -2,7 +2,7 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
-import { planForWorkspace } from "@app/lib/auth";
+import { subscriptionForWorkspace } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import {
@@ -59,7 +59,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  wId: ${w.sId}`);
       console.log(`  name: ${w.name}`);
 
-      const plan = await planForWorkspace(w);
+      const subscription = await subscriptionForWorkspace(w);
+      const plan = subscription.plan;
       console.log(`  plan:`);
       console.log(`    limits:`);
       console.log(`      dataSources:`);

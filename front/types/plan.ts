@@ -45,11 +45,12 @@ export type PlanType = {
   billingType: FreeBillingType | PaidBillingType;
 };
 
-export type SubscriptionType = PlanType & {
+export type SubscriptionType = {
   subscriptionId: string | null; // null for the free test plan that is not in the database
   status: "active" | "ended";
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   startDate: number | null;
   endDate: number | null;
+  plan: PlanType;
 };

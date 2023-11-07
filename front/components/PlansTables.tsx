@@ -4,13 +4,13 @@ import React from "react";
 
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
-import { SubscriptionType } from "@app/types/plan";
+import { PlanType } from "@app/types/plan";
 
 interface PricePlanProps {
   size: "sm" | "xs";
   className?: string;
   isTabs?: boolean;
-  plan?: SubscriptionType;
+  plan?: PlanType;
   onClickProPlan?: () => void;
   onClickEnterprisePlan?: () => void;
   isProcessing?: boolean;
@@ -45,7 +45,7 @@ function ProPriceTable({
   isProcessing,
 }: {
   size: "sm" | "xs";
-  plan?: SubscriptionType;
+  plan?: PlanType;
   onClick?: () => void;
   isProcessing?: boolean;
 }) {

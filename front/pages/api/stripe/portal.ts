@@ -35,8 +35,8 @@ async function handler(
   const auth = await Authenticator.fromSession(session, workspaceId);
 
   const owner = auth.workspace();
-  const plan = auth.plan();
-  if (!owner || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -59,7 +59,10 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const portalUrl = await createCustomerPortalSession({ owner, plan });
+      const portalUrl = await createCustomerPortalSession({
+        owner,
+        subscription,
+      });
       if (portalUrl) {
         res.status(200).json({ portalUrl });
         return;

@@ -20,7 +20,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -31,8 +31,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  const plan = auth.plan();
-  if (!owner || !auth.isAdmin() || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isAdmin() || !subscription) {
     return {
       notFound: true,
     };
@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      plan,
+      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -51,7 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function WorkspaceAdmin({
   user,
   owner,
-  plan,
+  subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -181,8 +181,8 @@ export default function WorkspaceAdmin({
 
   // This is not perfect as workspaces who were on multiple paid plans will have the list of months only for the current plan.
   // We're living with it until it's a problem.
-  if (plan.startDate) {
-    const startDate = new Date(plan.startDate);
+  if (subscription.startDate) {
+    const startDate = new Date(subscription.startDate);
     const startDateYear = startDate.getFullYear();
     const startDateMonth = startDate.getMonth();
 

@@ -27,7 +27,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
-  plan: SubscriptionType;
+  subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -38,8 +38,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  const plan = auth.plan();
-  if (!owner || !auth.isAdmin() || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isAdmin() || !subscription) {
     return {
       notFound: true,
     };
@@ -49,7 +49,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
-      plan,
+      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -58,7 +58,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function Subscription({
   user,
   owner,
-  plan,
+  subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -118,6 +118,7 @@ export default function Subscription({
     setIsProcessing(false);
   }
 
+  const plan = subscription.plan;
   const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
 
   const onClickProPlan = async () =>
@@ -150,7 +151,7 @@ export default function Subscription({
               </div>
             </div>
             <div className="flex-1">
-              {plan.stripeCustomerId && (
+              {subscription.stripeCustomerId && (
                 <>
                   <Page.H variant="h5">Payment, invoicing & billing</Page.H>
                   <div className="pt-2">
