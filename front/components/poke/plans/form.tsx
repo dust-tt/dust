@@ -10,8 +10,7 @@ import {
 import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
-import { PokePlanType } from "@app/pages/api/poke/plans";
-import { FreeBillingType, PaidBillingType } from "@app/types/plan";
+import { FreeBillingType, PaidBillingType, PlanType } from "@app/types/plan";
 
 export type EditingPlanType = {
   name: string;
@@ -31,7 +30,7 @@ export type EditingPlanType = {
   isNewPlan?: boolean;
 };
 
-export const fromPokePlanType = (plan: PokePlanType): EditingPlanType => {
+export const fromPlanType = (plan: PlanType): EditingPlanType => {
   return {
     name: plan.name,
     stripeProductId: plan.stripeProductId || "",
@@ -50,7 +49,7 @@ export const fromPokePlanType = (plan: PokePlanType): EditingPlanType => {
   };
 };
 
-export const toPokePlanType = (editingPlan: EditingPlanType): PokePlanType => {
+export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   return {
     code: editingPlan.code.trim(),
     name: editingPlan.name.trim(),

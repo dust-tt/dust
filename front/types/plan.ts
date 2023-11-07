@@ -37,16 +37,19 @@ export const PAID_BILLING_TYPES = [
 export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
 export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 
-export type SubscriptionType = {
+export type PlanType = {
   code: string;
   name: string;
-  status: "active" | "ended";
-  subscriptionId: string | null; // null for the free test plan that is not in db
-  stripeSubscriptionId: string | null;
-  stripeCustomerId: string | null;
+  limits: LimitsType;
   stripeProductId: string | null;
   billingType: FreeBillingType | PaidBillingType;
+};
+
+export type SubscriptionType = PlanType & {
+  subscriptionId: string | null; // null for the free test plan that is not in the database
+  status: "active" | "ended";
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
   startDate: number | null;
   endDate: number | null;
-  limits: LimitsType;
 };
