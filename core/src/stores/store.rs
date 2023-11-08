@@ -206,7 +206,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 11] = [
+pub const POSTGRES_TABLES: [&'static str; 14] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -311,9 +311,41 @@ pub const POSTGRES_TABLES: [&'static str; 11] = [
        status                   TEXT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
+    "-- databases
+    CREATE TABLE IF NOT EXISTS databases (
+       id                   BIGSERIAL PRIMARY KEY,
+       created              BIGINT NOT NULL,
+       database_id          TEXT NOT NULL, -- unique within data source
+       internal_id          TEXT NOT NULL, -- unique globally
+       data_source          BIGINT NOT NULL,
+       name                 TEXT NOT NULL,
+       connection_string    TEXT, -- unused for now
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+    );",
+    "-- databases tables
+    CREATE TABLE IF NOT EXISTS databases_tables (
+       id                   BIGSERIAL PRIMARY KEY,
+       created              BIGINT NOT NULL,
+       table_id             TEXT NOT NULL, -- unique within database
+       internal_id          TEXT NOT NULL, -- unique globally
+       database             BIGINT NOT NULL,
+       name                 TEXT NOT NULL,
+       description          TEXT NOT NULL,
+       FOREIGN KEY(database) REFERENCES databases(id)
+    );",
+    "-- databases row
+    CREATE TABLE IF NOT EXISTS databases_rows (
+       id                   BIGSERIAL PRIMARY KEY,
+       created              BIGINT NOT NULL,
+       content              JSONB NOT NULL,
+       row_id               TEXT NOT NULL, -- unique within table
+       internal_id          TEXT NOT NULL, -- unique globally
+       database_table       BIGINT NOT NULL,
+       FOREIGN KEY(database_table) REFERENCES databases_tables(id)
+    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 18] = [
+pub const SQL_INDEXES: [&'static str; 24] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -356,4 +388,16 @@ pub const SQL_INDEXES: [&'static str; 18] = [
        idx_data_sources_documents_tags_array ON data_sources_documents USING GIN (tags_array);",
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_parents_array ON data_sources_documents USING GIN (parents);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+         idx_databases_internal_id ON databases (internal_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_databases_database_id_data_source ON databases (database_id, data_source);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_databases_tables_internal_id ON databases_tables (internal_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_databases_tables_table_id_database ON databases_tables (table_id, database);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_databases_rows_internal_id ON databases_rows (internal_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
 ];
