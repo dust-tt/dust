@@ -1,9 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
-import { internalSubscribeWorkspaceToFreeUpgradedPlan } from "@app/lib/plans/subscription";
+import {
+  internalSubscribeWorkspaceToFreeUpgradedPlan,
+  pokeInviteWorkspaceToEnterprisePlan,
+} from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { WorkspaceType } from "@app/types/user";
 
@@ -16,7 +19,19 @@ async function handler(
   res: NextApiResponse<UpgradeWorkspaceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
+  const { wId } = req.query;
+  if (!wId || typeof wId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "The request query is invalid, expects { workspaceId: string }.",
+      },
+    });
+  }
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+  const user = auth.user();
 
   if (!user) {
     return apiError(req, res, {
@@ -68,9 +83,15 @@ async function handler(
         });
       }
 
-      await internalSubscribeWorkspaceToFreeUpgradedPlan({
-        workspaceId: workspace.sId,
-      });
+      const { planCode } = req.query;
+
+      if (!planCode || typeof planCode !== "string") {
+        await internalSubscribeWorkspaceToFreeUpgradedPlan({
+          workspaceId: workspace.sId,
+        });
+      } else {
+        await pokeInviteWorkspaceToEnterprisePlan(auth, planCode);
+      }
 
       return res.status(200).json({
         workspace: {

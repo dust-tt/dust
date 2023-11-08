@@ -10,7 +10,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
-  workspace: WorkspaceType;
+  owner: WorkspaceType;
   members: UserType[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -40,9 +40,9 @@ export const getServerSideProps: GetServerSideProps<{
 
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
-  const workspace = auth.workspace();
+  const owner = auth.workspace();
 
-  if (!workspace) {
+  if (!owner) {
     return {
       notFound: true,
     };
@@ -53,14 +53,14 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: {
       user,
-      workspace,
+      owner,
       members,
     },
   };
 };
 
 const MembershipsPage = ({
-  workspace,
+  owner,
   members,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -71,7 +71,7 @@ const MembershipsPage = ({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${workspace.sId}/revoke`, {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +94,7 @@ const MembershipsPage = ({
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       <div className="flex-grow p-6">
-        <h1 className="mb-8 text-2xl font-bold">{workspace.name}</h1>
+        <h1 className="mb-8 text-2xl font-bold">{owner.name}</h1>
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Members:</h2>
