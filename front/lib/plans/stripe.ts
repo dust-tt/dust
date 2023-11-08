@@ -30,6 +30,8 @@ async function getPriceId(productId: string): Promise<string | null> {
  * Calls the Stripe API to create a checkout session for a given workspace/plan.
  * We return the URL of the checkout session.
  * Once the users has completed the checkout, we will receive an event on our Stripe webhook
+ * The `auth` role is not checked, because we allow anyone (even if not logged in or not part of the WS)
+ * to go through the checkout process.
  */
 export const createCheckoutSession = async ({
   auth,
