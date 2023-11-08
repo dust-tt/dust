@@ -235,16 +235,23 @@ export async function cleanupSlackConnector(
         return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
       }
 
-      const slackClient = await getSlackClient(connector.id);
-      const deleteRes = await slackClient.apps.uninstall({
-        client_id: SLACK_CLIENT_ID,
-        client_secret: SLACK_CLIENT_SECRET,
-      });
-      if (deleteRes && !deleteRes.ok) {
-        return new Err(
-          new Error(
-            `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
-          )
+      try {
+        const slackClient = await getSlackClient(connector.id);
+        const deleteRes = await slackClient.apps.uninstall({
+          client_id: SLACK_CLIENT_ID,
+          client_secret: SLACK_CLIENT_SECRET,
+        });
+        if (deleteRes && !deleteRes.ok) {
+          return new Err(
+            new Error(
+              `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
+            )
+          );
+        }
+      } catch (e) {
+        logger.error(
+          { connectorId: connectorId, error: e },
+          "Could not uninstall the Slack app from the user's workspace."
         );
       }
 
