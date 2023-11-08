@@ -1969,6 +1969,108 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn list_database_tables(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DatabaseTable>, usize)> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let database_id = database_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // load the data source
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // load the database
+        let r = c
+            .query(
+                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
+                &[&data_source_row_id, &database_id],
+            )
+            .await?;
+
+        let database_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // load the tables
+        let rows = match limit_offset {
+            None => {
+                let stmt = c
+                    .prepare(
+                        "SELECT created, table_id, internal_id, name, description FROM database_tables \
+                        WHERE database = $1",
+                    )
+                    .await?;
+                c.query(&stmt, &[&database_row_id]).await?
+            }
+            Some((limit, offset)) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT created, table_id, internal_id, name, description FROM database_tables \
+                        WHERE database = $1 LIMIT $2 OFFSET $3",
+                    )
+                    .await?;
+                c.query(
+                    &stmt,
+                    &[&database_row_id, &(limit as i64), &(offset as i64)],
+                )
+                .await?
+            }
+        };
+
+        let tables: Vec<DatabaseTable> = rows
+            .into_iter()
+            .map(|r| {
+                let created: i64 = r.get(0);
+                let table_id: String = r.get(1);
+                let internal_id: String = r.get(2);
+                let name: String = r.get(3);
+                let description: String = r.get(4);
+
+                Ok(DatabaseTable::new_from_store(
+                    created as u64,
+                    &database_id,
+                    &table_id,
+                    &internal_id,
+                    &name,
+                    &description,
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let total = match limit_offset {
+            None => tables.len(),
+            Some(_) => {
+                let stmt = c
+                    .prepare("SELECT COUNT(*) FROM database_tables WHERE database = $1")
+                    .await?;
+                let t: i64 = c.query_one(&stmt, &[&database_row_id]).await?.get(0);
+                t as usize
+            }
+        };
+
+        Ok((tables, total))
+    }
+
     async fn insert_database_row(
         &self,
         project: &Project,
@@ -2117,13 +2219,12 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: &str,
+        table_id: Option<&str>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
-        let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2154,42 +2255,36 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let r = c
-            .query(
-                "SELECT id FROM database_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
-                &[&database_row_id, &table_id],
-            )
-            .await?;
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_row_id];
+        let mut query = "SELECT database_rows.created, database_rows.row_id, database_rows.internal_id, \
+                         database_rows.data, database_tables.table_id \
+                         FROM database_rows \
+                         INNER JOIN database_tables ON database_rows.database_table = database_tables.id \
+                         WHERE database_tables.database = $1".to_string();
 
-        let table_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Table: {}", table_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
+        let table_id_str: String;
+        if let Some(table_id) = table_id {
+            table_id_str = table_id.to_string();
+            query.push_str(" AND database_tables.table_id = $2");
+            params.push(&table_id_str);
         };
 
-        let rows = match limit_offset {
-            None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created, row_id, internal_id, data FROM database_rows 
-                        WHERE database_table = $1 
-                        ORDER BY created DESC",
-                    )
-                    .await?;
-                c.query(&stmt, &[&table_row_id]).await?
-            }
-            Some((limit, offset)) => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created, row_id, internal_id, data FROM database_rows 
-                        WHERE database_table = $1 
-                        ORDER BY created DESC LIMIT $2 OFFSET $3",
-                    )
-                    .await?;
-                c.query(&stmt, &[&table_row_id, &(limit as i64), &(offset as i64)])
-                    .await?
-            }
-        };
+        query.push_str(" ORDER BY created DESC");
+
+        let limit_i64: i64;
+        let offset_i64: i64;
+        if let Some((limit, offset)) = limit_offset {
+            query.push_str(" LIMIT $");
+            query.push_str(&(params.len() + 1).to_string());
+            query.push_str(" OFFSET $");
+            query.push_str(&(params.len() + 2).to_string());
+            limit_i64 = limit as i64;
+            offset_i64 = offset as i64;
+            params.push(&limit_i64);
+            params.push(&(offset_i64));
+        }
+
+        let rows = c.query(&query, &params).await?;
 
         let rows: Vec<DatabaseRow> = rows
             .iter()
@@ -2198,6 +2293,7 @@ impl Store for PostgresStore {
                 let row_id: String = row.get(1);
                 let internal_id: String = row.get(2);
                 let data: String = row.get(3);
+                let table_id: String = row.get(4);
                 let content: Value = serde_json::from_str(&data)?;
                 Ok(DatabaseRow::new_from_store(
                     created as u64,
@@ -2212,10 +2308,11 @@ impl Store for PostgresStore {
         let total = match limit_offset {
             None => rows.len(),
             Some(_) => {
-                let stmt = c
-                    .prepare("SELECT COUNT(*) FROM database_rows WHERE database_table = $1")
-                    .await?;
-                let t: i64 = c.query_one(&stmt, &[&table_row_id]).await?.get(0);
+                let count_sql = match table_id {
+                    Some(_) => "SELECT COUNT(*) FROM database_rows WHERE database_table = (SELECT id FROM database_tables WHERE database = $1 AND table_id = $2)",
+                    None => "SELECT COUNT(*) FROM database_rows WHERE database_table IN (SELECT id FROM database_tables WHERE database = $1)",
+                };
+                let t: i64 = c.query_one(count_sql, &params).await?.get(0);
                 t as usize
             }
         };

@@ -170,6 +170,13 @@ pub trait Store {
         database_id: &str,
         table_id: &str,
     ) -> Result<Option<DatabaseTable>>;
+    async fn list_database_tables(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DatabaseTable>, usize)>;
     async fn insert_database_row(
         &self,
         project: &Project,
@@ -190,7 +197,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: &str,
+        table_id: Option<&str>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)>;
 
