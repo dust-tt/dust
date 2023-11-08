@@ -106,17 +106,8 @@ export function googleDriveFullSyncWorkflowId(connectorId: string) {
 
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
-  pass: {
-    // Number of times to run the incremental sync workflow.
-    // There is sometimes a delay between the time we receive a Google Drive webhook
-    // and the time the changes are actually available in the Gdrive API.
-    // So we run the incremental sync workflow multiple times to increase the chances of catching the changes.
-    no: number;
-    delay: number;
-  }
+  dataSourceConfig: DataSourceConfig
 ) {
-  pass.no = pass.no - 1;
   let signaled = false;
   let debounceCount = 0;
   setHandler(newWebhookSignal, () => {
@@ -148,19 +139,9 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
-  }
 
-  await syncSucceeded(connectorId);
-  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
-  if (pass.no > 0) {
-    await sleep(pass.delay);
-    await executeChild(googleDriveIncrementalSync, {
-      workflowId: `${workflowInfo().workflowId}-pass-${
-        pass.no
-      }-${new Date().getTime()}`,
-      args: [connectorId, dataSourceConfig, pass],
-      memo: workflowInfo().memo,
-    });
+    await syncSucceeded(connectorId);
+    console.log("googleDriveIncrementalSync done for connectorId", connectorId);
   }
 }
 
