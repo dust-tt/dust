@@ -4,6 +4,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
+import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { sequelize_conn, SlackChannel } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -66,19 +68,39 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     new Set(slackChannelIds.filter((id) => !foundSlackChannelIds.has(id)))
   );
 
-  if (missingSlackChannelIds.length) {
-    return apiError(req, res, {
-      api_error: {
-        type: "not_found",
-        message: `Slack channel(s) not found: ${missingSlackChannelIds.join(
-          ", "
-        )}`,
-      },
-      status_code: 404,
-    });
-  }
-
   await sequelize_conn.transaction(async (t) => {
+    if (missingSlackChannelIds.length) {
+      const remoteChannels = (
+        await getChannels(parseInt(connectorId), false)
+      ).flatMap((c) => (c.id && c.name ? [{ id: c.id, name: c.name }] : []));
+      const remoteChannelsById = remoteChannels.reduce((acc, ch) => {
+        acc[ch.id] = ch;
+        return acc;
+      }, {} as Record<string, { id: string; name: string }>);
+      const createdChannels = await Promise.all(
+        missingSlackChannelIds.map((slackChannelId) => {
+          const remoteChannel = remoteChannelsById[slackChannelId];
+          if (!remoteChannel) {
+            throw new Error(
+              `Unexpected error: Access to the Slack channel ${slackChannelId} seems lost.`
+            );
+          }
+          return SlackChannel.create(
+            {
+              connectorId: parseInt(connectorId),
+              slackChannelId,
+              slackChannelName: remoteChannel.name,
+              agentConfigurationId,
+              permission: "write",
+            },
+            {
+              transaction: t,
+            }
+          );
+        })
+      );
+      slackChannelIds.push(...createdChannels.map((c) => c.slackChannelId));
+    }
     await SlackChannel.update(
       { agentConfigurationId: null },
       {
@@ -98,6 +120,27 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       )
     );
   });
+  const joinPromises = await Promise.all(
+    slackChannelIds.map((slackChannelId) =>
+      joinChannel(parseInt(connectorId), slackChannelId)
+    )
+  );
+  for (const joinRes of joinPromises) {
+    if (joinRes.isErr()) {
+      return apiError(
+        req,
+        res,
+        {
+          api_error: {
+            type: "internal_server_error",
+            message: `Could not join channel: ${joinRes.error}`,
+          },
+          status_code: 400,
+        },
+        joinRes.error
+      );
+    }
+  }
 
   res.status(200).json({
     success: true,
