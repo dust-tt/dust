@@ -1284,7 +1284,7 @@ function SlackIntegration({
               }}
               expandable={false}
               fullySelected={false}
-              filterPermission="write"
+              filterPermission="none"
             />
           </div>
         </div>
