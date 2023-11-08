@@ -116,7 +116,7 @@ export async function googleDriveIncrementalSync(
   });
   while (signaled) {
     signaled = false;
-    await sleep(30000);
+    await sleep(10000);
     if (signaled) {
       debounceCount++;
       if (debounceCount < 30) {
@@ -139,10 +139,10 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
-  }
 
-  await syncSucceeded(connectorId);
-  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
+    await syncSucceeded(connectorId);
+    console.log("googleDriveIncrementalSync done for connectorId", connectorId);
+  }
 }
 
 export function googleDriveIncrementalSyncWorkflowId(connectorId: string) {
