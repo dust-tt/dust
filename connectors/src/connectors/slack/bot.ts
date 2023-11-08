@@ -143,17 +143,6 @@ async function botAnswerMessage(
   slackThreadTs: string | null,
   connector: Connector
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
-  const slackChannelsICanSee = (await getChannels(connector.id, false))
-    .map((c) => c.id)
-    .flatMap((c) => (c ? [c] : []));
-  if (!slackChannelsICanSee.includes(slackChannel)) {
-    return new Err(
-      new SlackExternalUserError(
-        "Sorry, but I can only answer to public channels."
-      )
-    );
-  }
-
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
