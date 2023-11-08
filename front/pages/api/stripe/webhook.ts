@@ -164,7 +164,7 @@ async function handler(
                   },
                   "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this workspace and this stripe subscription. Ignoring event"
                 );
-                return;
+                return res.status(200).json({ success: true });
               }
 
               // mark existing plan invite as consumed
