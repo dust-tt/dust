@@ -5,9 +5,11 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { subscribeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PlanType } from "@app/types/plan";
 
 export type PostSubscriptionResponseBody = {
-  checkoutUrl: string | null;
+  plan: PlanType;
+  checkoutUrl?: string;
 };
 
 async function handler(
@@ -46,10 +48,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       try {
-        const stripeCheckoutUrl = await subscribeWorkspaceToPlan(auth, {
+        const response = await subscribeWorkspaceToPlan(auth, {
           planCode: req.body.planCode,
         });
-        return res.status(200).json({ checkoutUrl: stripeCheckoutUrl || null });
+        return res.status(200).json(response);
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {

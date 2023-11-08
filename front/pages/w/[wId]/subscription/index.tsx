@@ -168,7 +168,7 @@ export default function Subscription({
               )}
             </div>
           </div>
-          <div className="pt-2">
+          <div className="mb-10 pt-2">
             <Page.H variant="h5">Manage my plan</Page.H>
             <div className="s-h-full s-w-full pt-2">
               <PricePlans

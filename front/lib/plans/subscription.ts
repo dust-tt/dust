@@ -13,7 +13,7 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { SubscriptionType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.
@@ -183,7 +183,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 export const subscribeWorkspaceToPlan = async (
   auth: Authenticator,
   { planCode }: { planCode: string }
-): Promise<string | void> => {
+): Promise<{
+  plan: PlanType;
+  checkoutUrl?: string;
+}> => {
   const user = auth.user();
   const workspace = auth.workspace();
   const activePlan = auth.plan();
@@ -203,10 +206,12 @@ export const subscribeWorkspaceToPlan = async (
 
   // Case of a downgrade to the free default plan: we use the internal function
   if (planCode === FREE_TEST_PLAN_CODE) {
-    await internalSubscribeWorkspaceToFreeTestPlan({
+    const newSubscription = await internalSubscribeWorkspaceToFreeTestPlan({
       workspaceId: workspace.sId,
     });
-    return;
+    return {
+      plan: newSubscription.plan,
+    };
   }
 
   // We make sure the user is not trying to subscribe to a plan he already has
@@ -250,23 +255,89 @@ export const subscribeWorkspaceToPlan = async (
         { transaction: t }
       );
     });
-  } else if (newPlan.stripeProductId) {
-    // We enter Stripe Checkout flow
-    const checkoutUrl = await createCheckoutSession({
-      owner: workspace,
-      planCode: newPlan.code,
-      productId: newPlan.stripeProductId,
-      billingType: newPlan.billingType,
-      stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-    });
-    if (checkoutUrl) {
-      return checkoutUrl;
-    }
-  } else {
+
+    return {
+      plan: {
+        code: newPlan.code,
+        name: newPlan.name,
+        stripeProductId: null,
+        billingType: "free",
+        limits: {
+          assistant: {
+            isSlackBotAllowed: newPlan.isSlackbotAllowed,
+            maxMessages: newPlan.maxMessages,
+          },
+          connections: {
+            isSlackAllowed: newPlan.isManagedSlackAllowed,
+            isNotionAllowed: newPlan.isManagedNotionAllowed,
+            isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
+            isGithubAllowed: newPlan.isManagedGithubAllowed,
+          },
+          dataSources: {
+            count: newPlan.maxDataSourcesCount,
+            documents: {
+              count: newPlan.maxDataSourcesDocumentsCount,
+              sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
+            },
+          },
+          users: {
+            maxUsers: newPlan.maxUsersInWorkspace,
+          },
+        },
+      },
+    };
+  }
+
+  if (!newPlan.stripeProductId) {
     throw new Error(
       `Plan with code ${planCode} is not a free plan and has no Stripe Product ID.`
     );
   }
+
+  // We enter Stripe Checkout flow
+  const checkoutUrl = await createCheckoutSession({
+    owner: workspace,
+    planCode: newPlan.code,
+    productId: newPlan.stripeProductId,
+    billingType: newPlan.billingType,
+    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+  });
+
+  if (!checkoutUrl) {
+    throw new Error("Cannot create Stripe Checkout session.");
+  }
+
+  return {
+    plan: {
+      code: newPlan.code,
+      name: newPlan.name,
+      stripeProductId: newPlan.stripeProductId,
+      billingType: newPlan.billingType,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: newPlan.isSlackbotAllowed,
+          maxMessages: newPlan.maxMessages,
+        },
+        connections: {
+          isSlackAllowed: newPlan.isManagedSlackAllowed,
+          isNotionAllowed: newPlan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: newPlan.isManagedGithubAllowed,
+        },
+        dataSources: {
+          count: newPlan.maxDataSourcesCount,
+          documents: {
+            count: newPlan.maxDataSourcesDocumentsCount,
+            sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
+          },
+        },
+        users: {
+          maxUsers: newPlan.maxUsersInWorkspace,
+        },
+      },
+    },
+    checkoutUrl,
+  };
 };
 
 export const updateWorkspacePerSeatSubscriptionUsage = async ({
