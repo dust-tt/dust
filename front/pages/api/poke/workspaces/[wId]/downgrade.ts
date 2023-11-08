@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
 import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
@@ -16,19 +16,10 @@ async function handler(
   res: NextApiResponse<DowngradeWorkspaceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const user = auth.user();
 
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "Could not find the user.",
-      },
-    });
-  }
-
-  if (!user.isDustSuperUser) {
+  if (!user || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

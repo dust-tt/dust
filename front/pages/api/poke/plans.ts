@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 import Stripe from "stripe";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan } from "@app/lib/models";
 import { getProduct } from "@app/lib/plans/stripe";
@@ -60,9 +60,10 @@ async function handler(
   >
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const user = auth.user();
 
-  if (!user || !user.isDustSuperUser) {
+  if (!user || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

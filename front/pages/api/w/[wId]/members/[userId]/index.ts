@@ -126,7 +126,6 @@ async function handler(
         fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
         image: null,
         workspaces: [w],
-        isDustSuperUser: user.isDustSuperUser,
       };
 
       res.status(200).json({ member });

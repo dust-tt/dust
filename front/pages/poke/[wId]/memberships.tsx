@@ -5,7 +5,7 @@ import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
@@ -13,9 +13,16 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   members: UserType[];
 }> = async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const wId = context.params?.wId;
+  if (!wId || typeof wId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+  const user = auth.user();
 
   if (!user) {
     return {
@@ -26,19 +33,11 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  if (!user.isDustSuperUser) {
+  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
   }
-
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const owner = auth.workspace();
 

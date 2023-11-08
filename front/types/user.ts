@@ -22,7 +22,6 @@ export type UserType = {
   fullName: string;
   image: string | null;
   workspaces: WorkspaceType[];
-  isDustSuperUser: boolean;
 };
 
 export type UserMetadataType = {

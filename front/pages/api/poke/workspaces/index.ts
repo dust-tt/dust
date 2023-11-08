@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { FindOptions, Op, WhereOptions } from "sequelize";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Subscription, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -16,19 +16,10 @@ async function handler(
   res: NextApiResponse<GetWorkspacesResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const user = auth.user();
 
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "Could not find the user.",
-      },
-    });
-  }
-
-  if (!user.isDustSuperUser) {
+  if (!user || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

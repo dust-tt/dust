@@ -227,7 +227,6 @@ async function renderUserMessage(
           fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
           image: null,
           workspaces: [],
-          isDustSuperUser: false,
         }
       : null,
     mentions: mentions.map((m) => {
