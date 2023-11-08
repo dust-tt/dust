@@ -364,6 +364,25 @@ export default function AppLayout({
             </div>
           </div>
 
+          {/** BEGIN Incident Banner */}
+          <div className="flex w-full items-center justify-center bg-warning-300 py-2 text-element-900">
+            <div className="">
+              <span className="font-bold">OpenAI Outage:</span> OpenAI is
+              encountering a{" "}
+              <a
+                href="https://status.openai.com/"
+                target="_blank"
+                className="underline"
+              >
+                full outage of their APIs
+              </a>
+              {". "}
+              All our services are impacted except assistants with no retrieval,
+              and based on Anthropic AI.
+            </div>
+          </div>
+          {/** END Incident Banner */}
+
           <main
             id="main-content"
             className={classNames(

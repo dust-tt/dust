@@ -14,11 +14,13 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
-import { SubscriptionType } from "@app/types/plan";
+import { getPlanInvitation } from "@app/lib/plans/subscription";
+import { PlanInvitationType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -27,6 +29,7 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  planInvitation: PlanInvitationType | null;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -44,11 +47,14 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const planInvitation = await getPlanInvitation(auth);
+
   return {
     props: {
       user,
       owner,
       subscription,
+      planInvitation: planInvitation,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -58,41 +64,40 @@ export default function Subscription({
   user,
   owner,
   subscription,
+  planInvitation,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [isProcessing, setIsProcessing] = React.useState<boolean>(false);
 
-  async function handleSubscribeToPlan(planCode: string): Promise<void> {
-    setIsProcessing(true);
-    const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        planCode,
-      }),
-    });
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Subscribtion failed",
-        description: "Failed to subscribe to a new plan.",
+  const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
+    useSubmitFunction(async () => {
+      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
-    } else {
-      const content = await res.json();
-      if (content.checkoutUrl) {
-        await router.push(content.checkoutUrl);
-      } else if (content.success) {
-        await router.reload(); // We cannot swr the plan so we just reload the page.
-      }
-    }
-    setIsProcessing(false);
-  }
 
-  async function handleGoToStripePortal(): Promise<void> {
-    setIsProcessing(true);
+      if (!res.ok) {
+        sendNotification({
+          type: "error",
+          title: "Subscribtion failed",
+          description: "Failed to subscribe to a new plan.",
+        });
+      } else {
+        const content = await res.json();
+        if (content.checkoutUrl) {
+          await router.push(content.checkoutUrl);
+        } else if (content.success) {
+          await router.reload(); // We cannot swr the plan so we just reload the page.
+        }
+      }
+    });
+
+  const {
+    submit: handleGoToStripePortal,
+    isSubmitting: isGoingToStripePortal,
+  } = useSubmitFunction(async () => {
     const res = await fetch("/api/stripe/portal", {
       method: "POST",
       headers: {
@@ -114,16 +119,22 @@ export default function Subscription({
         window.open(content.portalUrl, "_blank");
       }
     }
-    setIsProcessing(false);
-  }
+  });
+
+  const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
   const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
 
-  const onClickProPlan = async () =>
-    await handleSubscribeToPlan(PRO_PLAN_SEAT_29_CODE);
+  const onClickProPlan = async () => await handleSubscribePlan();
   const onClickEnterprisePlan = () => {
     window.open("mailto:team@dust.tt?subject=Upgrading to Enteprise plan");
+  };
+  const onSubscribeEnterprisePlan = async () => {
+    if (!planInvitation) {
+      throw new Error("Unreachable: No plan invitation");
+    }
+    await handleSubscribePlan();
   };
 
   return (
@@ -140,57 +151,72 @@ export default function Subscription({
           icon={ShapesIcon}
           description="Choose the plan that works for you."
         />
-        <Page.Vertical align="stretch" gap="lg">
-          <div className="flex">
-            <div className="flex-1">
-              <Page.H variant="h5">Your plan </Page.H>
-              <div className="pt-2">
-                You're on&nbsp;&nbsp;
-                <Chip size="sm" color={chipColor} label={plan.name} />
+        {!planInvitation ? (
+          <Page.Vertical align="stretch" gap="md">
+            <div className="flex">
+              <div className="flex-1">
+                <Page.H variant="h5">Your plan </Page.H>
+                <div className="pt-2">
+                  You're on&nbsp;&nbsp;
+                  <Chip size="sm" color={chipColor} label={plan.name} />
+                </div>
+              </div>
+              <div className="flex-1">
+                {subscription.stripeCustomerId && (
+                  <>
+                    <Page.H variant="h5">Payment, invoicing & billing</Page.H>
+                    <div className="pt-2">
+                      <Button
+                        icon={ExternalLinkIcon}
+                        size="sm"
+                        variant="secondary"
+                        label="Visit Dust's dashboard on Stripe"
+                        disabled={isProcessing}
+                        onClick={async () => await handleGoToStripePortal()}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            <div className="flex-1">
-              {subscription.stripeCustomerId && (
-                <>
-                  <Page.H variant="h5">Payment, invoicing & billing</Page.H>
-                  <div className="pt-2">
-                    <Button
-                      icon={ExternalLinkIcon}
-                      size="sm"
-                      variant="secondary"
-                      label="Visit Dust's dashboard on Stripe"
-                      disabled={isProcessing}
-                      onClick={async () => await handleGoToStripePortal()}
+            {!plan ||
+              ([FREE_TEST_PLAN_CODE, PRO_PLAN_SEAT_29_CODE].includes(
+                plan.code
+              ) && (
+                <div className="pt-2">
+                  <Page.H variant="h5">Manage my plan</Page.H>
+                  <div className="s-h-full s-w-full pt-2">
+                    <PricePlans
+                      size="xs"
+                      className="lg:hidden"
+                      isTabs
+                      plan={plan}
+                      onClickProPlan={onClickProPlan}
+                      onClickEnterprisePlan={onClickEnterprisePlan}
+                      isProcessing={isProcessing}
+                    />
+                    <PricePlans
+                      size="xs"
+                      flexCSS="gap-3"
+                      className="hidden lg:flex"
+                      plan={plan}
+                      onClickProPlan={onClickProPlan}
+                      onClickEnterprisePlan={onClickEnterprisePlan}
+                      isProcessing={isProcessing}
                     />
                   </div>
-                </>
-              )}
+                </div>
+              ))}
+          </Page.Vertical>
+        ) : (
+          <Page.Vertical>
+            <div>
+              You have been invited to the <b>{planInvitation.planName}</b>{" "}
+              enterprise plan.
             </div>
-          </div>
-          <div className="mb-10">
-            <Page.H variant="h5">Manage my plan</Page.H>
-            <div className="s-h-full s-w-full flex justify-center pt-4">
-              <PricePlans
-                size="xs"
-                className="lg:hidden"
-                isTabs
-                plan={plan}
-                onClickProPlan={onClickProPlan}
-                onClickEnterprisePlan={onClickEnterprisePlan}
-                isProcessing={isProcessing}
-              />
-              <PricePlans
-                size="xs"
-                flexCSS="gap-3"
-                className="hidden lg:flex"
-                plan={plan}
-                onClickProPlan={onClickProPlan}
-                onClickEnterprisePlan={onClickEnterprisePlan}
-                isProcessing={isProcessing}
-              />
-            </div>
-          </div>
-        </Page.Vertical>
+            <Button label="Subscribe" onClick={onSubscribeEnterprisePlan} />
+          </Page.Vertical>
+        )}
       </Page.Vertical>
     </AppLayout>
   );

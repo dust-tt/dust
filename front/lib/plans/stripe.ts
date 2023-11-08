@@ -1,8 +1,10 @@
 import Stripe from "stripe";
 
+import { Authenticator } from "@app/lib/auth";
+import { Plan } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { assertNever } from "@app/lib/utils";
-import { PaidBillingType, SubscriptionType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
@@ -28,30 +30,47 @@ async function getPriceId(productId: string): Promise<string | null> {
  * Calls the Stripe API to create a checkout session for a given workspace/plan.
  * We return the URL of the checkout session.
  * Once the users has completed the checkout, we will receive an event on our Stripe webhook
+ * The `auth` role is not checked, because we allow anyone (even if not logged in or not part of the WS)
+ * to go through the checkout process.
  */
 export const createCheckoutSession = async ({
-  owner,
+  auth,
   planCode,
-  productId,
-  billingType,
-  stripeCustomerId,
 }: {
-  owner: WorkspaceType;
+  auth: Authenticator;
   planCode: string;
-  productId: string;
-  billingType: PaidBillingType;
-  stripeCustomerId: string | null;
 }): Promise<string | null> => {
-  const priceId = await getPriceId(productId);
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("No workspace found");
+  }
+
+  const plan = await Plan.findOne({ where: { code: planCode } });
+  if (!plan) {
+    throw new Error(
+      `Cannot create checkout session for plan ${planCode}: plan not found.`
+    );
+  }
+  if (!plan.stripeProductId) {
+    throw new Error(
+      `Cannot create checkout session for plan ${planCode}: no Stripe product ID found.`
+    );
+  }
+
+  if (plan.billingType === "free") {
+    throw new Error(`Cannot subscribe to plan ${planCode}: plan is free.`);
+  }
+
+  const priceId = await getPriceId(plan.stripeProductId);
   if (!priceId) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}:  price not found for product ${productId}.`
+      `Cannot subscribe to plan ${planCode}: price not found for product ${plan.stripeProductId}.`
     );
   }
 
   let item: { price: string; quantity?: number } | null = null;
 
-  switch (billingType) {
+  switch (plan.billingType) {
     case "fixed":
       // For a fixed price, quantity is 1 and will not change.
       item = {
@@ -75,13 +94,13 @@ export const createCheckoutSession = async ({
       };
       break;
     default:
-      assertNever(billingType);
+      assertNever(plan.billingType);
   }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     client_reference_id: owner.sId,
-    customer: stripeCustomerId ? stripeCustomerId : undefined,
+    customer: auth.subscription()?.stripeCustomerId || undefined,
     metadata: {
       planCode: planCode,
     },
