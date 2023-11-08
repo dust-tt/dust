@@ -214,10 +214,8 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
   }
 
   // We search for an active subscription for this workspace
-  const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: owner.id, status: "active" },
-  });
-  if (activeSubscription && activeSubscription.planId === plan.id) {
+  const activeSubscription = auth.subscription();
+  if (activeSubscription && activeSubscription.plan.code === plan.code) {
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
