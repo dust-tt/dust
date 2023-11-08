@@ -702,36 +702,18 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
-  try {
-    const channel = await slackClient.conversations.info({
-      channel: channelId,
-    });
+  const channel = await slackClient.conversations.info({
+    channel: channelId,
+  });
 
-    if (channel.error) {
-      return new Err(new Error(channel.error));
-    }
-
-    return new Ok({
-      title: `Thread content from #${channel.channel?.name}`,
-      content: text,
-      url: url,
-      contentType: "slack_thread_content",
-    } as PostContentFragmentRequestBody);
-  } catch (e) {
-    logger.error(
-      {
-        error: e,
-      },
-      `Unhandled error in makeContentFragment`
-    );
-    const slackError = e as CodedError;
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = slackError as WebAPIPlatformError;
-      if (platformError.data.error === "missing_scope") {
-        return new Ok(null);
-      }
-      throw e;
-    }
-    return new Ok(null);
+  if (channel.error) {
+    return new Err(new Error(channel.error));
   }
+
+  return new Ok({
+    title: `Thread content from #${channel.channel?.name}`,
+    content: text,
+    url: url,
+    contentType: "slack_thread_content",
+  } as PostContentFragmentRequestBody);
 }
