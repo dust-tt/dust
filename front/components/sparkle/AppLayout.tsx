@@ -364,7 +364,7 @@ export default function AppLayout({
             </div>
           </div>
 
-          {/** BEGIN Incident Banner */}
+          {/** BEGIN Incident Banner
           <div className="relative z-[80] flex w-full items-center justify-center bg-warning-300 py-2 text-element-900">
             <div className="">
               <span className="font-bold">OpenAI Outage:</span> OpenAI is
