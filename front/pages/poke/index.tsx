@@ -3,7 +3,7 @@ import Link from "next/link";
 import React, { ChangeEvent, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokeWorkspaces } from "@app/lib/swr";
 import { UserType } from "@app/types/user";
 
@@ -11,7 +11,8 @@ export const getServerSideProps: GetServerSideProps<{
   user: UserType;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const user = auth.user();
 
   if (!user) {
     return {
@@ -22,7 +23,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  if (!user.isDustSuperUser) {
+  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };

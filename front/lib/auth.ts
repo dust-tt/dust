@@ -136,10 +136,13 @@ export class Authenticator {
    */
   static async fromSuperUserSession(
     session: any,
-    wId: string
+    wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
+        if (!wId) {
+          return null;
+        }
         return await Workspace.findOne({
           where: {
             sId: wId,
@@ -325,9 +328,12 @@ export class Authenticator {
           // Not available from this method
           image: null,
           workspaces: [],
-          isDustSuperUser: false,
         }
       : null;
+  }
+
+  isDustSuperUser(): boolean {
+    return this._user ? this._user.isDustSuperUser : false;
   }
 }
 
@@ -411,7 +417,6 @@ export async function getUserFromSession(
         role,
       };
     }),
-    isDustSuperUser: user.isDustSuperUser,
   };
 }
 

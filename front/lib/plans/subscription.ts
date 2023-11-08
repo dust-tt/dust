@@ -199,8 +199,8 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
   if (!owner) {
     throw new Error("Cannot find workspace}");
   }
-  const user = auth.user();
-  if (!user?.isDustSuperUser) {
+
+  if (!auth.isDustSuperUser()) {
     throw new Error("Cannot invite workspace to enterprise plan: not allowed.");
   }
 

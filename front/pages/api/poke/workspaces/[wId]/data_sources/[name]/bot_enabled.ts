@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource, Workspace } from "@app/lib/models";
@@ -15,7 +15,8 @@ async function handler(
   res: NextApiResponse<BotEnabledResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const user = auth.user();
 
   if (!user) {
     return apiError(req, res, {
@@ -27,7 +28,7 @@ async function handler(
     });
   }
 
-  if (!user.isDustSuperUser) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

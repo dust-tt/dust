@@ -19,6 +19,7 @@ async function handler(
   res: NextApiResponse<UpgradeWorkspaceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
+
   const { wId } = req.query;
   if (!wId || typeof wId !== "string") {
     return apiError(req, res, {
@@ -43,7 +44,7 @@ async function handler(
     });
   }
 
-  if (!user.isDustSuperUser) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
