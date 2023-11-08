@@ -161,7 +161,6 @@ pub trait Store {
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table: &DatabaseTable,
     ) -> Result<()>;
     async fn load_database_table(
@@ -176,7 +175,6 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: &str,
         row: &DatabaseRow,
     ) -> Result<()>;
     async fn load_database_row(
@@ -193,8 +191,8 @@ pub trait Store {
         data_source_id: &str,
         database_id: &str,
         table_id: &str,
-        limit: usize,
-    ) -> Result<Vec<DatabaseRow>>;
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DatabaseRow>, usize)>;
 
     // LLM Cache
     async fn llm_cache_get(
