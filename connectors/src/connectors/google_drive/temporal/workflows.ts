@@ -116,7 +116,7 @@ export async function googleDriveIncrementalSync(
   });
   while (signaled) {
     signaled = false;
-    await sleep(10000);
+    await sleep(30000);
     if (signaled) {
       debounceCount++;
       if (debounceCount < 30) {
