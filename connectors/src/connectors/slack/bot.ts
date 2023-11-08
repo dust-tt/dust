@@ -718,6 +718,12 @@ async function makeContentFragment(
       contentType: "slack_thread_content",
     } as PostContentFragmentRequestBody);
   } catch (e) {
+    logger.error(
+      {
+        error: e,
+      },
+      `Unhandled error in makeContentFragment`
+    );
     const slackError = e as CodedError;
     if (slackError.code === ErrorCode.PlatformError) {
       const platformError = slackError as WebAPIPlatformError;
