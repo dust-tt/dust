@@ -40,9 +40,9 @@ export const getServerSideProps: GetServerSideProps<object> = async (
 
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(session, targetWorkspace?.sId);
-  const workspace = auth.workspace();
+  const owner = auth.workspace();
 
-  if (!workspace) {
+  if (!owner) {
     return {
       notFound: true,
     };

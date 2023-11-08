@@ -195,8 +195,8 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
   auth: Authenticator,
   planCode: string
 ): Promise<PlanInvitationType> => {
-  const workspace = auth.workspace();
-  if (!workspace) {
+  const owner = auth.workspace();
+  if (!owner) {
     throw new Error("Cannot find workspace}");
   }
   const user = auth.user();
@@ -215,7 +215,7 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
 
   // We search for an active subscription for this workspace
   const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
+    where: { workspaceId: owner.id, status: "active" },
   });
   if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
@@ -231,7 +231,7 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
   const model = await front_sequelize.transaction(async (t) => {
     if (invitation) {
       await PlanInvitation.destroy({
-        where: { workspaceId: workspace.id, consumedAt: null },
+        where: { workspaceId: owner.id, consumedAt: null },
         transaction: t,
       });
     }
@@ -239,7 +239,7 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
     return PlanInvitation.create(
       {
         secret: uuidv4(),
-        workspaceId: workspace.id,
+        workspaceId: owner.id,
         planId: plan.id,
       },
       {
@@ -258,9 +258,9 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
 export const getCheckoutUrlForUpgrade = async (
   auth: Authenticator
 ): Promise<string | void> => {
-  const workspace = auth.workspace();
+  const owner = auth.workspace();
 
-  if (!workspace) {
+  if (!owner) {
     throw new Error(
       "Unauthorized `auth` data: cannot process to subscription of new Plan."
     );
@@ -268,7 +268,7 @@ export const getCheckoutUrlForUpgrade = async (
 
   const planInvitation = await getPlanInvitation(auth);
 
-  const planCode = planInvitation?.planCode ?? FREE_UPGRADED_PLAN_CODE;
+  const planCode = planInvitation?.planCode ?? PRO_PLAN_SEAT_29_CODE;
 
   const plan = await Plan.findOne({
     where: { code: planCode },
@@ -288,10 +288,8 @@ export const getCheckoutUrlForUpgrade = async (
     );
   }
 
-  const existingSubscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
-  });
-  if (existingSubscription && existingSubscription.planId === plan.id) {
+  const existingSubscription = auth.subscription();
+  if (existingSubscription && existingSubscription.plan.code === plan.code) {
     throw new Error(
       `Cannot subscribe to pro plan ${planCode}: already subscribed.`
     );
@@ -300,10 +298,7 @@ export const getCheckoutUrlForUpgrade = async (
   // We enter Stripe Checkout flow
   const checkoutUrl = await createCheckoutSession({
     auth,
-    planCode: PRO_PLAN_SEAT_29_CODE,
-    productId: plan.stripeProductId,
-    billingType: plan.billingType,
-    stripeCustomerId: existingSubscription?.stripeCustomerId || null,
+    planCode: plan.code,
   });
 
   if (checkoutUrl) {
@@ -315,10 +310,10 @@ export const downgradeWorkspaceToFreePlan = async (
   auth: Authenticator
 ): Promise<void> => {
   const user = auth.user();
-  const workspace = auth.workspace();
+  const owner = auth.workspace();
   const activePlan = auth.plan();
 
-  if (!user || !auth.isAdmin() || !workspace || !activePlan) {
+  if (!user || !auth.isAdmin() || !owner || !activePlan) {
     throw new Error(
       "Unauthorized `auth` data: cannot process to subscription of new Plan."
     );
@@ -343,17 +338,18 @@ export const downgradeWorkspaceToFreePlan = async (
     );
   }
 
-  const existingSubscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
-  });
-  if (existingSubscription && existingSubscription.planId === freeTestPlan.id) {
+  const existingSubscription = auth.subscription();
+  if (
+    existingSubscription &&
+    existingSubscription.plan.code === freeTestPlan.code
+  ) {
     throw new Error(
       `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: already subscribed.`
     );
   }
 
   await internalSubscribeWorkspaceToFreeTestPlan({
-    workspaceId: workspace.sId,
+    workspaceId: owner.sId,
   });
   return;
 };

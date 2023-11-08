@@ -29,7 +29,7 @@ import { UserType, WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
-  workspace: WorkspaceType;
+  owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
@@ -64,10 +64,10 @@ export const getServerSideProps: GetServerSideProps<{
 
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
-  const workspace = auth.workspace();
+  const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!workspace || !subscription) {
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -145,7 +145,7 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: {
       user,
-      workspace,
+      owner,
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
@@ -157,7 +157,7 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 const WorkspacePage = ({
-  workspace,
+  owner,
   subscription,
   planInvitation,
   dataSources,
@@ -174,7 +174,7 @@ const WorkspacePage = ({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${workspace.sId}/upgrade`, {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -195,7 +195,7 @@ const WorkspacePage = ({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${workspace.sId}/downgrade`, {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}/downgrade`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -227,7 +227,7 @@ const WorkspacePage = ({
 
       try {
         const r = await fetch(
-          `/api/poke/workspaces/${workspace.sId}/data_sources/${dataSourceName}`,
+          `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceName}`,
           {
             method: "DELETE",
             headers: {
@@ -249,7 +249,7 @@ const WorkspacePage = ({
   const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
     try {
       const r = await fetch(
-        `/api/poke/workspaces/${workspace.sId}/data_sources/managed-slack/bot_enabled`,
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/bot_enabled`,
         {
           method: "POST",
           headers: {
@@ -274,7 +274,7 @@ const WorkspacePage = ({
     async (plan: PlanType) => {
       if (
         !window.confirm(
-          `Are you sure you want to invite ${workspace.name} (${workspace.sId}) to plan ${plan.name} (${plan.code}) ?.`
+          `Are you sure you want to invite ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`
         )
       ) {
         return;
@@ -282,7 +282,7 @@ const WorkspacePage = ({
       try {
         console.log({ plan });
         const r = await fetch(
-          `/api/poke/workspaces/${workspace.sId}/upgrade?planCode=${plan.code}`,
+          `/api/poke/workspaces/${owner.sId}/upgrade?planCode=${plan.code}`,
           {
             method: "POST",
             headers: {
@@ -312,10 +312,10 @@ const WorkspacePage = ({
       <PokeNavbar />
       <div className="flex-grow p-6">
         <h1 className="mb-8 text-2xl font-bold">
-          {workspace.name}{" "}
+          {owner.name}{" "}
           <span>
             <Link
-              href={`/poke/${workspace.sId}/memberships`}
+              href={`/poke/${owner.sId}/memberships`}
               className="text-xs text-action-400"
             >
               view members

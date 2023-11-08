@@ -2,10 +2,11 @@ import Stripe from "stripe";
 
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { assertNever } from "@app/lib/utils";
-import { PaidBillingType, SubscriptionType } from "@app/types/plan";
+import { SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 import { Authenticator } from "../auth";
+import { Plan } from "../models";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -34,31 +35,41 @@ async function getPriceId(productId: string): Promise<string | null> {
 export const createCheckoutSession = async ({
   auth,
   planCode,
-  productId,
-  billingType,
-  stripeCustomerId,
 }: {
   auth: Authenticator;
   planCode: string;
-  productId: string;
-  billingType: PaidBillingType;
-  stripeCustomerId: string | null;
 }): Promise<string | null> => {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("Workspace not found");
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("No workspace found");
   }
 
-  const priceId = await getPriceId(productId);
+  const plan = await Plan.findOne({ where: { code: planCode } });
+  if (!plan) {
+    throw new Error(
+      `Cannot create checkout session for plan ${planCode}: plan not found.`
+    );
+  }
+  if (!plan.stripeProductId) {
+    throw new Error(
+      `Cannot create checkout session for plan ${planCode}: no Stripe product ID found.`
+    );
+  }
+
+  if (plan.billingType === "free") {
+    throw new Error(`Cannot subscribe to plan ${planCode}: plan is free.`);
+  }
+
+  const priceId = await getPriceId(plan.stripeProductId);
   if (!priceId) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}:  price not found for product ${productId}.`
+      `Cannot subscribe to plan ${planCode}: price not found for product ${plan.stripeProductId}.`
     );
   }
 
   let item: { price: string; quantity?: number } | null = null;
 
-  switch (billingType) {
+  switch (plan.billingType) {
     case "fixed":
       // For a fixed price, quantity is 1 and will not change.
       item = {
@@ -71,7 +82,7 @@ export const createCheckoutSession = async ({
       // We will update the quantity of the line item when the number of users changes.
       item = {
         price: priceId,
-        quantity: await countActiveSeatsInWorkspace(workspace.sId),
+        quantity: await countActiveSeatsInWorkspace(owner.sId),
       };
       break;
     case "monthly_active_users":
@@ -82,13 +93,13 @@ export const createCheckoutSession = async ({
       };
       break;
     default:
-      assertNever(billingType);
+      assertNever(plan.billingType);
   }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    client_reference_id: workspace.sId,
-    customer: stripeCustomerId ? stripeCustomerId : undefined,
+    client_reference_id: owner.sId,
+    customer: auth.subscription()?.stripeCustomerId || undefined,
     metadata: {
       planCode: planCode,
     },
@@ -97,8 +108,8 @@ export const createCheckoutSession = async ({
     automatic_tax: {
       enabled: true,
     },
-    success_url: `${URL}/w/${workspace.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${URL}/w/${workspace.sId}/subscription?type=cancelled`,
+    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
   });
 
   return session.url;
