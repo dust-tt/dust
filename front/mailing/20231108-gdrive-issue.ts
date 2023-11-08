@@ -15,11 +15,11 @@ export const sendAPIUserEmail = async ({
     from: "spolu@dust.tt",
     subject:
       "[Dust] Resolved: Google Drive most recent documents not available for retrieval",
-    html: `<p>Hi there—</p>
+    html: `<p>Hi there,</p>
     <p>I'm Stan, a cofounder of Dust.</p>
-    <p>Thanks a lot for trying us out. Between 10:18 UTC and XXX UTC google drive syncing was interrupted due to a problem on our end. During that time, assistants performing retrieval did not have access to your latest Drive documents.</p>
+    <p>Thanks a lot for using Dust. Between 10:18 UTC and XXX UTC google drive syncing was interrupted due to a problem on our end. During that time, assistants performing retrieval did not have access to your latest Drive documents. The rest of the app worked normally.</p>
     <p>Sincere apologies for that, it's not the experience we wanted you to have when giving us a spin. This is now resolved and the google drive connection is fully synced.</p>
-    <p>We're working hard to make Dust a useful tool for you and your team. If you have any thoughts or suggestions on what we should do better, please don't hesitate to let me know. Again, really appreciate you giving us a try.</p>
+    <p>We're working hard to make Dust a useful tool for you and your team. If you have any thoughts or suggestions on what we should do better, please don't hesitate to let me know. Again, really appreciate you trusting us for your business.</p>
     <p>- stan</p>
 `,
   };
@@ -36,7 +36,7 @@ async function main() {
   JOIN "workspaces" ON "data_sources"."workspaceId" = "workspaces"."id"
   JOIN "memberships" ON "workspaces"."id" = "memberships"."workspaceId"
   JOIN "users" ON "memberships"."userId" = "users"."id"
-  WHERE "data_sources"."connectorId" IN ('24')
+  WHERE "data_sources"."connectorId" IN ('151', '108', '181', '115', '122', '42', '69', '138', '213', '24', '76', '208', '220', '218', '236', '152', '187', '166', '100', '62', '60', '37')
   AND "memberships"."role" = 'admin';`);
 
   console.log({ count: rows.length });
