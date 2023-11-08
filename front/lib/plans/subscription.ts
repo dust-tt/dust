@@ -257,7 +257,7 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
 
 export const getCheckoutUrlForUpgrade = async (
   auth: Authenticator
-): Promise<string | void> => {
+): Promise<{ checkoutUrl: string; plan: PlanType }> => {
   const owner = auth.workspace();
 
   if (!owner) {
@@ -301,14 +301,48 @@ export const getCheckoutUrlForUpgrade = async (
     planCode: plan.code,
   });
 
-  if (checkoutUrl) {
-    return checkoutUrl;
+  if (!checkoutUrl) {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
+    );
   }
+
+  return {
+    checkoutUrl,
+    plan: {
+      code: plan.code,
+      name: plan.name,
+      stripeProductId: plan.stripeProductId,
+      billingType: plan.billingType,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: plan.isSlackbotAllowed,
+          maxMessages: plan.maxMessages,
+        },
+        connections: {
+          isSlackAllowed: plan.isManagedSlackAllowed,
+          isNotionAllowed: plan.isManagedNotionAllowed,
+          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+          isGithubAllowed: plan.isManagedGithubAllowed,
+        },
+        dataSources: {
+          count: plan.maxDataSourcesCount,
+          documents: {
+            count: plan.maxDataSourcesDocumentsCount,
+            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+          },
+        },
+        users: {
+          maxUsers: plan.maxUsersInWorkspace,
+        },
+      },
+    },
+  };
 };
 
 export const downgradeWorkspaceToFreePlan = async (
   auth: Authenticator
-): Promise<void> => {
+): Promise<PlantType> => {
   const user = auth.user();
   const owner = auth.workspace();
   const activePlan = auth.plan();
@@ -348,10 +382,11 @@ export const downgradeWorkspaceToFreePlan = async (
     );
   }
 
-  await internalSubscribeWorkspaceToFreeTestPlan({
+  const sub = await internalSubscribeWorkspaceToFreeTestPlan({
     workspaceId: owner.sId,
   });
-  return;
+
+  return sub.plan;
 };
 
 export const updateWorkspacePerSeatSubscriptionUsage = async ({

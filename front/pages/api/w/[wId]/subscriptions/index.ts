@@ -51,8 +51,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       try {
-        const stripeCheckoutUrl = await getCheckoutUrlForUpgrade(auth);
-        return res.status(200).json({ checkoutUrl: stripeCheckoutUrl || null });
+        const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
+          auth
+        );
+        return res.status(200).json({ checkoutUrl, plan: newPlan });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {
@@ -66,8 +68,8 @@ async function handler(
       break;
     case "DELETE":
       try {
-        await downgradeWorkspaceToFreePlan(auth);
-        return res.status(200).json({ checkoutUrl: null });
+        const newPlan = await downgradeWorkspaceToFreePlan(auth);
+        return res.status(200).json({ plan: newPlan });
       } catch (error) {
         logger.error(
           { error },
