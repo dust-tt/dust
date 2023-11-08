@@ -9,7 +9,6 @@ export type DataSourceType = {
   description: string | null;
   visibility: DataSourceVisibility;
   assistantDefaultSelected: boolean;
-  config: string | null;
   dustAPIProjectId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
