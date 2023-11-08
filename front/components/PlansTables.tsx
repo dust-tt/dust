@@ -14,6 +14,7 @@ interface PricePlanProps {
   onClickProPlan?: () => void;
   onClickEnterprisePlan?: () => void;
   isProcessing?: boolean;
+  flexCSS?: string;
 }
 
 function FreePriceTable({ size }: { size: "sm" | "xs" }) {
@@ -137,6 +138,7 @@ export function PricePlans({
   size = "sm",
   isTabs = false,
   className = "",
+  flexCSS = "mx-4 flex flex-row md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
   onClickEnterprisePlan,
@@ -152,7 +154,13 @@ export function PricePlans({
         )}
       >
         <Tab.Group>
-          <Tab.List className="flex space-x-1 rounded-full border border-slate-600/40 bg-slate-900/40 p-1 backdrop-blur">
+          <Tab.List
+            className={classNames(
+              "flex space-x-1 rounded-full border p-1 backdrop-blur",
+              "s-border-structure-300/30 s-bg-white/80",
+              "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+            )}
+          >
             <Tab
               className={({ selected }) =>
                 classNames(
@@ -161,8 +169,8 @@ export function PricePlans({
                   "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-emerald-500 text-white shadow"
-                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
+                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
               }
             >
@@ -176,8 +184,8 @@ export function PricePlans({
                   "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-sky-500 text-white shadow"
-                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                    ? "bg-sky-400 text-white shadow dark:bg-sky-500"
+                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
               }
             >
@@ -191,8 +199,8 @@ export function PricePlans({
                   "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-pink-500 text-white shadow"
-                    : "text-slate-300 hover:bg-white/[0.12] hover:text-white"
+                    ? "bg-pink-400 text-white shadow dark:bg-pink-500"
+                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
               }
             >
@@ -224,12 +232,7 @@ export function PricePlans({
     );
   } else {
     return (
-      <div
-        className={classNames(
-          "mx-4 flex flex-row md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
-          className
-        )}
-      >
+      <div className={classNames(flexCSS, className)}>
         <FreePriceTable size={size} />
         <ProPriceTable
           size={size}

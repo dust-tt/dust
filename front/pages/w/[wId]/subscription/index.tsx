@@ -3,7 +3,6 @@ import {
   Chip,
   ExternalLinkIcon,
   Page,
-  PageHeader,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -136,12 +135,12 @@ export default function Subscription({
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
       <Page.Vertical gap="xl" align="stretch">
-        <PageHeader
+        <Page.Header
           title="Subscription"
           icon={ShapesIcon}
           description="Choose the plan that works for you."
         />
-        <Page.Vertical align="stretch" gap="md">
+        <Page.Vertical align="stretch" gap="lg">
           <div className="flex">
             <div className="flex-1">
               <Page.H variant="h5">Your plan </Page.H>
@@ -168,12 +167,12 @@ export default function Subscription({
               )}
             </div>
           </div>
-          <div className="mb-10 pt-2">
+          <div className="mb-10">
             <Page.H variant="h5">Manage my plan</Page.H>
-            <div className="s-h-full s-w-full pt-2">
+            <div className="s-h-full s-w-full flex justify-center pt-4">
               <PricePlans
                 size="xs"
-                className="xl:hidden"
+                className="lg:hidden"
                 isTabs
                 plan={plan}
                 onClickProPlan={onClickProPlan}
@@ -182,7 +181,8 @@ export default function Subscription({
               />
               <PricePlans
                 size="xs"
-                className="hidden xl:flex"
+                flexCSS="gap-3"
+                className="hidden lg:flex"
                 plan={plan}
                 onClickProPlan={onClickProPlan}
                 onClickEnterprisePlan={onClickEnterprisePlan}
