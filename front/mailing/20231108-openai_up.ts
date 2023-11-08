@@ -12,9 +12,9 @@ export const sendAPIUserEmail = async ({ email }: { email: string }) => {
     subject: "[Dust] Resolved: OpenAI Outage",
     html: `<p>Hi!</p>
     <p>Between 14:50 UTC and 15:30 UTC today, OpenAI encountered a major outage of their APIs. The incident is resolved and all services on Dust are now operational.</p>
-    <p>We'd love to give you some context on our dependence on OpenAI: We rely heavily on OpenAI (vs Azure or other models) because we believe important for you that we incorporate new capabilities (e.g. the upcoming gpt-4 turbo) as soon as they are available. Not 6 months later.</p>
-    <p>That being said, we will be looking into mitigating this dependency by building more capabilities to fall-back on Azure infrastructure or other model providers for most of our services, for when such outages happen.</p>
-    <p>While an outage like this one is disrupting. This is also a sign that we are evolving in a nascent ecosystem, exploring with you the boundaries of what humans can do with models.</p>
+    <p>We'd love to give you some context on our dependency on OpenAI: We rely heavily on OpenAI (vs Azure or other models) because we believe it's important for you that we incorporate new capabilities (e.g. the upcoming gpt-4 turbo) as soon as they are available. Not 6 months later.</p>
+    <p>That being said, we will be looking into mitigating this dependency by building more capabilities to fallback on Azure infrastructure or other model providers for most of our services, for when such outages happen.</p>
+    <p>While an outage like this one is disrupting, this is also a remainder that we are evolving in a nascent ecosystem, exploring with you the boundaries of what humans can do with models.</p>
     <p>-stan</p>
 `,
   };
