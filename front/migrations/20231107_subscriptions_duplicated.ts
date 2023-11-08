@@ -29,6 +29,7 @@ const getValidSubscriptionStartDateForWorkspace = async (
   const subscriptions = await Subscription.findAll({
     where: {
       workspaceId: workspaceId,
+      planId: 5,
     },
     order: [["startDate", "ASC"]],
   });
@@ -56,6 +57,7 @@ const deletedDuplicatedEndedSubscriptionsForWorkspace = async (
     where: {
       workspaceId: workspaceId,
       status: "ended",
+      planId: 5,
     },
   });
   console.log(`    Found ${subscriptions.length} subscriptions`);
