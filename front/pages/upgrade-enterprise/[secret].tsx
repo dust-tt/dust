@@ -48,7 +48,7 @@ export const getServerSideProps: GetServerSideProps<object> = async (
     };
   }
 
-  const checkoutUrl = await getCheckoutUrlForUpgrade(auth);
+  const { checkoutUrl } = await getCheckoutUrlForUpgrade(auth);
   if (!checkoutUrl) {
     return {
       notFound: true,

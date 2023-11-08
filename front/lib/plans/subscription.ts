@@ -342,7 +342,7 @@ export const getCheckoutUrlForUpgrade = async (
 
 export const downgradeWorkspaceToFreePlan = async (
   auth: Authenticator
-): Promise<PlantType> => {
+): Promise<PlanType> => {
   const user = auth.user();
   const owner = auth.workspace();
   const activePlan = auth.plan();
