@@ -33,7 +33,6 @@ import logger from "@connectors/logger/logger";
 import {
   formatMessagesForUpsert,
   getBotUserIdMemoized,
-  getChannels,
   getUserName,
 } from "./temporal/activities";
 
