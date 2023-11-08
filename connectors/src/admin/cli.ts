@@ -8,7 +8,10 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { getDocumentId } from "@connectors/connectors/google_drive/temporal/activities";
-import { launchGoogleDriveRenewWebhooksWorkflow } from "@connectors/connectors/google_drive/temporal/client";
+import {
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleDriveRenewWebhooksWorkflow,
+} from "@connectors/connectors/google_drive/temporal/client";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import {
@@ -259,6 +262,31 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
+      return;
+    }
+    case "start-incremental-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+          type: "google_drive",
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
+        );
+      }
+      await throwOnError(
+        launchGoogleDriveIncrementalSyncWorkflow(connector.id.toString())
+      );
       return;
     }
     case "skip-file": {
