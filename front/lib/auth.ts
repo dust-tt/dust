@@ -48,16 +48,21 @@ export class Authenticator {
   _subscription: SubscriptionType | null;
 
   // Should only be called from the static methods below.
-  constructor(
-    workspace: Workspace | null,
-    user: User | null,
-    role: RoleType,
-    subscription: SubscriptionType | null
-  ) {
-    this._workspace = workspace;
-    this._user = user;
+  constructor({
+    workspace,
+    user,
+    role,
+    subscription,
+  }: {
+    workspace?: Workspace | null;
+    user?: User | null;
+    role: RoleType;
+    subscription?: SubscriptionType | null;
+  }) {
+    this._workspace = workspace || null;
+    this._user = user || null;
     this._role = role;
-    this._subscription = subscription;
+    this._subscription = subscription || null;
   }
 
   /**
@@ -112,7 +117,12 @@ export class Authenticator {
       ]);
     }
 
-    return new Authenticator(workspace, user, role, subscription);
+    return new Authenticator({
+      workspace,
+      user,
+      role,
+      subscription,
+    });
   }
 
   /**
@@ -154,11 +164,12 @@ export class Authenticator {
       ? await subscriptionForWorkspace(workspace)
       : null;
 
-    if (!user || !user.isDustSuperUser) {
-      return new Authenticator(workspace, user, "none", subscription);
-    }
-
-    return new Authenticator(workspace, user, "admin", subscription);
+    return new Authenticator({
+      workspace,
+      user,
+      role: user?.isDustSuperUser ? "admin" : "none",
+      subscription,
+    });
   }
 
   /**
@@ -205,7 +216,11 @@ export class Authenticator {
       : null;
 
     return {
-      auth: new Authenticator(workspace, null, role, subscription),
+      auth: new Authenticator({
+        workspace,
+        role,
+        subscription,
+      }),
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
@@ -226,11 +241,13 @@ export class Authenticator {
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
-    const subscription = workspace
-      ? await subscriptionForWorkspace(workspace)
-      : null;
 
-    return new Authenticator(workspace, null, "builder", subscription);
+    const subscription = await subscriptionForWorkspace(workspace);
+    return new Authenticator({
+      workspace,
+      role: "builder",
+      subscription,
+    });
   }
 
   role(): RoleType {

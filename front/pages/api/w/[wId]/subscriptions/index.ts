@@ -2,7 +2,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { subscribeWorkspaceToPlan } from "@app/lib/plans/subscription";
+import {
+  downgradeWorkspaceToFreePlan,
+  getCheckoutUrlForUpgrade,
+} from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PlanType } from "@app/types/plan";
@@ -48,10 +51,8 @@ async function handler(
   switch (req.method) {
     case "POST":
       try {
-        const response = await subscribeWorkspaceToPlan(auth, {
-          planCode: req.body.planCode,
-        });
-        return res.status(200).json(response);
+        const stripeCheckoutUrl = await getCheckoutUrlForUpgrade(auth);
+        return res.status(200).json({ checkoutUrl: stripeCheckoutUrl || null });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {
@@ -63,6 +64,24 @@ async function handler(
         });
       }
       break;
+    case "DELETE":
+      try {
+        await downgradeWorkspaceToFreePlan(auth);
+        return res.status(200).json({ checkoutUrl: null });
+      } catch (error) {
+        logger.error(
+          { error },
+          "Error while downgrading workspace to free plan"
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "subscription_error",
+            message: "Error while downgrading workspace to free plan",
+          },
+        });
+      }
+
     default:
       return apiError(req, res, {
         status_code: 405,

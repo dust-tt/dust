@@ -5,6 +5,8 @@ import { assertNever } from "@app/lib/utils";
 import { PaidBillingType, SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
+import { Authenticator } from "../auth";
+
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -30,18 +32,23 @@ async function getPriceId(productId: string): Promise<string | null> {
  * Once the users has completed the checkout, we will receive an event on our Stripe webhook
  */
 export const createCheckoutSession = async ({
-  owner,
+  auth,
   planCode,
   productId,
   billingType,
   stripeCustomerId,
 }: {
-  owner: WorkspaceType;
+  auth: Authenticator;
   planCode: string;
   productId: string;
   billingType: PaidBillingType;
   stripeCustomerId: string | null;
 }): Promise<string | null> => {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("Workspace not found");
+  }
+
   const priceId = await getPriceId(productId);
   if (!priceId) {
     throw new Error(
@@ -64,7 +71,7 @@ export const createCheckoutSession = async ({
       // We will update the quantity of the line item when the number of users changes.
       item = {
         price: priceId,
-        quantity: await countActiveSeatsInWorkspace(owner.sId),
+        quantity: await countActiveSeatsInWorkspace(workspace.sId),
       };
       break;
     case "monthly_active_users":
@@ -80,7 +87,7 @@ export const createCheckoutSession = async ({
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    client_reference_id: owner.sId,
+    client_reference_id: workspace.sId,
     customer: stripeCustomerId ? stripeCustomerId : undefined,
     metadata: {
       planCode: planCode,
@@ -90,8 +97,8 @@ export const createCheckoutSession = async ({
     automatic_tax: {
       enabled: true,
     },
-    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
+    success_url: `${URL}/w/${workspace.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${URL}/w/${workspace.sId}/subscription?type=cancelled`,
   });
 
   return session.url;

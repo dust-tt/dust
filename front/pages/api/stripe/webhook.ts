@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { PlanInvitation } from "@app/lib/models/plan";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -165,6 +166,20 @@ async function handler(
                 );
                 return;
               }
+
+              // mark existing plan invite as consumed
+              await PlanInvitation.update(
+                {
+                  consumedAt: now,
+                },
+                {
+                  where: {
+                    workspaceId: workspace.id,
+                    consumedAt: null,
+                  },
+                  transaction: t,
+                }
+              );
 
               if (activeSubscription) {
                 await activeSubscription.update(

@@ -1,10 +1,14 @@
+import { v4 as uuidv4 } from "uuid";
+
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { PlanInvitation } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import {
   createCheckoutSession,
@@ -13,7 +17,11 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { PlanType, SubscriptionType } from "@app/types/plan";
+import {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@app/types/plan";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.
@@ -180,13 +188,132 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   });
 };
 
-export const subscribeWorkspaceToPlan = async (
+/**
+ * Internal function to create a PlanInvitation for the workspace.
+ */
+export const pokeInviteWorkspaceToEnterprisePlan = async (
   auth: Authenticator,
-  { planCode }: { planCode: string }
-): Promise<{
-  plan: PlanType;
-  checkoutUrl?: string;
-}> => {
+  planCode: string
+): Promise<PlanInvitationType> => {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("Cannot find workspace}");
+  }
+  const user = auth.user();
+  if (!user?.isDustSuperUser) {
+    throw new Error("Cannot invite workspace to enterprise plan: not allowed.");
+  }
+
+  const plan = await Plan.findOne({
+    where: { code: planCode },
+  });
+  if (!plan) {
+    throw new Error(
+      `Cannot invite workspace to plan ${planCode}: plan not found.`
+    );
+  }
+
+  // We search for an active subscription for this workspace
+  const activeSubscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+  });
+  if (activeSubscription && activeSubscription.planId === plan.id) {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: already subscribed.`
+    );
+  }
+
+  const invitation = await getPlanInvitation(auth);
+  if (invitation?.planCode === plan.code) {
+    return invitation;
+  }
+
+  const model = await front_sequelize.transaction(async (t) => {
+    if (invitation) {
+      await PlanInvitation.destroy({
+        where: { workspaceId: workspace.id, consumedAt: null },
+        transaction: t,
+      });
+    }
+
+    return PlanInvitation.create(
+      {
+        secret: uuidv4(),
+        workspaceId: workspace.id,
+        planId: plan.id,
+      },
+      {
+        transaction: t,
+      }
+    );
+  });
+
+  return {
+    planCode: plan.code,
+    planName: plan.name,
+    secret: model.secret,
+  };
+};
+
+export const getCheckoutUrlForUpgrade = async (
+  auth: Authenticator
+): Promise<string | void> => {
+  const workspace = auth.workspace();
+
+  if (!workspace) {
+    throw new Error(
+      "Unauthorized `auth` data: cannot process to subscription of new Plan."
+    );
+  }
+
+  const planInvitation = await getPlanInvitation(auth);
+
+  const planCode = planInvitation?.planCode ?? FREE_UPGRADED_PLAN_CODE;
+
+  const plan = await Plan.findOne({
+    where: { code: planCode },
+  });
+
+  if (!plan) {
+    throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
+  }
+  if (!plan.stripeProductId) {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: no Stripe Product ID.`
+    );
+  }
+  if (plan.billingType === "free") {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: billingType is "free".`
+    );
+  }
+
+  const existingSubscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+  });
+  if (existingSubscription && existingSubscription.planId === plan.id) {
+    throw new Error(
+      `Cannot subscribe to pro plan ${planCode}: already subscribed.`
+    );
+  }
+
+  // We enter Stripe Checkout flow
+  const checkoutUrl = await createCheckoutSession({
+    auth,
+    planCode: PRO_PLAN_SEAT_29_CODE,
+    productId: plan.stripeProductId,
+    billingType: plan.billingType,
+    stripeCustomerId: existingSubscription?.stripeCustomerId || null,
+  });
+
+  if (checkoutUrl) {
+    return checkoutUrl;
+  }
+};
+
+export const downgradeWorkspaceToFreePlan = async (
+  auth: Authenticator
+): Promise<void> => {
   const user = auth.user();
   const workspace = auth.workspace();
   const activePlan = auth.plan();
@@ -197,147 +324,38 @@ export const subscribeWorkspaceToPlan = async (
     );
   }
 
-  // We prevent the user to subscribe to the FREE_UPGRADED_PLAN: this is an internal plan for Dust workspaces only.
-  if (planCode === FREE_UPGRADED_PLAN_CODE) {
+  const freeTestPlan = await Plan.findOne({
+    where: { code: FREE_TEST_PLAN_CODE },
+  });
+  if (!freeTestPlan) {
     throw new Error(
-      `Unauthorized: cannot subscribe to ${FREE_UPGRADED_PLAN_CODE}.`
+      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: not found.`
+    );
+  }
+  if (freeTestPlan.stripeProductId) {
+    throw new Error(
+      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: has a Stripe Product ID.`
+    );
+  }
+  if (freeTestPlan.billingType !== "free") {
+    throw new Error(
+      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: billingType is not "free".`
     );
   }
 
-  // Case of a downgrade to the free default plan: we use the internal function
-  if (planCode === FREE_TEST_PLAN_CODE) {
-    const newSubscription = await internalSubscribeWorkspaceToFreeTestPlan({
-      workspaceId: workspace.sId,
-    });
-    return {
-      plan: newSubscription.plan,
-    };
-  }
-
-  // We make sure the user is not trying to subscribe to a plan he already has
-  const newPlan = await Plan.findOne({
-    where: { code: planCode },
-  });
-  if (!newPlan) {
-    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
-  }
-  const activeSubscription = await Subscription.findOne({
+  const existingSubscription = await Subscription.findOne({
     where: { workspaceId: workspace.id, status: "active" },
   });
-  if (activeSubscription && activeSubscription.planId === newPlan.id) {
+  if (existingSubscription && existingSubscription.planId === freeTestPlan.id) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}:  already subscribed.`
+      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: already subscribed.`
     );
   }
 
-  if (newPlan.billingType === "free") {
-    // We can immediately subscribe to a free plan: end the current subscription if any and create a new active one.
-    const now = new Date();
-    await front_sequelize.transaction(async (t) => {
-      if (activeSubscription) {
-        await activeSubscription.update(
-          {
-            status: "ended",
-            endDate: now,
-          },
-          { transaction: t }
-        );
-      }
-      await Subscription.create(
-        {
-          sId: generateModelSId(),
-          workspaceId: workspace.id,
-          planId: newPlan.id,
-          status: "active",
-          startDate: now,
-          stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-        },
-        { transaction: t }
-      );
-    });
-
-    return {
-      plan: {
-        code: newPlan.code,
-        name: newPlan.name,
-        stripeProductId: null,
-        billingType: "free",
-        limits: {
-          assistant: {
-            isSlackBotAllowed: newPlan.isSlackbotAllowed,
-            maxMessages: newPlan.maxMessages,
-          },
-          connections: {
-            isSlackAllowed: newPlan.isManagedSlackAllowed,
-            isNotionAllowed: newPlan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: newPlan.isManagedGithubAllowed,
-          },
-          dataSources: {
-            count: newPlan.maxDataSourcesCount,
-            documents: {
-              count: newPlan.maxDataSourcesDocumentsCount,
-              sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: newPlan.maxUsersInWorkspace,
-          },
-        },
-      },
-    };
-  }
-
-  if (!newPlan.stripeProductId) {
-    throw new Error(
-      `Plan with code ${planCode} is not a free plan and has no Stripe Product ID.`
-    );
-  }
-
-  // We enter Stripe Checkout flow
-  const checkoutUrl = await createCheckoutSession({
-    owner: workspace,
-    planCode: newPlan.code,
-    productId: newPlan.stripeProductId,
-    billingType: newPlan.billingType,
-    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+  await internalSubscribeWorkspaceToFreeTestPlan({
+    workspaceId: workspace.sId,
   });
-
-  if (!checkoutUrl) {
-    throw new Error("Cannot create Stripe Checkout session.");
-  }
-
-  return {
-    plan: {
-      code: newPlan.code,
-      name: newPlan.name,
-      stripeProductId: newPlan.stripeProductId,
-      billingType: newPlan.billingType,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: newPlan.isSlackbotAllowed,
-          maxMessages: newPlan.maxMessages,
-        },
-        connections: {
-          isSlackAllowed: newPlan.isManagedSlackAllowed,
-          isNotionAllowed: newPlan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: newPlan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: newPlan.isManagedGithubAllowed,
-        },
-        dataSources: {
-          count: newPlan.maxDataSourcesCount,
-          documents: {
-            count: newPlan.maxDataSourcesDocumentsCount,
-            sizeMb: newPlan.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: newPlan.maxUsersInWorkspace,
-        },
-      },
-    },
-    checkoutUrl,
-  };
+  return;
 };
 
 export const updateWorkspacePerSeatSubscriptionUsage = async ({
@@ -398,3 +416,39 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
     );
   }
 };
+
+export async function getPlanInvitation(
+  auth: Authenticator
+): Promise<PlanInvitationType | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find workspace");
+  }
+
+  const planInvitations = await PlanInvitation.findAll({
+    where: { workspaceId: owner.id, consumedAt: null },
+    include: [
+      {
+        model: Plan,
+        as: "plan",
+        required: true,
+      },
+    ],
+  });
+
+  if (planInvitations.length > 1) {
+    logger.warn(
+      "unreachable: there should be at most one pending invitation per workspace"
+    );
+  }
+
+  if (!planInvitations.length) {
+    return null;
+  }
+
+  return {
+    planCode: planInvitations[0].plan.code,
+    planName: planInvitations[0].plan.name,
+    secret: planInvitations[0].secret,
+  };
+}

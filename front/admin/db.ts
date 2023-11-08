@@ -38,6 +38,7 @@ import {
 } from "@app/lib/models";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
+import { PlanInvitation } from "@app/lib/models/plan";
 
 async function main() {
   await User.sync({ alter: true });
@@ -59,6 +60,7 @@ async function main() {
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
+  await PlanInvitation.sync({ alter: true });
 
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
