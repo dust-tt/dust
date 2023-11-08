@@ -1,5 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::data_sources::data_source::{DataSource, Document, DocumentVersion, SearchFilter};
+use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -143,6 +144,57 @@ pub trait Store {
         document_id: &str,
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
+    // Databases
+    async fn register_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        db: &Database,
+    ) -> Result<()>;
+    async fn load_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+    ) -> Result<Option<Database>>;
+    async fn register_database_table(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table: &DatabaseTable,
+    ) -> Result<()>;
+    async fn load_database_table(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+    ) -> Result<Option<DatabaseTable>>;
+    async fn insert_database_row(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        row: &DatabaseRow,
+    ) -> Result<()>;
+    async fn load_database_row(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        row_id: &str,
+    ) -> Result<Option<DatabaseRow>>;
+    async fn list_database_rows(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        limit: usize,
+    ) -> Result<Vec<DatabaseRow>>;
 
     // LLM Cache
     async fn llm_cache_get(
@@ -337,7 +389,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     CREATE TABLE IF NOT EXISTS databases_rows (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
-       content              JSONB NOT NULL,
+       content              TEXT NOT NULL, -- json
        row_id               TEXT NOT NULL, -- unique within table
        internal_id          TEXT NOT NULL, -- unique globally
        database_table       BIGINT NOT NULL,
