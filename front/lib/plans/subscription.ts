@@ -253,6 +253,9 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
   };
 };
 
+// Returns the Stripe checkout URL for the plan the workspace can upgrade to.
+// The plan can either be the "PRO_PLAN_SEAT_29_CODE" (aka the pro plan), or
+// the enterprise plan the workspace has been invited to.
 export const getCheckoutUrlForUpgrade = async (
   auth: Authenticator
 ): Promise<{ checkoutUrl: string; plan: PlanType }> => {
