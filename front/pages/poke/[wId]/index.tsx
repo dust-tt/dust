@@ -7,7 +7,7 @@ import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
@@ -37,9 +37,16 @@ export const getServerSideProps: GetServerSideProps<{
   documentCounts: Record<string, number>;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const wId = context.params?.wId;
+  if (!wId || typeof wId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+  const user = auth.user();
 
   if (!user) {
     return {
@@ -50,19 +57,11 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  if (!user.isDustSuperUser) {
+  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
   }
-
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
