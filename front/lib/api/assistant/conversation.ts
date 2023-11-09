@@ -33,6 +33,7 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
+import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -721,9 +722,10 @@ export async function* postUserMessage(
 > {
   const user = auth.user();
   const owner = auth.workspace();
-  const plan = auth.plan();
+  const subscription = auth.subscription();
+  const plan = subscription?.plan;
 
-  if (!owner || owner.id !== conversation.owner.id || !plan) {
+  if (!owner || owner.id !== conversation.owner.id || !subscription || !plan) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -1033,6 +1035,14 @@ export async function* postUserMessage(
         title,
       };
     }
+  }
+  // If the plan is monthly_active_users, update the workspace usage.
+  // We don't await the result of the function call.
+  if (plan.billingType === "monthly_active_users") {
+    void updateWorkspacePerMonthlyActiveUsersSubscriptionUsage({
+      owner,
+      subscription,
+    });
   }
 }
 
