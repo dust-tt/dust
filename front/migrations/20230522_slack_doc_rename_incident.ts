@@ -72,7 +72,6 @@ async function main() {
           name: dataSourceName,
           description: dataSourceDescription,
           visibility: "private",
-          config: JSON.stringify(dustDataSource.value.data_source.config),
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
           workspaceId: workspaceId,
         });
