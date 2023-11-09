@@ -76,19 +76,20 @@ To synchronize Slack channels with Dust:
 
 - Inside `Admin` > `Connections` > `Slack`;
 - Navigate to the Slack data source settings;
-- Select the Slack channels you want to synchronize with Dust;
+- Select the Slack channels you want to synchronize with Dust- Dust doesn't synchronize private channels;
 - The @Dust bot will automatically join the selected channels.
 
 THEN, in the Dust app, while signed in as an admin:
 
-- Confirm that you want to index the channels
+- Confirm that you want to synchronize the channels
 
 Once that's done, everyone in the Slack workspace can use the @dust Slackbot. It only has to be installed once.
 
 If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users can chat with @dust by:
 
 - Mentioning @dust in a public channel.
-- @dust doesn't work in private channels.
+- Mentioning @dust in private channels.
+- Turn multi-member conversations into private channels to be able to summon @dust from private channels. 
 - Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello! if you want to interact with @gpt4 for example.
 - Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`.
 
@@ -197,6 +198,10 @@ Dust offers 3 types of assistants:
 - Data source assistants to interact directly with your Slack, Google Drive, Github or Notion in a conversational way, or all of them together via @dust.
 - Models assistants to interact with the strongest models available, currently GPT-4, Claude, and Mistral: @gpt4, @gpt3.5, @claude, @claude-instant.
 - Dust assistants like the @help to guide you when using Dust.
+
+### How to search for assistants?
+
+Admin and builders can filter custom assistants via the search bar on top of the Custom Assistants List in `Admin` > `Assistants` .
 
 ## Custom assistants
 
