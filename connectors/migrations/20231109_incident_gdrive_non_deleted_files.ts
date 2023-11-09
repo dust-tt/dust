@@ -1,5 +1,3 @@
-import { connectors } from "googleapis/build/src/apis/connectors";
-import { parse } from "path";
 import { Sequelize } from "sequelize";
 
 import { Connector, GoogleDriveFiles } from "@connectors/lib/models";
