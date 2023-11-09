@@ -40,6 +40,7 @@ In Dust, a “Connections” and "Data Sources" refers to the locations from whi
 Connections are platforms like Notion, Google Drive, GitHub or Slack that Dust synchronizes with directly. Connections are available to paid plans only. Admins can control which parts of these platforms Dust can access. Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
 
 ### Synchronizing
+
 Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants.
 
 ### Retrieve
