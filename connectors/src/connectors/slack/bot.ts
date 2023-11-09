@@ -1,9 +1,4 @@
-import {
-  CodedError,
-  ErrorCode,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
+import { WebClient } from "@slack/web-api";
 import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
