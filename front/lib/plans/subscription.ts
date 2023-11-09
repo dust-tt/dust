@@ -463,7 +463,9 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }): Promise<void> => {
+  let redis = null;
   try {
+    redis = await redisClient();
     if (subscription.plan.billingType !== "monthly_active_users") {
       // We only update the usage for plans with billingType === "monthly_active_users"
       return;
@@ -478,7 +480,6 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
       );
     }
 
-    const redis = await redisClient();
     const redisKey = `workspace:usage:${owner.sId}`;
     const usageForWorkspace = await redis.get(redisKey);
     if (usageForWorkspace) {
@@ -512,6 +513,10 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
     logger.error(
       `Error while updating Stripe subscription usage for workspace ${owner.sId}: ${err}`
     );
+  } finally {
+    if (redis) {
+      await redis.quit();
+    }
   }
 };
 
