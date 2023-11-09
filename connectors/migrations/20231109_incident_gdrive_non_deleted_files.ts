@@ -1,6 +1,8 @@
 import { Sequelize } from "sequelize";
 
 import { Connector, GoogleDriveFiles } from "@connectors/lib/models";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { deleteFromDataSource } from "@connectors/lib/data_sources";
 
 // To be run from connectors with `CORE_DATABASE_URI` and `FRONT_DATABASE_URI` set.
 const { CORE_DATABASE_URI, FRONT_DATABASE_URI, LIVE = false } = process.env;
@@ -87,6 +89,7 @@ async function main() {
     const documents = coreDocumentsData[0] as {
       id: number;
       document_id: string;
+      tags_array: string[];
     }[];
 
     console.log(`Found ${documents.length} core documents`);
@@ -95,10 +98,26 @@ async function main() {
       return fileHash[d.document_id] === undefined;
     });
 
+    for (const d of documentsToDelete) {
+      console.log(
+        `Deleting document ${d.id} ${d.document_id}, tags #${d.tags_array.join(
+          ", #"
+        )}`
+      );
+      if (LIVE) {
+        await deleteDocument(c, d.document_id);
+      }
+    }
+
     console.log(
       `>>> Found ${documentsToDelete.length} documents to delete for workspace ${c.workspaceId}`
     );
   }
+}
+
+async function deleteDocument(connector: Connector, fileId: string) {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await deleteFromDataSource(dataSourceConfig, fileId);
 }
 
 main()
