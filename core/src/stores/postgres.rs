@@ -1755,7 +1755,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         database_id: &str,
         name: &str,
-    ) -> Result<()> {
+    ) -> Result<Database> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -1804,7 +1804,13 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(())
+        Ok(Database::new_from_store(
+            db_created,
+            &data_source_id,
+            &db_id,
+            &db_internal_id,
+            &db_name,
+        ))
     }
 
     async fn load_database(
@@ -1911,7 +1917,7 @@ impl Store for PostgresStore {
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<()> {
+    ) -> Result<DatabaseTable> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
@@ -1975,7 +1981,14 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(())
+        Ok(DatabaseTable::new_from_store(
+            table_created,
+            &database_id,
+            &table_id,
+            &table_internal_id,
+            &table_name,
+            &table_description,
+        ))
     }
 
     async fn load_database_table(
@@ -2147,7 +2160,7 @@ impl Store for PostgresStore {
         table_id: &str,
         row_id: &str,
         content: &Value,
-    ) -> Result<()> {
+    ) -> Result<DatabaseRow> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
@@ -2224,7 +2237,13 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(())
+        Ok(DatabaseRow::new_from_store(
+            row_created,
+            &table_id,
+            &row_id,
+            &row_internal_id,
+            content,
+        ))
     }
 
     async fn load_database_row(

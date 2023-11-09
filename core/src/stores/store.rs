@@ -152,7 +152,7 @@ pub trait Store {
         data_source_id: &str,
         database_id: &str,
         name: &str,
-    ) -> Result<()>;
+    ) -> Result<Database>;
     async fn load_database(
         &self,
         project: &Project,
@@ -172,7 +172,7 @@ pub trait Store {
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<()>;
+    ) -> Result<DatabaseTable>;
     async fn load_database_table(
         &self,
         project: &Project,
@@ -195,7 +195,7 @@ pub trait Store {
         table_id: &str,
         row_id: &str,
         content: &Value,
-    ) -> Result<()>;
+    ) -> Result<DatabaseRow>;
     async fn load_database_row(
         &self,
         project: &Project,
