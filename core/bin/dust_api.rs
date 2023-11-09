@@ -1643,8 +1643,6 @@ async fn data_sources_delete(
 
 // Databases
 
-// Register a new database.
-
 #[derive(serde::Deserialize)]
 struct DatabasesRegisterPayload {
     database_id: String,
@@ -1679,6 +1677,208 @@ async fn databases_register(
                 error: None,
                 response: Some(json!({
                     "database": db
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_retrieve(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(db) => match db {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "database_not_found",
+                &format!("No database found for id `{}`", database_id),
+                None,
+            ),
+            Some(db) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "database": db
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesListQuery {
+    data_source_id: Option<String>,
+}
+
+async fn databases_list(
+    extract::Path(project_id): extract::Path<i64>,
+    extract::Query(query): extract::Query<DatabasesListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .list_databases(&project, &query.data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list databases",
+            Some(e),
+        ),
+        Ok(dbs) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "databases": dbs
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesTablesUpsertPayload {
+    table_id: String,
+    name: String,
+    description: String,
+}
+
+async fn databases_tables_upsert(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DatabasesTablesUpsertPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .upsert_database_table(
+            &project,
+            &data_source_id,
+            &database_id,
+            &payload.table_id,
+            &payload.name,
+            &payload.description,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert database table",
+            Some(e),
+        ),
+        Ok(table) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "table": table
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_tables_retrieve(
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database_table(&project, &data_source_id, &database_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database table",
+            Some(e),
+        ),
+        Ok(table) => match table {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "database_table_not_found",
+                &format!("No database table found for id `{}`", table_id),
+                None,
+            ),
+            Some(table) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "table": table
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesTablesListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn databases_tables_list(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Query(query): extract::Query<DatabasesTablesListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .list_databases_tables(
+            &project,
+            &data_source_id,
+            &database_id,
+            Some((query.limit, query.offset)),
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list database tables",
+            Some(e),
+        ),
+        Ok((tables, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tables": tables,
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
                 })),
             }),
         ),
@@ -1869,6 +2069,26 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases",
             post(databases_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id",
+            get(databases_retrieve),
+        )
+        .route(
+            "/projects/:project_id",
+            get(databases_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables",
+            post(databases_tables_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id",
+            get(databases_tables_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables",
+            get(databases_tables_list),
         )
         // Misc
         .route("/tokenize", post(tokenize))

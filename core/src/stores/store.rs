@@ -162,7 +162,7 @@ pub trait Store {
     async fn list_databases(
         &self,
         project: &Project,
-        data_source_id: Option<&str>,
+        data_source_id: &Option<String>,
     ) -> Result<Vec<Database>>;
     async fn upsert_database_table(
         &self,
@@ -180,7 +180,7 @@ pub trait Store {
         database_id: &str,
         table_id: &str,
     ) -> Result<Option<DatabaseTable>>;
-    async fn list_database_tables(
+    async fn list_databases_tables(
         &self,
         project: &Project,
         data_source_id: &str,
