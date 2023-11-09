@@ -1641,6 +1641,50 @@ async fn data_sources_delete(
     }
 }
 
+// Databases
+
+// Register a new database.
+
+#[derive(serde::Deserialize)]
+struct DatabasesRegisterPayload {
+    database_id: String,
+    name: String,
+}
+
+async fn databases_register(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Json(payload): extract::Json<DatabasesRegisterPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .register_database(
+            &project,
+            &data_source_id,
+            &payload.database_id,
+            &payload.name,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to register database",
+            Some(e),
+        ),
+        Ok(db) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "database": db
+                })),
+            }),
+        ),
+    }
+}
+
 // Misc
 
 #[derive(serde::Deserialize)]
@@ -1820,6 +1864,11 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id",
             delete(data_sources_delete),
+        )
+        // Databases
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases",
+            post(databases_register),
         )
         // Misc
         .route("/tokenize", post(tokenize))
