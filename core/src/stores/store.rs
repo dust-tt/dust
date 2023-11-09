@@ -146,7 +146,7 @@ pub trait Store {
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
     // Databases
-    async fn upsert_database(
+    async fn register_database(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -196,6 +196,15 @@ pub trait Store {
         row_id: &str,
         content: &Value,
     ) -> Result<DatabaseRow>;
+    async fn batch_upsert_database_rows(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        contents: &HashMap<String, Value>,
+        truncate: bool,
+    ) -> Result<()>;
     async fn load_database_row(
         &self,
         project: &Project,
@@ -380,41 +389,38 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        status                   TEXT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
-    "-- databases
+    "-- database
     CREATE TABLE IF NOT EXISTS databases (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
-       database_id          TEXT NOT NULL, -- unique within data source
-       internal_id          TEXT NOT NULL, -- unique globally
        data_source          BIGINT NOT NULL,
-       name                 TEXT NOT NULL,
-       connection_string    TEXT, -- unused for now
+       database_id          TEXT NOT NULL, -- unique within data source. Used as the external id.
+       name                 TEXT NOT NULL, -- unique within data source
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
     "-- databases tables
     CREATE TABLE IF NOT EXISTS databases_tables (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
-       table_id             TEXT NOT NULL, -- unique within database
-       internal_id          TEXT NOT NULL, -- unique globally
        database             BIGINT NOT NULL,
-       name                 TEXT NOT NULL,
+       table_id             TEXT NOT NULL, -- unique within database
+       name                 TEXT NOT NULL, -- unique within database
        description          TEXT NOT NULL,
+       schema               TEXT, -- json, kept up-to-date automatically with the last insert
        FOREIGN KEY(database) REFERENCES databases(id)
     );",
     "-- databases row
     CREATE TABLE IF NOT EXISTS databases_rows (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
+       database_table       BIGINT NOT NULL,
        content              TEXT NOT NULL, -- json
        row_id               TEXT NOT NULL, -- unique within table
-       internal_id          TEXT NOT NULL, -- unique globally
-       database_table       BIGINT NOT NULL,
        FOREIGN KEY(database_table) REFERENCES databases_tables(id)
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 24] = [
+pub const SQL_INDEXES: [&'static str; 23] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -458,15 +464,13 @@ pub const SQL_INDEXES: [&'static str; 24] = [
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_parents_array ON data_sources_documents USING GIN (parents);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-         idx_databases_internal_id ON databases (internal_id);",
-    "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_database_id_data_source ON databases (database_id, data_source);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_tables_internal_id ON databases_tables (internal_id);",
+        idx_databases_data_source_database_name ON databases (data_source, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_tables_table_id_database ON databases_tables (table_id, database);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_rows_internal_id ON databases_rows (internal_id);",
+        idx_databases_tables_database_table_name ON databases_tables (database, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
 ];

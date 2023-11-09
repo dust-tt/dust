@@ -6,23 +6,15 @@ pub struct Database {
     created: u64,
     data_source_id: String,
     database_id: String,
-    internal_id: String,
     name: String,
 }
 
 impl Database {
-    pub fn new_from_store(
-        created: u64,
-        data_source_id: &str,
-        database_id: &str,
-        internal_id: &str,
-        name: &str,
-    ) -> Self {
+    pub fn new(created: u64, data_source_id: &str, database_id: &str, name: &str) -> Self {
         Database {
             created: created,
             data_source_id: data_source_id.to_string(),
             database_id: database_id.to_string(),
-            internal_id: internal_id.to_string(),
             name: name.to_string(),
         }
     }
@@ -36,9 +28,6 @@ impl Database {
     pub fn database_id(&self) -> &str {
         &self.database_id
     }
-    pub fn internal_id(&self) -> &str {
-        &self.internal_id
-    }
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -49,17 +38,15 @@ pub struct DatabaseTable {
     created: u64,
     database_id: String,
     table_id: String,
-    internal_id: String,
     name: String,
     description: String,
 }
 
 impl DatabaseTable {
-    pub fn new_from_store(
+    pub fn new(
         created: u64,
         database_id: &str,
         table_id: &str,
-        internal_id: &str,
         name: &str,
         description: &str,
     ) -> Self {
@@ -67,7 +54,6 @@ impl DatabaseTable {
             created: created,
             database_id: database_id.to_string(),
             table_id: table_id.to_string(),
-            internal_id: internal_id.to_string(),
             name: name.to_string(),
             description: description.to_string(),
         }
@@ -82,9 +68,6 @@ impl DatabaseTable {
     pub fn table_id(&self) -> &str {
         &self.table_id
     }
-    pub fn internal_id(&self) -> &str {
-        &self.internal_id
-    }
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -97,23 +80,15 @@ pub struct DatabaseRow {
     created: u64,
     table_id: String,
     row_id: String,
-    internal_id: String,
     content: Value,
 }
 
 impl DatabaseRow {
-    pub fn new_from_store(
-        created: u64,
-        table_id: &str,
-        row_id: &str,
-        internal_id: &str,
-        content: &Value,
-    ) -> Self {
+    pub fn new(created: u64, table_id: &str, row_id: &str, content: &Value) -> Self {
         DatabaseRow {
             created: created,
             table_id: table_id.to_string(),
             row_id: row_id.to_string(),
-            internal_id: internal_id.to_string(),
             content: content.clone(),
         }
     }
@@ -126,9 +101,6 @@ impl DatabaseRow {
     }
     pub fn row_id(&self) -> &str {
         &self.row_id
-    }
-    pub fn internal_id(&self) -> &str {
-        &self.internal_id
     }
     pub fn content(&self) -> &Value {
         &self.content
