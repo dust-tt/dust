@@ -829,7 +829,7 @@ export async function garbageCollector(
         );
         if (!driveFile) {
           // Could not find the file on Gdrive, deleting our local reference to it.
-          await file.destroy();
+          await deleteFile(file);
           return null;
         }
         const isInFolder = await objectIsInFolders(
@@ -998,27 +998,32 @@ async function deleteOneFile(
       driveFileId: file.id,
     },
   });
+  // Only clean up files that we were syncing
+  if (!googleDriveFile) {
+    return;
+  }
+  await deleteFile(googleDriveFile);
+}
+
+async function deleteFile(googleDriveFile: GoogleDriveFiles) {
+  const connectorId = googleDriveFile.connectorId;
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  // Only clean up files that we were syncing.
-  if (googleDriveFile) {
-    logger.info(
-      {
-        driveFileId: file.id,
-        connectorId,
-      },
-      `Deleting Google Drive file.`
-    );
+  logger.info(
+    {
+      driveFileId: googleDriveFile.driveFileId,
+      connectorId,
+    },
+    `Deleting Google Drive file.`
+  );
 
-    if (file.mimeType !== "application/vnd.google-apps.folder") {
-      const dataSourceConfig = dataSourceConfigFromConnector(connector);
-      await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
-    }
-    await googleDriveFile.destroy();
+  if (googleDriveFile.mimeType !== "application/vnd.google-apps.folder") {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
   }
-  return;
+  await googleDriveFile.destroy();
 }
 
 export async function getGoogleDriveObject(
