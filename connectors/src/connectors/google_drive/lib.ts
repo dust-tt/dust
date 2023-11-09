@@ -2,14 +2,14 @@ import memoize from "lodash.memoize";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
-import { GoogleDriveFiles, ModelId } from "@connectors/lib/models";
+import { Connector, GoogleDriveFiles, ModelId } from "@connectors/lib/models";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 
 import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
-  nangoConnectionId: string
+  connector: Connector
 ): Promise<
   Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
 > {
@@ -19,11 +19,11 @@ export async function registerWebhook(
   if (!CONNECTORS_PUBLIC_URL) {
     return new Err(new Error("CONNECTORS_PUBLIC_URL is not defined"));
   }
-  const auth = await getAuthObject(nangoConnectionId);
+  const auth = await getAuthObject(connector.connectionId);
 
   const uuid = uuidv4().toString();
   const accessToken = (await auth.getAccessToken()).token;
-  const webhookURL = `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive`;
+  const webhookURL = `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive/${connector.id}`;
   const res = await fetch(
     "https://www.googleapis.com/drive/v3/changes/watch?pageToken=&includeItemsFromAllDrives=true",
     {

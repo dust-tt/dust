@@ -93,7 +93,7 @@ export function startServer(port: number) {
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
   app.post(
-    "/webhooks/:webhook_secret/google_drive",
+    "/webhooks/:webhook_secret/google_drive/:connector_id?",
     webhookGoogleDriveAPIHandler
   );
   app.post(
