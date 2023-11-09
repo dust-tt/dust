@@ -1756,7 +1756,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // load the data source
+        // get the data source row id
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -1799,6 +1799,7 @@ impl Store for PostgresStore {
 
         Ok(())
     }
+
     async fn load_database(
         &self,
         project: &Project,
@@ -1908,7 +1909,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // load the data source
+        // get the data source row id
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -1921,7 +1922,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // load the database
+        // get the database row id
         let stmt = c
             .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
             .await?;
@@ -2040,7 +2041,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // load the data source
+        // get the data source row id
         let r = c
             .query(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -2054,7 +2055,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // load the database
+        // get the database row id
         let r = c
             .query(
                 "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
@@ -2068,7 +2069,6 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // load the tables
         let rows = match limit_offset {
             None => {
                 let stmt = c
@@ -2143,7 +2143,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // load the data source
+        // get the data source row id
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -2157,7 +2157,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // load the database
+        // get the database row id
         let stmt = c
             .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
             .await?;
@@ -2170,7 +2170,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // load the table
+        // get the table row id
         let stmt = c
             .prepare("SELECT id FROM database_tables WHERE database = $1 AND table_id = $2 LIMIT 1")
             .await?;
