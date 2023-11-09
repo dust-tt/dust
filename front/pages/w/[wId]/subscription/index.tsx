@@ -4,10 +4,11 @@ import {
   ExternalLinkIcon,
   Page,
   ShapesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import router from "next/router";
-import React, { useContext } from "react";
+import { useRouter } from "next/router";
+import React, { useContext, useEffect } from "react";
 
 import { PricePlans } from "@app/components/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -67,7 +68,37 @@ export default function Subscription({
   planInvitation,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+  const [isWebhookProcessing, setIsWebhookProcessing] =
+    React.useState<boolean>(false);
+
+  useEffect(() => {
+    if (router.query.type === "succeeded") {
+      if (subscription.plan.code === router.query.plan_code) {
+        sendNotification({
+          type: "success",
+          title: `Subscription to ${subscription.plan.name}`,
+          description: `Your subscription to ${subscription.plan.name} is now active. Thank you for your trust.`,
+        });
+        // Then we remove the query params to avoid going through this logic again.
+        void router.push(
+          { pathname: `/w/${owner.sId}/subscription` },
+          undefined,
+          {
+            shallow: true,
+          }
+        );
+      } else {
+        // If the Stripe webhook is not yet received, we try waiting for it and reload the page every 5 seconds until it's done.
+        setIsWebhookProcessing(true);
+        setTimeout(() => {
+          void router.reload();
+        }, 5000);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally passing an empty dependency array to execute only once
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
@@ -84,6 +115,14 @@ export default function Subscription({
           title: "Subscribtion failed",
           description: "Failed to subscribe to a new plan.",
         });
+        // Then we remove the query params to avoid going through this logic again.
+        void router.push(
+          { pathname: `/w/${owner.sId}/subscription` },
+          undefined,
+          {
+            shallow: true,
+          }
+        );
       } else {
         const content = await res.json();
         if (content.checkoutUrl) {
@@ -157,8 +196,14 @@ export default function Subscription({
               <div className="flex-1">
                 <Page.H variant="h5">Your plan </Page.H>
                 <div className="pt-2">
-                  You're on&nbsp;&nbsp;
-                  <Chip size="sm" color={chipColor} label={plan.name} />
+                  {isWebhookProcessing ? (
+                    <Spinner />
+                  ) : (
+                    <>
+                      You're on&nbsp;&nbsp;
+                      <Chip size="sm" color={chipColor} label={plan.name} />
+                    </>
+                  )}
                 </div>
               </div>
               <div className="flex-1">
