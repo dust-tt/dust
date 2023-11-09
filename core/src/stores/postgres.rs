@@ -1749,9 +1749,15 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_database(&self, project: &Project, db: &Database) -> Result<()> {
+    async fn upsert_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        name: &str,
+    ) -> Result<()> {
         let project_id = project.project_id();
-        let data_source_id = db.data_source_id().to_string();
+        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1769,10 +1775,11 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let db_created = db.created();
-        let db_id = db.database_id().to_string();
-        let db_internal_id = db.internal_id().to_string();
-        let db_name = db.name().to_string();
+        let db_created = utils::now();
+        let db_internal_id = utils::new_id();
+
+        let db_id = database_id.to_string();
+        let db_name = name.to_string();
 
         // Upsert Database.
         let stmt = c
@@ -1900,11 +1907,14 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: &str,
-        table: &DatabaseTable,
+        database_id: &str,
+        table_id: &str,
+        name: &str,
+        description: &str,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = table.database_id().to_string();
+        let database_id = database_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1933,11 +1943,12 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let table_created = table.created();
-        let table_id = table.table_id().to_string();
-        let table_internal_id = table.internal_id().to_string();
-        let table_name = table.name().to_string();
-        let table_description = table.description().to_string();
+        let table_created = utils::now();
+        let table_internal_id = utils::new_id();
+
+        let table_id = table_id.to_string();
+        let table_name = name.to_string();
+        let table_description = description.to_string();
 
         // Upsert Database Table.
         let stmt = c
@@ -2133,12 +2144,14 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        row: &DatabaseRow,
+        table_id: &str,
+        row_id: &str,
+        content: &Value,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
-        let table_id = row.table_id().to_string();
+        let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2181,10 +2194,11 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let row_created = row.created();
-        let row_id = row.row_id().to_string();
-        let row_internal_id = row.internal_id().to_string();
-        let row_data = row.content().to_string();
+        let row_created = utils::now();
+        let row_internal_id = utils::new_id();
+
+        let row_id = row_id.to_string();
+        let row_data = content.to_string();
 
         // Upsert Database Row.
         let stmt = c

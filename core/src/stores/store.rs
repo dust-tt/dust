@@ -9,6 +9,7 @@ use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LL
 use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
+use serde_json::Value;
 use std::collections::HashMap;
 
 #[async_trait]
@@ -145,7 +146,13 @@ pub trait Store {
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
     // Databases
-    async fn upsert_database(&self, project: &Project, db: &Database) -> Result<()>;
+    async fn upsert_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        name: &str,
+    ) -> Result<()>;
     async fn load_database(
         &self,
         project: &Project,
@@ -161,7 +168,10 @@ pub trait Store {
         &self,
         project: &Project,
         data_source_id: &str,
-        table: &DatabaseTable,
+        database_id: &str,
+        table_id: &str,
+        name: &str,
+        description: &str,
     ) -> Result<()>;
     async fn load_database_table(
         &self,
@@ -182,7 +192,9 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        row: &DatabaseRow,
+        table_id: &str,
+        row_id: &str,
+        content: &Value,
     ) -> Result<()>;
     async fn load_database_row(
         &self,
