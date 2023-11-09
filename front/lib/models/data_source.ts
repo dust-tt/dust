@@ -24,7 +24,6 @@ export class DataSource extends Model<
   declare description: string | null;
   declare visibility: "public" | "private";
   declare assistantDefaultSelected: boolean;
-  declare config: string | null;
   declare dustAPIProjectId: string;
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
@@ -65,9 +64,6 @@ DataSource.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-    },
-    config: {
-      type: DataTypes.TEXT,
     },
     dustAPIProjectId: {
       type: DataTypes.STRING,
