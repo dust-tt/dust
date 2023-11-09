@@ -28,7 +28,7 @@ async function main() {
       where: {
         connectorId: c.id,
       },
-      attributes: ["id", "driveFileId"],
+      attributes: ["id", "driveFileId", "dustFileId"],
     });
 
     console.log(`Connector ${c.id}: found ${files.length} files`);
@@ -94,7 +94,7 @@ async function main() {
     console.log(`Found ${documents.length} core documents`);
 
     const documentsToDelete = documents.filter((d) => {
-      return fileHash[d.document_id] !== undefined;
+      return fileHash[d.document_id] === undefined;
     });
 
     console.log(
