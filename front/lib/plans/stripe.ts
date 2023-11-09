@@ -150,7 +150,17 @@ export const getProduct = async (
 };
 
 /**
+ * Calls the Stripe API to retrieve a subscription by its ID.
+ */
+export const getStripeSubscription = async (
+  stripeSubscriptionId: string
+): Promise<Stripe.Subscription> => {
+  return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+};
+
+/**
  * Calls the Stripe API to update the quantity of a subscription.
+ * Used for our "per seat" billing.
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
 export const updateStripeSubscriptionQuantity = async ({
@@ -165,6 +175,7 @@ export const updateStripeSubscriptionQuantity = async ({
   quantity: number;
 }): Promise<void> => {
   // First, we get the current subscription
+  // @todo daph refactor use getSubscription
   const stripeSubscriptions = await stripe.subscriptions.list({
     customer: stripeCustomerId,
   });
@@ -198,5 +209,27 @@ export const updateStripeSubscriptionQuantity = async ({
   const subscriptionItemId = stripeSubscription.items.data[0].id;
   await stripe.subscriptions.update(stripeSubscriptionId, {
     items: [{ id: subscriptionItemId, quantity, price: priceId || undefined }],
+  });
+};
+
+/**
+ * Calls the Stripe API to update the usage of a subscription.
+ * Used for our "monthly active users" billing.
+ * For those plans Stripe price is configured with: "Usage type = Metered usage, Aggregation mode = Last value during period"
+ * https://stripe.com/docs/products-prices/pricing-models#reporting-usage
+ */
+export const updateStripeSubscriptionUsage = async ({
+  stripeSubscription,
+  quantity,
+}: {
+  stripeSubscription: Stripe.Subscription;
+  quantity: number;
+}): Promise<void> => {
+  const subscriptionItemId = stripeSubscription.items.data[0].id;
+  await stripe.subscriptionItems.createUsageRecord(subscriptionItemId, {
+    // We do not send a timestamp, because we want to use the current time.
+    // We use action = "set" to override the previous usage (as opposed to "increment")
+    action: "set",
+    quantity: quantity,
   });
 };
