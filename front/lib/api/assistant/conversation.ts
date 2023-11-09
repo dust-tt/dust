@@ -1044,6 +1044,37 @@ export async function* postUserMessage(
       subscription,
     });
   }
+
+  // Temporary: we want to monitor if we need to prevent it or not
+  async function logIfUserUnknown() {
+    try {
+      if (!user && context.email) {
+        const macthingUser = await User.findOne({
+          where: {
+            email: context.email,
+          },
+        });
+
+        if (!macthingUser) {
+          logger.warn(
+            {
+              conversationId: conversation.sId,
+              workspaceId: owner?.sId,
+            },
+            "[postUserMessage] Generated a message for a user with an unknown email address."
+          );
+        }
+      }
+    } catch (e) {
+      logger.error(
+        {
+          error: e,
+        },
+        "[postUserMessage] Failed to check if user is known."
+      );
+    }
+  }
+  void logIfUserUnknown();
 }
 
 /** This method creates a new user message version, and if there are new agent
