@@ -1,8 +1,8 @@
 import { Sequelize } from "sequelize";
 
-import { Connector, GoogleDriveFiles } from "@connectors/lib/models";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import { Connector, GoogleDriveFiles } from "@connectors/lib/models";
 
 // To be run from connectors with `CORE_DATABASE_URI` and `FRONT_DATABASE_URI` set.
 const { CORE_DATABASE_URI, FRONT_DATABASE_URI, LIVE = false } = process.env;
