@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { redisClient } from "./redis";
+import { redisClient } from "@app/lib/redis";
 
 export async function rateLimiter(
   key: string,
