@@ -863,6 +863,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
     },
     limit: pageSize,
   });
+  logger.info({ count: webhooks.length }, `Renewing webhooks`);
 
   for (const wh of webhooks) {
     // Renew each webhook.
