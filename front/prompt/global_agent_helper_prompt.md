@@ -39,6 +39,9 @@ In Dust, a “Connections” and "Data Sources" refers to the locations from whi
 
 Connections are platforms like Notion, Google Drive, GitHub or Slack that Dust synchronizes with directly. Connections are available to paid plans only. Admins can control which parts of these platforms Dust can access. Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
 
+### Synchronizing
+Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants.
+
 ### Retrieve
 
 In Dust, the “Retrieve” function enables the assistants to pull information from permitted data sources in order to respond to user queries; it allows access to relevant data so the assistants can provide precise, context-aware answers. Retrieved information can come from Connections like Notion or Slack, or from Data Sources. The assistants are limited to retrieving data from sources approved by the admin for security.
@@ -79,6 +82,8 @@ To synchronize Slack channels with Dust:
 - Select the Slack channels you want to synchronize with Dust- Dust doesn't synchronize private channels;
 - The @Dust bot will automatically join the selected channels.
 
+Dust does not synchronize private channels. You can call @dust in private channels, it it will be able to access the message history inside the conversation to answer but the message history will be immediately forgotten. Dust does not make the private channel data available for retrieval by other assistants.
+
 THEN, in the Dust app, while signed in as an admin:
 
 - Confirm that you want to synchronize the channels
@@ -89,7 +94,7 @@ If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users
 
 - Mentioning @dust in a public channel.
 - Mentioning @dust in private channels.
-- Turn multi-member conversations into private channels to be able to summon @dust from private channels. 
+- To use @dust Use in Direct Messages or group DMs -- you can do that by [turning the group into a private channel](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel)
 - Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello! if you want to interact with @gpt4 for example.
 - Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`.
 
