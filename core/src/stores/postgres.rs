@@ -2217,10 +2217,10 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "INSERT INTO database_rows \
-                   (id, database_table, created, row_id, internal_id, data) \
+                   (id, database_table, created, row_id, internal_id, content) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) \
                    ON CONFLICT (row_id, database_table) DO UPDATE \
-                   SET data = EXCLUDED.data \
+                   SET content = EXCLUDED.content \
                    RETURNING id",
             )
             .await?;
@@ -2265,7 +2265,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, row_id, internal_id, data FROM database_rows \
+                "SELECT created, row_id, internal_id, content FROM database_rows \
             WHERE database_table IN (
                 SELECT id FROM database_tables WHERE database IN (
                     SELECT id FROM databases WHERE data_source IN (
@@ -2350,7 +2350,7 @@ impl Store for PostgresStore {
 
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_row_id];
         let mut query = "SELECT database_rows.created, database_rows.row_id, database_rows.internal_id, \
-                         database_rows.data, database_tables.table_id \
+                         database_rows.content, database_tables.table_id \
                          FROM database_rows \
                          INNER JOIN database_tables ON database_rows.database_table = database_tables.id \
                          WHERE database_tables.database = $1".to_string();
