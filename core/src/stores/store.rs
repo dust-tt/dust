@@ -145,19 +145,19 @@ pub trait Store {
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
     // Databases
-    async fn register_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        db: &Database,
-    ) -> Result<()>;
+    async fn upsert_database(&self, project: &Project, db: &Database) -> Result<()>;
     async fn load_database(
         &self,
         project: &Project,
         data_source_id: &str,
         database_id: &str,
     ) -> Result<Option<Database>>;
-    async fn register_database_table(
+    async fn list_databases(
+        &self,
+        project: &Project,
+        data_source_id: Option<&str>,
+    ) -> Result<Vec<Database>>;
+    async fn upsert_database_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -177,7 +177,7 @@ pub trait Store {
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseTable>, usize)>;
-    async fn insert_database_row(
+    async fn upsert_database_row(
         &self,
         project: &Project,
         data_source_id: &str,

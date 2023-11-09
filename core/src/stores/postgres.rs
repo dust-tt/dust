@@ -1749,14 +1749,9 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn register_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        db: &Database,
-    ) -> Result<()> {
+    async fn upsert_database(&self, project: &Project, db: &Database) -> Result<()> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
+        let data_source_id = db.data_source_id().to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1779,12 +1774,15 @@ impl Store for PostgresStore {
         let db_internal_id = db.internal_id().to_string();
         let db_name = db.name().to_string();
 
-        // Create Database.
+        // Upsert Database.
         let stmt = c
             .prepare(
                 "INSERT INTO databases \
                    (id, data_source, created, database_id, internal_id, name) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) \
+                   ON CONFLICT (database_id, data_source) DO UPDATE \
+                   SET name = EXCLUDED.name \
+                   RETURNING id",
             )
             .await?;
         c.query_one(
@@ -1801,7 +1799,6 @@ impl Store for PostgresStore {
 
         Ok(())
     }
-
     async fn load_database(
         &self,
         project: &Project,
@@ -1816,32 +1813,89 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
 
         let stmt = c.prepare(
-            "SELECT created, database_id, internal_id, name FROM databases \
-            WHERE data_source IN (SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2) \
-            AND database_id = $3 LIMIT 1"
+            "SELECT databases.created, databases.database_id, databases.internal_id, databases.name, data_sources.data_source_id \
+            FROM databases \
+            INNER JOIN data_sources ON databases.data_source = data_sources.id \
+            WHERE data_sources.project = $1 AND data_sources.data_source_id = $2 AND databases.database_id = $3 LIMIT 1"
         ).await?;
         let r = c
             .query(&stmt, &[&project_id, &data_source_id, &database_id])
             .await?;
 
-        let d: Option<(i64, String, String, String)> = match r.len() {
+        let d: Option<(i64, String, String, String, String)> = match r.len() {
             0 => None,
-            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+            )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((created, database_id, internal_id, name)) => Ok(Some(Database::new_from_store(
-                created as u64,
-                &database_id,
-                &internal_id,
-                &name,
-            ))),
+            Some((created, database_id, internal_id, name, data_source_id)) => {
+                Ok(Some(Database::new_from_store(
+                    created as u64,
+                    &data_source_id,
+                    &database_id,
+                    &internal_id,
+                    &name,
+                )))
+            }
         }
     }
 
-    async fn register_database_table(
+    async fn list_databases(
+        &self,
+        project: &Project,
+        data_source_id: Option<&str>,
+    ) -> Result<Vec<Database>> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&project_id];
+        let mut query = "SELECT databases.created, databases.database_id, databases.internal_id, databases.name, data_sources.data_source_id \
+                         FROM databases \
+                         INNER JOIN data_sources ON databases.data_source = data_sources.id \
+                         WHERE data_sources.project = $1".to_string();
+
+        let data_source_id_str: String;
+        if let Some(data_source_id) = data_source_id {
+            data_source_id_str = data_source_id.to_string();
+            query.push_str(" AND data_sources.data_source_id = $2");
+            params.push(&data_source_id_str);
+        };
+
+        let rows = c.query(&query, &params).await?;
+
+        let databases: Vec<Database> = rows
+            .iter()
+            .map(|row| {
+                let created: i64 = row.get(0);
+                let database_id: String = row.get(1);
+                let internal_id: String = row.get(2);
+                let name: String = row.get(3);
+                let data_source_id: String = row.get(4);
+
+                Ok(Database::new_from_store(
+                    created as u64,
+                    &data_source_id,
+                    &database_id,
+                    &internal_id,
+                    &name,
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(databases)
+    }
+
+    async fn upsert_database_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -1884,12 +1938,15 @@ impl Store for PostgresStore {
         let table_name = table.name().to_string();
         let table_description = table.description().to_string();
 
-        // Create Database Table.
+        // Upsert Database Table.
         let stmt = c
             .prepare(
                 "INSERT INTO database_tables \
                    (id, database, created, table_id, internal_id, name, description) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) \
+                   ON CONFLICT (table_id, database) DO UPDATE \
+                   SET name = EXCLUDED.name, description = EXCLUDED.description \
+                   RETURNING id",
             )
             .await?;
 
@@ -2071,7 +2128,7 @@ impl Store for PostgresStore {
         Ok((tables, total))
     }
 
-    async fn insert_database_row(
+    async fn upsert_database_row(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2129,12 +2186,15 @@ impl Store for PostgresStore {
         let row_internal_id = row.internal_id().to_string();
         let row_data = row.content().to_string();
 
-        // Create Database Row.
+        // Upsert Database Row.
         let stmt = c
             .prepare(
                 "INSERT INTO database_rows \
                    (id, database_table, created, row_id, internal_id, data) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) \
+                   ON CONFLICT (row_id, database_table) DO UPDATE \
+                   SET data = EXCLUDED.data \
+                   RETURNING id",
             )
             .await?;
 
