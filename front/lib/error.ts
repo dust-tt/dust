@@ -50,7 +50,8 @@ export type APIErrorType =
   | "subscription_error"
   | "stripe_webhook_error"
   | "stripe_api_error"
-  | "stripe_invalid_product_id_error";
+  | "stripe_invalid_product_id_error"
+  | "rate_limit_error";
 
 export type APIError = {
   type: APIErrorType;

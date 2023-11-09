@@ -19,6 +19,7 @@ import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { APIErrorWithStatusCode } from "@app/lib/error";
 import { AgentMessage, Message } from "@app/lib/models";
+import { rateLimiter } from "@app/lib/rate_limiter";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -47,6 +48,30 @@ export async function postUserMessageWithPubSub(
     context: UserMessageContext;
   }
 ): Promise<Result<UserMessageType, PubSubError>> {
+  let maxPerTimeframe: number | undefined = undefined;
+  let timeframeSeconds: number | undefined = undefined;
+  let rateLimitKey: string | undefined = "";
+  if (auth.user()?.id) {
+    maxPerTimeframe = 15;
+    timeframeSeconds = 120;
+    rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
+  } else {
+    maxPerTimeframe = 20;
+    timeframeSeconds = 120;
+    rateLimitKey = `postUserMessageWorkspace:${auth.workspace()?.id}`;
+  }
+
+  if (
+    (await rateLimiter(rateLimitKey, maxPerTimeframe, timeframeSeconds)) === 0
+  ) {
+    return new Err({
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: "Rate limit exceeded. Please try again in a few minutes.",
+      },
+    });
+  }
   const postMessageEvents = postUserMessage(auth, {
     conversation,
     content,
