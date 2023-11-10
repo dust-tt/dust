@@ -1,4 +1,4 @@
-import { CheckFunction } from "@app/production_checks/types/checks";
+import { CheckFunction } from "@app/production_checks/types/check";
 
 export const mySuperCheck: CheckFunction = async (
   checkName,

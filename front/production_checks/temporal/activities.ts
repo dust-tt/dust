@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
 import { mySuperCheck } from "@app/production_checks/checks/super_check";
-import { Check } from "@app/production_checks/types/checks";
+import { Check } from "@app/production_checks/types/check";
 
 export async function runAllChecksActivity() {
   const checks: Check[] = [
