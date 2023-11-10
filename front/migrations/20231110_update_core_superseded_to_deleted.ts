@@ -59,6 +59,7 @@ async function processDocument(
   data_source: number,
   document_id: string
 ) {
+  // These are the versions we want to mark as `deleted` as they precede the `deleted` version we found.
   const supersededBeforeData = await core_sequelize.query(
     `SELECT * FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND status = 'superseded' AND created <= :deletedAt`,
     {
@@ -70,6 +71,7 @@ async function processDocument(
     }
   );
 
+  // We check we don't have a latest in there for sanity.
   const latestBeforeData = await core_sequelize.query(
     `SELECT * FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND status = 'latest' AND created <= :deletedAt`,
     {
@@ -81,6 +83,7 @@ async function processDocument(
     }
   );
 
+  // Just as FYI is there data after the deletion (the file was deleted and re-upserted)
   const afterData = await core_sequelize.query(
     `SELECT * FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND created > :deletedAt`,
     {
@@ -109,6 +112,7 @@ async function processDocument(
   );
 
   if (LIVE && supersededBeforeData[0].length > 0) {
+    // Actually mark as deleted
     await core_sequelize.query(
       `UPDATE data_sources_documents SET status = 'deleted' WHERE data_source = :data_source AND document_id = :document_id AND status = 'superseded' AND created <= :deletedAt`,
       {
