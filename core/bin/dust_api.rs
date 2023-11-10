@@ -2028,7 +2028,7 @@ async fn databases_schema_retrieve(
             &format!("No database found for id `{}`", database_id),
             None,
         ),
-        Ok(Some(db)) => match db.get_schema(project_id, state.store.clone()).await {
+        Ok(Some(db)) => match db.get_schema(&project, state.store.clone()).await {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",

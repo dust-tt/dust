@@ -46,13 +46,12 @@ impl Database {
 
     pub async fn get_schema(
         &self,
-        project_id: i64,
+        project: &Project,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<DatabaseSchema> {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
-                let project = Project::new_from_id(project_id);
                 let (tables, _) = store
                     .list_databases_tables(&project, &self.data_source_id, &self.database_id, None)
                     .await?;
