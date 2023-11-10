@@ -52,7 +52,7 @@ export async function postUserMessageWithPubSub(
   let timeframeSeconds: number | undefined = undefined;
   let rateLimitKey: string | undefined = "";
   if (auth.user()?.id) {
-    maxPerTimeframe = 15;
+    maxPerTimeframe = 3;
     timeframeSeconds = 120;
     rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
   } else {
@@ -68,7 +68,9 @@ export async function postUserMessageWithPubSub(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: "Rate limit exceeded. Please try again in a few minutes.",
+        message: `You have reached the maximum number of ${maxPerTimeframe} messages per ${Math.ceil(
+          timeframeSeconds / 60
+        )} minutes of your account. Please try again later.`,
       },
     });
   }
