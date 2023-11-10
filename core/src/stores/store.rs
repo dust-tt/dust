@@ -219,7 +219,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: Option<&str>,
+        table_id: &Option<String>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)>;
 
