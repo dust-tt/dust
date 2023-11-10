@@ -2270,7 +2270,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: Option<&str>,
+        table_id: &Option<String>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)> {
         let project_id = project.project_id();
