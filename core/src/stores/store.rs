@@ -162,7 +162,8 @@ pub trait Store {
     async fn list_databases(
         &self,
         project: &Project,
-        data_source_id: &Option<String>,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
     ) -> Result<Vec<Database>>;
     async fn upsert_database_table(
         &self,
