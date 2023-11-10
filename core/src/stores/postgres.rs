@@ -1840,27 +1840,38 @@ impl Store for PostgresStore {
     async fn list_databases(
         &self,
         project: &Project,
-        data_source_id: &Option<String>,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
     ) -> Result<Vec<Database>> {
         let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&project_id];
-        let mut query = "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
-                         FROM databases \
-                         INNER JOIN data_sources ON databases.data_source = data_sources.id \
-                         WHERE data_sources.project = $1".to_string();
+        let base_query = "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
+        FROM databases \
+        INNER JOIN data_sources ON databases.data_source = data_sources.id \
+        WHERE data_sources.project = $1 AND data_sources.data_source_id = $2";
 
-        let data_source_id_str: String;
-        if let Some(data_source_id) = data_source_id {
-            data_source_id_str = data_source_id.to_string();
-            query.push_str(" AND data_sources.data_source_id = $2");
-            params.push(&data_source_id_str);
+        let rows = match limit_offset {
+            None => {
+                c.query(&base_query.to_string(), &[&project_id, &data_source_id])
+                    .await?
+            }
+            Some((limit, offset)) => {
+                c.query(
+                    &(base_query.to_owned() + " LIMIT $3 OFFSET $4"),
+                    &[
+                        &project_id,
+                        &data_source_id,
+                        &(limit as i64),
+                        &(offset as i64),
+                    ],
+                )
+                .await?
+            }
         };
-
-        let rows = c.query(&query, &params).await?;
 
         let databases: Vec<Database> = rows
             .iter()

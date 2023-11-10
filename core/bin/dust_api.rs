@@ -1722,11 +1722,12 @@ async fn databases_retrieve(
 
 #[derive(serde::Deserialize)]
 struct DatabasesListQuery {
-    data_source_id: Option<String>,
+    offset: usize,
+    limit: usize,
 }
 
 async fn databases_list(
-    extract::Path(project_id): extract::Path<i64>,
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
     extract::Query(query): extract::Query<DatabasesListQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -1734,7 +1735,7 @@ async fn databases_list(
 
     match state
         .store
-        .list_databases(&project, &query.data_source_id)
+        .list_databases(&project, &data_source_id, Some((query.limit, query.offset)))
         .await
     {
         Err(e) => error_response(
@@ -2060,7 +2061,7 @@ fn main() {
             get(databases_retrieve),
         )
         .route(
-            "/projects/:project_id",
+            "/projects/:project_id/data_sources/:data_source_id/databases",
             get(databases_list),
         )
         .route(
