@@ -29,6 +29,8 @@ export async function rateLimiter(
         value: uuidv4(),
       });
       await redis.expire(redisKey, timeframeSeconds * 2);
+    } else {
+      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
     }
     const totalTimeMs = new Date().getTime() - now.getTime();
 
@@ -37,11 +39,7 @@ export async function rateLimiter(
       totalTimeMs,
       tags
     );
-    statsDClient.distribution(
-      "ratelimiter.remaining.distribution",
-      remaining,
-      tags
-    );
+
     return remaining;
   } catch (e) {
     statsDClient.increment("ratelimiter.error.count", 1, tags);
