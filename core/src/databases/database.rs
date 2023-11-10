@@ -55,25 +55,46 @@ impl Database {
                 let (tables, _) = store
                     .list_databases_tables(&project, &self.data_source_id, &self.database_id, None)
                     .await?;
-                let (rows, _) = store
-                    .list_database_rows(
-                        &project,
-                        &self.data_source_id,
-                        &self.database_id,
-                        &None, // get rows from all tables
-                        None,
-                    )
-                    .await?;
 
-                // group rows by table_id
-                let mut table_rows: HashMap<String, Vec<DatabaseRow>> = HashMap::new();
+                let mut table_rows_futures = Vec::new();
 
-                for row in rows {
-                    let table_id = row.table_id();
-                    if !table_rows.contains_key(table_id) {
-                        table_rows.insert(table_id.to_string(), Vec::new());
+                for table in &tables {
+                    let store_ref = &store;
+                    let project_ref = &project;
+                    let data_source_id = &self.data_source_id;
+                    let database_id = &self.database_id;
+                    let table_id = table.table_id().to_string();
+
+                    let rows_future = async move {
+                        store_ref
+                            .list_database_rows(
+                                project_ref,
+                                data_source_id,
+                                database_id,
+                                &table_id,
+                                None,
+                            )
+                            .await
+                    };
+
+                    table_rows_futures.push(rows_future);
+                }
+
+                // Now, we concurrently wait for all futures to complete.
+                let results: Vec<_> = futures::future::join_all(table_rows_futures).await;
+
+                let mut table_rows = HashMap::new();
+
+                for result in results {
+                    match result {
+                        Ok((rows, _)) => {
+                            let first_row = rows.first();
+                            if let Some(row) = first_row {
+                                table_rows.insert(row.table_id().to_string(), rows);
+                            }
+                        }
+                        Err(e) => return Err(e.into()),
                     }
-                    table_rows.get_mut(table_id).unwrap().push(row);
                 }
 
                 let table_by_id = tables
@@ -102,7 +123,7 @@ impl Database {
                     schema.insert(table_id.to_string(), schema_table);
                 }
 
-                // add emptu tables
+                // add empty tables
                 for table in tables {
                     let table_id = table.table_id();
                     if !schema.contains_key(table_id) {

@@ -1030,7 +1030,7 @@ export const CoreAPI = {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
-    tableId?: string | null;
+    tableId: string;
     limit: number;
     offset: number;
   }): Promise<
@@ -1041,13 +1041,12 @@ export const CoreAPI = {
       total: number;
     }>
   > {
-    let url = `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/rows?limit=${limit}&offset=${offset}`;
-    if (tableId) {
-      url += `&table_id=${tableId}`;
-    }
-    const response = await fetch(url, {
-      method: "GET",
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      {
+        method: "GET",
+      }
+    );
 
     return _resultFromResponse(response);
   },

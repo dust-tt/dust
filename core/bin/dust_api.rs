@@ -1963,11 +1963,15 @@ async fn databases_rows_retrieve(
 struct DatabasesRowsListQuery {
     offset: usize,
     limit: usize,
-    table_id: Option<String>,
 }
 
 async fn databases_rows_list(
-    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
     extract::Query(query): extract::Query<DatabasesRowsListQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -1979,7 +1983,7 @@ async fn databases_rows_list(
             &project,
             &data_source_id,
             &database_id,
-            &query.table_id,
+            &table_id,
             Some((query.limit, query.offset)),
         )
         .await
@@ -2262,7 +2266,7 @@ fn main() {
             get(databases_rows_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/rows",
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id/rows",
             get(databases_rows_list),
         )
         .route(
