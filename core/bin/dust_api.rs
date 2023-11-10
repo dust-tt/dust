@@ -1841,27 +1841,15 @@ async fn databases_tables_retrieve(
     }
 }
 
-#[derive(serde::Deserialize)]
-struct DatabasesTablesListQuery {
-    offset: usize,
-    limit: usize,
-}
-
 async fn databases_tables_list(
     extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
-    extract::Query(query): extract::Query<DatabasesTablesListQuery>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
     match state
         .store
-        .list_databases_tables(
-            &project,
-            &data_source_id,
-            &database_id,
-            Some((query.limit, query.offset)),
-        )
+        .list_databases_tables(&project, &data_source_id, &database_id, None)
         .await
     {
         Err(e) => error_response(
@@ -1870,15 +1858,12 @@ async fn databases_tables_list(
             "Failed to list database tables",
             Some(e),
         ),
-        Ok((tables, total)) => (
+        Ok((tables, _)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
                     "tables": tables,
-                    "offset": query.offset,
-                    "limit": query.limit,
-                    "total": total,
                 })),
             }),
         ),

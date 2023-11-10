@@ -939,17 +939,13 @@ export const CoreAPI = {
     projectId,
     dataSourceName,
     databaseId,
-    offset,
-    limit,
   }: {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
-    offset: number;
-    limit: number;
   }): Promise<CoreAPIResponse<{ tables: CoreAPIDatabaseTable[] }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables?offset=${offset}&limit=${limit}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
       {
         method: "GET",
       }
