@@ -15,6 +15,7 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { DustAPI } from "@app/lib/dust_api";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -24,6 +25,7 @@ import {
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
 import { PlanType } from "@app/types/plan";
+import { WorkspaceType } from "@app/types/user";
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -137,17 +139,21 @@ async function _getGPT35TurboGlobalAgent({
 }
 
 async function _getGPT4GlobalAgent({
+  owner,
   plan,
 }: {
+  owner: WorkspaceType;
   plan: PlanType;
 }): Promise<AgentConfigurationType> {
   const isFreePlan = plan.code === FREE_TEST_PLAN_CODE;
+  const isDustOrDevWorkspace = isDevelopmentOrDustWorkspace(owner);
+  const shouldUseTurboModel = isFreePlan || isDustOrDevWorkspace;
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
     version: 0,
     name: "gpt4",
-    description: isFreePlan
+    description: shouldUseTurboModel
       ? "OpenAI's cost-effective and high throughput model (128K context)."
       : "OpenAI's most powerful model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
@@ -157,10 +163,10 @@ async function _getGPT4GlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: isFreePlan
+        providerId: shouldUseTurboModel
           ? GPT_4_TURBO_MODEL_CONFIG.providerId
           : GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: isFreePlan
+        modelId: shouldUseTurboModel
           ? GPT_4_TURBO_MODEL_CONFIG.modelId
           : GPT_4_32K_MODEL_CONFIG.modelId,
       },
@@ -562,7 +568,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent({ plan });
+      agentConfiguration = await _getGPT4GlobalAgent({ owner, plan });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
