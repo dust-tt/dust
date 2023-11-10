@@ -1,15 +1,22 @@
+import StatsD from "hot-shots";
 import { v4 as uuidv4 } from "uuid";
 
 import { redisClient } from "@app/lib/redis";
+import logger from "@app/logger/logger";
 
+export const statsDClient = new StatsD();
 export async function rateLimiter(
   key: string,
   maxPerTimeframe: number,
   timeframeSeconds: number
-) {
-  const redis = await redisClient();
-  const redisKey = `rate_limiter:${key}`;
+): Promise<number> {
+  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
+  const now = new Date();
+  const tags = [`rate_limiter:${key}`];
   try {
+    redis = await redisClient();
+    const redisKey = `rate_limiter:${key}`;
+
     const zcountRes = await redis.zCount(
       redisKey,
       new Date().getTime() - timeframeSeconds * 1000,
@@ -23,8 +30,36 @@ export async function rateLimiter(
       });
       await redis.expire(redisKey, timeframeSeconds * 2);
     }
+    const totalTimeMs = new Date().getTime() - now.getTime();
+
+    statsDClient.distribution(
+      "ratelimiter.latency.distribution",
+      totalTimeMs,
+      tags
+    );
+    statsDClient.distribution(
+      "ratelimiter.remaining.distribution",
+      remaining,
+      tags
+    );
     return remaining;
+  } catch (e) {
+    statsDClient.increment("ratelimiter.error.count", 1, tags);
+    logger.error(
+      {
+        key,
+        maxPerTimeframe,
+        timeframeSeconds,
+        error: e,
+      },
+      `RateLimiter error`
+    );
+
+    // in case of error on our side, we allow the request.
+    return 1;
   } finally {
-    await redis.quit();
+    if (redis) {
+      await redis.quit();
+    }
   }
 }
