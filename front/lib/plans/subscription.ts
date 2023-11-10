@@ -445,7 +445,6 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
 
     await updateStripeSubscriptionQuantity({
       stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
-      stripeCustomerId: activeSubscription.stripeCustomerId,
       stripeProductId: activeSubscription.plan.stripeProductId,
       quantity: activeSeats,
     });

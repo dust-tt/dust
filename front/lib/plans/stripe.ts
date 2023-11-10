@@ -166,34 +166,15 @@ export const getStripeSubscription = async (
 export const updateStripeSubscriptionQuantity = async ({
   stripeSubscriptionId,
   stripeProductId,
-  stripeCustomerId,
   quantity,
 }: {
   stripeSubscriptionId: string;
   stripeProductId: string;
-  stripeCustomerId: string;
   quantity: number;
 }): Promise<void> => {
-  // First, we get the current subscription
-  // @todo daph refactor use getSubscription
-  const stripeSubscriptions = await stripe.subscriptions.list({
-    customer: stripeCustomerId,
-  });
+  const stripeSubscription = await getStripeSubscription(stripeSubscriptionId);
+  const currentQuantity = stripeSubscription.items.data[0].quantity;
 
-  if (stripeSubscriptions.data.length !== 1) {
-    throw new Error(
-      "Cannot update subscription quantity: expected 1 subscription."
-    );
-  }
-
-  const stripeSubscription = stripeSubscriptions.data[0];
-  if (stripeSubscription.id !== stripeSubscriptionId) {
-    throw new Error(
-      "Cannot update subscription quantity: stripe subscription ID mismatch."
-    );
-  }
-
-  const currentQuantity = stripeSubscriptions.data[0].items.data[0].quantity;
   if (currentQuantity === quantity) {
     // No need to update the subscription
     return;
