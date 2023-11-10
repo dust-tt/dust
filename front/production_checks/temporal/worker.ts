@@ -4,7 +4,7 @@ import { Worker } from "@temporalio/worker";
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import * as activities from "@app/poke/temporal/activities";
+import * as activities from "@app/production_checks/temporal/activities";
 
 import { QUEUE_NAME } from "./config";
 

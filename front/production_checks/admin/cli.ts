@@ -5,22 +5,16 @@ import { launchProductionChecksWorkflow } from "../temporal/client";
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
-  if (argv._.length < 2) {
-    console.log(
-      "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
-    );
-    console.log("Possible object types: `workspace`, `user`, `data-source`");
-    return;
-  }
-
   const [command] = argv._;
+
+  console.log(`Running command: ${command}`);
 
   switch (command) {
     case "start":
       await launchProductionChecksWorkflow();
       return;
     default:
-      console.log("Unknown object type, possible values: `start`");
+      console.log("Unknown command, possible values: `start`");
       return;
   }
 };
