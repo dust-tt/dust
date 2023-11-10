@@ -1,4 +1,9 @@
-import { WebClient } from "@slack/web-api";
+import {
+  CodedError,
+  ErrorCode,
+  WebAPIPlatformError,
+  WebClient,
+} from "@slack/web-api";
 import PQueue from "p-queue";
 
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
@@ -235,8 +240,9 @@ export async function cleanupSlackConnector(
         return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
       }
 
+      const slackClient = await getSlackClient(connector.id);
       try {
-        const slackClient = await getSlackClient(connector.id);
+        await slackClient.auth.test();
         const deleteRes = await slackClient.apps.uninstall({
           client_id: SLACK_CLIENT_ID,
           client_secret: SLACK_CLIENT_SECRET,
@@ -249,10 +255,25 @@ export async function cleanupSlackConnector(
           );
         }
       } catch (e) {
-        logger.error(
-          { connectorId: connectorId, error: e },
-          "Could not uninstall the Slack app from the user's workspace."
-        );
+        const slackError = e as CodedError;
+        let shouldThrow = true;
+
+        if (slackError.code === ErrorCode.PlatformError) {
+          const platformError = e as WebAPIPlatformError;
+          if (platformError.data.error === "account_inactive") {
+            shouldThrow = false;
+            logger.info(
+              {
+                connectorId,
+              },
+              `Slack auth is invalid, skipping uninstallation of the Slack app`
+            );
+          }
+        }
+
+        if (shouldThrow) {
+          throw e;
+        }
       }
 
       const nangoRes = await nangoDeleteConnection(
