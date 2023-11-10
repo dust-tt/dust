@@ -1706,7 +1706,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "UPDATE data_sources_documents SET status = 'deleted' \
-                   WHERE data_source = $1 AND document_id = $2 AND status = 'latest'",
+                   WHERE data_source = $1 AND document_id = $2",
             )
             .await?;
         let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
