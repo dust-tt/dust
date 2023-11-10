@@ -251,6 +251,9 @@ impl LLM for AzureOpenAILLM {
                 if model_id.starts_with("gpt-4-32k") {
                     return 32768;
                 }
+                if model_id.starts_with("gpt-4-1106-preview") {
+                    return 128000;
+                }
                 if model_id.starts_with("gpt-4") {
                     return 8192;
                 }
