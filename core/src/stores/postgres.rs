@@ -2187,7 +2187,7 @@ impl Store for PostgresStore {
         // Upsert Database Row.
         let stmt = c
             .prepare(
-                "INSERT INTO database_rows \
+                "INSERT INTO databases_rows \
                    (id, database_table, created, row_id, content) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) \
                    ON CONFLICT (row_id, database_table) DO UPDATE \
@@ -2224,7 +2224,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, row_id, content FROM database_rows \
+                "SELECT created, row_id, content FROM databases_rows \
             WHERE database_table IN (
                 SELECT id FROM databases_tables WHERE database IN (
                     SELECT id FROM databases WHERE data_source IN (
@@ -2307,13 +2307,13 @@ impl Store for PostgresStore {
         };
 
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_row_id];
-        let mut query = "SELECT database_rows.created, database_rows.row_id, \
-                         database_rows.content, databases_tables.table_id \
-                         FROM database_rows \
-                         INNER JOIN databases_tables ON database_rows.database_table = databases_tables.id \
+        let mut query = "SELECT databases_rows.created, databases_rows.row_id, \
+                         databases_rows.content, databases_tables.table_id \
+                         FROM databases_rows \
+                         INNER JOIN databases_tables ON databases_rows.database_table = databases_tables.id \
                          WHERE databases_tables.database = $1".to_string();
 
-        let table_id_str: String;
+        let mut table_id_str: String;
         if let Some(table_id) = table_id {
             table_id_str = table_id.to_string();
             query.push_str(" AND databases_tables.table_id = $2");
@@ -2357,11 +2357,25 @@ impl Store for PostgresStore {
         let total = match limit_offset {
             None => rows.len(),
             Some(_) => {
-                let count_sql = match table_id {
-                    Some(_) => "SELECT COUNT(*) FROM database_rows WHERE database_table = (SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2)",
-                    None => "SELECT COUNT(*) FROM database_rows WHERE database_table IN (SELECT id FROM databases_tables WHERE database = $1)",
-                };
-                let t: i64 = c.query_one(count_sql, &params).await?.get(0);
+                let count_sql: &str;
+                let count_params: Vec<&(dyn ToSql + Sync)>;
+                match &table_id {
+                    Some(t_id) => {
+                        table_id_str = t_id.to_string();
+                        count_sql = "SELECT COUNT(*) FROM databases_rows \
+                                         WHERE database_table = (\
+                                         SELECT id FROM databases_tables \
+                                         WHERE database = $1 AND table_id = $2)";
+                        count_params = vec![&database_row_id, &table_id_str];
+                    }
+                    None => {
+                        count_sql = "SELECT COUNT(*) FROM databases_rows \
+                                         WHERE database_table IN (\
+                                         SELECT id FROM databases_tables WHERE database = $1)";
+                        count_params = vec![&database_row_id];
+                    }
+                }
+                let t: i64 = c.query_one(count_sql, &count_params).await?.get(0);
                 t as usize
             }
         };
@@ -2429,7 +2443,7 @@ impl Store for PostgresStore {
         // truncate table if required
         if truncate {
             let stmt = c
-                .prepare("DELETE FROM database_rows WHERE database_table = $1")
+                .prepare("DELETE FROM databases_rows WHERE database_table = $1")
                 .await?;
             c.execute(&stmt, &[&table_row_id]).await?;
         }
@@ -2437,7 +2451,7 @@ impl Store for PostgresStore {
         // prepare insertion/updation statement
         let stmt = c
             .prepare(
-                "INSERT INTO database_rows \
+                "INSERT INTO databases_rows \
                     (id, database_table, created, row_id, content) \
                     VALUES (DEFAULT, $1, $2, $3, $4) \
                     ON CONFLICT (row_id, database_table) DO UPDATE \

@@ -875,15 +875,18 @@ export const CoreAPI = {
   async getDatabases({
     projectId,
     dataSourceName,
+    offset,
+    limit,
   }: {
     projectId: string;
-    dataSourceName: string | null;
+    dataSourceName: string;
+    offset: number;
+    limit: number;
   }): Promise<CoreAPIResponse<{ databases: CoreAPIDatabase[] }>> {
-    let url = `${CORE_API}/projects/${projectId}`;
-    if (dataSourceName) {
-      url += `?data_source_id=${dataSourceName}`;
-    }
-    const response = await fetch(url, { method: "GET" });
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
+      { method: "GET" }
+    );
 
     return _resultFromResponse(response);
   },
@@ -1027,7 +1030,7 @@ export const CoreAPI = {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
-    tableId: string;
+    tableId?: string | null;
     limit: number;
     offset: number;
   }): Promise<
@@ -1038,8 +1041,38 @@ export const CoreAPI = {
       total: number;
     }>
   > {
+    let url = `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/rows?limit=${limit}&offset=${offset}`;
+    if (tableId) {
+      url += `&table_id=${tableId}`;
+    }
+    const response = await fetch(url, {
+      method: "GET",
+    });
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseSchema({
+    projectId,
+    dataSourceName,
+    databaseId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: Record<
+        string,
+        {
+          table: CoreAPIDatabaseTable;
+          schema: Record<string, "int" | "float" | "text" | "bool">;
+        }
+      >;
+    }>
+  > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/schema`,
       {
         method: "GET",
       }
