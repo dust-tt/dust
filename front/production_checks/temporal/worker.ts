@@ -8,7 +8,7 @@ import * as activities from "@app/production_checks/temporal/activities";
 
 import { QUEUE_NAME } from "./config";
 
-export async function runProductionCheckWorker() {
+export async function runProductionChecksWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),

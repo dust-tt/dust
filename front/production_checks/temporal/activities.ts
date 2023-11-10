@@ -2,9 +2,8 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
-
-import { mySuperCheck } from "../checks/super_check";
-import { Check } from "../lib/libcheck";
+import { mySuperCheck } from "@app/production_checks/checks/super_check";
+import { Check } from "@app/production_checks/lib/libcheck";
 
 export async function runAllChecksActivity() {
   const checks: Check[] = [
