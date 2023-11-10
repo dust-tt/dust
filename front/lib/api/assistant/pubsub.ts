@@ -52,12 +52,12 @@ export async function postUserMessageWithPubSub(
   let timeframeSeconds: number | undefined = undefined;
   let rateLimitKey: string | undefined = "";
   if (auth.user()?.id) {
-    maxPerTimeframe = 3;
-    timeframeSeconds = 120;
+    maxPerTimeframe = 256;
+    timeframeSeconds = 60 * 60;
     rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
   } else {
-    maxPerTimeframe = 20;
-    timeframeSeconds = 120;
+    maxPerTimeframe = 512;
+    timeframeSeconds = 60 * 60;
     rateLimitKey = `postUserMessageWorkspace:${auth.workspace()?.id}`;
   }
 
