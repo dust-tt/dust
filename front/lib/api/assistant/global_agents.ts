@@ -9,6 +9,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -16,11 +17,13 @@ import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import {
   AgentConfigurationType,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
+import { PlanType } from "@app/types/plan";
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -133,13 +136,20 @@ async function _getGPT35TurboGlobalAgent({
   };
 }
 
-async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
+async function _getGPT4GlobalAgent({
+  plan,
+}: {
+  plan: PlanType;
+}): Promise<AgentConfigurationType> {
+  const isFreePlan = plan.code === FREE_TEST_PLAN_CODE;
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
     version: 0,
     name: "gpt4",
-    description: "OpenAI's most powerful model (32k context).",
+    description: isFreePlan
+      ? "OpenAI's cost-effective and high throughput model (128K context)."
+      : "OpenAI's most powerful model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status: "active",
     scope: "global",
@@ -147,8 +157,12 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
       id: -1,
       prompt: "",
       model: {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+        providerId: isFreePlan
+          ? GPT_4_TURBO_MODEL_CONFIG.providerId
+          : GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: isFreePlan
+          ? GPT_4_TURBO_MODEL_CONFIG.modelId
+          : GPT_4_32K_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -548,7 +562,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent();
+      agentConfiguration = await _getGPT4GlobalAgent({ plan });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
