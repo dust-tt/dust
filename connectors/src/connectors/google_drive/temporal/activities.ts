@@ -896,7 +896,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
 
   if (connector) {
     try {
-      const webhookInfo = await registerWebhook(connector.connectionId);
+      const webhookInfo = await registerWebhook(connector);
       if (webhookInfo.isErr()) {
         throw webhookInfo.error;
       } else {
