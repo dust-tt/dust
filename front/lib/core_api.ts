@@ -1030,7 +1030,7 @@ export const CoreAPI = {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
-    tableId: string;
+    tableId?: string | null;
     limit: number;
     offset: number;
   }): Promise<
@@ -1041,8 +1041,38 @@ export const CoreAPI = {
       total: number;
     }>
   > {
+    let url = `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/rows?limit=${limit}&offset=${offset}`;
+    if (tableId) {
+      url += `&table_id=${tableId}`;
+    }
+    const response = await fetch(url, {
+      method: "GET",
+    });
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseSchema({
+    projectId,
+    dataSourceName,
+    databaseId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: Record<
+        string,
+        {
+          table: CoreAPIDatabaseTable;
+          schema: Record<string, "int" | "float" | "text" | "bool">;
+        }
+      >;
+    }>
+  > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/schema`,
       {
         method: "GET",
       }
