@@ -210,7 +210,7 @@ impl LLM for AI21LLM {
     ) -> Result<LLMGeneration> {
         let r = self
             .generate(
-                prompt.clone(),
+                prompt,
                 1, // num_results
                 match max_tokens {
                     Some(f) => f,

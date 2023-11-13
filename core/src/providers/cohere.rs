@@ -328,7 +328,7 @@ impl LLM for CohereLLM {
 
         let r = self
             .generate(
-                prompt.clone(),
+                prompt,
                 max_tokens,
                 temperature,
                 n,
