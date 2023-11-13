@@ -2,14 +2,14 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
-import { mySuperCheck } from "@app/production_checks/checks/super_check";
+import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
 import { Check } from "@app/production_checks/types/check";
 
 export async function runAllChecksActivity() {
   const checks: Check[] = [
     {
-      name: "mySuperCheck",
-      check: mySuperCheck,
+      name: "managed_data_source_gdrive_gc",
+      check: managedDataSourceGCGdriveCheck,
     },
   ];
   await runAllChecks(checks);
@@ -30,7 +30,10 @@ async function runAllChecks(checks: Check[]) {
         logger.info({ reportPayload }, "Check succeeded");
       };
       const reportFailure = (reportPayload: unknown, message: string) => {
-        logger.error({ reportPayload, errorMessage: message }, "Check failed");
+        logger.error(
+          { reportPayload, errorMessage: message },
+          "Production check failed"
+        );
       };
       Context.current().heartbeat({
         type: "start",
