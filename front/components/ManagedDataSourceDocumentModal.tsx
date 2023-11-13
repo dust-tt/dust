@@ -60,8 +60,7 @@ export default function ManagedDataSourceDocumentModal({
       onClose={closeModal}
       hasChanged={false}
       title={title || documentId}
-      type="right-side"
-      width="ultra-wide"
+      variant="full-screen"
     >
       <div className="w-full">
         <div className="text-left">

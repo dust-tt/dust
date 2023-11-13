@@ -458,7 +458,7 @@ function InviteEmailModal({
         onClose={onClose}
         hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
         title="Invite new users"
-        type="right-side"
+        variant="side-sm"
         saveLabel="Invite"
         isSaving={isSending}
         onSave={async () => {
@@ -514,7 +514,7 @@ function ReinviteUserModal({
       onClose={() => onClose(false)}
       hasChanged={false}
       title="Reinstate user?"
-      type="default"
+      variant="dialogue"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
@@ -620,7 +620,7 @@ function InviteSettingsModal({
         !domainUpdating
       }
       title="Invitation link settings"
-      type="right-side"
+      variant="side-sm"
       onSave={() => validDomain() && handleUpdateWorkspace()}
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
@@ -703,7 +703,7 @@ function RevokeInvitationModal({
       hasChanged={false}
       title="Revoke invitation"
       isSaving={isSaving}
-      type="default"
+      variant="dialogue"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
@@ -802,7 +802,7 @@ function ChangeMemberModal({
         selectedRole !== null && selectedRole !== member.workspaces[0].role
       }
       title={member.fullName || "Unreachable"}
-      type="right-side"
+      variant="side-sm"
       onSave={async () => {
         setIsSaving(true);
         if (!selectedRole) return; // unreachable due to hasChanged
@@ -880,7 +880,7 @@ function ChangeMemberModal({
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
         hasChanged={false}
-        type="default"
+        variant="dialogue"
       >
         <div className="mt-6 flex flex-col gap-6 px-2">
           <div>

@@ -189,7 +189,7 @@ export default function ConnectorPermissionsModal({
         !!Object.keys(updatedPermissionByInternalId).length ||
         automaticallyIncludeNewResources !== null
       }
-      type="full-screen"
+      variant="full-screen"
     >
       <div className="mx-auto max-w-4xl text-left">
         {!isDefaultNewResourcePermissionLoading &&
