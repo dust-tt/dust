@@ -106,13 +106,23 @@ export async function githubUpsertIssueActivity(
       page: resultPage,
     });
     resultPageLogger.info("Fetching GitHub issue comments result page.");
-    const comments = await getIssueCommentsPage(
-      installationId,
-      repoName,
-      login,
-      issueNumber,
-      resultPage
-    );
+    let comments = undefined;
+    try {
+      comments = await getIssueCommentsPage(
+        installationId,
+        repoName,
+        login,
+        issueNumber,
+        resultPage
+      );
+    } catch (e) {
+      if (e instanceof Error && "status" in e && e.status === 404) {
+        // Github may return a 404 on the first page if the issue has no comments
+        break;
+      } else {
+        throw e;
+      }
+    }
     if (!comments.length) {
       break;
     }
