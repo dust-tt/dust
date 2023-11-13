@@ -514,7 +514,7 @@ function ReinviteUserModal({
       onClose={() => onClose(false)}
       hasChanged={false}
       title="Reinstate user?"
-      type="default"
+      variant="dialogue"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
