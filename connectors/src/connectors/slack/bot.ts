@@ -1,5 +1,5 @@
 import { WebClient } from "@slack/web-api";
-import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
 
@@ -620,7 +620,7 @@ async function makeContentFragment(
   startingAtTs: string | null,
   connector: Connector
 ) {
-  let allMessages: Message[] = [];
+  let allMessages: MessageElement[] = [];
 
   let next_cursor = undefined;
 
