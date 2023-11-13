@@ -134,10 +134,7 @@ export default function Home({
           </div>
           <div className="flex-grow" />
           <Button.List>
-            <div
-              style={{ opacity: 0 }}
-              className="invisibleFirst transition-all duration-500 ease-out"
-            >
+            <div className="invisibleFirst opacity-0 transition-all duration-500 ease-out">
               <SignUpDropDownButton
                 onClickGoogle={() =>
                   signIn("google", {
