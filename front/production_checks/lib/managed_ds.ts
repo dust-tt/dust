@@ -27,9 +27,14 @@ export async function getCoreDocuments(
   );
 
   const managedDsData = await front_sequelize.query(
-    'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId"\
+    'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
          FROM data_sources WHERE id = :frontDataSourceId',
-    { type: QueryTypes.SELECT }
+    {
+      type: QueryTypes.SELECT,
+      replacements: {
+        frontDataSourceId: frontDataSourceId,
+      },
+    }
   );
   const managedDs = managedDsData as {
     id: number;
