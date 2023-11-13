@@ -17,6 +17,8 @@ export const Line = () => (
 
 ## Automate SQL Query Generation with a Custom Dust Assistant {{ date: '2023-09-28T00:00Z', id: '2023-09-28-automating-sql-query' }}
 
+![](@/media/2023-09-28-automating-sql-query/sql-header.png)
+
 Take the load off your data analysts with a Dust assistant specialized in SQL.
 
 From wide-scale rollouts, we've seen immense value in AI assistants that automatically generate SQL queries.
@@ -32,6 +34,8 @@ While this use case is straightforward, feel free to ask any questions. With the
 - The goal of this assistant is simply to generate SQL queries based on informal instructions to accelerate engineers and data-analyst but also empower non technical users to shape iterate and leverage a SQL query to answer a question they have about the business.
 - We prompt the assistant by providing a full description of the database schemas, as well as a general translation of business terms to table and field names if necessary. This name correspondence is useful if table or column names are not clearly aligned with the general business terminology used within the company. As an example: it can be useful to define what your company consider an active user and similar concepts.
 - If your company is large, the number of tables may be prohibitively large (say 100+). In that case, we encourage shipping one custom assistant per team or function focusing on the tables that are useful to their general use cases. We sugget to not exceed 50 table definitions per assistant. We’re here to help, get in touch in case of doubt: team@dust.tt
+
+![](@/media/2023-09-28-automating-sql-query/sql-screenshot.png)
 
 In the instructions below we prompt the model to follow instructions specific to our systems. You can obviously adapt these instructions to your own systems.
 
