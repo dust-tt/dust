@@ -115,7 +115,6 @@ impl Database {
                     Some(rows) => rows,
                     None => return Err(anyhow!("No rows found")),
                 };
-
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished retrieving schema: duration={}ms",
                     utils::now() - time_query_start
