@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 
-use crate::{project::Project, stores::store::Store};
+use crate::{project::Project, stores::store::Store, utils};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
@@ -107,8 +107,13 @@ impl Database {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
+                let time_query_start = utils::now();
                 // Retrieve the DB schema and construct a SQL string.
                 let (schema, rows_by_table) = self.get_schema(project, store.clone(), true).await?;
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished retrieving schema: duration={}ms",
+                    utils::now() - time_query_start
+                ));
 
                 let table_schemas: HashMap<String, TableSchema> = schema
                     .iter()
@@ -116,6 +121,7 @@ impl Database {
                     .map(|(table_name, table)| (table_name.clone(), table.schema.clone()))
                     .collect();
 
+                let generate_create_table_sql_start = utils::now();
                 let create_tables_sql: String = schema
                     .iter()
                     .filter(|(_, table)| !table.schema.is_empty())
@@ -126,10 +132,20 @@ impl Database {
                     })
                     .collect::<Vec<_>>()
                     .join("\n");
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished generating create table SQL: duration={}ms",
+                    utils::now() - generate_create_table_sql_start
+                ));
 
                 // Build the in-memory SQLite DB with the schema.
                 let conn = rusqlite::Connection::open_in_memory()?;
+
+                let create_tables_execute_start = utils::now();
                 conn.execute_batch(&create_tables_sql)?;
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished creating tables: duration={}ms",
+                    utils::now() - create_tables_execute_start
+                ));
 
                 let mut stmt = conn.prepare(query)?;
 
@@ -141,6 +157,7 @@ impl Database {
                 let column_count = stmt.column_count();
 
                 // insert the rows in the DB
+                let insert_execute_start = utils::now();
                 for (table_name, rows) in rows_by_table.expect("No rows found") {
                     if rows.is_empty() {
                         continue;
@@ -156,9 +173,15 @@ impl Database {
                             table_schema.get_insert_row_sql_string(&table_name, row.content())?;
                         insert_sql += &insert_row_sql;
                     }
+
                     conn.execute_batch(&insert_sql)?;
                 }
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished inserting rows: duration={}ms",
+                    utils::now() - insert_execute_start
+                ));
 
+                let user_query_execute_start = utils::now();
                 let rows = stmt.query_map([], |row| {
                     let mut map = serde_json::Map::new();
                     for i in 0..column_count {
@@ -180,10 +203,25 @@ impl Database {
                     }
                     Ok(Value::Object(map))
                 })?;
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished executing user query: duration={}ms",
+                    utils::now() - user_query_execute_start
+                ));
 
                 let results = rows.collect::<Result<Vec<Value>, rusqlite::Error>>()?;
                 let results_refs = results.iter().collect::<Vec<&Value>>();
+
+                let infer_result_schema_start = utils::now();
                 let table_schema = TableSchema::from_rows(&results_refs)?;
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
+                    utils::now() - infer_result_schema_start
+                ));
+
+                utils::done(&format!(
+                    "DSSTRUCTSTAT Finished query database: duration={}ms",
+                    utils::now() - time_query_start
+                ));
 
                 Ok((results, table_schema))
             }
