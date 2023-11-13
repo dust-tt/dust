@@ -5,7 +5,7 @@ import { ModelId } from "@app/lib/databases";
 import { Err, Ok, Result } from "@app/lib/result";
 import { CheckFunction } from "@app/production_checks/types/check";
 
-const { CORE_DATABASE_URI, FRONT_DATABASE_URI, CONNECTORS_DATABASE_URI } =
+const {  CORE_DATABASE_URI_RO, FRONT_DATABASE_URI_RO, CONNECTORS_DATABASE_URI_RO } =
   process.env;
 
 type CoreDSDocument = {
@@ -25,13 +25,13 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
   reportSuccess,
   reportFailure
 ) => {
-  const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
+  const core_sequelize = new Sequelize(CORE_DATABASE_URI_RO as string, {
     logging: false,
   });
-  const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+  const front_sequelize = new Sequelize(FRONT_DATABASE_URI_RO as string, {
     logging: false,
   });
-  const connectorsSequelize = new Sequelize(CONNECTORS_DATABASE_URI as string, {
+  const connectorsSequelize = new Sequelize(CONNECTORS_DATABASE_URI_RO as string, {
     logging: false,
   });
 
