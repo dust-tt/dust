@@ -21,8 +21,6 @@ export const ModalExample = () => {
   const [inputValue, setInputValue] = useState("initial value");
   const [isRightSideWideModalOpen, setIsRightSideWideModalOpen] =
     useState(false);
-  const [isRightSideUltraWideModalOpen, setIsRightSideUltraWideModalOpen] =
-    useState(false);
   return (
     <Page.Layout gap="md">
       <Modal
@@ -30,14 +28,14 @@ export const ModalExample = () => {
         onClose={() => setIsOpenNoActionNoChange(false)}
         hasChanged={false}
         title="Modal title"
-        type="default"
+        variant="dialogue"
       >
         <div className="s-mt-4 s-h-72">I'm the modal content</div>
       </Modal>
       <Modal
         isOpen={isRightSideModalOpen}
         onClose={() => setIsRightSideModalOpen(false)}
-        type="right-side"
+        variant="side-sm"
         title="Modal title"
         hasChanged={inputValue !== "initial value"}
       >
@@ -67,7 +65,7 @@ export const ModalExample = () => {
         }}
         saveLabel="Save (custom name possible)"
         hasChanged={true}
-        type="default"
+        variant="dialogue"
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
       </Modal>
@@ -75,7 +73,7 @@ export const ModalExample = () => {
         isOpen={isFullScreenModalOpen}
         onClose={() => setIsFullScreenModalOpen(false)}
         hasChanged={true}
-        type="full-screen"
+        variant="full-screen"
         title="Modal title"
       >
         <div className="s-mt-4 s-h-72 s-text-left">I'm the modal content</div>
@@ -84,7 +82,7 @@ export const ModalExample = () => {
         isOpen={isFullScreenModalOverflowOpen}
         onClose={() => setIsFullScreenModalOverflowOpen(false)}
         hasChanged={true}
-        type="full-screen"
+        variant="full-screen"
         title="Modal title"
       >
         <div className="s-mt-4 s-h-96 s-bg-red-300 s-text-left">
@@ -104,54 +102,54 @@ export const ModalExample = () => {
         isOpen={isRightSideWideModalOpen}
         onClose={() => setIsRightSideWideModalOpen(false)}
         hasChanged={false}
-        type="right-side"
+        variant="side-md"
         title="Modal title"
-        width="wide"
       >
         <div className="s-mt-4 s-h-72 s-text-left">
           I'm the modal content, and I am wide
         </div>
-      </Modal>
-      <Modal
-        isOpen={isRightSideUltraWideModalOpen}
-        onClose={() => setIsRightSideUltraWideModalOpen(false)}
-        hasChanged={false}
-        type="right-side"
-        title="Modal title"
-        width="ultra-wide"
-      >
-        <div className="s-mt-4 s-h-72 s-text-left">
-          I'm the modal content, and I am ultra-wide
+        <div className="s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
+        </div>
+        <div className="bg-red s-mt-4 s-h-96 s-bg-red-300 s-text-left">
+          I'm the modal content
         </div>
       </Modal>
-      <Button
-        label="Modal without action and without changes"
-        onClick={() => setIsOpenNoActionNoChange(true)}
-      />
-      <Button
-        label="Modal with action and changes"
-        onClick={() => setIsOpenWithActionAndChange(true)}
-      />
-      <Button
-        label="Modal full screen"
-        onClick={() => setIsFullScreenModalOpen(true)}
-      />
-      <Button
-        label="Modal full screen with overflowing content"
-        onClick={() => setIsFullScreenModalOverflowOpen(true)}
-      />
-      <Button
-        label="Modal right side"
-        onClick={() => setIsRightSideModalOpen(true)}
-      />
-      <Button
-        label="Modal right side wide"
-        onClick={() => setIsRightSideWideModalOpen(true)}
-      />
-      <Button
-        label="Modal right side ultra-wide"
-        onClick={() => setIsRightSideUltraWideModalOpen(true)}
-      />
+      <div className="s-flex s-flex-col s-items-start s-gap-3">
+        <div className="s-text-lg s-font-bold">Centered</div>
+        <Button
+          label="Modal without action and without changes"
+          onClick={() => setIsOpenNoActionNoChange(true)}
+        />
+        <Button
+          label="Modal with action and changes"
+          onClick={() => setIsOpenWithActionAndChange(true)}
+        />
+        <div className="s-text-lg s-font-bold">Fullscreen</div>
+        <Button
+          label="Modal full screen"
+          onClick={() => setIsFullScreenModalOpen(true)}
+        />
+        <Button
+          label="Modal full screen with overflowing content"
+          onClick={() => setIsFullScreenModalOverflowOpen(true)}
+        />
+        <div className="s-text-lg s-font-bold">Side modal</div>
+        <Button
+          label="Modal right side"
+          onClick={() => setIsRightSideModalOpen(true)}
+        />
+        <Button
+          label="Modal right side wide"
+          onClick={() => setIsRightSideWideModalOpen(true)}
+        />
+      </div>
     </Page.Layout>
   );
 };

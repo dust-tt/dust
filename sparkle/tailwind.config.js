@@ -26,6 +26,15 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      scale: {
+        99: ".99",
+      },
+      dropShadow: {
+        md: "0 4px 3px rgba(0, 0, 0, 0.25)",
+        lg: "0 10px 15px rgba(0, 0, 0, 0.16)",
+        xl: "0 20px 25px rgba(0, 0, 0, 0.14)",
+        "2xl": "0 25px 50px rgba(0, 0, 0, 0.12)",
+      },
       keyframes: {
         "move-square": {
           "0%": {
