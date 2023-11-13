@@ -154,7 +154,7 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "The mesasge you're trying to react to does not exist.",
+          message: "The message you're trying to react to does not exist.",
         },
       });
 
