@@ -239,6 +239,7 @@ export default function WorkspaceAdmin({
             setInviteEmailModalOpen(false);
           }}
           owner={owner}
+          members={members}
         />
         <RevokeInvitationModal
           showModal={revokeInvitationModalOpen}
@@ -250,7 +251,6 @@ export default function WorkspaceAdmin({
           showModal={changeRoleModalOpen}
           member={changeRoleMember}
           onClose={() => setChangeRoleModalOpen(false)}
-          owner={owner}
         />
         <Page.Vertical gap="sm" align="stretch">
           <Page.H variant="h5">Member list</Page.H>
@@ -392,19 +392,33 @@ function InviteEmailModal({
   showModal,
   onClose,
   owner,
+  members,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
+  members: UserType[];
 }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
+  // when set, the modal to reinvite a user that was revoked will be shown
+  const [existingRevokedUser, setExistingRevokedUser] =
+    useState<UserType | null>(null);
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
       setEmailError("Invalid email address.");
+      return;
+    }
+    const existing = members.find((m) => m.email === inviteEmail);
+    if (existing) {
+      if (existing.workspaces[0].role !== "none") {
+        setEmailError("User is already a member of this workspace.");
+      } else {
+        setExistingRevokedUser(existing);
+      }
       return;
     }
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
@@ -420,7 +434,8 @@ function InviteEmailModal({
       sendNotification({
         type: "error",
         title: "Invite failed",
-        description: "Failed to invite new member to workspace.",
+        description:
+          "Failed to invite new member to workspace: " + res.statusText,
       });
     } else {
       sendNotification({
@@ -433,43 +448,108 @@ function InviteEmailModal({
   }
 
   return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
-      hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
-      title="Invite new users"
-      type="right-side"
-      saveLabel="Invite"
-      isSaving={isSending}
-      onSave={async () => {
-        setIsSending(true);
-        await handleSendInvitation();
-        setIsSending(false);
-        setInviteEmail("");
-      }}
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
-        <Page.P>
-          Invite a new user to your workspace. They will receive an email with a
-          link to join your workspace.
-        </Page.P>
-        <div className="flex flex-grow flex-col gap-1.5">
-          <div className="font-semibold">Email to send invite to:</div>
-          <div className="flex items-start gap-2">
-            <div className="flex-grow">
-              <Input
-                placeholder={"Email address"}
-                value={inviteEmail || ""}
-                name={""}
-                error={emailError}
-                showErrorLabel={true}
-                onChange={(e) => {
-                  setInviteEmail(e.trim());
-                  setEmailError("");
-                }}
-              />
+    <>
+      <ReinviteUserModal
+        onClose={() => setExistingRevokedUser(null)}
+        user={existingRevokedUser}
+      />
+      <Modal
+        isOpen={showModal}
+        onClose={onClose}
+        hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
+        title="Invite new users"
+        type="right-side"
+        saveLabel="Invite"
+        isSaving={isSending}
+        onSave={async () => {
+          setIsSending(true);
+          await handleSendInvitation();
+          setIsSending(false);
+          setInviteEmail("");
+        }}
+      >
+        <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
+          <Page.P>
+            Invite a new user to your workspace. They will receive an email with
+            a link to join your workspace.
+          </Page.P>
+          <div className="flex flex-grow flex-col gap-1.5">
+            <div className="font-semibold">Email to send invite to:</div>
+            <div className="flex items-start gap-2">
+              <div className="flex-grow">
+                <Input
+                  placeholder={"Email address"}
+                  value={inviteEmail || ""}
+                  name={""}
+                  error={emailError}
+                  showErrorLabel={true}
+                  onChange={(e) => {
+                    setInviteEmail(e.trim());
+                    setEmailError("");
+                  }}
+                />
+              </div>
             </div>
           </div>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+function ReinviteUserModal({
+  onClose,
+  user,
+}: {
+  onClose: (show: boolean) => void;
+  user: UserType | null;
+}) {
+  const { mutate } = useSWRConfig();
+  const sendNotification = useContext(SendNotificationsContext);
+  const [isSaving, setIsSaving] = useState(false);
+  if (!user) return null;
+  return (
+    <Modal
+      isOpen={!!user}
+      onClose={() => onClose(false)}
+      hasChanged={false}
+      title="Reinstate user?"
+      type="default"
+    >
+      <div className="mt-6 flex flex-col gap-6 px-2">
+        <div>
+          {" "}
+          {`${user.fullName} (${user.email}) `} was previously revoked from the
+          workspace. You can reinstate them, in which case they will be switched
+          back to a 'user' role and regain access to their historical data on
+          Dust (e.g. conversation history...). This will take effect
+          immediately.
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="tertiary"
+            label="Cancel"
+            onClick={() => onClose(false)}
+          />
+          <Button
+            variant="primaryWarning"
+            label={isSaving ? "Reinstating..." : "Yes, reinstate"}
+            onClick={async () => {
+              setIsSaving(true);
+              await handleMemberRoleChange({
+                member: user,
+                role: "user",
+                mutate,
+                sendNotification,
+              });
+              onClose(false);
+              /* Delay to let react close the modal before cleaning isSaving, to
+               * avoid the user seeing the button change label again during the closing animation */
+              setTimeout(() => {
+                setIsSaving(false);
+              }, CLOSING_ANIMATION_DURATION);
+            }}
+          />
         </div>
       </div>
     </Modal>
@@ -652,29 +732,20 @@ function RevokeInvitationModal({
   );
 }
 
-function ChangeMemberModal({
-  showModal,
-  onClose,
+async function handleMemberRoleChange({
   member,
-  owner,
+  role,
+  mutate,
+  sendNotification,
 }: {
-  showModal: boolean;
-  onClose: () => void;
-  member: UserType | null;
-  owner: WorkspaceType;
-}) {
-  const { mutate } = useSWRConfig();
-  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
-  if (!member) return null; // Unreachable
-
-  async function handleMemberRoleChange(
-    member: UserType,
-    role: RoleType
-  ): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}/members/${member.id}`, {
+  member: UserType;
+  role: RoleType;
+  mutate: any;
+  sendNotification: any;
+}): Promise<void> {
+  const res = await fetch(
+    `/api/w/${member.workspaces[0].sId}/members/${member.id}`,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -682,22 +753,39 @@ function ChangeMemberModal({
       body: JSON.stringify({
         role: role === "none" ? "revoked" : role,
       }),
-    });
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Update failed",
-        description: "Failed to update member's role.",
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Role updated",
-        description: `Role updated for ${member.fullName}.`,
-      });
-      await mutate(`/api/w/${owner.sId}/members`);
     }
+  );
+  if (!res.ok) {
+    sendNotification({
+      type: "error",
+      title: "Update failed",
+      description: "Failed to update member's role.",
+    });
+  } else {
+    sendNotification({
+      type: "success",
+      title: "Role updated",
+      description: `Role updated to ${role} for ${member.fullName}.`,
+    });
+    await mutate(`/api/w/${member.workspaces[0].sId}/members`);
   }
+}
+
+function ChangeMemberModal({
+  showModal,
+  onClose,
+  member,
+}: {
+  showModal: boolean;
+  onClose: () => void;
+  member: UserType | null;
+}) {
+  const { mutate } = useSWRConfig();
+  const sendNotification = useContext(SendNotificationsContext);
+  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  if (!member) return null; // Unreachable
 
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -718,7 +806,12 @@ function ChangeMemberModal({
       onSave={async () => {
         setIsSaving(true);
         if (!selectedRole) return; // unreachable due to hasChanged
-        await handleMemberRoleChange(member, selectedRole);
+        await handleMemberRoleChange({
+          member,
+          role: selectedRole,
+          mutate,
+          sendNotification,
+        });
         onClose();
         /* Delay to let react close the modal before cleaning isSaving, to
          * avoid the user seeing the button change label again during the closing animation */
@@ -805,7 +898,12 @@ function ChangeMemberModal({
               label={isSaving ? "Revoking..." : "Yes, revoke"}
               onClick={async () => {
                 setIsSaving(true);
-                await handleMemberRoleChange(member, "none");
+                await handleMemberRoleChange({
+                  member,
+                  role: "none",
+                  mutate,
+                  sendNotification,
+                });
                 setRevokeMemberModalOpen(false);
                 onClose();
                 /* Delay to let react close the modal before cleaning isSaving, to
