@@ -334,7 +334,7 @@ export async function* runGeneration(
 
   let model = c.model;
 
-  const contextSize = getSupportedModelConfig(model).contextSize;
+  const contextSize = getSupportedModelConfig(c.model).contextSize;
 
   const MIN_GENERATION_TOKENS = 2048;
 
