@@ -2321,7 +2321,7 @@ impl Store for PostgresStore {
 
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![&table_row_id];
         let mut query = "SELECT created, row_id, content FROM databases_rows \
-                         WHERE tbale = $1 ORDER BY created DESC"
+                         WHERE database_table = $1 ORDER BY created DESC"
             .to_string();
 
         let limit_i64: i64;
@@ -2342,7 +2342,6 @@ impl Store for PostgresStore {
                 let created: i64 = row.get(0);
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
-                let table_id: String = row.get(3);
                 let content: Value = serde_json::from_str(&data)?;
                 Ok(DatabaseRow::new(
                     created as u64,
@@ -2358,7 +2357,7 @@ impl Store for PostgresStore {
             Some(_) => {
                 let t: i64 = c
                     .query_one(
-                        "SELECT COUNT(*) FROM databases_rows WHERE table = $1",
+                        "SELECT COUNT(*) FROM databases_rows WHERE database_table = $1",
                         &[&table_row_id],
                     )
                     .await?
