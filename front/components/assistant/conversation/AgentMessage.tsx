@@ -357,19 +357,9 @@ export function AgentMessage({
 
     return (
       <>
-        {agentMessage.action && (
-          <div
-            className={
-              agentMessage.content && agentMessage.content !== ""
-                ? "border-b border-dashed border-structure-300"
-                : ""
-            }
-          >
-            <AgentAction action={agentMessage.action} />
-          </div>
-        )}
+        {agentMessage.action && <AgentAction action={agentMessage.action} />}
         {agentMessage.content && agentMessage.content !== "" && (
-          <div className={agentMessage.action ? "pt-4" : ""}>
+          <div>
             <RenderMessageMarkdown
               content={agentMessage.content}
               blinkingCursor={streaming}
