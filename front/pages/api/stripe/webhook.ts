@@ -291,7 +291,7 @@ async function handler(
                 api_error: {
                   type: "internal_server_error",
                   message:
-                    "Error handling customer.subscription.deleted. Subscription not found.",
+                    "Stripe Webhook: Error handling customer.subscription.deleted. Subscription not found.",
                 },
               });
             }
