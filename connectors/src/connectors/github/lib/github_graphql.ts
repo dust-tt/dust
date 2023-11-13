@@ -34,9 +34,12 @@ const DiscussionCommentNodeSchema = t.type({
   bodyText: t.string,
   createdAt: t.string,
   updatedAt: t.string,
-  author: t.type({
-    login: t.string,
-  }),
+  author: t.union([
+    t.type({
+      login: t.string,
+    }),
+    t.null,
+  ]),
 });
 
 export type DiscussionCommentNode = t.TypeOf<

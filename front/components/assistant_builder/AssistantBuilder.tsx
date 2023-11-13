@@ -253,9 +253,17 @@ export default function AssistantBuilder({
           .map((a) => a.pictureUrl.split(DROID_AVATARS_BASE_PATH)[1])
           .filter(Boolean)
       );
-      const availableUrls = DROID_AVATAR_FILES.filter(
+      let availableUrls = DROID_AVATAR_FILES.filter(
         (f) => !usedAvatarFiles.has(f)
       ).map((f) => `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`);
+
+      // TODO(@fontanierh): figure out a real solution for avatar exhaustion
+      if (!availableUrls.length) {
+        availableUrls = DROID_AVATAR_FILES.map(
+          (f) => `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`
+        );
+      }
+
       setAvatarUrls(
         DROID_AVATAR_FILES.map((f) => ({
           url: `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`,

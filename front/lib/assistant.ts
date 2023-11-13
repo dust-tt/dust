@@ -7,6 +7,7 @@ import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export const GPT_4_32K_MODEL_ID = "gpt-4-32k" as const;
 export const GPT_4_MODEL_ID = "gpt-4" as const;
+export const GPT_4_TURBO_MODEL_ID = "gpt-4-1106-preview" as const;
 
 export const GPT_4_32K_MODEL_CONFIG = {
   providerId: "openai",
@@ -23,6 +24,14 @@ export const GPT_4_MODEL_CONFIG = {
   contextSize: 8192,
   recommendedTopK: 16,
 };
+
+export const GPT_4_TURBO_MODEL_CONFIG = {
+  providerId: "openai",
+  modelId: GPT_4_TURBO_MODEL_ID,
+  displayName: "GPT 4 Turbo",
+  contextSize: 128000,
+  recommendedTopK: 32,
+} as const;
 
 export const GPT_3_5_TURBO_16K_MODEL_CONFIG = {
   providerId: "openai",
@@ -69,6 +78,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,

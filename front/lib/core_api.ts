@@ -112,6 +112,28 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
+type CoreAPIDatabase = {
+  created: number;
+  data_source_id: string;
+  database_id: string;
+  name: string;
+};
+
+type CoreAPIDatabaseTable = {
+  created: number;
+  database_id: string;
+  table_id: string;
+  name: string;
+  description: string;
+};
+
+type CoreAPIDatabaseRow = {
+  created: number;
+  table_id: string;
+  row_id: string;
+  content: Record<string, unknown>;
+};
+
 export const CoreAPI = {
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await fetch(`${CORE_API}/projects`, {
@@ -799,6 +821,229 @@ export const CoreAPI = {
         credentials,
       }),
     });
+
+    return _resultFromResponse(response);
+  },
+
+  async createDatabase({
+    projectId,
+    dataSourceName,
+    databaseId,
+    name,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    name: string;
+  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          database_id: databaseId,
+          name: name,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabase({
+    projectId,
+    dataSourceName,
+    databaseId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabases({
+    projectId,
+    dataSourceName,
+  }: {
+    projectId: string;
+    dataSourceName: string | null;
+  }): Promise<CoreAPIResponse<{ databases: CoreAPIDatabase[] }>> {
+    let url = `${CORE_API}/projects/${projectId}`;
+    if (dataSourceName) {
+      url += `?data_source_id=${dataSourceName}`;
+    }
+    const response = await fetch(url, { method: "GET" });
+
+    return _resultFromResponse(response);
+  },
+
+  async upsertDatabaseTable({
+    projectId,
+    dataSourceName,
+    databaseId,
+    tableId,
+    name,
+    description,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    tableId: string;
+    name: string;
+    description: string;
+  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          table_id: tableId,
+          name: name,
+          description: description,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseTable({
+    projectId,
+    dataSourceName,
+    databaseId,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<{ table: CoreAPIDatabaseTable }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseTables({
+    projectId,
+    dataSourceName,
+    databaseId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+  }): Promise<CoreAPIResponse<{ tables: CoreAPIDatabaseTable[] }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async upsertDatabaseRows({
+    projectId,
+    dataSourceName,
+    databaseId,
+    tableId,
+    contents,
+    truncate,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    tableId: string;
+    contents: Record<string, CoreAPIDatabaseRow["content"]>;
+    truncate?: boolean;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: contents,
+          truncate: truncate || false,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseRow({
+    projectId,
+    dataSourceName,
+    databaseId,
+    tableId,
+    rowId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    tableId: string;
+    rowId: string;
+  }): Promise<CoreAPIResponse<{ row: CoreAPIDatabaseRow }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows/${rowId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDatabaseRows({
+    projectId,
+    dataSourceName,
+    databaseId,
+    tableId,
+    limit,
+    offset,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    tableId: string;
+    limit: number;
+    offset: number;
+  }): Promise<
+    CoreAPIResponse<{
+      rows: CoreAPIDatabaseRow[];
+      offset: number;
+      limit: number;
+      total: number;
+    }>
+  > {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      {
+        method: "GET",
+      }
+    );
 
     return _resultFromResponse(response);
   },
