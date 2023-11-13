@@ -1,6 +1,7 @@
 import { QueryTypes, Sequelize } from "sequelize";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { ModelId } from "@app/lib/databases";
 import { Err, Ok, Result } from "@app/lib/result";
 import { CheckFunction } from "@app/production_checks/types/check";
 
@@ -10,9 +11,11 @@ const { CORE_DATABASE_URI, FRONT_DATABASE_URI, CONNECTORS_DATABASE_URI } =
 type CoreDSDocument = {
   id: number;
   document_id: string;
+  parents: string[];
 };
 
 type DocumentsChecker = (
+  connectorId: ModelId,
   documents: CoreDSDocument[],
   connectors_sequelize: Sequelize
 ) => Promise<Result<void, unknown>>;
@@ -62,7 +65,7 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
       continue;
     }
     const coreDocumentsData = await core_sequelize.query(
-      `SELECT * FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
+      `SELECT id, document_id, parents FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
       {
         replacements: {
           coreDsId: coreDs[0].id,
@@ -71,15 +74,15 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
       }
     );
 
-    const coreDocuments = coreDocumentsData as {
-      id: number;
-      document_id: string;
-      tags_array: string[];
-    }[];
+    const coreDocuments = coreDocumentsData as CoreDSDocument[];
     const checkFiles =
       CHECK_FILES_BY_TYPE[ds.connectorProvider as ConnectorProvider];
     if (checkFiles) {
-      const result = await checkFiles(coreDocuments, connectorsSequelize);
+      const result = await checkFiles(
+        ds.connectorId,
+        coreDocuments,
+        connectorsSequelize
+      );
       if (result.isErr()) {
         await reportFailure(
           {
@@ -102,10 +105,39 @@ export const CHECK_FILES_BY_TYPE: Record<
   ConnectorProvider,
   DocumentsChecker | undefined
 > = {
-  slack: undefined,
+  slack: async (
+    connectorId: ModelId,
+    documents: CoreDSDocument[],
+    connectorsSequelize: Sequelize
+  ): Promise<Result<void, unknown>> => {
+    const missingChannels: string[] = [];
+    const coreChannel = new Set(documents.map((d) => d.parents[0]));
+    for (const channelId of coreChannel) {
+      const selectedChannel: { id: number; permission: string }[] =
+        await connectorsSequelize.query(
+          'select id, permission from slack_channels WHERE "slackChannelId" = :channelId and "connectorId" = :connectorId',
+          {
+            replacements: {
+              channelId,
+              connectorId,
+            },
+            type: QueryTypes.SELECT,
+          }
+        );
+      if (selectedChannel.length === 0) {
+        missingChannels.push(channelId);
+      }
+    }
+    if (missingChannels.length) {
+      return new Err({ missingChannels });
+    } else {
+      return new Ok(void 0);
+    }
+  },
   notion: undefined,
   github: undefined,
   google_drive: async (
+    connectorId: ModelId,
     documents: CoreDSDocument[],
     connectorsSequelize: Sequelize
   ): Promise<Result<void, unknown>> => {
@@ -142,7 +174,7 @@ export const CHECK_FILES_BY_TYPE: Record<
     if (results.length === 0) {
       return new Ok(void 0);
     } else {
-      return new Err({coreDocuments: results});
+      return new Err({ coreDocuments: results });
     }
   },
 };
