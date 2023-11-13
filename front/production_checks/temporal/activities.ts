@@ -30,7 +30,7 @@ async function runAllChecks(checks: Check[]) {
         logger.info({ reportPayload }, "Check succeeded");
       };
       const reportFailure = (reportPayload: unknown, message: string) => {
-        logger.error({ reportPayload, errorMessage: message }, "Check failed");
+        logger.error({ reportPayload, errorMessage: message }, "Production check failed");
       };
       Context.current().heartbeat({
         type: "start",
