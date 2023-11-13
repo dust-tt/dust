@@ -384,7 +384,7 @@ export default function DataSourcesView({
                             ds.connectorProvider as ConnectorProvider
                           ] ||
                           !isAdmin;
-                        const onclick = async () => {
+                        const onClick = async () => {
                           let isDataSourceAllowedInPlan: boolean;
 
                           switch (ds.connectorProvider) {
@@ -439,7 +439,7 @@ export default function DataSourcesView({
                                   variant="primary"
                                   icon={CloudArrowLeftRightIcon}
                                   disabled={disabled}
-                                  onClick={onclick}
+                                  onClick={onClick}
                                   label={label}
                                 />
                               )}
@@ -503,7 +503,7 @@ export default function DataSourcesView({
                                             variant="secondary"
                                             icon={CloudArrowLeftRightIcon}
                                             disabled={disabled}
-                                            onClick={onclick}
+                                            onClick={onClick}
                                             label="Acknowledge and Connect"
                                           />
                                         </DropdownMenu.Button>
