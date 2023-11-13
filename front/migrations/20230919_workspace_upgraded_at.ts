@@ -4,8 +4,10 @@ import { Workspace } from "@app/lib/models";
 
 async function main() {
   console.log("Fetching Upgraded Worspaces...");
+  // @ts-expect-error no plan column anymore
   const workspaces = await Workspace.findAll({
     where: {
+      // @ts-expect-error no plan column anymore
       plan: {
         [Op.not]: null,
       },
