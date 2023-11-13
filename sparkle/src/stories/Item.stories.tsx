@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { DropdownMenu, Item } from "../index_with_tw_base";
@@ -10,7 +10,6 @@ const meta = {
 } satisfies Meta<typeof Item>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const ListItemExample = () => (
   <div className="s-grid s-grid-cols-3 s-gap-8">
