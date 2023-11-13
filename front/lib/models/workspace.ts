@@ -25,8 +25,6 @@ export class Workspace extends Model<
   declare name: string;
   declare description: string | null;
   declare allowedDomain: string | null;
-  declare plan: string | null;
-
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
@@ -62,9 +60,6 @@ Workspace.init(
       type: DataTypes.STRING,
     },
     allowedDomain: {
-      type: DataTypes.STRING,
-    },
-    plan: {
       type: DataTypes.STRING,
     },
   },
