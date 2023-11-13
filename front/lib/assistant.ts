@@ -28,7 +28,7 @@ export const GPT_4_MODEL_CONFIG = {
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai",
   modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT 4 Turbo",
+  displayName: "GPT 4",
   contextSize: 128000,
   recommendedTopK: 32,
 } as const;
