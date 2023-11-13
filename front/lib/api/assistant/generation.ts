@@ -9,11 +9,7 @@ import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import {
-  getSupportedModelConfig,
-  GPT_4_32K_MODEL_ID,
-  GPT_4_MODEL_CONFIG,
-} from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { redisClient } from "@app/lib/redis";
@@ -332,7 +328,7 @@ export async function* runGeneration(
     return;
   }
 
-  let model = c.model;
+  const model = c.model;
 
   const contextSize = getSupportedModelConfig(c.model).contextSize;
 
@@ -366,19 +362,6 @@ export async function* runGeneration(
       },
     };
     return;
-  }
-
-  // If model is gpt4-32k but tokens used is less than GPT_4_CONTEXT_SIZE-MIN_GENERATION_TOKENS,
-  // then we override the model to gpt4 standard (8k context, cheaper).
-  if (
-    model.modelId === GPT_4_32K_MODEL_ID &&
-    modelConversationRes.value.tokensUsed <
-      GPT_4_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS
-  ) {
-    model = {
-      modelId: GPT_4_MODEL_CONFIG.modelId,
-      providerId: GPT_4_MODEL_CONFIG.providerId,
-    };
   }
 
   const config = cloneBaseConfig(
