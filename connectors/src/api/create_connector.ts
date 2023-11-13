@@ -34,22 +34,22 @@ const _createConnectorAPIHandler = async (
       !req.body.connectionId
     ) {
       return apiError(req, res, {
+        status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message: `Missing required parameters. Required : workspaceAPIKey,
            dataSourceName, workspaceId, connectionId`,
         },
-        status_code: 400,
       });
     }
 
     if (!isConnectorProvider(req.params.connector_provider)) {
       return apiError(req, res, {
+        status_code: 400,
         api_error: {
           type: "unknown_connector_provider",
           message: `Unknown connector provider ${req.params.connector_provider}`,
         },
-        status_code: 400,
       });
     }
 
@@ -67,22 +67,22 @@ const _createConnectorAPIHandler = async (
 
     if (connectorRes.isErr()) {
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
           type: "internal_server_error",
           message: connectorRes.error.message,
         },
-        status_code: 500,
       });
     }
 
     const connector = await Connector.findByPk(connectorRes.value);
     if (!connector) {
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
           type: "internal_server_error",
           message: `Created connector not found in database. Connector id: ${connectorRes.value}`,
         },
-        status_code: 500,
       });
     }
 
@@ -101,11 +101,11 @@ const _createConnectorAPIHandler = async (
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: "An unexpected error occured while creating the connector.",
       },
-      status_code: 500,
     });
   }
 };

@@ -21,30 +21,30 @@ const _getBotEnabled = async (
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Missing required parameters. Required: connector_id",
       },
-      status_code: 400,
     });
   }
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
+      status_code: 404,
       api_error: {
         type: "connector_not_found",
         message: "Connector not found",
       },
-      status_code: 404,
     });
   }
   if (connector.type !== "slack") {
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Connector is not a slack connector",
       },
-      status_code: 400,
     });
   }
 
@@ -54,11 +54,11 @@ const _getBotEnabled = async (
 
   if (botEnabledRes.isErr()) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: `An error occurred while getting the bot status: ${botEnabledRes.error}`,
       },
-      status_code: 500,
     });
   }
   return res.status(200).json({
@@ -72,30 +72,30 @@ const _setBotEnabled = async (
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Missing required parameters. Required: connector_id",
       },
-      status_code: 400,
     });
   }
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
+      status_code: 404,
       api_error: {
         type: "connector_not_found",
         message: "Connector not found",
       },
-      status_code: 404,
     });
   }
   if (!req.body || typeof req.body.botEnabled !== "boolean") {
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Missing required parameters. Required: botEnabled",
       },
-      status_code: 400,
     });
   }
 
@@ -106,11 +106,11 @@ const _setBotEnabled = async (
 
   if (toggleRes.isErr()) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: `An error occurred while toggling the bot: ${toggleRes.error.message}`,
       },
-      status_code: 500,
     });
   }
   return res.status(200).json({

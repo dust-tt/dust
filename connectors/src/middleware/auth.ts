@@ -106,11 +106,11 @@ const _authMiddlewareWebhooksGithub = (
   if (!GITHUB_WEBHOOK_SECRET) {
     logger.error("GITHUB_WEBHOOK_SECRET is not defined");
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Internal server error.",
+        message: "Webhook secret is not defined.",
       },
-      status_code: 500,
     });
   }
 

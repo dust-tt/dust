@@ -19,11 +19,11 @@ const _resumeConnectorAPIHandler = async (
     const connector = await Connector.findByPk(req.params.connector_id);
     if (!connector) {
       return apiError(req, res, {
+        status_code: 404,
         api_error: {
           type: "connector_not_found",
           message: "Connector not found",
         },
-        status_code: 404,
       });
     }
     const connectorResumer = RESUME_CONNECTOR_BY_TYPE[connector.type];
@@ -32,11 +32,11 @@ const _resumeConnectorAPIHandler = async (
 
     if (resumeRes.isErr()) {
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
           type: "internal_server_error",
           message: "Could not resume the connector",
         },
-        status_code: 500,
       });
     }
 
@@ -46,11 +46,11 @@ const _resumeConnectorAPIHandler = async (
   } catch (e) {
     logger.error(errorFromAny(e), "Failed to resume the connector");
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: "Could not resume the connector",
       },
-      status_code: 500,
     });
   }
 };

@@ -59,11 +59,11 @@ const _getConnectorUpdateAPIHandler = async (
       });
     } else {
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
-          type: "connector_update_error",
+          type: "internal_server_error",
           message: `Could not update the connector: ${error.message}`,
         },
-        status_code: 500,
       });
     }
   }
