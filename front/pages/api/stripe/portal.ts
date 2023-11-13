@@ -70,8 +70,9 @@ async function handler(
       return apiError(req, res, {
         status_code: 500,
         api_error: {
-          type: "stripe_api_error",
-          message: "An error occured while fetching the customer portal url.",
+          type: "internal_server_error",
+          message:
+            "Stripe API: An error occured while fetching the customer portal url.",
         },
       });
 

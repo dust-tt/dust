@@ -19,11 +19,11 @@ const _getConnectorPermissions = async (
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Missing required parameters. Required: connector_id",
       },
-      status_code: 400,
     });
   }
 
@@ -50,11 +50,11 @@ const _getConnectorPermissions = async (
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
+      status_code: 404,
       api_error: {
         type: "connector_not_found",
         message: "Connector not found",
       },
-      status_code: 404,
     });
   }
 
@@ -69,11 +69,11 @@ const _getConnectorPermissions = async (
 
   if (pRes.isErr()) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: pRes.error.message,
       },
-      status_code: 500,
     });
   }
 

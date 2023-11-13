@@ -131,11 +131,11 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
         req,
         res,
         {
+          status_code: 400,
           api_error: {
-            type: "internal_server_error",
+            type: "connector_update_error",
             message: `Could not join channel: ${joinRes.error}`,
           },
-          status_code: 400,
         },
         joinRes.error
       );

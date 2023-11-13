@@ -32,11 +32,11 @@ const _stopConnectorAPIHandler = async (
 
     if (stopRes.isErr()) {
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
           type: "internal_server_error",
           message: stopRes.error.message,
         },
-        status_code: 500,
       });
     }
 
@@ -46,11 +46,11 @@ const _stopConnectorAPIHandler = async (
   } catch (e) {
     logger.error(errorFromAny(e), "Failed to stop the connector");
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: "Could not stop the connector",
       },
-      status_code: 500,
     });
   }
 };

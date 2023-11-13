@@ -300,11 +300,11 @@ const _webhookSlackAPIHandler = async (
 
           if (err) {
             return apiError(req, res, {
+              status_code: 500,
               api_error: {
                 type: "internal_server_error",
                 message: err.message,
               },
-              status_code: 500,
             });
           } else {
             logger.info(
@@ -354,11 +354,11 @@ const _webhookSlackAPIHandler = async (
 
         if (err) {
           return apiError(req, res, {
+            status_code: 500,
             api_error: {
               type: "internal_server_error",
               message: err.message,
             },
-            status_code: 500,
           });
         } else {
           logger.info(

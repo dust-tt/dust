@@ -35,11 +35,11 @@ const _getResourcesParents = async (
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
+      status_code: 404,
       api_error: {
         type: "connector_not_found",
         message: "Connector not found",
       },
-      status_code: 404,
     });
   }
 
@@ -47,11 +47,11 @@ const _getResourcesParents = async (
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: `Invalid request body: ${pathError}`,
       },
-      status_code: 400,
     });
   }
 
@@ -72,11 +72,11 @@ const _getResourcesParents = async (
     if (parentsResult.isErr()) {
       logger.error(parentsResult.error, "Failed to get resource parents");
       return apiError(req, res, {
+        status_code: 500,
         api_error: {
           type: "internal_server_error",
           message: parentsResult.error.message,
         },
-        status_code: 500,
       });
     }
 

@@ -14,7 +14,7 @@ import { UserType } from "@app/types/user";
 export async function getMessageReactions(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<ConversationMessageReactions | null> {
+): Promise<ConversationMessageReactions> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");

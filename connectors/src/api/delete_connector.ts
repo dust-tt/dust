@@ -27,11 +27,11 @@ const _deleteConnectorAPIHandler = async (
   const connector = await Connector.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
+      status_code: 404,
       api_error: {
         type: "connector_not_found",
         message: "Connector not found",
       },
-      status_code: 404,
     });
   }
 
@@ -41,21 +41,21 @@ const _deleteConnectorAPIHandler = async (
 
   if (stopRes.isErr()) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: stopRes.error.message,
       },
-      status_code: 500,
     });
   }
 
   if (!connector) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: "Could not find the connector",
       },
-      status_code: 500,
     });
   }
 
@@ -63,11 +63,11 @@ const _deleteConnectorAPIHandler = async (
   const cleanRes = await connectorDeleter(connector.id.toString(), force);
   if (cleanRes.isErr()) {
     return apiError(req, res, {
+      status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: cleanRes.error.message,
       },
-      status_code: 500,
     });
   }
 

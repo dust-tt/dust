@@ -27,16 +27,6 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
-  if (!STRIPE_SECRET_WEBHOOK_KEY || !STRIPE_SECRET_KEY) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "stripe_webhook_error",
-        message: "Stripe keys are not defined.",
-      },
-    });
-  }
-
   const stripe = new Stripe(STRIPE_SECRET_KEY, {
     apiVersion: "2023-10-16",
     typescript: true,
@@ -74,8 +64,8 @@ async function handler(
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "stripe_webhook_error",
-            message: "Error constructing event.",
+            type: "internal_server_error",
+            message: "Error constructing Stripe Webhook event.",
           },
         });
       }
@@ -255,8 +245,9 @@ async function handler(
             return apiError(req, res, {
               status_code: 500,
               api_error: {
-                type: "stripe_webhook_error",
-                message: "Error handling checkout.session.completed.",
+                type: "internal_server_error",
+                message:
+                  "Stripe Webhook: error handling checkout.session.completed.",
               },
             });
           }
@@ -299,9 +290,9 @@ async function handler(
               return apiError(req, res, {
                 status_code: 500,
                 api_error: {
-                  type: "stripe_webhook_error",
+                  type: "internal_server_error",
                   message:
-                    "Error handling customer.subscription.deleted. Subscription not found.",
+                    "Stripe Webhook: Error handling customer.subscription.deleted. Subscription not found.",
                 },
               });
             }
