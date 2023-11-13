@@ -2,7 +2,6 @@ import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
 import { Sequelize } from "sequelize";
 
-// To be run from connectors with `CORE_DATABASE_URI`
 const {
   CORE_DATABASE_URI,
   SERVICE_ACCOUNT,
