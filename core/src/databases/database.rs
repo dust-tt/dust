@@ -105,24 +105,23 @@ impl Database {
 
                 let table_ids_with_rows = table_rows.keys().collect::<Vec<&String>>();
 
-                let schema_tables = table_ids_with_rows
+                let mut schema = table_ids_with_rows
                     .par_iter()
                     .map(|table_id| {
                         let table = *table_by_id.get(*table_id).unwrap();
                         let rows = table_rows.get(*table_id).unwrap();
 
                         let row_contents =
-                            (rows.iter().map(|x| x.content())).collect::<Vec<&Value>>();
+                            rows.iter().map(|x| x.content()).collect::<Vec<&Value>>();
                         let table_schema = TableSchema::from_rows(&row_contents)?;
-                        Ok(DatabaseSchemaTable::new(table.clone(), table_schema))
-                    })
-                    .collect::<Result<Vec<DatabaseSchemaTable>>>()?;
+                        let database_schema_table =
+                            DatabaseSchemaTable::new(table.clone(), table_schema);
+                        let table_id_str = database_schema_table.table().table_id().to_string();
 
-                let mut schema = HashMap::new();
-                for schema_table in schema_tables {
-                    let table_id = schema_table.table().table_id();
-                    schema.insert(table_id.to_string(), schema_table);
-                }
+                        // Return a tuple of (key, value) that will be directly collected into a HashMap
+                        Ok((table_id_str, database_schema_table))
+                    })
+                    .collect::<Result<HashMap<String, DatabaseSchemaTable>>>()?;
 
                 // add empty tables
                 for table in tables {
