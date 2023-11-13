@@ -32,18 +32,18 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
     logging: false,
   });
 
-  const managedDs = await front_sequelize.query(
+  const managedDsData = await front_sequelize.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId"\
      FROM data_sources WHERE "connectorId" IS NOT NULL',
     { type: QueryTypes.SELECT }
   );
-  const typedManagedDs = managedDs as {
+  const managedDs = managedDsData as {
     id: number;
     connectorId: number;
     connectorProvider: string;
     dustAPIProjectId: string;
   }[];
-  for (const ds of typedManagedDs) {
+  for (const ds of managedDs) {
     const coreDsData = await core_sequelize.query(
       `SELECT id FROM data_sources WHERE "project" = :dustAPIProjectId`,
       {
@@ -71,7 +71,7 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
       }
     );
 
-    const documents = coreDocumentsData as {
+    const coreDocuments = coreDocumentsData as {
       id: number;
       document_id: string;
       tags_array: string[];
@@ -79,7 +79,7 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
     const checkFiles =
       CHECK_FILES_BY_TYPE[ds.connectorProvider as ConnectorProvider];
     if (checkFiles) {
-      const result = await checkFiles(documents, connectorsSequelize);
+      const result = await checkFiles(coreDocuments, connectorsSequelize);
       if (result.isErr()) {
         await reportFailure(
           {
