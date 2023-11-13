@@ -2306,17 +2306,28 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_row_id, &table_id];
-        let mut query = "SELECT databases_rows.created, databases_rows.row_id, \
-                         databases_rows.content, databases_tables.table_id \
-                         FROM databases_rows \
-                         INNER JOIN databases_tables ON databases_rows.database_table = databases_tables.id \
-                         WHERE databases_tables.database = $1 AND databases_tables.table_id = $2 ORDER BY created DESC".to_string() ;
+        let r = c
+            .query(
+                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
+                &[&database_row_id, &table_id],
+            )
+            .await?;
+
+        let table_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Table: {}", table_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&table_row_id];
+        let mut query = "SELECT created, row_id, content FROM databases_rows \
+                         WHERE tbale = $1 ORDER BY created DESC"
+            .to_string();
 
         let limit_i64: i64;
         let offset_i64: i64;
         if let Some((limit, offset)) = limit_offset {
-            query.push_str(" LIMIT $3 OFFSET $4");
+            query.push_str(" LIMIT $2 OFFSET $3");
             limit_i64 = limit as i64;
             offset_i64 = offset as i64;
             params.push(&limit_i64);
@@ -2347,9 +2358,8 @@ impl Store for PostgresStore {
             Some(_) => {
                 let t: i64 = c
                     .query_one(
-                        "SELECT COUNT(*) FROM databases_rows WHERE database_table = \
-                (SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2)",
-                        &[&database_row_id, &table_id],
+                        "SELECT COUNT(*) FROM databases_rows WHERE table = $1",
+                        &[&table_row_id],
                     )
                     .await?
                     .get(0);
