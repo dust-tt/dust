@@ -115,8 +115,8 @@ export async function githubUpsertIssueActivity(
         issueNumber,
         resultPage
       );
-    } catch (e: any) {
-      if (e.status === 404) {
+    } catch (e) {
+      if (e instanceof Error && "status" in e && e.status === 404) {
         // Github may return a 404 on the first page if the issue has no comments
         break;
       } else {
