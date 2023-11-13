@@ -56,29 +56,30 @@ impl Database {
                     .list_databases_tables(&project, &self.data_source_id, &self.database_id, None)
                     .await?;
 
-                let mut table_rows_futures = Vec::new();
+                let table_rows_futures = tables
+                    .iter()
+                    .map(|table| {
+                        let store_ref = &store;
+                        let project_ref = &project;
+                        let data_source_id = &self.data_source_id;
+                        let database_id = &self.database_id;
+                        let table_id = table.table_id().to_string();
 
-                for table in &tables {
-                    let store_ref = &store;
-                    let project_ref = &project;
-                    let data_source_id = &self.data_source_id;
-                    let database_id = &self.database_id;
-                    let table_id = table.table_id().to_string();
+                        let rows_future = async move {
+                            store_ref
+                                .list_database_rows(
+                                    project_ref,
+                                    data_source_id,
+                                    database_id,
+                                    &table_id,
+                                    None,
+                                )
+                                .await
+                        };
 
-                    let rows_future = async move {
-                        store_ref
-                            .list_database_rows(
-                                project_ref,
-                                data_source_id,
-                                database_id,
-                                &table_id,
-                                None,
-                            )
-                            .await
-                    };
-
-                    table_rows_futures.push(rows_future);
-                }
+                        rows_future
+                    })
+                    .collect::<Vec<_>>();
 
                 // Now, we concurrently wait for all futures to complete.
                 let results: Vec<_> = futures::future::join_all(table_rows_futures).await;
