@@ -11,26 +11,13 @@ import { classNames } from "@sparkle/lib/utils";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
-type ItemProps = {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  size?: "sm" | "md";
-  variant?: "default" | "dropdown";
-  selected?: boolean;
-  disabled?: boolean;
-  label: string;
-  icon?: ComponentType;
-  visual?: string | React.ReactNode;
-  className?: string;
-  href?: string;
-};
-
 const sizeClasses = {
   sm: "s-py-2 s-text-sm s-font-normal",
   md: "s-py-3 s-text-sm s-font-semibold",
 };
 
 const baseClasses =
-  "s-group s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none";
+  "s-group s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none s-text-sm";
 
 const iconBaseClasses = "s-transition-colors s-ease-out s-duration-400";
 
@@ -124,6 +111,19 @@ const stateClassesMD = {
   },
 };
 
+type ItemProps = {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  size?: "sm" | "md";
+  variant?: "default" | "dropdown";
+  selected?: boolean;
+  disabled?: boolean;
+  label: string;
+  icon?: ComponentType;
+  visual?: string | React.ReactNode;
+  className?: string;
+  href?: string;
+};
+
 export function Item({
   onClick,
   selected = false,
@@ -204,6 +204,65 @@ export function Item({
   );
 }
 
+interface EntryItemProps {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  disabled?: boolean;
+  label: string;
+  icon?: ComponentType;
+  className?: string;
+  href?: string;
+}
+
+Item.Entry = function (props: EntryItemProps) {
+  return <Item {...props} size="sm" variant="default" />;
+};
+
+interface AvatarItemProps {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  disabled?: boolean;
+  label: string;
+  visual?: string | React.ReactNode;
+  className?: string;
+  href?: string;
+}
+
+Item.Avatar = function (props: AvatarItemProps) {
+  return <Item {...props} size="sm" variant="default" />;
+};
+
+interface NavigationListItemProps {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  selected?: boolean;
+  disabled?: boolean;
+  label: string;
+  icon?: ComponentType;
+  className?: string;
+  href?: string;
+}
+
+Item.Navigation = function (props: NavigationListItemProps) {
+  return <Item {...props} size="md" variant="default" />;
+};
+
+interface DropdownListItemProps {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  disabled?: boolean;
+  label: string;
+  visual?: string | React.ReactNode;
+  icon?: ComponentType;
+  className?: string;
+  href?: string;
+}
+
+Item.Dropdown = function (props: DropdownListItemProps) {
+  return <Item {...props} size="md" variant="dropdown" />;
+};
+
+interface ListItemProps {
+  children: ReactNode;
+  className?: string;
+}
+
 interface ItemSectionHeaderProps {
   label: string;
   variant?: "primary" | "secondary";
@@ -217,18 +276,13 @@ Item.SectionHeader = function ({
     <div
       className={classNames(
         variant === "primary" ? "s-text-element-800" : "s-text-element-600",
-        "s-pb-1 s-pt-3 s-text-xs s-font-medium s-uppercase"
+        "s-pb-2 s-pt-6   s-text-xs s-font-medium s-uppercase"
       )}
     >
       {label}
     </div>
   );
 };
-
-interface ListItemProps {
-  children: ReactNode;
-  className?: string;
-}
 
 Item.List = function ({ children, className }: ListItemProps) {
   return (

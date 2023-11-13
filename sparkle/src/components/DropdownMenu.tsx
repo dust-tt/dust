@@ -211,10 +211,8 @@ DropdownMenu.Item = function ({
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
     <Menu.Item disabled={disabled} as="div">
-      <StandardItem
+      <StandardItem.Dropdown
         className="s-w-full s-px-4"
-        variant="dropdown"
-        size="md"
         href={href}
         onClick={onClick}
         label={label}
