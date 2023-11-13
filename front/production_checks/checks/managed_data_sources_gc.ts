@@ -147,7 +147,7 @@ export const CHECK_FILES_BY_TYPE: Record<
       const dustFileIds = slice.map((d) => d.document_id);
 
       const documentsData = await connectorsSequelize.query(
-        'SELECT id as "googleDriveFileId", "dustFileId" FROM google_drive_files WHERE "dustFileId" IN (:documentIds)',
+        'SELECT id as "googleDriveFileId", "dustFileId" FROM google_drive_files WHERE "dustFileId" IN (:documentIds) and "connectorId" = :connectorId',
         {
           replacements: {
             documentIds: dustFileIds,
