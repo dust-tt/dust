@@ -5,8 +5,11 @@ import { ModelId } from "@app/lib/databases";
 import { Err, Ok, Result } from "@app/lib/result";
 import { CheckFunction } from "@app/production_checks/types/check";
 
-const {  CORE_DATABASE_URI_RO, FRONT_DATABASE_URI_RO, CONNECTORS_DATABASE_URI_RO } =
-  process.env;
+const {
+  CORE_DATABASE_URI_RO,
+  FRONT_DATABASE_URI_RO,
+  CONNECTORS_DATABASE_URI_RO,
+} = process.env;
 
 type CoreDSDocument = {
   id: number;
@@ -31,9 +34,12 @@ export const managedDataSourcesGcCheck: CheckFunction = async (
   const front_sequelize = new Sequelize(FRONT_DATABASE_URI_RO as string, {
     logging: false,
   });
-  const connectorsSequelize = new Sequelize(CONNECTORS_DATABASE_URI_RO as string, {
-    logging: false,
-  });
+  const connectorsSequelize = new Sequelize(
+    CONNECTORS_DATABASE_URI_RO as string,
+    {
+      logging: false,
+    }
+  );
 
   const managedDsData = await front_sequelize.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId"\
