@@ -71,7 +71,7 @@ async function handler(
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "An error occured while fetching the customer portal url.",
+          message: "Stripe API: An error occured while fetching the customer portal url.",
         },
       });
 
