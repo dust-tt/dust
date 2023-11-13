@@ -11,6 +11,8 @@ const {
 } = process.env;
 
 async function main() {
+  const now = new Date().getTime();
+
   const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
   });
@@ -51,7 +53,11 @@ async function main() {
       })
     );
   }
+
+  console.log(`SCRUBBED_UP_UNTIL ${now}`);
 }
+
+const seen = new Set();
 
 async function scrubDocument(
   core_sequelize: Sequelize,
@@ -60,6 +66,12 @@ async function scrubDocument(
   deletedAt: number,
   hash: string
 ) {
+  // Process same version of same document only once.
+  const uid = `${data_source}-${document_id}-${hash}`;
+  if (seen.has(uid)) {
+    return;
+  }
+
   const moreRecentSameHash = await core_sequelize.query(
     `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created > :deletedAt LIMIT 1`,
     {
@@ -73,9 +85,7 @@ async function scrubDocument(
   );
 
   if (moreRecentSameHash[0].length > 0) {
-    console.log(
-      `Skipping ${document_id} as there is a more recent version with the same hash`
-    );
+    // Skipping as there is a more recent version with the same hash
     return;
   }
 
@@ -113,10 +123,19 @@ async function scrubDocument(
       .bucket(DUST_DATA_SOURCES_BUCKET || "")
       .getFiles({ prefix: path });
 
-    if (files.length > 0) {
-      console.log(files);
+    if (files.length >= 1) {
+      console.log(files.map((f) => f.name));
+      throw new Error("Unexpected number of files > 1");
     }
+    if (files.length === 0) {
+      return;
+    }
+
+    console.log(`DELETING ${files[0].name}`);
+    await files[0].delete();
   }
+
+  seen.add(uid);
 }
 
 main()
