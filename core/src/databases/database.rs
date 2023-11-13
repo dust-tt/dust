@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use rusqlite::ToSql;
 
 use crate::{project::Project, stores::store::Store, utils};
 use rayon::prelude::*;
@@ -172,14 +173,17 @@ impl Database {
                         .get(&table_name)
                         .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
 
-                    let mut insert_sql = "".to_string();
                     for row in rows {
-                        let insert_row_sql =
+                        let (query, boxed_params) =
                             table_schema.get_insert_row_sql_string(&table_name, row.content())?;
-                        insert_sql += &insert_row_sql;
-                    }
 
-                    conn.execute_batch(&insert_sql)?;
+                        let params_refs: Vec<&dyn ToSql> = boxed_params
+                            .iter()
+                            .map(|param| &**param as &dyn ToSql)
+                            .collect();
+
+                        conn.execute(&query, params_refs.as_slice())?;
+                    }
                 }
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished inserting rows: duration={}ms",
