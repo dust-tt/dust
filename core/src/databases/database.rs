@@ -109,19 +109,23 @@ impl Database {
             DatabaseType::LOCAL => {
                 // Retrieve the DB schema and construct a SQL string.
                 let (schema, rows_by_table) = self.get_schema(project, store.clone(), true).await?;
-                let mut create_tables_sql = "".to_string();
-                // TODO: maybe we can // ?
-                let mut table_schemas = HashMap::new();
-                for (table_name, table) in schema.into_iter() {
-                    if table.schema.is_empty() {
-                        continue;
-                    }
-                    table_schemas.insert(table_name.clone(), table.schema.clone());
-                    create_tables_sql += &table
-                        .schema
-                        .get_create_table_sql_string(table_name.as_str());
-                    create_tables_sql += "\n";
-                }
+
+                let table_schemas: HashMap<String, TableSchema> = schema
+                    .iter()
+                    .filter(|(_, table)| !table.schema.is_empty())
+                    .map(|(table_name, table)| (table_name.clone(), table.schema.clone()))
+                    .collect();
+
+                let create_tables_sql: String = schema
+                    .iter()
+                    .filter(|(_, table)| !table.schema.is_empty())
+                    .map(|(table_name, table)| {
+                        table
+                            .schema
+                            .get_create_table_sql_string(table_name.as_str())
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
 
                 // Build the in-memory SQLite DB with the schema.
                 let conn = rusqlite::Connection::open_in_memory()?;
@@ -293,11 +297,8 @@ impl DatabaseSchemaTable {
 #[derive(Debug, Serialize)]
 pub struct DatabaseSchema(HashMap<String, DatabaseSchemaTable>);
 
-impl IntoIterator for DatabaseSchema {
-    type Item = (String, DatabaseSchemaTable);
-    type IntoIter = std::collections::hash_map::IntoIter<String, DatabaseSchemaTable>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+impl DatabaseSchema {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, DatabaseSchemaTable> {
+        self.0.iter()
     }
 }
