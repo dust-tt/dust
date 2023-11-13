@@ -246,7 +246,8 @@ async function handler(
               status_code: 500,
               api_error: {
                 type: "internal_server_error",
-                message: "Stripe Webhook: error handling checkout.session.completed.",
+                message:
+                  "Stripe Webhook: error handling checkout.session.completed.",
               },
             });
           }
