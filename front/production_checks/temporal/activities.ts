@@ -2,14 +2,14 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
-import { managedDataSourcesGcCheck } from "@app/production_checks/checks/managed_data_sources_gc";
+import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
 import { Check } from "@app/production_checks/types/check";
 
 export async function runAllChecksActivity() {
   const checks: Check[] = [
     {
-      name: "managed_data_sources_gc",
-      check: managedDataSourcesGcCheck,
+      name: "managed_data_source_gdrive_gc",
+      check: managedDataSourceGCGdriveCheck,
     },
   ];
   await runAllChecks(checks);
