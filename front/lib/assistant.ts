@@ -15,6 +15,7 @@ export const GPT_4_32K_MODEL_CONFIG = {
   displayName: "GPT 4",
   contextSize: 32768,
   recommendedTopK: 32,
+  largeModel: true,
 } as const;
 
 export const GPT_4_MODEL_CONFIG = {
@@ -23,6 +24,7 @@ export const GPT_4_MODEL_CONFIG = {
   displayName: "GPT 4",
   contextSize: 8192,
   recommendedTopK: 16,
+  largeModel: true,
 };
 
 export const GPT_4_TURBO_MODEL_CONFIG = {
@@ -31,6 +33,7 @@ export const GPT_4_TURBO_MODEL_CONFIG = {
   displayName: "GPT 4",
   contextSize: 128000,
   recommendedTopK: 32,
+  largeModel: true,
 } as const;
 
 export const GPT_3_5_TURBO_16K_MODEL_CONFIG = {
@@ -39,6 +42,7 @@ export const GPT_3_5_TURBO_16K_MODEL_CONFIG = {
   displayName: "GPT 3.5 Turbo",
   contextSize: 16384,
   recommendedTopK: 16,
+  largeModel: false,
 } as const;
 
 export const GPT_3_5_TURBO_MODEL_CONFIG = {
@@ -47,6 +51,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
   displayName: "GPT 3.5 Turbo",
   contextSize: 4096,
   recommendedTopK: 16,
+  largeModel: false,
 } as const;
 
 export const CLAUDE_DEFAULT_MODEL_CONFIG = {
@@ -55,6 +60,7 @@ export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   displayName: "Claude 2",
   contextSize: 100000,
   recommendedTopK: 32,
+  largeModel: true,
 } as const;
 
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
@@ -63,6 +69,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   displayName: "Claude Instant 1.2",
   contextSize: 100000,
   recommendedTopK: 32,
+  largeModel: false,
 } as const;
 
 export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
@@ -71,6 +78,7 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   displayName: "Mistral 7B",
   contextSize: 8192,
   recommendedTopK: 16,
+  largeModel: false,
 } as const;
 
 export const SUPPORTED_MODEL_CONFIGS = [
@@ -98,6 +106,19 @@ export function isSupportedModel(model: unknown): model is SupportedModel {
       m.modelId === maybeSupportedModel.modelId &&
       m.providerId === maybeSupportedModel.providerId
   );
+}
+
+export function isLargeModel(model: unknown): model is SupportedModel {
+  const maybeSupportedModel = model as SupportedModel;
+  const m = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === maybeSupportedModel.modelId &&
+      m.providerId === maybeSupportedModel.providerId
+  );
+  if (m) {
+    return m.largeModel;
+  }
+  return false;
 }
 
 export function getSupportedModelConfig(supportedModel: SupportedModel) {
