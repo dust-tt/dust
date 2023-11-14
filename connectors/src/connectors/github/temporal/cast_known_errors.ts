@@ -11,6 +11,28 @@ export class GithubCastKnownErrorsInterceptor
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
-    return await next(input);
+    try {
+      return await next(input);
+    } catch (err: unknown) {
+      const maybeGhError = err as {
+        status?: number;
+        name?: string;
+        type?: string;
+      };
+
+      if (
+        maybeGhError.status === 403 &&
+        maybeGhError.type === "RequestError" &&
+        maybeGhError.name === "HttpError"
+      ) {
+        throw {
+          __is_dust_error: true,
+          message: "Github rate limited",
+          type: "github_rate_limited",
+        };
+      }
+
+      throw err;
+    }
   }
 }
