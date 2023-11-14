@@ -1,8 +1,7 @@
-use anyhow::{anyhow, Result};
-use rusqlite::ToSql;
-
 use crate::{project::Project, stores::store::Store, utils};
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
+use rusqlite::ToSql;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -176,86 +175,103 @@ impl Database {
 
                 // insert the rows in the DB
                 let insert_execute_start = utils::now();
-                for (table_name, rows) in rows_by_table {
-                    if rows.is_empty() {
-                        continue;
-                    }
+                rows_by_table
+                    .iter()
+                    .filter(|(_, rows)| !rows.is_empty())
+                    .map(|(table_name, rows)| {
+                        let table_schema = table_schemas
+                            .get(table_name)
+                            .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
 
-                    let table_schema = table_schemas
-                        .get(&table_name)
-                        .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
+                        rows.iter()
+                            .map(|row| {
+                                match table_schema
+                                    .get_insert_row_sql_string(table_name, &row.content)
+                                {
+                                    Ok((query, boxed_params)) => {
+                                        let params_refs: Vec<&dyn ToSql> = boxed_params
+                                            .iter()
+                                            .map(|param| &**param as &dyn ToSql)
+                                            .collect();
 
-                    for row in rows {
-                        let (query, boxed_params) =
-                            table_schema.get_insert_row_sql_string(&table_name, row.content())?;
-
-                        let params_refs: Vec<&dyn ToSql> = boxed_params
-                            .iter()
-                            .map(|param| &**param as &dyn ToSql)
-                            .collect();
-
-                        conn.execute(&query, params_refs.as_slice())?;
-                    }
-                }
+                                        match conn.execute(&query, params_refs.as_slice()) {
+                                            Ok(res) => Ok(res),
+                                            Err(e) => Err(anyhow!("Error: {}", e)),
+                                        }
+                                    }
+                                    Err(e) => Err(anyhow!("Error: {}", e)),
+                                }
+                            })
+                            .collect::<Result<Vec<_>>>()
+                    })
+                    .collect::<Result<Vec<_>>>()?;
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished inserting rows: duration={}ms",
                     utils::now() - insert_execute_start
                 ));
 
                 let user_query_execute_start = utils::now();
-                // Execute the query and get an iterator over the mapped rows.
-                let mapped_rows = stmt.query_map([], |row| {
-                    (0..column_count)
-                        .map(|i| row.get::<usize, rusqlite::types::Value>(i))
-                        .collect::<Result<Vec<rusqlite::types::Value>, rusqlite::Error>>()
-                })?;
-
-                let results = mapped_rows.map(|row_result| {
-                        row_result
-                            .map_err(|e| anyhow!("Failed to retrieve a row: {}", e))
-                            .and_then(|row| {
-                                column_names.iter().enumerate().try_fold(
-                                    serde_json::Map::new(),
-                                    |mut acc, (i, column_name)| {
-                                        row.get(i)
-                                            .ok_or_else(|| {
-                                                anyhow!("Missing value at index {} for column {}", i, column_name)
-                                            })
-                                            .and_then(|sql_value| {
-                                                let json_value = match sql_value {
-                                                    rusqlite::types::Value::Integer(i) => serde_json::Value::Number((*i).into()),
-                                                    rusqlite::types::Value::Real(f) => serde_json::Number::from_f64(*f)
-                                                        .ok_or_else(|| {
-                                                            anyhow!("Invalid float value for column {}", column_name)
-                                                        })
-                                                        .map(serde_json::Value::Number)?,
-                                                    rusqlite::types::Value::Text(t) => serde_json::Value::String(t.clone()),
-                                                    rusqlite::types::Value::Blob(b) => String::from_utf8(b.clone())
-                                                        .map_err(|_| {
-                                                            anyhow!("Invalid UTF-8 sequence for column {}", column_name)
-                                                        })
-                                                        .map(serde_json::Value::String)?,
-                                                    rusqlite::types::Value::Null => serde_json::Value::Null,
-                                                };
-                                                acc.insert(column_name.clone(), json_value);
-                                                Ok(acc)
-                                            })
-                                    },
-                                )
-                                .map(serde_json::Value::Object)
+                // Execute the query and collect the results in a vector of serde_json::Value objects.
+                let result_rows = stmt
+                    .query_and_then([], |row| {
+                        column_names
+                            .iter()
+                            .enumerate()
+                            .map(|(i, column_name)| {
+                                Ok((
+                                    column_name.clone(),
+                                    match row.get(i) {
+                                        Err(e) => {
+                                            return Err(anyhow!(
+                                                "Failed to retrieve value for column {}: {}",
+                                                column_name,
+                                                e
+                                            ))
+                                        }
+                                        Ok(v) => match v {
+                                            rusqlite::types::Value::Integer(i) => {
+                                                Ok(serde_json::Value::Number(i.into()))
+                                            }
+                                            rusqlite::types::Value::Real(f) => {
+                                                match serde_json::Number::from_f64(f) {
+                                                    Some(n) => Ok(serde_json::Value::Number(n)),
+                                                    None => Err(anyhow!(
+                                                        "Invalid float value for column {}",
+                                                        column_name
+                                                    )),
+                                                }
+                                            }
+                                            rusqlite::types::Value::Text(t) => {
+                                                Ok(serde_json::Value::String(t.clone()))
+                                            }
+                                            rusqlite::types::Value::Blob(b) => {
+                                                match String::from_utf8(b.clone()) {
+                                                    Err(_) => Err(anyhow!(
+                                                        "Invalid UTF-8 sequence for column {}",
+                                                        column_name
+                                                    )),
+                                                    Ok(s) => Ok(serde_json::Value::String(s)),
+                                                }
+                                            }
+                                            rusqlite::types::Value::Null => {
+                                                Ok(serde_json::Value::Null)
+                                            }
+                                        },
+                                    }?,
+                                ))
                             })
-                    })
-                    .collect::<Result<Vec<serde_json::Value>, anyhow::Error>>()?;
+                            .collect::<Result<serde_json::Value>>()
+                    })?
+                    .collect::<Result<Vec<_>>>()?
+                    .into_par_iter()
+                    .map(|v| DatabaseRow::new(utils::now(), None, &v))
+                    .collect::<Vec<_>>();
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished executing user query: duration={}ms",
                     utils::now() - user_query_execute_start
                 ));
 
                 let infer_result_schema_start = utils::now();
-                let result_rows = results
-                    .into_par_iter()
-                    .map(|v| DatabaseRow::new(utils::now(), None, &v))
-                    .collect::<Vec<_>>();
                 let table_schema = TableSchema::from_rows(&result_rows)?;
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
