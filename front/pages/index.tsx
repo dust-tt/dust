@@ -926,6 +926,11 @@ const Footer = () => {
                 <Link href="https://github.com/dust-tt">GitHub</Link>
               </A>
             </P>
+            <P size="xs">
+              <A variant="tertiary">
+                <Link href="https://docs.dust.tt">Developer Platform Docs</Link>
+              </A>
+            </P>
           </div>
           <div
             className={classNames(
