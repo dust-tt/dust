@@ -67,6 +67,7 @@ export async function runActionStreamed(
     },
     action: actionName,
     app: action.app,
+    model: config.MODEL,
   };
 
   logger.info(loggerArgs, "Action run creation");
