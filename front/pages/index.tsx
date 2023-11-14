@@ -928,7 +928,7 @@ const Footer = () => {
             </P>
             <P size="xs">
               <A variant="tertiary">
-                <Link href="https://docs.dust.tt">Docs</Link>
+                <Link href="https://docs.dust.tt">Developer Platform Docs</Link>
               </A>
             </P>
           </div>
