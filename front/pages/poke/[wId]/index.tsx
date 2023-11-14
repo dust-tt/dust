@@ -363,7 +363,6 @@ const WorkspacePage = ({
                           if (
                             [
                               FREE_TEST_PLAN_CODE,
-                              PRO_PLAN_SEAT_29_CODE,
                               FREE_UPGRADED_PLAN_CODE,
                             ].includes(p.code)
                           ) {
