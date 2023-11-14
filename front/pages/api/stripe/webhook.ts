@@ -435,9 +435,9 @@ const cancellationMessage = {
   <li>all users except one will be removed from your workspace;</li>
   <li>your connections will be deleted</li>
   <li>the rest of your data (conversations, custom assistants, custom datasource) will still be accessible but with multiple limitations.</li>
-  <li>you will be subjected to the <a>restrictions of the free plan</a></li>
+  <li>you will be subjected to the <a href="https://dust.tt/#sectionPricing">restrictions of the free plan</a></li>
   </ul>
-  <p>Complete details as to what will happen are available at <a href="https://dust.tt/pricing">subscription cancelling FAQ</a>.</p>
+  <p>Complete details as to what will happen are available at <a href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4">subscription cancelling FAQ</a>.</p>
   <p>If you have any questions, please contact us at team@dust.tt.</p>
   <p>Best,</p>
   <p>The Dust team</p>`,
