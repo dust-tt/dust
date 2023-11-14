@@ -50,7 +50,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
     description:
-      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Dust does not access code.",
+      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. We're working on adding support for code indexing.",
     logoComponent: GithubLogo,
     isNested: false,
   },
