@@ -13,9 +13,11 @@ import {
   getSupportedModelConfig,
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
+  isLargeModel,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
@@ -311,7 +313,8 @@ export async function* runGeneration(
   void
 > {
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
@@ -333,6 +336,20 @@ export async function* runGeneration(
   }
 
   let model = c.model;
+
+  if (isLargeModel(model) && plan.code === FREE_TEST_PLAN_CODE) {
+    yield {
+      type: "generation_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "free_plan_error",
+        message: `Free plan does not support large models. Please upgrade to a paid plan to use this model.`,
+      },
+    };
+    return;
+  }
 
   const contextSize = getSupportedModelConfig(c.model).contextSize;
 
