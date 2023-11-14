@@ -224,7 +224,10 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings: GPT_4_32K_MODEL_CONFIG,
+      modelSettings:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? GPT_3_5_TURBO_16K_MODEL_CONFIG
+          : GPT_4_32K_MODEL_CONFIG,
     },
   });
 
@@ -1446,9 +1449,9 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="bottomRight">
                 {usedModelConfigs
-                  .filter((m) => {
-                    m.largeModel && plan.code === FREE_TEST_PLAN_CODE;
-                  })
+                  .filter(
+                    (m) => !(m.largeModel && plan.code === FREE_TEST_PLAN_CODE)
+                  )
                   .map((modelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}
