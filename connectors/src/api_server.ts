@@ -26,6 +26,11 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
+import {
+  getConnectorConfigAPIHandler,
+  setConnectorConfigAPIHandler,
+} from "./api/connector_config";
+
 export function startServer(port: number) {
   process.on("unhandledRejection", (reason, promise) => {
     logger.error({ promise, reason }, "Unhandled Rejection");
@@ -100,6 +105,16 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
     webhookGithubAPIHandler
+  );
+
+  app.post(
+    "/connectors/:connector_id/config/:config_key",
+    setConnectorConfigAPIHandler
+  );
+
+  app.get(
+    "/connectors/:connector_id/config/:config_key",
+    getConnectorConfigAPIHandler
   );
 
   const server = app.listen(port, () => {

@@ -1045,6 +1045,51 @@ GithubDiscussion.init(
 );
 Connector.hasMany(GithubDiscussion);
 
+export class GoogleDriveConfig extends Model<
+  InferAttributes<GoogleDriveConfig>,
+  InferCreationAttributes<GoogleDriveConfig>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare pdfEnabled: boolean;
+}
+
+GoogleDriveConfig.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    pdfEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    modelName: "google_drive_configs",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+
 // GoogleDriveFolders stores the folders selected by the user to sync.
 export class GoogleDriveFolders extends Model<
   InferAttributes<GoogleDriveFolders>,

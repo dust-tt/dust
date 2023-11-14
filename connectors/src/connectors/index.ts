@@ -11,9 +11,11 @@ import {
 import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
+  getGoogleDriveConfig,
   retrieveGoogleDriveConnectorPermissions,
   retrieveGoogleDriveObjectsParents,
   retrieveGoogleDriveObjectsTitles,
+  setGoogleDriveConfig,
   setGoogleDriveConnectorPermissions,
   updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
@@ -23,6 +25,8 @@ import {
   BotToggler,
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
+  ConnectorConfigGetter,
+  ConnectorConfigSetter,
   ConnectorCreator,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
@@ -211,4 +215,36 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
   github: async () => new Ok([]), // Github is flat,
+};
+
+export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorConfigSetter
+> = {
+  slack: () => {
+    throw new Error("Not implemented");
+  },
+  notion: async () => {
+    throw new Error("Not implemented");
+  },
+  github: async () => {
+    throw new Error("Not implemented");
+  },
+  google_drive: setGoogleDriveConfig,
+};
+
+export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorConfigGetter
+> = {
+  slack: () => {
+    throw new Error("Not implemented");
+  },
+  notion: async () => {
+    throw new Error("Not implemented");
+  },
+  github: async () => {
+    throw new Error("Not implemented");
+  },
+  google_drive: getGoogleDriveConfig,
 };

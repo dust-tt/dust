@@ -26,6 +26,7 @@ import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   Connector,
+  GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -44,15 +45,28 @@ const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
 };
-// Deactivated CSV for now 20230721 (spolu)
-// Deactivated PDF for now 20230803 (fontanierh)
-// const MIME_TYPES_TO_DOWNLOAD = ["text/plain", "text/csv", "application/pdf"];
-const MIME_TYPES_TO_DOWNLOAD = ["text/plain"];
-const MIME_TYPES_TO_SYNC = [
-  ...MIME_TYPES_TO_DOWNLOAD,
-  ...Object.keys(MIME_TYPES_TO_EXPORT),
-  "application/vnd.google-apps.folder",
-];
+
+async function getMimeTypesToDownload(connectorId: ModelId) {
+  const mimeTypes = ["text/plain"];
+  const config = await GoogleDriveConfig.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (config?.pdfEnabled) {
+    mimeTypes.push("application/pdf");
+  }
+
+  return mimeTypes;
+}
+
+async function getMimesTypeToSync(connectorId: ModelId) {
+  const mimeTypes = await getMimeTypesToDownload(connectorId);
+  mimeTypes.push(...Object.keys(MIME_TYPES_TO_EXPORT));
+  mimeTypes.push("application/vnd.google-apps.folder");
+
+  return mimeTypes;
+}
 
 export const statsDClient = new StatsD();
 
@@ -195,6 +209,7 @@ export async function syncFiles(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+  const mimeTypeToSync = await getMimesTypeToSync(connectorId);
   const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject(
     authCredentials,
@@ -229,9 +244,9 @@ export async function syncFiles(
   }
 
   const drive = await getDriveClient(authCredentials);
-  const mimeTypesSearchString = MIME_TYPES_TO_SYNC.map(
-    (mimeType) => `mimeType='${mimeType}'`
-  ).join(" or ");
+  const mimeTypesSearchString = mimeTypeToSync
+    .map((mimeType) => `mimeType='${mimeType}'`)
+    .join(" or ");
 
   const res = await drive.files.list({
     corpora: "allDrives",
@@ -299,6 +314,7 @@ async function syncOneFile(
   startSyncTs: number,
   isBatchSync = false
 ): Promise<boolean> {
+  const mimeTypesToDownload = await getMimeTypesToDownload(connectorId);
   const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
 
@@ -358,7 +374,7 @@ async function syncOneFile(
       );
       throw e;
     }
-  } else if (MIME_TYPES_TO_DOWNLOAD.includes(file.mimeType)) {
+  } else if (mimeTypesToDownload.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
 
     let res;
@@ -604,6 +620,7 @@ export async function incrementalSync(
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(connectorId, driveId, sharedDrive);
     }
+    const mimeTypesToSync = await getMimesTypeToSync(connectorId);
 
     const selectedFoldersIds = await getFoldersToSync(connectorId);
 
@@ -648,7 +665,7 @@ export async function incrementalSync(
       }
       if (
         !change.file.mimeType ||
-        !MIME_TYPES_TO_SYNC.includes(change.file.mimeType)
+        !mimeTypesToSync.includes(change.file.mimeType)
       ) {
         continue;
       }
