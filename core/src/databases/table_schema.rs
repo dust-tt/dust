@@ -77,25 +77,23 @@ impl TableSchema {
     }
 
     pub fn get_create_table_sql_string(&self, table_name: &str) -> String {
-        let mut create_table = format!("CREATE TABLE \"{}\" (", table_name);
-
-        for (name, field_type) in &self.0 {
-            let sql_type = match field_type {
-                TableSchemaFieldType::Int => "INT",
-                TableSchemaFieldType::Float => "REAL",
-                TableSchemaFieldType::Text => "TEXT",
-                TableSchemaFieldType::Bool => "BOOLEAN",
-            };
-
-            create_table.push_str(&format!("\"{}\" {}, ", name, sql_type));
-        }
-
-        // Remove the trailing comma and space, then close the parentheses.
-        let len = create_table.len();
-        create_table.truncate(len - 2);
-        create_table.push_str(");");
-
-        create_table
+        format!(
+            "CREATE TABLE \"{}\" ({})",
+            table_name,
+            self.0
+                .iter()
+                .map(|(name, field_type)| {
+                    let sql_type = match field_type {
+                        TableSchemaFieldType::Int => "INT",
+                        TableSchemaFieldType::Float => "REAL",
+                        TableSchemaFieldType::Text => "TEXT",
+                        TableSchemaFieldType::Bool => "BOOLEAN",
+                    };
+                    format!("\"{}\" {}", name, sql_type)
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     pub fn get_insert_row_sql_string(

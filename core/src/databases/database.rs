@@ -221,6 +221,7 @@ impl Database {
 
                 let mut stmt = conn.prepare(query)?;
 
+                // copy the column names into a vector of strings
                 let column_names = stmt
                     .column_names()
                     .into_iter()
