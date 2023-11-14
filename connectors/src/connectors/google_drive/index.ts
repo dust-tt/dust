@@ -80,6 +80,16 @@ export async function createGoogleDriveConnector(
           { transaction: t }
         );
 
+        await GoogleDriveConfig.create(
+          {
+            connectorId: connector.id,
+            pdfEnabled: false,
+          },
+          {
+            transaction: t,
+          }
+        );
+
         const webhookInfo = await registerWebhook(connector);
         if (webhookInfo.isErr()) {
           throw webhookInfo.error;
