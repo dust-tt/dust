@@ -31,9 +31,9 @@ const ScrollingHeader = ({
     invisibleFirstElements.forEach((element: Element) => {
       if (element instanceof HTMLElement) {
         if (isScrolled2) {
-          element.style.opacity = "1";
+          element.classList.remove("opacity-0");
         } else {
-          element.style.opacity = "0";
+          element.classList.add("opacity-0");
         }
       }
     });

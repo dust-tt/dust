@@ -1150,6 +1150,9 @@ impl LLM for OpenAILLM {
         if self.id.starts_with("gpt-4-32k") {
             return 32768;
         }
+        if self.id.starts_with("gpt-4-1106-preview") {
+            return 128000;
+        }
         if self.id.starts_with("gpt-4") {
             return 8192;
         }
@@ -1218,7 +1221,7 @@ impl LLM for OpenAILLM {
                         None => None,
                     },
                     Some(self.id.clone()),
-                    prompt.clone(),
+                    prompt,
                     max_tokens,
                     temperature,
                     n,
@@ -1263,7 +1266,7 @@ impl LLM for OpenAILLM {
                         None => None,
                     },
                     Some(self.id.clone()),
-                    prompt.clone(),
+                    prompt,
                     max_tokens,
                     temperature,
                     n,

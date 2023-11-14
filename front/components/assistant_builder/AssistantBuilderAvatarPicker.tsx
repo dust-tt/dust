@@ -144,7 +144,7 @@ export function AvatarPicker({
       isOpen={isOpen}
       onClose={onClose}
       title="Select an avatar for your assistant:"
-      type="full-screen"
+      variant="full-screen"
       hasChanged={currentTab === "upload" && !!src}
       onSave={isUploadingAvatar ? undefined : onUpload}
     >

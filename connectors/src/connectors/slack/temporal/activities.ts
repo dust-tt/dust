@@ -6,7 +6,7 @@ import {
 } from "@slack/web-api";
 import {
   ConversationsHistoryResponse,
-  Message,
+  MessageElement,
 } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import {
   Channel,
@@ -361,7 +361,7 @@ export async function syncNonThreaded(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getSlackClient(connectorId);
   const nextCursor: string | undefined = undefined;
-  const messages: Message[] = [];
+  const messages: MessageElement[] = [];
 
   const startTsSec = Math.round(startTsMs / 1000);
   const endTsSec = Math.round(endTsMs / 1000);
@@ -523,7 +523,7 @@ export async function syncThread(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const slackClient = await getSlackClient(connectorId);
 
-  let allMessages: Message[] = [];
+  let allMessages: MessageElement[] = [];
 
   let next_cursor = undefined;
 
@@ -645,7 +645,7 @@ async function processMessageForMentions(
 
 export async function formatMessagesForUpsert(
   channelId: string,
-  messages: Message[],
+  messages: MessageElement[],
   connectorId: ModelId,
   slackClient: WebClient
 ) {

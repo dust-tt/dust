@@ -18,7 +18,11 @@ pub enum TableSchemaFieldType {
 pub struct TableSchema(HashMap<String, TableSchemaFieldType>);
 
 impl TableSchema {
-    pub fn from_rows(rows: Vec<Value>) -> Result<Self> {
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn from_rows(rows: &Vec<&Value>) -> Result<Self> {
         let mut schema = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
@@ -96,25 +100,24 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_rows() -> Result<()> {
-        let rows = vec![
-            json!({
-                "field1": 1,
-                "field2": 1.2,
-                "field3": "text",
-                "field4": true,
-                "field6": ["array", "elements"],
-                "field7": {"key": "value"}
-            }),
-            json!({
-                "field1": 2,
-                "field2": 2.4,
-                "field3": "more text",
-                "field4": false,
-                "field5": "not null anymore",
-                "field6": ["more", "elements"],
-                "field7": {"anotherKey": "anotherValue"}
-            }),
-        ];
+        let row_1 = json!({
+            "field1": 1,
+            "field2": 1.2,
+            "field3": "text",
+            "field4": true,
+            "field6": ["array", "elements"],
+            "field7": {"key": "value"}
+        });
+        let row_2 = json!({
+            "field1": 2,
+            "field2": 2.4,
+            "field3": "more text",
+            "field4": false,
+            "field5": "not null anymore",
+            "field6": ["more", "elements"],
+            "field7": {"anotherKey": "anotherValue"}
+        });
+        let rows = &vec![&row_1, &row_2];
 
         let schema = TableSchema::from_rows(rows)?;
         let expected_map: HashMap<String, TableSchemaFieldType> = [
@@ -139,28 +142,27 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_rows_conflicting_types() {
-        let rows = vec![
-            json!({
-                "field1": 1,
-                "field2": 1.2,
-                "field3": "text",
-                "field4": true,
-                "field6": ["array", "elements"],
-                "field7": {"key": "value"}
-            }),
-            json!({
-                "field1": 2,
-                "field2": 2.4,
-                "field3": "more text",
-                "field4": "this was a bool before",
-                "field5": "not null anymore",
-                "field6": ["more", "elements"],
-                "field7": {"anotherKey": "anotherValue"}
-            }),
-            json!({
-                "field1": "now it's a text field",
-            }),
-        ];
+        let row_1 = json!({
+            "field1": 1,
+            "field2": 1.2,
+            "field3": "text",
+            "field4": true,
+            "field6": ["array", "elements"],
+            "field7": {"key": "value"}
+        });
+        let row_2 = json!({
+            "field1": 2,
+            "field2": 2.4,
+            "field3": "more text",
+            "field4": "this was a bool before",
+            "field5": "not null anymore",
+            "field6": ["more", "elements"],
+            "field7": {"anotherKey": "anotherValue"}
+        });
+        let row_3 = json!({
+            "field1": "now it's a text field",
+        });
+        let rows = &vec![&row_1, &row_2, &row_3];
 
         let schema = TableSchema::from_rows(rows);
 
@@ -172,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_empty_rows() {
-        let rows = vec![];
+        let rows = &vec![];
 
         let schema = TableSchema::from_rows(rows);
 

@@ -1641,6 +1641,417 @@ async fn data_sources_delete(
     }
 }
 
+// Databases
+
+#[derive(serde::Deserialize)]
+struct DatabasesRegisterPayload {
+    database_id: String,
+    name: String,
+}
+
+async fn databases_register(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Json(payload): extract::Json<DatabasesRegisterPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .register_database(
+            &project,
+            &data_source_id,
+            &payload.database_id,
+            &payload.name,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to register database",
+            Some(e),
+        ),
+        Ok(db) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "database": db
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_retrieve(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(db) => match db {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "database_not_found",
+                &format!("No database found for id `{}`", database_id),
+                None,
+            ),
+            Some(db) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "database": db
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn databases_list(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Query(query): extract::Query<DatabasesListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .list_databases(&project, &data_source_id, Some((query.limit, query.offset)))
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list databases",
+            Some(e),
+        ),
+        Ok(dbs) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "databases": dbs
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesTablesUpsertPayload {
+    table_id: String,
+    name: String,
+    description: String,
+}
+
+async fn databases_tables_upsert(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DatabasesTablesUpsertPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .upsert_database_table(
+            &project,
+            &data_source_id,
+            &database_id,
+            &payload.table_id,
+            &payload.name,
+            &payload.description,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert database table",
+            Some(e),
+        ),
+        Ok(table) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "table": table
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_tables_retrieve(
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database_table(&project, &data_source_id, &database_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database table",
+            Some(e),
+        ),
+        Ok(table) => match table {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "database_table_not_found",
+                &format!("No database table found for id `{}`", table_id),
+                None,
+            ),
+            Some(table) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "table": table
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+async fn databases_tables_list(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .list_databases_tables(&project, &data_source_id, &database_id, None)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list database tables",
+            Some(e),
+        ),
+        Ok((tables, _)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tables": tables,
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesRowsUpsertPayload {
+    contents: HashMap<String, serde_json::Value>,
+    truncate: Option<bool>,
+}
+
+async fn databases_rows_upsert(
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
+    extract::Json(payload): extract::Json<DatabasesRowsUpsertPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let truncate = match payload.truncate {
+        Some(v) => v,
+        None => false,
+    };
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .batch_upsert_database_rows(
+            &project,
+            &data_source_id,
+            &database_id,
+            &table_id,
+            &payload.contents,
+            truncate,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert database rows",
+            Some(e),
+        ),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_rows_retrieve(
+    extract::Path((project_id, data_source_id, database_id, table_id, row_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+        String,
+    )>,
+
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database_row(&project, &data_source_id, &database_id, &table_id, &row_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert database rows",
+            Some(e),
+        ),
+        Ok(row) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "row": row
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesRowsListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn databases_rows_list(
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
+    extract::Query(query): extract::Query<DatabasesRowsListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .list_database_rows(
+            &project,
+            &data_source_id,
+            &database_id,
+            &table_id,
+            Some((query.limit, query.offset)),
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list database rows",
+            Some(e),
+        ),
+        Ok((rows, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "rows": rows,
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_schema_retrieve(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "database_not_found",
+            &format!("No database found for id `{}`", database_id),
+            None,
+        ),
+        Ok(Some(db)) => match db.get_schema(&project, state.store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve database schema",
+                Some(e),
+            ),
+            Ok(schema) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "schema": schema
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 // Misc
 
 #[derive(serde::Deserialize)]
@@ -1820,6 +2231,47 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id",
             delete(data_sources_delete),
+        )
+        // Databases
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases",
+            post(databases_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id",
+            get(databases_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases",
+            get(databases_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables",
+            post(databases_tables_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id",
+            get(databases_tables_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables",
+            get(databases_tables_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id/rows",
+            post(databases_rows_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id/rows/:row_id",
+            get(databases_rows_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id/rows",
+            get(databases_rows_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/schema",
+            get(databases_schema_retrieve),
         )
         // Misc
         .route("/tokenize", post(tokenize))

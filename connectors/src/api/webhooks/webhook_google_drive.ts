@@ -43,8 +43,8 @@ const _webhookGoogleDriveAPIHandler = async (
     return apiError(req, res, {
       status_code: 500,
       api_error: {
+        type: "internal_server_error",
         message: `Failed starting the incremental sync workflow. Error: ${workflowRes.error.message}`,
-        type: "invalid_request_error",
       },
     });
   }

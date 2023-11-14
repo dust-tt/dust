@@ -286,6 +286,46 @@ export const ConnectorsAPI = {
     return _resultFromResponse(res);
   },
 
+  async setConnectorConfig(
+    connectorId: string,
+    configKey: string,
+    configValue: string
+  ): Promise<ConnectorsAPIResponse<void>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/config/${configKey}`,
+      {
+        method: "POST",
+        headers: getDefaultHeaders(),
+        body: JSON.stringify({
+          configValue,
+        }),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
+  async getConnectorConfig(
+    connectorId: string,
+    configKey: string
+  ): Promise<
+    ConnectorsAPIResponse<{
+      connectorId: number;
+      configKey: string;
+      configValue: string;
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${connectorId}/config/${configKey}`,
+      {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      }
+    );
+
+    return _resultFromResponse(res);
+  },
+
   async getResourcesParents({
     connectorId,
     resourceInternalIds,

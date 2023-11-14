@@ -48,7 +48,7 @@ export function Citation({
         <div className="s-flex-grow s-text-xs" />
         {href && (
           <a target="_blank" rel="noopener noreferrer" href={href}>
-            <IconButton icon={ExternalLinkIcon} size="sm" variant="primary" />
+            <IconButton icon={ExternalLinkIcon} size="sm" variant="secondary" />
           </a>
         )}
       </div>

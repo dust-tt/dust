@@ -43,10 +43,12 @@ import {
   getSupportedModelConfig,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   useAgentConfigurations,
   useSlackChannelsLinkedWithAgent,
@@ -56,6 +58,7 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
+import { PlanType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
@@ -64,9 +67,11 @@ import DustAppSelectionSection from "./DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_32K_MODEL_CONFIG,
+  // GPT_4_TURBO_MODEL_CONFIG,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 ];
 
 // Actions
@@ -159,6 +164,7 @@ export type AssistantBuilderInitialState = {
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
+  plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
@@ -203,6 +209,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 export default function AssistantBuilder({
   user,
   owner,
+  plan,
   gaTrackingId,
   dataSources,
   dustApps,
@@ -219,7 +226,10 @@ export default function AssistantBuilder({
     ...DEFAULT_ASSISTANT_STATE,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings: GPT_4_32K_MODEL_CONFIG,
+      modelSettings:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? GPT_3_5_TURBO_16K_MODEL_CONFIG
+          : GPT_4_32K_MODEL_CONFIG,
     },
   });
 
@@ -253,9 +263,17 @@ export default function AssistantBuilder({
           .map((a) => a.pictureUrl.split(DROID_AVATARS_BASE_PATH)[1])
           .filter(Boolean)
       );
-      const availableUrls = DROID_AVATAR_FILES.filter(
+      let availableUrls = DROID_AVATAR_FILES.filter(
         (f) => !usedAvatarFiles.has(f)
       ).map((f) => `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`);
+
+      // TODO(@fontanierh): figure out a real solution for avatar exhaustion
+      if (!availableUrls.length) {
+        availableUrls = DROID_AVATAR_FILES.map(
+          (f) => `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`
+        );
+      }
+
       setAvatarUrls(
         DROID_AVATAR_FILES.map((f) => ({
           url: `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`,
@@ -840,6 +858,7 @@ export default function AssistantBuilder({
                 />
               </div>
               <AdvancedSettings
+                plan={plan}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
                   setEdited(true);
@@ -1248,7 +1267,7 @@ function SlackIntegration({
     <>
       <Modal
         isOpen={modalOpen}
-        type="full-screen"
+        variant="full-screen"
         hasChanged={hasChanged}
         onClose={closeModal}
         title="Slack bot configuration"
@@ -1390,9 +1409,11 @@ function AssistantBuilderTextArea({
 }
 
 function AdvancedSettings({
+  plan,
   generationSettings,
   setGenerationSettings,
 }: {
+  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
@@ -1429,22 +1450,26 @@ function AdvancedSettings({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="bottomRight">
-                {usedModelConfigs.map((modelConfig) => (
-                  <DropdownMenu.Item
-                    key={modelConfig.modelId}
-                    label={modelConfig.displayName}
-                    onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings: {
-                          modelId: modelConfig.modelId,
-                          providerId: modelConfig.providerId,
-                          // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                        } as SupportedModel,
-                      });
-                    }}
-                  />
-                ))}
+                {usedModelConfigs
+                  .filter(
+                    (m) => !(m.largeModel && plan.code === FREE_TEST_PLAN_CODE)
+                  )
+                  .map((modelConfig) => (
+                    <DropdownMenu.Item
+                      key={modelConfig.modelId}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                          } as SupportedModel,
+                        });
+                      }}
+                    />
+                  ))}
               </DropdownMenu.Items>
             </DropdownMenu>
           </div>

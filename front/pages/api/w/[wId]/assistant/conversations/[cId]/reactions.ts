@@ -78,17 +78,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const reactions = await getMessageReactions(auth, conversation);
-      if (reactions) {
-        res.status(200).json({ reactions });
-        return;
-      }
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "message_reaction_error",
-          message: "Couldn't load message reactions.",
-        },
-      });
+
+      res.status(200).json({ reactions });
+      return;
 
     default:
       return apiError(req, res, {

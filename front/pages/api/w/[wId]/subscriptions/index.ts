@@ -60,7 +60,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "subscription_error",
+            type: "internal_server_error",
             message: "Error while subscribing workspace to plan",
           },
         });
@@ -78,7 +78,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "subscription_error",
+            type: "internal_server_error",
             message: "Error while downgrading workspace to free plan",
           },
         });

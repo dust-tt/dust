@@ -106,13 +106,23 @@ export async function githubUpsertIssueActivity(
       page: resultPage,
     });
     resultPageLogger.info("Fetching GitHub issue comments result page.");
-    const comments = await getIssueCommentsPage(
-      installationId,
-      repoName,
-      login,
-      issueNumber,
-      resultPage
-    );
+    let comments = undefined;
+    try {
+      comments = await getIssueCommentsPage(
+        installationId,
+        repoName,
+        login,
+        issueNumber,
+        resultPage
+      );
+    } catch (e) {
+      if (e instanceof Error && "status" in e && e.status === 404) {
+        // Github may return a 404 on the first page if the issue has no comments
+        break;
+      } else {
+        throw e;
+      }
+    }
     if (!comments.length) {
       break;
     }
@@ -235,7 +245,9 @@ export async function githubUpsertDiscussionActivity(
       if (comment.isAnswer) {
         renderedDiscussion += "[ACCEPTED ANSWER] ";
       }
-      renderedDiscussion += `${comment.author.login}: ${comment.bodyText}||`;
+      renderedDiscussion += `${comment.author?.login || "Unknown author"}: ${
+        comment.bodyText
+      }||`;
       let nextChildCursor: string | null = null;
       for (;;) {
         const { cursor: childCursor, comments: childComments } =
@@ -245,7 +257,9 @@ export async function githubUpsertDiscussionActivity(
             nextChildCursor
           );
         for (const childComment of childComments) {
-          renderedDiscussion += `----${childComment.author.login}: ${childComment.bodyText}||`;
+          renderedDiscussion += `----${
+            childComment.author?.login || "Unknown author"
+          }: ${childComment.bodyText}||`;
         }
 
         if (!childCursor) {

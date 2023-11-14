@@ -384,7 +384,7 @@ export default function DataSourcesView({
                             ds.connectorProvider as ConnectorProvider
                           ] ||
                           !isAdmin;
-                        const onclick = async () => {
+                        const onClick = async () => {
                           let isDataSourceAllowedInPlan: boolean;
 
                           switch (ds.connectorProvider) {
@@ -439,7 +439,7 @@ export default function DataSourcesView({
                                   variant="primary"
                                   icon={CloudArrowLeftRightIcon}
                                   disabled={disabled}
-                                  onClick={onclick}
+                                  onClick={onClick}
                                   label={label}
                                 />
                               )}
@@ -503,7 +503,7 @@ export default function DataSourcesView({
                                             variant="secondary"
                                             icon={CloudArrowLeftRightIcon}
                                             disabled={disabled}
-                                            onClick={onclick}
+                                            onClick={onClick}
                                             label="Acknowledge and Connect"
                                           />
                                         </DropdownMenu.Button>
@@ -614,7 +614,9 @@ export default function DataSourcesView({
           </Page.P>
           <Page.P>
             <span className="font-bold">Google Drive</span>: Dust doesn't take
-            into account files with more than 750Kb of extracted text.
+            into account files with more than 750Kb of extracted text. By
+            default, Dust doesn't take into account .pdf files. Email us at
+            team@dust.tt to include .pdf files.
           </Page.P>
           <Page.P>
             <span className="font-bold">Github</span>: Dust only gathers data

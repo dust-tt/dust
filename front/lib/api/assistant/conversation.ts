@@ -21,6 +21,7 @@ import {
   GenerationTokensEvent,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
+import { GPT_3_5_TURBO_16K_MODEL_CONFIG } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -546,8 +547,8 @@ export async function generateConversationTitle(
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
   const model = {
-    providerId: "openai",
-    modelId: "gpt-3.5-turbo-16k",
+    providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+    modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
   };
   const allowedTokenCount = 12288; // for 16k model.
 

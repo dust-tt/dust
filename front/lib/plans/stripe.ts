@@ -109,6 +109,9 @@ export const createCheckoutSession = async ({
     automatic_tax: {
       enabled: true,
     },
+    tax_id_collection: {
+      enabled: true,
+    },
     success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
     cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
   });

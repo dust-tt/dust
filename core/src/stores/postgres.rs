@@ -1706,7 +1706,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "UPDATE data_sources_documents SET status = 'deleted' \
-                   WHERE data_source = $1 AND document_id = $2 AND status = 'latest'",
+                   WHERE data_source = $1 AND document_id = $2",
             )
             .await?;
         let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
@@ -1840,27 +1840,38 @@ impl Store for PostgresStore {
     async fn list_databases(
         &self,
         project: &Project,
-        data_source_id: Option<&str>,
+        data_source_id: &str,
+        limit_offset: Option<(usize, usize)>,
     ) -> Result<Vec<Database>> {
         let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&project_id];
-        let mut query = "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
-                         FROM databases \
-                         INNER JOIN data_sources ON databases.data_source = data_sources.id \
-                         WHERE data_sources.project = $1".to_string();
+        let base_query = "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
+        FROM databases \
+        INNER JOIN data_sources ON databases.data_source = data_sources.id \
+        WHERE data_sources.project = $1 AND data_sources.data_source_id = $2";
 
-        let data_source_id_str: String;
-        if let Some(data_source_id) = data_source_id {
-            data_source_id_str = data_source_id.to_string();
-            query.push_str(" AND data_sources.data_source_id = $2");
-            params.push(&data_source_id_str);
+        let rows = match limit_offset {
+            None => {
+                c.query(&base_query.to_string(), &[&project_id, &data_source_id])
+                    .await?
+            }
+            Some((limit, offset)) => {
+                c.query(
+                    &(base_query.to_owned() + " LIMIT $3 OFFSET $4"),
+                    &[
+                        &project_id,
+                        &data_source_id,
+                        &(limit as i64),
+                        &(offset as i64),
+                    ],
+                )
+                .await?
+            }
         };
-
-        let rows = c.query(&query, &params).await?;
 
         let databases: Vec<Database> = rows
             .iter()
@@ -1931,7 +1942,7 @@ impl Store for PostgresStore {
         // Upsert Database Table.
         let stmt = c
             .prepare(
-                "INSERT INTO database_tables \
+                "INSERT INTO databases_tables \
                    (id, database, created, table_id, name, description) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) \
                    ON CONFLICT (table_id, database) DO UPDATE \
@@ -1978,7 +1989,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description FROM database_tables \
+                "SELECT created, table_id, name, description FROM databases_tables \
                 WHERE database IN (
                     SELECT id FROM databases WHERE data_source IN (
                         SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2
@@ -2012,7 +2023,7 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn list_database_tables(
+    async fn list_databases_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2058,7 +2069,7 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description FROM database_tables \
+                        "SELECT created, table_id, name, description FROM databases_tables \
                         WHERE database = $1",
                     )
                     .await?;
@@ -2067,7 +2078,7 @@ impl Store for PostgresStore {
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description FROM database_tables \
+                        "SELECT created, table_id, name, description FROM databases_tables \
                         WHERE database = $1 LIMIT $2 OFFSET $3",
                     )
                     .await?;
@@ -2101,7 +2112,7 @@ impl Store for PostgresStore {
             None => tables.len(),
             Some(_) => {
                 let stmt = c
-                    .prepare("SELECT COUNT(*) FROM database_tables WHERE database = $1")
+                    .prepare("SELECT COUNT(*) FROM databases_tables WHERE database = $1")
                     .await?;
                 let t: i64 = c.query_one(&stmt, &[&database_row_id]).await?.get(0);
                 t as usize
@@ -2157,7 +2168,9 @@ impl Store for PostgresStore {
 
         // get the table row id
         let stmt = c
-            .prepare("SELECT id FROM database_tables WHERE database = $1 AND table_id = $2 LIMIT 1")
+            .prepare(
+                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
+            )
             .await?;
         let r = c.query(&stmt, &[&database_row_id, &table_id]).await?;
         let table_row_id: i64 = match r.len() {
@@ -2174,7 +2187,7 @@ impl Store for PostgresStore {
         // Upsert Database Row.
         let stmt = c
             .prepare(
-                "INSERT INTO database_rows \
+                "INSERT INTO databases_rows \
                    (id, database_table, created, row_id, content) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) \
                    ON CONFLICT (row_id, database_table) DO UPDATE \
@@ -2211,9 +2224,9 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, row_id, content FROM database_rows \
+                "SELECT created, row_id, content FROM databases_rows \
             WHERE database_table IN (
-                SELECT id FROM database_tables WHERE database IN (
+                SELECT id FROM databases_tables WHERE database IN (
                     SELECT id FROM databases WHERE data_source IN (
                         SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2
                     ) AND database_id = $3
@@ -2257,7 +2270,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         database_id: &str,
-        table_id: Option<&str>,
+        table_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)> {
         let project_id = project.project_id();
@@ -2293,29 +2306,28 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_row_id];
-        let mut query = "SELECT database_rows.created, database_rows.row_id, \
-                         database_rows.content, database_tables.table_id \
-                         FROM database_rows \
-                         INNER JOIN database_tables ON database_rows.database_table = database_tables.id \
-                         WHERE database_tables.database = $1".to_string();
+        let r = c
+            .query(
+                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
+                &[&database_row_id, &table_id],
+            )
+            .await?;
 
-        let table_id_str: String;
-        if let Some(table_id) = table_id {
-            table_id_str = table_id.to_string();
-            query.push_str(" AND database_tables.table_id = $2");
-            params.push(&table_id_str);
+        let table_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Table: {}", table_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
         };
 
-        query.push_str(" ORDER BY created DESC");
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&table_row_id];
+        let mut query = "SELECT created, row_id, content FROM databases_rows \
+                         WHERE database_table = $1 ORDER BY created DESC"
+            .to_string();
 
         let limit_i64: i64;
         let offset_i64: i64;
         if let Some((limit, offset)) = limit_offset {
-            query.push_str(" LIMIT $");
-            query.push_str(&(params.len() + 1).to_string());
-            query.push_str(" OFFSET $");
-            query.push_str(&(params.len() + 2).to_string());
+            query.push_str(" LIMIT $2 OFFSET $3");
             limit_i64 = limit as i64;
             offset_i64 = offset as i64;
             params.push(&limit_i64);
@@ -2330,7 +2342,6 @@ impl Store for PostgresStore {
                 let created: i64 = row.get(0);
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
-                let table_id: String = row.get(3);
                 let content: Value = serde_json::from_str(&data)?;
                 Ok(DatabaseRow::new(
                     created as u64,
@@ -2344,11 +2355,13 @@ impl Store for PostgresStore {
         let total = match limit_offset {
             None => rows.len(),
             Some(_) => {
-                let count_sql = match table_id {
-                    Some(_) => "SELECT COUNT(*) FROM database_rows WHERE database_table = (SELECT id FROM database_tables WHERE database = $1 AND table_id = $2)",
-                    None => "SELECT COUNT(*) FROM database_rows WHERE database_table IN (SELECT id FROM database_tables WHERE database = $1)",
-                };
-                let t: i64 = c.query_one(count_sql, &params).await?.get(0);
+                let t: i64 = c
+                    .query_one(
+                        "SELECT COUNT(*) FROM databases_rows WHERE database_table = $1",
+                        &[&table_row_id],
+                    )
+                    .await?
+                    .get(0);
                 t as usize
             }
         };
@@ -2399,7 +2412,9 @@ impl Store for PostgresStore {
 
         // get the table row id
         let stmt = c
-            .prepare("SELECT id FROM database_tables WHERE database = $1 AND table_id = $2 LIMIT 1")
+            .prepare(
+                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
+            )
             .await?;
         let r = c.query(&stmt, &[&database_row_id, &table_id]).await?;
         let table_row_id: i64 = match r.len() {
@@ -2414,7 +2429,7 @@ impl Store for PostgresStore {
         // truncate table if required
         if truncate {
             let stmt = c
-                .prepare("DELETE FROM database_rows WHERE database_table = $1")
+                .prepare("DELETE FROM databases_rows WHERE database_table = $1")
                 .await?;
             c.execute(&stmt, &[&table_row_id]).await?;
         }
@@ -2422,7 +2437,7 @@ impl Store for PostgresStore {
         // prepare insertion/updation statement
         let stmt = c
             .prepare(
-                "INSERT INTO database_rows \
+                "INSERT INTO databases_rows \
                     (id, database_table, created, row_id, content) \
                     VALUES (DEFAULT, $1, $2, $3, $4) \
                     ON CONFLICT (row_id, database_table) DO UPDATE \

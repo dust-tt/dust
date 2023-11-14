@@ -128,10 +128,10 @@ async function handler(
         return;
       }
       return apiError(req, res, {
-        status_code: 500,
+        status_code: 400,
         api_error: {
-          type: "message_reaction_error",
-          message: "Message reaction not created.",
+          type: "invalid_request_error",
+          message: "The message you're trying to react to does not exist.",
         },
       });
 
@@ -151,10 +151,10 @@ async function handler(
         res.status(200).json({ success: true });
       }
       return apiError(req, res, {
-        status_code: 500,
+        status_code: 400,
         api_error: {
-          type: "message_reaction_error",
-          message: "Message reaction not deleted.",
+          type: "invalid_request_error",
+          message: "The message you're trying to react to does not exist.",
         },
       });
 

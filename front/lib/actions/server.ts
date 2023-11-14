@@ -11,7 +11,7 @@ import { statsDClient } from "@app/logger/withlogging";
 // Record an event and a log for the action error.
 const logActionError = (
   loggerArgs: {
-    workspace: { sId: string; name: string };
+    workspace: { sId: string; name: string; plan_code: string | null };
     action: string;
     app: DustAppType;
   },
@@ -63,9 +63,11 @@ export async function runActionStreamed(
     workspace: {
       sId: owner.sId,
       name: owner.name,
+      plan_code: auth.plan()?.code || null,
     },
     action: actionName,
     app: action.app,
+    model: config.MODEL,
   };
 
   logger.info(loggerArgs, "Action run creation");
@@ -74,6 +76,7 @@ export async function runActionStreamed(
     `action:${actionName}`,
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
+    `workspace_plan_code:${auth.plan()?.code || null}`,
   ];
 
   statsDClient.increment("use_actions.count", 1, tags);
@@ -146,6 +149,7 @@ export async function runAction(
     workspace: {
       sId: owner.sId,
       name: owner.name,
+      plan_code: auth.plan()?.code || null,
     },
     action: actionName,
     app: action.app,
@@ -157,6 +161,7 @@ export async function runAction(
     `action:${actionName}`,
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
+    `workspace_plan_code:${auth.plan()?.code || null}`,
   ];
 
   statsDClient.increment("use_actions.count", 1, tags);
