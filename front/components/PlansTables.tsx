@@ -30,7 +30,7 @@ function FreePriceTable({ size }: { size: "sm" | "xs" }) {
       <PriceTable.Item size={size} label="One user" variant="dash" />
       <PriceTable.Item size={size} label="One workspace" variant="dash" />
       <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
+      <PriceTable.Item label="Regular LLM models (GPT-3.5, Claude instant...)" />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="50 assistant messages" variant="dash" />
       <PriceTable.Item label="50 documents as data sources" variant="dash" />
