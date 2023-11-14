@@ -207,6 +207,7 @@ export function Item({
 interface EntryItemProps {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   disabled?: boolean;
+  selected?: boolean;
   label: string;
   icon?: ComponentType;
   className?: string;
@@ -214,20 +215,28 @@ interface EntryItemProps {
 }
 
 Item.Entry = function (props: EntryItemProps) {
-  return <Item {...props} size="sm" variant="default" />;
+  return <Item2 {...props} spacing="sm" style="item" hasAction={"hover"} />;
 };
 
 interface AvatarItemProps {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   disabled?: boolean;
   label: string;
+  description?: string;
   visual?: string | React.ReactNode;
   className?: string;
   href?: string;
 }
 
-Item.Avatar = function (props: AvatarItemProps) {
-  return <Item2 {...props} style="action" />;
+Item.Avatar = function ({ description, ...otherProps }: AvatarItemProps) {
+  return (
+    <Item2
+      {...otherProps}
+      style="action"
+      spacing={description ? "md" : "sm"}
+      description={description}
+    />
+  );
 };
 
 interface NavigationListItemProps {
@@ -235,19 +244,21 @@ interface NavigationListItemProps {
   selected?: boolean;
   disabled?: boolean;
   label: string;
+  description?: string;
   icon?: ComponentType;
   className?: string;
   href?: string;
 }
 
 Item.Navigation = function (props: NavigationListItemProps) {
-  return <Item {...props} size="md" variant="default" />;
+  return <Item2 {...props} style="action" spacing="md" />;
 };
 
 interface DropdownListItemProps {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   disabled?: boolean;
   label: string;
+  description?: string;
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   className?: string;
@@ -255,7 +266,7 @@ interface DropdownListItemProps {
 }
 
 Item.Dropdown = function (props: DropdownListItemProps) {
-  return <Item {...props} size="md" variant="dropdown" />;
+  return <Item2 {...props} spacing="md" style="action" hasAction={false} />;
 };
 
 interface ListItemProps {
@@ -301,9 +312,10 @@ type Item2Props = {
   disabled?: boolean;
   label: string;
   description?: string;
-  visual?: string | React.ReactNode | ComponentType;
+  visual?: string | React.ReactNode;
+  icon?: ComponentType;
   action?: ComponentType;
-  actionOn?: "always" | "hover";
+  hasAction?: boolean | "hover";
   className?: string;
   href?: string;
 };
@@ -312,9 +324,11 @@ export function Item2({
   label,
   description,
   visual,
+  icon,
   style = "action",
   spacing = "sm",
   action = ChevronRight,
+  hasAction = true,
   onClick,
   selected = false,
   disabled = false,
@@ -325,21 +339,39 @@ export function Item2({
 
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
-  let visualElement: ReactNode;
+  let visualElement: React.ReactNode;
 
-  if (typeof visual === "string") {
-    visualElement = <Avatar size={description ? "sm" : "xs"} visual={visual} />;
-  } else if (typeof visual === "function") {
-    visualElement = <Icon visual={visual} className={""} />;
-  } else {
-    visualElement = visual;
+  if (visual) {
+    visualElement = (
+      <Avatar
+        size={description ? "sm" : "xs"}
+        visual={visual}
+        disabled={disabled}
+        clickable
+      />
+    );
+  } else if (icon) {
+    visualElement = (
+      <Icon
+        visual={icon}
+        className={classNames(
+          "s-transition-colors s-duration-200 s-ease-out",
+          disabled
+            ? "s-text-element-500"
+            : selected
+            ? "s-text-action-400"
+            : "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700"
+        )}
+      />
+    );
   }
 
   return (
     <Link
       className={classNames(
-        "s-flex s-flex-row s-gap-3",
+        "s-duration-400 s-group s-box-border s-flex s-select-none s-text-sm s-transition-colors s-ease-out",
         spacingClasses[spacing],
+        disabled ? "" : "s-cursor-pointer",
         className
       )}
       onClick={selected || disabled ? undefined : onClick}
@@ -347,31 +379,75 @@ export function Item2({
       href={href || "#"}
     >
       {visualElement}
-      <div className={classNames("s-flex s-flex-col s-gap-0")}>
+      <div
+        className={classNames(
+          "s-flex s-grow s-flex-col s-gap-0 s-overflow-hidden"
+        )}
+      >
         <div
           className={classNames(
+            "s-transition-colors s-duration-200 s-ease-out",
             "s-grow s-truncate s-text-sm",
-            labelStyleClasses[style]
+            labelStyleClasses[style],
+            disabled
+              ? "s-text-element-600"
+              : selected
+              ? "s-text-action-500"
+              : classNames(labelColorClasses[style], activeLabelStyleClasses)
           )}
         >
           {label}
         </div>
-        <div className="s-grow s-truncate s-text-xs s-text-element-700">
+        <div
+          className={classNames(
+            "s-grow s-truncate s-text-xs",
+            disabled ? " s-text-element-600" : "s-text-element-700"
+          )}
+        >
           {description}
         </div>
       </div>
 
-      <Icon visual={action} className={"s-shrink-0"} size="sm" />
+      <Icon
+        visual={action}
+        className={
+          hasAction
+            ? classNames(
+                "s-shrink-0 s-transition-all s-duration-200 s-ease-out",
+                hasAction === "hover"
+                  ? "s-opacity-0 group-hover:s-opacity-100 "
+                  : "",
+                disabled
+                  ? "s-text-element-500"
+                  : selected
+                  ? "s-text-action-400 s-opacity-100"
+                  : classNames(
+                      "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700",
+                      hasAction ? "group-hover:s-opacity-100" : ""
+                    )
+              )
+            : "s-hidden"
+        }
+        size="sm"
+      />
     </Link>
   );
 }
 
+const activeLabelStyleClasses =
+  "group-hover:s-text-action-500 group-active:s-text-action-700";
+
 const labelStyleClasses = {
   item: "s-font-normal",
-  action: "s-font-semibold text-element-900",
+  action: "s-font-semibold",
+};
+
+const labelColorClasses = {
+  item: "s-text-element-600",
+  action: "s-text-element-900",
 };
 
 const spacingClasses = {
-  sm: "s-py-2",
-  md: "s-py-3",
+  sm: "s-py-2 s-gap-x-2",
+  md: "s-py-2.5 s-gap-x-3",
 };
