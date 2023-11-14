@@ -80,6 +80,18 @@ export class ActivityInboundLogInterceptor
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
+      const maybeNangoError = err as { code?: string; status?: number };
+      if (
+        maybeNangoError.code === "ERR_BAD_RESPONSE" &&
+        maybeNangoError.status === 522
+      ) {
+        throw {
+          __is_dust_error: true,
+          message: "Got 522 Bad Response from Nango",
+          type: "nango_522_bad_response",
+        };
+      }
+
       if (err instanceof ExternalOauthTokenError) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const workflowId = this.context.info.workflowExecution.workflowId;
