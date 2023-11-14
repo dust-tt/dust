@@ -297,12 +297,13 @@ async function handler(
             "cancel_at_period_end" in previousAttributes
           ) {
             // first update subscription endDate in our database
+            // cancel_at set means the user just canceled, unset means the user just reactivated
+            const endDate = stripeSubscription.cancel_at
+              ? new Date(stripeSubscription.cancel_at * 1000)
+              : null;
             const result = await Subscription.update(
               {
-                // cancel_at set means the user just canceled, unset means the user just reactivated
-                endDate: stripeSubscription.cancel_at
-                  ? new Date(stripeSubscription.cancel_at * 1000)
-                  : null,
+                endDate,
               },
               { where: { stripeSubscriptionId: stripeSubscription.id } }
             );
@@ -334,9 +335,7 @@ async function handler(
             for (const adminEmail of adminEmails)
               await sendAdminEmail(
                 adminEmail,
-                stripeSubscription.cancel_at_period_end
-                  ? cancellationMessage
-                  : reactivationMessage
+                endDate ? cancellationMessage(endDate) : reactivationMessage
               );
           }
           break;
@@ -422,14 +421,21 @@ async function getAdminEmailsForSubscription(stripeSubscriptionId: string) {
 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
-const cancellationMessage = {
-  from: {
-    name: "Dust team",
-    email: "team@dust.tt",
-  },
-  subject: `[Dust] Your subscription has been canceled; important information`,
-  text: `<p>You have requested to cancel your subscription</p> 
-  <p>Your subscription will end at the end of the current billing period. You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will be switched back to our free plan at the end of the current billing period.</p>
+const cancellationMessage = (date: Date) => {
+  const options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  };
+  const formattedDate = date.toLocaleDateString("en-US", options);
+  return {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your subscription has been canceled; important information`,
+    text: `<p>You have requested to cancel your subscription</p> 
+  <p>Your subscription will end at the end of your current billing period (${formattedDate}). You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will be switched back to our free plan at the end of the current billing period.</p>
   <p>This will have the following consequences:</p>
   <ul>
   <li>all users except one will be removed from your workspace;</li>
@@ -441,6 +447,7 @@ const cancellationMessage = {
   <p>If you have any questions, please contact us at team@dust.tt.</p>
   <p>Best,</p>
   <p>The Dust team</p>`,
+  };
 };
 
 const reactivationMessage = {
