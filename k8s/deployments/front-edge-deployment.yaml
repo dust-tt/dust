@@ -53,6 +53,12 @@ spec:
                   name: prestop-secret
                   key: PRESTOP_SECRET
 
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
           lifecycle:
             preStop:
               exec:
@@ -65,3 +71,11 @@ spec:
 
       imagePullSecrets:
         - name: gcr-json-key
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-front-cert
+        - name: service-account-volume
+          secret:
+            secretName: gcp-service-account-secret
