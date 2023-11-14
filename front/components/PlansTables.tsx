@@ -30,7 +30,10 @@ function FreePriceTable({ size }: { size: "sm" | "xs" }) {
       <PriceTable.Item size={size} label="One user" variant="dash" />
       <PriceTable.Item size={size} label="One workspace" variant="dash" />
       <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Regular LLM models (GPT-3.5, Claude instant...)" />
+      <PriceTable.Item
+        label="Regular models (GPT-3.5, Claude instant...)"
+        variant="dash"
+      />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="50 assistant messages" variant="dash" />
       <PriceTable.Item label="50 documents as data sources" variant="dash" />
@@ -63,7 +66,7 @@ function ProPriceTable({
       <PriceTable.Item label="From 1 user" />
       <PriceTable.Item label="One workspace" variant="dash" />
       <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
+      <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="Unlimited messages" />
       <PriceTable.Item label="Up to 1Gb/user of data sources" />
@@ -105,7 +108,7 @@ function EnterprisePriceTable({
       <PriceTable.Item label="From 100 users" />
       <PriceTable.Item label="Multiple workspaces" />
       <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Advanced LLM models (GPT-4, Claude…)" />
+      <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
       <PriceTable.Item label="Unlimited messages" />
       <PriceTable.Item label="Unlimited data sources" />
