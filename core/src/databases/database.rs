@@ -1,7 +1,7 @@
 use crate::{project::Project, stores::store::Store, utils};
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
-use rusqlite::ToSql;
+use rusqlite::{Connection, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -111,17 +111,17 @@ impl Database {
         }
     }
 
-    pub async fn query(
+    pub async fn create_in_memory_sqlite_conn(
         &self,
         project: &Project,
         store: Box<dyn Store + Sync + Send>,
-        query: &str,
-    ) -> Result<(Vec<DatabaseRow>, TableSchema)> {
+    ) -> Result<Connection> {
         match self.db_type {
-            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
+            DatabaseType::REMOTE => Err(anyhow!(
+                "Cannot build an in-memory SQLite DB for a remote database."
+            )),
             DatabaseType::LOCAL => {
-                let time_query_start = utils::now();
-                // Retrieve the DB schema and construct a SQL string.
+                let time_build_db_start = utils::now();
                 let (schema, rows_by_table) = self.get_schema(project, store.clone(), true).await?;
                 let rows_by_table = match rows_by_table {
                     Some(rows) => rows,
@@ -129,7 +129,7 @@ impl Database {
                 };
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished retrieving schema: duration={}ms",
-                    utils::now() - time_query_start
+                    utils::now() - time_build_db_start
                 ));
 
                 let table_schemas: HashMap<String, TableSchema> = schema
@@ -154,7 +154,6 @@ impl Database {
                     utils::now() - generate_create_table_sql_start
                 ));
 
-                // Build the in-memory SQLite DB with the schema.
                 let conn = rusqlite::Connection::open_in_memory()?;
 
                 let create_tables_execute_start = utils::now();
@@ -164,16 +163,6 @@ impl Database {
                     utils::now() - create_tables_execute_start
                 ));
 
-                let mut stmt = conn.prepare(query)?;
-
-                let column_names = stmt
-                    .column_names()
-                    .into_iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>();
-                let column_count = stmt.column_count();
-
-                // insert the rows in the DB
                 let insert_execute_start = utils::now();
                 rows_by_table
                     .iter()
@@ -210,7 +199,34 @@ impl Database {
                     utils::now() - insert_execute_start
                 ));
 
-                let user_query_execute_start = utils::now();
+                Ok(conn)
+            }
+        }
+    }
+
+    pub async fn query(
+        &self,
+        project: &Project,
+        store: Box<dyn Store + Sync + Send>,
+        query: &str,
+    ) -> Result<(Vec<DatabaseRow>, TableSchema)> {
+        match self.db_type {
+            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
+            DatabaseType::LOCAL => {
+                let conn = self
+                    .create_in_memory_sqlite_conn(project, store.clone())
+                    .await?;
+
+                let time_query_start = utils::now();
+
+                let mut stmt = conn.prepare(query)?;
+
+                let column_names = stmt
+                    .column_names()
+                    .into_iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>();
+
                 // Execute the query and collect the results in a vector of serde_json::Value objects.
                 let result_rows = stmt
                     .query_and_then([], |row| {
@@ -268,7 +284,7 @@ impl Database {
                     .collect::<Vec<_>>();
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished executing user query: duration={}ms",
-                    utils::now() - user_query_execute_start
+                    utils::now() - time_query_start
                 ));
 
                 let infer_result_schema_start = utils::now();
