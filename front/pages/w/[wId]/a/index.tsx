@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { A } from "@app/components/home/contentComponents";
 import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
@@ -463,6 +464,16 @@ export default function Developers({
           icon={CommandLineIcon}
           description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
         />
+        <Page.P variant="secondary">
+          You can access Dust's services{" "}
+          <A>
+            <Link href="https://docs.dust.tt">through our API.</Link>
+          </A>{" "}
+          Our code is open source and available on{" "}
+          <A>
+            <Link href="https://github.com/dust-tt">GitHub.</Link>
+          </A>
+        </Page.P>
         <Page.SectionHeader
           title="Apps"
           description="Your Large Language Model apps."
