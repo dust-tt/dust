@@ -43,6 +43,7 @@ import {
   getSupportedModelConfig,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -70,6 +71,7 @@ const usedModelConfigs = [
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 ];
 
 // Actions
