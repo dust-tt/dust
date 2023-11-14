@@ -5,6 +5,8 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::database::DatabaseRow;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TableSchemaFieldType {
@@ -22,11 +24,12 @@ impl TableSchema {
         Self(HashMap::new())
     }
 
-    pub fn from_rows(rows: &Vec<&Value>) -> Result<Self> {
+    pub fn from_rows(rows: &Vec<DatabaseRow>) -> Result<Self> {
         let mut schema = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let object = row
+                .content()
                 .as_object()
                 .ok_or_else(|| anyhow!("Row {} is not an object", row_index))?;
 
@@ -95,6 +98,7 @@ impl TableSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils;
     use rusqlite::Connection;
     use serde_json::json;
 
@@ -117,7 +121,10 @@ mod tests {
             "field6": ["more", "elements"],
             "field7": {"anotherKey": "anotherValue"}
         });
-        let rows = &vec![&row_1, &row_2];
+        let rows = &vec![
+            DatabaseRow::new(utils::now(), Some("1".to_string()), &row_1),
+            DatabaseRow::new(utils::now(), Some("2".to_string()), &row_2),
+        ];
 
         let schema = TableSchema::from_rows(rows)?;
         let expected_map: HashMap<String, TableSchemaFieldType> = [
@@ -162,7 +169,11 @@ mod tests {
         let row_3 = json!({
             "field1": "now it's a text field",
         });
-        let rows = &vec![&row_1, &row_2, &row_3];
+        let rows = &vec![
+            DatabaseRow::new(utils::now(), Some("1".to_string()), &row_1),
+            DatabaseRow::new(utils::now(), Some("2".to_string()), &row_2),
+            DatabaseRow::new(utils::now(), Some("3".to_string()), &row_3),
+        ];
 
         let schema = TableSchema::from_rows(rows);
 
