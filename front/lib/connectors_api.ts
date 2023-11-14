@@ -22,12 +22,14 @@ const CONNECTOR_PROVIDERS = [
   "notion",
   "github",
   "google_drive",
+  "intercom",
 ] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "slack",
   "notion",
   "google_drive",
+  "intercom",
 ] as const;
 type ConnectorProviderUsingNango =
   (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];

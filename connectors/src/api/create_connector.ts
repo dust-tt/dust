@@ -44,6 +44,9 @@ const _createConnectorAPIHandler = async (
     }
 
     if (!isConnectorProvider(req.params.connector_provider)) {
+      console.log("HERE");
+      console.log(req.params.connector_provider);
+
       return apiError(req, res, {
         status_code: 400,
         api_error: {

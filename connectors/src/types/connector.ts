@@ -5,6 +5,7 @@ const CONNECTOR_PROVIDERS = [
   "notion",
   "github",
   "google_drive",
+  "intercom",
 ] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
