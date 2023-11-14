@@ -85,15 +85,28 @@ impl Database {
                 .into_iter()
                 .collect::<Vec<_>>();
 
-                Ok(DatabaseSchema(
-                    rows.into_par_iter()
-                        .map(|(table, rows)| {
-                            Ok((
-                                table.table_id().to_string(),
-                                DatabaseSchemaTable::new(table, TableSchema::from_rows(&rows)?),
-                            ))
-                        })
-                        .collect::<Result<HashMap<_, _>>>()?,
+                let returned_rows = match return_rows {
+                    true => Some(
+                        rows.clone()
+                            .into_iter()
+                            .map(|(table, rows)| (table.table_id().to_string(), rows))
+                            .collect::<HashMap<_, _>>(),
+                    ),
+                    false => None,
+                };
+
+                Ok((
+                    DatabaseSchema(
+                        rows.into_par_iter()
+                            .map(|(table, r)| {
+                                Ok((
+                                    table.table_id().to_string(),
+                                    DatabaseSchemaTable::new(table, TableSchema::from_rows(&r)?),
+                                ))
+                            })
+                            .collect::<Result<HashMap<_, _>>>()?,
+                    ),
+                    returned_rows,
                 ))
             }
         }
@@ -104,7 +117,7 @@ impl Database {
         project: &Project,
         store: Box<dyn Store + Sync + Send>,
         query: &str,
-    ) -> Result<(Vec<Value>, TableSchema)> {
+    ) -> Result<(Vec<DatabaseRow>, TableSchema)> {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
@@ -238,10 +251,12 @@ impl Database {
                     utils::now() - user_query_execute_start
                 ));
 
-                let results_refs = results.iter().collect::<Vec<&Value>>();
-
                 let infer_result_schema_start = utils::now();
-                let table_schema = TableSchema::from_rows(&results_refs)?;
+                let result_rows = results
+                    .into_par_iter()
+                    .map(|v| DatabaseRow::new(utils::now(), None, &v))
+                    .collect::<Vec<_>>();
+                let table_schema = TableSchema::from_rows(&result_rows)?;
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
                     utils::now() - infer_result_schema_start
@@ -252,7 +267,7 @@ impl Database {
                     utils::now() - time_query_start
                 ));
 
-                Ok((results, table_schema))
+                Ok((result_rows, table_schema))
             }
         }
     }
@@ -350,10 +365,6 @@ pub struct DatabaseSchemaTable {
 impl DatabaseSchemaTable {
     pub fn new(table: DatabaseTable, schema: TableSchema) -> Self {
         DatabaseSchemaTable { table, schema }
-    }
-
-    pub fn table(&self) -> &DatabaseTable {
-        &self.table
     }
 
     pub fn is_empty(&self) -> bool {
