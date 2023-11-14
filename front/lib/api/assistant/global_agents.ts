@@ -592,7 +592,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getHelperGlobalAgent(auth);
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
+      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings, plan });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = await _getGPT4GlobalAgent({ plan });
