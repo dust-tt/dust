@@ -227,7 +227,7 @@ interface AvatarItemProps {
 }
 
 Item.Avatar = function (props: AvatarItemProps) {
-  return <Item {...props} size="sm" variant="default" />;
+  return <Item2 {...props} style="action" />;
 };
 
 interface NavigationListItemProps {
@@ -290,4 +290,88 @@ Item.List = function ({ children, className }: ListItemProps) {
       <div className={"s-flex s-w-full s-flex-col"}>{children}</div>
     </div>
   );
+};
+
+type Item2Props = {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  style: "action" | "item";
+  spacing?: "sm" | "md";
+  selectable?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
+  label: string;
+  description?: string;
+  visual?: string | React.ReactNode | ComponentType;
+  action?: ComponentType;
+  actionOn?: "always" | "hover";
+  className?: string;
+  href?: string;
+};
+
+export function Item2({
+  label,
+  description,
+  visual,
+  style = "action",
+  spacing = "sm",
+  action = ChevronRight,
+  onClick,
+  selected = false,
+  disabled = false,
+  className = "",
+  href,
+}: Item2Props) {
+  const { components } = React.useContext(SparkleContext);
+
+  const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
+
+  let visualElement: ReactNode;
+
+  if (typeof visual === "string") {
+    visualElement = <Avatar size={description ? "sm" : "xs"} visual={visual} />;
+  } else if (typeof visual === "function") {
+    visualElement = <Icon visual={visual} className={""} />;
+  } else {
+    visualElement = visual;
+  }
+
+  return (
+    <Link
+      className={classNames(
+        "s-flex s-flex-row s-gap-3",
+        spacingClasses[spacing],
+        className
+      )}
+      onClick={selected || disabled ? undefined : onClick}
+      aria-label={label}
+      href={href || "#"}
+    >
+      {visualElement}
+      <div className={classNames("s-flex s-flex-col s-gap-0")}>
+        <div
+          className={classNames(
+            "s-grow s-truncate s-text-sm",
+            labelStyleClasses[style]
+          )}
+        >
+          {label}
+        </div>
+        <div className="s-grow s-truncate s-text-xs s-text-element-700">
+          {description}
+        </div>
+      </div>
+
+      <Icon visual={action} className={"s-shrink-0"} size="sm" />
+    </Link>
+  );
+}
+
+const labelStyleClasses = {
+  item: "s-font-normal",
+  action: "s-font-semibold text-element-900",
+};
+
+const spacingClasses = {
+  sm: "s-py-2",
+  md: "s-py-3",
 };

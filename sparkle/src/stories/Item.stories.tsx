@@ -47,26 +47,32 @@ export const ListItemExample = () => (
       <Item.List className="s-w-40">
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
         />
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"
         />
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
         />
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
         />
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
         />
         <Item.Avatar
           label="@handle"
+          description="description of the avatar"
           visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
         />
       </Item.List>
