@@ -5,6 +5,8 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::database::DatabaseRow;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TableSchemaFieldType {
@@ -22,11 +24,12 @@ impl TableSchema {
         Self(HashMap::new())
     }
 
-    pub fn from_rows(rows: &Vec<&Value>) -> Result<Self> {
+    pub fn from_rows(rows: &Vec<DatabaseRow>) -> Result<Self> {
         let mut schema = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let object = row
+                .content()
                 .as_object()
                 .ok_or_else(|| anyhow!("Row {} is not an object", row_index))?;
 
