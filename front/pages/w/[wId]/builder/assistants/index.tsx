@@ -69,7 +69,7 @@ export default function AssistantsBuilder({
     });
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
-    useState<boolean>(false);
+    useState<string | null>(null);
 
   const workspaceAgents = agentConfigurations.filter(
     (a) => a.scope === "workspace"
@@ -85,7 +85,7 @@ export default function AssistantsBuilder({
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
-      setShowDisabledFreeWorkspacePopup(true);
+      setShowDisabledFreeWorkspacePopup(agent.sId);
       // window.alert(
       //   `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
       // );
@@ -134,19 +134,6 @@ export default function AssistantsBuilder({
           title="Dust Assistants"
           description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@notion" to&nbsp;target specifically knowledge on&nbsp;Notion…'
         />
-        <Popup
-          show={showDisabledFreeWorkspacePopup}
-          chipLabel={`Free plan`}
-          description={`You have reached the limit of documents per data source  documents). Upgrade your plan for unlimited documents and data sources.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(false);
-          }}
-          className="fixed bottom-16 right-16"
-        />
         <ContextItem.List className="mt-8 text-element-900">
           {dustAgents.map((agent) => (
             <ContextItem
@@ -170,7 +157,7 @@ export default function AssistantsBuilder({
                     }}
                   />
                 ) : (
-                  <>
+                  <div className="relative">
                     <SliderToggle
                       size="sm"
                       onClick={async () => {
@@ -182,7 +169,20 @@ export default function AssistantsBuilder({
                         !isBuilder
                       }
                     />
-                  </>
+                    <Popup
+                      show={showDisabledFreeWorkspacePopup === agent.sId}
+                      className="absolute bottom-8 right-0"
+                      chipLabel={`Free plan`}
+                      description={`@${agent.name} is only available on our paid plans.`}
+                      buttonLabel="Check Dust plans"
+                      buttonClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
+                      }}
+                      onClose={() => {
+                        setShowDisabledFreeWorkspacePopup(null);
+                      }}
+                    />
+                  </div>
                 )
               }
             >
