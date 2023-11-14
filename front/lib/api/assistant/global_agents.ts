@@ -8,6 +8,7 @@ import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";
@@ -87,8 +88,8 @@ async function _getHelperGlobalAgent(
   const model =
     plan.code === FREE_TEST_PLAN_CODE
       ? {
-          providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-          modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+          providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+          modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
         }
       : {
           providerId: GPT_4_32K_MODEL_CONFIG.providerId,
@@ -114,8 +115,10 @@ async function _getHelperGlobalAgent(
 }
 
 async function _getGPT35TurboGlobalAgent({
+  plan,
   settings,
 }: {
+  plan: PlanType;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
@@ -131,10 +134,16 @@ async function _getGPT35TurboGlobalAgent({
     generation: {
       id: -1,
       prompt: "",
-      model: {
-        providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
-      },
+      model:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? {
+              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+            }
+          : {
+              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+            },
       temperature: 0.7,
     },
     action: null,
@@ -345,8 +354,8 @@ async function _getManagedDataSourceAgent(
       model:
         plan.code === FREE_TEST_PLAN_CODE
           ? {
-              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
             }
           : {
               providerId: GPT_4_32K_MODEL_CONFIG.providerId,
@@ -528,8 +537,8 @@ async function _getDustGlobalAgent(
       model:
         plan.code === FREE_TEST_PLAN_CODE
           ? {
-              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
             }
           : {
               providerId: GPT_4_32K_MODEL_CONFIG.providerId,
@@ -583,7 +592,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getHelperGlobalAgent(auth);
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
+      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings, plan });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = await _getGPT4GlobalAgent({ plan });
