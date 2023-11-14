@@ -125,6 +125,13 @@ async function handler(
           content: contentFragment.content,
           url: contentFragment.url,
           contentType: contentFragment.contentType,
+          context: {
+            username: contentFragment.context?.username || null,
+            fullName: contentFragment.context?.fullName || null,
+            email: contentFragment.context?.email || null,
+            profilePictureUrl:
+              contentFragment.context?.profilePictureUrl || null,
+          },
         });
 
         newContentFragment = cf;

@@ -89,6 +89,15 @@ export const PostContentFragmentRequestBodySchemaIoTs = t.type({
   content: t.string,
   url: t.union([t.string, t.null]),
   contentType: t.literal("slack_thread_content"),
+  context: t.union([
+    t.type({
+      username: t.string,
+      fullName: t.union([t.string, t.null]),
+      email: t.union([t.string, t.null]),
+      profilePictureUrl: t.union([t.string, t.null]),
+    }),
+    t.null,
+  ]),
 });
 
 const PostConversationsRequestBodySchemaIoTs = t.type({

@@ -9,6 +9,9 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     case "slack_thread_content":
       logoType = "slack";
       break;
+    case "file_attachment":
+      logoType = "document";
+      break;
 
     default:
       assertNever(message.contentType);
@@ -18,6 +21,7 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
       title={message.title}
       type={logoType}
       href={message.url || undefined}
+      avatarUrl={message.context.profilePictureUrl ?? undefined}
     />
   );
 }

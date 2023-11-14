@@ -41,6 +41,7 @@ import logger from "@app/logger/logger";
 import {
   AgentMessageType,
   ContentFragmentContentType,
+  ContentFragmentContextType,
   ContentFragmentType,
   ConversationType,
   ConversationVisibility,
@@ -339,6 +340,12 @@ function renderContentFragment({
     content: contentFragment.content,
     url: contentFragment.url,
     contentType: contentFragment.contentType,
+    context: {
+      profilePictureUrl: contentFragment.userContextProfilePictureUrl,
+      fullName: contentFragment.userContextFullName,
+      email: contentFragment.userContextEmail,
+      username: contentFragment.userContextUsername,
+    },
   };
 }
 
@@ -1675,12 +1682,14 @@ export async function postNewContentFragment(
     content,
     url,
     contentType,
+    context,
   }: {
     conversation: ConversationType;
     title: string;
     content: string;
     url: string | null;
     contentType: ContentFragmentContentType;
+    context: ContentFragmentContextType;
   }
 ): Promise<ContentFragmentType> {
   const owner = auth.workspace();
@@ -1694,7 +1703,17 @@ export async function postNewContentFragment(
       await getConversationRankVersionLock(conversation, t);
 
       const contentFragmentRow = await ContentFragment.create(
-        { content, title, url, contentType },
+        {
+          content,
+          title,
+          url,
+          contentType,
+          userId: auth.user()?.id,
+          userContextProfilePictureUrl: context.profilePictureUrl,
+          userContextEmail: context.email,
+          userContextFullName: context.fullName,
+          userContextUsername: context.username,
+        },
         { transaction: t }
       );
       const nextMessageRank =

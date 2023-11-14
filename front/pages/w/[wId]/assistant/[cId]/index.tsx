@@ -83,7 +83,49 @@ export default function AssistantConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-  const handleSubmit = async (input: string, mentions: MentionType[]) => {
+  const handleSubmit = async (
+    input: string,
+    mentions: MentionType[],
+    contentFragment?: {
+      title: string;
+      content: string;
+    }
+  ) => {
+    // Create a new content fragment.
+    if (contentFragment) {
+      const mcfRes = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: contentFragment.title,
+            content: contentFragment.content,
+            url: null,
+            contentType: "file_attachment",
+            context: {
+              timezone:
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+              profilePictureUrl: user.image,
+            },
+          }),
+        }
+      );
+
+      if (!mcfRes.ok) {
+        const data = await mcfRes.json();
+        console.error("Error creating content fragment", data);
+        sendNotification({
+          title: "Error uploading file.",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
+        return;
+      }
+    }
+
     // Create a new user message.
     const mRes = await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,

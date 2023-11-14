@@ -23,6 +23,7 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { PlanType } from "@app/types/plan";
@@ -136,66 +137,6 @@ export default function DataSourceUpsert({
       title: "Upload size limit",
       description: `Data Source document upload size is limited to ${plan.limits.dataSources.documents.count}MB (of raw text) Contact team@dust.tt if you want to increase this limit.`,
     });
-  };
-
-  const handleFileLoadedText = (e: any) => {
-    const content = e.target.result;
-    setUploading(false);
-
-    // Enforce plan limits: DataSource documents size.
-    if (
-      plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
-    ) {
-      alertDataSourcesLimit();
-      return;
-    }
-    setText(content);
-  };
-
-  const handleFileLoadedPDF = async (e: any) => {
-    const arrayBuffer = e.target.result;
-    const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
-    const pdf = await loadingTask.promise;
-    let text = "";
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
-      text += strings.join(" ") + "\n";
-    }
-
-    setUploading(false);
-
-    // Enforce plan limits: DataSource documents size.
-    if (
-      plan.limits.dataSources.documents.sizeMb != -1 &&
-      text.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
-    ) {
-      alertDataSourcesLimit();
-      return;
-    }
-    setText(text);
-  };
-
-  const handleFileUpload = async (file: File) => {
-    setUploading(true);
-    if (file.type === "application/pdf") {
-      const fileReader = new FileReader();
-      fileReader.onloadend = handleFileLoadedPDF;
-      fileReader.readAsArrayBuffer(file);
-    } else if (file.type === "text/plain" || file.type === "text/csv") {
-      const fileData = new FileReader();
-      fileData.onloadend = handleFileLoadedText;
-      fileData.readAsText(file);
-    } else {
-      sendNotification({
-        type: "error",
-        title: "File type not supported",
-        description: `Supported file types are: .txt, .pdf, .md, .csv.`,
-      });
-      setUploading(false);
-    }
   };
 
   const router = useRouter();
@@ -340,7 +281,26 @@ export default function DataSourceUpsert({
                 ref={fileInputRef}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
-                    await handleFileUpload(e.target.files[0]);
+                    if (
+                      plan.limits.dataSources.documents.sizeMb != -1 &&
+                      text.length >
+                        1024 * 1024 * plan.limits.dataSources.documents.sizeMb
+                    ) {
+                      alertDataSourcesLimit();
+                      return;
+                    }
+                    setUploading(true);
+                    const res = await handleFileUploadToText(e.target.files[0]);
+                    setUploading(false);
+                    if (res.isErr()) {
+                      sendNotification({
+                        type: "error",
+                        title: "Error uploading file.",
+                        description: res.error.message,
+                      });
+                      return;
+                    }
+                    setText(res.value.content);
                   }
                 }}
               ></input>
