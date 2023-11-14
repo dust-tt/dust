@@ -8,7 +8,7 @@ import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -84,10 +84,16 @@ async function _getHelperGlobalAgent(
   if (!plan) {
     throw new Error("Unexpected `auth` without `plan`.");
   }
-  const model = {
-    providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-    modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-  };
+  const model =
+    plan.code === FREE_TEST_PLAN_CODE
+      ? {
+          providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+          modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+        }
+      : {
+          providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+          modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+        };
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -155,8 +161,8 @@ async function _getGPT4GlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -331,8 +337,8 @@ async function _getManagedDataSourceAgent(
       id: -1,
       prompt,
       model: {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       },
       temperature: 0.4,
     },
@@ -506,8 +512,8 @@ async function _getDustGlobalAgent(
       prompt:
         "Assist the user based on the retrieved data from their workspace.",
       model: {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       },
       temperature: 0.4,
     },

@@ -43,7 +43,6 @@ import {
   getSupportedModelConfig,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
   SupportedModel,
 } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
