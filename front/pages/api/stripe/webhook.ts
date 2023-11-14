@@ -1,3 +1,4 @@
+import sgMail from "@sendgrid/mail";
 import { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
@@ -5,13 +6,23 @@ import { promisify } from "util";
 
 import { front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import {
+  Membership,
+  Plan,
+  Subscription,
+  User,
+  Workspace,
+} from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
+const {
+  SENDGRID_API_KEY = "",
+  STRIPE_SECRET_KEY = "",
+  STRIPE_SECRET_WEBHOOK_KEY = "",
+} = process.env;
 
 export type GetResponseBody = {
   success: true;
@@ -69,7 +80,7 @@ async function handler(
           },
         });
       }
-
+      const stripeSubscription = event.data.object as Stripe.Subscription;
       switch (event.type) {
         case "checkout.session.completed":
           // Payment is successful and the stripe subscription is created.
@@ -277,10 +288,57 @@ async function handler(
             { event },
             "[Stripe Webhook] Received customer.subscription.updated event."
           );
+          const previousAttributes = event.data.previous_attributes;
+          if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
+
+          if (
+            // The subscription is canceled (but not yet ended)
+            stripeSubscription.status === "active" &&
+            "cancel_at_period_end" in previousAttributes &&
+            stripeSubscription.cancel_at_period_end
+          ) {
+            // first update subscription endDate in our database
+            const result = await Subscription.update(
+              { endDate: new Date(stripeSubscription.cancel_at!) },
+              { where: { stripeSubscriptionId: stripeSubscription.id } }
+            );
+            if (result[0] !== 1) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "Stripe Webhook: canceling subscription: Error updating subscription in database.",
+                },
+              });
+            }
+            // then email admins to let them know the implications of canceling the
+            const adminEmails = await getAdminEmailsForSubscription(
+              stripeSubscription.id
+            );
+            if (adminEmails.length === 0) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "Stripe Webhook: canceling subscription: Error getting admin emails.",
+                },
+              });
+            }
+            // send email to admins
+            for (const adminEmail of adminEmails)
+              await sendCancellationEmail(adminEmail["email"]);
+          } else {
+            logger.warn(
+              { event },
+              "[Stripe Webhook] Received customer.subscription.deleted event but the subscription is not canceled."
+            );
+          }
+
           break;
         case "customer.subscription.deleted":
           // Occurs when the subscription is canceled by the user or by us.
-          const stripeSubscription = event.data.object as Stripe.Subscription;
           if (stripeSubscription.status === "canceled") {
             // We can end the subscription in our database.
             const activeSubscription = await Subscription.findOne({
@@ -325,4 +383,56 @@ async function handler(
   }
 }
 
+async function getAdminEmailsForSubscription(stripeSubscriptionId: string) {
+  return User.findAll({
+    include: [
+      {
+        model: Membership,
+        where: { role: "admin" },
+        include: [
+          {
+            model: Subscription,
+            where: { stripeSubscriptionId },
+            attributes: [], // Do not select any attributes from the Subscription model
+          },
+        ],
+      },
+    ],
+    attributes: ["email"], // Select only the email attribute from the User model
+  });
+}
+
+sgMail.setApiKey(SENDGRID_API_KEY);
+
+async function sendCancellationEmail(email: string) {
+  const message = {
+    to: email,
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your subscription has been canceled; important information`,
+    text: `<p>You have requested to cancel your subscription</p> 
+    <p>Your subscription will end at the end of the current billing period. You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will be switched back to our free plan at the end of the current billing period.</p>
+    <p>This will have the following consequences:</p>
+    <ul>
+    <li>all users except one will be removed from your workspace;</li>
+    <li>your connections will be deleted</li>
+    <li>the rest of your data (conversations, custom assistants, custom datasource) will still be accessible but with multiple limitations.</li>
+    <li>you will be subjected to the <a>restrictions of the free plan</a></li>
+    </ul>
+    <p>Complete details as to what will happen are available at <a href="https://dust.tt/pricing">subscription cancelling FAQ</a>.</p>
+    <p>If you have any questions, please contact us at team@dust.tt.</p>
+    <p>Best,</p>
+    <p>The Dust team</p>`,
+  };
+  try {
+    await sgMail.send(message);
+  } catch (error) {
+    logger.error(
+      { error, email },
+      "Error sending email to admin about subscription cancellation."
+    );
+  }
+}
 export default withLogging(handler);
