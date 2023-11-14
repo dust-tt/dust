@@ -324,7 +324,6 @@ async function _getManagedDataSourceAgent(
   const dataSources = dsRes.value.filter(
     (d) => d.connectorProvider === connectorProvider
   );
-
   if (dataSources.length === 0) {
     return {
       id: -1,
