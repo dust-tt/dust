@@ -347,7 +347,11 @@ export default function DataSourceUpsert({
             )}
             <Page.SectionHeader
               title="Text content"
-              description="Copy paste content or upload a file (text or PDF)."
+              description={`Copy paste content or upload a file (text or PDF). Up to ${
+                plan.limits.dataSources.documents.sizeMb == -1
+                  ? "2"
+                  : plan.limits.dataSources.documents.sizeMb
+              } MB of raw text.`}
               action={{
                 label: uploading ? "Uploading..." : "Upload file",
                 variant: "secondary",
