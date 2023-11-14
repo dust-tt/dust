@@ -107,8 +107,6 @@ async function scrubDocument(
     internal_id: string;
   };
 
-  // console.log(dataSource);
-
   if (LIVE) {
     const hasher = createHash();
     hasher.update(Buffer.from(document_id));
@@ -126,6 +124,20 @@ async function scrubDocument(
       console.log(files.map((f) => f.name));
       throw new Error("Unexpected number of files > 1");
     }
+
+    console.log("DELETING versions");
+
+    await core_sequelize.query(
+      `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
+      {
+        replacements: {
+          data_source: data_source,
+          document_id: document_id,
+          hash: hash,
+        },
+      }
+    );
+
     if (files.length === 0) {
       return;
     }
