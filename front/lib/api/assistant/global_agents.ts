@@ -21,6 +21,7 @@ import {
   AgentConfigurationType,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
+import { PlanType } from "@app/types/plan";
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -133,7 +134,13 @@ async function _getGPT35TurboGlobalAgent({
   };
 }
 
-async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
+async function _getGPT4GlobalAgent({
+  plan,
+}: {
+  plan: PlanType;
+}): Promise<AgentConfigurationType> {
+  const status =
+    plan.code === "FREE_TEST_PLAN" ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -141,7 +148,7 @@ async function _getGPT4GlobalAgent(): Promise<AgentConfigurationType> {
     name: "gpt4",
     description: "OpenAI's most powerful and recent model (128k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
-    status: "active",
+    status,
     scope: "global",
     generation: {
       id: -1,
@@ -186,9 +193,13 @@ async function _getClaudeInstantGlobalAgent({
 
 async function _getClaudeGlobalAgent({
   settings,
+  plan,
 }: {
   settings: GlobalAgentSettings | null;
+  plan: PlanType;
 }): Promise<AgentConfigurationType> {
+  const status =
+    plan.code === "FREE_TEST_PLAN" ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE,
@@ -196,7 +207,7 @@ async function _getClaudeGlobalAgent({
     name: "claude",
     description: "Anthropic's superior performance model (100k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status: settings ? settings.status : "active",
+    status: settings ? settings.status : status,
     scope: "global",
     generation: {
       id: -1,
@@ -548,13 +559,13 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent();
+      agentConfiguration = await _getGPT4GlobalAgent({ plan });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE:
-      agentConfiguration = await _getClaudeGlobalAgent({ settings });
+      agentConfiguration = await _getClaudeGlobalAgent({ settings, plan });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL:
       agentConfiguration = await _getMistralGlobalAgent({ settings });
