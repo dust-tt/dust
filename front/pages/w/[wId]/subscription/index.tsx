@@ -266,7 +266,7 @@ export default function Subscription({
           </Page.Vertical>
         )}
       </Page.Vertical>
-      <div className="s-h-12" />
+      <div className="h-12" />
     </AppLayout>
   );
 }
