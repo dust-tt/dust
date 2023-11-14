@@ -164,6 +164,7 @@ async function _getGPT4GlobalAgent({
         providerId: GPT_4_32K_MODEL_CONFIG.providerId,
         modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       },
+
       temperature: 0.7,
     },
     action: null,
@@ -281,6 +282,11 @@ async function _getManagedDataSourceAgent(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(prodCredentials);
 
@@ -336,10 +342,16 @@ async function _getManagedDataSourceAgent(
     generation: {
       id: -1,
       prompt,
-      model: {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
-      },
+      model:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? {
+              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+            }
+          : {
+              providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+              modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+            },
       temperature: 0.4,
     },
     action: {
