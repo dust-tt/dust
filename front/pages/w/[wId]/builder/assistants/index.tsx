@@ -6,6 +6,7 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
+  Popup,
   RobotIcon,
   Searchbar,
   SliderToggle,
@@ -67,6 +68,8 @@ export default function AssistantsBuilder({
       workspaceId: owner.sId,
     });
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
+    useState<string | null>(null);
 
   const workspaceAgents = agentConfigurations.filter(
     (a) => a.scope === "workspace"
@@ -82,9 +85,7 @@ export default function AssistantsBuilder({
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
-      window.alert(
-        `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
-      );
+      setShowDisabledFreeWorkspacePopup(agent.sId);
       return;
     }
     const res = await fetch(
@@ -153,17 +154,32 @@ export default function AssistantsBuilder({
                     }}
                   />
                 ) : (
-                  <SliderToggle
-                    size="sm"
-                    onClick={async () => {
-                      await handleToggleAgentStatus(agent);
-                    }}
-                    selected={agent.status === "active"}
-                    disabled={
-                      agent.status === "disabled_missing_datasource" ||
-                      !isBuilder
-                    }
-                  />
+                  <div className="relative">
+                    <SliderToggle
+                      size="sm"
+                      onClick={async () => {
+                        await handleToggleAgentStatus(agent);
+                      }}
+                      selected={agent.status === "active"}
+                      disabled={
+                        agent.status === "disabled_missing_datasource" ||
+                        !isBuilder
+                      }
+                    />
+                    <Popup
+                      show={showDisabledFreeWorkspacePopup === agent.sId}
+                      className="absolute bottom-8 right-0"
+                      chipLabel={`Free plan`}
+                      description={`@${agent.name} is only available on our paid plans.`}
+                      buttonLabel="Check Dust plans"
+                      buttonClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
+                      }}
+                      onClose={() => {
+                        setShowDisabledFreeWorkspacePopup(null);
+                      }}
+                    />
+                  </div>
                 )
               }
             >
