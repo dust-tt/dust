@@ -33,6 +33,7 @@ export const getServerSideProps: GetServerSideProps<{
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   slackbotEnabled?: boolean;
+  gdrivePDFEnabled?: boolean;
   documentCounts: Record<string, number>;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
@@ -137,6 +138,23 @@ export const getServerSideProps: GetServerSideProps<{
     }
     slackbotEnabled = botEnabledRes.value.botEnabled;
   }
+  // Get Gdrive PDF enabled status
+  const gdriveConnectorId = dataSources.find(
+    (ds) => ds.connectorProvider === "google_drive"
+  )?.connectorId;
+
+  let gdrivePDFEnabled = false;
+  if (gdriveConnectorId) {
+    const gdrivePDFEnabledRes = await ConnectorsAPI.getConnectorConfig(
+      gdriveConnectorId,
+      "pdfEnabled"
+    );
+    if (gdrivePDFEnabledRes.isErr()) {
+      throw gdrivePDFEnabledRes.error;
+    }
+    gdrivePDFEnabled =
+      gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
+  }
 
   const planInvitation = await getPlanInvitation(auth);
 
@@ -148,6 +166,7 @@ export const getServerSideProps: GetServerSideProps<{
       planInvitation: planInvitation ?? null,
       dataSources,
       slackbotEnabled,
+      gdrivePDFEnabled,
       documentCounts: docCountByDsName,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },
@@ -160,6 +179,7 @@ const WorkspacePage = ({
   planInvitation,
   dataSources,
   slackbotEnabled,
+  gdrivePDFEnabled,
   documentCounts,
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -265,6 +285,31 @@ const WorkspacePage = ({
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
+  const { submit: onGdrivePDFToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-google_drive/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "pdfEnabled",
+            configValue: `${!gdrivePDFEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle Gdrive PDF sync.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to toggle Gdrive PDF sync.");
     }
   });
 
@@ -465,6 +510,20 @@ const WorkspacePage = ({
                     <SliderToggle
                       selected={slackbotEnabled}
                       onClick={onSlackbotToggle}
+                    />
+                  </div>
+                )}
+                {ds.connectorProvider === "google_drive" && (
+                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                    <div>
+                      PDF syncing enabled?{" "}
+                      <span className="font-medium">
+                        {JSON.stringify(gdrivePDFEnabled)}
+                      </span>
+                    </div>
+                    <SliderToggle
+                      selected={gdrivePDFEnabled}
+                      onClick={onGdrivePDFToggle}
                     />
                   </div>
                 )}

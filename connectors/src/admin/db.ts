@@ -5,6 +5,7 @@ import {
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
+  GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
+  await GoogleDriveConfig.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

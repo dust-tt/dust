@@ -9,6 +9,7 @@ import {
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   Connector,
+  GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -590,5 +591,72 @@ export async function retrieveGoogleDriveObjectsParents(
     return new Ok(parents);
   } catch (err) {
     return new Err(err as Error);
+  }
+}
+
+export async function getGoogleDriveConfig(
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  const config = await GoogleDriveConfig.findOne({
+    where: { connectorId: connectorId },
+  });
+  if (!config) {
+    return new Err(
+      new Error(`Google Drive config not found with connectorId ${connectorId}`)
+    );
+  }
+  switch (configKey) {
+    case "pdfEnabled": {
+      return new Ok(config.pdfEnabled ? "true" : "false");
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+}
+
+export async function setGoogleDriveConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  const config = await GoogleDriveConfig.findOne({
+    where: { connectorId: connectorId },
+  });
+  if (!config) {
+    return new Err(
+      new Error(`Google Drive config not found with connectorId ${connectorId}`)
+    );
+  }
+  switch (configKey) {
+    case "pdfEnabled": {
+      if (!["true", "false"].includes(configValue)) {
+        return new Err(
+          new Error(
+            `Invalid config value ${configValue}, must be true or false`
+          )
+        );
+      }
+      await config.update({
+        pdfEnabled: configValue === "true",
+      });
+      return new Ok(void 0);
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 }

@@ -70,3 +70,14 @@ export type ConnectorResourceParentsRetriever = (
   internalId: string,
   memoizationKey?: string
 ) => Promise<Result<string[], Error>>;
+
+export type ConnectorConfigSetter = (
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) => Promise<Result<void, Error>>;
+
+export type ConnectorConfigGetter = (
+  connectorId: ModelId,
+  configKey: string
+) => Promise<Result<string, Error>>;
