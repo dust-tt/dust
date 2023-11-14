@@ -2324,6 +2324,10 @@ fn main() {
         state.stop_loop().await;
 
         utils::info("[GRACEFUL] Exiting!");
+
+        // sleep for 1 second to allow the logger to flush
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
         Ok::<(), anyhow::Error>(())
     });
 }
