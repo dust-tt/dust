@@ -300,7 +300,7 @@ async function handler(
             const result = await Subscription.update(
               {
                 endDate: stripeSubscription.cancel_at
-                  ? new Date(stripeSubscription.cancel_at)
+                  ? new Date(stripeSubscription.cancel_at * 1000)
                   : null,
               },
               { where: { stripeSubscriptionId: stripeSubscription.id } }
@@ -332,18 +332,12 @@ async function handler(
             // send email to admins
             for (const adminEmail of adminEmails)
               await sendAdminEmail(
-                adminEmail["email"],
+                adminEmail,
                 stripeSubscription.cancel_at_period_end
                   ? cancellationMessage
                   : reactivationMessage
               );
-          } else {
-            logger.warn(
-              { event },
-              "[Stripe Webhook] Received customer.subscription.deleted event but the subscription is not canceled."
-            );
           }
-
           break;
         case "customer.subscription.deleted":
           // Occurs when the subscription is canceled by the user or by us.
@@ -392,22 +386,37 @@ async function handler(
 }
 
 async function getAdminEmailsForSubscription(stripeSubscriptionId: string) {
-  return User.findAll({
+  const users = await User.findAll({
+    attributes: ["email"],
     include: [
       {
         model: Membership,
-        where: { role: "admin" },
+        required: true,
+        where: {
+          role: "admin",
+        },
+        attributes: [],
         include: [
           {
-            model: Subscription,
-            where: { stripeSubscriptionId },
-            attributes: [], // Do not select any attributes from the Subscription model
+            model: Workspace,
+            required: true,
+            attributes: [],
+            include: [
+              {
+                model: Subscription,
+                required: true,
+                where: {
+                  stripeSubscriptionId,
+                },
+                attributes: [],
+              },
+            ],
           },
         ],
       },
     ],
-    attributes: ["email"], // Select only the email attribute from the User model
   });
+  return users.map((u) => u.email);
 }
 
 sgMail.setApiKey(SENDGRID_API_KEY);
@@ -451,6 +460,10 @@ async function sendAdminEmail(email: string, message: any) {
   const msg = { ...message, to: email };
   try {
     await sgMail.send(msg);
+    logger.info(
+      { email, subject: message.subject },
+      "Sending email to admin about subscription."
+    );
   } catch (error) {
     logger.error(
       { error, email },

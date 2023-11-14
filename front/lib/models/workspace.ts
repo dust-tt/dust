@@ -119,6 +119,7 @@ Workspace.hasMany(Membership, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+Membership.belongsTo(Workspace);
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,
