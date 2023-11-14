@@ -2,8 +2,7 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   IconButton,
-  PageHeader,
-  SectionHeader,
+  Page,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -147,14 +146,14 @@ export function ExtractEventSchemaForm({
 
   return (
     <>
-      <PageHeader
+      <Page.Header
         title="Extract"
         icon={ArrowUpOnSquareIcon}
         description="Extract is your go-to tool for capturing structured data
         effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
       />
       <div>
-        <SectionHeader
+        <Page.SectionHeader
           title="Define the data to extract"
           description="Define your marker and the properties you want to extract from your notes. The description fields are sent to the LLM to help it understand what you want to extract. If you want to extract the summary of a discussion, you could define a property named 'summary' with the description 'Extract the summary of the discussion'."
         />

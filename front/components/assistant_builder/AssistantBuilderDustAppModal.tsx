@@ -3,7 +3,7 @@ import {
   CommandLineIcon,
   Item,
   Modal,
-  PageHeader,
+  Page,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
@@ -60,23 +60,19 @@ function PickDustApp({
 }) {
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
-      <div className="flex flex-col">
-        <div className="mb-6">
-          <PageHeader title="Select Dust App" icon={CloudArrowDownIcon} />
-        </div>
-
+      <Page>
+        <Page.Header title="Select Dust App" icon={CloudArrowDownIcon} />
         {dustApps.map((app) => (
-          <Item
+          <Item.Navigation
             label={app.name}
             icon={CommandLineIcon}
             key={app.sId}
-            size="md"
             onClick={() => {
               onPick(app);
             }}
           />
         ))}
-      </div>
+      </Page>
     </Transition>
   );
 }

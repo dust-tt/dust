@@ -3,7 +3,7 @@ import {
   CloudArrowLeftRightIcon,
   Item,
   Modal,
-  PageHeader,
+  Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
@@ -142,21 +142,18 @@ function PickDataSource({
 }) {
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
-      <div className="flex flex-col">
-        <div className="mb-6">
-          <PageHeader
-            title="Select Data Sources in:"
-            icon={CloudArrowLeftRightIcon}
-          />
-        </div>
-
+      <Page>
+        <Page.Header
+          title="Select Data Sources in:"
+          icon={CloudArrowLeftRightIcon}
+        />
         {dataSources
           .sort(
             (a, b) =>
               (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
           )
           .map((ds) => (
-            <Item
+            <Item.Navigation
               label={
                 ds.connectorProvider
                   ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name
@@ -168,13 +165,12 @@ function PickDataSource({
                   : CloudArrowDownIcon
               }
               key={ds.name}
-              size="md"
               onClick={() => {
                 onPick(ds);
               }}
             />
           ))}
-      </div>
+      </Page>
     </Transition>
   );
 }
@@ -255,23 +251,21 @@ function DataSourceResourceSelector({
 
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
-      <div className="mb-6">
-        <div>
-          <PageHeader
-            title={`Select Data Sources in ${
-              CONNECTOR_CONFIGURATIONS[
-                dataSource?.connectorProvider as ConnectorProvider
-              ]?.name
-            }`}
-            icon={
-              CONNECTOR_CONFIGURATIONS[
-                dataSource?.connectorProvider as ConnectorProvider
-              ]?.logoComponent
-            }
-            description="Select the files and folders that will be used by the assistant as a source for its answers."
-          />
-        </div>
-      </div>
+      <Page>
+        <Page.Header
+          title={`Select Data Sources in ${
+            CONNECTOR_CONFIGURATIONS[
+              dataSource?.connectorProvider as ConnectorProvider
+            ]?.name
+          }`}
+          icon={
+            CONNECTOR_CONFIGURATIONS[
+              dataSource?.connectorProvider as ConnectorProvider
+            ]?.logoComponent
+          }
+          description="Select the files and folders that will be used by the assistant as a source for its answers."
+        />
+      </Page>
       {dataSource && (
         <div className="flex flex-row gap-32">
           <div className="flex-1">

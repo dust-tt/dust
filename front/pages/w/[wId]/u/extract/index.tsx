@@ -1,7 +1,7 @@
 import {
   ArrowUpOnSquareIcon,
   Button,
-  PageHeader,
+  Page,
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -62,7 +62,7 @@ export default function AppExtractEvents({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "extract" })}
     >
-      <PageHeader
+      <Page.Header
         title="Extract"
         icon={ArrowUpOnSquareIcon}
         description="Extract is your go-to tool for capturing structured data
