@@ -18,6 +18,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
@@ -225,9 +226,11 @@ export default function Subscription({
               </div>
             </div>
             {!plan ||
-              ([FREE_TEST_PLAN_CODE, PRO_PLAN_SEAT_29_CODE].includes(
-                plan.code
-              ) && (
+              ([
+                FREE_TEST_PLAN_CODE,
+                PRO_PLAN_SEAT_29_CODE,
+                FREE_UPGRADED_PLAN_CODE,
+              ].includes(plan.code) && (
                 <div className="pt-2">
                   <Page.H variant="h5">Manage my plan</Page.H>
                   <div className="s-h-full s-w-full pt-2">
