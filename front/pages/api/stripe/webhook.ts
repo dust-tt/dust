@@ -299,6 +299,7 @@ async function handler(
             // first update subscription endDate in our database
             const result = await Subscription.update(
               {
+                // cancel_at set means the user just canceled, unset means the user just reactivated
                 endDate: stripeSubscription.cancel_at
                   ? new Date(stripeSubscription.cancel_at * 1000)
                   : null,
