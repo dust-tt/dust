@@ -442,8 +442,10 @@ async function _getNotionGlobalAgent(
 async function _getDustGlobalAgent(
   auth: Authenticator,
   {
+    plan,
     settings,
   }: {
+    plan: PlanType;
     settings: GlobalAgentSettings | null;
   }
 ): Promise<AgentConfigurationType | null> {
@@ -511,10 +513,16 @@ async function _getDustGlobalAgent(
       id: -1,
       prompt:
         "Assist the user based on the retrieved data from their workspace.",
-      model: {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
-      },
+      model:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? {
+              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+            }
+          : {
+              providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+              modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+            },
       temperature: 0.4,
     },
     action: {
@@ -590,7 +598,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGithubGlobalAgent(auth, { settings });
       break;
     case GLOBAL_AGENTS_SID.DUST:
-      agentConfiguration = await _getDustGlobalAgent(auth, { settings });
+      agentConfiguration = await _getDustGlobalAgent(auth, { plan, settings });
       break;
     default:
       return null;
