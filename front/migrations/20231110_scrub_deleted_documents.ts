@@ -120,12 +120,12 @@ async function scrubDocument(
       .bucket(DUST_DATA_SOURCES_BUCKET || "")
       .getFiles({ prefix: path });
 
-    if (files.length >= 1) {
-      console.log(files.map((f) => f.name));
-      throw new Error("Unexpected number of files > 1");
-    }
+    // if (files.length >= 1) {
+    //   console.log(files.map((f) => f.name));
+    //   throw new Error("Unexpected number of files > 1");
+    // }
 
-    console.log("DELETING versions");
+    console.log(`DELETING versions of ${document_id} with hash ${hash}`);
 
     await core_sequelize.query(
       `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
@@ -142,8 +142,15 @@ async function scrubDocument(
       return;
     }
 
-    console.log(`DELETING ${files[0].name}`);
-    await files[0].delete();
+    await Promise.all(
+      files.map((f) => {
+        if (!seen.has(f.name)) {
+          seen.add(f.name);
+          console.log(`DELETING ${f.name}`);
+          return f.delete();
+        }
+      })
+    );
   }
 
   seen.add(uid);
