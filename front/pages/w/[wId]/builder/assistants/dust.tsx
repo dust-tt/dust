@@ -162,6 +162,7 @@ export default function EditDustAssistant({
         />
       }
     >
+      <div className="h-12" />
       <Page.Header
         title="Dust Assistant"
         icon={LogoSquareColorLogo}

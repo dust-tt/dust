@@ -122,7 +122,7 @@ function NavigationBar({
                     {nav.menus.map((menu) => {
                       return (
                         <React.Fragment key={menu.id}>
-                          <Item.Navigation
+                          <Item.Entry
                             selected={menu.current}
                             label={menu.label}
                             icon={menu.icon}
