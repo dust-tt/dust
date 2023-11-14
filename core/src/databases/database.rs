@@ -64,7 +64,7 @@ impl Database {
                             let store = store.clone();
 
                             async move {
-                                let rows = store
+                                let (rows, _) = store
                                     .list_database_rows(
                                         project,
                                         self.data_source_id.as_str(),
@@ -81,7 +81,6 @@ impl Database {
                 )
                 .await?
                 .into_iter()
-                .map(|(table, (rows, _))| (table, rows))
                 .collect::<Vec<_>>();
 
                 Ok(DatabaseSchema(
