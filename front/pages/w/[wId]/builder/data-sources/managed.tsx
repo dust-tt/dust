@@ -614,7 +614,9 @@ export default function DataSourcesView({
           </Page.P>
           <Page.P>
             <span className="font-bold">Google Drive</span>: Dust doesn't take
-            into account files with more than 750Kb of extracted text.
+            into account files with more than 750Kb of extracted text. By
+            default, Dust doesn't take into account .pdf files. Email us at
+            team@dust.tt to include .pdf files.
           </Page.P>
           <Page.P>
             <span className="font-bold">Github</span>: Dust only gathers data

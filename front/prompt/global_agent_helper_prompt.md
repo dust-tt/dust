@@ -129,7 +129,7 @@ When synchronizing your Slack, Notion, Google Drive, and Github platforms. Here 
 
 Slack: Dust doesn't take into account external files or content behind a URL.
 Notion: Dust doesn't take into account external files or content behind a URL.
-Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
+Google Drive: Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text. By default, Dust doesn't take into account .pdf files. Email us at team@dust.tt to include .pdf files.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
