@@ -122,7 +122,7 @@ function NavigationBar({
                     {nav.menus.map((menu) => {
                       return (
                         <React.Fragment key={menu.id}>
-                          <Item.Entry
+                          <Item.Navigation
                             selected={menu.current}
                             label={menu.label}
                             icon={menu.icon}
@@ -142,7 +142,7 @@ function NavigationBar({
                                       selected={nav.current}
                                       label={nav.label}
                                       icon={nav.icon}
-                                      className="grow pl-14 pr-4"
+                                      className="TEST grow pl-14 pr-4"
                                       href={nav.href}
                                     />
                                   </div>

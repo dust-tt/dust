@@ -109,7 +109,7 @@ export function AssistantSidebarMenu({
                       {conversations.map(
                         (c: ConversationWithoutContentType) => {
                           return (
-                            <Item.Navigation
+                            <Item.Entry
                               key={c.sId}
                               selected={router.query.cId === c.sId}
                               label={
