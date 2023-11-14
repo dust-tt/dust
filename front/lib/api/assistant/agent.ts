@@ -13,8 +13,13 @@ import {
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
-import { GPT_4_32K_MODEL_CONFIG, GPT_4_MODEL_CONFIG } from "@app/lib/assistant";
+import {
+  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { isDustAppRunConfiguration } from "@app/types/assistant/actions/dust_app_run";
@@ -60,18 +65,28 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  let model: { providerId: string; modelId: string } = {
-    providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-    modelId: GPT_4_32K_MODEL_CONFIG.modelId,
-  };
+  const plan = auth.plan();
+  const isFree = !plan || plan.code === FREE_TEST_PLAN_CODE;
+
+  let model: { providerId: string; modelId: string } = isFree
+    ? {
+        providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+      }
+    : {
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+      };
+  const contextSize = isFree
+    ? GPT_3_5_TURBO_16K_MODEL_CONFIG.contextSize
+    : GPT_4_32K_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
     prompt,
-    allowedTokenCount:
-      GPT_4_32K_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {
