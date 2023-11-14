@@ -53,6 +53,12 @@ spec:
                   name: prestop-secret
                   key: PRESTOP_SECRET
 
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
           lifecycle:
             preStop:
               exec:
