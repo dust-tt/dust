@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
 
-  if (!owner || !user) {
+  if (!owner || !user || !auth.isUser()) {
     return {
       notFound: true,
     };
