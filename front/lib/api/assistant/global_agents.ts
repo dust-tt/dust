@@ -16,6 +16,7 @@ import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConnectorProvider } from "@app/lib/connectors_api";
 import { DustAPI } from "@app/lib/dust_api";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import {
   AgentConfigurationType,
@@ -140,7 +141,7 @@ async function _getGPT4GlobalAgent({
   plan: PlanType;
 }): Promise<AgentConfigurationType> {
   const status =
-    plan.code === "FREE_TEST_PLAN" ? "disabled_free_workspace" : "active";
+    plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -199,7 +200,7 @@ async function _getClaudeGlobalAgent({
   plan: PlanType;
 }): Promise<AgentConfigurationType> {
   const status =
-    plan.code === "FREE_TEST_PLAN" ? "disabled_free_workspace" : "active";
+    plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE,

@@ -13,7 +13,10 @@ import {
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
-import { GPT_4_TURBO_MODEL_CONFIG } from "@app/lib/assistant";
+import {
+  GPT_4_32K_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
@@ -60,9 +63,13 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
+  // const model: { providerId: string; modelId: string } = {
+  //   providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+  //   modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+  // };
   const model: { providerId: string; modelId: string } = {
-    providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-    modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+    providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+    modelId: GPT_4_32K_MODEL_CONFIG.modelId,
   };
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -71,7 +78,7 @@ export async function generateActionInputs(
     model,
     prompt,
     allowedTokenCount:
-      GPT_4_TURBO_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS,
+      GPT_4_32K_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {
