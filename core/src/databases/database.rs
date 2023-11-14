@@ -191,10 +191,6 @@ impl DatabaseSchemaTable {
     pub fn new(table: DatabaseTable, schema: TableSchema) -> Self {
         DatabaseSchemaTable { table, schema }
     }
-
-    // pub fn table(&self) -> &DatabaseTable {
-    //     &self.table
-    // }
 }
 
 #[derive(Debug, Serialize)]
