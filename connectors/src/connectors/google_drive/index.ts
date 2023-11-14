@@ -662,6 +662,13 @@ export async function setGoogleDriveConfig(
       await config.update({
         pdfEnabled: configValue === "true",
       });
+      const workflowRes = await launchGoogleDriveFullSyncWorkflow(
+        connectorId.toString(),
+        null
+      );
+      if (workflowRes.isErr()) {
+        return workflowRes;
+      }
       return new Ok(void 0);
     }
 

@@ -62,6 +62,7 @@ async function getMimeTypesToDownload(connectorId: ModelId) {
 
 async function getMimesTypeToSync(connectorId: ModelId) {
   const mimeTypes = await getMimeTypesToDownload(connectorId);
+  mimeTypes.push(...Object.keys(MIME_TYPES_TO_EXPORT));
   mimeTypes.push("application/vnd.google-apps.folder");
 
   return mimeTypes;
