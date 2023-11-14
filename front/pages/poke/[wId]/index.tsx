@@ -14,7 +14,6 @@ import { CoreAPI } from "@app/lib/core_api";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
-  PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
@@ -363,7 +362,6 @@ const WorkspacePage = ({
                           if (
                             [
                               FREE_TEST_PLAN_CODE,
-                              PRO_PLAN_SEAT_29_CODE,
                               FREE_UPGRADED_PLAN_CODE,
                             ].includes(p.code)
                           ) {
