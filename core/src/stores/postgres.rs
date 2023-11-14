@@ -2202,7 +2202,7 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(DatabaseRow::new(row_created, &table_id, &row_id, content))
+        Ok(DatabaseRow::new(row_created, Some(row_id), content))
     }
 
     async fn load_database_row(
@@ -2258,8 +2258,7 @@ impl Store for PostgresStore {
             None => Ok(None),
             Some((created, row_id, data)) => Ok(Some(DatabaseRow::new(
                 created as u64,
-                &table_id,
-                &row_id,
+                Some(row_id),
                 &Value::from_str(&data)?,
             ))),
         }
@@ -2343,12 +2342,7 @@ impl Store for PostgresStore {
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
                 let content: Value = serde_json::from_str(&data)?;
-                Ok(DatabaseRow::new(
-                    created as u64,
-                    &table_id,
-                    &row_id,
-                    &content,
-                ))
+                Ok(DatabaseRow::new(created as u64, Some(row_id), &content))
             })
             .collect::<Result<Vec<_>>>()?;
 

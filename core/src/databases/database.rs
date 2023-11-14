@@ -158,17 +158,15 @@ impl DatabaseTable {
 #[derive(Debug, Serialize, Clone)]
 pub struct DatabaseRow {
     created: u64,
-    table_id: String,
-    row_id: String,
+    row_id: Option<String>,
     content: Value,
 }
 
 impl DatabaseRow {
-    pub fn new(created: u64, table_id: &str, row_id: &str, content: &Value) -> Self {
+    pub fn new(created: u64, row_id: Option<String>, content: &Value) -> Self {
         DatabaseRow {
             created: created,
-            table_id: table_id.to_string(),
-            row_id: row_id.to_string(),
+            row_id: row_id,
             content: content.clone(),
         }
     }
@@ -176,11 +174,8 @@ impl DatabaseRow {
     pub fn created(&self) -> u64 {
         self.created
     }
-    pub fn table_id(&self) -> &str {
-        &self.table_id
-    }
-    pub fn row_id(&self) -> &str {
-        &self.row_id
+    pub fn row_id(&self) -> Option<String> {
+        self.row_id.clone()
     }
     pub fn content(&self) -> &Value {
         &self.content
@@ -198,9 +193,9 @@ impl DatabaseSchemaTable {
         DatabaseSchemaTable { table, schema }
     }
 
-    pub fn table(&self) -> &DatabaseTable {
-        &self.table
-    }
+    // pub fn table(&self) -> &DatabaseTable {
+    //     &self.table
+    // }
 }
 
 #[derive(Debug, Serialize)]
