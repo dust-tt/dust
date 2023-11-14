@@ -6,6 +6,7 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
+  Popup,
   RobotIcon,
   Searchbar,
   SliderToggle,
@@ -67,6 +68,8 @@ export default function AssistantsBuilder({
       workspaceId: owner.sId,
     });
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
+    useState<boolean>(false);
 
   const workspaceAgents = agentConfigurations.filter(
     (a) => a.scope === "workspace"
@@ -82,9 +85,10 @@ export default function AssistantsBuilder({
 
   const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_free_workspace") {
-      window.alert(
-        `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
-      );
+      setShowDisabledFreeWorkspacePopup(true);
+      // window.alert(
+      //   `@${agent.name} is only available on our paid plans. Contact us at team@dust.tt to get access.`
+      // );
       return;
     }
     const res = await fetch(
@@ -130,6 +134,19 @@ export default function AssistantsBuilder({
           title="Dust Assistants"
           description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@notion" to&nbsp;target specifically knowledge on&nbsp;Notion…'
         />
+        <Popup
+          show={showDisabledFreeWorkspacePopup}
+          chipLabel={`Free plan`}
+          description={`You have reached the limit of documents per data source  documents). Upgrade your plan for unlimited documents and data sources.`}
+          buttonLabel="Check Dust plans"
+          buttonClick={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+          onClose={() => {
+            setShowDisabledFreeWorkspacePopup(false);
+          }}
+          className="fixed bottom-16 right-16"
+        />
         <ContextItem.List className="mt-8 text-element-900">
           {dustAgents.map((agent) => (
             <ContextItem
@@ -153,17 +170,19 @@ export default function AssistantsBuilder({
                     }}
                   />
                 ) : (
-                  <SliderToggle
-                    size="sm"
-                    onClick={async () => {
-                      await handleToggleAgentStatus(agent);
-                    }}
-                    selected={agent.status === "active"}
-                    disabled={
-                      agent.status === "disabled_missing_datasource" ||
-                      !isBuilder
-                    }
-                  />
+                  <>
+                    <SliderToggle
+                      size="sm"
+                      onClick={async () => {
+                        await handleToggleAgentStatus(agent);
+                      }}
+                      selected={agent.status === "active"}
+                      disabled={
+                        agent.status === "disabled_missing_datasource" ||
+                        !isBuilder
+                      }
+                    />
+                  </>
                 )
               }
             >
