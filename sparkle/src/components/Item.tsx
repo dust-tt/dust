@@ -286,8 +286,10 @@ Item.SectionHeader = function ({
   return (
     <div
       className={classNames(
-        variant === "primary" ? "s-text-element-800" : "s-text-element-600",
-        "s-pb-2 s-pt-6   s-text-xs s-font-medium s-uppercase"
+        variant === "primary"
+          ? "s-text-element-800 dark:s-text-element-800-dark"
+          : "s-text-element-600 dark:s-text-element-600-dark",
+        "s-pb-2 s-pt-6 s-text-xs s-font-medium s-uppercase"
       )}
     >
       {label}
@@ -357,10 +359,10 @@ export function Item2({
         className={classNames(
           "s-transition-colors s-duration-200 s-ease-out",
           disabled
-            ? "s-text-element-500"
+            ? "s-text-element-500 dark:s-text-element-500-dark"
             : selected
-            ? "s-text-action-400"
-            : "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700"
+            ? "s-text-action-400 dark:s-text-action-600-dark"
+            : "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark"
         )}
       />
     );
@@ -390,9 +392,9 @@ export function Item2({
             "s-grow s-truncate s-text-sm",
             labelStyleClasses[style],
             disabled
-              ? "s-text-element-600"
+              ? "s-text-element-600 dark:s-text-element-500-dark"
               : selected
-              ? "s-text-action-500"
+              ? "s-text-action-500 dark:s-text-action-600-dark"
               : classNames(labelColorClasses[style], activeLabelStyleClasses)
           )}
         >
@@ -401,7 +403,9 @@ export function Item2({
         <div
           className={classNames(
             "s-grow s-truncate s-text-xs",
-            disabled ? " s-text-element-600" : "s-text-element-700"
+            disabled
+              ? "s-text-element-600 dark:s-text-element-500-dark"
+              : "s-text-element-700 dark:s-text-element-600-dark"
           )}
         >
           {description}
@@ -418,11 +422,11 @@ export function Item2({
                   ? "s-opacity-0 group-hover:s-opacity-100 "
                   : "",
                 disabled
-                  ? "s-text-element-500"
+                  ? "s-text-element-500 dark:s-text-element-500-dark"
                   : selected
-                  ? "s-text-action-400 s-opacity-100"
+                  ? "s-text-action-400 s-opacity-100 dark:s-text-action-600-dark"
                   : classNames(
-                      "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700",
+                      "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
                       hasAction ? "group-hover:s-opacity-100" : ""
                     )
               )
@@ -435,7 +439,7 @@ export function Item2({
 }
 
 const activeLabelStyleClasses =
-  "group-hover:s-text-action-500 group-active:s-text-action-700";
+  "group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark";
 
 const labelStyleClasses = {
   item: "s-font-normal",
@@ -443,8 +447,8 @@ const labelStyleClasses = {
 };
 
 const labelColorClasses = {
-  item: "s-text-element-600",
-  action: "s-text-element-900",
+  item: "s-text-element-600 dark:s-text-element-500-dark",
+  action: "s-text-element-900 dark:s-text-element-800-dark",
 };
 
 const spacingClasses = {

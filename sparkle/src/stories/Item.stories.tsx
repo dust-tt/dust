@@ -15,7 +15,7 @@ export const ListItemExample = () => (
   <div className="s-grid s-grid-cols-3 s-gap-8">
     <div>
       Entry example:
-      <div className="s-w-70 s-flex s-justify-start s-bg-structure-50 s-p-8">
+      <div className="s-w-70 s-flex s-justify-start s-bg-structure-50 s-p-8 dark:s-bg-structure-50-dark">
         <Item.List className="s-w-full">
           <Item.SectionHeader label="Section Header" />
           <Item.Entry
