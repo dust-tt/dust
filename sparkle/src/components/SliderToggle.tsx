@@ -25,7 +25,7 @@ const cusrsorSizeClasses = {
 
 const stateClasses = {
   idle: "s-bg-structure-200 hover:s-bg-action-400",
-  selected: "s-bg-success-400 hover:s-bg-success-300",
+  selected: "s-bg-success-300 hover:s-bg-success-200",
   disabled:
     "s-bg-structure-300 s-cursor-not-allowed hover:s-bg-structure-300 hover:s-cursor-not-allowed",
   dark: {
