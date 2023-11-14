@@ -139,8 +139,7 @@ export default function AssistantsBuilder({
                 <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
               }
               action={
-                ["helper", "gpt-4"].includes(agent.sId) ? null : agent.sId ===
-                  "dust" ? (
+                ["helper"].includes(agent.sId) ? null : agent.sId === "dust" ? (
                   <Button
                     variant="secondary"
                     icon={Cog6ToothIcon}
