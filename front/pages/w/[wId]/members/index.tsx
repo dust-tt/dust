@@ -519,11 +519,9 @@ function ReinviteUserModal({
       <div className="mt-6 flex flex-col gap-6 px-2">
         <div>
           {" "}
-          {`${user.fullName} (${user.email}) `} was previously revoked from the
-          workspace. You can reinstate them, in which case they will be switched
-          back to a 'user' role and regain access to their historical data on
-          Dust (e.g. conversation history...). This will take effect
-          immediately.
+          <span className="font-semibold">{user.email + " "}</span> was revoked
+          from the workspace. Reinstating them as member will also immediately
+          reinstate their conversation history on Dust.
         </div>
         <div className="flex gap-2">
           <Button
