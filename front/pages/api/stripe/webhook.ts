@@ -75,7 +75,7 @@ async function handler(
           },
         });
       }
-      const stripeSubscription = event.data.object as Stripe.Subscription;
+      let stripeSubscription;
       switch (event.type) {
         case "checkout.session.completed":
           // Payment is successful and the stripe subscription is created.
@@ -283,6 +283,7 @@ async function handler(
             { event },
             "[Stripe Webhook] Received customer.subscription.updated event."
           );
+          stripeSubscription = event.data.object as Stripe.Subscription;
           const previousAttributes = event.data.previous_attributes;
           if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
 
@@ -307,7 +308,7 @@ async function handler(
                 api_error: {
                   type: "internal_server_error",
                   message:
-                    "Stripe Webhook: canceling subscription: Subscription not found.",
+                    "[Stripe Webhook] canceling subscription: Subscription not found.",
                 },
               });
             }
@@ -323,7 +324,7 @@ async function handler(
                 api_error: {
                   type: "internal_server_error",
                   message:
-                    "Stripe Webhook: canceling subscription: Error getting admin emails.",
+                    "[Stripe Webhook] canceling subscription: Error getting admin emails.",
                 },
               });
             }
@@ -336,6 +337,7 @@ async function handler(
           }
           break;
         case "customer.subscription.deleted":
+          stripeSubscription = event.data.object as Stripe.Subscription;
           // Occurs when the subscription is canceled by the user or by us.
           if (stripeSubscription.status === "canceled") {
             // We can end the subscription in our database.
