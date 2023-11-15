@@ -21,7 +21,7 @@ const labelStyleClasses = {
 
 const labelColorClasses = {
   item: "s-text-element-600 dark:s-text-element-500-dark",
-  action: "s-text-element-900 dark:s-text-element-800-dark",
+  action: "s-text-element-800 dark:s-text-element-800-dark",
 };
 
 const spacingClasses = {
