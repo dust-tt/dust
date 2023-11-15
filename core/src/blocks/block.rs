@@ -2,6 +2,7 @@ use crate::blocks::{
     browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, data_source::DataSource,
     end::End, input::Input, llm::LLM, map::Map, r#while::While, reduce::Reduce, search::Search,
 };
+use crate::data_sources::qdrant::QdrantClients;
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
 use crate::stores::store::Store;
@@ -11,7 +12,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use pest::iterators::Pair;
-use qdrant_client::prelude::QdrantClient;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -19,7 +19,6 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
-use std::sync::Arc;
 use tera::{Context, Tera};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -45,7 +44,7 @@ pub struct Env {
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]
-    pub qdrant_client: Arc<QdrantClient>,
+    pub qdrant_clients: QdrantClients,
     #[serde(skip_serializing)]
     pub project: Project,
     #[serde(skip_serializing)]

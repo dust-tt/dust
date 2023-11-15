@@ -27,6 +27,8 @@ use tokio::try_join;
 use tokio_stream::{self as stream};
 use uuid::Uuid;
 
+use super::qdrant::{QdrantClients, QdrantCluster};
+
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -301,8 +303,10 @@ impl DataSource {
     pub async fn setup(
         &self,
         credentials: Credentials,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
     ) -> Result<()> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
+
         let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
         embedder.initialize(credentials).await?;
 
@@ -417,10 +421,12 @@ impl DataSource {
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
+
         store
             .update_data_source_document_parents(
                 &self.project,
@@ -442,11 +448,13 @@ impl DataSource {
     pub async fn update_tags(
         &self,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         document_id: String,
         add_tags: Vec<String>,
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
+
         let new_tags = store
             .update_data_source_document_tags(
                 &self.project,
@@ -506,7 +514,7 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         document_id: &str,
         timestamp: Option<u64>,
         tags: &Vec<String>,
@@ -515,6 +523,8 @@ impl DataSource {
         text: &str,
         preserve_system_tags: bool,
     ) -> Result<Document> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
+
         // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
         // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
         if preserve_system_tags
@@ -936,13 +946,15 @@ impl DataSource {
         &self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         query: &Option<String>,
         top_k: usize,
         filter: Option<SearchFilter>,
         full_text: bool,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
+
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
         }
@@ -1515,9 +1527,10 @@ impl DataSource {
     pub async fn delete_document(
         &self,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         document_id: &str,
     ) -> Result<()> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
@@ -1558,8 +1571,9 @@ impl DataSource {
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
     ) -> Result<()> {
+        let qdrant_client = qdrant_clients.get(QdrantCluster::Main0);
         let store = store.clone();
 
         // Delete collection (vector search db).

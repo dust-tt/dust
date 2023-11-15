@@ -5,6 +5,7 @@ use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
 use crate::providers::openai::OpenAIProvider;
+use crate::providers::textsynth::TextSynthProvider;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -12,8 +13,6 @@ use futures::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
-
-use super::textsynth::TextSynthProvider;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
