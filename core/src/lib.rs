@@ -13,6 +13,7 @@ pub mod app;
 pub mod dataset;
 pub mod data_sources {
     pub mod data_source;
+    pub mod qdrant;
     pub mod splitter;
 }
 pub mod databases {
