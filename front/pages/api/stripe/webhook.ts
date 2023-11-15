@@ -4,7 +4,7 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
-import { front_sequelize } from "@app/lib/databases";
+import { ModelId, front_sequelize } from "@app/lib/databases";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   Membership,
@@ -301,25 +301,26 @@ async function handler(
             const endDate = stripeSubscription.cancel_at
               ? new Date(stripeSubscription.cancel_at * 1000)
               : null;
-            const result = await Subscription.update(
-              {
-                endDate,
-              },
-              { where: { stripeSubscriptionId: stripeSubscription.id } }
-            );
-            if (result[0] !== 1) {
+
+            // get subscription
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+            });
+            if (!subscription) {
               return apiError(req, res, {
                 status_code: 500,
                 api_error: {
                   type: "internal_server_error",
                   message:
-                    "Stripe Webhook: canceling subscription: Error updating subscription in database.",
+                    "Stripe Webhook: canceling subscription: Subscription not found.",
                 },
               });
             }
+            await subscription.update({ endDate });
+
             // then email admins
-            const adminEmails = await getAdminEmailsForSubscription(
-              stripeSubscription.id
+            const adminEmails = await getAdminEmailsForWorkspace(
+              subscription.workspaceId
             );
             if (adminEmails.length === 0) {
               return apiError(req, res, {
@@ -385,7 +386,7 @@ async function handler(
   }
 }
 
-async function getAdminEmailsForSubscription(stripeSubscriptionId: string) {
+async function getAdminEmailsForWorkspace(id: ModelId) {
   const users = await User.findAll({
     attributes: ["email"],
     include: [
@@ -401,16 +402,7 @@ async function getAdminEmailsForSubscription(stripeSubscriptionId: string) {
             model: Workspace,
             required: true,
             attributes: [],
-            include: [
-              {
-                model: Subscription,
-                required: true,
-                where: {
-                  stripeSubscriptionId,
-                },
-                attributes: [],
-              },
-            ],
+            where: { id },
           },
         ],
       },
