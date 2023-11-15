@@ -3,9 +3,10 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import { getMembers } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
-  getAdminEmailsForWorkspace,
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
@@ -300,6 +301,7 @@ async function handler(
             // get subscription
             const subscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [Workspace],
             });
             if (!subscription) {
               return apiError(req, res, {
@@ -312,10 +314,13 @@ async function handler(
               });
             }
             await subscription.update({ endDate });
+            const auth = await Authenticator.internalBuilderForWorkspace(
+              subscription.workspace.sId
+            );
 
             // then email admins
-            const adminEmails = await getAdminEmailsForWorkspace(
-              subscription.workspaceId
+            const adminEmails = (await getMembers(auth, "admin")).map(
+              (u) => u.email
             );
             if (adminEmails.length === 0) {
               return apiError(req, res, {
@@ -329,8 +334,9 @@ async function handler(
             }
             // send email to admins
             for (const adminEmail of adminEmails) {
-              if (endDate) sendCancelSubscriptionEmail(adminEmail, endDate);
-              else sendReactivateSubscriptionEmail(adminEmail);
+              if (endDate)
+                await sendCancelSubscriptionEmail(adminEmail, endDate);
+              else await sendReactivateSubscriptionEmail(adminEmail);
             }
           }
           break;

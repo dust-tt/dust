@@ -4,10 +4,8 @@
  */
 import sgMail from "@sendgrid/mail";
 
-import { Membership, User, Workspace, XP1User } from "@app/lib/models";
+import { XP1User } from "@app/lib/models";
 import logger from "@app/logger/logger";
-
-import { ModelId } from "./databases";
 
 const { SENDGRID_API_KEY, XP1_CHROME_WEB_STORE_URL } = process.env;
 
@@ -15,31 +13,6 @@ if (!SENDGRID_API_KEY) {
   throw new Error("Missing SENDGRID_API_KEY env variable");
 }
 sgMail.setApiKey(SENDGRID_API_KEY);
-
-export async function getAdminEmailsForWorkspace(id: ModelId) {
-  const users = await User.findAll({
-    attributes: ["email"],
-    include: [
-      {
-        model: Membership,
-        required: true,
-        where: {
-          role: "admin",
-        },
-        attributes: [],
-        include: [
-          {
-            model: Workspace,
-            required: true,
-            attributes: [],
-            where: { id },
-          },
-        ],
-      },
-    ],
-  });
-  return users.map((u) => u.email);
-}
 
 async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
