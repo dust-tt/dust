@@ -1,11 +1,11 @@
 use crate::blocks::block::{parse_block, Block, BlockResult, BlockType, Env, InputState, MapState};
+use crate::data_sources::qdrant::QdrantClients;
 use crate::dataset::Dataset;
 use crate::project::Project;
 use crate::run::{BlockExecution, BlockStatus, Credentials, Run, RunConfig, RunType, Status};
 use crate::stores::store::Store;
 use crate::utils;
 use crate::{DustParser, Rule};
-use ::qdrant_client::prelude::QdrantClient;
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -302,7 +302,7 @@ impl App {
         &mut self,
         credentials: Credentials,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: Arc<QdrantClient>,
+        qdrant_clients: QdrantClients,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<()> {
         assert!(self.run.is_some());
@@ -344,7 +344,7 @@ impl App {
             map: None,
             project: project.clone(),
             store: store.clone(),
-            qdrant_client: qdrant_client,
+            qdrant_clients: qdrant_clients,
             credentials: credentials.clone(),
         }]];
 

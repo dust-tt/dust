@@ -13,7 +13,10 @@ use axum::{
 use dust::{
     app,
     blocks::block::BlockType,
-    data_sources::data_source::{self, SearchFilter},
+    data_sources::{
+        data_source::{self, SearchFilter},
+        qdrant::QdrantClients,
+    },
     dataset,
     project::{self},
     providers::provider::{provider, ProviderID},
@@ -24,7 +27,6 @@ use dust::{
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use qdrant_client::prelude::{QdrantClient, QdrantClientConfig};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -59,16 +61,16 @@ struct RunManager {
 
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
-    qdrant_client: Arc<QdrantClient>,
+    qdrant_clients: QdrantClients,
 
     run_manager: Arc<Mutex<RunManager>>,
 }
 
 impl APIState {
-    fn new(store: Box<dyn store::Store + Sync + Send>, qdrant_client: Arc<QdrantClient>) -> Self {
+    fn new(store: Box<dyn store::Store + Sync + Send>, qdrant_clients: QdrantClients) -> Self {
         APIState {
             store,
-            qdrant_client,
+            qdrant_clients,
             run_manager: Arc::new(Mutex::new(RunManager {
                 pending_apps: vec![],
                 pending_runs: vec![],
@@ -113,13 +115,13 @@ impl APIState {
             };
             apps.into_iter().for_each(|mut app| {
                 let store = self.store.clone();
-                let qdrant_client = self.qdrant_client.clone();
+                let qdrant_clients = self.qdrant_clients.clone();
                 let manager = self.run_manager.clone();
 
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     let now = std::time::Instant::now();
-                    match app.0.run(app.1, store, qdrant_client, None).await {
+                    match app.0.run(app.1, store, qdrant_clients, None).await {
                         Ok(()) => {
                             utils::done(&format!(
                                 "Run finished: run=`{}` app_version=`{}` elapsed=`{} ms`",
@@ -747,13 +749,13 @@ async fn runs_create_stream(
             // The run is empty for now, we can clone it for the response.
             // let run = app.run_ref().unwrap().clone();
             let store = state.store.clone();
-            let qdrant_client = state.qdrant_client.clone();
+            let qdrant_clients = state.qdrant_clients.clone();
 
             // Start a task that will run the app in the background.
             tokio::task::spawn(async move {
                 let now = std::time::Instant::now();
                 match app
-                    .run(credentials, store, qdrant_client, Some(tx.clone()))
+                    .run(credentials, store, qdrant_clients, Some(tx.clone()))
                     .await
                 {
                     Ok(()) => {
@@ -1002,7 +1004,7 @@ async fn data_sources_register(
     let project = project::Project::new_from_id(project_id);
     let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
     match ds
-        .setup(payload.credentials, state.qdrant_client.clone())
+        .setup(payload.credentials, state.qdrant_clients.clone())
         .await
     {
         Err(e) => error_response(
@@ -1075,7 +1077,7 @@ async fn data_sources_search(
                 .search(
                     payload.credentials,
                     state.store.clone(),
-                    state.qdrant_client.clone(),
+                    state.qdrant_clients.clone(),
                     &payload.query,
                     payload.top_k,
                     payload.filter,
@@ -1158,7 +1160,7 @@ async fn data_sources_documents_update_tags(
             Some(ds) => match ds
                 .update_tags(
                     state.store.clone(),
-                    state.qdrant_client.clone(),
+                    state.qdrant_clients.clone(),
                     document_id,
                     add_tags_set.into_iter().collect(),
                     remove_tags_set.into_iter().collect(),
@@ -1224,7 +1226,7 @@ async fn data_sources_documents_update_parents(
             Some(ds) => match ds
                 .update_parents(
                     state.store.clone(),
-                    state.qdrant_client.clone(),
+                    state.qdrant_clients.clone(),
                     document_id,
                     payload.parents,
                 )
@@ -1371,7 +1373,7 @@ async fn data_sources_documents_upsert(
                     .upsert(
                         payload.credentials,
                         state.store.clone(),
-                        state.qdrant_client.clone(),
+                        state.qdrant_clients.clone(),
                         &payload.document_id,
                         payload.timestamp,
                         &payload.tags,
@@ -1559,7 +1561,7 @@ async fn data_sources_documents_delete(
             Some(ds) => match ds
                 .delete_document(
                     state.store.clone(),
-                    state.qdrant_client.clone(),
+                    state.qdrant_clients.clone(),
                     &document_id,
                 )
                 .await
@@ -1614,7 +1616,7 @@ async fn data_sources_delete(
                 None,
             ),
             Some(ds) => match ds
-                .delete(state.store.clone(), state.qdrant_client.clone())
+                .delete(state.store.clone(), state.qdrant_clients.clone())
                 .await
             {
                 Err(e) => error_response(
@@ -2104,22 +2106,6 @@ async fn tokenize(
     }
 }
 
-async fn qdrant_client() -> Result<QdrantClient> {
-    match std::env::var("QDRANT_URL") {
-        Ok(url) => {
-            let mut config = QdrantClientConfig::from_url(&url);
-            match std::env::var("QDRANT_API_KEY") {
-                Ok(api_key) => {
-                    config.set_api_key(&api_key);
-                    QdrantClient::new(Some(config))
-                }
-                Err(_) => Err(anyhow!("QDRANT_API_KEY is not set"))?,
-            }
-        }
-        Err(_) => Err(anyhow!("QDRANT_URL is not set"))?,
-    }
-}
-
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -2129,7 +2115,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let _ = rt.block_on(async {
+    let r = rt.block_on(async {
         tracing_subscriber::fmt()
             .with_target(false)
             .compact()
@@ -2144,11 +2130,10 @@ fn main() {
             }
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
-        let qdrant_client = Arc::new(qdrant_client().await?);
 
-        let state = Arc::new(APIState::new(store, qdrant_client));
-
+        let state = Arc::new(APIState::new(store, QdrantClients::build().await?));
         let app = Router::new()
+
         // Index
         .route("/", get(index))
         // Projects
@@ -2330,4 +2315,12 @@ fn main() {
 
         Ok::<(), anyhow::Error>(())
     });
+
+    match r {
+        Ok(_) => (),
+        Err(e) => {
+            utils::error(&format!("Error: {:?}", e));
+            std::process::exit(1);
+        }
+    }
 }
