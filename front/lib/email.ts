@@ -3,9 +3,10 @@
  * content of emails themselves.
  */
 import sgMail from "@sendgrid/mail";
-import logger from "@app/logger/logger";
 
 import { Membership, User, Workspace, XP1User } from "@app/lib/models";
+import logger from "@app/logger/logger";
+
 import { ModelId } from "./databases";
 
 const { SENDGRID_API_KEY, XP1_CHROME_WEB_STORE_URL } = process.env;
