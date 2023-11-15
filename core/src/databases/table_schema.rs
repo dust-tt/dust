@@ -95,23 +95,47 @@ impl TableSchema {
         )
     }
 
-    pub fn get_insert_sql(&self, table_name: &str) -> String {
+    pub fn get_insert_sql(&self, table_name: &str) -> (String, Vec<&String>) {
         let field_names: Vec<&String> = self.0.keys().collect();
-        format!(
-            "INSERT INTO \"{}\" ({}) VALUES ({});",
-            table_name,
-            field_names
-                .iter()
-                .map(|name| format!("\"{}\"", name))
-                .collect::<Vec<String>>()
-                .join(", "),
-            field_names
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("?{}", i + 1))
-                .collect::<Vec<String>>()
-                .join(", ")
+        (
+            format!(
+                "INSERT INTO \"{}\" ({}) VALUES ({});",
+                table_name,
+                field_names
+                    .iter()
+                    .map(|name| format!("\"{}\"", name))
+                    .collect::<Vec<String>>()
+                    .join(", "),
+                field_names
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| format!("?{}", i + 1))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            field_names,
         )
+    }
+
+    pub fn get_insert_params(
+        &self,
+        field_names: &Vec<&String>,
+        row: &DatabaseRow,
+    ) -> Result<Vec<serde_json::Value>> {
+        match row.content().as_object() {
+            None => Err(anyhow!("Row content is not an object")),
+            Some(object) => field_names
+                .iter()
+                .map(|col| match object.get(*col) {
+                    // convert bools to 1/0 for SQLite
+                    Some(Value::Bool(true)) => Ok(1.into()),
+                    Some(Value::Bool(false)) => Ok(0.into()),
+                    Some(x) => Ok(x.clone()),
+                    // if the field is missing, insert null
+                    None => Ok(Value::Null),
+                })
+                .collect::<Result<Vec<_>>>(),
+        }
     }
 }
 
@@ -253,25 +277,25 @@ mod tests {
         let schema = create_test_schema()?;
         let conn = setup_in_memory_db(&schema)?;
 
-        let row_content = json!({
-            "field1": 1,
-            "field2": 2.4,
-            "field3": "text",
-            "field4": true
-        });
+        let row = DatabaseRow::new(
+            utils::now(),
+            None,
+            &json!({
+                "field1": 1,
+                "field2": 2.4,
+                "field3": "text",
+                "field4": true
+            }),
+        );
 
-        let sql = schema.get_insert_sql("test_table");
+        let (sql, field_names) = schema.get_insert_sql("test_table");
+
+        let params_vec = schema.get_insert_params(&field_names, &row)?;
+        println!("{:?}", params_vec);
+
         let mut stmt = conn.prepare(&sql)?;
-        let content_object = row_content.as_object().unwrap();
 
-        stmt.execute(params_from_iter(
-            stmt.column_names()
-                .iter()
-                .map(|n| content_object.get(*n).unwrap().clone())
-                .collect::<Vec<_>>(),
-        ))?;
-
-        // conn.execute(&sql_string, params_from_iter(row_content.as_object().))?;
+        stmt.execute(params_from_iter(params_vec))?;
 
         let mut stmt = conn.prepare("SELECT * FROM test_table;")?;
         let mut rows = stmt.query([])?;
@@ -284,7 +308,7 @@ mod tests {
 
             assert_eq!(field1, 1);
             assert_eq!(field2, 2.4);
-            assert_eq!(field3, "text");
+            assert_eq!(field3, "\"text\"");
             assert_eq!(field4, true);
         } else {
             return Err(anyhow!("No rows found after insert"));
@@ -304,15 +328,13 @@ mod tests {
             // Missing field3 and field4
         });
 
-        let mut insert_stmt = conn.prepare("test_table")?;
-
-        let params = insert_stmt
-            .column_names()
-            .iter()
-            .map(|n| row_content.as_object().unwrap().get(*n).unwrap().clone())
-            .collect::<Vec<_>>();
-
-        insert_stmt.execute(params_from_iter(params))?;
+        let (sql, field_names) = schema.get_insert_sql("test_table");
+        let params = params_from_iter(schema.get_insert_params(
+            &field_names,
+            &DatabaseRow::new(utils::now(), Some("1".to_string()), &row_content),
+        )?);
+        let mut stmt = conn.prepare(&sql)?;
+        stmt.execute(params)?;
 
         let mut stmt = conn.prepare("SELECT * FROM test_table;")?;
         let mut rows = stmt.query([])?;

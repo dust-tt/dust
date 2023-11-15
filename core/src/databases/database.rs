@@ -173,30 +173,18 @@ impl Database {
                         let table_schema = table_schemas
                             .get(table_name)
                             .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
+                        let (sql, field_names) = table_schema.get_insert_sql(table_name);
+                        let mut stmt = conn.prepare(&sql)?;
 
-                        let mut table_insert_sql_stmt =
-                            conn.prepare(table_schema.get_insert_sql(table_name).as_str())?;
-                        let column_names = table_insert_sql_stmt.column_names();
-
-                        let param_values: Vec<Vec<&Value>> = rows
+                        let params: Vec<Vec<Value>> = rows
                             .par_iter()
-                            .map(|r| match r.content.as_object() {
-                                None => Err(anyhow!("Row content is not an object")),
-                                Some(object) => column_names
-                                    .iter()
-                                    .map(|col| match object.get(*col) {
-                                        Some(x) => Ok(x),
-                                        None => Ok(&Value::Null),
-                                    })
-                                    .collect::<Result<Vec<_>>>(),
-                            })
+                            .map(|r| table_schema.get_insert_params(&field_names, r))
                             .collect::<Result<Vec<_>>>()?;
 
-                        param_values
+                        params
                             .iter()
                             .map(|values| {
-                                table_insert_sql_stmt
-                                    .execute(params_from_iter(values))
+                                stmt.execute(params_from_iter(values))
                                     .map_err(|e| anyhow!("Error inserting row: {}", e))
                             })
                             .collect::<Result<Vec<_>>>()?;
