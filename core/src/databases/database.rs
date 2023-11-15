@@ -1,7 +1,8 @@
 use crate::{project::Project, stores::store::Store, utils};
 use anyhow::{anyhow, Result};
+
 use rayon::prelude::*;
-use rusqlite::{Connection, ToSql};
+use rusqlite::{params_from_iter, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -164,6 +165,7 @@ impl Database {
                 ));
 
                 let insert_execute_start = utils::now();
+
                 rows_by_table
                     .iter()
                     .filter(|(_, rows)| !rows.is_empty())
@@ -172,26 +174,34 @@ impl Database {
                             .get(table_name)
                             .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
 
-                        rows.iter()
-                            .map(|row| {
-                                match table_schema
-                                    .get_insert_row_sql_string(table_name, &row.content)
-                                {
-                                    Ok((query, boxed_params)) => {
-                                        let params_refs: Vec<&dyn ToSql> = boxed_params
-                                            .iter()
-                                            .map(|param| &**param as &dyn ToSql)
-                                            .collect();
+                        let mut table_insert_sql_stmt =
+                            conn.prepare(table_schema.get_insert_sql(table_name).as_str())?;
+                        let column_names = table_insert_sql_stmt.column_names();
 
-                                        match conn.execute(&query, params_refs.as_slice()) {
-                                            Ok(res) => Ok(res),
-                                            Err(e) => Err(anyhow!("Error: {}", e)),
-                                        }
-                                    }
-                                    Err(e) => Err(anyhow!("Error: {}", e)),
-                                }
+                        let param_values: Vec<Vec<&Value>> = rows
+                            .par_iter()
+                            .map(|r| match r.content.as_object() {
+                                None => Err(anyhow!("Row content is not an object")),
+                                Some(object) => column_names
+                                    .iter()
+                                    .map(|col| match object.get(*col) {
+                                        Some(x) => Ok(x),
+                                        None => Ok(&Value::Null),
+                                    })
+                                    .collect::<Result<Vec<_>>>(),
                             })
-                            .collect::<Result<Vec<_>>>()
+                            .collect::<Result<Vec<_>>>()?;
+
+                        param_values
+                            .iter()
+                            .map(|values| {
+                                table_insert_sql_stmt
+                                    .execute(params_from_iter(values))
+                                    .map_err(|e| anyhow!("Error inserting row: {}", e))
+                            })
+                            .collect::<Result<Vec<_>>>()?;
+
+                        Ok(())
                     })
                     .collect::<Result<Vec<_>>>()?;
                 utils::done(&format!(

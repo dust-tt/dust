@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 
-use rusqlite::ToSql;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -96,49 +95,23 @@ impl TableSchema {
         )
     }
 
-    pub fn get_insert_row_sql_string(
-        &self,
-        table_name: &str,
-        row_content: &Value,
-    ) -> Result<(String, Vec<Box<dyn ToSql>>)> {
-        let row_content_map = row_content
-            .as_object()
-            .ok_or_else(|| anyhow!("Row content is not an object"))?;
-
+    pub fn get_insert_sql(&self, table_name: &str) -> String {
         let field_names: Vec<&String> = self.0.keys().collect();
-        let fields = field_names
-            .iter()
-            .map(|name| format!("\"{}\"", name))
-            .collect::<Vec<String>>()
-            .join(", ");
-        let placeholders = field_names
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("?{}", i + 1))
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        let params: Vec<Box<dyn ToSql>> = field_names
-            .iter()
-            .map(|name| match row_content_map.get(*name) {
-                Some(Value::Bool(b)) => Ok(Box::new(*b) as Box<dyn ToSql>),
-                Some(Value::Number(n)) => n
-                    .as_i64()
-                    .map(|i| Box::new(i) as Box<dyn ToSql>)
-                    .or_else(|| n.as_f64().map(|f| Box::new(f) as Box<dyn ToSql>))
-                    .ok_or_else(|| anyhow!("Invalid number value for field {}", name)),
-                Some(Value::String(s)) => Ok(Box::new(s.clone()) as Box<dyn ToSql>),
-                Some(Value::Null) | None => Ok(Box::new(rusqlite::types::Null) as Box<dyn ToSql>),
-                Some(_) => Err(anyhow!("Unsupported value type for field {}", name)),
-            })
-            .collect::<Result<Vec<Box<dyn ToSql>>>>()?;
-
-        let insert_row = format!(
+        format!(
             "INSERT INTO \"{}\" ({}) VALUES ({});",
-            table_name, fields, placeholders
-        );
-
-        Ok((insert_row, params))
+            table_name,
+            field_names
+                .iter()
+                .map(|name| format!("\"{}\"", name))
+                .collect::<Vec<String>>()
+                .join(", "),
+            field_names
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 1))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 
@@ -146,7 +119,7 @@ impl TableSchema {
 mod tests {
     use super::*;
     use crate::utils;
-    use rusqlite::Connection;
+    use rusqlite::{params_from_iter, Connection};
     use serde_json::json;
 
     #[test]
@@ -287,15 +260,18 @@ mod tests {
             "field4": true
         });
 
-        let (sql_string, boxed_params) =
-            schema.get_insert_row_sql_string("test_table", &row_content)?;
+        let sql = schema.get_insert_sql("test_table");
+        let mut stmt = conn.prepare(&sql)?;
+        let content_object = row_content.as_object().unwrap();
 
-        let params_refs: Vec<&dyn ToSql> = boxed_params
-            .iter()
-            .map(|param| &**param as &dyn ToSql)
-            .collect();
+        stmt.execute(params_from_iter(
+            stmt.column_names()
+                .iter()
+                .map(|n| content_object.get(*n).unwrap().clone())
+                .collect::<Vec<_>>(),
+        ))?;
 
-        conn.execute(&sql_string, params_refs.as_slice())?;
+        // conn.execute(&sql_string, params_from_iter(row_content.as_object().))?;
 
         let mut stmt = conn.prepare("SELECT * FROM test_table;")?;
         let mut rows = stmt.query([])?;
@@ -328,14 +304,15 @@ mod tests {
             // Missing field3 and field4
         });
 
-        let (sql_string, boxed_params) =
-            schema.get_insert_row_sql_string("test_table", &row_content)?;
-        let params_refs: Vec<&dyn ToSql> = boxed_params
-            .iter()
-            .map(|param| &**param as &dyn ToSql)
-            .collect();
+        let mut insert_stmt = conn.prepare("test_table")?;
 
-        conn.execute(&sql_string, params_refs.as_slice())?;
+        let params = insert_stmt
+            .column_names()
+            .iter()
+            .map(|n| row_content.as_object().unwrap().get(*n).unwrap().clone())
+            .collect::<Vec<_>>();
+
+        insert_stmt.execute(params_from_iter(params))?;
 
         let mut stmt = conn.prepare("SELECT * FROM test_table;")?;
         let mut rows = stmt.query([])?;
