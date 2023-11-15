@@ -30,9 +30,9 @@ module.exports = {
         99: ".99",
       },
       dropShadow: {
-        md: "0 4px 3px rgba(0, 0, 0, 0.25)",
-        lg: "0 10px 15px rgba(0, 0, 0, 0.16)",
-        xl: "0 20px 25px rgba(0, 0, 0, 0.14)",
+        md: "0 4px 3px rgba(0, 0, 0, 0.12)",
+        lg: "0 10px 15px rgba(0, 0, 0, 0.12)",
+        xl: "0 20px 25px rgba(0, 0, 0, 0.12)",
         "2xl": "0 25px 50px rgba(0, 0, 0, 0.12)",
       },
       keyframes: {

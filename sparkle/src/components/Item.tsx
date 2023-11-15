@@ -183,16 +183,22 @@ interface AvatarItemProps {
   description?: string;
   visual?: string | React.ReactNode;
   className?: string;
+  hasAction?: boolean | "hover";
   href?: string;
 }
 
-Item.Avatar = function ({ description, ...otherProps }: AvatarItemProps) {
+Item.Avatar = function ({
+  description,
+  hasAction = false,
+  ...otherProps
+}: AvatarItemProps) {
   return (
     <Item
       {...otherProps}
       style="action"
       spacing={description ? "md" : "sm"}
       description={description}
+      hasAction={hasAction}
     />
   );
 };
