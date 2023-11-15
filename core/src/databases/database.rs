@@ -165,14 +165,15 @@ impl Database {
                 ));
 
                 let insert_execute_start = utils::now();
-
                 rows_by_table
                     .iter()
                     .filter(|(_, rows)| !rows.is_empty())
                     .map(|(table_name, rows)| {
-                        let table_schema = table_schemas
-                            .get(table_name)
-                            .ok_or_else(|| anyhow!("No schema found for table {}", table_name))?;
+                        let table_schema = match table_schemas.get(table_name) {
+                            Some(s) => Ok(s),
+                            None => Err(anyhow!("No schema found for table {}", table_name)),
+                        }?;
+
                         let (sql, field_names) = table_schema.get_insert_sql(table_name);
                         let mut stmt = conn.prepare(&sql)?;
 
@@ -183,13 +184,11 @@ impl Database {
 
                         params
                             .iter()
-                            .map(|values| {
-                                stmt.execute(params_from_iter(values))
-                                    .map_err(|e| anyhow!("Error inserting row: {}", e))
+                            .map(|values| match stmt.execute(params_from_iter(values)) {
+                                Ok(_) => Ok(()),
+                                Err(e) => Err(anyhow!("Error inserting row: {}", e)),
                             })
-                            .collect::<Result<Vec<_>>>()?;
-
-                        Ok(())
+                            .collect::<Result<Vec<_>>>()
                     })
                     .collect::<Result<Vec<_>>>()?;
                 utils::done(&format!(
