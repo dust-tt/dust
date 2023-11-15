@@ -9,7 +9,7 @@ import {
   DropdownMenu,
   Input,
   Modal,
-  PageHeader,
+  Page,
   PencilSquareIcon,
   PlusIcon,
   SlackLogo,
@@ -1273,40 +1273,36 @@ function SlackIntegration({
         title="Slack bot configuration"
         onSave={save}
       >
-        <div className="pt-12">
-          <div className="mx-auto max-w-6xl pb-8">
-            <div className="mb-6">
-              <PageHeader
-                title={"Select Slack channels"}
-                icon={CONNECTOR_CONFIGURATIONS["slack"].logoComponent}
-                description={`Select the channels in which ${assistantName} will answer by default.`}
-              />
-            </div>
-            <DataSourceResourceSelectorTree
-              owner={owner}
-              dataSource={slackDataSource}
-              selectedParentIds={selectedChannelIds}
-              parentsById={{}}
-              onSelectChange={({ resourceId, resourceName }, selected) => {
-                setHasChanged(true);
+        <Page>
+          <Page.Header
+            title={"Select Slack channels"}
+            icon={CONNECTOR_CONFIGURATIONS["slack"].logoComponent}
+            description={`Select the channels in which ${assistantName} will answer by default.`}
+          />
+          <DataSourceResourceSelectorTree
+            owner={owner}
+            dataSource={slackDataSource}
+            selectedParentIds={selectedChannelIds}
+            parentsById={{}}
+            onSelectChange={({ resourceId, resourceName }, selected) => {
+              setHasChanged(true);
 
-                const newSelectedChannelTitleById = {
-                  ...selectedChannelTitleById,
-                };
-                if (selected) {
-                  newSelectedChannelTitleById[resourceId] = resourceName;
-                } else {
-                  delete newSelectedChannelTitleById[resourceId];
-                }
+              const newSelectedChannelTitleById = {
+                ...selectedChannelTitleById,
+              };
+              if (selected) {
+                newSelectedChannelTitleById[resourceId] = resourceName;
+              } else {
+                delete newSelectedChannelTitleById[resourceId];
+              }
 
-                setSelectedChannelTitleById(newSelectedChannelTitleById);
-              }}
-              expandable={false}
-              fullySelected={false}
-              filterPermission="none"
-            />
-          </div>
-        </div>
+              setSelectedChannelTitleById(newSelectedChannelTitleById);
+            }}
+            expandable={false}
+            fullySelected={false}
+            filterPermission="none"
+          />
+        </Page>
       </Modal>
 
       <div className="text-2xl font-bold text-element-900">

@@ -3,9 +3,8 @@ import {
   CloudArrowDownIcon,
   ContextItem,
   LogoSquareColorLogo,
-  PageHeader,
+  Page,
   PlusIcon,
-  SectionHeader,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -163,8 +162,8 @@ export default function EditDustAssistant({
         />
       }
     >
-      <div className="pt-8" />
-      <PageHeader
+      <div className="h-12" />
+      <Page.Header
         title="Dust Assistant"
         icon={LogoSquareColorLogo}
         description="The Dust assistant is a general purpose assistant that has context on your company data."
@@ -173,7 +172,7 @@ export default function EditDustAssistant({
         <div className="flex w-full flex-col gap-4">
           {!!dataSources.length && (
             <>
-              <SectionHeader
+              <Page.SectionHeader
                 title="Availability"
                 description="The Dust assistant requres at least one data source to be enabled."
               />
@@ -205,7 +204,7 @@ export default function EditDustAssistant({
           {dataSources.length &&
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
-              <SectionHeader
+              <Page.SectionHeader
                 title="Data Sources and Connections"
                 description="Configure which connections and data sources will be searched by the Dust assistant."
               />
@@ -254,7 +253,7 @@ export default function EditDustAssistant({
           ) : dustAgentConfiguration?.status ===
             "disabled_missing_datasource" ? (
             <>
-              <SectionHeader
+              <Page.SectionHeader
                 title="This workspace doesn't currently have any data sources."
                 description="Add connections or data sources to enable the Dust assistant."
                 action={{

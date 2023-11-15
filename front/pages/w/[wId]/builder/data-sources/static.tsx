@@ -125,7 +125,7 @@ export default function DataSourcesView({
               action={
                 !readOnly
                   ? {
-                      label: "Add a new Data Source",
+                      label: "Add a new data source",
                       variant: "primary",
                       icon: PlusIcon,
                       onClick: async () => {
@@ -158,8 +158,8 @@ export default function DataSourcesView({
           >
             <Button
               disabled={readOnly}
-              size="md"
-              label="Add a new Data Source"
+              size="sm"
+              label="Add a new data source"
               variant="primary"
               icon={PlusIcon}
               onClick={async () => {

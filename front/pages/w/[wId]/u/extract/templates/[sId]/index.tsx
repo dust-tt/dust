@@ -5,9 +5,8 @@ import {
   ClipboardCheckIcon,
   IconButton,
   LinkStrokeIcon,
-  PageHeader,
+  Page,
   PencilSquareIcon,
-  SectionHeader,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { Dialog, Transition } from "@headlessui/react";
@@ -137,7 +136,7 @@ export default function AppExtractEventsReadData({
       topNavigationCurrent="settings"
       subNavigation={subNavigationAdmin({ owner, current: "extract" })}
     >
-      <PageHeader
+      <Page.Header
         title="Extract"
         icon={ArrowUpOnSquareIcon}
         description="Extract is your go-to tool for capturing structured data
@@ -145,7 +144,7 @@ export default function AppExtractEventsReadData({
       />
 
       <div className="pb-10 text-sm font-light">
-        <SectionHeader
+        <Page.SectionHeader
           title={`Extracted data for [[${schema.marker}]]`}
           description="Review the extracted data for this marker. You can accept or reject the data, and consult the source document."
         />

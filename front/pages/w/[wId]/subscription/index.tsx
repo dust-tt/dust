@@ -189,7 +189,7 @@ export default function Subscription({
         <Page.Header
           title="Subscription"
           icon={ShapesIcon}
-          description="Choose the plan that works for you."
+          description="Manage and discover Dust plans."
         />
         {!planInvitation ? (
           <Page.Vertical align="stretch" gap="md">
@@ -266,6 +266,7 @@ export default function Subscription({
           </Page.Vertical>
         )}
       </Page.Vertical>
+      <div className="h-12" />
     </AppLayout>
   );
 }

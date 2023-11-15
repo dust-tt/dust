@@ -3,7 +3,7 @@ import {
   CloudArrowLeftRightIcon,
   Item,
   Modal,
-  PageHeader,
+  Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
@@ -85,7 +85,7 @@ export default function AssistantBuilderDataSourceModal({
         (Object.keys(selectedResources).length > 0 || isSelectAll)
       }
       variant="full-screen"
-      title="Add Data Sources"
+      title="Add data sources"
     >
       <div className="w-full pt-12">
         {!selectedDataSource ? (
@@ -142,21 +142,18 @@ function PickDataSource({
 }) {
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
-      <div className="flex flex-col">
-        <div className="mb-6">
-          <PageHeader
-            title="Select Data Sources in:"
-            icon={CloudArrowLeftRightIcon}
-          />
-        </div>
-
+      <Page>
+        <Page.Header
+          title="Select Data Sources in:"
+          icon={CloudArrowLeftRightIcon}
+        />
         {dataSources
           .sort(
             (a, b) =>
               (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
           )
           .map((ds) => (
-            <Item
+            <Item.Navigation
               label={
                 ds.connectorProvider
                   ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name
@@ -168,13 +165,12 @@ function PickDataSource({
                   : CloudArrowDownIcon
               }
               key={ds.name}
-              size="md"
               onClick={() => {
                 onPick(ds);
               }}
             />
           ))}
-      </div>
+      </Page>
     </Transition>
   );
 }
@@ -255,72 +251,70 @@ function DataSourceResourceSelector({
 
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
-      <div className="mb-6">
-        <div>
-          <PageHeader
-            title={`Select Data Sources in ${
-              CONNECTOR_CONFIGURATIONS[
-                dataSource?.connectorProvider as ConnectorProvider
-              ]?.name
-            }`}
-            icon={
-              CONNECTOR_CONFIGURATIONS[
-                dataSource?.connectorProvider as ConnectorProvider
-              ]?.logoComponent
-            }
-            description="Select the files and folders that will be used by the assistant as a source for its answers."
-          />
-        </div>
-      </div>
-      {dataSource && (
-        <div className="flex flex-row gap-32">
-          <div className="flex-1">
-            <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
-              Select all:{" "}
-              <SliderToggle
-                selected={isSelectAll}
-                onClick={toggleSelectAll}
-                size="md"
+      <Page>
+        <Page.Header
+          title={`Select Data Sources in ${
+            CONNECTOR_CONFIGURATIONS[
+              dataSource?.connectorProvider as ConnectorProvider
+            ]?.name
+          }`}
+          icon={
+            CONNECTOR_CONFIGURATIONS[
+              dataSource?.connectorProvider as ConnectorProvider
+            ]?.logoComponent
+          }
+          description="Select the files and folders that will be used by the assistant as a source for its answers."
+        />
+        {dataSource && (
+          <div className="flex flex-row gap-32">
+            <div className="flex-1">
+              <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
+                Select all:{" "}
+                <SliderToggle
+                  selected={isSelectAll}
+                  onClick={toggleSelectAll}
+                  size="md"
+                />
+              </div>
+              <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
+                <div>
+                  Select from available{" "}
+                  {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
+                    dataSource.connectorProvider as ConnectorProvider
+                  ]?.plural ?? "resources"}
+                  :
+                </div>
+              </div>
+              <DataSourceResourceSelectorTree
+                owner={owner}
+                dataSource={dataSource}
+                expandable={
+                  CONNECTOR_CONFIGURATIONS[
+                    dataSource.connectorProvider as ConnectorProvider
+                  ]?.isNested
+                }
+                selectedParentIds={new Set(Object.keys(selectedResources))}
+                parentsById={parentsById}
+                onSelectChange={(
+                  { resourceId, resourceName, parents },
+                  selected
+                ) => {
+                  const newParentsById = { ...parentsById };
+                  if (selected) {
+                    newParentsById[resourceId] = new Set(parents);
+                  } else {
+                    delete newParentsById[resourceId];
+                  }
+
+                  setParentsById(newParentsById);
+                  onSelectChange({ resourceId, resourceName }, selected);
+                }}
+                fullySelected={isSelectAll}
               />
             </div>
-            <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
-              <div>
-                Select from available{" "}
-                {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
-                  dataSource.connectorProvider as ConnectorProvider
-                ]?.plural ?? "resources"}
-                :
-              </div>
-            </div>
-            <DataSourceResourceSelectorTree
-              owner={owner}
-              dataSource={dataSource}
-              expandable={
-                CONNECTOR_CONFIGURATIONS[
-                  dataSource.connectorProvider as ConnectorProvider
-                ]?.isNested
-              }
-              selectedParentIds={new Set(Object.keys(selectedResources))}
-              parentsById={parentsById}
-              onSelectChange={(
-                { resourceId, resourceName, parents },
-                selected
-              ) => {
-                const newParentsById = { ...parentsById };
-                if (selected) {
-                  newParentsById[resourceId] = new Set(parents);
-                } else {
-                  delete newParentsById[resourceId];
-                }
-
-                setParentsById(newParentsById);
-                onSelectChange({ resourceId, resourceName }, selected);
-              }}
-              fullySelected={isSelectAll}
-            />
           </div>
-        </div>
-      )}
+        )}
+      </Page>
     </Transition>
   );
 }
