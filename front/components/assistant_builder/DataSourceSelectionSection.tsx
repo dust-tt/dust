@@ -38,7 +38,7 @@ export default function DataSourceSelectionSection({
         {Object.keys(dataSourceConfigurations).length > 0 && (
           <Button
             labelVisible={true}
-            label="Add Data Sources"
+            label="Add data sources"
             variant="primary"
             size="sm"
             icon={PlusIcon}
@@ -56,9 +56,9 @@ export default function DataSourceSelectionSection({
         >
           <Button
             labelVisible={true}
-            label="Add Data Sources"
+            label="Add data sources"
             variant="primary"
-            size="md"
+            size="sm"
             icon={PlusIcon}
             onClick={openDataSourceModal}
             disabled={!canAddDataSource}
