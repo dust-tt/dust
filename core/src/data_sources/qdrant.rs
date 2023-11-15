@@ -28,6 +28,12 @@ pub struct QdrantClients {
     clients: Arc<Mutex<HashMap<QdrantCluster, Arc<QdrantClient>>>>,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct QdrantDataSourceConfig {
+    cluster: QdrantCluster,
+    shadow_write_cluster: Option<QdrantCluster>,
+}
+
 impl QdrantClients {
     async fn qdrant_client(cluster: QdrantCluster) -> Result<QdrantClient> {
         let url_var = format!("{}_URL", env_var_prefix_for_cluster(cluster));
@@ -64,11 +70,39 @@ impl QdrantClients {
         })
     }
 
-    pub fn get(&self, cluster: QdrantCluster) -> Arc<QdrantClient> {
+    pub fn client(&self, cluster: QdrantCluster) -> Arc<QdrantClient> {
         let clients = self.clients.lock();
         match clients.get(&cluster) {
             Some(client) => client.clone(),
             None => panic!("No qdrant_client for cluster {:?}", cluster),
+        }
+    }
+
+    pub fn has_shadow_write(&self, config: &Option<QdrantDataSourceConfig>) -> bool {
+        match config {
+            Some(c) => c.shadow_write_cluster.is_some(),
+            None => false,
+        }
+    }
+
+    // Returns the client for the cluster specified in the config or the main-0 cluster if no config
+    // is provided.
+    pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> Arc<QdrantClient> {
+        match config {
+            Some(config) => self.client(config.cluster),
+            None => self.client(QdrantCluster::Main0),
+        }
+    }
+
+    // Returns the main client along with the shadow_write_client if specified.
+    pub fn write_clients(&self, config: &Option<QdrantDataSourceConfig>) -> Vec<Arc<QdrantClient>> {
+        let main_client = self.main_client(config);
+        match config {
+            Some(c) => match c.shadow_write_cluster {
+                Some(cluster) => vec![main_client, self.client(cluster)],
+                None => vec![main_client],
+            },
+            None => vec![main_client],
         }
     }
 }

@@ -96,13 +96,17 @@ async function handler(
           true
         );
         if (connDeleteRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Error deleting connector: ${connDeleteRes.error.error.message}`,
-            },
-          });
+          // If we get a not found we proceed with the deletion of the data source. This will enable
+          // us to retry deletion of the data source if it fails at the Core level.
+          if (connDeleteRes.error.error.type !== "connector_not_found") {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error deleting connector: ${connDeleteRes.error.error.message}`,
+              },
+            });
+          }
         }
       }
 
