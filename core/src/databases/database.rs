@@ -85,29 +85,26 @@ impl Database {
                 .into_iter()
                 .collect::<Vec<_>>();
 
+                let schema = rows
+                    .par_iter()
+                    .map(|(table, r)| {
+                        Ok((
+                            table.table_id().to_string(),
+                            DatabaseSchemaTable::new(table.clone(), TableSchema::from_rows(&r)?),
+                        ))
+                    })
+                    .collect::<Result<HashMap<_, _>>>()?;
+
                 let returned_rows = match return_rows {
                     true => Some(
-                        rows.clone()
-                            .into_iter()
+                        rows.into_iter()
                             .map(|(table, rows)| (table.table_id().to_string(), rows))
                             .collect::<HashMap<_, _>>(),
                     ),
                     false => None,
                 };
 
-                Ok((
-                    DatabaseSchema(
-                        rows.into_par_iter()
-                            .map(|(table, r)| {
-                                Ok((
-                                    table.table_id().to_string(),
-                                    DatabaseSchemaTable::new(table, TableSchema::from_rows(&r)?),
-                                ))
-                            })
-                            .collect::<Result<HashMap<_, _>>>()?,
-                    ),
-                    returned_rows,
-                ))
+                Ok((DatabaseSchema(schema), returned_rows))
             }
         }
     }
