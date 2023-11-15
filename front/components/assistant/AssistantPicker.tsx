@@ -48,7 +48,7 @@ export function AssistantPicker({
       </div>
       <DropdownMenu.Items origin="auto" width={240}>
         {assistants.length > 7 && (
-          <div className="border-b border-structure-100 p-2">
+          <div className="border-b border-structure-100 px-2 pb-2 pt-1">
             <Searchbar
               placeholder="Search"
               name="input"
@@ -78,7 +78,7 @@ export function AssistantPicker({
         </div>
         {(owner.role === "admin" || owner.role === "builder") &&
           showBuilderButtons && (
-            <div className="flex flex-row justify-between border-t border-structure-100 px-3 py-2">
+            <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
               <Link href={`/w/${owner.sId}/builder/assistants/new`}>
                 <Button
                   label="Create"

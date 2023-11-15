@@ -85,7 +85,7 @@ export default function AssistantBuilderDataSourceModal({
         (Object.keys(selectedResources).length > 0 || isSelectAll)
       }
       variant="full-screen"
-      title="Add Data Sources"
+      title="Add data sources"
     >
       <div className="w-full pt-12">
         {!selectedDataSource ? (
