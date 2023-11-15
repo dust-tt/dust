@@ -22,7 +22,7 @@ export function Icon({
 }: IconProps) {
   return IconComponent ? (
     <IconComponent
-      className={classNames(className, "shrink-0", IconSizes[size])}
+      className={classNames(className, "s-shrink-0", IconSizes[size])}
     />
   ) : null;
 }

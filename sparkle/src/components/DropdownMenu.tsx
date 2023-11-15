@@ -195,30 +195,34 @@ DropdownMenu.Button = function ({
 
 interface DropdownItemProps {
   label: string;
+  description?: string;
   href?: string;
   disabled?: boolean;
   visual?: string | React.ReactNode;
+  icon?: ComponentType;
   onClick?: () => void;
 }
 
 DropdownMenu.Item = function ({
   label,
+  description,
   href,
   disabled,
   visual,
+  icon,
   onClick,
 }: DropdownItemProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
     <Menu.Item disabled={disabled} as="div">
-      <StandardItem
+      <StandardItem.Dropdown
         className="s-w-full s-px-4"
-        variant="dropdown"
-        size="md"
         href={href}
         onClick={onClick}
         label={label}
         visual={visual}
+        icon={icon}
+        description={description}
       />
     </Menu.Item>
   );
@@ -300,7 +304,7 @@ DropdownMenu.Items = function ({
       <Menu.Items
         className={`s-absolute s-z-10 ${getOriginClass(
           origin
-        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
+        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-py-1 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
         style={styleInsert(origin)}
       >
         <StandardItem.List>{children}</StandardItem.List>

@@ -12,6 +12,8 @@ type AvatarProps = {
   busy?: boolean;
   isRounded?: boolean;
   backgroundColor?: string;
+  className?: string;
+  disabled?: boolean;
 };
 
 const colors = [
@@ -88,6 +90,8 @@ export function Avatar({
   busy = false,
   isRounded = false,
   backgroundColor,
+  disabled = false,
+  className = "",
 }: AvatarProps) {
   const getColor = (name: string) => {
     if (/\+/.test(name)) {
@@ -114,7 +118,7 @@ export function Avatar({
 
   const clickableStyles =
     (onClick || clickable) && !busy
-      ? "s-cursor-pointer hover:s-filter hover:s-brightness-110 active:s-brightness-90 s-transition s-duration-200 s-ease-out"
+      ? "s-cursor-pointer hover:s-filter group-hover:s-filter  group-hover:s-brightness-110 hover:s-brightness-110 group-active:s-brightness-90 active:s-brightness-90 s-transition s-duration-200 s-ease-out"
       : "";
 
   const busyStyles = busy ? "s-animate-breathing s-cursor-default" : "";
@@ -133,7 +137,13 @@ export function Avatar({
   );
 
   return (
-    <div className={avatarClass}>
+    <div
+      className={classNames(
+        avatarClass,
+        disabled ? "s-opacity-50" : "",
+        className
+      )}
+    >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visual === "string" ? (
         <img
