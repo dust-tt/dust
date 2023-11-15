@@ -5,10 +5,9 @@ import { promisify } from "util";
 
 import { front_sequelize } from "@app/lib/databases";
 import {
-  cancelMessage,
   getAdminEmailsForWorkspace,
-  reactivateMessage,
-  sendEmail,
+  sendCancelSubscriptionEmail,
+  sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
@@ -329,11 +328,10 @@ async function handler(
               });
             }
             // send email to admins
-            for (const adminEmail of adminEmails)
-              await sendEmail(
-                adminEmail,
-                endDate ? cancelMessage(endDate) : reactivateMessage
-              );
+            for (const adminEmail of adminEmails) {
+              if (endDate) sendCancelSubscriptionEmail(adminEmail, endDate);
+              else sendReactivateSubscriptionEmail(adminEmail);
+            }
           }
           break;
         case "customer.subscription.deleted":
