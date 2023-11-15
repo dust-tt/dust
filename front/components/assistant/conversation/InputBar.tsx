@@ -149,7 +149,7 @@ function AgentListImpl(
           left: position.left,
         }}
       >
-        <div className="flex flex-col gap-y-4 px-3 py-2">
+        <div className="flex flex-col gap-y-1 px-3 py-2">
           {filtered.map((c, i) => (
             <div
               className="flex w-full px-1"
