@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
+import {PostContentFragmentRequestBodySchema} from "stypes";
 
 import {
   getConversation,
@@ -12,18 +13,7 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ContentFragmentType } from "@app/types/assistant/conversation";
 
-export const PostContentFragmentRequestBodySchema = t.type({
-  title: t.string,
-  content: t.string,
-  url: t.union([t.string, t.null]),
-  contentType: t.union([
-    t.literal("slack_thread_content"),
-    t.literal("file_attachment"),
-  ]),
-  context: t.type({
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
-});
+
 
 export type PostContentFragmentRequestBody = t.TypeOf<
   typeof PostContentFragmentRequestBodySchema

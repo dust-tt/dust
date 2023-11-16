@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
+import { PostContentFragmentRequestBodySchema } from "stypes";
 
 import {
   createConversation,
@@ -13,7 +14,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PostContentFragmentRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/content_fragment";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import {
   ContentFragmentType,
@@ -137,7 +137,7 @@ async function handler(
       if (contentFragment) {
         const cf = await postNewContentFragment(auth, {
           conversation,
-          title: contentFragment.title,
+          title: contentFragment.name,
           content: contentFragment.content,
           url: contentFragment.url,
           contentType: contentFragment.contentType,
