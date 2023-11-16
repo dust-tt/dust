@@ -137,7 +137,7 @@ async function handler(
       if (contentFragment) {
         const cf = await postNewContentFragment(auth, {
           conversation,
-          title: contentFragment.name,
+          title: contentFragment.title,
           content: contentFragment.content,
           url: contentFragment.url,
           contentType: contentFragment.contentType,
