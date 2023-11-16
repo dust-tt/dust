@@ -173,6 +173,18 @@ If you're looking for additional features such as access to GPT4 and Claude with
 
 You can upgrade your account by subscribing to our Pro plan inside `Admin` > `Subscription` > Pro Plan.
 
+### How to pay as a business?
+
+If you are a company seeking to make a payment via Stripe on the Dust platform, please follow the steps outlined below:
+
+1. Upon reaching the checkout page, you will find an option that states "I’m purchasing as a business". Please select this option.
+2. You will then be asked to provide your company's name and TVA number. It is essential that these details are accurate to ensure a seamless transaction process.
+3. Once you have entered your company details, you may proceed by clicking on the 'Pay and Subscribe' button to complete your purchase.
+
+### How to manage your subscription?
+
+If you wish to manage your subscription, you may do so by navigating to your `Subscription` page. Here, you will find an option to `Visit Dust's dashboard on Stripe`. By selecting this option, you will be able to cancel your plan, update your payment or billing information, or download your receipts as needed.
+
 ---
 
 # Assistants
