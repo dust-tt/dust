@@ -30,7 +30,7 @@ rand = "0.8"
 uuid = { version = "1.1", features = ["v4"] }
 parking_lot = "0.12"
 axum = "0.5"
-rusqlite = { version = "0.29", features = ["bundled", "serde_json"] }
+rusqlite = { version = "0.29", features = ["bundled"] }
 tokio-postgres = "0.7"
 bb8 = "0.8"
 bb8-postgres = "0.8"
