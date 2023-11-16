@@ -21,6 +21,16 @@ import {
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import {
+  cleanupIntercomConnector,
+  createIntercomConnector,
+  fullResyncIntercomConnector,
+  resumeIntercomConnector,
+  retrieveIntercomConnectorPermissions,
+  retrieveIntercomResourcesTitles,
+  stopIntercomConnector,
+  updateIntercomConnector,
+} from "@connectors/connectors/intercom";
+import {
   BotEnabledGetter,
   BotToggler,
   ConnectorBatchResourceTitleRetriever,
@@ -73,6 +83,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   notion: createNotionConnector,
   github: createGithubConnector,
   google_drive: createGoogleDriveConnector,
+  intercom: createIntercomConnector,
 };
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
@@ -83,6 +94,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   notion: updateNotionConnector,
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
+  intercom: updateIntercomConnector,
 };
 
 export const STOP_CONNECTOR_BY_TYPE: Record<
@@ -99,6 +111,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
     logger.info({ connectorId }, `Stopping Google Drive connector is a no-op.`);
     return new Ok(connectorId);
   },
+  intercom: stopIntercomConnector,
 };
 
 export const DELETE_CONNECTOR_BY_TYPE: Record<
@@ -109,6 +122,7 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
   google_drive: cleanupGoogleDriveConnector,
+  intercom: cleanupIntercomConnector,
 };
 
 export const RESUME_CONNECTOR_BY_TYPE: Record<
@@ -124,6 +138,7 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   google_drive: async (connectorId: string) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
+  intercom: resumeIntercomConnector,
 };
 
 const toggleBotNotImplemented = async (
@@ -139,6 +154,7 @@ export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
   notion: toggleBotNotImplemented,
   github: toggleBotNotImplemented,
   google_drive: toggleBotNotImplemented,
+  intercom: toggleBotNotImplemented,
 };
 
 const getBotEnabledNotImplemented = async (
@@ -159,6 +175,7 @@ export const GET_BOT_ENABLED_BY_TYPE: Record<
   notion: getBotEnabledNotImplemented,
   github: getBotEnabledNotImplemented,
   google_drive: getBotEnabledNotImplemented,
+  intercom: getBotEnabledNotImplemented,
 };
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
@@ -167,6 +184,7 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
+    intercom: fullResyncIntercomConnector,
   };
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
@@ -177,6 +195,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   github: retrieveGithubConnectorPermissions,
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
+  intercom: retrieveIntercomConnectorPermissions,
 };
 
 export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
@@ -195,6 +214,13 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
     );
   },
   google_drive: setGoogleDriveConnectorPermissions,
+  intercom: async () => {
+    return new Err(
+      new Error(
+        `Setting Intercom connector permissions is not implemented yet.`
+      )
+    );
+  },
 };
 
 export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
@@ -205,6 +231,7 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   notion: retrieveNotionResourcesTitles,
   github: retrieveGithubReposTitles,
   google_drive: retrieveGoogleDriveObjectsTitles,
+  intercom: retrieveIntercomResourcesTitles,
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
@@ -215,6 +242,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
   github: async () => new Ok([]), // Github is flat,
+  intercom: async () => new Ok([]), // Intercom is not truly flat as we can put articles & collections inside collections but will handle this later
 };
 
 export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
@@ -231,6 +259,9 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   google_drive: setGoogleDriveConfig,
+  intercom: async () => {
+    throw new Error("Not implemented");
+  },
 };
 
 export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
@@ -247,4 +278,7 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   google_drive: getGoogleDriveConfig,
+  intercom: async () => {
+    throw new Error("Not implemented");
+  },
 };
