@@ -1,4 +1,4 @@
-import React, { ComponentType, ReactNode } from "react";
+import React, { ReactNode } from "react";
 
 import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
