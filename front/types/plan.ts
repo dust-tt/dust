@@ -8,6 +8,7 @@ export type ManageDataSourcesLimitsType = {
   isNotionAllowed: boolean;
   isGoogleDriveAllowed: boolean;
   isGithubAllowed: boolean;
+  isIntercomAllowed: boolean;
 };
 export type LimitsType = {
   assistant: {

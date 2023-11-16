@@ -38,6 +38,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
+  NANGO_INTERCOM_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   GITHUB_APP_URL = "",
 } = process.env;
@@ -70,6 +71,7 @@ export const getServerSideProps: GetServerSideProps<{
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
+    intercomConnectorId: string;
   };
   githubAppUrl: string;
 }> = async (context) => {
@@ -221,6 +223,7 @@ export const getServerSideProps: GetServerSideProps<{
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
+        intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
     },
@@ -258,6 +261,7 @@ export default function DataSourcesView({
           slack: nangoConfig.slackConnectorId,
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
+          intercom: nangoConfig.intercomConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
@@ -403,6 +407,10 @@ export default function DataSourcesView({
                             case "google_drive":
                               isDataSourceAllowedInPlan =
                                 planConnectionsLimits.isGoogleDriveAllowed;
+                              break;
+                            case "intercom":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isIntercomAllowed;
                               break;
                             default:
                               ((p: never) => {

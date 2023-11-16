@@ -20,6 +20,7 @@ const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
   google_drive: "Google Drive folders",
   slack: "Slack channels",
   github: "GitHub repositories",
+  intercom: "Intercom Help Center articles",
 };
 
 const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
@@ -30,6 +31,7 @@ const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
   notion: null,
   google_drive: null,
   github: null,
+  intercom: null,
 };
 
 const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
@@ -40,6 +42,7 @@ const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
   notion: null,
   google_drive: null,
   github: null,
+  intercom: null,
 };
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([

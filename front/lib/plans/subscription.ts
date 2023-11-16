@@ -82,6 +82,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
           isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
           isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
           isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
+          isIntercomAllowed: freeTestPlan.isManagedIntercomAllowed,
         },
         dataSources: {
           count: freeTestPlan.maxDataSourcesCount,
@@ -178,6 +179,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
             isNotionAllowed: plan.isManagedNotionAllowed,
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
             isGithubAllowed: plan.isManagedGithubAllowed,
+            isIntercomAllowed: plan.isManagedIntercomAllowed,
           },
           dataSources: {
             count: plan.maxDataSourcesCount,
@@ -332,6 +334,7 @@ export const getCheckoutUrlForUpgrade = async (
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
+          isIntercomAllowed: plan.isManagedIntercomAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

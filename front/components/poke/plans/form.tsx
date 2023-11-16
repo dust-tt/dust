@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   GithubLogo,
   Input,
+  IntercomLogo,
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
@@ -21,6 +22,7 @@ export type EditingPlanType = {
   isNotionAllowed: boolean;
   isGoogleDriveAllowed: boolean;
   isGithubAllowed: boolean;
+  isIntercomAllowed: boolean;
   maxMessages: string | number;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
@@ -40,6 +42,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isNotionAllowed: plan.limits.connections.isNotionAllowed,
     isGoogleDriveAllowed: plan.limits.connections.isGoogleDriveAllowed,
     isGithubAllowed: plan.limits.connections.isGithubAllowed,
+    isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
@@ -64,6 +67,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isNotionAllowed: editingPlan.isNotionAllowed,
         isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
         isGithubAllowed: editingPlan.isGithubAllowed,
+        isIntercomAllowed: editingPlan.isIntercomAllowed,
       },
       dataSources: {
         count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
@@ -92,6 +96,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isNotionAllowed: false,
   isGoogleDriveAllowed: false,
   isGithubAllowed: false,
+  isIntercomAllowed: false,
   maxMessages: "",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
@@ -198,6 +203,12 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Github",
     IconComponent: () => <GithubLogo className="h-4 w-4" />,
+  },
+  isIntercomAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Intercom",
+    IconComponent: () => <IntercomLogo className="h-4 w-4" />,
   },
   maxMessages: {
     type: "number",

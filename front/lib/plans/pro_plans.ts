@@ -40,6 +40,7 @@ if (isDevelopment()) {
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
+    isManagedIntercomAllowed: true,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,

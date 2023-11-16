@@ -49,6 +49,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
+  NANGO_INTERCOM_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   GITHUB_APP_URL = "",
 } = process.env;
@@ -67,6 +68,7 @@ export const getServerSideProps: GetServerSideProps<{
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
+    intercomConnectorId: string;
   };
   githubAppUrl: string;
   gaTrackingId: string;
@@ -125,6 +127,7 @@ export const getServerSideProps: GetServerSideProps<{
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
+        intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -434,6 +437,7 @@ const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
   google_drive: "Google Drive folders and files Dust has access to.",
   slack: "Slack channels synchronized with Dust:",
   github: "GitHub repositories Dust has access to.",
+  intercom: "Intercom Help Centers synchronized with Dust:",
 };
 
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
@@ -444,6 +448,8 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
   google_drive:
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
+  intercom:
+    "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
 };
 
 function ManagedDataSourceView({
@@ -466,6 +472,7 @@ function ManagedDataSourceView({
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
+    intercomConnectorId: string;
   };
   githubAppUrl: string;
   plan: PlanType;
@@ -518,6 +525,7 @@ function ManagedDataSourceView({
         slack: nangoConfig.slackConnectorId,
         notion: nangoConfig.notionConnectorId,
         google_drive: nangoConfig.googleDriveConnectorId,
+        intercom: nangoConfig.intercomConnectorId,
       }[provider];
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
@@ -670,6 +678,7 @@ function ManagedDataSourceView({
                       );
                     case "notion":
                     case "github":
+                    case "intercom":
                       return (
                         <Button
                           label="Add / Remove data, manage permissions"
