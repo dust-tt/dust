@@ -119,7 +119,7 @@ export type CoreAPIDatabase = {
   name: string;
 };
 
-type CoreAPIDatabaseTable = {
+export type CoreAPIDatabaseTable = {
   created: number;
   database_id: string;
   table_id: string;
@@ -127,7 +127,7 @@ type CoreAPIDatabaseTable = {
   description: string;
 };
 
-type CoreAPIDatabaseRow = {
+export type CoreAPIDatabaseRow = {
   created: number;
   table_id: string;
   row_id: string;
@@ -905,7 +905,7 @@ export const CoreAPI = {
     tableId: string;
     name: string;
     description: string;
-  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
+  }): Promise<CoreAPIResponse<{ table: CoreAPIDatabaseTable }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
       {
