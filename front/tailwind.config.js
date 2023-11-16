@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
+const plugin = require("tailwindcss/plugin"); // eslint-disable-line @typescript-eslint/no-var-requires
 
 module.exports = {
   theme: {
@@ -173,7 +174,35 @@ module.exports = {
       backgroundColor: ["dark"],
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("tailwind-scrollbar-hide"),
+    plugin(function ({ addUtilities }) {
+      const newUtilities = {
+        ".box-shadow": {
+          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        },
+        ".box-shadow-md": {
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        },
+        ".box-shadow-lg": {
+          boxShadow:
+            "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+        },
+        ".box-shadow-xl": {
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        },
+        ".box-shadow-2xl": {
+          boxShadow: "0 50px 100px -20px rgba(0, 0, 0, 0.25)",
+        },
+        ".box-shadow-none": {
+          boxShadow: "none",
+        },
+      };
+      addUtilities(newUtilities);
+    }),
+  ],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
