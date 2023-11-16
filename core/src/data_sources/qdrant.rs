@@ -78,13 +78,6 @@ impl QdrantClients {
         }
     }
 
-    pub fn has_shadow_write(&self, config: &Option<QdrantDataSourceConfig>) -> bool {
-        match config {
-            Some(c) => c.shadow_write_cluster.is_some(),
-            None => false,
-        }
-    }
-
     // Returns the client for the cluster specified in the config or the main-0 cluster if no config
     // is provided.
     pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> Arc<QdrantClient> {
@@ -94,15 +87,27 @@ impl QdrantClients {
         }
     }
 
-    // Returns the main client along with the shadow_write_client if specified.
-    pub fn write_clients(&self, config: &Option<QdrantDataSourceConfig>) -> Vec<Arc<QdrantClient>> {
-        let main_client = self.main_client(config);
+    pub fn shadow_write_cluster(
+        &self,
+        config: &Option<QdrantDataSourceConfig>,
+    ) -> Option<QdrantCluster> {
+        match config {
+            Some(c) => c.shadow_write_cluster,
+            None => None,
+        }
+    }
+
+    // Returns the shadow write client if the config specifies a shadow write cluster.
+    pub fn shadow_write_client(
+        &self,
+        config: &Option<QdrantDataSourceConfig>,
+    ) -> Option<Arc<QdrantClient>> {
         match config {
             Some(c) => match c.shadow_write_cluster {
-                Some(cluster) => vec![main_client, self.client(cluster)],
-                None => vec![main_client],
+                Some(cluster) => Some(self.client(cluster)),
+                None => None,
             },
-            None => vec![main_client],
+            None => None,
         }
     }
 }

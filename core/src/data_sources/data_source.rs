@@ -8,7 +8,6 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
-use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::qdrant::vectors::VectorsOptions;
@@ -478,6 +477,8 @@ impl DataSource {
         field_name: &str,
         field_value: impl Into<Value>,
     ) -> Result<()> {
+        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
 
@@ -496,20 +497,45 @@ impl DataSource {
             })),
         };
 
-        try_join_all(
-            qdrant_clients
-                .write_clients(&self.config.qdrant_config)
-                .iter()
-                .map(|qdrant_client| {
-                    qdrant_client.set_payload(
+        match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
+            Some(qdrant_client) => {
+                match qdrant_client
+                    .set_payload(
                         self.qdrant_collection().to_string(),
                         &points_selector,
                         payload.clone(),
                         None,
                     )
-                }),
-        )
-        .await?;
+                    .await
+                {
+                    Ok(_) => {
+                        utils::done(&format!(
+                            "[SHADOW_WRITE_SUCCESS] Update payload: cluster={:?} collection={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                        ));
+                    }
+                    Err(e) => {
+                        utils::error(&format!(
+                            "[SHADOW_WRITE_FAIL] Update payload: cluster={:?} collection={} error={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                            e
+                        ));
+                    }
+                }
+            }
+            None => (),
+        }
+
+        qdrant_client
+            .set_payload(
+                self.qdrant_collection().to_string(),
+                &points_selector,
+                payload,
+                None,
+            )
+            .await?;
 
         Ok(())
     }
@@ -528,7 +554,6 @@ impl DataSource {
         preserve_system_tags: bool,
     ) -> Result<Document> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let qdrant_write_clients = qdrant_clients.write_clients(&self.config.qdrant_config);
 
         // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
         // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
@@ -852,10 +877,36 @@ impl DataSource {
             .into()],
         }
         .into();
-        try_join_all(qdrant_write_clients.iter().map(|qdrant_client| {
-            qdrant_client.delete_points(self.qdrant_collection(), &filter, None)
-        }))
-        .await?;
+
+        match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
+            Some(qdrant_client) => {
+                match qdrant_client
+                    .delete_points(self.qdrant_collection(), &filter, None)
+                    .await
+                {
+                    Ok(_) => {
+                        utils::done(&format!(
+                            "[SHADOW_WRITE_SUCCESS] Delete points: cluster={:?} collection={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                        ));
+                    }
+                    Err(e) => {
+                        utils::error(&format!(
+                            "[SHADOW_WRITE_FAIL] Delete points: cluster={:?} collection={} error={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                            e
+                        ));
+                    }
+                }
+            }
+            None => (),
+        }
+
+        qdrant_client
+            .delete_points(self.qdrant_collection(), &filter, None)
+            .await?;
 
         utils::done(&format!(
             "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
@@ -919,10 +970,35 @@ impl DataSource {
                 let now = utils::now();
                 let chunk_len = chunk.len();
 
-                try_join_all(qdrant_write_clients.iter().map(|qdrant_client| {
-                    qdrant_client.upsert_points(self.qdrant_collection(), chunk.clone(), None)
-                }))
-                .await?;
+                match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
+                    Some(qdrant_client) => {
+                        match qdrant_client
+                            .upsert_points(self.qdrant_collection(), chunk.clone(), None)
+                            .await
+                        {
+                            Ok(_) => {
+                                utils::done(&format!(
+                                    "[SHADOW_WRITE_SUCCESS] Upsert points: cluster={:?} collection={}",
+                                    qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                                    self.qdrant_collection(),
+                                ));
+                            }
+                            Err(e) => {
+                                utils::error(&format!(
+                                    "[SHADOW_WRITE_FAIL] Upsert points: cluster={:?} collection={} error={}",
+                                    qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                                    self.qdrant_collection(),
+                                    e
+                                ));
+                            }
+                        }
+                    }
+                    None => (),
+                }
+
+                qdrant_client
+                    .upsert_points(self.qdrant_collection(), chunk, None)
+                    .await?;
 
                 utils::done(&format!(
                     "Success upserting chunk in qdrant: points_count={} duration={}ms",
@@ -1535,7 +1611,7 @@ impl DataSource {
         qdrant_clients: QdrantClients,
         document_id: &str,
     ) -> Result<()> {
-        let qdrant_write_clients = qdrant_clients.write_clients(&self.config.qdrant_config);
+        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
@@ -1558,10 +1634,36 @@ impl DataSource {
             .into()],
         }
         .into();
-        try_join_all(qdrant_write_clients.iter().map(|qdrant_client| {
-            qdrant_client.delete_points(self.qdrant_collection(), &filter, None)
-        }))
-        .await?;
+
+        match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
+            Some(qdrant_client) => {
+                match qdrant_client
+                    .delete_points(self.qdrant_collection(), &filter, None)
+                    .await
+                {
+                    Ok(_) => {
+                        utils::done(&format!(
+                            "[SHADOW_WRITE_SUCCESS] Delete points: cluster={:?} collection={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                        ));
+                    }
+                    Err(e) => {
+                        utils::error(&format!(
+                            "[SHADOW_WRITE_FAIL] Delete points: cluster={:?} collection={} error={}",
+                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            self.qdrant_collection(),
+                            e
+                        ));
+                    }
+                }
+            }
+            None => (),
+        }
+
+        qdrant_client
+            .delete_points(self.qdrant_collection(), &filter, None)
+            .await?;
 
         // Delete document (SQL)
         store
@@ -1576,7 +1678,10 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
     ) -> Result<()> {
-        if qdrant_clients.has_shadow_write(&self.config.qdrant_config) {
+        if qdrant_clients
+            .shadow_write_cluster(&self.config.qdrant_config)
+            .is_some()
+        {
             Err(anyhow!(
                 "Cannot delete data source with a shadow_write_cluster set"
             ))?;
