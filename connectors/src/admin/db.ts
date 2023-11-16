@@ -25,7 +25,6 @@ import {
 import {
   IntercomArticle,
   IntercomCollection,
-  IntercomConnectorState,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 
@@ -49,7 +48,6 @@ async function main(): Promise<void> {
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
   await GoogleDriveConfig.sync({ alter: true });
-  await IntercomConnectorState.sync({ alter: true });
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
 

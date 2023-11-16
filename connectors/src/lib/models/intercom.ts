@@ -9,50 +9,6 @@ import {
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 
-export class IntercomConnectorState extends Model<
-  InferAttributes<IntercomConnectorState>,
-  InferCreationAttributes<IntercomConnectorState>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare lastGarbageCollectionFinishTime?: Date;
-
-  declare connectorId: ForeignKey<Connector["id"]>;
-}
-
-IntercomConnectorState.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    lastGarbageCollectionFinishTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    sequelize: sequelize_conn,
-    modelName: "intercom_connector_states",
-    indexes: [{ fields: ["connectorId"], unique: true }],
-  }
-);
-
-Connector.hasOne(IntercomConnectorState);
-
 export class IntercomCollection extends Model<
   InferAttributes<IntercomCollection>,
   InferCreationAttributes<IntercomCollection>
@@ -61,7 +17,7 @@ export class IntercomCollection extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare workspaceId: string;
+  declare intercomWorkspaceId: string;
   declare collectionId: string;
 
   declare helpCenterId: string | null;
@@ -90,7 +46,7 @@ IntercomCollection.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    workspaceId: {
+    intercomWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -118,7 +74,10 @@ IntercomCollection.init(
   {
     sequelize: sequelize_conn,
     indexes: [
-      { fields: ["workspaceId", "collectionId", "connectorId"], unique: true },
+      {
+        fields: ["intercomWorkspaceId", "collectionId", "connectorId"],
+        unique: true,
+      },
       { fields: ["connectorId"] },
       { fields: ["collectionId"] },
     ],
@@ -135,7 +94,7 @@ export class IntercomArticle extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare workspaceId: string;
+  declare intercomWorkspaceId: string;
   declare articleId: string;
   declare authorId: string;
 
@@ -164,7 +123,7 @@ IntercomArticle.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    workspaceId: {
+    intercomWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -192,7 +151,10 @@ IntercomArticle.init(
   {
     sequelize: sequelize_conn,
     indexes: [
-      { fields: ["workspaceId", "articleId", "connectorId"], unique: true },
+      {
+        fields: ["intercomWorkspaceId", "articleId", "connectorId"],
+        unique: true,
+      },
       { fields: ["connectorId"] },
       { fields: ["articleId"] },
     ],

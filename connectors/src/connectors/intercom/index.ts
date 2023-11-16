@@ -1,7 +1,6 @@
 import { validateAccessToken } from "@connectors/connectors/intercom/lib/intercom_api";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
-import { IntercomConnectorState } from "@connectors/lib/models/intercom";
+import { Connector, ModelId } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
@@ -36,26 +35,13 @@ export async function createIntercomConnector(
   }
 
   try {
-    const connector = await sequelize_conn.transaction(async (t) => {
-      const connector = await Connector.create(
-        {
-          type: "intercom",
-          connectionId: nangoConnectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-          defaultNewResourcePermission: "read_write",
-        },
-        { transaction: t }
-      );
-      await IntercomConnectorState.create(
-        {
-          connectorId: connector.id,
-        },
-        { transaction: t }
-      );
-
-      return connector;
+    const connector = await Connector.create({
+      type: "intercom",
+      connectionId: nangoConnectionId,
+      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      defaultNewResourcePermission: "read_write",
     });
     // @todo Daph lauch workflow await launchIntercomSyncWorkflow(connector.id);
     return new Ok(connector.id.toString());

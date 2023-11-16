@@ -1,8 +1,8 @@
 import { Client } from "intercom-client";
 
-export async function validateAccessToken(notionAccessToken: string) {
+export async function validateAccessToken(intercomAccessToken: string) {
   const intercomClient = new Client({
-    tokenAuth: { token: notionAccessToken },
+    tokenAuth: { token: intercomAccessToken },
   });
   try {
     await intercomClient.admins.list(); // trying a simple request
