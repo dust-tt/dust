@@ -194,13 +194,11 @@ impl Database {
                                 Ok((
                                     column_name.clone(),
                                     match row.get(i) {
-                                        Err(e) => {
-                                            return Err(anyhow!(
-                                                "Failed to retrieve value for column {}: {}",
-                                                column_name,
-                                                e
-                                            ))
-                                        }
+                                        Err(e) => Err(anyhow!(
+                                            "Failed to retrieve value for column {}: {}",
+                                            column_name,
+                                            e
+                                        )),
                                         Ok(v) => match v {
                                             rusqlite::types::Value::Integer(i) => {
                                                 Ok(serde_json::Value::Number(i.into()))
