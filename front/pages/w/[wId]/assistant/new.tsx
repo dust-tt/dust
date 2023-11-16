@@ -125,8 +125,6 @@ export default function AssistantNew({
               contentType: "file_attachment",
               url: null,
               context: {
-                timezone:
-                  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
                 profilePictureUrl: user.image,
               },
             }

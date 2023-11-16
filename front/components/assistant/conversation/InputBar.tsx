@@ -451,7 +451,7 @@ export function AssistantInputBar({
                 position="above"
               >
                 <IconButton
-                  className="s-element-700 block"
+                  className="element-700 block"
                   variant={"tertiary"}
                   icon={AttachmentStrokeIcon}
                   size="md"

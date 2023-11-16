@@ -13,6 +13,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PostContentFragmentRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/content_fragment";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import {
   ContentFragmentType,
@@ -20,8 +21,6 @@ import {
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { PostContentFragmentRequestBodySchema } from "./[cId]/content_fragment";
 
 export const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

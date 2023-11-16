@@ -21,7 +21,6 @@ export const PostContentFragmentRequestBodySchema = t.type({
     t.literal("file_attachment"),
   ]),
   context: t.type({
-    timezone: t.string,
     profilePictureUrl: t.union([t.string, t.null]),
   }),
 });
