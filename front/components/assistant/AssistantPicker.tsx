@@ -1,6 +1,7 @@
 import {
   Button,
   DropdownMenu,
+  Item,
   PlusIcon,
   RobotIcon,
   Searchbar,
@@ -52,6 +53,7 @@ export function AssistantPicker({
             <Searchbar
               placeholder="Search"
               name="input"
+              size="xs"
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
@@ -65,10 +67,12 @@ export function AssistantPicker({
         )}
         <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
           {searchedAssistants.map((c) => (
-            <DropdownMenu.Item
+            <Item.Avatar
               key={`assistant-picker-${c.sId}`}
               label={"@" + c.name}
               visual={c.pictureUrl}
+              hasAction={false}
+              className="px-3"
               onClick={() => {
                 onItemClick(c);
                 setSearchText("");
