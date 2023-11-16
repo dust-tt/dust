@@ -11,7 +11,7 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseTablesResponseBody = {
+type ListDatabaseTablesResponseBody = {
   tables: CoreAPIDatabaseTable[];
 };
 
@@ -27,7 +27,7 @@ type UpsertDatabaseTableResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetDatabaseTablesResponseBody | UpsertDatabaseTableResponseBody
+    ListDatabaseTablesResponseBody | UpsertDatabaseTableResponseBody
   >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
@@ -87,16 +87,19 @@ async function handler(
         databaseId,
       });
       if (tablesRes.isErr()) {
-        logger.error({
-          dataSourcename: dataSource.name,
-          workspaceId: owner.id,
-          error: tablesRes.error,
-        });
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: tablesRes.error,
+          },
+          "Failed to get database tables."
+        );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database.",
+            message: "Failed to get database tables.",
           },
         });
       }

@@ -134,6 +134,14 @@ export type CoreAPIDatabaseRow = {
   content: Record<string, unknown>;
 };
 
+export type CoreAPIDatabaseSchema = Record<
+  string,
+  {
+    table: CoreAPIDatabaseTable;
+    schema: Record<string, "int" | "float" | "text" | "bool">;
+  }
+>;
+
 export const CoreAPI = {
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await fetch(`${CORE_API}/projects`, {
@@ -1061,13 +1069,7 @@ export const CoreAPI = {
     databaseId: string;
   }): Promise<
     CoreAPIResponse<{
-      schema: Record<
-        string,
-        {
-          table: CoreAPIDatabaseTable;
-          schema: Record<string, "int" | "float" | "text" | "bool">;
-        }
-      >;
+      schema: CoreAPIDatabaseSchema;
     }>
   > {
     const response = await fetch(
@@ -1092,8 +1094,8 @@ export const CoreAPI = {
     query: string;
   }): Promise<
     CoreAPIResponse<{
-      schema: Record<string, "int" | "float" | "text" | "bool">;
-      rows: Record<string, unknown>[];
+      schema: CoreAPIDatabaseSchema;
+      rows: CoreAPIDatabaseRow[];
     }>
   > {
     const response = await fetch(
