@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use super::table_schema::TableSchema;
+use super::table_schema::{SqlParam, TableSchema};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -174,7 +174,7 @@ impl Database {
                         let (sql, field_names) = table_schema.get_insert_sql(table_name);
                         let mut stmt = conn.prepare(&sql)?;
 
-                        let params: Vec<Vec<Value>> = rows
+                        let params: Vec<Vec<SqlParam>> = rows
                             .par_iter()
                             .map(|r| table_schema.get_insert_params(&field_names, r))
                             .collect::<Result<Vec<_>>>()?;

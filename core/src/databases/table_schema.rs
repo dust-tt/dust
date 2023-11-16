@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 
+use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -14,6 +15,30 @@ pub enum TableSchemaFieldType {
     Float,
     Text,
     Bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum SqlParam {
+    Int(i64),
+    Float(f64),
+    Text(String),
+    Bool(bool),
+    Null,
+}
+
+impl ToSql for SqlParam {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        match self {
+            SqlParam::Int(i) => i.to_sql(),
+            SqlParam::Float(f) => f.to_sql(),
+            SqlParam::Text(s) => Ok(ToSqlOutput::Owned(format!("\"{}\"", s).into())),
+            SqlParam::Bool(b) => match b {
+                true => 1.to_sql(),
+                false => 0.to_sql(),
+            },
+            SqlParam::Null => Ok(ToSqlOutput::Owned(rusqlite::types::Value::Null)),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -121,18 +146,25 @@ impl TableSchema {
         &self,
         field_names: &Vec<&String>,
         row: &DatabaseRow,
-    ) -> Result<Vec<serde_json::Value>> {
+    ) -> Result<Vec<SqlParam>> {
         match row.content().as_object() {
             None => Err(anyhow!("Row content is not an object")),
             Some(object) => field_names
                 .iter()
                 .map(|col| match object.get(*col) {
-                    // convert bools to 1/0 for SQLite
-                    Some(Value::Bool(true)) => Ok(1.into()),
-                    Some(Value::Bool(false)) => Ok(0.into()),
-                    Some(x) => Ok(x.clone()),
-                    // if the field is missing, insert null
-                    None => Ok(Value::Null),
+                    Some(Value::Bool(b)) => Ok(SqlParam::Bool(*b)),
+                    Some(Value::Number(x)) => {
+                        if x.is_i64() {
+                            Ok(SqlParam::Int(x.as_i64().unwrap()))
+                        } else if x.is_f64() {
+                            Ok(SqlParam::Float(x.as_f64().unwrap()))
+                        } else {
+                            Err(anyhow!("Number is not an i64 or f64"))
+                        }
+                    }
+                    Some(Value::String(s)) => Ok(SqlParam::Text(s.clone())),
+                    None | Some(Value::Null) => Ok(SqlParam::Null),
+                    _ => Err(anyhow!("Cannot convert value {:?} to SqlParam", object)),
                 })
                 .collect::<Result<Vec<_>>>(),
         }
