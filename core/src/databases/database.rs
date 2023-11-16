@@ -140,10 +140,19 @@ impl Database {
                         let mut stmt = conn.prepare(&sql)?;
 
                         rows.par_iter()
-                            .map(|r| table_schema.schema.get_insert_params(&field_names, r))
+                            .map(
+                                |r| match table_schema.schema.get_insert_params(&field_names, r) {
+                                    Ok(params) => Ok(params_from_iter(params)),
+                                    Err(e) => Err(anyhow!(
+                                        "Error getting insert params for row {}: {}",
+                                        r.row_id().unwrap_or_else(|| String::from("")),
+                                        e
+                                    )),
+                                },
+                            )
                             .collect::<Result<Vec<_>>>()?
-                            .iter()
-                            .map(|values| match stmt.execute(params_from_iter(values)) {
+                            .into_iter()
+                            .map(|params| match stmt.execute(params) {
                                 Ok(_) => Ok(()),
                                 Err(e) => Err(anyhow!("Error inserting row: {}", e)),
                             })
