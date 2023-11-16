@@ -124,7 +124,16 @@ export function isAgentMessageType(
 /**
  * Content Fragments
  */
-export type ContentFragmentContentType = "slack_thread_content";
+export type ContentFragmentContextType = {
+  username: string | null;
+  fullName: string | null;
+  email: string | null;
+  profilePictureUrl: string | null;
+};
+
+export type ContentFragmentContentType =
+  | "slack_thread_content"
+  | "file_attachment";
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -138,6 +147,7 @@ export type ContentFragmentType = {
   content: string;
   url: string | null;
   contentType: ContentFragmentContentType;
+  context: ContentFragmentContextType;
 };
 
 export function isContentFragmentType(

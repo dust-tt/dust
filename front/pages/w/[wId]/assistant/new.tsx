@@ -33,6 +33,7 @@ import type {
   PostConversationsResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations";
 import {
+  ContentFragmentContentType,
   ConversationType,
   MentionType,
 } from "@app/types/assistant/conversation";
@@ -99,7 +100,14 @@ export default function AssistantNew({
     : activeAgents.slice(0, 4);
 
   const { submit: handleSubmit } = useSubmitFunction(
-    async (input: string, mentions: MentionType[]) => {
+    async (
+      input: string,
+      mentions: MentionType[],
+      contentFragment?: {
+        title: string;
+        content: string;
+      }
+    ) => {
       const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
         title: null,
         visibility: "unlisted",
@@ -111,6 +119,16 @@ export default function AssistantNew({
           },
           mentions,
         },
+        contentFragment: contentFragment
+          ? {
+              ...contentFragment,
+              contentType: "file_attachment",
+              url: null,
+              context: {
+                profilePictureUrl: user.image,
+              },
+            }
+          : undefined,
       };
 
       // Create new conversation and post the initial message at the same time.
@@ -379,7 +397,15 @@ function StartHelperConversationButton({
   size = "xs",
 }: {
   content: string;
-  handleSubmit: (input: string, mentions: MentionType[]) => Promise<void>;
+  handleSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragment?: {
+      title: string;
+      content: string;
+      contentType: ContentFragmentContentType;
+    }
+  ) => Promise<void>;
   variant?: "primary" | "secondary";
   size?: "sm" | "xs";
 }) {

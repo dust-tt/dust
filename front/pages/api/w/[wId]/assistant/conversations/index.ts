@@ -5,14 +5,18 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   createConversation,
+  getConversation,
   getUserConversations,
+  postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PostContentFragmentRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/content_fragment";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import {
+  ContentFragmentType,
   ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
@@ -26,6 +30,7 @@ export const PostConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
   ]),
   message: t.union([PostMessagesRequestBodySchema, t.null]),
+  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
 });
 
 export type GetConversationsResponseBody = {
@@ -34,6 +39,7 @@ export type GetConversationsResponseBody = {
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
+  contentFragment?: ContentFragmentType;
 };
 
 async function handler(
@@ -117,14 +123,41 @@ async function handler(
         });
       }
 
-      const { title, visibility, message } = bodyValidation.right;
+      const { title, visibility, message, contentFragment } =
+        bodyValidation.right;
 
-      const conversation = await createConversation(auth, {
+      let conversation = await createConversation(auth, {
         title,
         visibility,
       });
 
+      let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
+
+      if (contentFragment) {
+        const cf = await postNewContentFragment(auth, {
+          conversation,
+          title: contentFragment.title,
+          content: contentFragment.content,
+          url: contentFragment.url,
+          contentType: contentFragment.contentType,
+          context: {
+            username: user.username,
+            fullName: user.fullName,
+            email: user.email,
+            profilePictureUrl: contentFragment.context.profilePictureUrl,
+          },
+        });
+
+        newContentFragment = cf;
+        const updatedConversation = await getConversation(
+          auth,
+          conversation.sId
+        );
+        if (updatedConversation) {
+          conversation = updatedConversation;
+        }
+      }
 
       if (message) {
         /* If a message was provided we do await for the message to be created
@@ -150,7 +183,26 @@ async function handler(
         newMessage = messageRes.value;
       }
 
-      res.status(200).json({ conversation, message: newMessage ?? undefined });
+      if (newContentFragment || newMessage) {
+        // If we created a user message or a content fragment (or both) we retrieve the
+        // conversation. If a user message was posted, we know that the agent messages have been
+        // created as well, so pulling the conversation again will allow to have an up to date view
+        // of the conversation with agent messages included so that the user of the API can start
+        // streaming events from these agent messages directly.
+        const updated = await getConversation(auth, conversation.sId);
+
+        if (!updated) {
+          throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
+        }
+
+        conversation = updated;
+      }
+
+      res.status(200).json({
+        conversation,
+        message: newMessage ?? undefined,
+        contentFragment: newContentFragment ?? undefined,
+      });
       return;
 
     default:

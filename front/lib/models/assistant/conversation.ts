@@ -351,6 +351,13 @@ export class ContentFragment extends Model<
   declare content: string;
   declare url: string | null;
   declare contentType: ContentFragmentContentType;
+
+  declare userContextUsername: string | null;
+  declare userContextFullName: string | null;
+  declare userContextEmail: string | null;
+  declare userContextProfilePictureUrl: string | null;
+
+  declare userId: ForeignKey<User["id"]> | null;
 }
 
 ContentFragment.init(
@@ -386,12 +393,35 @@ ContentFragment.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    userContextProfilePictureUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextUsername: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextFullName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "content_fragment",
     sequelize: front_sequelize,
   }
 );
+
+User.hasMany(ContentFragment, {
+  foreignKey: { name: "userId", allowNull: true }, // null = ContentFragment is not associated with a user
+});
+ContentFragment.belongsTo(User, {
+  foreignKey: { name: "userId", allowNull: true },
+});
 
 export class Message extends Model<
   InferAttributes<Message>,

@@ -213,6 +213,7 @@ async function botAnswerMessage(
     slackChannel,
     lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    slackChatBotMessage,
     connector
   );
 
@@ -618,8 +619,9 @@ async function makeContentFragment(
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
+  slackChatBotMessage: SlackChatBotMessage,
   connector: Connector
-) {
+): Promise<Result<PostContentFragmentRequestBody | null, Error>> {
   let allMessages: MessageElement[] = [];
 
   let next_cursor = undefined;
@@ -710,5 +712,6 @@ async function makeContentFragment(
     content: text,
     url: url,
     contentType: "slack_thread_content",
-  } as PostContentFragmentRequestBody);
+    context: null,
+  });
 }

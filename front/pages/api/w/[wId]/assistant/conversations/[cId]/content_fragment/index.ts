@@ -7,14 +7,10 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { ContentFragmentType } from "@app/types/assistant/conversation";
-
-export type PostContentFragmentsResponseBody = {
-  contentFragment: ContentFragmentType;
-};
 
 export const PostContentFragmentRequestBodySchema = t.type({
   title: t.string,
@@ -24,15 +20,9 @@ export const PostContentFragmentRequestBodySchema = t.type({
     t.literal("slack_thread_content"),
     t.literal("file_attachment"),
   ]),
-  context: t.union([
-    t.type({
-      profilePictureUrl: t.union([t.string, t.null]),
-      fullName: t.union([t.string, t.null]),
-      email: t.union([t.string, t.null]),
-      username: t.union([t.string, t.null]),
-    }),
-    t.null,
-  ]),
+  context: t.type({
+    profilePictureUrl: t.union([t.string, t.null]),
+  }),
 });
 
 export type PostContentFragmentRequestBody = t.TypeOf<
@@ -41,29 +31,50 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostContentFragmentsResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    { contentFragment: ContentFragmentType } | ReturnedAPIErrorType
+  >
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
-    keyRes.value,
+  const session = await getSession(req, res);
+  const auth = await Authenticator.fromSession(
+    session,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
+  const owner = auth.workspace();
+  if (!owner) {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
       },
     });
   }
 
-  const conversation = await getConversation(auth, req.query.cId as string);
+  const user = auth.user();
+  if (!user || !auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_user_not_found",
+        message: "Could not find the user of the current session.",
+      },
+    });
+  }
+
+  if (!(typeof req.query.cId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `cId` (string) is required.",
+      },
+    });
+  }
+
+  const conversationId = req.query.cId;
+  const conversation = await getConversation(auth, conversationId);
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -92,31 +103,19 @@ async function handler(
         });
       }
 
-      const { content, title, url, contentType, context } =
-        bodyValidation.right;
-
-      if (content.length === 0 || content.length > 64 * 1024) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The content must be a non-empty string of less than 64kb.",
-          },
-        });
-      }
+      const contentFragmentPayload = bodyValidation.right;
 
       const contentFragment = await postNewContentFragment(auth, {
         conversation,
-        title,
-        content,
-        url,
-        contentType,
+        title: contentFragmentPayload.title,
+        content: contentFragmentPayload.content,
+        url: contentFragmentPayload.url,
+        contentType: contentFragmentPayload.contentType,
         context: {
-          username: context?.username || null,
-          fullName: context?.fullName || null,
-          email: context?.email || null,
-          profilePictureUrl: context?.profilePictureUrl || null,
+          username: user.username,
+          fullName: user.fullName,
+          email: user.email,
+          profilePictureUrl: contentFragmentPayload.context.profilePictureUrl,
         },
       });
 
