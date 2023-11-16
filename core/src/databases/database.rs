@@ -101,12 +101,6 @@ impl Database {
                     utils::now() - time_get_rows_start
                 ));
 
-                let table_schemas: HashMap<String, TableSchema> = schema
-                    .iter()
-                    .filter(|(_, table)| !table.schema.is_empty())
-                    .map(|(table_name, table)| (table_name.clone(), table.schema.clone()))
-                    .collect();
-
                 let generate_create_table_sql_start = utils::now();
                 let create_tables_sql: String = schema
                     .iter()
@@ -137,16 +131,16 @@ impl Database {
                     .iter()
                     .filter(|(_, rows)| !rows.is_empty())
                     .map(|(table_name, rows)| {
-                        let table_schema = match table_schemas.get(table_name) {
+                        let table_schema = match schema.get(table_name) {
                             Some(s) => Ok(s),
                             None => Err(anyhow!("No schema found for table {}", table_name)),
                         }?;
 
-                        let (sql, field_names) = table_schema.get_insert_sql(table_name);
+                        let (sql, field_names) = table_schema.schema.get_insert_sql(table_name);
                         let mut stmt = conn.prepare(&sql)?;
 
                         rows.par_iter()
-                            .map(|r| table_schema.get_insert_params(&field_names, r))
+                            .map(|r| table_schema.schema.get_insert_params(&field_names, r))
                             .collect::<Result<Vec<_>>>()?
                             .iter()
                             .map(|values| match stmt.execute(params_from_iter(values)) {
@@ -410,5 +404,8 @@ pub struct DatabaseSchema(HashMap<String, DatabaseSchemaTable>);
 impl DatabaseSchema {
     pub fn iter(&self) -> std::collections::hash_map::Iter<String, DatabaseSchemaTable> {
         self.0.iter()
+    }
+    pub fn get(&self, table_name: &str) -> Option<&DatabaseSchemaTable> {
+        self.0.get(table_name)
     }
 }
