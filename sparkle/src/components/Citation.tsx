@@ -1,10 +1,10 @@
-import React, { ReactNode } from "react";
+import React, { ComponentType, ReactNode } from "react";
 
 import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
-import { ExternalLinkIcon, Icon, IconButton, Tooltip } from "..";
+import { Avatar, ExternalLinkIcon, Icon, IconButton, Tooltip } from "..";
 
 interface CitationProps {
   type?: "slack" | "google_drive" | "github" | "notion" | "document";
@@ -13,6 +13,8 @@ interface CitationProps {
   index?: ReactNode;
   isBlinking?: boolean;
   href?: string;
+  action?: React.ReactNode;
+  avatarUrl?: string;
 }
 
 const typeIcons = {
@@ -29,8 +31,13 @@ export function Citation({
   type = "document",
   description,
   href,
+  action,
   isBlinking = false,
+  avatarUrl,
 }: CitationProps) {
+  if (action && href) {
+    throw new Error("Citation cannot have both action and href");
+  }
   return (
     <div
       className={classNames(
@@ -39,18 +46,24 @@ export function Citation({
       )}
     >
       <div className="s-flex s-items-center s-gap-2">
+        {avatarUrl && <Avatar visual={avatarUrl} size="xs" />}
         {index && (
           <div className="s-flex s-h-5 s-w-5 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800">
             {index}
           </div>
         )}
-        <Icon visual={typeIcons[type]} size="sm" />
+        <Icon
+          visual={typeIcons[type]}
+          size="sm"
+          className="s-text-element-700"
+        />
         <div className="s-flex-grow s-text-xs" />
         {href && (
           <a target="_blank" rel="noopener noreferrer" href={href}>
             <IconButton icon={ExternalLinkIcon} size="sm" variant="secondary" />
           </a>
         )}
+        {action && action}
       </div>
       <Tooltip label={title} position="above">
         <div className="s-line-clamp-1 s-text-sm s-font-bold s-text-element-900">
