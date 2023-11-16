@@ -9,6 +9,7 @@ export { default as Google } from "./Google";
 export { default as Gpt3 } from "./Gpt3";
 export { default as Gpt4 } from "./Gpt4";
 export { default as HuggingFace } from "./HuggingFace";
+export { default as Intercom } from "./Intercom";
 export { default as Microsoft } from "./Microsoft";
 export { default as Mistral } from "./Mistral";
 export { default as Notion } from "./Notion";
