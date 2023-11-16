@@ -4,7 +4,14 @@ import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
-import { Avatar, ExternalLinkIcon, Icon, IconButton, Tooltip } from "..";
+import {
+  Avatar,
+  ExternalLinkIcon,
+  Icon,
+  IconButton,
+  Tooltip,
+  XCircleIcon,
+} from "..";
 
 interface CitationProps {
   type?: "slack" | "google_drive" | "github" | "notion" | "document";
@@ -13,7 +20,7 @@ interface CitationProps {
   index?: ReactNode;
   isBlinking?: boolean;
   href?: string;
-  action?: React.ReactNode;
+  onClose?: () => void;
   avatarUrl?: string;
 }
 
@@ -31,13 +38,10 @@ export function Citation({
   type = "document",
   description,
   href,
-  action,
+  onClose,
   isBlinking = false,
   avatarUrl,
 }: CitationProps) {
-  if (action && href) {
-    throw new Error("Citation cannot have both action and href");
-  }
   return (
     <div
       className={classNames(
@@ -63,7 +67,14 @@ export function Citation({
             <IconButton icon={ExternalLinkIcon} size="sm" variant="secondary" />
           </a>
         )}
-        {action && action}
+        {onClose && (
+          <IconButton
+            icon={XCircleIcon}
+            size="sm"
+            variant="tertiary"
+            onClick={onClose}
+          />
+        )}
       </div>
       <Tooltip label={title} position="above">
         <div className="s-line-clamp-1 s-text-sm s-font-bold s-text-element-900">

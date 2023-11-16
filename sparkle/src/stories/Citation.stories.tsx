@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Citation, IconButton, XCircleIcon } from "../index_with_tw_base";
+import { Citation } from "../index_with_tw_base";
 
 const meta = {
   title: "Molecule/Citation",
@@ -22,7 +22,7 @@ export const CitationsExample = () => (
         title="With close action"
         type="document"
         index="3"
-        action={<IconButton icon={XCircleIcon} size="sm" variant="tertiary" />}
+        onClose={() => alert("Close action clicked")}
         description="Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={true}
       />
@@ -30,7 +30,7 @@ export const CitationsExample = () => (
       <Citation
         title="With avatarUrl"
         type="document"
-        action={<IconButton icon={XCircleIcon} size="sm" variant="tertiary" />}
+        onClose={() => alert("Close action clicked")}
         description="Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={true}
         avatarUrl="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
