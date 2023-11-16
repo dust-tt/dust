@@ -1,5 +1,5 @@
+import { sendActivationKey } from "@app/lib/email";
 import { XP1User } from "@app/lib/models";
-import { sendActivationKey } from "@app/lib/sendgrid";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";

@@ -3,7 +3,13 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import { getMembers } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
+import {
+  sendCancelSubscriptionEmail,
+  sendReactivateSubscriptionEmail,
+} from "@app/lib/email";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
@@ -69,7 +75,7 @@ async function handler(
           },
         });
       }
-
+      let stripeSubscription;
       switch (event.type) {
         case "checkout.session.completed":
           // Payment is successful and the stripe subscription is created.
@@ -277,10 +283,66 @@ async function handler(
             { event },
             "[Stripe Webhook] Received customer.subscription.updated event."
           );
+          stripeSubscription = event.data.object as Stripe.Subscription;
+          const previousAttributes = event.data.previous_attributes;
+          if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
+
+          if (
+            // The subscription is canceled (but not yet ended) or reactivated
+            stripeSubscription.status === "active" &&
+            "cancel_at_period_end" in previousAttributes
+          ) {
+            // first update subscription endDate in our database
+            // cancel_at set means the user just canceled, unset means the user just reactivated
+            const endDate = stripeSubscription.cancel_at
+              ? new Date(stripeSubscription.cancel_at * 1000)
+              : null;
+
+            // get subscription
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [Workspace],
+            });
+            if (!subscription) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "[Stripe Webhook] canceling subscription: Subscription not found.",
+                },
+              });
+            }
+            await subscription.update({ endDate });
+            const auth = await Authenticator.internalBuilderForWorkspace(
+              subscription.workspace.sId
+            );
+
+            // then email admins
+            const adminEmails = (await getMembers(auth, "admin")).map(
+              (u) => u.email
+            );
+            if (adminEmails.length === 0) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "[Stripe Webhook] canceling subscription: Error getting admin emails.",
+                },
+              });
+            }
+            // send email to admins
+            for (const adminEmail of adminEmails) {
+              if (endDate)
+                await sendCancelSubscriptionEmail(adminEmail, endDate);
+              else await sendReactivateSubscriptionEmail(adminEmail);
+            }
+          }
           break;
         case "customer.subscription.deleted":
+          stripeSubscription = event.data.object as Stripe.Subscription;
           // Occurs when the subscription is canceled by the user or by us.
-          const stripeSubscription = event.data.object as Stripe.Subscription;
           if (stripeSubscription.status === "canceled") {
             // We can end the subscription in our database.
             const activeSubscription = await Subscription.findOne({

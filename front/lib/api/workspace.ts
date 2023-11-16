@@ -35,18 +35,22 @@ export async function getWorkspaceInfos(
  * Returns the users members of the workspace associated with the authenticator (without listing
  * their own workspaces).
  * @param auth Authenticator
+ * @param role RoleType optional filter on role
  * @returns UserType[] members of the workspace
  */
-export async function getMembers(auth: Authenticator): Promise<UserType[]> {
+export async function getMembers(
+  auth: Authenticator,
+  role?: RoleType
+): Promise<UserType[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];
   }
-
+  const whereClause = role
+    ? { workspaceId: owner.id, role }
+    : { workspaceId: owner.id };
   const memberships = await Membership.findAll({
-    where: {
-      workspaceId: owner.id,
-    },
+    where: whereClause,
   });
 
   const users = await User.findAll({
