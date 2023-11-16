@@ -29,7 +29,7 @@ const modalStyles = {
   [ModalType.Side]: {
     containerClasses: "s-flex s-h-full s-p-0 s-justify-end sm:s-p-2",
     panelClasses:
-      "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0 sm:s-rounded-xl s-drop-shadow-xl s-border s-border-structure-100",
+      "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0 sm:s-rounded-xl s-box-shadow-xl s-border s-border-structure-100",
     transitionEnterFrom: "s-opacity-0 -s-translate-x-20 s-scale-99",
     transitionEnterTo: "s-opacity-100 s-translate-x-0 s-scale-100",
     transitionLeaveFrom: "s-opacity-100 s-translate-x-0 s-scale-100",
@@ -38,7 +38,7 @@ const modalStyles = {
   },
   [ModalType.FullScreen]: {
     containerClasses:
-      "s-flex s-items-center s-justify-center s-h-full s-p-0 s-drop-shadow-xl",
+      "s-flex s-items-center s-justify-center s-h-full s-p-0 s-box-shadow-xl",
     panelClasses: "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0",
     transitionEnterFrom: "s-opacity-0 s-translate-y-4 s-scale-95 s-rounded-xl",
     transitionEnterTo: "s-opacity-100 s-translate-y-0 s-scale-100 s-rounded-0",
@@ -51,7 +51,7 @@ const modalStyles = {
     containerClasses:
       "s-flex s-items-center s-justify-center s-min-h-full s-p-4",
     panelClasses:
-      "s-w-full sm:s-w-[448px] overflow-hidden s-drop-shadow-2xl s-rounded-xl s-border s-border-structure-100",
+      "s-w-full sm:s-w-[448px] overflow-hidden s-box-shadow-2xl s-rounded-xl s-border s-border-structure-100",
     transitionEnterFrom: "s-opacity-0 s-translate-y-4 s-scale-95",
     transitionEnterTo: "s-opacity-100 s-translate-y-0 s-scale-100",
     transitionLeaveFrom: "s-opacity-100 s-translate-y-0 s-scale-100",
