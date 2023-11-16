@@ -9,10 +9,9 @@ const SvgFullscreen = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M22 3H2v8h2V5h16v14h-6v2h8V3Z" />
     <path
       fill="currentColor"
-      d="M2 21h10v-8H2v8ZM14.543 9.043 12.5 7H18v5.5l-2.043-2.043-2.25 2.25-1.414-1.414 2.25-2.25Z"
+      d="M2 14v8h8v-2.5H6.5l4.56-4.44-2.12-2.12L4.5 17.5V14H2ZM19.5 10H22V2h-8v2.5h3.5l-4.56 4.44 2.12 2.12L19.5 6.5V10Z"
     />
   </svg>
 );
