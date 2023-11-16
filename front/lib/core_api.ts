@@ -112,7 +112,7 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-type CoreAPIDatabase = {
+export type CoreAPIDatabase = {
   created: number;
   data_source_id: string;
   database_id: string;
