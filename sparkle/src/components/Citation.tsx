@@ -4,7 +4,14 @@ import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
-import { ExternalLinkIcon, Icon, IconButton, Tooltip } from "..";
+import {
+  Avatar,
+  ExternalLinkIcon,
+  Icon,
+  IconButton,
+  Tooltip,
+  XCircleIcon,
+} from "..";
 
 interface CitationProps {
   type?: "slack" | "google_drive" | "github" | "notion" | "document";
@@ -13,6 +20,8 @@ interface CitationProps {
   index?: ReactNode;
   isBlinking?: boolean;
   href?: string;
+  onClose?: () => void;
+  avatarUrl?: string;
 }
 
 const typeIcons = {
@@ -29,7 +38,9 @@ export function Citation({
   type = "document",
   description,
   href,
+  onClose,
   isBlinking = false,
+  avatarUrl,
 }: CitationProps) {
   return (
     <div
@@ -39,17 +50,30 @@ export function Citation({
       )}
     >
       <div className="s-flex s-items-center s-gap-2">
+        {avatarUrl && <Avatar visual={avatarUrl} size="xs" />}
         {index && (
           <div className="s-flex s-h-5 s-w-5 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800">
             {index}
           </div>
         )}
-        <Icon visual={typeIcons[type]} size="sm" />
+        <Icon
+          visual={typeIcons[type]}
+          size="sm"
+          className="s-text-element-700"
+        />
         <div className="s-flex-grow s-text-xs" />
         {href && (
           <a target="_blank" rel="noopener noreferrer" href={href}>
             <IconButton icon={ExternalLinkIcon} size="sm" variant="secondary" />
           </a>
+        )}
+        {onClose && (
+          <IconButton
+            icon={XCircleIcon}
+            size="sm"
+            variant="tertiary"
+            onClick={onClose}
+          />
         )}
       </div>
       <Tooltip label={title} position="above">
