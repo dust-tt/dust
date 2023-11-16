@@ -128,6 +128,57 @@ export default function AssistantsBuilder({
           description="Create, manage and deploy Assistants to your collaborators."
         />
         <Page.SectionHeader
+          title="Custom Assistants"
+          description="Build your Assistant, tailored to your needs. Write specific&nbsp;instructions, select&nbsp;specific data sources to&nbsp;get better&nbsp;answers."
+          action={{
+            label: "Create a new Assistant",
+            variant: "primary",
+            icon: PlusIcon,
+            size: "sm",
+            disabled: !isBuilder,
+            onClick: () => {
+              void router.push(`/w/${owner.sId}/builder/assistants/new`);
+            },
+          }}
+        />
+        <Searchbar
+          name="search"
+          placeholder="AssistantName"
+          value={assistantSearch}
+          onChange={(s) => {
+            setAssistantSearch(s);
+          }}
+        />
+        <ContextItem.List className="text-element-900">
+          {filtered.map((agent) => (
+            <ContextItem
+              key={agent.sId}
+              title={`@${agent.name}`}
+              visual={
+                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+              }
+              action={
+                <Button
+                  variant="secondary"
+                  icon={PencilSquareIcon}
+                  label="Edit"
+                  size="sm"
+                  disabled={!isBuilder}
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
+                    );
+                  }}
+                />
+              }
+            >
+              <ContextItem.Description>
+                <div className="text-element-700">{agent.description}</div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+        <Page.SectionHeader
           title="Dust Assistants"
           description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@notion" to&nbsp;target specifically knowledge on&nbsp;Notion…'
         />
@@ -181,57 +232,6 @@ export default function AssistantsBuilder({
                     />
                   </div>
                 )
-              }
-            >
-              <ContextItem.Description>
-                <div className="text-element-700">{agent.description}</div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
-        <Page.SectionHeader
-          title="Custom Assistants"
-          description="Build your Assistant, tailored to your needs. Write specific&nbsp;instructions, select&nbsp;specific data sources to&nbsp;get better&nbsp;answers."
-          action={{
-            label: "Create a new Assistant",
-            variant: "primary",
-            icon: PlusIcon,
-            size: "sm",
-            disabled: !isBuilder,
-            onClick: () => {
-              void router.push(`/w/${owner.sId}/builder/assistants/new`);
-            },
-          }}
-        />
-        <Searchbar
-          name="search"
-          placeholder="AssistantName"
-          value={assistantSearch}
-          onChange={(s) => {
-            setAssistantSearch(s);
-          }}
-        />
-        <ContextItem.List className="text-element-900">
-          {filtered.map((agent) => (
-            <ContextItem
-              key={agent.sId}
-              title={`@${agent.name}`}
-              visual={
-                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-              }
-              action={
-                <Button
-                  variant="secondary"
-                  icon={PencilSquareIcon}
-                  label="Edit"
-                  size="sm"
-                  disabled={!isBuilder}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
-                    );
-                  }}
-                />
               }
             >
               <ContextItem.Description>
