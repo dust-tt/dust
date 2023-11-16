@@ -1,5 +1,7 @@
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
@@ -16,6 +18,24 @@ pub enum QdrantCluster {
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Main0];
 
+impl ToString for QdrantCluster {
+    fn to_string(&self) -> String {
+        match self {
+            QdrantCluster::Main0 => String::from("main-0"),
+        }
+    }
+}
+
+impl FromStr for QdrantCluster {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "main-0" => Ok(QdrantCluster::Main0),
+            _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
+        }
+    }
+}
+
 pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
         QdrantCluster::Main0 => "QDRANT_MAIN_0",
@@ -30,8 +50,8 @@ pub struct QdrantClients {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct QdrantDataSourceConfig {
-    cluster: QdrantCluster,
-    shadow_write_cluster: Option<QdrantCluster>,
+    pub cluster: QdrantCluster,
+    pub shadow_write_cluster: Option<QdrantCluster>,
 }
 
 impl QdrantClients {
@@ -78,13 +98,17 @@ impl QdrantClients {
         }
     }
 
+    pub fn main_cluster(&self, config: &Option<QdrantDataSourceConfig>) -> QdrantCluster {
+        match config {
+            Some(config) => config.cluster,
+            None => QdrantCluster::Main0,
+        }
+    }
+
     // Returns the client for the cluster specified in the config or the main-0 cluster if no config
     // is provided.
     pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> Arc<QdrantClient> {
-        match config {
-            Some(config) => self.client(config.cluster),
-            None => self.client(QdrantCluster::Main0),
-        }
+        self.client(self.main_cluster(config))
     }
 
     pub fn shadow_write_cluster(

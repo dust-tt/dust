@@ -296,8 +296,20 @@ impl DataSource {
         &self.config
     }
 
-    fn qdrant_collection(&self) -> String {
+    pub fn qdrant_collection(&self) -> String {
         format!("ds_{}", self.internal_id)
+    }
+
+    pub async fn update_config(
+        &mut self,
+        store: Box<dyn Store + Sync + Send>,
+        config: &DataSourceConfig,
+    ) -> Result<()> {
+        self.config = config.clone();
+        store
+            .update_data_source_config(&self.project, &self.data_source_id, &self.config)
+            .await?;
+        Ok(())
     }
 
     pub async fn setup(
