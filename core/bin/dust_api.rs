@@ -2054,6 +2054,59 @@ async fn databases_schema_retrieve(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct DatabaseQueryRunPayload {
+    query: String,
+}
+
+async fn databases_query_run(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Json(payload): extract::Json<DatabaseQueryRunPayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "database_not_found",
+            &format!("No database found for id `{}`", database_id),
+            None,
+        ),
+        Ok(Some(db)) => match db
+            .query(&project, state.store.clone(), &payload.query)
+            .await
+        {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to run query",
+                Some(e),
+            ),
+            Ok((rows, schema)) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "schema": schema,
+                        "rows": rows,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 // Misc
 
 #[derive(serde::Deserialize)]
@@ -2257,6 +2310,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/schema",
             get(databases_schema_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/query",
+            post(databases_query_run),
         )
         // Misc
         .route("/tokenize", post(tokenize))

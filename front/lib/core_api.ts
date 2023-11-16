@@ -1079,6 +1079,38 @@ export const CoreAPI = {
 
     return _resultFromResponse(response);
   },
+
+  async queryDatabase({
+    projectId,
+    dataSourceName,
+    databaseId,
+    query,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    databaseId: string;
+    query: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: Record<string, "int" | "float" | "text" | "bool">;
+      rows: Record<string, unknown>[];
+    }>
+  > {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: query,
+        }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
 };
 
 async function _resultFromResponse<T>(
