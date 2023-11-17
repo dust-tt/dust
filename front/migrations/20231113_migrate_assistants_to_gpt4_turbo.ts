@@ -8,7 +8,7 @@ import { Err } from "@app/lib/result";
 const { LIVE, WORKSPACE } = process.env;
 
 async function updateWorkspaceAssistants(wId: string) {
-  console.log(`Updateing agents for workspace ${wId}...`);
+  // console.log(`Updating agents for workspace ${wId}...`);
 
   const w = await Workspace.findOne({ where: { sId: wId } });
   if (!w) {
