@@ -167,7 +167,7 @@ const PlansPage = (
                   <th className="px-4 py-2">Edit</th>
                 </tr>
               </thead>
-              <tbody className="h-full bg-white pb-48 text-gray-700 shadow-md">
+              <tbody className="h-full bg-white pb-48 text-gray-700">
                 {plansToRender?.map((plan) => {
                   const planId = plan.isNewPlan ? "newPlan" : plan.code;
 
