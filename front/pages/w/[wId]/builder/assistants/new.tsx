@@ -62,6 +62,7 @@ export default function CreateAssistant({
     <AssistantBuilder
       user={user}
       owner={owner}
+      subscription={subscription}
       plan={plan}
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}
