@@ -317,8 +317,6 @@ fn main() -> Result<()> {
                 project_id,
                 data_source_id,
             } => {
-                // This is the most dangerous command of all as it is the only one to actually
-                // delete data in an unrecoverable way.
                 let project = project::Project::new_from_id(project_id);
                 let ds = match store.load_data_source(&project, &data_source_id).await? {
                     Some(ds) => ds,
