@@ -437,7 +437,7 @@ export function AssistantInputBar({
                       type: "error",
                       title: "File too large.",
                       description:
-                        "The file you are trying to upload is bigger than 5MB. Please select a smaller file.",
+                        "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
                     });
                     return;
                   }
@@ -457,7 +457,7 @@ export function AssistantInputBar({
                       type: "error",
                       title: "File too large.",
                       description:
-                        "The extracted text from your PDF is more than 1 million characters. This will overflow the assistant context. Please upload a smaller file.",
+                        "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
                     });
                     return;
                   }
