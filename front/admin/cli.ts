@@ -82,6 +82,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         `        managed Github:    ${plan.limits.connections.isGithubAllowed}`
       );
       console.log(
+        `        managed Intercom:    ${plan.limits.connections.isIntercomAllowed}`
+      );
+      console.log(
         `        managed Google Drive:    ${plan.limits.connections.isGoogleDriveAllowed}`
       );
 

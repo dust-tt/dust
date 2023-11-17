@@ -540,6 +540,7 @@ export async function subscriptionForWorkspace(
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
+          isIntercomAllowed: plan.isManagedIntercomAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

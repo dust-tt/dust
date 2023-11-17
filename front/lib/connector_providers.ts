@@ -1,6 +1,13 @@
-import { DriveLogo, GithubLogo, NotionLogo, SlackLogo } from "@dust-tt/sparkle";
+import {
+  DriveLogo,
+  GithubLogo,
+  IntercomLogo,
+  NotionLogo,
+  SlackLogo,
+} from "@dust-tt/sparkle";
 
 import { ConnectorProvider } from "@app/lib/connectors_api";
+import { isDevelopment } from "@app/lib/development";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
@@ -52,6 +59,16 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. We're working on adding support for code indexing.",
     logoComponent: GithubLogo,
+    isNested: false,
+  },
+  intercom: {
+    name: "Intercom",
+    connectorProvider: "intercom",
+    isBuilt: isDevelopment(), // TODO @daph Activate Intercom connector
+    logoPath: "/static/intercom_32x32.png",
+    description:
+      "Authorize granular access to your company's Intercom Help Centers. Dust does not access your conversations.",
+    logoComponent: IntercomLogo,
     isNested: false,
   },
 };

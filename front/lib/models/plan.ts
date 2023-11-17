@@ -41,6 +41,7 @@ export class Plan extends Model<
   declare isManagedNotionAllowed: boolean;
   declare isManagedGoogleDriveAllowed: boolean;
   declare isManagedGithubAllowed: boolean;
+  declare isManagedIntercomAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -107,6 +108,10 @@ Plan.init(
       defaultValue: false,
     },
     isManagedGithubAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedIntercomAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

@@ -30,6 +30,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   isManagedNotionAllowed: true,
   isManagedGoogleDriveAllowed: true,
   isManagedGithubAllowed: true,
+  isManagedIntercomAllowed: true,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

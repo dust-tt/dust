@@ -6,6 +6,7 @@ import {
   ContentMessage,
   ContextItem,
   DropdownMenu,
+  InformationCircleIcon,
   Page,
   Popup,
 } from "@dust-tt/sparkle";
@@ -38,6 +39,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
+  NANGO_INTERCOM_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   GITHUB_APP_URL = "",
 } = process.env;
@@ -70,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
+    intercomConnectorId: string;
   };
   githubAppUrl: string;
 }> = async (context) => {
@@ -221,6 +224,7 @@ export const getServerSideProps: GetServerSideProps<{
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
+        intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
     },
@@ -246,6 +250,8 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [showUpgradePopupForProvider, setShowUpgradePopupForProvider] =
     useState<ConnectorProvider | null>(null);
+  const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
+    useState<ConnectorProvider | null>(null);
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -258,6 +264,7 @@ export default function DataSourcesView({
           slack: nangoConfig.slackConnectorId,
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
+          intercom: nangoConfig.intercomConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
@@ -379,11 +386,9 @@ export default function DataSourcesView({
                     <Button.List>
                       {(() => {
                         const disabled =
-                          !ds.isBuilt ||
                           isLoadingByProvider[
                             ds.connectorProvider as ConnectorProvider
-                          ] ||
-                          !isAdmin;
+                          ] || !isAdmin;
                         const onClick = async () => {
                           let isDataSourceAllowedInPlan: boolean;
 
@@ -404,6 +409,10 @@ export default function DataSourcesView({
                               isDataSourceAllowedInPlan =
                                 planConnectionsLimits.isGoogleDriveAllowed;
                               break;
+                            case "intercom":
+                              isDataSourceAllowedInPlan =
+                                planConnectionsLimits.isIntercomAllowed;
+                              break;
                             default:
                               ((p: never) => {
                                 throw new Error(
@@ -417,6 +426,10 @@ export default function DataSourcesView({
                               ds.connectorProvider as ConnectorProvider,
                               ds.setupWithSuffix
                             );
+                          } else if (!ds.isBuilt) {
+                            setShowPreviewPopupForProvider(
+                              ds.connectorProvider
+                            );
                           } else {
                             setShowUpgradePopupForProvider(
                               ds.connectorProvider as ConnectorProvider
@@ -425,7 +438,7 @@ export default function DataSourcesView({
                           return;
                         };
                         const label = !ds.isBuilt
-                          ? "Coming soon"
+                          ? "Preview"
                           : !isLoadingByProvider[
                               ds.connectorProvider as ConnectorProvider
                             ] && !ds.fetchConnectorError
@@ -437,7 +450,11 @@ export default function DataSourcesView({
                               {ds.connectorProvider !== "google_drive" && (
                                 <Button
                                   variant="primary"
-                                  icon={CloudArrowLeftRightIcon}
+                                  icon={
+                                    ds.isBuilt
+                                      ? CloudArrowLeftRightIcon
+                                      : InformationCircleIcon
+                                  }
                                   disabled={disabled}
                                   onClick={onClick}
                                   label={label}
@@ -450,7 +467,11 @@ export default function DataSourcesView({
                                       variant="primary"
                                       label={label}
                                       disabled={disabled}
-                                      icon={CloudArrowLeftRightIcon}
+                                      icon={
+                                        ds.isBuilt
+                                          ? CloudArrowLeftRightIcon
+                                          : InformationCircleIcon
+                                      }
                                     />
                                   </DropdownMenu.Button>
                                   <DropdownMenu.Items
@@ -551,6 +572,23 @@ export default function DataSourcesView({
                       }}
                       onClose={() => {
                         setShowUpgradePopupForProvider(null);
+                      }}
+                    />
+                    <Popup
+                      show={
+                        showPreviewPopupForProvider === ds.connectorProvider
+                      }
+                      className="absolute bottom-8 right-0"
+                      chipLabel="Coming Soon!"
+                      description="Please email us at team@dust.tt for early access."
+                      buttonLabel="Contact us"
+                      buttonClick={() => {
+                        window.open(
+                          "mailto:team@dust.tt?subject=Intersted in the Intercom connection"
+                        );
+                      }}
+                      onClose={() => {
+                        setShowPreviewPopupForProvider(null);
                       }}
                     />
                   </div>

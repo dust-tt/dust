@@ -82,7 +82,7 @@ async function handler(
 
       if (
         !req.body.provider ||
-        !["slack", "notion", "github", "google_drive"].includes(
+        !["slack", "notion", "github", "google_drive", "intercom"].includes(
           req.body.provider
         )
       ) {
@@ -132,6 +132,9 @@ async function handler(
         case "google_drive":
           isDataSourceAllowedInPlan =
             plan.limits.connections.isGoogleDriveAllowed;
+          break;
+        case "intercom":
+          isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
           break;
         default:
           isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
