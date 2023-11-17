@@ -17,6 +17,7 @@ import {
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -74,12 +75,13 @@ export async function generateActionInputs(
         modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       };
+
   const contextSize = isFree
     ? GPT_3_5_TURBO_16K_MODEL_CONFIG.contextSize
-    : GPT_4_32K_MODEL_CONFIG.contextSize;
+    : GPT_4_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
