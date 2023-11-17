@@ -162,7 +162,7 @@ async function _getGPT4GlobalAgent({
     sId: GLOBAL_AGENTS_SID.GPT4,
     version: 0,
     name: "gpt4",
-    description: "OpenAI's most powerful and recent model (32k context).",
+    description: "OpenAI's most powerful and recent model (128k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
