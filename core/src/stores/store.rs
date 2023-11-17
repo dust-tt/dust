@@ -1,5 +1,7 @@
 use crate::blocks::block::BlockType;
-use crate::data_sources::data_source::{DataSource, Document, DocumentVersion, SearchFilter};
+use crate::data_sources::data_source::{
+    DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
+};
 use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -88,6 +90,12 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>>;
+    async fn update_data_source_config(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        config: &DataSourceConfig,
+    ) -> Result<()>;
     async fn load_data_source_document(
         &self,
         project: &Project,

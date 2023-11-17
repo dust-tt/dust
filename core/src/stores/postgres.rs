@@ -1033,6 +1033,32 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn update_data_source_config(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        config: &DataSourceConfig,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let data_source_config = config.clone();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let config_data = serde_json::to_string(&data_source_config)?;
+        let stmt = c
+            .prepare(
+                "UPDATE data_sources SET config_json = $1 \
+                   WHERE project = $2 AND data_source_id = $3",
+            )
+            .await?;
+        c.execute(&stmt, &[&config_data, &project_id, &data_source_id])
+            .await?;
+
+        Ok(())
+    }
+
     async fn load_data_source_document(
         &self,
         project: &Project,

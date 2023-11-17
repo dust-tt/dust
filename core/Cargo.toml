@@ -7,6 +7,10 @@ edition = "2021"
 name = "dust-api"
 path = "bin/dust_api.rs"
 
+[[bin]]
+name = "qdrant_migrator"
+path = "bin/qdrant_migrator.rs"
+
 [dependencies]
 anyhow = "1.0"
 serde = { version = "1.0", features = ["rc", "derive"] }
@@ -51,3 +55,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 deno_core = "0.200"
 rayon = "1.8.0"
+clap = { version = "4.4", features = ["derive"] }

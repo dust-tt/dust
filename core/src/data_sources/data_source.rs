@@ -296,43 +296,30 @@ impl DataSource {
         &self.config
     }
 
-    fn qdrant_collection(&self) -> String {
+    pub fn qdrant_collection(&self) -> String {
         format!("ds_{}", self.internal_id)
     }
 
-    pub async fn setup(
+    pub async fn update_config(
+        &mut self,
+        store: Box<dyn Store + Sync + Send>,
+        config: &DataSourceConfig,
+    ) -> Result<()> {
+        self.config = config.clone();
+        store
+            .update_data_source_config(&self.project, &self.data_source_id, &self.config)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn create_qdrant_collection(
         &self,
         credentials: Credentials,
-        qdrant_clients: QdrantClients,
+        qdrant_client: Arc<QdrantClient>,
     ) -> Result<()> {
-        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-
         let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
         embedder.initialize(credentials).await?;
 
-        // GCP store created data to test GCP.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
-        let data_source_created_path = format!("{}/created.txt", bucket_path);
-
-        Object::create(
-            &bucket,
-            format!("{}", self.created).as_bytes().to_vec(),
-            &data_source_created_path,
-            "application/text",
-        )
-        .await?;
-
-        utils::done(&format!(
-            "Created GCP bucket for data_source `{}`",
-            self.data_source_id
-        ));
-
-        // Qdrant create collection.
         qdrant_client
             .create_collection(&qdrant::CreateCollection {
                 collection_name: self.qdrant_collection(),
@@ -368,6 +355,41 @@ impl DataSource {
                 on_disk_payload: Some(true),
                 ..Default::default()
             })
+            .await?;
+        Ok(())
+    }
+
+    pub async fn setup(
+        &self,
+        credentials: Credentials,
+        qdrant_clients: QdrantClients,
+    ) -> Result<()> {
+        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+
+        // GCP store created data to test GCP.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
+        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
+        let data_source_created_path = format!("{}/created.txt", bucket_path);
+
+        Object::create(
+            &bucket,
+            format!("{}", self.created).as_bytes().to_vec(),
+            &data_source_created_path,
+            "application/text",
+        )
+        .await?;
+
+        utils::done(&format!(
+            "Created GCP bucket for data_source `{}`",
+            self.data_source_id
+        ));
+
+        // Qdrant create collection.
+        self.create_qdrant_collection(credentials, qdrant_client.clone())
             .await?;
 
         let _ = qdrant_client
