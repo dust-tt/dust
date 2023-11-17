@@ -9,7 +9,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_32K_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@app/lib/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -92,8 +92,8 @@ async function _getHelperGlobalAgent(
           modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
         }
       : {
-          providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-          modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+          providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+          modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
         };
   return {
     id: -1,
@@ -170,8 +170,8 @@ async function _getGPT4GlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       },
 
       temperature: 0.7,
@@ -358,8 +358,8 @@ async function _getManagedDataSourceAgent(
               modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
             }
           : {
-              providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-              modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+              providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
             },
       temperature: 0.4,
     },
@@ -541,8 +541,8 @@ async function _getDustGlobalAgent(
               modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
             }
           : {
-              providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-              modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+              providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
             },
       temperature: 0.4,
     },
