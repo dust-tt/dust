@@ -10,7 +10,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -34,7 +33,6 @@ export const getServerSideProps: GetServerSideProps<{
   dataSources: DataSourceType[];
   slackbotEnabled?: boolean;
   gdrivePDFEnabled?: boolean;
-  documentCounts: Record<string, number>;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
   const wId = context.params?.wId;
@@ -84,23 +82,6 @@ export const getServerSideProps: GetServerSideProps<{
     }
     return 0;
   });
-
-  const docCountByDsName: Record<string, number> = {};
-
-  await Promise.all(
-    dataSources.map(async (ds) => {
-      const res = await CoreAPI.getDataSourceDocuments({
-        projectId: ds.dustAPIProjectId,
-        dataSourceName: ds.name,
-        limit: 0,
-        offset: 0,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-      docCountByDsName[ds.name] = res.value.total;
-    })
-  );
 
   const synchronizedAgoByDsName: Record<string, string> = {};
 
@@ -167,7 +148,6 @@ export const getServerSideProps: GetServerSideProps<{
       dataSources,
       slackbotEnabled,
       gdrivePDFEnabled,
-      documentCounts: docCountByDsName,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },
   };
@@ -180,7 +160,6 @@ const WorkspacePage = ({
   dataSources,
   slackbotEnabled,
   gdrivePDFEnabled,
-  documentCounts,
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -354,17 +333,17 @@ const WorkspacePage = ({
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       <div className="flex-grow p-6">
-        <h1 className="mb-8 text-2xl font-bold">
-          {owner.name}{" "}
-          <span>
-            <Link
-              href={`/poke/${owner.sId}/memberships`}
-              className="text-xs text-action-400"
-            >
-              view members
-            </Link>
-          </span>
-        </h1>
+        <div>
+          <span className="pr-2 text-2xl font-bold">{owner.name}</span>
+        </div>
+        <div>
+          <Link
+            href={`/poke/${owner.sId}/memberships`}
+            className="text-xs text-action-400"
+          >
+            view members
+          </Link>
+        </div>
 
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
@@ -477,10 +456,14 @@ const WorkspacePage = ({
             {dataSources.map((ds) => (
               <div
                 key={ds.id}
-                className="my-4 rounded-lg border-2 border-gray-200 p-4 shadow-lg"
+                className="border-material-200 my-4 rounded-lg border p-4"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="mb-2 text-lg font-semibold">{ds.name}</h3>
+                  <h3 className="mb-2 text-lg font-semibold">
+                    <Link href={`/poke/${owner.sId}/data_sources/${ds.name}`}>
+                      {ds.name}
+                    </Link>
+                  </h3>
                   <Button
                     label="Delete"
                     variant="secondaryWarning"
@@ -488,11 +471,7 @@ const WorkspacePage = ({
                   />
                 </div>
                 <p className="mb-2 text-sm text-gray-600">
-                  {ds.connectorProvider ? "Managed - " : "Non-managed - "}{" "}
-                  <span className="font-medium">
-                    {documentCounts[ds.name] ?? 0}
-                  </span>{" "}
-                  documents
+                  {ds.connectorProvider ? "Connection" : "Folder"}
                 </p>
                 {dataSourcesSynchronizedAgo[ds.name] && (
                   <p className="mb-2 text-sm text-gray-600">
