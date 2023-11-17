@@ -70,3 +70,17 @@ export type APIErrorWithStatusCode = {
   api_error: APIError;
   status_code: number;
 };
+
+/**
+ * Error repported by the Dust Libraries.
+ */
+export type DustErrorType = "invalid_user_input" | "internal_error";
+
+export class DustError extends Error {
+  errorCode: DustErrorType;
+
+  constructor(message: string, errorCode: DustErrorType) {
+    super(message);
+    this.errorCode = errorCode;
+  }
+}

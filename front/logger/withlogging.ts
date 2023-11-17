@@ -2,7 +2,12 @@ import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { APIErrorWithStatusCode } from "@app/lib/error";
+import {
+  APIErrorType,
+  APIErrorWithStatusCode,
+  DustError,
+} from "@app/lib/error";
+import { assertNever } from "@app/lib/utils";
 
 import logger from "./logger";
 
@@ -78,31 +83,76 @@ export const withLogging = (handler: any, streaming = false) => {
 export function apiError(
   req: NextApiRequest,
   res: NextApiResponse,
-  apiError: APIErrorWithStatusCode,
-  error?: Error
+  apiError?: APIErrorWithStatusCode,
+  error?: Error | DustError
 ): void {
-  logger.error(
-    {
-      method: req.method,
-      url: req.url,
-      statusCode: apiError.status_code,
-      apiError: apiError,
-      error: error,
-    },
-    "API Error"
-  );
+  if (!apiError && error) {
+    if (error instanceof DustError) {
+      // We have a DustError instance, we map it to an APIErrorWithStatusCode type.
+      let httpStatusCode: number | undefined = undefined;
+      let apiErrorType: APIErrorType | undefined = undefined;
+      const apiErrorMessage =
+        error.errorCode === "internal_error"
+          ? "Internal Server Error"
+          : error.message;
 
-  const tags = [
-    `method:${req.method}`,
-    // `url:${req.url}`,
-    `status_code:${res.statusCode}`,
-    `error_type:${apiError.api_error.type}`,
-  ];
+      switch (error.errorCode) {
+        case "invalid_user_input":
+          httpStatusCode = 400;
+          apiErrorType = "invalid_request_error";
+          break;
+        case "internal_error":
+          httpStatusCode = 500;
+          apiErrorType = "invalid_request_error";
+          break;
+        default:
+          assertNever(error.errorCode);
+      }
+      apiError = {
+        status_code: httpStatusCode,
+        api_error: {
+          type: apiErrorType,
+          message: apiErrorMessage,
+        },
+      };
+    } else {
+      // We have an unknown error, we map it to an APIErrorWithStatusCode type.
+      apiError = {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: error.message,
+        },
+      };
+    }
+  }
 
-  statsDClient.increment("api_errors.count", 1, tags);
+  if (apiError) {
+    logger.error(
+      {
+        method: req.method,
+        url: req.url,
+        statusCode: apiError.status_code,
+        apiError: apiError,
+        error: error,
+      },
+      "API Error"
+    );
 
-  res.status(apiError.status_code).json({
-    error: apiError.api_error,
-  });
-  return;
+    const tags = [
+      `method:${req.method}`,
+      // `url:${req.url}`,
+      `status_code:${res.statusCode}`,
+      `error_type:${apiError.api_error.type}`,
+    ];
+
+    statsDClient.increment("api_errors.count", 1, tags);
+
+    res.status(apiError.status_code).json({
+      error: apiError.api_error,
+    });
+    return;
+  } else {
+    throw new Error("apiError and error cannot both be null");
+  }
 }
