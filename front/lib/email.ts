@@ -14,7 +14,7 @@ if (!SENDGRID_API_KEY) {
 }
 sgMail.setApiKey(SENDGRID_API_KEY);
 
-async function sendEmail(email: string, message: any) {
+export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
   try {
     await sgMail.send(msg);
@@ -59,6 +59,7 @@ The Dust Team
 
 export async function sendCancelSubscriptionEmail(
   email: string,
+  workspaceSId: string,
   date: Date
 ): Promise<void> {
   const options: Intl.DateTimeFormatOptions = {
@@ -72,19 +73,17 @@ export async function sendCancelSubscriptionEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Your subscription has been canceled; important information`,
-    text: `<p>You have requested to cancel your subscription</p> 
-    <p>Your subscription will end at the end of your current billing period (${formattedDate}). You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will be switched back to our free plan at the end of the current billing period.</p>
-    <p>This will have the following consequences:</p>
+    subject: `[Dust] Subscription canceled - important information`,
+    html: `<p>Hello from Dust,</p>
+    <p>You just canceled your subscription. It will be terminated at the end of your current billing period (${formattedDate}). You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will then be switched back to our free plan:</p>
     <ul>
-    <li>all users except one will be removed from your workspace;</li>
-    <li>your connections will be deleted</li>
-    <li>the rest of your data (conversations, custom assistants, custom datasource) will still be accessible but with multiple limitations.</li>
-    <li>you will be subjected to the <a href="https://dust.tt/#sectionPricing">restrictions of the free plan</a></li>
+    <li>all users but one will be removed from the workspace (details <a href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4">here</a>);</li>
+    <li>connections will be removed and data safety deleted from Dust;</li>
+    <li>conversations, custom assistants, and data sources will still be accessible with limitations;</li>
+    <li>your usage of Dust will have the <a href="https://dust.tt/w/${workspaceSId}/subscription">restrictions of the free plan</a>.</li>
     </ul>
-    <p>Complete details as to what will happen are available at <a href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4">subscription cancelling FAQ</a>.</p>
-    <p>If you have any questions, please contact us at team@dust.tt.</p>
-    <p>Best,</p>
+    <p>More details are available on <a href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4">our subscription cancelling FAQ</a>.</p>
+    <p>Please reply to this email if you have any questions.
     <p>The Dust team</p>`,
   };
   return sendEmail(email, cancelMessage);
@@ -99,7 +98,7 @@ export async function sendReactivateSubscriptionEmail(
       email: "team@dust.tt",
     },
     subject: `[Dust] Your subscription has been reactivated`,
-    text: `<p>You have requested to reactivate your subscription.</p> 
+    html: `<p>You have requested to reactivate your subscription.</p> 
     <p>Therefore, your subscription will not be canceled at the end of the billing period, no downgrade actions will take place, and you can continue using Dust as usual.</p>
     <p>We really appreciate you renewing your trust in us.</p>
     <p>If you have any questions, we'll gladly answer at team@dust.tt.</p>

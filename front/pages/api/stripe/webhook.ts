@@ -335,7 +335,11 @@ async function handler(
             // send email to admins
             for (const adminEmail of adminEmails) {
               if (endDate)
-                await sendCancelSubscriptionEmail(adminEmail, endDate);
+                await sendCancelSubscriptionEmail(
+                  adminEmail,
+                  subscription.workspace.sId,
+                  endDate
+                );
               else await sendReactivateSubscriptionEmail(adminEmail);
             }
           }
