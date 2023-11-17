@@ -41,8 +41,9 @@ async function updateWorkspaceAssistants(wId: string) {
 
     if (g.modelId === "gpt-4" || g.modelId === "gpt-4-32k") {
       if (LIVE) {
+        const oldModel = g.modelId;
         await g.update({ modelId: "gpt-4-1106-preview" });
-        console.log("Updated", c.sId, c.name, "from " + g.modelId);
+        console.log("Updated", c.sId, c.name, "from " + oldModel);
       } else {
         console.log("Would update", c.sId, c.name, "from " + g.modelId);
       }
