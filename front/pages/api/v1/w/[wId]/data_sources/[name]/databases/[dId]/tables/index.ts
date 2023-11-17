@@ -68,7 +68,7 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.id;
+  const databaseId = req.query.dId;
   if (!databaseId || typeof databaseId !== "string") {
     return apiError(req, res, {
       status_code: 400,

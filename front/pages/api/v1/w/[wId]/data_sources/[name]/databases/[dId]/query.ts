@@ -1,19 +1,31 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabaseRow } from "@app/lib/core_api";
+import {
+  CoreAPI,
+  CoreAPIDatabaseRow,
+  CoreAPIDatabaseSchema,
+} from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseRowsResponseBody = {
-  row: CoreAPIDatabaseRow;
+const GetDatabaseSchemaReqBodySchema = t.type({
+  query: t.string,
+});
+
+type QueryDatabaseSchemaResponseBody = {
+  schema: CoreAPIDatabaseSchema;
+  rows: CoreAPIDatabaseRow[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseRowsResponseBody>
+  res: NextApiResponse<QueryDatabaseSchemaResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -53,73 +65,61 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.id;
+  const databaseId = req.query.dId;
   if (!databaseId || typeof databaseId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The database id is missing.",
-      },
-    });
-  }
-
-  const tableId = req.query.tableId;
-  if (!tableId || typeof tableId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The table id is missing.",
-      },
-    });
-  }
-
-  const rowId = req.query.rowId;
-  if (!rowId || typeof rowId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The row id is missing.",
+        message: "Invalid request query: id is required.",
       },
     });
   }
 
   switch (req.method) {
-    case "GET":
-      const rowRes = await CoreAPI.getDatabaseRow({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        databaseId,
-        tableId,
-        rowId,
-      });
-
-      if (rowRes.isErr()) {
-        logger.error(
-          {
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            databaseName: name,
-            databaseId: databaseId,
-            tableId: tableId,
-            error: rowRes.error,
-          },
-          "Failed to get database row."
-        );
-
+    case "POST":
+      const bodyValidation = GetDatabaseSchemaReqBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 400,
           api_error: {
-            type: "internal_server_error",
-            message: "Failed to get database row.",
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      const { row } = rowRes.value;
-      return res.status(200).json({ row });
+      const { query } = bodyValidation.right;
+
+      const queryRes = await CoreAPI.queryDatabase({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        databaseId,
+        query,
+      });
+      if (queryRes.isErr()) {
+        logger.error(
+          {
+            dataSourceName: dataSource.name,
+            workspaceId: owner.id,
+            databaseId,
+            error: queryRes.error,
+          },
+          "Failed to query database."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to query database.",
+          },
+        });
+      }
+
+      const { schema, rows } = queryRes.value;
+
+      return res.status(200).json({ schema, rows });
 
     default:
       return apiError(req, res, {

@@ -2,18 +2,18 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabaseTable } from "@app/lib/core_api";
+import { CoreAPI, CoreAPIDatabaseRow } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseTableResponseBody = {
-  table: CoreAPIDatabaseTable;
+type GetDatabaseRowsResponseBody = {
+  row: CoreAPIDatabaseRow;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseTableResponseBody>
+  res: NextApiResponse<GetDatabaseRowsResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -53,7 +53,7 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.id;
+  const databaseId = req.query.dId;
   if (!databaseId || typeof databaseId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -64,7 +64,7 @@ async function handler(
     });
   }
 
-  const tableId = req.query.tableId;
+  const tableId = req.query.tId;
   if (!tableId || typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -75,35 +75,51 @@ async function handler(
     });
   }
 
+  const rowId = req.query.rId;
+  if (!rowId || typeof rowId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The row id is missing.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
-      const tableRes = await CoreAPI.getDatabaseTable({
+      const rowRes = await CoreAPI.getDatabaseRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
         tableId,
+        rowId,
       });
-      if (tableRes.isErr()) {
+
+      if (rowRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            error: tableRes.error,
+            databaseName: name,
+            databaseId: databaseId,
+            tableId: tableId,
+            error: rowRes.error,
           },
-          "Failed to get database table."
+          "Failed to get database row."
         );
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database.",
+            message: "Failed to get database row.",
           },
         });
       }
 
-      const { table } = tableRes.value;
-
-      return res.status(200).json({ table });
+      const { row } = rowRes.value;
+      return res.status(200).json({ row });
 
     default:
       return apiError(req, res, {

@@ -2,18 +2,18 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabase } from "@app/lib/core_api";
+import { CoreAPI, CoreAPIDatabaseSchema } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseResponseBody = {
-  database: CoreAPIDatabase;
+type GetDatabaseSchemaResponseBody = {
+  schema: CoreAPIDatabaseSchema;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseResponseBody>
+  res: NextApiResponse<GetDatabaseSchemaResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -53,42 +53,46 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.id;
+  const databaseId = req.query.dId;
   if (!databaseId || typeof databaseId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The database id is missing.",
+        message: "Invalid request query: id is required.",
       },
     });
   }
 
   switch (req.method) {
     case "GET":
-      const databaseRes = await CoreAPI.getDatabase({
+      const schemaRes = await CoreAPI.getDatabaseSchema({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
       });
-      if (databaseRes.isErr()) {
-        logger.error({
-          dataSourcename: dataSource.name,
-          workspaceId: owner.id,
-          error: databaseRes.error,
-        });
+      if (schemaRes.isErr()) {
+        logger.error(
+          {
+            dataSourceName: dataSource.name,
+            workspaceId: owner.id,
+            databaseId,
+            error: schemaRes.error,
+          },
+          "Failed to get database schema."
+        );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database.",
+            message: "Failed to get database schema.",
           },
         });
       }
 
-      const { database } = databaseRes.value;
+      const { schema } = schemaRes.value;
 
-      return res.status(200).json({ database });
+      return res.status(200).json({ schema });
 
     default:
       return apiError(req, res, {
