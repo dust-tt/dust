@@ -35,7 +35,7 @@ export async function sendCancelSubscriptionEmail(
       <p>Please reply to this email if you have any questions.
       <p>The Dust team</p>`,
   };
-  return sendEmail(email, cancelMessage);
+  return await sendEmail(email, cancelMessage);
 }
 
 void main().then(() => {
