@@ -22,6 +22,10 @@ import {
   SlackConfiguration,
   SlackMessages,
 } from "@connectors/lib/models";
+import {
+  IntercomArticle,
+  IntercomCollection,
+} from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 
 async function main(): Promise<void> {
@@ -44,6 +48,8 @@ async function main(): Promise<void> {
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
   await GoogleDriveConfig.sync({ alter: true });
+  await IntercomCollection.sync({ alter: true });
+  await IntercomArticle.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
