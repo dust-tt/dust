@@ -7,13 +7,9 @@ import { Err } from "@app/lib/result";
 
 const { LIVE, WORKSPACE } = process.env;
 
-async function main() {
-  if (!WORKSPACE) {
-    throw new Err("WORKSPACE is required");
-  }
-  const wId = WORKSPACE;
-
+async function updateWorkspaceAssistants(wId: string) {
   console.log(`Updateing agents for workspace ${wId}...`);
+
   const w = await Workspace.findOne({ where: { sId: wId } });
   if (!w) {
     throw new Error(`Workspace ${wId} not found`);
@@ -46,11 +42,39 @@ async function main() {
     if (g.modelId === "gpt-4" || g.modelId === "gpt-4-32k") {
       if (LIVE) {
         await g.update({ modelId: "gpt-4-1106-preview" });
-        console.log("Updated", c.sId, c.name);
+        console.log("Updated", c.sId, c.name, "from " + g.modelId);
       } else {
-        console.log("Would update", c.sId, c.name);
+        console.log("Would update", c.sId, c.name, "from " + g.modelId);
       }
     }
+  }
+}
+
+async function main() {
+  if (!WORKSPACE) {
+    throw new Err("WORKSPACE is required");
+  }
+  const wId = WORKSPACE;
+
+  if (wId === "all") {
+    const workspaces = await Workspace.findAll();
+
+    const chunks = [];
+    for (let i = 0; i < workspaces.length; i += 32) {
+      chunks.push(workspaces.slice(i, i + 32));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`Processing chunk ${i}/${chunks.length}...`);
+      const chunk = chunks[i];
+      await Promise.all(
+        chunk.map(async (w) => {
+          return updateWorkspaceAssistants(w.sId);
+        })
+      );
+    }
+  } else {
+    await updateWorkspaceAssistants(wId);
   }
 }
 
