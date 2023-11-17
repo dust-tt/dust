@@ -53,8 +53,7 @@ enum Commands {
     },
 }
 
-/// A fictional versioning CLI
-#[derive(Debug, Parser)] // requires `derive` feature
+#[derive(Debug, Parser)]
 #[command(name = "collection_migrator")]
 #[command(about = "Tooling to migrate Qdrant collections", long_about = None)]
 struct Cli {
@@ -238,7 +237,6 @@ fn main() -> Result<()> {
                     None => Err(anyhow!("Data source not found"))?,
                 };
 
-                // Delete collection on shadow_write_cluster.
                 let shadow_write_qdrant_client =
                     match qdrant_clients.shadow_write_client(&ds.config().qdrant_config) {
                         Some(client) => client,
@@ -270,6 +268,7 @@ fn main() -> Result<()> {
                     None => Err(anyhow!("Qdrant collection not found"))?,
                 };
 
+                // Delete collection on shadow_write_cluster.
                 shadow_write_qdrant_client
                     .delete_collection(ds.qdrant_collection())
                     .await?;
