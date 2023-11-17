@@ -432,12 +432,32 @@ export function AssistantInputBar({
                   inputRef.current?.focus();
                   const file = e?.target?.files?.[0];
                   if (!file) return;
+                  if (file.size > 5_000_000) {
+                    sendNotification({
+                      type: "error",
+                      title: "File too large.",
+                      description:
+                        "The file you are trying to upload is bigger than 5MB. Please select a smaller file.",
+                    });
+                    return;
+                  }
                   const res = await handleFileUploadToText(file);
+
                   if (res.isErr()) {
                     sendNotification({
                       type: "error",
                       title: "Error uploading file.",
                       description: res.error.message,
+                    });
+                    return;
+                  }
+                  if (res.value.content.length > 1_000_000) {
+                    // This error should pretty much never be triggered but it is a possible case, so here it is.
+                    sendNotification({
+                      type: "error",
+                      title: "File too large.",
+                      description:
+                        "The extracted text from your PDF is more than 1 million characters. This will overflow the assistant context. Please upload a smaller file.",
                     });
                     return;
                   }
@@ -447,7 +467,7 @@ export function AssistantInputBar({
               />
 
               <Tooltip
-                label="Add a document to the conversation (.txt, .pdf, .md)."
+                label="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
                 position="above"
               >
                 <IconButton
