@@ -421,12 +421,12 @@ export default function DataSourcesView({
                               })(ds.connectorProvider);
                           }
 
-                          if (isDataSourceAllowedInPlan) {
+                          if (isDataSourceAllowedInPlan && ds.isBuilt) {
                             await handleEnableManagedDataSource(
                               ds.connectorProvider as ConnectorProvider,
                               ds.setupWithSuffix
                             );
-                          } else if (!ds.isBuilt) {
+                          } else if (isDataSourceAllowedInPlan && !ds.isBuilt) {
                             setShowPreviewPopupForProvider(
                               ds.connectorProvider
                             );
