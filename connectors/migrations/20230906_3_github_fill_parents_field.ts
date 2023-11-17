@@ -6,11 +6,8 @@ import {
   getIssueDocumentId,
 } from "@connectors/connectors/github/temporal/activities";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import {
-  Connector,
-  GithubDiscussion,
-  GithubIssue,
-} from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 
 async function main() {
   if (!process.argv[2]) {

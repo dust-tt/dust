@@ -1,31 +1,36 @@
 import { Sequelize } from "sequelize";
 
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
+} from "@connectors/lib/models/github";
+import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
+} from "@connectors/lib/models/google_drive";
+import {
+  IntercomArticle,
+  IntercomCollection,
+} from "@connectors/lib/models/intercom";
+import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
   NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
-  sequelize_conn,
+} from "@connectors/lib/models/notion";
+import {
   SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
   SlackMessages,
-} from "@connectors/lib/models";
-import {
-  IntercomArticle,
-  IntercomCollection,
-} from "@connectors/lib/models/intercom";
+} from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 
 async function main(): Promise<void> {

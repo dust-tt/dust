@@ -1,4 +1,5 @@
-import { Connector, GoogleDriveConfig } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 
 async function main() {
   const gDriveConnectors = await Connector.findAll({

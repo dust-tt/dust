@@ -24,16 +24,14 @@ import { CreationAttributes, literal, Op } from "sequelize";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
-  ModelId,
-  sequelize_conn,
-} from "@connectors/lib/models";
+} from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";

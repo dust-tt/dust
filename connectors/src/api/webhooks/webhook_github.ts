@@ -21,7 +21,8 @@ import {
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import { assertNever } from "@connectors/lib/assert_never";
-import { Connector, GithubConnectorState } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { GithubConnectorState } from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";

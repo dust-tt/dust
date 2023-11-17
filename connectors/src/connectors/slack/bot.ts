@@ -15,13 +15,12 @@ import {
   RetrievalDocumentType,
   UserMessageType,
 } from "@connectors/lib/dust_api";
+import { Connector, ModelId } from "@connectors/lib/models";
 import {
-  Connector,
-  ModelId,
   SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
-} from "@connectors/lib/models";
+} from "@connectors/lib/models/slack";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 

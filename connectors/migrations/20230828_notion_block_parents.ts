@@ -7,7 +7,8 @@ import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
-import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
 

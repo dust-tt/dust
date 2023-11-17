@@ -8,12 +8,8 @@ import {
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import {
-  Connector,
-  ModelId,
-  NotionDatabase,
-  NotionPage,
-} from "@connectors/lib/models";
+import { Connector, ModelId } from "@connectors/lib/models";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 
 /** Compute the parents field for a notion pageOrDb See the [Design

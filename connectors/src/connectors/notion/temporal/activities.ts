@@ -41,16 +41,15 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { Connector, ModelId } from "@connectors/lib/models";
 import {
-  Connector,
-  ModelId,
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
   NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
-} from "@connectors/lib/models";
+} from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
