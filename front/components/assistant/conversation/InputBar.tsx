@@ -441,6 +441,15 @@ export function AssistantInputBar({
                     });
                     return;
                   }
+                  if (res.value.content.length > 1000000) {
+                    sendNotification({
+                      type: "error",
+                      title: "File too large.",
+                      description:
+                        "The extracted text from your PDF is more than 1 million characters. Please upload a smaller file.",
+                    });
+                    return;
+                  }
                   setContentFragmentFilename(res.value.title);
                   setContentFragmentBody(res.value.content);
                 }}
