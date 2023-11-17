@@ -457,7 +457,7 @@ export function AssistantInputBar({
                       type: "error",
                       title: "File too large.",
                       description:
-                        "The extracted text from your file is bigger than 1MB. Please upload a smaller file.",
+                        "The extracted text from your PDF is more than 1 million characters. This will overflow the assistant context. Please upload a smaller file.",
                     });
                     return;
                   }
