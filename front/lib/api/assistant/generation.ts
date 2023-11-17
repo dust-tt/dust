@@ -185,6 +185,12 @@ export async function renderConversationForModel({
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
       selected.unshift(messages[i]);
+    } else if (messages[i].role === "content_fragment") {
+      const c = allowedTokenCount - tokensUsed;
+      tokensUsed += c;
+      const truncatedMessage = messages[i];
+      truncatedMessage.content = truncatedMessage.content.substring(0, c);
+      selected.unshift(truncatedMessage);
     }
   }
 
