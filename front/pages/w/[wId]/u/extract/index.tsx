@@ -56,6 +56,7 @@ export default function AppExtractEvents({
   const router = useRouter();
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

@@ -189,9 +189,9 @@ export default function AssistantNew({
     <InputBarContext.Provider value={{ animate: shouldAnimateInput }}>
       <GenerationContextProvider>
         <AppLayout
+          subscription={subscription}
           user={user}
           owner={owner}
-          subscription={subscription}
           isWideMode={conversation ? true : false}
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}

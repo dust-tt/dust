@@ -130,6 +130,7 @@ export default function AppExtractEventsReadData({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

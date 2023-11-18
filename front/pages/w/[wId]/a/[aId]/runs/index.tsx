@@ -17,12 +17,14 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { RunRunType, RunStatus } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   app: AppType;
   wIdTarget: string | null;
@@ -36,7 +38,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -60,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       app,
       wIdTarget,
@@ -88,6 +92,7 @@ const inputCount = (status: RunStatus) => {
 export default function RunsView({
   user,
   owner,
+  subscription,
   readOnly,
   app,
   wIdTarget,
@@ -126,6 +131,7 @@ export default function RunsView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

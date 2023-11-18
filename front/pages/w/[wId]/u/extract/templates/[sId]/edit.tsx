@@ -60,6 +60,7 @@ export default function AppExtractEventsUpdate({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

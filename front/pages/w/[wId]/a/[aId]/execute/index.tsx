@@ -37,6 +37,7 @@ import { AppType, BlockRunConfig, SpecificationType } from "@app/types/app";
 import { DatasetType } from "@app/types/dataset";
 import { TraceType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscriptionType } from "@app/types/plan";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -54,6 +55,7 @@ type Event = {
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   app: AppType;
   config: BlockRunConfig;
   inputDataset: DatasetType | null;
@@ -68,7 +70,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -107,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       app,
       config,
       inputDataset,
@@ -359,6 +363,7 @@ function ExecuteInput({
 export default function ExecuteView({
   user,
   owner,
+  subscription,
   app,
   config,
   inputDataset,
@@ -566,6 +571,7 @@ export default function ExecuteView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

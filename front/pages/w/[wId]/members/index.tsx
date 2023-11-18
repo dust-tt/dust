@@ -86,6 +86,7 @@ export default function WorkspaceAdmin({
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

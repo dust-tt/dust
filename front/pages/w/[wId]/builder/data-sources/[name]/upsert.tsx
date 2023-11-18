@@ -26,7 +26,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -34,6 +34,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
@@ -49,7 +50,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -70,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       owner,
       plan,
+      subscription,
       readOnly,
       dataSource,
       loadDocumentId: (context.query.documentId || null) as string | null,
@@ -81,6 +84,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourceUpsert({
   user,
   owner,
+  subscription,
   plan,
   readOnly,
   dataSource,
@@ -213,6 +217,7 @@ export default function DataSourceUpsert({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

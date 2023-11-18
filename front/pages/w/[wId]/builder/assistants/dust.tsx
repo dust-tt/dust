@@ -22,12 +22,14 @@ import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DataSourceType } from "@app/types/data_source";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -38,7 +40,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !user || !auth.isBuilder()) {
+  const subscription = auth.subscription();
+  if (!owner || !user || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
@@ -48,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -56,6 +60,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function EditDustAssistant({
   user,
   owner,
+  subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -147,6 +152,7 @@ export default function EditDustAssistant({
 
   return (
     <AppLayout
+      subscription={subscription}
       hideSidebar
       user={user}
       owner={owner}

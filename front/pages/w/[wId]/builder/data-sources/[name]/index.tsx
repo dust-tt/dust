@@ -41,7 +41,7 @@ import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
@@ -57,6 +57,7 @@ const {
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
   isAdmin: boolean;
@@ -82,7 +83,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -116,6 +118,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       plan,
       readOnly,
       isAdmin,
@@ -733,6 +736,7 @@ function ManagedDataSourceView({
 export default function DataSourceView({
   user,
   owner,
+  subscription,
   plan,
   readOnly,
   isAdmin,
@@ -747,6 +751,7 @@ export default function DataSourceView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

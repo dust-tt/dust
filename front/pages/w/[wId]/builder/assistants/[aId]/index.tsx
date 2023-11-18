@@ -25,7 +25,7 @@ type DataSourceConfig = NonNullable<
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
-  subscription: SubscriptionType | null;
+  subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
@@ -44,7 +44,14 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !user || !auth.isBuilder() || !context.params?.aId) {
+  if (
+    !owner ||
+    !plan ||
+    !user ||
+    !subscription ||
+    !auth.isBuilder() ||
+    !context.params?.aId
+  ) {
     return {
       notFound: true,
     };

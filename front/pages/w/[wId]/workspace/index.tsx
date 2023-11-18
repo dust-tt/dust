@@ -204,6 +204,7 @@ export default function WorkspaceAdmin({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

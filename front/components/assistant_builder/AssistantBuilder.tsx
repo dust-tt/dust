@@ -700,10 +700,10 @@ export default function AssistantBuilder({
         avatarUrls={avatarUrls}
       />
       <AppLayout
+        subscription={subscription}
         hideSidebar
         user={user}
         owner={owner}
-        subscription={subscription}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="settings"
         subNavigation={subNavigationAdmin({

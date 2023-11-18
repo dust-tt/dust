@@ -31,8 +31,9 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { Subscription } from "@app/lib/models";
 
 const {
   GA_TRACKING_ID = "",
@@ -62,6 +63,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = ["google_drive", "slack"];
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   isAdmin: boolean;
   integrations: DataSourceIntegration[];
@@ -92,7 +94,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -214,6 +217,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       isAdmin,
       integrations,
@@ -234,6 +238,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourcesView({
   user,
   owner,
+  subscription,
   readOnly,
   isAdmin,
   integrations,
@@ -344,6 +349,7 @@ export default function DataSourcesView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

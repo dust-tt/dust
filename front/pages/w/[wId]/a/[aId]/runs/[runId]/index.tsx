@@ -16,12 +16,14 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { AppType, SpecificationType } from "@app/types/app";
 import { RunType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
+import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   app: AppType;
   run: RunType;
@@ -36,7 +38,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -63,6 +66,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       app,
       spec,
@@ -75,6 +79,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppRun({
   user,
   owner,
+  subscription,
   readOnly,
   app,
   spec,
@@ -139,6 +144,7 @@ export default function AppRun({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
