@@ -1,4 +1,8 @@
 import {
+  GPT_3_5_TURBO_MODEL_ID,
+  // GPT_4_TURBO_MODEL_ID,
+} from "@app/lib/assistant";
+import {
   AgentConfiguration,
   AgentGenerationConfiguration,
   Workspace,
@@ -6,6 +10,14 @@ import {
 import { Err } from "@app/lib/result";
 
 const { LIVE, WORKSPACE } = process.env;
+
+// GPT-4 and GPT-4-32k are being replaced by GPT-4-1106-preview
+// const FROM_MODELS = ["gpt-4", "gpt-4-32k"];
+// const TO_MODEL = GPT_4_TURBO_MODEL_ID;
+
+// GPT-3.5 Turbo and GPT-3.5 Turbo 16k are being replaced by GPT-3.5 Turbo 1106
+const FROM_MODELS = ["gpt-3.5-turbo", "gpt-3.5-turbo-16k"];
+const TO_MODEL = GPT_3_5_TURBO_MODEL_ID;
 
 async function updateWorkspaceAssistants(wId: string) {
   // console.log(`Updating agents for workspace ${wId}...`);
@@ -39,10 +51,10 @@ async function updateWorkspaceAssistants(wId: string) {
       );
     }
 
-    if (g.modelId === "gpt-4" || g.modelId === "gpt-4-32k") {
+    if (FROM_MODELS.includes(g.modelId)) {
       if (LIVE) {
         const oldModel = g.modelId;
-        await g.update({ modelId: "gpt-4-1106-preview" });
+        await g.update({ modelId: TO_MODEL });
         console.log("Updated", c.sId, c.name, "from " + oldModel);
       } else {
         console.log("Would update", c.sId, c.name, "from " + g.modelId);

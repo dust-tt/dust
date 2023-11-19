@@ -14,7 +14,7 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import {
-  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -71,8 +71,8 @@ export async function generateActionInputs(
 
   let model: { providerId: string; modelId: string } = isFree
     ? {
-        providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
+        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
         providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
@@ -80,7 +80,7 @@ export async function generateActionInputs(
       };
 
   const contextSize = isFree
-    ? GPT_3_5_TURBO_16K_MODEL_CONFIG.contextSize
+    ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
     : GPT_4_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
