@@ -7,7 +7,6 @@ const readFileAsync = promisify(fs.readFile);
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  GPT_3_5_TURBO_16K_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
@@ -115,10 +114,8 @@ async function _getHelperGlobalAgent(
 }
 
 async function _getGPT35TurboGlobalAgent({
-  plan,
   settings,
 }: {
-  plan: PlanType;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   return {
@@ -134,16 +131,10 @@ async function _getGPT35TurboGlobalAgent({
     generation: {
       id: -1,
       prompt: "",
-      model:
-        plan.code === FREE_TEST_PLAN_CODE
-          ? {
-              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-            }
-          : {
-              providerId: GPT_3_5_TURBO_16K_MODEL_CONFIG.providerId,
-              modelId: GPT_3_5_TURBO_16K_MODEL_CONFIG.modelId,
-            },
+      model: {
+        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+      },
       temperature: 0.7,
     },
     action: null,
@@ -592,7 +583,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getHelperGlobalAgent(auth);
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings, plan });
+      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = await _getGPT4GlobalAgent({ plan });

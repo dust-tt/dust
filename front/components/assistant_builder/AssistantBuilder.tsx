@@ -41,7 +41,7 @@ import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   getSupportedModelConfig,
-  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
   SupportedModel,
@@ -67,7 +67,7 @@ import DustAppSelectionSection from "./DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,
-  GPT_3_5_TURBO_16K_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
@@ -228,7 +228,7 @@ export default function AssistantBuilder({
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
       modelSettings:
         plan.code === FREE_TEST_PLAN_CODE
-          ? GPT_3_5_TURBO_16K_MODEL_CONFIG
+          ? GPT_3_5_TURBO_MODEL_CONFIG
           : GPT_4_TURBO_MODEL_CONFIG,
     },
   });
