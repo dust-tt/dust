@@ -33,7 +33,6 @@ import { timeAgoFrom } from "@app/lib/utils";
 import { DataSourceType } from "@app/types/data_source";
 import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { Subscription } from "@app/lib/models";
 
 const {
   GA_TRACKING_ID = "",

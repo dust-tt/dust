@@ -15,9 +15,9 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRuns } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
+import { SubscriptionType } from "@app/types/plan";
 import { RunRunType, RunStatus } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

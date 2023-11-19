@@ -22,8 +22,8 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

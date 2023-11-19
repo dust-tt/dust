@@ -18,6 +18,7 @@ import React from "react";
 
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
@@ -25,7 +26,6 @@ import {
   topNavigation,
   TopNavigationId,
 } from "./navigation";
-import { SubscriptionType } from "@app/types/plan";
 
 function NavigationBar({
   user,

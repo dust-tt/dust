@@ -26,8 +26,8 @@ import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { KeyType } from "@app/types/key";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -10,8 +10,8 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

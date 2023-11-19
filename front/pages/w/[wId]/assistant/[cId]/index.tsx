@@ -13,8 +13,8 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

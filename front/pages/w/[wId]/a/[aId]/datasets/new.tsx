@@ -18,8 +18,8 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { AppType } from "@app/types/app";
 import { DatasetSchema, DatasetType } from "@app/types/dataset";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

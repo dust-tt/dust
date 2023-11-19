@@ -37,8 +37,8 @@ import {
   ConversationType,
   MentionType,
 } from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
 import { SubscriptionType } from "@app/types/plan";
+import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

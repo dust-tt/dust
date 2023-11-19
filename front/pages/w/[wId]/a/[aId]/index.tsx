@@ -38,9 +38,9 @@ import {
   SpecificationBlockType,
   SpecificationType,
 } from "@app/types/app";
+import { SubscriptionType } from "@app/types/plan";
 import { BlockType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
-import { SubscriptionType } from "@app/types/plan";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
