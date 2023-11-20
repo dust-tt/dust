@@ -48,7 +48,9 @@ pub mod blocks {
     pub mod curl;
     pub mod data;
     pub mod data_source;
+    pub mod database_schema;
     pub mod end;
+    pub mod helpers;
     pub mod input;
     pub mod llm;
     pub mod map;

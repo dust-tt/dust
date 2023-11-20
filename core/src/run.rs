@@ -56,6 +56,7 @@ impl RunConfig {
             BlockType::Browser => 8,
             BlockType::While => 64,
             BlockType::End => 64,
+            BlockType::DatabaseSchema => 8,
         }
     }
 }
