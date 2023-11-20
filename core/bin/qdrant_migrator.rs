@@ -117,14 +117,14 @@ fn main() -> Result<()> {
                 {
                     Some(info) => {
                         utils::info(&format!(
-                            "[MAIN] Qdrant collection: cluster={} collection={} status={} \
-                             points_count={}",
-                            qdrant_clients
-                                .main_cluster(&ds.config().qdrant_config)
-                                .to_string(),
+                            "[MAIN] Qdrant collection: collection={} status={} \
+                             points_count={} cluster={} ",
                             ds.qdrant_collection(),
                             info.status.to_string(),
                             info.points_count,
+                            qdrant_clients
+                                .main_cluster(&ds.config().qdrant_config)
+                                .to_string(),
                         ));
                     }
                     None => Err(anyhow!("Qdrant collection not found"))?,
@@ -142,13 +142,13 @@ fn main() -> Result<()> {
                         {
                             Some(info) => {
                                 utils::info(&format!(
-                            "[SHADOW] Qdrant collection: cluster={} collection={} status={}\
-                             points_count={}",
-                            shadow_write_cluster.to_string(),
-                            ds.qdrant_collection(),
-                            info.status.to_string(),
-                            info.points_count,
-                        ));
+                                    "[SHADOW] Qdrant collection: collection={} status={} \
+                             points_count={} cluster={}",
+                                    ds.qdrant_collection(),
+                                    info.status.to_string(),
+                                    info.points_count,
+                                    shadow_write_cluster.to_string(),
+                                ));
                             }
                             None => Err(anyhow!("Qdrant collection not found"))?,
                         }
@@ -253,13 +253,13 @@ fn main() -> Result<()> {
                         match utils::confirm(&format!(
                             "[DANGER] Are you sure you want to delete this qdrant \
                              shadow_write_cluster collection? \
-                             (this is definitive) shadow_write_cluster={} points_count={}",
+                             (this is definitive) points_count={} shadow_write_cluster={}",
+                            info.points_count,
                             match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
                                 Some(cluster) => cluster.to_string(),
                                 None => "none".to_string(),
                             }
                             .to_string(),
-                            info.points_count,
                         ))? {
                             true => (),
                             false => Err(anyhow!("Aborted"))?,
