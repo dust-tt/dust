@@ -14,6 +14,7 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
+import { CoreAPI, CoreAPIDataSource } from "@app/lib/core_api";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -23,6 +24,7 @@ import { WorkspaceType } from "@app/types/user";
 export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
+  coreDataSource: CoreAPIDataSource;
   connector: ConnectorType | null;
 }> = async (context) => {
   const wId = context.params?.wId;
@@ -66,6 +68,17 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
+  const coreDataSourceRes = await CoreAPI.getDataSource({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.name,
+  });
+
+  if (coreDataSourceRes.isErr()) {
+    return {
+      notFound: true,
+    };
+  }
+
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
     const connectorRes = await ConnectorsAPI.getConnector(
@@ -80,6 +93,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       owner,
       dataSource,
+      coreDataSource: coreDataSourceRes.value.data_source,
       connector,
     },
   };
@@ -88,13 +102,14 @@ export const getServerSideProps: GetServerSideProps<{
 const DataSourcePage = ({
   owner,
   dataSource,
+  coreDataSource,
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
   const { documents, total, isDocumentsLoading, isDocumentsError } =
-    useDocuments(owner, dataSource, limit, offset);
+    useDocuments(owner, dataSource, limit, offset, true);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
@@ -134,7 +149,17 @@ const DataSourcePage = ({
 
           <div className="my-8 flex flex-col gap-y-4">
             <JsonViewer value={dataSource} rootName={false} />
+            <JsonViewer value={coreDataSource} rootName={false} />
             <JsonViewer value={connector} rootName={false} />
+          </div>
+
+          <div className="flex flex-row">
+            <a
+              href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
+              className="text-sm text-blue-500"
+            >
+              Datadog: Logs DSSTAT Qdrant search
+            </a>
           </div>
 
           <div className="mt-4 flex flex-row">
@@ -201,7 +226,7 @@ const DataSourcePage = ({
                         icon={EyeIcon}
                         onClick={() => {
                           window.confirm(
-                            "Are you sure you want to access this sensible user data?"
+                            "Are you sure you want to access this sensible user data? (Access will be logged)"
                           );
                           void router.push(
                             `/poke/${owner.sId}/data_sources/${

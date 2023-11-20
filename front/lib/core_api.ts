@@ -53,6 +53,7 @@ export type CoreAPIDataSourceConfig = {
 export type CoreAPIDataSource = {
   created: number;
   data_source_id: string;
+  qdrant_collection: string;
   config: CoreAPIDataSourceConfig;
 };
 
@@ -476,6 +477,25 @@ export const CoreAPI = {
           config: config,
           credentials: credentials,
         }),
+      }
+    );
+
+    return _resultFromResponse(response);
+  },
+
+  async getDataSource({
+    projectId,
+    dataSourceId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
 
