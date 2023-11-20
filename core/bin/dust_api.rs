@@ -1028,6 +1028,48 @@ async fn data_sources_register(
                         "data_source": {
                             "created": ds.created(),
                             "data_source_id": ds.data_source_id(),
+                            "qdrant_collection": ds.qdrant_collection(),
+                            "config": ds.config(),
+                        },
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+async fn data_sources_retrieve(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "data_source": {
+                            "created": ds.created(),
+                            "data_source_id": ds.data_source_id(),
+                            "qdrant_collection": ds.qdrant_collection(),
                             "config": ds.config(),
                         },
                     })),
@@ -2232,6 +2274,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources",
             post(data_sources_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id",
+            get(data_sources_retrieve),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/versions",
