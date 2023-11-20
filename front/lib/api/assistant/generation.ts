@@ -20,6 +20,7 @@ import { CoreAPI } from "@app/lib/core_api";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
+import { assertNever } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 import {
@@ -175,7 +176,7 @@ export async function renderConversationForModel({
   let tokensUsed = promptCountRes.value + 64;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected = [];
+  const selected: ModelMessageType[] = [];
   for (let i = messages.length - 1; i >= 0; i--) {
     const r = messagesCountRes[i];
     if (r.isErr()) {
@@ -188,7 +189,38 @@ export async function renderConversationForModel({
     } else if (messages[i].role === "content_fragment") {
       const c = allowedTokenCount - tokensUsed;
       tokensUsed += c;
-      messages[i].content = messages[i].content.substring(0, c);
+      const contentFragmentMessage =
+        conversation.content[i][conversation.content[i].length - 1];
+      if (contentFragmentMessage) {
+        if (isContentFragmentType(contentFragmentMessage)) {
+          switch (contentFragmentMessage.contentType) {
+            case "file_attachment":
+              // Truncate file attachment content to the first characters.
+              messages[i].content = messages[i].content.substring(0, c);
+              break;
+            case "slack_thread_content":
+              // Truncate slack thread content to the last characters.
+              messages[i].content = messages[i].content.substring(
+                messages[i].content.length - c
+              );
+              break;
+            default:
+              assertNever(contentFragmentMessage.contentType);
+          }
+        } else {
+          // This should never happen but if does, we don't want this branch go be silent.
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              contentFragmentMessage,
+            },
+            `Unexpected message type for "content_fragment`
+          );
+          throw new Error(`Unexpected message type for "content_fragment"`);
+        }
+      }
+
       selected.unshift(messages[i]);
     }
   }
