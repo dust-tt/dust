@@ -15,7 +15,6 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDocumentsResponseBody>
 ): Promise<void> {
-  console.log(req.query, req.query.asDustSuperUser);
   const session = await getSession(req, res);
   const auth =
     req.query.asDustSuperUser === "true"
