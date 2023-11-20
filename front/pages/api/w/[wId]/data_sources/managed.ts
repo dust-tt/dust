@@ -15,6 +15,8 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { DataSourceType } from "@app/types/data_source";
 
+const { NODE_ENV } = process.env;
+
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;
   connector: ConnectorType;
@@ -193,7 +195,16 @@ async function handler(
           model_id: dataSourceModelId,
           splitter_id: "base_v0",
           max_chunk_size: dataSourceMaxChunkSize,
-          use_cache: false,
+          qdrant_config:
+            NODE_ENV === "production"
+              ? {
+                  cluster: "dedicated-0",
+                  shadow_write_cluster: null,
+                }
+              : {
+                  cluster: "main-0",
+                  shadow_write_cluster: null,
+                },
         },
         credentials,
       });

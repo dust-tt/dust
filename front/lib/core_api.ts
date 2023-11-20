@@ -36,13 +36,18 @@ export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
   data: { [key: string]: any }[];
 };
 
+export type QdrantCluster = "main-0" | "dedicated-0";
+
 export type CoreAPIDataSourceConfig = {
   provider_id: string;
   model_id: string;
   extras?: any | null;
   splitter_id: string;
   max_chunk_size: number;
-  use_cache: boolean;
+  qdrant_config: {
+    cluster: QdrantCluster;
+    shadow_write_cluster: QdrantCluster | null;
+  } | null;
 };
 
 export type CoreAPIDataSource = {
