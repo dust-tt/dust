@@ -323,6 +323,11 @@ fn main() -> Result<()> {
                     None => Err(anyhow!("Data source not found"))?,
                 };
 
+                let points_per_request = match std::env::var("POINTS_PER_REQUEST") {
+                    Ok(v) => v.parse::<usize>()?,
+                    Err(_) => 256,
+                };
+
                 let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
 
                 // Delete collection on shadow_write_cluster.
@@ -332,15 +337,21 @@ fn main() -> Result<()> {
                         None => Err(anyhow!("No shadow write cluster to migrate to"))?,
                     };
 
+                utils::info(&format!(
+                    "Migrating points: points_per_request={}",
+                    points_per_request
+                ));
+
                 let mut page_offset: Option<PointId> = None;
                 let mut total: usize = 0;
                 loop {
+                    let now = utils::now();
                     let scroll_results = qdrant_client
                         .scroll(&ScrollPoints {
                             collection_name: ds.qdrant_collection(),
                             with_vectors: Some(true.into()),
                             with_payload: Some(true.into()),
-                            limit: Some(256),
+                            limit: Some(points_per_request as u32),
                             offset: page_offset,
                             ..Default::default()
                         })
@@ -365,7 +376,12 @@ fn main() -> Result<()> {
                         .await?;
 
                     total += count;
-                    utils::info(&format!("Migrated points: count={} total={}", count, total));
+                    utils::info(&format!(
+                        "Migrated points: count={} total={} latency_ms={}",
+                        count,
+                        total,
+                        utils::now() - now
+                    ));
 
                     page_offset = scroll_results.next_page_offset;
                     if page_offset.is_none() {
