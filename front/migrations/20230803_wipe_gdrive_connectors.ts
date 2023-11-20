@@ -47,7 +47,7 @@ async function main() {
         model_id: "text-embedding-ada-002",
         splitter_id: "base_v0",
         max_chunk_size: 256,
-        use_cache: false,
+        qdrant_config: null,
       },
       credentials: dustManagedCredentials(),
     });
