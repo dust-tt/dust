@@ -226,7 +226,7 @@ const DataSourcePage = ({
                         icon={EyeIcon}
                         onClick={() => {
                           window.confirm(
-                            "Are you sure you want to access this sensible user data?"
+                            "Are you sure you want to access this sensible user data? (Access will be logged)"
                           );
                           void router.push(
                             `/poke/${owner.sId}/data_sources/${
