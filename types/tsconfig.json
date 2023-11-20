@@ -3,5 +3,6 @@
   "include": ["src", "types"],
   "compilerOptions": {
     "module": "esnext",
+    "moduleResolution": "node"
   }
 }
