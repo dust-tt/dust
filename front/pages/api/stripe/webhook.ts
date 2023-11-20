@@ -368,7 +368,7 @@ async function handler(
               status: "ended",
               endDate: new Date(),
             });
-            await revokeUsersForDowngrade(activeSubscription.workspace.sId);
+            await revokeUsersForDowngrade(activeSubscription.workspace.id);
             await sendOpsEmail(activeSubscription.workspace.sId);
           } else {
             logger.warn(
@@ -399,7 +399,7 @@ async function handler(
  * Remove everybody except the most tenured admin
  * @param workspaceId
  */
-async function revokeUsersForDowngrade(workspaceId: string) {
+async function revokeUsersForDowngrade(workspaceId: number) {
   const memberships = await Membership.findAll({
     where: { workspaceId },
     order: [["createdAt", "ASC"]],
