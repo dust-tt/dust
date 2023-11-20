@@ -13,6 +13,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { dumpSpecification } from "@app/lib/specification";
 import { AppType } from "@app/types/app";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -20,6 +21,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   app: AppType;
   specification: string;
@@ -33,7 +35,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -72,6 +75,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       app,
       specification: spec,
@@ -83,6 +87,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function Specification({
   user,
   owner,
+  subscription,
   app,
   specification,
   gaTrackingId,
@@ -91,6 +96,7 @@ export default function Specification({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

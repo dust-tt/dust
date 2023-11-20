@@ -26,12 +26,14 @@ import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   schema: EventSchemaType;
   readOnly: boolean;
   gaTrackingId: string;
@@ -43,7 +45,8 @@ export const getServerSideProps: GetServerSideProps<{
     context.params?.wId as string
   );
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -63,6 +66,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       schema,
       readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
@@ -73,6 +77,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppExtractEventsReadData({
   user,
   owner,
+  subscription,
   schema,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -130,6 +135,7 @@ export default function AppExtractEventsReadData({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

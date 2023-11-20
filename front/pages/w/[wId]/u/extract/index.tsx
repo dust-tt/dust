@@ -14,12 +14,14 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useEventSchemas } from "@app/lib/swr";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   gaTrackingId: string;
 }> = async (context) => {
@@ -30,7 +32,8 @@ export const getServerSideProps: GetServerSideProps<{
     context.params?.wId as string
   );
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -40,6 +43,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly: !auth.isBuilder(),
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -49,6 +53,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AppExtractEvents({
   user,
   owner,
+  subscription,
   readOnly,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -56,6 +61,7 @@ export default function AppExtractEvents({
   const router = useRouter();
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

@@ -13,6 +13,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -20,6 +21,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   gaTrackingId: string;
   baseUrl: string;
   conversationId: string;
@@ -32,7 +34,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser() || !user) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isUser() || !user || !subscription) {
     return {
       redirect: {
         destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
@@ -45,6 +48,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
       conversationId: context.params?.cId as string,
@@ -55,6 +59,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AssistantConversation({
   user,
   owner,
+  subscription,
   gaTrackingId,
   baseUrl,
   conversationId,
@@ -180,6 +185,7 @@ export default function AssistantConversation({
   return (
     <GenerationContextProvider>
       <AppLayout
+        subscription={subscription}
         user={user}
         owner={owner}
         isWideMode={true}

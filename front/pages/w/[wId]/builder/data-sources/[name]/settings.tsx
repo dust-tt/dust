@@ -13,6 +13,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -20,6 +21,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
   gaTrackingId: string;
@@ -32,7 +34,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !user) {
+  const subscription = auth.subscription();
+  if (!owner || !user || !subscription) {
     return {
       notFound: true,
     };
@@ -55,6 +58,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       dataSource,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -64,6 +68,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourceSettings({
   user,
   owner,
+  subscription,
   dataSource,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -103,6 +108,7 @@ export default function DataSourceSettings({
     <StandardDataSourceSettings
       owner={owner}
       user={user}
+      subscription={subscription}
       dataSource={dataSource}
       handleUpdate={(settings: {
         description: string;
@@ -117,12 +123,14 @@ export default function DataSourceSettings({
 function StandardDataSourceSettings({
   owner,
   user,
+  subscription,
   dataSource,
   handleUpdate,
   gaTrackingId,
 }: {
   owner: WorkspaceType;
   user: UserType;
+  subscription: SubscriptionType;
   dataSource: DataSourceType;
   handleUpdate: (settings: {
     description: string;
@@ -176,6 +184,7 @@ function StandardDataSourceSettings({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

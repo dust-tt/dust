@@ -26,6 +26,7 @@ import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { KeyType } from "@app/types/key";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -33,6 +34,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   apps: AppType[];
   gaTrackingId: string;
@@ -52,7 +54,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !user) {
+  const subscription = auth.subscription();
+  if (!owner || !user || !subscription) {
     return {
       notFound: true,
     };
@@ -66,6 +69,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       apps,
       gaTrackingId: GA_TRACKING_ID,
@@ -444,6 +448,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 export default function Developers({
   user,
   owner,
+  subscription,
   readOnly,
   apps,
   gaTrackingId,
@@ -452,6 +457,7 @@ export default function Developers({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

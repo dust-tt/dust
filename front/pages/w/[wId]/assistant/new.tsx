@@ -37,6 +37,7 @@ import {
   ConversationType,
   MentionType,
 } from "@app/types/assistant/conversation";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -44,6 +45,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   isBuilder: boolean;
+  subscription: SubscriptionType;
   owner: WorkspaceType;
   gaTrackingId: string;
 }> = async (context) => {
@@ -55,7 +57,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser() || !user) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isUser() || !user || !subscription) {
     return {
       redirect: {
         destination: "/",
@@ -69,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
       user,
       isBuilder: auth.isBuilder(),
       owner,
+      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -78,6 +82,7 @@ export default function AssistantNew({
   user,
   isBuilder,
   owner,
+  subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -184,6 +189,7 @@ export default function AssistantNew({
     <InputBarContext.Provider value={{ animate: shouldAnimateInput }}>
       <GenerationContextProvider>
         <AppLayout
+          subscription={subscription}
           user={user}
           owner={owner}
           isWideMode={conversation ? true : false}

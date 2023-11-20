@@ -6,7 +6,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { AppType } from "@app/types/app";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -14,6 +14,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
@@ -28,8 +29,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const plan = auth.plan();
-
-  if (!owner || !plan || !user || !auth.isBuilder()) {
+  const subscription = auth.subscription();
+  if (!owner || !plan || !user || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
@@ -42,6 +43,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
@@ -53,6 +55,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function CreateAssistant({
   user,
   owner,
+  subscription,
   plan,
   gaTrackingId,
   dataSources,
@@ -62,6 +65,7 @@ export default function CreateAssistant({
     <AssistantBuilder
       user={user}
       owner={owner}
+      subscription={subscription}
       plan={plan}
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}

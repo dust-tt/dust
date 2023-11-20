@@ -38,6 +38,7 @@ import {
   SpecificationBlockType,
   SpecificationType,
 } from "@app/types/app";
+import { SubscriptionType } from "@app/types/plan";
 import { BlockType } from "@app/types/run";
 import { UserType, WorkspaceType } from "@app/types/user";
 
@@ -46,6 +47,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   url: string;
   app: AppType;
@@ -59,7 +61,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -79,6 +82,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       url: URL,
       app,
@@ -142,6 +146,7 @@ const isRunnable = (
 export default function AppView({
   user,
   owner,
+  subscription,
   readOnly,
   app,
   url,
@@ -306,6 +311,7 @@ export default function AppView({
 
   return (
     <AppLayout
+      subscription={subscription}
       hideSidebar
       user={user}
       owner={owner}

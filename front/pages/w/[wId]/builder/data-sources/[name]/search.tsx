@@ -16,6 +16,7 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { UserType } from "@app/types//user";
 import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
+import { SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -23,6 +24,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   dataSource: DataSourceType;
   gaTrackingId: string;
 }> = async (context) => {
@@ -34,7 +36,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -57,6 +60,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       dataSource,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -66,6 +70,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function DataSourceView({
   user,
   owner,
+  subscription,
   dataSource,
   gaTrackingId: gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -143,6 +148,7 @@ export default function DataSourceView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

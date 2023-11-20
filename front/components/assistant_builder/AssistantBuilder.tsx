@@ -58,7 +58,7 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { DataSourceType } from "@app/types/data_source";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
@@ -164,6 +164,7 @@ export type AssistantBuilderInitialState = {
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
@@ -209,6 +210,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 export default function AssistantBuilder({
   user,
   owner,
+  subscription,
   plan,
   gaTrackingId,
   dataSources,
@@ -698,6 +700,7 @@ export default function AssistantBuilder({
         avatarUrls={avatarUrls}
       />
       <AppLayout
+        subscription={subscription}
         hideSidebar
         user={user}
         owner={owner}

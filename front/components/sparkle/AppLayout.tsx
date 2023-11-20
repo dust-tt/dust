@@ -18,6 +18,7 @@ import React from "react";
 
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
@@ -29,12 +30,14 @@ import {
 function NavigationBar({
   user,
   owner,
+  subscription,
   topNavigationCurrent,
   subNavigation,
   children,
 }: {
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
   children: React.ReactNode;
@@ -104,6 +107,10 @@ function NavigationBar({
             </DropdownMenu>
           )}
         </div>
+
+        {subscription.endDate && (
+          <SubscriptionEndBanner endDate={subscription.endDate} />
+        )}
         <div>
           <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
         </div>
@@ -168,6 +175,7 @@ function NavigationBar({
 export default function AppLayout({
   user,
   owner,
+  subscription,
   isWideMode = false,
   hideSidebar = false,
   topNavigationCurrent,
@@ -180,6 +188,7 @@ export default function AppLayout({
 }: {
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   isWideMode?: boolean;
   hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
@@ -300,6 +309,7 @@ export default function AppLayout({
                       </div>
                     </Transition.Child>
                     <NavigationBar
+                      subscription={subscription}
                       user={user}
                       owner={owner}
                       subNavigation={subNavigation}
@@ -319,6 +329,7 @@ export default function AppLayout({
             <NavigationBar
               user={user}
               owner={owner}
+              subscription={subscription}
               subNavigation={subNavigation}
               topNavigationCurrent={topNavigationCurrent}
             >
@@ -415,5 +426,30 @@ export default function AppLayout({
         </Script>
       </>
     </>
+  );
+}
+
+function SubscriptionEndBanner({ endDate }: { endDate: number }) {
+  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  return (
+    <div className="border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+      <div className="font-bold">Subscription ending on {formattedEndDate}</div>
+      <div className="font-normal">
+        Connections will be deleted and members will be revoked. Details{" "}
+        <Link
+          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
+          target="_blank"
+          className="underline"
+        >
+          here
+        </Link>
+        .
+      </div>
+    </div>
   );
 }

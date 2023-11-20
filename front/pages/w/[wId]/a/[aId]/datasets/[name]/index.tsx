@@ -18,6 +18,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { AppType } from "@app/types/app";
 import { DatasetSchema, DatasetType } from "@app/types/dataset";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -25,6 +26,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   readOnly: boolean;
   app: AppType;
   dataset: DatasetType;
@@ -39,7 +41,9 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const subscription = auth.subscription();
+
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -74,6 +78,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       readOnly,
       app,
       dataset,
@@ -86,6 +91,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function ViewDatasetView({
   user,
   owner,
+  subscription,
   readOnly,
   app,
   dataset,
@@ -166,6 +172,7 @@ export default function ViewDatasetView({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

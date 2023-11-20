@@ -33,7 +33,7 @@ import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
-import { PlanType } from "@app/types/plan";
+import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -43,6 +43,7 @@ const CLOSING_ANIMATION_DURATION = 200;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   url: string;
@@ -55,7 +56,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
   const plan = auth.plan();
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin() || !plan) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isAdmin() || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -65,6 +67,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
       url: URL,
@@ -75,6 +78,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function WorkspaceAdmin({
   user,
   owner,
+  subscription,
   plan,
   gaTrackingId,
   url,
@@ -86,6 +90,7 @@ export default function WorkspaceAdmin({
   const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}

@@ -10,6 +10,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
+import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -17,6 +18,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -27,7 +29,8 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isBuilder()) {
+  const subscription = auth.subscription();
+  if (!owner || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
@@ -37,6 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -45,6 +49,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function NewApp({
   user,
   owner,
+  subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -103,6 +108,7 @@ export default function NewApp({
 
   return (
     <AppLayout
+      subscription={subscription}
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
