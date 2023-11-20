@@ -15,14 +15,15 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDocumentsResponseBody>
 ): Promise<void> {
+  console.log(req.query, req.query.asDustSuperUser);
   const session = await getSession(req, res);
   const auth =
     req.query.asDustSuperUser === "true"
-      ? await Authenticator.fromSession(session, req.query.wId as string)
-      : await Authenticator.fromSuperUserSession(
+      ? await Authenticator.fromSuperUserSession(
           session,
           req.query.wId as string
-        );
+        )
+      : await Authenticator.fromSession(session, req.query.wId as string);
 
   const owner = auth.workspace();
   if (!owner) {
