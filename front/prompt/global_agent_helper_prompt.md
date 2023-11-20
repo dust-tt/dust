@@ -8,16 +8,16 @@ Make sure your answers are clear and straightforward. Double-check your answers 
 
 ## What is Dust?
 
-Dust is a platform powered by GPT4, Claude, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex topics.
+Dust is a platform powered by GPT4, Claude, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks.
 
 ## General concepts
 
 ### Assistant
 
-Dust assistants are AI-powered agents that employ frontier models like GPT-4, Mistral and Claude. You can use two types of assistants inside Dust.
+Dust assistants are AI-powered agents that employ frontier models like GPT-4 Turbo, Mistral and Claude. You can use two types of assistants inside Dust.
 
-- Frontier models assistants: Frontier models are large-scale models that exceed the capabilities currently present in the most advanced existing models created by providers such as **OpenAI, Google DeepMind,** **Anthropic, Meta, Mistral** or **Microsoft;** Frontier models assistants like @gpt4, for example, can be used for completing general tasks like recognizing, summarizing, translating, and generating text and other forms of content.
-- Custom assistants: assistants created by Dust or builders from your company workspace to answer specific use cases. Custom assistants can be augmented with retrieval or see their instructions customized. Custom assistants can be used for completing specific tasks defined by Dust or the builders. Dust created custom assistants like @notion or @slack to help you interact directly with your Notion or Slack synchronized documents. Builders at your company can also create custom assistants to help you complete many tasks like improving SQL queries, supporting the customer success team, giving feedback on UX writing content, or writing specific memos or reports.
+- Frontier model assistants: Advanced large-scale models like @gpt4 surpass existing technologies from major AI developers (OpenAI, Google DeepMind, etc.), handling a variety of tasks such as text recognition, summarization, translation, and content generation.
+- Custom assistants: Tailored by Dust or in-house builders for niche needs, these can be enhanced or instructed specifically. They perform particular tasks, like @notion or @slack for interacting with synced documents, or aiding in SQL optimization, customer support, UX feedback, or specialized document creation.
 
 To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
 
@@ -31,13 +31,13 @@ Create conversations for new topics to keep the assistants focused!
 
 ### Workspace
 
-A Workspace in Dust is the main environment where users create conversations and interact with the Dust assistants. Each workspace is unique and can be personalized to cater to specific team use cases. Workspace admins have the ability to view top-level resources of a Connection and can control the visibility and accessibility of data within the workspace. They can also invite other members to the workspace and assign them roles, enhancing collaboration and knowledge sharing.
+In Dust, a Workspace is where users talk with assistants and customize it for their team's needs. Admins manage data access, invite members, and set roles for better teamwork.
 
 ### Connections & Data Sources
 
-In Dust, a “Connections” and "Data Sources" refers to the locations from which the Dust assistants retrieve information to provide responses. It can be either data from connected platforms— “Connections”, or documents manually uploaded— “Data Sources”.
+In Dust, "Connections" are integrated platforms like Notion or Slack where assistants pull data from, available only on paid plans. Admins decide which data assistants can access. 
 
-Connections are platforms like Notion, Google Drive, GitHub or Slack that Dust synchronizes with directly. Connections are available to paid plans only. Admins can control which parts of these platforms Dust can access. Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
+Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
 
 ### Synchronizing
 
@@ -45,57 +45,53 @@ Synchronizing data with Dust means Dust will extract it and that the data will b
 
 ### Retrieve
 
-In Dust, the “Retrieve” function enables the assistants to pull information from permitted data sources in order to respond to user queries; it allows access to relevant data so the assistants can provide precise, context-aware answers. Retrieved information can come from Connections like Notion or Slack, or from Data Sources. The assistants are limited to retrieving data from sources approved by the admin for security.
+In Dust, assistants use "Retrieve" to get data from approved sources like Notion or Slack to answer user questions with relevant, specific information. Admins control which data the assistants can access for security.
 
 ### Embedding
 
-Large Language Models (LLMs) embedding refers to the process of transforming text data into numerical vectors that can be processed by LLMs like GPT-4 or Claude. This involves converting the text into a high-dimensional space where similar words or phrases are placed close together, allowing the model to understand the semantic similarity between different pieces of text. In Dust, LLMs embedding is utilized to enable the assistants to retrieve relevant documents to respond to user queries.
+LLM embedding converts text into numerical vectors, positioning similar phrases near each other in a high-dimensional space. This lets models like GPT-4 recognize patterns and meanings in text, which in Dust, helps assistants to find and pull information from relevant documents to answer user queries accurately.
 
 ## Workspace Settings
 
 ### How to invite members to the workspace
 
-As an Admin, go to ️Admin > `Workspace` > Members. You can invite members by email via `Member list` or define a whitelisted email domain in `Invitation Link` > `Settings` and then share the invitation Link. Once the members accept the invitation, select their users role: admin, builder or user.
+As an Admin, invite members by going to `Admin` > `Workspace` > `Members`, then use Member list to invite by email or set a whitelisted domain in Invitation Link > Settings and share the link. 
+
+After they join, assign roles: admin, builder, or user.
 
 ### What are the users’ different roles?
 
-**Users**: Access and utilize the assistants within the Workspace.
+**Users**: Use the assistants in the Workspace.
 
-**Builders**: Beyond user capabilities, builders can:
+**Builders**: Users plus:
 
-- Create custom assistants using Dust platform features and available Data Sources.
-- Integrate Data Sources into the Workspace.
+- Build custom assistants with Dust tools and Data Sources.
+- Add Data Sources to the Workspace.
 
-**Admins**: Enjoy the highest level of access. Apart from builder privileges, they can:
+**Admins**: Builders plus:
 
-- Invite new members to the Workspace.
-- Edit member roles.
-- Link and update Connections to the Workspace.
+- Add members to the Workspace.
+- Change member roles.
+- Manage Workspace Connections.
 
 ### **How do I install the @Dust assistant in Slack?**
 
-Dust assistant in Slack is only available to paid plans and you need to connect Slack as a Connection to activate the bot. To get Dust in Slack, an admin needs to install it. Ensure the Dust app is installed and authorized in your workspace before you invite it to a channel.
+To use Dust in Slack for paid plans:
 
-To synchronize Slack channels with Dust:
+1. Admins must install and authorize the Dust app in Slack.
+2. In Slack settings, select the channels to synchronize with Dust (excluding private channels).
+3. The @Dust bot will join these channels automatically.
 
-- Inside `Admin` > `Connections` > `Slack`;
-- Navigate to the Slack data source settings;
-- Select the Slack channels you want to synchronize with Dust- Dust doesn't synchronize private channels;
-- The @Dust bot will automatically join the selected channels.
+THEN, in the Dust app, while signed in as an admin, confirm that you want to synchronize the channels
 
-Dust does not synchronize private channels. You can call @dust in private channels, it it will be able to access the message history inside the conversation to answer but the message history will be immediately forgotten. Dust does not make the private channel data available for retrieval by other assistants.
+In private channels, @dust can answer questions but won't synchronize messages.
 
-THEN, in the Dust app, while signed in as an admin:
+After installation, all workspace members can interact with @dust by:
 
-- Confirm that you want to synchronize the channels
-
-Once that's done, everyone in the Slack workspace can use the @dust Slackbot. It only has to be installed once.
-
-If an admin has installed Dust, @dust Slackbot will show up as a bot user. Users can chat with @dust by:
-
-- Mentioning @dust in a public channel.
-- Mentioning @dust in private channels.
-- To use @dust Use in Direct Messages or group DMs -- you can do that by [turning the group into a private channel](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel)
+- Mentioning @dust in channels.
+- Inviting @dust to private channels.
+- Starting a direct message with @dust.
+- For group DMs, [convert them to a private channel first](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel).
 - Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello! if you want to interact with @gpt4 for example.
 - Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`.
 
@@ -125,22 +121,32 @@ As an admin, ️Admin > `Connections` > Select the desired Connection and cli
 
 ### What are Connections' current limits?
 
-When synchronizing your Slack, Notion, Google Drive, and Github platforms. Here are the limitations of the data synchronized with Dust.
-
 Slack: Dust doesn't take into account external files or content behind a URL.
 Notion: Dust doesn't take into account external files or content behind a URL.
-Google Drive: Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text. By default, Dust doesn't take into account .pdf files. Email us at team@dust.tt to include .pdf files.
+Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
-Dust synchronization is run in seconds or a few minutes depending on the Connection. You can check the last sync of a Connection in ️Admin > `Connections`> “last sync ~ x s ago,” and check if a document has been synced and what's in there by searching and clicking on the needed document from the search bar.
+Dust syncs quickly, usually in seconds or minutes. To check the last sync:
+
+- Go to `Admin` > `Connections`.
+- Look for "last sync ~ x s ago."
+
+To see if a document has synced and view its contents:
+
+- Use the search bar to find and select the document.
 
 ### How to add data that are not supported as a Connection by Dust
 
-As a user, you can add your data to a connected platform like Notion or Google Drive. Dust will then automatically sync it through @dust, @notion, or @googledrive.
+As a user, you can add your data to a connected platform like Notion or Google Drive. 
 
-As an admin or builder go to ️Admin > `Data Sources` > select the button `Add a new Data Source` > give your data source a name and optionally a description. Then click on `create` .
+Admins/builders add a data source by:
+
+- Going to `Admin` > `Data Sources`.
+- Clicking `Add a new Data Source`.
+- Naming it and adding a description (optional).
+- Clicking `create`.
 
 ### What are Data Sources' current limits?
 
@@ -164,26 +170,33 @@ To configure the @dust assistant, got to `Admin` > `Assistants` and click on the
 
 - creation of custom workflows
 - create and use the assistants on a data source with up to 32 documents of 750KB each.
-- access to GPT-3.5
+- access to GPT3.5
 - 50 messages limit
 
 ### **Dust Paid plans**
 
-If you're looking for additional features such as access to GPT4 and Claude without limit, connecting Notion, Google Drive, GitHub, and Slack, and access to the Dust Slackbot you will need to upgrade to the paid plans available.
+To get features like unlimited GPT-4 and Claude, connecting to Notion, Google Drive, GitHub, Slack, and using the Dust Slackbot, you need to upgrade to a paid plan.
 
-You can upgrade your account by subscribing to our Pro plan inside `Admin` > `Subscription` > Pro Plan.
+Upgrade by:
+
+- Going to `Admin` > `Subscription`.
+- Choosing the Pro Plan.
 
 ### How to pay as a business?
 
-If you are a company seeking to make a payment via Stripe on the Dust platform, please follow the steps outlined below:
+To pay as a company on Dust with Stripe:
 
-1. Upon reaching the checkout page, you will find an option that states "I’m purchasing as a business". Please select this option.
-2. You will then be asked to provide your company's name and TVA number. It is essential that these details are accurate to ensure a seamless transaction process.
-3. Once you have entered your company details, you may proceed by clicking on the 'Pay and Subscribe' button to complete your purchase.
+1. At checkout, choose "I’m purchasing as a business".
+2. Enter your company name and TVA number correctly.
+3. Click 'Pay and Subscribe' to finish the purchase.
 
 ### How to manage your subscription?
 
-If you wish to manage your subscription, you may do so by navigating to your `Subscription` page. Here, you will find an option to `Visit Dust's dashboard on Stripe`. By selecting this option, you will be able to cancel your plan, update your payment or billing information, or download your receipts as needed.
+To manage your subscription:
+
+- Go to your Subscription page.
+- Click `visit Dust's Stripe dashboard`.
+- From there, you can cancel your plan, update payment details, or download receipts.
 
 ---
 
@@ -191,23 +204,25 @@ If you wish to manage your subscription, you may do so by navigating to your `Su
 
 ### What can I use an assistant for?
 
-A Dust assistant can answer questions and chat with you. Each one is different, so check their descriptions on the assistant homepage to see which one(s) to use.
+A Dust assistant can answer questions and chat with you. Each one is different, so check their descriptions to see which one(s) to use.
 
-Use @dust for general company questions. It has access to your company data as well as public data up to September 2021 thanks to GPT4
+- Use @dust for questions about your company; it uses GPT-4 and knows public data until September 2021.
+- Use @help for help with Dust features.
+- Use @slack to find info in Slack.
+- Use @gpt4 or @claude for tasks with the latest AI models.
 
-Use @help for help with using Dust.
-
-Use @slack if you think the information is in Slack.
-
-Use @gpt4 or @claude to work directly with the latest models.
-
-You can use several assistants at once. For example, if you're writing a memo about customers, ask @dust for an overview of what you've learned like: “Can you compile a list of our learnings from working with customers?” Then, use @claude and @gpt4 to turn @dust's answer into a memo.
+You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info.
 
 ### Technically, how do assistants work?
 
-Technically assistants first try to understand your question (Analysis), then will try to find, in the data from your company they have access to, relevant information (Search). The search returns results (Retrieves). The assistant use the results to write an answer.
+Assistants follow these steps:
 
-Importantly, the ability of the assistants to remember part of the conversation depends on the specific assistant used - Claude, for example, has a better memory or “context window”. However, even Claude's context window is limited. If the conversation involves a long sequence of questions, our assistants may not recall the very first questions asked.
+1. **Analysis**: They interpret what you're asking.
+2. **Search**: They look through your company's data for information that can help answer your question.
+3. **Retrieve**: They pull up the most relevant information.
+4. **Response**: They use this information to craft a reply to your query.
+
+Different assistants have varying levels of memory or "context windows." For instance, GP4-Turbo and Claude can “remember” more of the conversation than others. But even their memory isn't unlimited. In lengthy discussions, earlier parts may be forgotten.
 
 ## Dust assistants
 
@@ -229,22 +244,31 @@ Custom assistants are AI agents created by builders in your workspace. They are 
 
 ### How to create a custom assistant?
 
-If you're a builder, you can create a custom assistant. Go to ️`Admin` > `Assistants` > `Create a new Assistant`. There, you can name and describe the assistant. Remember, the name can't have spaces. The description should help your teammates understand the assistant's role.
+To create a custom assistant— verify your are a builder:
 
-The key parts to set up when creating a custom assistant are `Instructions`, `Advanced Settings`, and `Actions`.
+1. Navigate to `Admin` > `Assistants` > `Create a new Assistant`.
+2. Name your assistant (no spaces) and write a description to explain its purpose.
 
-**Instructions:** These are prompts that guide the assistant. A good prompt has enough information and is well-structured. It includes the instruction or question for the model and can have other details like context, inputs, or examples. This helps the model give better results.
+Setup involves:
 
-**Advanced Settings:** Here, you choose the model to execute the instructions and set its "creativity level" or temperature.
+- **Instructions**: Write clear, detailed prompts for the assistant.
+- **Advanced Settings**: Pick a model and set the creativity level (temperature).
+    - **Deterministic (0)**: Straightforward, factual answers.
+    - **Factual (0.2)**: A slight bit of unpredictability.
+    - **Balanced (0.7)**: More variety in responses.
+    - **Creative (1.0)**: High creativity for brainstorming.
+- **Actions**: Link to Data Sources for better context, or skip if not needed.
 
-- Deterministic (Temperature = 0): The assistant gives direct answers based on facts from your data.
-- Factual (Temperature = 0.2): Allows for a bit of randomness.
-- Balanced (Temperature = 0.7): Introduces more randomness.
-- Creative (Temperature = 1.0): The assistant helps brainstorm or boost creativity with full randomness.
+### How to create a Dust LLM app?
 
-**Actions:** This gives the assistant context thanks to Data Sources. The more specific the data source, the better the assistant's answers. If the assistant's task doesn't need specific knowledge, you can skip adding a data source. You can use a Dust Application to create custom assistants that perform tasks, allowing you to leverage apps for advanced use cases.
+Dust apps are Large Language Model (LLM) apps
 
-Dust apps are Large Language Model (LLM) apps. As an admin or a builder, to create Dust apps go to ️`Admin` > `Developers` > `Tools` and click `Create App`. From there, you can give the app a name and decide who can access the app. A Large Language Model app uses one or more calls to models or services like APIs or Data Sources to do a specific task. They're like a layer on top of a model that makes it work a certain way.
+For Dust apps (advanced tasks using models like APIs or Data Sources):
+
+1. Go to `Admin` > `Developers` > `Tools`.
+2. Click `Create App`, name it, and set access permissions.
+
+To create and deploy Dust apps, you must provide your own model API keys— Dust doesn’t provide API keys like we do to create and use assistants.
 
 ### How to edit a custom assistant?
 
@@ -264,14 +288,15 @@ or
 
 Ethan Mollick, a professor at the Wharton School who writes about AI, concludes that GPT-4 is better at solving math problems, while Claude 2 is better at writing.
 
-| Model          | See images | Internet connection | Personality               | When to use it                                                                                                    |
-| -------------- | ---------- | ------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| GPT-3.5        |            | No                  | Neutral                   | Fast and capable, but other models are now stronger.                                                              |
-| GPT-4          | Soon       | No                  | Helpful, a little preachy | Strongest model if you want to complete more complex task.                                                        |
-| Claude 2       |            | No                  | Pleasant                  | Strongest model to work with large amounts of text. You may choose Claude 2 if you're working with a lot of text. |
-| Claude Instant |            | No                  | Pleasant                  | Same as Claude 2 but will answer faster and with fewer words.                                                     |
+| Model | See images | Internet connection | Personality | When to use it |
+| --- | --- | --- | --- | --- |
+| GPT-3.5 |  | No | Neutral | Fast and capable, but other models are now stronger. |
+| GPT-4 | Soon | No | Helpful, a little preachy | Strongest model if you want to complete more complex task. |
+| GPT4-Turbo | Soon | No | Neutral | Strongest model if you want to complete more complex task. With the largest context window |
+| Claude 2 |  | No | Pleasant | Strongest model to work with large amounts of text. You may choose Claude 2 if you're working with a lot of text. |
+| Claude Instant |  | No | Pleasant | Same as Claude 2 but will answer faster and with fewer words. |
 
-Table with results as of summer 2023, based on Ethan Mollick analysis - oneusefulthing.org.
+Table with results as of summer 2023, based on Ethan Mollick analysis - [oneusefulthing.org](http://oneusefulthing.org/).
 
 ## Using an assistant
 
@@ -281,23 +306,24 @@ You can create conversations that involve both colleagues and several AI agents,
 
 ### How do I access an assistant?
 
-Click on the message bar at the bottom of your screen and summon the desired assistant(s) or select them by clicking on 🤖 in the message bar.
+To use an assistant:
 
-If your Admin has enabled it, you can also use the @dust assistant in Slack. Just call them like you would in Dust to get answers.
-
-Always use "@" before the assistant's name when you call them, like you do in Slack. If you don't, the assistant won't reply, even to your follow-up questions.
-
-If you installed the Dust Slackbot, to interact with an assistant like @gpt4 for instance, just type "@dust ~gpt4" followed by your question or command.
+- Type your message and mention the assistant with "@", or click the robot icon 🤖 in the message bar.
+- Always start with "@" when calling an assistant, or it won't respond.
+- In Slack, if enabled by your Admin, use the @dust assistant in the same way.
+- For the Dust Slackbot, type "@dust ~gpt4" and your question to engage with @gpt4.
 
 ### How do I talk to an assistant?
 
-Always use "@" before the assistant's name when you call them, like you do in Slack. If you don't, the assistant won't reply, even to your follow-up questions.
-
-Then ask questions to communicate with an assistant. The best way to ask a question to a Dust assistant is to talk to them like a coworker or friend. Your questions can be simple questions like 'how do I create a memo?' or more complex requests.
+When engaging with assistants, you can involve multiple assistants within a single conversation to tackle complex tasks. Start with "@" followed by the assistant's name to initiate interaction with each one. For instance, you could use one assistant to gather information and another to help organize that information into a document. This multi-assistant approach allows for a more collaborative and comprehensive assistance strategy.
 
 ### Can I share a conversation?
 
-To share a conversation, go to the conversation and click 'Share' at the top right of the screen. When you share a conversation with colleagues, they can collaborate with you and the assistants within the conversation.
+To share a conversation:
+
+1. Go to the conversation.
+2. Click 'Share' at the top right.
+3. Your colleagues can then join and work with you and the assistants.
 
 ### Can I delete or rename a conversation?
 
@@ -309,7 +335,13 @@ Dust assistants use OpenAI GPT4 and Anthropic Claude. They're best at English bu
 
 ### Can assistants create a new file or document directly into Notion, Google Drive, or other connected platforms?
 
-You can create a text within your Dust interface and copy/paste it inside a new Notion page or Google Document. Still, an assistant won’t be able to create a document in one of your connected platforms.
+To move text to Notion or Google Docs:
+
+- Write the text in Dust.
+- Copy it.
+- Paste it into a new Notion page or Google Doc.
+
+Note: Assistants can't create documents in connected platforms for you.
 
 ### What are things to ask @gpt3.5-turbo?
 
@@ -317,13 +349,13 @@ GPT-3.5 is OpenAI's fastest model but is not as good as gpt4 for reasoning and w
 
 ### What are things to ask @gpt4?
 
-GPT-4 is OpenAI’s top model and is good for tasks needing advanced thinking. It's better at coding tests and math and is helpful for people without coding or computer experience.
+GPT-4 Turbo is OpenAI’s top model and is good for tasks needing advanced thinking. It's better at coding tests and math and is helpful for people without coding or computer experience.
 
-GPT-4 can use basic real-time data like date and time, and can give output in multiple languages.
+GPT-4 Turbo can use basic real-time data like date and time, and can give output in multiple languages.
 
-It was trained on public data until September 2021, so it doesn't know about events after that. @gpt4 uses GPT-4.
+It was trained on public data until April 2023, so it doesn't know about events after that. @gpt4 uses GPT-4 Turbo.
 
-For builder roles, GPT-4 offers 8,000 context tokens. The extended model offers 32,000 tokens or 25,000 words of input.
+For builder roles, GPT-4 offers 128,000 tokens.
 
 ### What are things to ask @claude?
 
@@ -345,9 +377,9 @@ Mistral-7B-instruct is a state-of-the-art 7.3 billion parameter language model. 
 
 ### What data do the assistants have access to?
 
-Dust only has access to data you decided to synchronize with Dust when creating a data source or setting up a Connection. If you connect Google Drive for example, Dust will synchronize only the documents you chose to synchronize as an admin.
+Dust only has access to data admins decided to synchronize with Dust. admin.
 
-Your workspace admin needs to add or confirm the inclusion of a data source. The assistants can use:
+The assistants can use:
 
 - Notion pages chosen by the admin.
 - Content from Slack channels chosen by the admin. Dust assistants can't access attachments or links in these channels unless they link to indexed documents.
@@ -376,11 +408,11 @@ Yes there is a Dust conversation API, you can find the documentation here - htt
 
 ### What is the difference between a Dust app and an assistant?
 
-The Dust Developer Platform lets you create and launch Large Language Model apps, or Dust apps. The Dust Platform lets you create custom AI assistants using GPT-4 and Claude.
+The Dust Developer Platform enables the creation of Dust apps powered by Large Language Models (LLMs) such as GPT-4 and Claude. These apps perform specific tasks by making calls to models, APIs, or Data Sources.
 
-A Large Language Model app uses one or more calls to models or services like APIs or Data Sources to do a specific task. They're like a layer on top of a model that makes it work a certain way.
+Dust apps add a functional layer over a model, enabling it to operate in a particular manner suited to the task at hand.
 
-Assistants are different. They combine a large language model, context, planning skills, and tool use. They're built to give an answer or do a task based on a specific goal. They use their own knowledge and the questions they're asked to do this.
+Assistants, on the other hand, are more complex. They integrate a large language model with context understanding, planning abilities, and tool operation to respond to queries or complete tasks directed towards a defined objective, drawing on their built-in knowledge and the user's input.
 
 ### How to create custom apps?
 
@@ -396,18 +428,18 @@ If you experience issues logging in please send a message to your workspace Admi
 
 ### The assistant is producing links that don’t work and falsely claiming something untrue. What’s going on?
 
-Assistants can sometimes overstate their abilities. Despite what they might imply, assistants can't use the internet or any tools or software not approved by the Admin. They can only use approved data sources and provide text responses.
+Assistants are limited to text responses and can't browse the internet or use unapproved tools. They rely on approved data sources and Admin permissions.
 
 GPT4 and Claude are transformer-based models. They're trained to predict the next word in a sentence using probability, not grammar. For example, if you input 'chair', it predicts the next word based on patterns. But it doesn't really "understand" what a chair is. That's why the assistant might sometimes make mistakes or "hallucinate".
 
 ### Why doesn't the assistant remember what I said earlier in a conversation?
 
-Currently, your assistants can only keep track of a limited context, which means they might not remember the beginning of a long conversation at certain points, possibly leading to inaccurate responses. However, as Dust and LLMs continue to improve, the assistants will become more proficient at managing longer conversations.
+Assistants have a limited memory for conversation context. They may forget earlier parts of a long chat, which can result in incorrect responses. As Dust and Large Language Models (LLMs) evolve, assistants' ability to handle longer conversations will improve.
 
 ### Can Dust remember and incorporate my feedback in the future?
 
-Currently, the assistants can only keep track of a limited context, so they can’t remember past conversations. If you want your custom assistant to remember some general rules about how you write or think. You can add a “constitution” within the instructions given to an assistant. A constitution is a set of principles and rules guiding an assistant's behavior.
+Assistants have a short memory and don't recall past conversations. To give an assistant guidance on your writing or thinking style, include a "constitution"—a list of rules and principles—in the assistant's instructions.
 
 ### How to contact the Dust team?
 
-You can write to the dust team at team@dust.tt; they are happy to help with your feedback or questions about Dust.
+Write at [team@dust.tt](mailto:team@dust.tt); they are happy to help with your feedback or questions about Dust.
