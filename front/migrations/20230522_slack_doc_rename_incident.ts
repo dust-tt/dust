@@ -58,7 +58,7 @@ async function main() {
             model_id: dataSourceModelId,
             splitter_id: "base_v0",
             max_chunk_size: dataSourceMaxChunkSize,
-            use_cache: false,
+            qdrant_config: null,
           },
           credentials,
         });
