@@ -107,3 +107,20 @@ export async function sendReactivateSubscriptionEmail(
   };
   return sendEmail(email, reactivateMessage);
 }
+
+export async function sendOpsEmail(workspaceSId: string): Promise<void> {
+  const opsMessage = {
+    from: {
+      name: "System",
+      email: "ops@dust.tt",
+    },
+    subject: `[OPS] A subscription has been canceled`,
+    html: `<p>Hi Dust ops,</p> 
+    <p>The subscription of workspace '${workspaceSId}' was just canceled. Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and manually delete its connections</p>
+    <p>Also, for the first cancellations, quickly check that users have been properly revoked and the plan switched back to free</p>
+    <p>We'll automate this soon. Just doing that to be extra sure for the ~10 first downgrades.</p>
+    <p>Sincerely,
+    <p>Ourselves</p>`,
+  };
+  return sendEmail("ops@dust.tt", opsMessage);
+}

@@ -8,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   sendCancelSubscriptionEmail,
+  sendOpsEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -351,6 +352,7 @@ async function handler(
             // We can end the subscription in our database.
             const activeSubscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [Workspace],
             });
             if (!activeSubscription) {
               return apiError(req, res, {
@@ -366,6 +368,7 @@ async function handler(
               status: "ended",
               endDate: new Date(),
             });
+            await sendOpsEmail(activeSubscription.workspace.sId);
           } else {
             logger.warn(
               { event },
