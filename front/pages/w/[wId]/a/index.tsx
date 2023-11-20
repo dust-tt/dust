@@ -1,4 +1,5 @@
 import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
+import { KeyType } from "@dust-tt/types";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -25,7 +26,6 @@ import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
-import { KeyType } from "@app/types/key";
 import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 
