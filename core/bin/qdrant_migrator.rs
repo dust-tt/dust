@@ -344,18 +344,34 @@ fn main() -> Result<()> {
 
                 let mut page_offset: Option<PointId> = None;
                 let mut total: usize = 0;
+                let mut retry: usize = 0;
                 loop {
                     let now = utils::now();
-                    let scroll_results = qdrant_client
+                    let scroll_results = match qdrant_client
                         .scroll(&ScrollPoints {
                             collection_name: ds.qdrant_collection(),
                             with_vectors: Some(true.into()),
                             with_payload: Some(true.into()),
                             limit: Some(points_per_request as u32),
-                            offset: page_offset,
+                            offset: page_offset.clone(),
                             ..Default::default()
                         })
-                        .await?;
+                        .await
+                    {
+                        Ok(r) => r,
+                        Err(e) => {
+                            if retry < 3 {
+                                retry += 1;
+                                utils::error(&format!(
+                                    "Error migrating points (read): retry={} error={:?}",
+                                    retry, e
+                                ));
+                                continue;
+                            } else {
+                                Err(e)?
+                            }
+                        }
+                    };
 
                     let count = scroll_results.result.len();
 
@@ -371,9 +387,24 @@ fn main() -> Result<()> {
                         })
                         .collect::<Vec<_>>();
 
-                    shadow_write_qdrant_client
+                    match shadow_write_qdrant_client
                         .upsert_points(ds.qdrant_collection(), points, None)
-                        .await?;
+                        .await
+                    {
+                        Ok(_) => (),
+                        Err(e) => {
+                            if retry < 3 {
+                                retry += 1;
+                                utils::error(&format!(
+                                    "Error migrating points (write): retry={} error={:?}",
+                                    retry, e
+                                ));
+                                continue;
+                            } else {
+                                Err(e)?
+                            }
+                        }
+                    }
 
                     total += count;
                     utils::info(&format!(
@@ -387,6 +418,7 @@ fn main() -> Result<()> {
                     if page_offset.is_none() {
                         break;
                     }
+                    retry = 0;
                 }
 
                 utils::info(&format!("Done migrating: total={}", total));
