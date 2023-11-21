@@ -356,41 +356,6 @@ impl DataSource {
                 ..Default::default()
             })
             .await?;
-        Ok(())
-    }
-
-    pub async fn setup(
-        &self,
-        credentials: Credentials,
-        qdrant_clients: QdrantClients,
-    ) -> Result<()> {
-        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-
-        // GCP store created data to test GCP.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
-        let data_source_created_path = format!("{}/created.txt", bucket_path);
-
-        Object::create(
-            &bucket,
-            format!("{}", self.created).as_bytes().to_vec(),
-            &data_source_created_path,
-            "application/text",
-        )
-        .await?;
-
-        utils::done(&format!(
-            "Created GCP bucket for data_source `{}`",
-            self.data_source_id
-        ));
-
-        // Qdrant create collection.
-        self.create_qdrant_collection(credentials, qdrant_client.clone())
-            .await?;
 
         let _ = qdrant_client
             .create_field_index(
@@ -430,6 +395,42 @@ impl DataSource {
                 None,
                 None,
             )
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn setup(
+        &self,
+        credentials: Credentials,
+        qdrant_clients: QdrantClients,
+    ) -> Result<()> {
+        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+
+        // GCP store created data to test GCP.
+        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
+            Ok(bucket) => bucket,
+            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
+        };
+
+        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
+        let data_source_created_path = format!("{}/created.txt", bucket_path);
+
+        Object::create(
+            &bucket,
+            format!("{}", self.created).as_bytes().to_vec(),
+            &data_source_created_path,
+            "application/text",
+        )
+        .await?;
+
+        utils::done(&format!(
+            "Created GCP bucket for data_source `{}`",
+            self.data_source_id
+        ));
+
+        // Qdrant create collection and indexes.
+        self.create_qdrant_collection(credentials, qdrant_client.clone())
             .await?;
 
         utils::done(&format!(
