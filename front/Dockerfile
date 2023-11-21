@@ -9,11 +9,7 @@ RUN npm install && npm run build
 
 WORKDIR /app
 
-RUN pwd 
-RUN ls -al 
 COPY /front/package*.json ./
-RUN pwd 
-RUN ls -al 
 RUN npm ci
 
 COPY /front /app

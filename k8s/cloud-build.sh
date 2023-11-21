@@ -3,7 +3,6 @@
 # second arg (optional) : working directory. If not provided, it defaults to "../$1"
 set -e
 
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 WORKING_DIR="${2:-${SCRIPT_DIR}/../$1}"
 
