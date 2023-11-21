@@ -1,6 +1,10 @@
 FROM node:18.15.0 as front
 
-COPY ../types/ /types
+RUN mkdir -p /app 
+RUN mkdir -p /types
+
+WORKDIR /types
+COPY /types/ /types
 RUN npm install && npm run build
 
 WORKDIR /app
