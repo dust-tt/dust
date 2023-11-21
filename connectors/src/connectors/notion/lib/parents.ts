@@ -109,7 +109,7 @@ export async function updateAllParentsFields(
   // Update everybody's parents field. Use of a memoization key to control
   // sharing memoization across updateAllParentsFields calls, which
   // can be desired or not depending on the use case
-  const q = new PQueue({ concurrency: 4 });
+  const q = new PQueue({ concurrency: 16 });
   const promises: Promise<void>[] = [];
   for (const pageId of pageIdsToUpdate) {
     promises.push(
