@@ -1,0 +1,21 @@
+{
+  "name": "dustroot",
+  "version": "1.0.0",
+  "description": "[![](https://dcbadge.vercel.app/api/server/8NJR3zQU5X?compact=true&style=flat)](https://discord.gg/8NJR3zQU5X) [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40dust4ai&style=social&url=https%3A%2F%2Ftwitter.com-dust4ai)](https://twitter.com/dust4ai)",
+  "main": "index.js",
+  "workspaces": {
+    "packages": [
+      "front/",
+      "connectors/",
+      "types/"
+    ]
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Dust",
+  "license": "ISC"
+}

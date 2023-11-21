@@ -1,3 +1,4 @@
+node_modules/
 /core/target
 *.sqlite
 .DS_Store
