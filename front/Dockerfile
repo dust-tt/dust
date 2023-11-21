@@ -1,7 +1,7 @@
 FROM node:18.15.0 as front
 
 COPY ../types/ /types
-RUN npm ci
+RUN npm install && npm run build
 
 WORKDIR /app
 
