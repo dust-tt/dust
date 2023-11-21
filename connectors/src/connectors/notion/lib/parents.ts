@@ -115,6 +115,13 @@ export async function updateAllParentsFields(
     promises.push(
       q.add(async () => {
         const parents = await getParents(connectorId, pageId, memoizationKey);
+        logger.info(
+          {
+            connectorId,
+            pageId,
+          },
+          "Updating parents field for page"
+        );
         await updateDocumentParentsField(
           {
             dataSourceName: connector.dataSourceName,

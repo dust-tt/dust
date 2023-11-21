@@ -918,7 +918,7 @@ export async function updateParentsFields(
       notionPageIdsCount: notionPageIds.length,
       notionDatabaseIdsCount: notionDatabaseIds.length,
     },
-    "Staring parents fields update."
+    "Starting parents fields update."
   );
 
   const nbUpdated = await updateAllParentsFields(
