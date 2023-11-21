@@ -1,6 +1,7 @@
 FROM node:18.15.0 as front
 
 COPY ../types/ /types
+RUN npm ci
 
 WORKDIR /app
 
