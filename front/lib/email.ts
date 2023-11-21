@@ -24,8 +24,8 @@ export async function sendEmail(email: string, message: any) {
     );
   } catch (error) {
     logger.error(
-      { error, email },
-      "Error sending email to admin about subscription cancellation."
+      { error, email, subject: message.subject },
+      "Error sending email."
     );
   }
 }

@@ -12,7 +12,7 @@ import {
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { Membership, Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -368,6 +368,7 @@ async function handler(
               status: "ended",
               endDate: new Date(),
             });
+            await revokeUsersForDowngrade(activeSubscription.workspace.id);
             await sendOpsEmail(activeSubscription.workspace.sId);
           } else {
             logger.warn(
@@ -394,4 +395,21 @@ async function handler(
   }
 }
 
+/**
+ * Remove everybody except the most tenured admin
+ * @param workspaceId
+ */
+async function revokeUsersForDowngrade(workspaceId: number) {
+  const memberships = await Membership.findAll({
+    where: { workspaceId },
+    order: [["createdAt", "ASC"]],
+  });
+  const adminMemberships = memberships.filter((m) => m.role === "admin");
+  // the first membership with role admin will not be revoked
+  adminMemberships.shift();
+  const nonAdminMemberships = memberships.filter((m) => m.role !== "admin");
+  for (const membership of [...adminMemberships, ...nonAdminMemberships]) {
+    await membership.update({ role: "revoked" });
+  }
+}
 export default withLogging(handler);
