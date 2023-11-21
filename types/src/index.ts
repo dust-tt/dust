@@ -1,2 +1,2 @@
-import { KeyType } from "./front/types/key";
-export {KeyType};
+import { KeyType } from './front/types/key';
+export { KeyType };
