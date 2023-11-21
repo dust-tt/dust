@@ -55,12 +55,8 @@ impl DataSource {
         })
     }
 
-    fn replace_query_variables(text: &str, env: &Env) -> Result<String> {
-        replace_variables_in_string(text, "query", env)
-    }
-
     fn query(&self, env: &Env) -> Result<String> {
-        let mut query = Self::replace_query_variables(&self.query, env)?;
+        let mut query = replace_variables_in_string(&self.query, "query", env)?;
 
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         query = query.replace("<DUST_TRIPLE_BACKTICKS>", "```");
@@ -236,7 +232,36 @@ impl Block for DataSource {
 
         let filter = match config {
             Some(v) => match v.get("filter") {
-                Some(v) => Some(SearchFilter::from_json_str(v.to_string().as_str())?),
+                Some(v) => {
+                    let mut filter = SearchFilter::from_json_str(v.to_string().as_str())?;
+
+                    match filter.tags.as_mut() {
+                        Some(tags) => {
+                            let replace_tags = |tags: &mut Vec<String>, field: &str| {
+                                for t in tags.iter_mut() {
+                                    *t = replace_variables_in_string(t, field, env)?;
+                                }
+                                Ok::<_, anyhow::Error>(())
+                            };
+
+                            match tags.is_in.as_mut() {
+                                Some(is_in) => {
+                                    replace_tags(is_in, "filter.tags.is_in")?;
+                                }
+                                None => (),
+                            };
+                            match tags.is_not.as_mut() {
+                                Some(is_not) => {
+                                    replace_tags(is_not, "filter.tags.is_not")?;
+                                }
+                                None => (),
+                            };
+                        }
+                        None => (),
+                    };
+
+                    Some(filter)
+                }
                 _ => None,
             },
             _ => None,
