@@ -237,7 +237,6 @@ impl Block for DataSource {
 
                     match filter.tags.as_mut() {
                         Some(tags) => {
-                            // define a function
                             let replace_tags = |tags: &mut Vec<String>, field: &str| {
                                 for t in tags.iter_mut() {
                                     *t = replace_variables_in_string(t, field, env)?;
