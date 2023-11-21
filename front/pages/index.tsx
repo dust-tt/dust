@@ -13,6 +13,7 @@ import {
   OpenaiLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
+import { KeyTypee } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
