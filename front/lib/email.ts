@@ -116,8 +116,7 @@ export async function sendOpsEmail(workspaceSId: string): Promise<void> {
     },
     subject: `[OPS] A subscription has been canceled`,
     html: `<p>Hi Dust ops,</p> 
-    <p>The subscription of workspace '${workspaceSId}' was just canceled. Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and manually delete its connections</p>
-    <p>Also, for the first cancellations, quickly check that users have been properly revoked and the plan switched back to free</p>
+    <p>The subscription of workspace '${workspaceSId}' was just canceled. Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and follow the <a href="https://www.notion.so/dust-tt/Runbook-Canceled-subscription-0011ab1afebe467b871b25f572b56a9e?pvs=4">Runbook</a> for when a subscription is cancelled</p>
     <p>We'll automate this soon. Just doing that to be extra sure for the ~10 first downgrades.</p>
     <p>Sincerely,
     <p>Ourselves</p>`,
