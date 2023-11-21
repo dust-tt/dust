@@ -51,12 +51,6 @@ enum Commands {
         project_id: i64,
         data_source_id: String,
     },
-    #[command(arg_required_else_help = true)]
-    #[command(about = "Ensure indexes on the collection", long_about = None)]
-    EnsureIndexes {
-        project_id: i64,
-        data_source_id: String,
-    },
 }
 
 #[derive(Debug, Parser)]
@@ -468,68 +462,6 @@ fn main() -> Result<()> {
                         Some(cluster) => cluster.to_string(),
                         None => "none".to_string(),
                     }
-                ));
-
-                Ok::<(), anyhow::Error>(())
-            }
-            Commands::EnsureIndexes {
-                project_id,
-                data_source_id,
-            } => {
-                let project = project::Project::new_from_id(project_id);
-                let ds = match store.load_data_source(&project, &data_source_id).await? {
-                    Some(ds) => ds,
-                    None => Err(anyhow!("Data source not found"))?,
-                };
-
-                let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
-
-                let _ = qdrant_client
-                    .create_field_index(
-                        ds.qdrant_collection(),
-                        "document_id_hash",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                let _ = qdrant_client
-                    .create_field_index(
-                        ds.qdrant_collection(),
-                        "tags",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                let _ = qdrant_client
-                    .create_field_index(
-                        ds.qdrant_collection(),
-                        "parents",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                let _ = qdrant_client
-                    .create_field_index(
-                        ds.qdrant_collection(),
-                        "timestamp",
-                        qdrant::FieldType::Integer,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                utils::done(&format!(
-                    "Created indexes for data source: collection={} cluster={}",
-                    ds.qdrant_collection(),
-                    qdrant_clients
-                        .main_cluster(&ds.config().qdrant_config)
-                        .to_string(),
                 ));
 
                 Ok::<(), anyhow::Error>(())
