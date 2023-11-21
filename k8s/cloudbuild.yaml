@@ -9,7 +9,7 @@ steps:
       - -t
       - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest
       - --push
-      - .
+      - ../
     secretEnv: ["DEPOT_TOKEN"]
 
 timeout: 600s
