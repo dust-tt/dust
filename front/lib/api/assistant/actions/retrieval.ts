@@ -32,7 +32,6 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { PlanType } from "@app/types/plan";
 
 import { getDataSources } from "../../data_sources";
 
