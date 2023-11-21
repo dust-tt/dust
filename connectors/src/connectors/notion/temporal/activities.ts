@@ -913,6 +913,14 @@ export async function updateParentsFields(
     })
   ).map((db) => db.notionDatabaseId);
 
+  localLogger.info(
+    {
+      notionPageIdsCount: notionPageIds.length,
+      notionDatabaseIdsCount: notionDatabaseIds.length,
+    },
+    "Starting parents fields update."
+  );
+
   const nbUpdated = await updateAllParentsFields(
     connectorId,
     notionPageIds,

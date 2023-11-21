@@ -14,6 +14,7 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models";
+import logger from "@connectors/logger/logger";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -97,15 +98,30 @@ export async function updateAllParentsFields(
     connectorId
   );
 
+  logger.info(
+    {
+      connectorId,
+      pageIdsToUpdateCount: pageIdsToUpdate.size,
+    },
+    "Updating parents field for pages"
+  );
+
   // Update everybody's parents field. Use of a memoization key to control
   // sharing memoization across updateAllParentsFields calls, which
   // can be desired or not depending on the use case
-  const q = new PQueue({ concurrency: 16 });
+  const q = new PQueue({ concurrency: 4 });
   const promises: Promise<void>[] = [];
   for (const pageId of pageIdsToUpdate) {
     promises.push(
       q.add(async () => {
         const parents = await getParents(connectorId, pageId, memoizationKey);
+        logger.info(
+          {
+            connectorId,
+            pageId,
+          },
+          "Updating parents field for page"
+        );
         await updateDocumentParentsField(
           {
             dataSourceName: connector.dataSourceName,
