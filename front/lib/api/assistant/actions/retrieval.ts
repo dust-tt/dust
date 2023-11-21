@@ -32,6 +32,9 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { PlanType } from "@app/types/plan";
+
+import { getDataSources } from "../../data_sources";
 
 /**
  * TimeFrame parsing
@@ -479,6 +482,20 @@ export async function* runRetrieval(
     userMessage
   );
 
+  if (await datasourceLimitsReached(auth)) {
+    yield {
+      type: "retrieval_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "retrieval_datasource_limit_reached",
+        message: `You are over the limits of data sources for your plan. Please remove data sources to be able to use retrieval on these sources.`,
+      },
+    };
+    return;
+  }
+
   if (paramsRes.isErr()) {
     logger.error(
       {
@@ -804,4 +821,18 @@ export async function* runRetrieval(
       documents,
     },
   };
+}
+
+async function datasourceLimitsReached(auth: Authenticator): Promise<boolean> {
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected missing plan");
+  }
+  if (!plan.limits.dataSources.count || plan.limits.dataSources.count < 0) {
+    return false;
+  }
+  const dataSourcesCount = (await getDataSources(auth)).filter(
+    (ds) => !ds.connectorProvider
+  ).length;
+  return plan.limits.dataSources.count > dataSourcesCount;
 }
