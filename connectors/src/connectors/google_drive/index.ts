@@ -59,11 +59,34 @@ export async function createGoogleDriveConnector(
           throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
         }
         const driveClient = await getDriveClient(nangoConnectionId);
-        const sanityCheckRes = await driveClient.about.get({ fields: "*" });
-        if (sanityCheckRes.status !== 200) {
+
+        // Sanity checks to confirm we have sufficient permissions
+        const sanityCheckAbout = await driveClient.about.get({ fields: "*" });
+        if (sanityCheckAbout.status !== 200) {
           throw new Error(
             `Could not get google drive info. Error message: ${
-              sanityCheckRes.statusText || "unknown"
+              sanityCheckAbout.statusText || "unknown"
+            }`
+          );
+        }
+        const sanityCheckFilesGet = await driveClient.files.get({
+          fileId: "root",
+        });
+        if (sanityCheckFilesGet.status !== 200) {
+          throw new Error(
+            `Could not call google drive files get. Error message: ${
+              sanityCheckFilesGet.statusText || "unknown"
+            }`
+          );
+        }
+        const sanityCheckFilesList = await driveClient.drives.list({
+          pageSize: 10,
+          fields: "nextPageToken, drives(id, name)",
+        });
+        if (sanityCheckFilesList.status !== 200) {
+          throw new Error(
+            `Could not call google drive files list. Error message: ${
+              sanityCheckFilesList.statusText || "unknown"
             }`
           );
         }
