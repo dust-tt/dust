@@ -48,9 +48,9 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
 
 export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   providerId: "anthropic",
-  modelId: "claude-2",
+  modelId: "claude-2.1",
   displayName: "Claude 2",
-  contextSize: 100000,
+  contextSize: 200000,
   recommendedTopK: 32,
   largeModel: true,
 } as const;

@@ -82,15 +82,15 @@ impl AnthropicLLM {
             .iter()
             .map(|cm| -> String {
                 format!(
-                    "\n\n{}: {}{}",
+                    "{}: {}{}",
                     match cm.role {
-                        ChatMessageRole::System => "Human",
-                        ChatMessageRole::Assistant => "Assistant",
-                        ChatMessageRole::User => "Human",
-                        ChatMessageRole::Function => "Human",
+                        ChatMessageRole::System => "",
+                        ChatMessageRole::Assistant => "\n\nAssistant",
+                        ChatMessageRole::User => "\n\nHuman",
+                        ChatMessageRole::Function => "\n\nHuman",
                     },
                     match cm.role {
-                        ChatMessageRole::System => "[system_instructions] ".to_string(),
+                        ChatMessageRole::System => "".to_string(),
                         ChatMessageRole::Assistant => "".to_string(),
                         ChatMessageRole::User => match cm.name.as_ref() {
                             Some(name) => format!("[user: {}] ", name),
@@ -444,7 +444,11 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        100000
+        if self.id.starts_with("claude-2.1") {
+            200000
+        } else {
+            100000
+        }
     }
 
     async fn generate(
