@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/front",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@dust-tt/sparkle": "^0.2.45",
-    "@dust-tt/types": "^0.0.1",
+    "@dust-tt/types": "^0.0.2",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.7",
