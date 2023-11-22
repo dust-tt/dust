@@ -100,7 +100,7 @@ async function _upsertToDatasource({
     text: documentText,
     source_url: documentUrl,
     timestamp: timestampMs,
-    tags,
+    tags: tags?.map((tag) => tag.substring(0, 512)),
     parents,
     light_document_output: true,
     upsert_context: upsertContext,

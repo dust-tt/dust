@@ -143,7 +143,7 @@ export async function githubUpsertIssueActivity(
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
-    `title:${issue.title.substring(0, 512)}`,
+    `title:${issue.title}`,
     `isPullRequest:${issue.isPullRequest}`,
     `lasUpdatedAt:${issue.updatedAt.getTime()}`,
   ];

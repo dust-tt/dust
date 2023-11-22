@@ -461,7 +461,7 @@ async function syncOneFile(
   if (documentContent === undefined) {
     throw new Error("documentContent is undefined");
   }
-  const tags = [`title:${file.name.substring(0, 512)}`];
+  const tags = [`title:${file.name}`];
   if (file.updatedAtMs) {
     tags.push(`lastEditedAt:${file.updatedAtMs}`);
   }
