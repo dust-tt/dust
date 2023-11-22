@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/connectors",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
