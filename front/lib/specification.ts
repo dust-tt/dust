@@ -242,6 +242,15 @@ export function addBlock(
         },
       });
       break;
+    case "database_schema":
+      s.splice(idx + 1, 0, {
+        type: "database_schema",
+        name: getNextName(spec, "DATABASE_SCHEMA"),
+        indent: 0,
+        spec: {},
+        config: {},
+      });
+      break;
     default:
       s.splice(idx + 1, 0, {
         type: blockType,
@@ -554,6 +563,15 @@ export function dumpSpecification(
         out += "\n";
         break;
       }
+      case "database_schema": {
+        out += `database_schema ${block.name} { }\n`;
+        out += "\n";
+        break;
+      }
+      default:
+        ((t: never) => {
+          console.error(`Unknown block type: ${t}`);
+        })(block.type);
     }
   }
   return out.slice(0, -1);

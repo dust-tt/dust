@@ -1,47 +1,39 @@
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { IntFromString } from "io-ts-types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabase } from "@app/lib/core_api";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { CoreAPI } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-export const CreateDatabaseReqBodySchema = t.type({
-  name: t.string,
-});
-export type CreateDatabaseResponseBody = {
-  database: CoreAPIDatabase;
-};
-
-export const ListDatabasesReqQuerySchema = t.type({
-  offset: t.union([IntFromString, t.number]),
-  limit: t.union([IntFromString, t.number]),
-});
-export type ListDatabasesResponseBody = {
-  databases: CoreAPIDatabase[];
-};
+import {
+  ListDatabasesReqQuerySchema,
+  ListDatabasesResponseBody,
+} from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<CreateDatabaseResponseBody | ListDatabasesResponseBody>
+  res: NextApiResponse<ListDatabasesResponseBody>
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { auth } = await Authenticator.fromKey(
-    keyRes.value,
+  const session = await getSession(req, res);
+  const auth = await Authenticator.fromSession(
+    session,
     req.query.wId as string
   );
 
   const owner = auth.workspace();
+  if (!owner || !auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   const plan = auth.plan();
   if (!owner || !plan) {
     return apiError(req, res, {
@@ -58,6 +50,15 @@ async function handler(
     return;
   }
 
+  if (!req.query.name || typeof req.query.name !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
@@ -70,52 +71,6 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
-      const bodyValidation = CreateDatabaseReqBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-          status_code: 400,
-        });
-      }
-
-      const { name } = bodyValidation.right;
-      const id = generateModelSId();
-
-      const createRes = await CoreAPI.createDatabase({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        databaseId: id,
-        name,
-      });
-      if (createRes.isErr()) {
-        logger.error(
-          {
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            databaseName: name,
-            databaseId: id,
-            error: createRes.error,
-          },
-          "Failed to create database."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to create database.",
-          },
-        });
-      }
-
-      const { database } = createRes.value;
-
-      return res.status(200).json({ database });
-
     case "GET":
       const queryValidation = ListDatabasesReqQuerySchema.decode(req.query);
       if (isLeft(queryValidation)) {
@@ -165,7 +120,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET, POST is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
   }

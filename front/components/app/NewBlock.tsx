@@ -21,7 +21,12 @@ export default function NewBlock({
 }) {
   const containsInput =
     spec.filter((block) => block.type == "input").length > 0;
-  const blocks = [
+  const blocks: {
+    type: BlockType | "map_reduce" | "while_end";
+    typeNames: BlockType[];
+    name: string;
+    description: string;
+  }[] = [
     {
       type: "llm",
       typeNames: ["llm"],
@@ -90,12 +95,13 @@ export default function NewBlock({
       name: "While End",
       description: "Loop over a set of blocks until a condition is met.",
     },
-  ] as {
-    type: BlockType | "map_reduce" | "while_end";
-    typeNames: BlockType[];
-    name: string;
-    description: string;
-  }[];
+    {
+      type: "database_schema",
+      typeNames: ["database_schema"],
+      name: "Database Schema",
+      description: "Retrieve the schema of a database.",
+    },
+  ];
 
   if (!containsInput) {
     blocks.splice(0, 0, {
@@ -164,7 +170,7 @@ export default function NewBlock({
                     ))}
                   </div>
                 </div>
-                <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-3">
+                <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
                   {block.description}
                 </div>
               </div>
