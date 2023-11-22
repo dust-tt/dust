@@ -2,7 +2,9 @@ use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
-use crate::providers::openai::{completion, embed, streamed_completion};
+use crate::providers::openai::{
+    chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
+};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -160,7 +162,7 @@ impl AzureOpenAILLM {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/completions?api-version=2022-12-01",
+            "{}openai/deployments/{}/completions?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )
@@ -170,7 +172,7 @@ impl AzureOpenAILLM {
     #[allow(dead_code)]
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!(
-            "{}openai/deployments/{}/chat/completions?api-version=2023-03-15-preview",
+            "{}openai/deployments/{}/chat/completions?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )
@@ -430,7 +432,7 @@ impl LLM for AzureOpenAILLM {
 
         Ok(LLMGeneration {
             created: utils::now(),
-            provider: ProviderID::OpenAI.to_string(),
+            provider: ProviderID::AzureOpenAI.to_string(),
             model: self.model_id.clone().unwrap(),
             completions: c
                 .choices
@@ -462,22 +464,113 @@ impl LLM for AzureOpenAILLM {
 
     async fn chat(
         &self,
-        _messages: &Vec<ChatMessage>,
-        _functions: &Vec<ChatFunction>,
-        _function_call: Option<String>,
-        _temperature: f32,
-        _top_p: Option<f32>,
-        _n: usize,
-        _stop: &Vec<String>,
-        _max_tokens: Option<i32>,
-        _presence_penalty: Option<f32>,
-        _frequency_penalty: Option<f32>,
-        _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        mut max_tokens: Option<i32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        Err(anyhow!(
-            "Chat capabilties are not implemented for provider `azure_openai`"
-        ))
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                max_tokens = None;
+            }
+        }
+
+        let c = match event_sender {
+            Some(_) => {
+                streamed_chat_completion(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    None,
+                    None,
+                    messages,
+                    functions,
+                    function_call,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    max_tokens,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match &extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
+                    event_sender,
+                )
+                .await?
+            }
+            None => {
+                chat_completion(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    None,
+                    None,
+                    messages,
+                    functions,
+                    function_call,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    max_tokens,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    match &extras {
+                        Some(e) => match e.get("openai_user") {
+                            Some(Value::String(u)) => Some(u.to_string()),
+                            _ => None,
+                        },
+                        None => None,
+                    },
+                )
+                .await?
+            }
+        };
+
+        // println!("COMPLETION: {:?}", c);
+
+        assert!(c.choices.len() > 0);
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::AzureOpenAI.to_string(),
+            model: self.model_id.clone().unwrap(),
+            completions: c
+                .choices
+                .iter()
+                .map(|c| c.message.clone())
+                .collect::<Vec<_>>(),
+        })
     }
 }
 
@@ -502,7 +595,7 @@ impl AzureOpenAIEmbedder {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/embeddings?api-version=2022-12-01",
+            "{}openai/deployments/{}/embeddings?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )
@@ -597,13 +690,11 @@ impl Embedder for AzureOpenAIEmbedder {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        let tokens = { self.tokenizer().lock().encode_with_special_tokens(text) };
-        Ok(tokens)
+        encode_async(self.tokenizer(), text).await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        let str = { self.tokenizer().lock().decode(tokens)? };
-        Ok(str)
+        decode_async(self.tokenizer(), tokens).await
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
