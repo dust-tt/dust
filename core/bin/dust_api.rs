@@ -1960,7 +1960,7 @@ async fn databases_rows_upsert(
             ),
             Some(db) => {
                 match db
-                    .batch_upsert_rows(state.store.clone(), &table_id, &payload.contents, truncate)
+                    .batch_upsert_rows(state.store.clone(), &table_id, payload.contents, truncate)
                     .await
                 {
                     Err(e) => error_response(
