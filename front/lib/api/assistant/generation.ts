@@ -223,8 +223,6 @@ export async function renderConversationForModel({
         name: messages[i].name,
       });
     }
-
-    console.log("selected are ", selected);
   }
 
   logger.info(
