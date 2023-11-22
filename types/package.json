@@ -1,14 +1,13 @@
 {
   "name": "@dust-tt/types",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "author": "Dust",
   "main": "dist/index.js",
   "module": "dist/types.esm.js",
   "typings": "dist/index.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
     "analyze": "size-limit --why",
@@ -55,5 +54,5 @@
     "tslib": "^2.6.2",
     "typescript": "^5.3.2"
   },
-  "gitHead": "ad78281a193ad4681d250933b113208216ab364e"
+  "gitHead": "67c840b951f471c50b1f18e2e61ec0d6b5983886"
 }
