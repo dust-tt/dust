@@ -1,5 +1,6 @@
 {
   "name": "dustroot",
+  "private": true,
   "workspaces": [
     "front",
     "connectors",
