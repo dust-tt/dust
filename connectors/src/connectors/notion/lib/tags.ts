@@ -13,7 +13,7 @@ export function getTagsForPage({
 }): string[] {
   const tags: string[] = [];
   if (title) {
-    tags.push(`title:${title}`);
+    tags.push(`title:${title.substring(0, 512)}`);
   }
 
   return tags.concat([
