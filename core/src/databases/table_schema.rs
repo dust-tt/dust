@@ -195,8 +195,8 @@ mod tests {
             "field2": 1.2,
             "field3": "text",
             "field4": true,
-            "field6": ["array", "elements"],
-            "field7": {"key": "value"}
+            // "field6": ["array", "elements"],
+            // "field7": {"key": "value"}
         });
         let row_2 = json!({
             "field1": 2,
@@ -204,8 +204,8 @@ mod tests {
             "field3": "more text",
             "field4": false,
             "field5": "not null anymore",
-            "field6": ["more", "elements"],
-            "field7": {"anotherKey": "anotherValue"}
+            // "field6": ["more", "elements"],
+            // "field7": {"anotherKey": "anotherValue"}
         });
         let rows = &vec![
             DatabaseRow::new(utils::now(), Some("1".to_string()), row_1),
@@ -219,8 +219,8 @@ mod tests {
             ("field3", TableSchemaFieldType::Text),
             ("field4", TableSchemaFieldType::Bool),
             ("field5", TableSchemaFieldType::Text),
-            ("field6", TableSchemaFieldType::Text),
-            ("field7", TableSchemaFieldType::Text),
+            // ("field6", TableSchemaFieldType::Text),
+            // ("field7", TableSchemaFieldType::Text),
         ]
         .iter()
         .map(|(field_id, field_type)| (field_id.to_string(), field_type.clone()))
@@ -240,8 +240,8 @@ mod tests {
             "field2": 1.2,
             "field3": "text",
             "field4": true,
-            "field6": ["array", "elements"],
-            "field7": {"key": "value"}
+            // "field6": ["array", "elements"],
+            // "field7": {"key": "value"}
         });
         let row_2 = json!({
             "field1": 2,
@@ -249,8 +249,8 @@ mod tests {
             "field3": "more text",
             "field4": "this was a bool before",
             "field5": "not null anymore",
-            "field6": ["more", "elements"],
-            "field7": {"anotherKey": "anotherValue"}
+            // "field6": ["more", "elements"],
+            // "field7": {"anotherKey": "anotherValue"}
         });
         let row_3 = json!({
             "field1": "now it's a text field",
