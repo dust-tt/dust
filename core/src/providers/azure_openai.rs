@@ -162,7 +162,7 @@ impl AzureOpenAILLM {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/completions?api-version=2022-12-01",
+            "{}openai/deployments/{}/completions?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )
@@ -172,7 +172,7 @@ impl AzureOpenAILLM {
     #[allow(dead_code)]
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!(
-            "{}openai/deployments/{}/chat/completions?api-version=2023-03-15-preview",
+            "{}openai/deployments/{}/chat/completions?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )
@@ -595,7 +595,7 @@ impl AzureOpenAIEmbedder {
         assert!(self.endpoint.is_some());
 
         Ok(format!(
-            "{}openai/deployments/{}/embeddings?api-version=2022-12-01",
+            "{}openai/deployments/{}/embeddings?api-version=2023-08-01-preview",
             self.endpoint.as_ref().unwrap(),
             self.deployment_id
         )

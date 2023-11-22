@@ -60,7 +60,7 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can create a managed data source.",
+              "Only the users that are `admins` for the current workspace can create a data source.",
           },
         });
       }

@@ -42,7 +42,7 @@ export const modelProviders: ModelProvider[] = [
     name: "Azure OpenAI",
     built: true,
     enabled: false,
-    chat: false,
+    chat: true,
     embed: true,
   },
   {
@@ -59,22 +59,6 @@ export const modelProviders: ModelProvider[] = [
     built: true,
     enabled: false,
     chat: true,
-    embed: false,
-  },
-  {
-    providerId: "hugging_face",
-    name: "Hugging Face",
-    built: false,
-    enabled: false,
-    chat: false,
-    embed: false,
-  },
-  {
-    providerId: "replicate",
-    name: "Replicate",
-    built: false,
-    enabled: false,
-    chat: false,
     embed: false,
   },
 ];
