@@ -50,15 +50,6 @@ export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_2_MODEL_ID = "claude-2" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 
-export const CLAUDE_LEGACY_2_MODEL_CONFIG = {
-  providerId: "anthropic",
-  modelId: CLAUDE_2_MODEL_ID,
-  displayName: "Claude 2",
-  contextSize: 100000,
-  recommendedTopK: 32,
-  largeModel: true,
-} as const;
-
 export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   providerId: "anthropic",
   modelId: CLAUDE_2_1_MODEL_ID,
@@ -94,7 +85,6 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
-  CLAUDE_LEGACY_2_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 ] as const;
