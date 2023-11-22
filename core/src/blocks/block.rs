@@ -1,7 +1,7 @@
 use crate::blocks::{
     browser::Browser, chat::Chat, code::Code, curl::Curl, data::Data, data_source::DataSource,
-    database_schema::DatabaseSchema, end::End, input::Input, llm::LLM, map::Map, r#while::While,
-    reduce::Reduce, search::Search,
+    database::Database, database_schema::DatabaseSchema, end::End, input::Input, llm::LLM,
+    map::Map, r#while::While, reduce::Reduce, search::Search,
 };
 use crate::data_sources::qdrant::QdrantClients;
 use crate::project::Project;
@@ -75,6 +75,7 @@ pub enum BlockType {
     While,
     End,
     DatabaseSchema,
+    Database,
 }
 
 impl ToString for BlockType {
@@ -94,6 +95,7 @@ impl ToString for BlockType {
             BlockType::While => String::from("while"),
             BlockType::End => String::from("end"),
             BlockType::DatabaseSchema => String::from("database_schema"),
+            BlockType::Database => String::from("database"),
         }
     }
 }
@@ -196,6 +198,7 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::While => Ok(Box::new(While::parse(block_pair)?)),
         BlockType::End => Ok(Box::new(End::parse(block_pair)?)),
         BlockType::DatabaseSchema => Ok(Box::new(DatabaseSchema::parse(block_pair)?)),
+        BlockType::Database => Ok(Box::new(Database::parse(block_pair)?)),
     }
 }
 

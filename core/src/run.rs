@@ -57,6 +57,7 @@ impl RunConfig {
             BlockType::While => 64,
             BlockType::End => 64,
             BlockType::DatabaseSchema => 8,
+            BlockType::Database => 8,
         }
     }
 }
