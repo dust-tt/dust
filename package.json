@@ -15,5 +15,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Dust",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "lerna": "^7.4.2"
+  }
 }
