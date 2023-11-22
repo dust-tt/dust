@@ -199,7 +199,6 @@ export async function renderConversationForModel({
       });
     } else if (messages[i].role === "content_fragment") {
       const c = allowedTokenCount - tokensUsed;
-      tokensUsed += c;
       const contentFragmentMessage = messages[i].message;
       if (contentFragmentMessage) {
         if (isContentFragmentType(contentFragmentMessage)) {
@@ -220,6 +219,7 @@ export async function renderConversationForModel({
         }
       }
 
+      tokensUsed += c;
       selected.unshift({
         role: messages[i].role,
         content: messages[i].content,
