@@ -31,12 +31,8 @@ import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-const notionClientLogger = (
-  level: LogLevel,
-  message: string,
-  extraInfo: Record<string, unknown>
-) => {
-  console.log(`[${level}]: ${message}`, extraInfo);
+const notionClientLogger = () => {
+  // no-op
 };
 
 /**
