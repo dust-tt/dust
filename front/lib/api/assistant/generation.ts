@@ -30,6 +30,7 @@ import {
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   AgentMessageType,
+  ContentFragmentType,
   ConversationType,
   isAgentMessageType,
   isContentFragmentType,
@@ -73,7 +74,9 @@ export async function renderConversationForModel({
     Error
   >
 > {
-  const messages: ModelMessageType[] = [];
+  const messages: (ModelMessageType & {
+    message?: ContentFragmentType | UserMessageType | AgentMessageType;
+  })[] = [];
 
   let retrievalFound = false;
 
@@ -124,6 +127,7 @@ export async function renderConversationForModel({
         role: "content_fragment" as const,
         name: "inject_content_fragment",
         content: `${m.title}\nCONTENT:\n${m.content}`,
+        message: m,
       });
     } else {
       ((x: never) => {
@@ -185,12 +189,15 @@ export async function renderConversationForModel({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift(messages[i]);
+      selected.unshift({
+        role: messages[i].role,
+        content: messages[i].content,
+        name: messages[i].name,
+      });
     } else if (messages[i].role === "content_fragment") {
       const c = allowedTokenCount - tokensUsed;
       tokensUsed += c;
-      const contentFragmentMessage =
-        conversation.content[i][conversation.content[i].length - 1];
+      const contentFragmentMessage = messages[i].message;
       if (contentFragmentMessage) {
         if (isContentFragmentType(contentFragmentMessage)) {
           switch (contentFragmentMessage.contentType) {
@@ -207,22 +214,17 @@ export async function renderConversationForModel({
             default:
               assertNever(contentFragmentMessage.contentType);
           }
-        } else {
-          // This should never happen but if does, we don't want this branch go be silent.
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              contentFragmentMessage,
-            },
-            `Unexpected message type for "content_fragment`
-          );
-          throw new Error(`Unexpected message type for "content_fragment"`);
         }
       }
 
-      selected.unshift(messages[i]);
+      selected.unshift({
+        role: messages[i].role,
+        content: messages[i].content,
+        name: messages[i].name,
+      });
     }
+
+    console.log("selected are ", selected);
   }
 
   logger.info(
