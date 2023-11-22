@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/front",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
