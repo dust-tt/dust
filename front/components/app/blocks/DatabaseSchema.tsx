@@ -57,10 +57,12 @@ export default function DatabaseSchema({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="mx-4 flex w-full flex-col pt-4">
+      <div className="mx-4 flex w-full flex-col flex-col pt-4 xl:flex-row">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
+          <div className="mr-1 flex flex-initial font-medium leading-8 text-gray-700">
+            Database:
+          </div>
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-            <div className="mr-1 flex flex-initial">Data Source:</div>
             <DataSourcePicker
               owner={owner}
               readOnly={readOnly}
@@ -92,7 +94,6 @@ export default function DatabaseSchema({
         {block.config.database?.data_source_id && (
           <div className="flex flex-col xl:flex-row xl:space-x-2">
             <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-              <div className="mr-1 flex flex-initial">Database:</div>
               <DatabasePicker
                 owner={owner}
                 dataSource={{
