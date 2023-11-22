@@ -96,6 +96,12 @@ export default function NewBlock({
       description: "Loop over a set of blocks until a condition is met.",
     },
     {
+      type: "database",
+      typeNames: ["database"],
+      name: "Database",
+      description: "Query a database.",
+    },
+    {
       type: "database_schema",
       typeNames: ["database_schema"],
       name: "Database Schema",

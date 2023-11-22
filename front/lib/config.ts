@@ -97,6 +97,12 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           database: spec[i].config?.database,
         };
         break;
+      case "database":
+        c[spec[i].name] = {
+          type: "database",
+          database: spec[i].config?.database,
+        };
+        break;
       case "data":
       case "code":
       case "map":

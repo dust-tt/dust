@@ -251,6 +251,17 @@ export function addBlock(
         config: {},
       });
       break;
+    case "database":
+      s.splice(idx + 1, 0, {
+        type: "database",
+        name: getNextName(spec, "DATABASE"),
+        indent: 0,
+        spec: {
+          query: "",
+        },
+        config: {},
+      });
+      break;
     default:
       s.splice(idx + 1, 0, {
         type: blockType,
@@ -565,6 +576,15 @@ export function dumpSpecification(
       }
       case "database_schema": {
         out += `database_schema ${block.name} { }\n`;
+        out += "\n";
+        break;
+      }
+      case "database": {
+        out += `database ${block.name} {\n`;
+        out += `  query: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.query
+        )}\n\`\`\`\n`;
+        out += `}\n`;
         out += "\n";
         break;
       }
