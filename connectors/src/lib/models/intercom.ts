@@ -77,6 +77,7 @@ IntercomCollection.init(
       {
         fields: ["intercomWorkspaceId", "collectionId", "connectorId"],
         unique: true,
+        name: "intercom_workspace_collection_connector_idx",
       },
       { fields: ["connectorId"] },
       { fields: ["collectionId"] },
@@ -154,6 +155,7 @@ IntercomArticle.init(
       {
         fields: ["intercomWorkspaceId", "articleId", "connectorId"],
         unique: true,
+        name: "intercom_workspace_article_connector_idx",
       },
       { fields: ["connectorId"] },
       { fields: ["articleId"] },
