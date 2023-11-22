@@ -72,7 +72,7 @@ export default function DatabasePicker({
                 ) : databases && databases.length > 0 ? (
                   "Select Database"
                 ) : (
-                  "There are no databases in this data source."
+                  "No Databases"
                 )}
               </Menu.Button>
             </div>
