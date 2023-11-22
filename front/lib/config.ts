@@ -92,8 +92,6 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
         };
         break;
       case "database_schema":
-        console.log("\n\n\n\nHELLLOW:", spec[i].config);
-        console.log("\n\n\n\nWORLD:", spec[i].name);
         c[spec[i].name] = {
           type: "database_schema",
           database: spec[i].config?.database,
