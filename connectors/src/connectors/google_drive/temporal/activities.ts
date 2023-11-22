@@ -482,18 +482,23 @@ async function syncOneFile(
     parents.push(file.id);
     parents.reverse();
 
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentId,
-      documentText: documentContent,
-      documentUrl: file.webViewLink,
-      timestampMs: file.updatedAtMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-    });
+    try {
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId,
+        documentText: documentContent,
+        documentUrl: file.webViewLink,
+        timestampMs: file.updatedAtMs,
+        tags,
+        parents: parents,
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+      });
+    } catch (e) {
+      logger.error({ error: e, tags }, "Failed to upsert document");
+      throw e;
+    }
     upsertTimestampMs = file.updatedAtMs;
   } else {
     logger.info(
