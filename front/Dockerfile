@@ -11,4 +11,4 @@ COPY . .
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" XP1_DATABASE_URI="sqlite:bar.sqlite" npm run build
 
 
-CMD ["npm", "run", "start"]
+CMD ["npm", "--silent", "run", "start"]
