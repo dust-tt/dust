@@ -213,7 +213,7 @@ async function _getClaudeGlobalAgent({
     sId: GLOBAL_AGENTS_SID.CLAUDE,
     version: 0,
     name: "claude",
-    description: "Anthropic's superior performance model (100k context).",
+    description: "Anthropic's superior performance model (200k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : status,
     scope: "global",
