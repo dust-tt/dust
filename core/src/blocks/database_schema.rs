@@ -2,7 +2,6 @@ use crate::blocks::block::{Block, BlockResult, BlockType, Env};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use futures::future::try_join_all;
 use pest::iterators::Pair;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
@@ -39,47 +38,39 @@ impl Block for DatabaseSchema {
         let config = env.config.config_for_block(name);
 
         let err_msg = format!(
-            "Invalid or missing `databases` in configuration for \
-        `database_schema` block `{}` expecting `{{ \"databases\": \
-        [ {{ \"workspace_id\": ..., \"data_source_id\": ..., \"database_id\": ... }}, ... ] }}`",
+            "Invalid or missing `database` in configuration for \
+        `database_schema` block `{}` expecting `{{ \"database\": \
+        {{ \"workspace_id\": ..., \"data_source_id\": ..., \"database_id\": ... }} }}`",
             name
         );
 
-        let databases = match config {
-            Some(v) => match v.get("databases") {
-                Some(Value::Array(a)) => a
-                    .iter()
-                    .map(|v| {
-                        let workspace_id = match v.get("workspace_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
-                        let data_source_id = match v.get("data_source_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
-                        let database_id = match v.get("database_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
+        let (workspace_id, data_source_id, database_id) = match config {
+            Some(v) => match v.get("database") {
+                Some(Value::Object(o)) => {
+                    let workspace_id = match o.get("workspace_id") {
+                        Some(Value::String(s)) => s,
+                        _ => Err(anyhow!(err_msg.clone()))?,
+                    };
+                    let data_source_id = match o.get("data_source_id") {
+                        Some(Value::String(s)) => s,
+                        _ => Err(anyhow!(err_msg.clone()))?,
+                    };
+                    let database_id = match o.get("database_id") {
+                        Some(Value::String(s)) => s,
+                        _ => Err(anyhow!(err_msg.clone()))?,
+                    };
 
-                        Ok((workspace_id, data_source_id, database_id))
-                    })
-                    .collect::<Result<Vec<_>>>(),
+                    Ok((workspace_id, data_source_id, database_id))
+                }
                 _ => Err(anyhow!(err_msg)),
             },
             None => Err(anyhow!(err_msg)),
         }?;
 
-        let schemas = try_join_all(databases.iter().map(
-            |(workspace_id, data_source_id, database_id)| {
-                get_database_schema(workspace_id, data_source_id, database_id, env)
-            },
-        ))
-        .await?;
+        let schema = get_database_schema(workspace_id, data_source_id, database_id, env).await?;
 
         Ok(BlockResult {
-            value: serde_json::to_value(schemas)?,
+            value: serde_json::to_value(schema)?,
             meta: None,
         })
     }
