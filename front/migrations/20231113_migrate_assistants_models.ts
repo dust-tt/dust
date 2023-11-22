@@ -1,5 +1,6 @@
 import {
-  GPT_3_5_TURBO_MODEL_ID,
+  CLAUDE_2_1_MODEL_ID,
+  // GPT_3_5_TURBO_MODEL_ID,
   // GPT_4_TURBO_MODEL_ID,
 } from "@app/lib/assistant";
 import {
@@ -21,7 +22,7 @@ const { LIVE, WORKSPACE } = process.env;
 
 // claude-2 are being replaced by claude-2.1
 const FROM_MODELS = ["claude-2"];
-const TO_MODEL = "claude-2.1";
+const TO_MODEL = CLAUDE_2_1_MODEL_ID;
 
 async function updateWorkspaceAssistants(wId: string) {
   // console.log(`Updating agents for workspace ${wId}...`);
@@ -59,9 +60,19 @@ async function updateWorkspaceAssistants(wId: string) {
       if (LIVE) {
         const oldModel = g.modelId;
         await g.update({ modelId: TO_MODEL });
-        console.log("Updated", c.sId, c.name, "from " + oldModel);
+        console.log(
+          "Updated",
+          c.sId,
+          c.name,
+          "from " + oldModel + " to " + TO_MODEL
+        );
       } else {
-        console.log("Would update", c.sId, c.name, "from " + g.modelId);
+        console.log(
+          "Would update",
+          c.sId,
+          c.name,
+          "from " + g.modelId + " to " + TO_MODEL
+        );
       }
     }
   }
