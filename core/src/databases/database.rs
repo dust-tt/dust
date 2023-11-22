@@ -74,11 +74,6 @@ impl Database {
         }
     }
 
-    // pub async fn batch_upsert_rows(
-    //     &self,
-
-    // )
-
     pub async fn create_in_memory_sqlite_conn(
         &self,
         store: Box<dyn Store + Sync + Send>,
