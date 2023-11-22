@@ -182,6 +182,9 @@ export async function renderConversationForModel({
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageType[] = [];
   for (let i = messages.length - 1; i >= 0; i--) {
+    if (tokensUsed >= allowedTokenCount) {
+      break;
+    }
     const r = messagesCountRes[i];
     if (r.isErr()) {
       return new Err(r.error);
