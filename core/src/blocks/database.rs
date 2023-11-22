@@ -112,7 +112,7 @@ impl Block for Database {
             ))?,
         };
 
-        let (rows, schema) = match database.query(&project, env.store.clone(), &query).await {
+        let (rows, schema) = match database.query(env.store.clone(), &query).await {
             Ok(r) => r,
             Err(e) => Err(anyhow!(
                 "Error querying database `{}` in data source `{}`: {}",
