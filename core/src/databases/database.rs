@@ -74,6 +74,34 @@ impl Database {
         }
     }
 
+    pub async fn batch_upsert_rows(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        table_id: &str,
+        contents: HashMap<String, Value>,
+        truncate: bool,
+    ) -> Result<()> {
+        let rows = contents
+            .into_iter()
+            .map(|(row_id, content)| DatabaseRow::new(utils::now(), Some(row_id), content))
+            .collect::<Vec<_>>();
+
+        // This will be used to update the schema incrementally once we store schemas. For now this
+        // is a way to validate the content of the rows (only primitive types).
+        let _ = TableSchema::from_rows(&rows)?;
+
+        store
+            .batch_upsert_database_rows(
+                &self.project,
+                &self.data_source_id,
+                &self.database_id,
+                table_id,
+                &rows,
+                truncate,
+            )
+            .await
+    }
+
     pub async fn create_in_memory_sqlite_conn(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -244,7 +272,7 @@ impl Database {
                     })?
                     .collect::<Result<Vec<_>>>()?
                     .into_par_iter()
-                    .map(|v| DatabaseRow::new(utils::now(), None, &v))
+                    .map(|v| DatabaseRow::new(utils::now(), None, v))
                     .collect::<Vec<_>>();
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished executing user query: duration={}ms",
@@ -369,11 +397,11 @@ pub struct DatabaseRow {
 }
 
 impl DatabaseRow {
-    pub fn new(created: u64, row_id: Option<String>, content: &Value) -> Self {
+    pub fn new(created: u64, row_id: Option<String>, content: Value) -> Self {
         DatabaseRow {
             created: created,
             row_id: row_id,
-            content: content.clone(),
+            content,
         }
     }
 

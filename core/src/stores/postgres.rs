@@ -2210,7 +2210,7 @@ impl Store for PostgresStore {
             Some((created, row_id, data)) => Ok(Some(DatabaseRow::new(
                 created as u64,
                 Some(row_id),
-                &Value::from_str(&data)?,
+                Value::from_str(&data)?,
             ))),
         }
     }
@@ -2293,7 +2293,7 @@ impl Store for PostgresStore {
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
                 let content: Value = serde_json::from_str(&data)?;
-                Ok(DatabaseRow::new(created as u64, Some(row_id), &content))
+                Ok(DatabaseRow::new(created as u64, Some(row_id), content))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -2320,7 +2320,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         database_id: &str,
         table_id: &str,
-        contents: &HashMap<String, Value>,
+        rows: &Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()> {
         let project_id = project.project_id();
@@ -2390,12 +2390,19 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        for (row_id, content) in contents {
-            let row_created = utils::now();
-            let row_data = content.to_string();
+        for row in rows {
+            let row_id = match row.row_id() {
+                Some(row_id) => row_id.to_string(),
+                None => unreachable!(),
+            };
             c.execute(
                 &stmt,
-                &[&table_row_id, &(row_created as i64), &row_id, &row_data],
+                &[
+                    &table_row_id,
+                    &(row.created() as i64),
+                    &row_id,
+                    &row.content().to_string(),
+                ],
             )
             .await?;
         }
