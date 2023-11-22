@@ -1,5 +1,9 @@
 {
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
-  "version": "0.0.3",
-  "packages": ["front", "types", "connectors"]
+  "version": "0.0.4",
+  "packages": [
+    "front",
+    "types",
+    "connectors"
+  ]
 }
