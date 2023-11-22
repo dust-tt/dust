@@ -4,6 +4,7 @@ import {
   isFullBlock,
   isFullDatabase,
   isFullPage,
+  LogLevel,
 } from "@notionhq/client";
 import {
   BlockObjectResponse,
@@ -29,6 +30,14 @@ import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+const notionClientLogger = (
+  level: LogLevel,
+  message: string,
+  extraInfo: Record<string, unknown>
+) => {
+  logger.info(`[Log from Notion Client] Level ${level}: ${message}`, extraInfo);
+};
 
 /**
  * @param notionAccessToken the access token to use to access the Notion API
@@ -58,7 +67,10 @@ export async function getPagesAndDatabasesEditedSince(
 }> {
   const localLogger = logger.child(loggerArgs);
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
   const editedPages: Record<string, number> = {};
   const editedDbs: Record<string, number> = {};
   let resultsPage: SearchResponse | null = null;
@@ -217,7 +229,10 @@ export async function getDatabaseChildPages({
 }> {
   const localLogger = logger.child(loggerArgs);
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
   let resultsPage: QueryDatabaseResponse | null = null;
   const pages: Record<string, number> = {};
 
@@ -294,7 +309,10 @@ export async function isAccessibleAndUnarchived(
   objectType: "page" | "database",
   localLogger?: Logger
 ): Promise<boolean> {
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
   const maxTries = 5;
   let tries = 0;
 
@@ -373,7 +391,10 @@ async function getBlockParent(
   const max_depth = 8;
   const max_transient_errors = 5;
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
   let depth = 0;
   let transient_errors = 0;
 
@@ -442,7 +463,10 @@ export async function getParsedDatabase(
 ): Promise<ParsedNotionDatabase | null> {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
 
   let database: GetDatabaseResponse | null = null;
 
@@ -533,7 +557,10 @@ export async function retrievePage({
 }): Promise<PageObjectResponse | null> {
   const localLogger = logger.child({ ...loggerArgs, pageId });
 
-  const notionClient = new Client({ auth: accessToken });
+  const notionClient = new Client({
+    auth: accessToken,
+    logger: notionClientLogger,
+  });
 
   let page: GetPageResponse | null = null;
   try {
@@ -582,7 +609,10 @@ export async function retrieveBlockChildrenResultPage({
 }): Promise<ListBlockChildrenResponse | null> {
   const localLogger = logger.child(loggerArgs);
 
-  const notionClient = new Client({ auth: accessToken });
+  const notionClient = new Client({
+    auth: accessToken,
+    logger: notionClientLogger,
+  });
 
   try {
     localLogger.info(
@@ -668,7 +698,10 @@ export function getPageOrBlockParent(
 }
 
 export async function validateAccessToken(notionAccessToken: string) {
-  const notionClient = new Client({ auth: notionAccessToken });
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
   try {
     await notionClient.search({ page_size: 1 });
   } catch (e) {
@@ -768,7 +801,10 @@ export async function retrieveDatabaseChildrenResultPage({
 }) {
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
-  const notionClient = new Client({ auth: accessToken });
+  const notionClient = new Client({
+    auth: accessToken,
+    logger: notionClientLogger,
+  });
 
   localLogger.info("Fetching database children result page from Notion API.");
   try {
@@ -848,7 +884,10 @@ export async function getUserName(
     return nameFromCache;
   }
 
-  const notionClient = new Client({ auth: accessToken });
+  const notionClient = new Client({
+    auth: accessToken,
+    logger: notionClientLogger,
+  });
 
   try {
     pageLogger.info({ user_id: userId }, "Fetching user name from Notion API.");
