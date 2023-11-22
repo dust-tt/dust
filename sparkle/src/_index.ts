@@ -94,18 +94,26 @@ export { PageHeader };
 
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
+  LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLayer2 as LogoHorizontalColorLogoLayer2,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
   LogoHorizontalWhite as LogoHorizontalWhiteLogo,
   LogoSquareColor as LogoSquareColorLogo,
+  LogoSquareColorLayer1 as LogoSquareColorLogoLayer1,
+  LogoSquareColorLayer2 as LogoSquareColorLogoLayer2,
   LogoSquareDark as LogoSquareDarkLogo,
   LogoSquareWhite as LogoSquareWhiteLogo,
 } from "./logo/dust";
 
 export {
   LogoHorizontalColorLogo,
+  LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLogoLayer2,
   LogoHorizontalDarkLogo,
   LogoHorizontalWhiteLogo,
   LogoSquareColorLogo,
+  LogoSquareColorLogoLayer1,
+  LogoSquareColorLogoLayer2,
   LogoSquareDarkLogo,
   LogoSquareWhiteLogo,
 };

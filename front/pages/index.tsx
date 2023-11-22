@@ -1,9 +1,11 @@
 import {
   AnthropicLogo,
   Button,
+  Div3D,
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
+  Hover3D,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -227,7 +229,36 @@ export default function Home({
             </div>
           </Grid>
           <Grid className="items-center">
-            <ReactiveImg
+            <Hover3D
+              attack={0.2}
+              release={4}
+              perspective={800}
+              className={classNames(
+                "relative rounded-2xl border p-3 shadow-xl",
+                "bg-gradient-to-b from-slate-800/60 to-slate-900/80",
+                "border-slate-700/40",
+                "col-span-12",
+                "sm:col-span-10 sm:col-start-2",
+                "lg:col-span-7 lg:col-start-auto lg:row-span-4",
+                "xl:col-span-6 xl:col-start-2",
+                "2xl:col-span-5 2xl:col-start-3"
+              )}
+              depth={0}
+            >
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/conversation_1.png" />
+              </Div3D>
+              <Div3D depth={50}>
+                <img src="/static/landing/conversation_0.png" />
+              </Div3D>
+              <Div3D depth={25} className="absolute top-0">
+                <img src="/static/landing/conversation_2.png" />
+              </Div3D>
+              <Div3D depth={50} className="absolute top-0">
+                <img src="/static/landing/conversation_3.png" />
+              </Div3D>
+            </Hover3D>
+            {/* <ReactiveImg
               className={classNames(
                 "col-span-12",
                 "sm:col-span-10 sm:col-start-2",
@@ -237,7 +268,7 @@ export default function Home({
               )}
             >
               <img src="/static/landing/conversation.png" />
-            </ReactiveImg>
+            </ReactiveImg> */}
             <div
               ref={scrollRef0}
               id="sectionProduct"

@@ -1,6 +1,10 @@
 export { default as LogoHorizontalColor } from "./LogoHorizontalColor";
+export { default as LogoHorizontalColorLayer1 } from "./LogoHorizontalColorLayer1";
+export { default as LogoHorizontalColorLayer2 } from "./LogoHorizontalColorLayer2";
 export { default as LogoHorizontalDark } from "./LogoHorizontalDark";
 export { default as LogoHorizontalWhite } from "./LogoHorizontalWhite";
 export { default as LogoSquareColor } from "./LogoSquareColor";
+export { default as LogoSquareColorLayer1 } from "./LogoSquareColorLayer1";
+export { default as LogoSquareColorLayer2 } from "./LogoSquareColorLayer2";
 export { default as LogoSquareDark } from "./LogoSquareDark";
 export { default as LogoSquareWhite } from "./LogoSquareWhite";
