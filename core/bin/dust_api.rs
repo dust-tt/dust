@@ -2076,7 +2076,7 @@ async fn databases_schema_retrieve(
             &format!("No database found for id `{}`", database_id),
             None,
         ),
-        Ok(Some(db)) => match db.get_schema(&project, state.store.clone()).await {
+        Ok(Some(db)) => match db.get_schema(state.store.clone()).await {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
@@ -2125,10 +2125,7 @@ async fn databases_query_run(
             &format!("No database found for id `{}`", database_id),
             None,
         ),
-        Ok(Some(db)) => match db
-            .query(&project, state.store.clone(), &payload.query)
-            .await
-        {
+        Ok(Some(db)) => match db.query(state.store.clone(), &payload.query).await {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",

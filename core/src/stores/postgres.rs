@@ -197,7 +197,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // Check that the dataset_id and hash exist
+        // Check that the dataset_id and hash exist.
         let r = c
             .query(
                 "SELECT id, created FROM datasets
@@ -218,7 +218,7 @@ impl Store for PostgresStore {
         }
         let (row_id, created) = d.unwrap();
 
-        // Retrieve data points through datasets_joins
+        // Retrieve data points through datasets_joins.
         let stmt = c
             .prepare(
                 "SELECT datasets_joins.point_idx, datasets_points.json \
@@ -784,7 +784,7 @@ impl Store for PostgresStore {
 
         match block {
             None => {
-                // Retrieve data points through datasets_joins
+                // Retrieve data points through datasets_joins.
                 let stmt = c
                     .prepare(
                         "SELECT \
@@ -835,7 +835,7 @@ impl Store for PostgresStore {
                 match block {
                     None => (),
                     Some((block_type, block_name)) => {
-                        // Retrieve data points through datasets_joins for one block
+                        // Retrieve data points through datasets_joins for one block.
                         let stmt = c
                             .prepare(
                                 "SELECT \
@@ -1227,7 +1227,7 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
-        // get current tags and put them into a set
+        // Get current tags and put them into a set.
         let current_tags_result = tx
             .query(
                 "SELECT tags_array FROM data_sources_documents WHERE data_source = $1 \
@@ -1243,7 +1243,7 @@ impl Store for PostgresStore {
             }
         };
 
-        // update the set of tags based on the add and remove lists
+        // Update the set of tags based on the add and remove lists.
         for tag in add_tags {
             current_tags.insert(tag.clone());
         }
@@ -1292,8 +1292,8 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // the `created` timestamp of the version specified by `latest_hash`
-        // (if `latest_hash` is `None`, then this is the latest version's `created` timestamp)
+        // The `created` timestamp of the version specified by `latest_hash`
+        // (if `latest_hash` is `None`, then this is the latest version's `created` timestamp).
         let latest_hash_created: i64 = match latest_hash {
             Some(latest_hash) => {
                 let stmt = c
@@ -1660,7 +1660,7 @@ impl Store for PostgresStore {
                 let chunk_count: i64 = r.get(9);
 
                 let tags = if remove_system_tags {
-                    // remove tags that are prefixed with the system tag prefix
+                    // Remove tags that are prefixed with the system tag prefix.
                     tags.into_iter()
                         .filter(|t| !t.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
                         .collect()
@@ -1788,7 +1788,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // get the data source row id
+        // Get the data source row id.
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -1820,7 +1820,13 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(Database::new(db_created, &data_source_id, &db_id, &db_name))
+        Ok(Database::new(
+            &Project::new_from_id(project_id),
+            db_created,
+            &data_source_id,
+            &db_id,
+            &db_name,
+        ))
     }
 
     async fn load_database(
@@ -1855,6 +1861,7 @@ impl Store for PostgresStore {
         match d {
             None => Ok(None),
             Some((created, database_id, name, data_source_id)) => Ok(Some(Database::new(
+                &Project::new_from_id(project_id),
                 created as u64,
                 &data_source_id,
                 &database_id,
@@ -1908,6 +1915,7 @@ impl Store for PostgresStore {
                 let data_source_id: String = row.get(3);
 
                 Ok(Database::new(
+                    &Project::new_from_id(project_id),
                     created as u64,
                     &data_source_id,
                     &database_id,
@@ -2148,89 +2156,6 @@ impl Store for PostgresStore {
         Ok((tables, total))
     }
 
-    async fn upsert_database_row(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-        content: &Value,
-    ) -> Result<DatabaseRow> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-        let table_id = table_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        // get the data source row id
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => panic!("Unknown DataSource: {}", data_source_id),
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // get the database row id
-        let stmt = c
-            .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
-            .await?;
-
-        let r = c.query(&stmt, &[&data_source_row_id, &database_id]).await?;
-
-        let database_row_id: i64 = match r.len() {
-            0 => panic!("Unknown Database: {}", database_id),
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // get the table row id
-        let stmt = c
-            .prepare(
-                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&database_row_id, &table_id]).await?;
-        let table_row_id: i64 = match r.len() {
-            0 => panic!("Unknown Table: {}", table_id),
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let row_created = utils::now();
-
-        let row_id = row_id.to_string();
-        let row_data = content.to_string();
-
-        // Upsert Database Row.
-        let stmt = c
-            .prepare(
-                "INSERT INTO databases_rows \
-                   (id, database_table, created, row_id, content) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) \
-                   ON CONFLICT (row_id, database_table) DO UPDATE \
-                   SET content = EXCLUDED.content \
-                   RETURNING id",
-            )
-            .await?;
-
-        c.query_one(
-            &stmt,
-            &[&table_row_id, &(row_created as i64), &row_id, &row_data],
-        )
-        .await?;
-
-        Ok(DatabaseRow::new(row_created, Some(row_id), content))
-    }
-
     async fn load_database_row(
         &self,
         project: &Project,
@@ -2406,7 +2331,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
-        // get the data source row id
+        // Get the data source row id.
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -2419,7 +2344,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the database row id
+        // Get the database row id.
         let stmt = c
             .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
             .await?;
@@ -2430,7 +2355,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the table row id
+        // Get the table row id.
         let stmt = c
             .prepare(
                 "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
@@ -2443,10 +2368,10 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // start transaction
+        // Start transaction.
         let c = c.transaction().await?;
 
-        // truncate table if required
+        // Truncate table if required.
         if truncate {
             let stmt = c
                 .prepare("DELETE FROM databases_rows WHERE database_table = $1")
@@ -2454,7 +2379,7 @@ impl Store for PostgresStore {
             c.execute(&stmt, &[&table_row_id]).await?;
         }
 
-        // prepare insertion/updation statement
+        // Prepare insertion/updation statement.
         let stmt = c
             .prepare(
                 "INSERT INTO databases_rows \

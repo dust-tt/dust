@@ -104,7 +104,7 @@ async fn get_database_schema(
         ))?,
     };
 
-    match database.get_schema(&project, env.store.clone()).await {
+    match database.get_schema(env.store.clone()).await {
         Ok(s) => Ok(s),
         Err(e) => Err(anyhow!(
             "Error getting schema for database `{}` in data source `{}`: {}",

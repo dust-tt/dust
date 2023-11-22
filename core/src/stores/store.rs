@@ -196,15 +196,6 @@ pub trait Store {
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseTable>, usize)>;
-    async fn upsert_database_row(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-        content: &Value,
-    ) -> Result<DatabaseRow>;
     async fn batch_upsert_database_rows(
         &self,
         project: &Project,
