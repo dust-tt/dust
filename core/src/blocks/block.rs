@@ -74,6 +74,7 @@ pub enum BlockType {
     Browser,
     While,
     End,
+    #[serde(rename = "database_schema")]
     DatabaseSchema,
     Database,
 }
@@ -117,6 +118,8 @@ impl FromStr for BlockType {
             "browser" => Ok(BlockType::Browser),
             "while" => Ok(BlockType::While),
             "end" => Ok(BlockType::End),
+            "database_schema" => Ok(BlockType::DatabaseSchema),
+            "database" => Ok(BlockType::Database),
             _ => Err(ParseError::with_message("Unknown BlockType"))?,
         }
     }

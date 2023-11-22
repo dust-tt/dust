@@ -11,6 +11,7 @@ import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
 import Curl from "./blocks/Curl";
 import Data from "./blocks/Data";
+import DatabaseSchema from "./blocks/DatabaseSchema";
 import DataSource from "./blocks/DataSource";
 import Input from "./blocks/Input";
 import LLM from "./blocks/LLM";
@@ -94,7 +95,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "data":
               return (
@@ -115,7 +115,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "llm":
               return (
@@ -136,7 +135,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "chat":
               return (
@@ -157,7 +155,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "code":
               return (
@@ -178,7 +175,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "data_source":
               return (
@@ -199,7 +195,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "map":
               return (
@@ -220,7 +215,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "reduce":
               return (
@@ -261,7 +255,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "end":
               return (
@@ -302,7 +295,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "curl":
               return (
@@ -323,7 +315,6 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
 
             case "browser":
               return (
@@ -344,15 +335,33 @@ export default function SpecRunView({
                   onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
                 />
               );
-              break;
+
+            case "database_schema":
+              return (
+                <DatabaseSchema
+                  key={idx}
+                  block={block}
+                  owner={owner}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
 
             default:
-              return (
+              return ((t: never) => (
                 <div key={idx} className="flex flex-row px-4 py-4 text-sm">
-                  Unknown block type: {block.type}
+                  Unknown block type: {t}
                 </div>
-              );
-              break;
+              ))(block.type);
           }
         })}
       </div>

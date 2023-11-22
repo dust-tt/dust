@@ -3,6 +3,7 @@ import useSWR, { Fetcher } from "swr";
 import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import { ListDatabasesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
@@ -502,5 +503,31 @@ export function useSlackChannelsLinkedWithAgent({
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,
+  };
+}
+
+export function useDatabases({
+  workspaceId,
+  dataSourceName,
+  offset,
+  limit,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  offset: number;
+  limit: number;
+}) {
+  const databasesFetcher: Fetcher<ListDatabasesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
+    databasesFetcher
+  );
+
+  return {
+    databases: data ? data.databases : [],
+    isDatabasesLoading: !error && !data,
+    isDatabasesError: error,
+    mutateDatabases: mutate,
   };
 }

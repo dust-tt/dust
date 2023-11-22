@@ -3,7 +3,8 @@ import { BlockRunConfig, SpecificationType } from "@app/types/app";
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
   const c = {} as { [key: string]: any };
   for (let i = 0; i < spec.length; i++) {
-    switch (spec[i].type) {
+    const type = spec[i].type;
+    switch (type) {
       case "llm":
         c[spec[i].name] = {
           type: "llm",
@@ -90,6 +91,27 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
             : false,
         };
         break;
+      case "database_schema":
+        console.log("\n\n\n\nHELLLOW:", spec[i].config);
+        console.log("\n\n\n\nWORLD:", spec[i].name);
+        c[spec[i].name] = {
+          type: "database_schema",
+          database: spec[i].config?.database,
+        };
+        break;
+      case "data":
+      case "code":
+      case "map":
+      case "reduce":
+      case "while":
+      case "end":
+        // these blocks have no config
+        break;
+
+      default:
+        ((t: never) => {
+          console.warn(`Unknown block type: ${t}`);
+        })(type);
     }
   }
   return c;
