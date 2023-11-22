@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/types",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "license": "MIT",
   "author": "Dust",
   "main": "dist/index.js",
