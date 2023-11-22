@@ -1,5 +1,5 @@
 {
-  "name": "types",
+  "name": "@dust-tt/types",
   "version": "0.0.5",
   "license": "MIT",
   "author": "Dust",
@@ -54,5 +54,6 @@
     "size-limit": "^11.0.0",
     "tslib": "^2.6.2",
     "typescript": "^5.3.2"
-  }
+  },
+  "gitHead": "ad78281a193ad4681d250933b113208216ab364e"
 }
