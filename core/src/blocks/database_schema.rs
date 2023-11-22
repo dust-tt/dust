@@ -3,7 +3,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::get_data_source_project;
@@ -68,17 +68,6 @@ impl Block for DatabaseSchema {
         }?;
 
         let schema = get_database_schema(workspace_id, data_source_id, database_id, env).await?;
-
-        let results = std::iter::zip(schemas, databases)
-            .map(|(s, (w, d, db))| {
-                json!({
-                    "workspace_id": w,
-                    "data_source_id": d,
-                    "database_id": db,
-                    "schema": s,
-                })
-            })
-            .collect::<Vec<_>>();
 
         Ok(BlockResult {
             value: serde_json::to_value(schema)?,
