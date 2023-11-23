@@ -24,6 +24,12 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3001
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
 
           envFrom:
             - configMapRef:
