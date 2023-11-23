@@ -121,6 +121,7 @@ export {
 import {
   Ai21 as Ai21Logo,
   Anthropic as AnthropicLogo,
+  AnthropicWhite as AnthropicWhiteLogo,
   Claude as ClaudeLogo,
   Cohere as CohereLogo,
   Drive as DriveLogo,
@@ -135,6 +136,7 @@ import {
   Mistral as MistralLogo,
   Notion as NotionLogo,
   Openai as OpenaiLogo,
+  OpenaiWhite as OpenaiWhiteLogo,
   Replicate as ReplicateLogo,
   Slack as SlackLogo,
 } from "./logo/platforms";
@@ -142,6 +144,7 @@ import {
 export {
   Ai21Logo,
   AnthropicLogo,
+  AnthropicWhiteLogo,
   ClaudeLogo,
   CohereLogo,
   DriveLogo,
@@ -156,6 +159,7 @@ export {
   MistralLogo,
   NotionLogo,
   OpenaiLogo,
+  OpenaiWhiteLogo,
   ReplicateLogo,
   SlackLogo,
 };
