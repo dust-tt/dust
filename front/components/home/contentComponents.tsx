@@ -173,6 +173,8 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
 
 interface ReactImgProps {
   children: ReactNode;
+  colorCSS?: string;
+  colorHEX?: string;
   paddingCSS?: string;
   className?: string;
   src?: string;
