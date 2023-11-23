@@ -66,6 +66,7 @@ export type GlobalAgentStatus =
   | "disabled_free_workspace";
 export type AgentStatus = "active" | "archived";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
+
 export type AgentConfigurationScope =
   | "global"
   | "workspace"

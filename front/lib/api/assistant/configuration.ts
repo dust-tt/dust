@@ -29,6 +29,7 @@ import {
 } from "@app/types/assistant/actions/retrieval";
 import {
   AgentActionConfigurationType,
+  AgentConfigurationScope,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentStatus,
@@ -255,6 +256,7 @@ export async function createAgentConfiguration(
     description,
     pictureUrl,
     status,
+    scope,
     generation,
     action,
     agentConfigurationId,
@@ -263,6 +265,7 @@ export async function createAgentConfiguration(
     description: string;
     pictureUrl: string;
     status: AgentStatus;
+    scope: Exclude<AgentConfigurationScope, "global">;
     generation: AgentGenerationConfigurationType | null;
     action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;
@@ -311,7 +314,7 @@ export async function createAgentConfiguration(
           sId: agentConfigurationId || generateModelSId(),
           version,
           status: status,
-          scope: "workspace",
+          scope: scope,
           name: name,
           description: description,
           pictureUrl: pictureUrl,

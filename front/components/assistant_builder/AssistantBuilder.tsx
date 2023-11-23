@@ -549,6 +549,7 @@ export default function AssistantBuilder({
         pictureUrl: builderState.avatarUrl,
         description: builderState.description.trim(),
         status: "active",
+        scope: "workspace",
         action: actionParam,
         generation: {
           prompt: builderState.instructions.trim(),

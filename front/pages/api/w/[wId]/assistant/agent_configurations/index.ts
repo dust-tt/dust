@@ -33,6 +33,11 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     description: t.string,
     pictureUrl: t.string,
     status: t.union([t.literal("active"), t.literal("archived")]),
+    scope: t.union([
+      t.literal("workspace"),
+      t.literal("published"),
+      t.literal("private"),
+    ]),
     action: t.union([
       t.null,
       t.type({
@@ -197,7 +202,15 @@ export default withLogging(handler);
 export async function createOrUpgradeAgentConfiguration(
   auth: Authenticator,
   {
-    assistant: { generation, action, name, description, pictureUrl, status },
+    assistant: {
+      generation,
+      action,
+      name,
+      description,
+      scope,
+      pictureUrl,
+      status,
+    },
   }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
   agentConfigurationId?: string
 ): Promise<AgentConfigurationType> {
@@ -232,6 +245,7 @@ export async function createOrUpgradeAgentConfiguration(
     description,
     pictureUrl,
     status,
+    scope,
     generation: generationConfig,
     action: actionConfig,
     agentConfigurationId,
