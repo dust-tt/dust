@@ -40,11 +40,14 @@ pub struct TagsFilter {
 }
 
 /// A filter to apply to the search query based on document parents. All documents returned must have at least
-/// one parent in `is_in` and none of their parents in `is_not`.
+/// one parent in `is_in` and none of their parents in `is_not`. The `is_in_map` field allows to
+/// sepecify parents per data_source_id.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParentsFilter {
     #[serde(rename = "in")]
     pub is_in: Option<Vec<String>>,
+    #[serde(rename = "in_map")]
+    pub is_in_map: Option<HashMap<String, Vec<String>>>,
     #[serde(rename = "not")]
     pub is_not: Option<Vec<String>>,
 }
@@ -71,6 +74,62 @@ impl SearchFilter {
     pub fn from_json_str(json: &str) -> Result<Self> {
         let filter: SearchFilter = serde_json::from_str(json)?;
         Ok(filter)
+    }
+
+    // We postprocess `parents.is_in_map` if it is set to augment or set `parents.is_in` based on
+    // the current `data_source_id`` and set `parents.is_in_map` to `None` since this is a virtual
+    // filter that we never want to send to qdrant.
+    pub fn postprocess_for_data_source(&self, data_source_id: &str) -> SearchFilter {
+        SearchFilter {
+            tags: self.tags.clone(),
+            parents: match &self.parents {
+                Some(parents) => {
+                    let mut is_in: Option<Vec<String>> = None;
+
+                    match &parents.is_in {
+                        Some(v) => {
+                            is_in = Some(v.clone());
+                        }
+                        None => (),
+                    }
+
+                    match &parents.is_in_map {
+                        Some(h) => match h.get(data_source_id) {
+                            Some(v) => match &mut is_in {
+                                Some(v) => {
+                                    v.extend(v.clone());
+                                }
+                                None => {
+                                    is_in = Some(v.clone());
+                                }
+                            },
+                            None => (),
+                        },
+                        None => (),
+                    }
+
+                    Some(ParentsFilter {
+                        is_in,
+                        is_in_map: None,
+                        is_not: parents.is_not.clone(),
+                    })
+                }
+                None => None,
+            },
+            timestamp: self.timestamp.clone(),
+        }
+    }
+
+    pub fn ensure_postprocessed(&self) -> Result<()> {
+        match &self.parents {
+            Some(parents) => match &parents.is_in_map {
+                Some(_) => Err(anyhow!(
+                    "SearchFilter must be postprocessed before being used"
+                )),
+                None => Ok(()),
+            },
+            None => Ok(()),
+        }
     }
 }
 
@@ -1058,6 +1117,14 @@ impl DataSource {
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+
+        // We ensure that we have not left a `parents.is_in_map`` in the filter.
+        match filter.as_ref() {
+            Some(filter) => {
+                filter.ensure_postprocessed()?;
+            }
+            None => (),
+        }
 
         if top_k > DataSource::MAX_TOP_K_SEARCH {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
