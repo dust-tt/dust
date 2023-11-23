@@ -238,7 +238,7 @@ export default function Home({
                 "2xl:col-span-5 2xl:col-start-3"
               )}
               depth={-10}
-              range={1}
+              perspective={1000}
             >
               <Div3D depth={0}>
                 <img src="/static/landing/conversation_0.png" />
@@ -344,23 +344,28 @@ export default function Home({
 
           {/* Get state of the art: Content*/}
           <Grid>
-            <Hover3D
+            <div
               className={classNames(
-                "relative m-4 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 p-3 shadow-xl",
-                "sm:col-span-6",
-                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3",
+                "col-span-12 px-4",
+                "sm:col-span-6 sm:p-0",
+                "lg:col-span-5 lg:col-start-2",
+                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3 xl:pl-8 xl:pr-2",
                 "2xl:order-3 2xl:col-span-4 2xl:col-start-2 2xl:row-span-3"
               )}
-              depth={-10}
-              range={1}
             >
-              <Div3D depth={20}>
-                <img src="/static/landing/connect_0.png" />
-              </Div3D>
-              <Div3D depth={30} className="absolute top-2">
-                <img src="/static/landing/connect_1.png" />
-              </Div3D>
-            </Hover3D>
+              <Hover3D
+                depth={-10}
+                perspective={1000}
+                className="relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl"
+              >
+                <Div3D depth={20}>
+                  <img src="/static/landing/connect_0.png" />
+                </Div3D>
+                <Div3D depth={30} className="absolute top-0">
+                  <img src="/static/landing/connect_1.png" />
+                </Div3D>
+              </Hover3D>
+            </div>
 
             <P
               dotCSS="text-sky-400"
@@ -717,14 +722,14 @@ export default function Home({
               id="sectionPricing"
               className="col-span-12 text-center md:pb-6 xl:pb-10"
             >
-              <H2 className="text-slate-50 md:pb-6 xl:pb-10">
+              <H2 className="pb-4 text-slate-50 md:pb-6 xl:pb-10">
                 Start with Dust!
                 <br />
                 <span className="text-slate-200/50">
                   Meet our pricing plans.
                 </span>
               </H2>
-              <div className="lg:px-2 2xl:px-24">
+              <div>
                 <SignUpDropDownButton
                   buttonLabel="Start with Dust Now"
                   buttonSize="md"
