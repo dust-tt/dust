@@ -7,6 +7,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 WORKING_DIR="${3:-${SCRIPT_DIR}/../$1}"
 
+echo "initial pwd is: $(pwd)"
+
 # Change the current working directory to the directory in which to build the image
 cd "$WORKING_DIR"
 
