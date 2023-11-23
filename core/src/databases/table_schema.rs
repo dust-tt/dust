@@ -42,7 +42,13 @@ impl ToSql for SqlParam {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct TableSchema(HashMap<String, TableSchemaFieldType>);
+pub struct TableSchemaColumn {
+    pub field_type: TableSchemaFieldType,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct TableSchema(HashMap<String, TableSchemaColumn>);
 
 impl TableSchema {
     pub fn empty() -> Self {
@@ -53,7 +59,7 @@ impl TableSchema {
     }
 
     pub fn from_rows(rows: &Vec<DatabaseRow>) -> Result<Self> {
-        let mut schema = HashMap::new();
+        let mut schema: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let object = match row.content().as_object() {
@@ -90,19 +96,25 @@ impl TableSchema {
                     Value::Null => unreachable!(),
                 };
 
-                if let Some(existing_type) = schema.get(k) {
-                    if existing_type != &value_type {
+                if let Some(existing_column) = schema.get(k) {
+                    if &existing_column.field_type != &value_type {
                         return Err(anyhow!(
                             "Field {} has conflicting types on row [{}] {:?}: {:?} and {:?}",
                             k,
                             row_index,
                             row.row_id(),
-                            existing_type,
+                            existing_column.field_type,
                             value_type
                         ));
                     }
                 } else {
-                    schema.insert(k.clone(), value_type);
+                    schema.insert(
+                        k.clone(),
+                        TableSchemaColumn {
+                            field_type: value_type,
+                            note: None,
+                        },
+                    );
                 }
             }
         }
@@ -116,8 +128,8 @@ impl TableSchema {
             table_name,
             self.0
                 .iter()
-                .map(|(name, field_type)| {
-                    let sql_type = match field_type {
+                .map(|(name, column)| {
+                    let sql_type = match column.field_type {
                         TableSchemaFieldType::Int => "INT",
                         TableSchemaFieldType::Float => "REAL",
                         TableSchemaFieldType::Text => "TEXT",
@@ -195,8 +207,6 @@ mod tests {
             "field2": 1.2,
             "field3": "text",
             "field4": true,
-            // "field6": ["array", "elements"],
-            // "field7": {"key": "value"}
         });
         let row_2 = json!({
             "field1": 2,
@@ -204,8 +214,6 @@ mod tests {
             "field3": "more text",
             "field4": false,
             "field5": "not null anymore",
-            // "field6": ["more", "elements"],
-            // "field7": {"anotherKey": "anotherValue"}
         });
         let rows = &vec![
             DatabaseRow::new(utils::now(), Some("1".to_string()), row_1),
@@ -213,17 +221,47 @@ mod tests {
         ];
 
         let schema = TableSchema::from_rows(rows)?;
-        let expected_map: HashMap<String, TableSchemaFieldType> = [
-            ("field1", TableSchemaFieldType::Int),
-            ("field2", TableSchemaFieldType::Float),
-            ("field3", TableSchemaFieldType::Text),
-            ("field4", TableSchemaFieldType::Bool),
-            ("field5", TableSchemaFieldType::Text),
-            // ("field6", TableSchemaFieldType::Text),
-            // ("field7", TableSchemaFieldType::Text),
+
+        let expected_map: HashMap<String, TableSchemaColumn> = [
+            (
+                "field1",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Int,
+                    note: None,
+                },
+            ),
+            (
+                "field2",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Float,
+                    note: None,
+                },
+            ),
+            (
+                "field3",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Text,
+                    note: None,
+                },
+            ),
+            (
+                "field4",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Bool,
+                    note: None,
+                },
+            ),
+            (
+                "field5",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Text,
+                    note: None,
+                },
+            ),
         ]
         .iter()
-        .map(|(field_id, field_type)| (field_id.to_string(), field_type.clone()))
+        .cloned()
+        .map(|(field_id, column)| (field_id.to_string(), column))
         .collect();
 
         let expected_schema = TableSchema(expected_map);
@@ -306,17 +344,7 @@ mod tests {
 
     #[test]
     fn test_table_schema_get_create_table_sql_string() -> Result<()> {
-        let schema_map: HashMap<String, TableSchemaFieldType> = [
-            ("field1", TableSchemaFieldType::Int),
-            ("field2", TableSchemaFieldType::Float),
-            ("field3", TableSchemaFieldType::Text),
-            ("field4", TableSchemaFieldType::Bool),
-        ]
-        .iter()
-        .map(|(field_id, field_type)| (field_id.to_string(), field_type.clone()))
-        .collect();
-
-        let schema = TableSchema(schema_map);
+        let schema = create_test_schema()?;
 
         let sql = schema.get_create_table_sql_string("test_table");
 
@@ -426,15 +454,39 @@ mod tests {
 
     // Helper function to create a test schema
     fn create_test_schema() -> Result<TableSchema> {
-        let schema_map: HashMap<String, TableSchemaFieldType> = [
-            ("field1", TableSchemaFieldType::Int),
-            ("field2", TableSchemaFieldType::Float),
-            ("field3", TableSchemaFieldType::Text),
-            ("field4", TableSchemaFieldType::Bool),
+        let schema_map: HashMap<String, TableSchemaColumn> = [
+            (
+                "field1",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Int,
+                    note: None,
+                },
+            ),
+            (
+                "field2",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Float,
+                    note: None,
+                },
+            ),
+            (
+                "field3",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Text,
+                    note: None,
+                },
+            ),
+            (
+                "field4",
+                TableSchemaColumn {
+                    field_type: TableSchemaFieldType::Bool,
+                    note: None,
+                },
+            ),
         ]
         .iter()
         .cloned()
-        .map(|(field_id, field_type)| (field_id.to_string(), field_type))
+        .map(|(field_id, column)| (field_id.to_string(), column))
         .collect();
 
         Ok(TableSchema(schema_map))
