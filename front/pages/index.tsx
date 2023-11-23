@@ -1,11 +1,9 @@
 import {
   AnthropicLogo,
   Button,
-  Div3D,
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
-  Hover3D,
   Logo,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
@@ -229,31 +227,7 @@ export default function Home({
             </div>
           </Grid>
           <Grid className="items-center">
-            <Hover3D
-              className={classNames(
-                "relative m-3 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 p-3 shadow-xl",
-                "col-span-12",
-                "sm:col-span-10 sm:col-start-2",
-                "lg:col-span-7 lg:col-start-auto lg:row-span-4",
-                "xl:col-span-6 xl:col-start-2",
-                "2xl:col-span-5 2xl:col-start-3"
-              )}
-              depth={-10}
-            >
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/conversation_1.png" />
-              </Div3D>
-              <Div3D depth={40}>
-                <img src="/static/landing/conversation_0.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/conversation_2.png" />
-              </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/conversation_3.png" />
-              </Div3D>
-            </Hover3D>
-            {/* <ReactiveImg
+            <ReactiveImg
               className={classNames(
                 "col-span-12",
                 "sm:col-span-10 sm:col-start-2",
@@ -263,7 +237,7 @@ export default function Home({
               )}
             >
               <img src="/static/landing/conversation.png" />
-            </ReactiveImg> */}
+            </ReactiveImg>
             <div
               ref={scrollRef0}
               id="sectionProduct"
@@ -358,23 +332,7 @@ export default function Home({
 
           {/* Get state of the art: Content*/}
           <Grid>
-            <Hover3D
-              className={classNames(
-                "relative m-8 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 p-3 shadow-xl",
-                "sm:col-span-6",
-                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3",
-                "2xl:order-3 2xl:col-span-4 2xl:col-start-2 2xl:row-span-3"
-              )}
-              depth={-10}
-            >
-              <Div3D depth={40}>
-                <img src="/static/landing/connect_0.png" />
-              </Div3D>
-              <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/connect_1.png" />
-              </Div3D>
-            </Hover3D>
-            {/* <ReactiveImg
+            <ReactiveImg
               className={classNames(
                 "order-1 col-span-12",
                 "sm:col-span-6",
@@ -383,7 +341,7 @@ export default function Home({
               )}
             >
               <img src="/static/landing/connect.png" />
-            </ReactiveImg> */}
+            </ReactiveImg>
 
             <P
               dotCSS="text-sky-400"

@@ -24,7 +24,9 @@ interface Hover3DProps {
   perspective?: number;
   className?: string;
   depth?: number;
+  range?: number;
   fullscreenSensible?: boolean;
+  reference?: "screen" | "object";
 }
 
 function Hover3D({
@@ -36,7 +38,9 @@ function Hover3D({
   perspective = 500,
   depth = -10,
   className = "",
+  range = 3,
   fullscreenSensible = false,
+  reference = "object",
 }: Hover3DProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [isHovered, setHovered] = useState(fullscreenSensible);
@@ -69,7 +73,10 @@ function Hover3D({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (element) {
-        const rect = element.getBoundingClientRect();
+        const rect =
+          reference === "object"
+            ? element.getBoundingClientRect()
+            : document.body.getBoundingClientRect();
         const dx = e.clientX - rect.left;
         const dy = e.clientY - rect.top;
 
@@ -80,8 +87,8 @@ function Hover3D({
         );
         const yRot = clamp(
           map(dy, 0, rect.height, yOffset, -yOffset),
-          -4 * yOffset,
-          4 * yOffset
+          -range * yOffset,
+          range * yOffset
         );
 
         setTransform(
