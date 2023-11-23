@@ -63,7 +63,7 @@ impl Database {
                     .par_iter()
                     .map(|(table, r)| {
                         Ok((
-                            table.table_id().to_string(),
+                            table.name().to_string(),
                             DatabaseSchemaTable::new(table.clone(), TableSchema::from_rows(&r)?),
                         ))
                     })
@@ -95,7 +95,7 @@ impl Database {
                 let rows_by_table = match self.get_rows(store.clone()).await {
                     Ok(rows) => Ok(rows
                         .into_iter()
-                        .map(|(table, rows)| (table.table_id().to_string(), rows))
+                        .map(|(table, rows)| (table.name().to_string(), rows))
                         .collect::<HashMap<_, _>>()),
                     _ => Err(anyhow!("Error retrieving rows from database.")),
                 }?;

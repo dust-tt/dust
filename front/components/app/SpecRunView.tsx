@@ -11,6 +11,7 @@ import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
 import Curl from "./blocks/Curl";
 import Data from "./blocks/Data";
+import Database from "./blocks/Database";
 import DatabaseSchema from "./blocks/DatabaseSchema";
 import DataSource from "./blocks/DataSource";
 import Input from "./blocks/Input";
@@ -339,6 +340,26 @@ export default function SpecRunView({
             case "database_schema":
               return (
                 <DatabaseSchema
+                  key={idx}
+                  block={block}
+                  owner={owner}
+                  app={app}
+                  spec={spec}
+                  run={run}
+                  status={status}
+                  running={runRequested || run?.status.run == "running"}
+                  readOnly={readOnly}
+                  onBlockUpdate={(block) => handleSetBlock(idx, block)}
+                  onBlockDelete={() => handleDeleteBlock(idx)}
+                  onBlockUp={() => handleMoveBlockUp(idx)}
+                  onBlockDown={() => handleMoveBlockDown(idx)}
+                  onBlockNew={(blockType) => handleNewBlock(idx, blockType)}
+                />
+              );
+
+            case "database":
+              return (
+                <Database
                   key={idx}
                   block={block}
                   owner={owner}
