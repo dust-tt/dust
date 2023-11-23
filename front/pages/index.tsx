@@ -7,6 +7,8 @@ import {
   GoogleLogo,
   Hover3D,
   Logo,
+  LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
   MistralLogo,
@@ -119,7 +121,14 @@ export default function Home({
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center gap-10 px-4">
           <div className="invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block">
-            <Logo className="h-[24px] w-[96px]" />
+            <Hover3D className="relative h-[24px] w-[96px]">
+              <Div3D depth={0} className="h-[24px] w-[96px]">
+                <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
+              </Div3D>
+              <Div3D depth={25} className="absolute top-0">
+                <LogoHorizontalColorLogoLayer2 className=" h-[24px] w-[96px]" />
+              </Div3D>
+            </Hover3D>
           </div>
           <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
             <P size="xs">
