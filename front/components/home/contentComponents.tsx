@@ -173,8 +173,6 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
 
 interface ReactImgProps {
   children: ReactNode;
-  colorCSS?: string;
-  colorHEX?: string;
   paddingCSS?: string;
   className?: string;
   src?: string;
@@ -242,12 +240,7 @@ export const ReactiveImg = ({
   );
 };
 
-export const ReactiveIcon = ({
-  children,
-  className = "",
-  colorHEX,
-  tooltipLabel,
-}: ReactImgProps) => {
+export const ReactiveIcon = ({ children }: ReactImgProps) => {
   const singleChild = React.Children.only(children);
 
   if (!React.isValidElement(singleChild)) {
@@ -267,15 +260,6 @@ export const ReactiveIcon = ({
     }
   );
   return (
-    // <ReactiveImg
-    //   colorHEX={colorHEX}
-    //   className={classNames("w-fit", className)}
-    //   paddingCSS="p-4"
-    //   tooltipLabel={tooltipLabel}
-    //   isSmall
-    // >
-    //   {modifiedChild}
-    // </ReactiveImg>
     <Hover3D
       attack={0.1}
       release={1}

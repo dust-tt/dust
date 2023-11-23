@@ -32,7 +32,6 @@ import {
   H3,
   P,
   ReactiveIcon,
-  ReactiveImg,
   Strong,
 } from "@app/components/home/contentComponents";
 
