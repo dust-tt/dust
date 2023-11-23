@@ -588,10 +588,11 @@ export async function* runRetrieval(
       config.DATASOURCE.filter.parents = {};
     }
     if (ds.filter.parents?.in) {
-      if (!config.DATASOURCE.filter.parents.in) {
-        config.DATASOURCE.filter.parents.in = [];
+      if (!config.DATASOURCE.filter.parents.in_map) {
+        config.DATASOURCE.filter.parents.in_map = {};
       }
-      config.DATASOURCE.filter.parents.in.push(...ds.filter.parents.in);
+      config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
+        ds.filter.parents.in;
     }
     if (ds.filter.parents?.not) {
       if (!config.DATASOURCE.filter.parents.not) {
