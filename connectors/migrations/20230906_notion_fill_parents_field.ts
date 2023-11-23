@@ -2,7 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
-import { Connector, NotionDatabase, NotionPage } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 
 async function main() {
   if (!process.argv[2]) {

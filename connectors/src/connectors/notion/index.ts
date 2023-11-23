@@ -6,14 +6,12 @@ import {
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
-  ModelId,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
-  sequelize_conn,
-} from "@connectors/lib/models";
+} from "@connectors/lib/models/notion";
 import {
   nango_client,
   nangoDeleteConnection,

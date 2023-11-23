@@ -29,12 +29,8 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
-import {
-  Connector,
-  ModelId,
-  SlackChannel,
-  SlackMessages,
-} from "@connectors/lib/models";
+import { Connector, ModelId } from "@connectors/lib/models";
+import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
   syncSucceeded,

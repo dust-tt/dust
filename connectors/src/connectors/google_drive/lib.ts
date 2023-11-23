@@ -2,7 +2,8 @@ import memoize from "lodash.memoize";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
-import { Connector, GoogleDriveFiles, ModelId } from "@connectors/lib/models";
+import { Connector, ModelId } from "@connectors/lib/models";
+import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 
 import { getAuthObject } from "./temporal/activities";

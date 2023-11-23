@@ -14,12 +14,9 @@ import {
 } from "@connectors/connectors/google_drive/temporal/client";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
-import {
-  Connector,
-  GoogleDriveFiles,
-  NotionDatabase,
-  NotionPage,
-} from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { Result } from "@connectors/lib/result";
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {

@@ -2,7 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import { Connector, SlackMessages } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { SlackMessages } from "@connectors/lib/models/slack";
 
 async function main() {
   if (!process.argv[2]) {

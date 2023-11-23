@@ -15,11 +15,8 @@ import {
   deleteFromDataSource,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import {
-  Connector,
-  GithubDiscussion,
-  GithubIssue,
-} from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";

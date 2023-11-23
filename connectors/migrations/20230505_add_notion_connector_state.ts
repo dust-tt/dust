@@ -1,4 +1,5 @@
-import { Connector, NotionConnectorState } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { NotionConnectorState } from "@connectors/lib/models/notion";
 
 async function main() {
   const connectors = await Connector.findAll();

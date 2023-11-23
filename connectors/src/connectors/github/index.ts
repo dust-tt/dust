@@ -3,13 +3,11 @@ import {
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
   GithubConnectorState,
   GithubIssue,
-  ModelId,
-  sequelize_conn,
-} from "@connectors/lib/models";
+} from "@connectors/lib/models/github";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";

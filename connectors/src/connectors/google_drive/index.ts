@@ -7,16 +7,14 @@ import {
   registerWebhook,
 } from "@connectors/connectors/google_drive/lib";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
-  ModelId,
-  sequelize_conn,
-} from "@connectors/lib/models.js";
+} from "@connectors/lib/models/google_drive";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";

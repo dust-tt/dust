@@ -11,14 +11,12 @@ import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
-  Connector,
-  ModelId,
-  sequelize_conn,
   SlackChannel,
   SlackConfiguration,
   SlackMessages,
-} from "@connectors/lib/models.js";
+} from "@connectors/lib/models/slack";
 import {
   nango_client,
   nangoDeleteConnection,
