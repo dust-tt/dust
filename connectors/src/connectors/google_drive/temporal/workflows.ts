@@ -108,7 +108,7 @@ export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
 ) {
-  const maxPassCount = 3;
+  const maxPassCount = 2;
   const debounceMaxCount = 10;
   const debounceSleepTimeMs = 10 * 1000;
   const secondPassSleepStepMs = 5 * 1000;
