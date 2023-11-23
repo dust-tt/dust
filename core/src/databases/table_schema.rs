@@ -1,12 +1,9 @@
-use std::collections::HashMap;
-
+use super::database::DatabaseRow;
 use anyhow::{anyhow, Result};
-
 use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use super::database::DatabaseRow;
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -43,8 +40,17 @@ impl ToSql for SqlParam {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TableSchemaColumn {
-    pub field_type: TableSchemaFieldType,
-    pub note: Option<String>,
+    pub value_type: TableSchemaFieldType,
+    pub possible_values: Option<Vec<String>>,
+}
+
+impl TableSchemaColumn {
+    pub fn new(field_type: TableSchemaFieldType) -> Self {
+        Self {
+            value_type: field_type,
+            possible_values: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -56,6 +62,38 @@ impl TableSchema {
     }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn accumulate_value(column: &mut TableSchemaColumn, v: &Value) -> () {
+        if let Some(possible_values) = &mut column.possible_values {
+            let s = match v {
+                Value::Bool(b) => match b {
+                    true => "TRUE".to_string(),
+                    false => "FALSE".to_string(),
+                },
+                Value::Number(x) => {
+                    format!("{}", x)
+                }
+                Value::String(s) => {
+                    format!("\"{}\"", s)
+                }
+                Value::Object(_) | Value::Array(_) | Value::Null => unreachable!(),
+            };
+
+            if s.len() > 32 {
+                column.possible_values = None;
+                return;
+            }
+
+            if !possible_values.contains(&s) {
+                possible_values.push(s);
+            }
+
+            if possible_values.len() > 8 {
+                column.possible_values = None;
+                return;
+            }
+        }
     }
 
     pub fn from_rows(rows: &Vec<DatabaseRow>) -> Result<Self> {
@@ -96,25 +134,25 @@ impl TableSchema {
                     Value::Null => unreachable!(),
                 };
 
-                if let Some(existing_column) = schema.get(k) {
-                    if &existing_column.field_type != &value_type {
+                if let Some(column) = schema.get_mut(k) {
+                    if &column.value_type != &value_type {
                         return Err(anyhow!(
                             "Field {} has conflicting types on row [{}] {:?}: {:?} and {:?}",
                             k,
                             row_index,
                             row.row_id(),
-                            existing_column.field_type,
+                            column.value_type,
                             value_type
                         ));
                     }
+                    Self::accumulate_value(column, v);
                 } else {
-                    schema.insert(
-                        k.clone(),
-                        TableSchemaColumn {
-                            field_type: value_type,
-                            note: None,
-                        },
-                    );
+                    let mut column = TableSchemaColumn {
+                        value_type,
+                        possible_values: Some(vec![]),
+                    };
+                    Self::accumulate_value(&mut column, v);
+                    schema.insert(k.clone(), column);
                 }
             }
         }
@@ -129,7 +167,7 @@ impl TableSchema {
             self.0
                 .iter()
                 .map(|(name, column)| {
-                    let sql_type = match column.field_type {
+                    let sql_type = match column.value_type {
                         TableSchemaFieldType::Int => "INT",
                         TableSchemaFieldType::Float => "REAL",
                         TableSchemaFieldType::Text => "TEXT",
@@ -211,7 +249,7 @@ mod tests {
         let row_2 = json!({
             "field1": 2,
             "field2": 2.4,
-            "field3": "more text",
+            "field3": "more text but this time long and over 32 characters",
             "field4": false,
             "field5": "not null anymore",
         });
@@ -226,36 +264,30 @@ mod tests {
             (
                 "field1",
                 TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Int,
-                    note: None,
+                    value_type: TableSchemaFieldType::Int,
+                    possible_values: Some(vec!["1".to_string(), "2".to_string()]),
                 },
             ),
             (
                 "field2",
                 TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Float,
-                    note: None,
+                    value_type: TableSchemaFieldType::Float,
+                    possible_values: Some(vec!["1.2".to_string(), "2.4".to_string()]),
                 },
             ),
-            (
-                "field3",
-                TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Text,
-                    note: None,
-                },
-            ),
+            ("field3", TableSchemaColumn::new(TableSchemaFieldType::Text)),
             (
                 "field4",
                 TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Bool,
-                    note: None,
+                    value_type: TableSchemaFieldType::Bool,
+                    possible_values: Some(vec!["TRUE".to_string(), "FALSE".to_string()]),
                 },
             ),
             (
                 "field5",
                 TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Text,
-                    note: None,
+                    value_type: TableSchemaFieldType::Text,
+                    possible_values: Some(vec!["\"not null anymore\"".to_string()]),
                 },
             ),
         ]
@@ -455,34 +487,13 @@ mod tests {
     // Helper function to create a test schema
     fn create_test_schema() -> Result<TableSchema> {
         let schema_map: HashMap<String, TableSchemaColumn> = [
-            (
-                "field1",
-                TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Int,
-                    note: None,
-                },
-            ),
+            ("field1", TableSchemaColumn::new(TableSchemaFieldType::Int)),
             (
                 "field2",
-                TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Float,
-                    note: None,
-                },
+                TableSchemaColumn::new(TableSchemaFieldType::Float),
             ),
-            (
-                "field3",
-                TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Text,
-                    note: None,
-                },
-            ),
-            (
-                "field4",
-                TableSchemaColumn {
-                    field_type: TableSchemaFieldType::Bool,
-                    note: None,
-                },
-            ),
+            ("field3", TableSchemaColumn::new(TableSchemaFieldType::Text)),
+            ("field4", TableSchemaColumn::new(TableSchemaFieldType::Bool)),
         ]
         .iter()
         .cloned()
