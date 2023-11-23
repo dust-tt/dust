@@ -450,74 +450,30 @@ export async function* runGeneration(
   let lastCheckCancellation = Date.now();
   const redis = await redisClient();
 
-  const _checkCancellation = async () => {
-    try {
-      const cancelled = await redis.get(
-        `assistant:generation:cancelled:${agentMessage.sId}`
-      );
-      if (cancelled === "1") {
-        shouldYieldCancel = true;
-        await redis.set(
-          `assistant:generation:cancelled:${agentMessage.sId}`,
-          0,
-          {
-            EX: 3600, // 1 hour
-          }
+  try {
+    const _checkCancellation = async () => {
+      try {
+        const cancelled = await redis.get(
+          `assistant:generation:cancelled:${agentMessage.sId}`
         );
+        if (cancelled === "1") {
+          shouldYieldCancel = true;
+          await redis.set(
+            `assistant:generation:cancelled:${agentMessage.sId}`,
+            0,
+            {
+              EX: 3600, // 1 hour
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Error checking cancellation:", error);
+        return false;
       }
-    } catch (error) {
-      console.error("Error checking cancellation:", error);
-      return false;
-    }
-  };
+    };
 
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      yield {
-        type: "generation_error",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "agent_generation_error",
-          message: `Error generating agent message: ${event.content.message}`,
-        },
-      };
-      return;
-    }
-
-    const currentTimestamp = Date.now();
-    if (
-      currentTimestamp - lastCheckCancellation >=
-      CANCELLATION_CHECK_INTERVAL
-    ) {
-      void _checkCancellation(); // Trigger the async function without awaiting
-      lastCheckCancellation = currentTimestamp;
-    }
-
-    if (shouldYieldCancel) {
-      yield {
-        type: "generation_cancel",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-      };
-      return;
-    }
-
-    if (event.type === "tokens") {
-      yield {
-        type: "generation_tokens",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        text: event.content.tokens.text,
-      };
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
+    for await (const event of eventStream) {
+      if (event.type === "error") {
         yield {
           type: "generation_error",
           created: Date.now(),
@@ -525,27 +481,74 @@ export async function* runGeneration(
           messageId: agentMessage.sId,
           error: {
             code: "agent_generation_error",
-            message: `Error generating agent message: ${e.error}`,
+            message: `Error generating agent message: ${event.content.message}`,
           },
         };
         return;
       }
 
-      if (event.content.block_name === "MODEL" && e.value) {
-        const m = e.value as {
-          message: {
-            content: string;
-          };
-        };
+      const currentTimestamp = Date.now();
+      if (
+        currentTimestamp - lastCheckCancellation >=
+        CANCELLATION_CHECK_INTERVAL
+      ) {
+        void _checkCancellation(); // Trigger the async function without awaiting
+        lastCheckCancellation = currentTimestamp;
+      }
+
+      if (shouldYieldCancel) {
         yield {
-          type: "generation_success",
+          type: "generation_cancel",
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
-          text: m.message.content,
+        };
+        return;
+      }
+
+      if (event.type === "tokens") {
+        yield {
+          type: "generation_tokens",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          text: event.content.tokens.text,
         };
       }
+
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (e.error) {
+          yield {
+            type: "generation_error",
+            created: Date.now(),
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "agent_generation_error",
+              message: `Error generating agent message: ${e.error}`,
+            },
+          };
+          return;
+        }
+
+        if (event.content.block_name === "MODEL" && e.value) {
+          const m = e.value as {
+            message: {
+              content: string;
+            };
+          };
+          yield {
+            type: "generation_success",
+            created: Date.now(),
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            text: m.message.content,
+          };
+        }
+      }
     }
+  } finally {
+    await redis.quit();
   }
-  await redis.quit();
 }
