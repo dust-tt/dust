@@ -101,7 +101,10 @@ impl DataSource {
                 env.qdrant_clients.clone(),
                 &Some(q.to_string()),
                 top_k,
-                filter,
+                match filter {
+                    Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                    None => None,
+                },
                 self.full_text,
                 target_document_tokens,
             )

@@ -1122,7 +1122,10 @@ async fn data_sources_search(
                     state.qdrant_clients.clone(),
                     &payload.query,
                     payload.top_k,
-                    payload.filter,
+                    match payload.filter {
+                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                        None => None,
+                    },
                     payload.full_text,
                     payload.target_document_tokens,
                 )
