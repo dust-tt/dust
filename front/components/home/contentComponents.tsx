@@ -1,6 +1,8 @@
 import {
   CircleIcon,
+  Div3D,
   HexagonIcon,
+  Hover3D,
   Icon,
   RectangleIcon,
   SquareIcon,
@@ -240,12 +242,7 @@ export const ReactiveImg = ({
   );
 };
 
-export const ReactiveIcon = ({
-  children,
-  className = "",
-  colorHEX,
-  tooltipLabel,
-}: ReactImgProps) => {
+export const ReactiveIcon = ({ children }: ReactImgProps) => {
   const singleChild = React.Children.only(children);
 
   if (!React.isValidElement(singleChild)) {
@@ -260,19 +257,24 @@ export const ReactiveIcon = ({
     {
       className: classNames(
         singleChild.props.className,
-        "h-8 w-8 md:h-12 md:w-12 drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
+        "h-8 w-8 md:h-12 md:w-12"
       ),
     }
   );
   return (
-    <ReactiveImg
-      colorHEX={colorHEX}
-      className={classNames("w-fit", className)}
-      paddingCSS="p-4"
-      tooltipLabel={tooltipLabel}
-      isSmall
+    <Hover3D
+      attack={0.1}
+      release={1}
+      className={classNames(
+        "rounded-2xl border p-3 shadow-xl",
+        "bg-gradient-to-b from-zinc-700/60 to-zinc-900/80",
+        "border-stone-700/40"
+      )}
+      depth={-10}
     >
-      {modifiedChild}
-    </ReactiveImg>
+      <Div3D depth={30} className="top-0">
+        {modifiedChild}
+      </Div3D>
+    </Hover3D>
   );
 };

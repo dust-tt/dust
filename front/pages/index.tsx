@@ -1,16 +1,20 @@
 import {
-  AnthropicLogo,
+  AnthropicWhiteLogo,
   Button,
+  Div3D,
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
+  Hover3D,
   Logo,
+  LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
   MistralLogo,
   MoreIcon,
   NotionLogo,
-  OpenaiLogo,
+  OpenaiWhiteLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -30,7 +34,6 @@ import {
   H3,
   P,
   ReactiveIcon,
-  ReactiveImg,
   Strong,
 } from "@app/components/home/contentComponents";
 
@@ -118,7 +121,14 @@ export default function Home({
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center gap-10 px-4">
           <div className="invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block">
-            <Logo className="h-[24px] w-[96px]" />
+            <Hover3D className="relative h-[24px] w-[96px]">
+              <Div3D depth={0} className="h-[24px] w-[96px]">
+                <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
+              </Div3D>
+              <Div3D depth={25} className="absolute top-0">
+                <LogoHorizontalColorLogoLayer2 className=" h-[24px] w-[96px]" />
+              </Div3D>
+            </Hover3D>
           </div>
           <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
             <P size="xs">
@@ -227,17 +237,28 @@ export default function Home({
             </div>
           </Grid>
           <Grid className="items-center">
-            <ReactiveImg
+            <Hover3D
               className={classNames(
+                "relative m-2 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 p-3 shadow-xl",
                 "col-span-12",
                 "sm:col-span-10 sm:col-start-2",
                 "lg:col-span-7 lg:col-start-auto lg:row-span-4",
                 "xl:col-span-6 xl:col-start-2",
                 "2xl:col-span-5 2xl:col-start-3"
               )}
+              depth={-20}
+              perspective={1000}
             >
-              <img src="/static/landing/conversation.png" />
-            </ReactiveImg>
+              <Div3D depth={10}>
+                <img src="/static/landing/conversation_0.png" />
+              </Div3D>
+              <Div3D depth={30} className="absolute top-2">
+                <img src="/static/landing/conversation_1.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-2">
+                <img src="/static/landing/conversation_2.png" />
+              </Div3D>
+            </Hover3D>
             <div
               ref={scrollRef0}
               id="sectionProduct"
@@ -332,16 +353,28 @@ export default function Home({
 
           {/* Get state of the art: Content*/}
           <Grid>
-            <ReactiveImg
+            <div
               className={classNames(
-                "order-1 col-span-12",
-                "sm:col-span-6",
-                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3",
+                "col-span-12 px-4",
+                "sm:col-span-6 sm:p-0",
+                "lg:col-span-5 lg:col-start-2",
+                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3 xl:pl-8 xl:pr-2",
                 "2xl:order-3 2xl:col-span-4 2xl:col-start-2 2xl:row-span-3"
               )}
             >
-              <img src="/static/landing/connect.png" />
-            </ReactiveImg>
+              <Hover3D
+                depth={-20}
+                perspective={1000}
+                className="relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl"
+              >
+                <Div3D depth={30}>
+                  <img src="/static/landing/connect_0.png" />
+                </Div3D>
+                <Div3D depth={60} className="absolute top-0">
+                  <img src="/static/landing/connect_1.png" />
+                </Div3D>
+              </Hover3D>
+            </div>
 
             <P
               dotCSS="text-sky-400"
@@ -423,10 +456,10 @@ export default function Home({
                 colorHEX="#A26BF7"
                 tooltipLabel="OpenAI, GPT3.5 and GPT4"
               >
-                <OpenaiLogo />
+                <OpenaiWhiteLogo />
               </ReactiveIcon>
               <ReactiveIcon colorHEX="#D4A480" tooltipLabel="Anthropic Claude">
-                <AnthropicLogo />
+                <AnthropicWhiteLogo />
               </ReactiveIcon>
               <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral 7B">
                 <MistralLogo />
@@ -488,8 +521,11 @@ export default function Home({
 
           {/* Bring your team: Content*/}
           <Grid verticalAlign="center">
-            <ReactiveImg
+            <Hover3D
+              depth={-20}
+              perspective={1000}
               className={classNames(
+                "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
                 "order-1",
                 "col-span-12",
                 "sm:col-span-10 sm:col-start-2",
@@ -499,11 +535,19 @@ export default function Home({
                 "2xl:order-1 2xl:col-span-5 2xl:col-start-3 2xl:row-span-2 2xl:self-start"
               )}
             >
-              <img src="/static/landing/builder.png" />
-            </ReactiveImg>
+              <Div3D depth={30}>
+                <img src="/static/landing/builder_0.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/builder_1.png" />
+              </Div3D>
+            </Hover3D>
 
-            <ReactiveImg
+            <Hover3D
+              depth={-20}
+              perspective={1000}
               className={classNames(
+                "relative m-2 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
                 "order-2",
                 "col-span-6 row-span-3 hidden sm:block",
                 "md:col-span-6",
@@ -512,8 +556,16 @@ export default function Home({
                 "2xl:order-3 2xl:col-span-3 2xl:col-start-auto"
               )}
             >
-              <img src="/static/landing/assistants.png" />
-            </ReactiveImg>
+              <Div3D depth={30}>
+                <img
+                  src="/static/landing/assistants_0.png"
+                  className="absolute top-0"
+                />
+              </Div3D>
+              <Div3D depth={70}>
+                <img src="/static/landing/assistants_1.png" />
+              </Div3D>
+            </Hover3D>
 
             <P
               dotCSS="text-amber-300"
@@ -565,8 +617,31 @@ export default function Home({
               <Strong>Manage workspace invitations seamlessly</Strong>&nbsp;with{" "}
               single sign&#8209;on&nbsp;(SSO).
             </P>
-
-            <ReactiveImg
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames(
+                "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
+                "order-6",
+                "col-span-12 sm:hidden",
+                "md:col-span-10 md:col-start-2 lg:block",
+                "md:order-5",
+                "lg:order-6 lg:col-span-8 lg:col-start-auto",
+                "xl:col-span-7",
+                "2xl:order-4 2xl:col-span-5 2xl:col-start-2 2xl:row-span-4"
+              )}
+            >
+              <Div3D depth={30} className="overflow-hidden rounded-2xl">
+                <img src="/static/landing/slack_0.png" />
+              </Div3D>
+              <Div3D depth={50} className="absolute top-0">
+                <img src="/static/landing/slack_1.png" />
+              </Div3D>
+              <Div3D depth={90} className="absolute top-0">
+                <img src="/static/landing/slack_2.png" />
+              </Div3D>
+            </Hover3D>
+            {/* <ReactiveImg
               className={classNames(
                 "order-6",
                 "col-span-12 sm:hidden",
@@ -580,7 +655,7 @@ export default function Home({
               <div className="rounded-xl">
                 <img src="/static/landing/slack.png" />
               </div>
-            </ReactiveImg>
+            </ReactiveImg> */}
           </Grid>
 
           {/* Design for security */}
@@ -612,9 +687,12 @@ export default function Home({
               <br />
               <span className="text-emerald-200">Dust do it!</span>
             </H2>
-            <ReactiveImg
-              paddingCSS="p-1"
+
+            <Hover3D
+              depth={-20}
+              perspective={1000}
               className={classNames(
+                "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
                 "order-2",
                 "col-span-10 col-start-2",
                 "sm:col-span-8 sm:col-start-3",
@@ -623,8 +701,13 @@ export default function Home({
                 "2xl:col-span-4"
               )}
             >
-              <img src="/static/landing/apps.png" />
-            </ReactiveImg>
+              <Div3D depth={30}>
+                <img src="/static/landing/apps_0.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/apps_1.png" />
+              </Div3D>
+            </Hover3D>
             <P
               size="lg"
               className="order-3 col-span-6 lg:col-span-5 xl:col-start-2"
@@ -642,41 +725,20 @@ export default function Home({
               with your <Strong>own databases on advanced use cases</Strong>.
             </P>
           </Grid>
-          {/* <Grid className="md:hidden">
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-12 sm:col-span-10 sm:col-start-2"
-              )}
-            >
-              <H2 className="text-pink-400">
-                Want to start with Dust?
-                <br />
-                <span className="text-pink-200">
-                  Come check us out on a larger screen!
-                </span>
-              </H2>
-              <P size="lg">
-                We're excited for you to explore our price plans and start
-                your&nbsp;onboarding journey. For the&nbsp;optimal experience,
-                please return on a&nbsp;device with a bigger&nbsp;screen.
-              </P>
-            </div>
-          </Grid> */}
           <Grid>
             <div
               ref={scrollRef4}
               id="sectionPricing"
               className="col-span-12 text-center md:pb-6 xl:pb-10"
             >
-              <H2 className="text-slate-50 md:pb-6 xl:pb-10">
+              <H2 className="pb-4 text-slate-50 md:pb-6 xl:pb-10">
                 Start with Dust!
                 <br />
                 <span className="text-slate-200/50">
                   Meet our pricing plans.
                 </span>
               </H2>
-              <div className="lg:px-2 2xl:px-24">
+              <div>
                 <SignUpDropDownButton
                   buttonLabel="Start with Dust Now"
                   buttonSize="md"
@@ -694,64 +756,6 @@ export default function Home({
               <PricePlans size="sm" className="hidden xl:flex" />
             </div>
           </Grid>
-          {/* 
-          <Grid className="hidden md:grid">
-            <H2
-              className={classNames(
-                "text-amber-400",
-                "col-span-12",
-                "xl:col-span-8 xl:col-start-2"
-              )}
-            >
-              Our product constitution
-            </H2>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-6",
-                "xl:col-span-4 xl:col-start-2",
-                "2xl:col-span-3 2xl:col-start-3"
-              )}
-            >
-              <H4 className="text-slate-200">
-                Augmenting humans, not&nbsp;replacing&nbsp;them
-              </H4>
-              <P>
-                We're optimistic about making work life better for smart people.
-                We're building R2-D2, not Skynet.
-              </P>
-            </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-6",
-                "md:col-span-6",
-                "xl:col-span-3"
-              )}
-            >
-              <H4 className="text-slate-200">Hard problems over&nbsp;hype</H4>
-              <P>
-                There's more to do than wrapping GPT into a chat UI. We're in
-                this to solve hard problems on user experience and product
-                quality.
-              </P>
-            </div>
-            <div
-              className={classNames(
-                defaultFlexClasses,
-                "col-span-6",
-                "xl:col-span-3"
-              )}
-            >
-              <H4 className="text-slate-200">
-                Building with an&nbsp;AI&nbsp;core
-              </H4>
-              <P>
-                We're building with large language models in mind from the
-                ground up, rather than sprinkling them here and&nbsp;there.
-              </P>
-            </div>
-          </Grid> */}
         </div>
 
         <Footer />
