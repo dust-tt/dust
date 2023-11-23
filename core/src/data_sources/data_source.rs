@@ -96,8 +96,8 @@ impl SearchFilter {
                     match &parents.is_in_map {
                         Some(h) => match h.get(data_source_id) {
                             Some(v) => match &mut is_in {
-                                Some(v) => {
-                                    v.extend(v.clone());
+                                Some(is_in) => {
+                                    is_in.extend(v.clone());
                                 }
                                 None => {
                                     is_in = Some(v.clone());
