@@ -108,21 +108,34 @@ export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
 ) {
+  const maxPassCount = 2;
+  const debounceMaxCount = 10;
+  const debounceSleepTimeMs = 10 * 1000;
+  const secondPassSleepStepMs = 5 * 1000;
+  const secondPassSleepTimeMs = 5 * 60 * 1000;
+
   let signaled = false;
   let debounceCount = 0;
+  let passCount = 0;
+
   setHandler(newWebhookSignal, () => {
     console.log("Got a new webhook ");
     signaled = true;
+    passCount = 0;
   });
-  while (signaled) {
+  while (signaled || passCount < maxPassCount) {
     signaled = false;
-    await sleep(10000);
+    await sleep(debounceSleepTimeMs);
     if (signaled) {
       debounceCount++;
-      if (debounceCount < 30) {
+      if (debounceCount < debounceMaxCount) {
         continue;
       }
     }
+    // Reset the debounce count so that if we get another webhook we can debounce again.
+    debounceCount = 0;
+    passCount++;
+    console.log("Doing pass number", passCount);
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
     const drivesIds = await getDrivesIds(connectorId);
     const startSyncTs = new Date().getTime();
@@ -142,6 +155,25 @@ export async function googleDriveIncrementalSync(
 
     await syncSucceeded(connectorId);
     console.log("googleDriveIncrementalSync done for connectorId", connectorId);
+
+    if (passCount < maxPassCount) {
+      let secondPassSleptTimeMs = 0;
+
+      while (secondPassSleptTimeMs < secondPassSleepTimeMs) {
+        await sleep(secondPassSleepStepMs);
+        console.log("Sleeping for the second pass", secondPassSleptTimeMs);
+        secondPassSleptTimeMs += secondPassSleepStepMs;
+        if (signaled) {
+          console.log(
+            "Got a new webhook while sleeping for the second pass",
+            secondPassSleptTimeMs,
+            passCount
+          );
+          // We got another webhook, restarting from the beginning.
+          break;
+        }
+      }
+    }
   }
 }
 
