@@ -8,6 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 WORKING_DIR="${3:-${SCRIPT_DIR}/../$1}"
 
 echo "initial pwd is: $(pwd)"
+echo "1: $1"
+echo "2: $2"
+echo "3: $3"
+
+echo "all args: $@"
+
 
 # Change the current working directory to the directory in which to build the image
 cd "$WORKING_DIR"
