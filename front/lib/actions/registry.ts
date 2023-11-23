@@ -55,7 +55,7 @@ export const DustProdActionRegistry = createActionRegistry({
       DATASOURCE: {
         data_sources: [],
         top_k: 32,
-        filter: { tags: null, parent: null, timestamp: null },
+        filter: { tags: null, parents: null, timestamp: null },
         use_cache: false,
       },
     },
