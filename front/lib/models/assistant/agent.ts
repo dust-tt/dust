@@ -92,7 +92,7 @@ export class AgentConfiguration extends Model<
   declare version: number;
 
   declare status: AgentStatus;
-  declare scope: AgentConfigurationScope;
+  declare scope: Exclude<AgentConfigurationScope, "global">;
   declare name: string;
   declare description: string;
   declare pictureUrl: string;
