@@ -38,6 +38,9 @@ impl ToSql for SqlParam {
     }
 }
 
+static POSSIBLE_VALUES_MAX_LEN: usize = 32;
+static POSSIBLE_VALUES_MAX_COUNT: usize = 8;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TableSchemaColumn {
     pub value_type: TableSchemaFieldType,
@@ -64,7 +67,9 @@ impl TableSchema {
         self.0.is_empty()
     }
 
-    pub fn accumulate_value(column: &mut TableSchemaColumn, v: &Value) -> () {
+    fn accumulate_value(column: &mut TableSchemaColumn, v: &Value) -> () {
+        // If possible_values is set we attempt to update it, otherwise that means we gave up on it
+        // by setting it to null so we just return.
         if let Some(possible_values) = &mut column.possible_values {
             let s = match v {
                 Value::Bool(b) => match b {
@@ -80,7 +85,7 @@ impl TableSchema {
                 Value::Object(_) | Value::Array(_) | Value::Null => unreachable!(),
             };
 
-            if s.len() > 32 {
+            if s.len() > POSSIBLE_VALUES_MAX_LEN {
                 column.possible_values = None;
                 return;
             }
@@ -89,7 +94,7 @@ impl TableSchema {
                 possible_values.push(s);
             }
 
-            if possible_values.len() > 8 {
+            if possible_values.len() > POSSIBLE_VALUES_MAX_COUNT {
                 column.possible_values = None;
                 return;
             }
