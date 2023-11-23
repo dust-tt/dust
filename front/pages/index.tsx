@@ -246,16 +246,16 @@ export default function Home({
                 "xl:col-span-6 xl:col-start-2",
                 "2xl:col-span-5 2xl:col-start-3"
               )}
-              depth={-10}
+              depth={-20}
               perspective={1000}
             >
-              <Div3D depth={0}>
+              <Div3D depth={10}>
                 <img src="/static/landing/conversation_0.png" />
               </Div3D>
-              <Div3D depth={20} className="absolute top-2">
+              <Div3D depth={30} className="absolute top-2">
                 <img src="/static/landing/conversation_1.png" />
               </Div3D>
-              <Div3D depth={40} className="absolute top-2">
+              <Div3D depth={70} className="absolute top-2">
                 <img src="/static/landing/conversation_2.png" />
               </Div3D>
             </Hover3D>
@@ -363,14 +363,14 @@ export default function Home({
               )}
             >
               <Hover3D
-                depth={-10}
+                depth={-20}
                 perspective={1000}
                 className="relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl"
               >
-                <Div3D depth={20}>
+                <Div3D depth={30}>
                   <img src="/static/landing/connect_0.png" />
                 </Div3D>
-                <Div3D depth={30} className="absolute top-0">
+                <Div3D depth={60} className="absolute top-0">
                   <img src="/static/landing/connect_1.png" />
                 </Div3D>
               </Hover3D>
@@ -522,7 +522,7 @@ export default function Home({
           {/* Bring your team: Content*/}
           <Grid verticalAlign="center">
             <Hover3D
-              depth={-10}
+              depth={-20}
               perspective={1000}
               className={classNames(
                 "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
@@ -535,16 +535,16 @@ export default function Home({
                 "2xl:order-1 2xl:col-span-5 2xl:col-start-3 2xl:row-span-2 2xl:self-start"
               )}
             >
-              <Div3D depth={20}>
+              <Div3D depth={30}>
                 <img src="/static/landing/builder_0.png" />
               </Div3D>
-              <Div3D depth={60} className="absolute top-0">
+              <Div3D depth={70} className="absolute top-0">
                 <img src="/static/landing/builder_1.png" />
               </Div3D>
             </Hover3D>
 
             <Hover3D
-              depth={-10}
+              depth={-20}
               perspective={1000}
               className={classNames(
                 "relative m-2 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
@@ -556,13 +556,13 @@ export default function Home({
                 "2xl:order-3 2xl:col-span-3 2xl:col-start-auto"
               )}
             >
-              <Div3D depth={20}>
+              <Div3D depth={30}>
                 <img
                   src="/static/landing/assistants_0.png"
                   className="absolute top-0"
                 />
               </Div3D>
-              <Div3D depth={30}>
+              <Div3D depth={70}>
                 <img src="/static/landing/assistants_1.png" />
               </Div3D>
             </Hover3D>
@@ -618,7 +618,7 @@ export default function Home({
               single sign&#8209;on&nbsp;(SSO).
             </P>
             <Hover3D
-              depth={-10}
+              depth={-20}
               perspective={1000}
               className={classNames(
                 "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
@@ -631,13 +631,13 @@ export default function Home({
                 "2xl:order-4 2xl:col-span-5 2xl:col-start-2 2xl:row-span-4"
               )}
             >
-              <Div3D depth={10}>
+              <Div3D depth={30} className="overflow-hidden rounded-2xl">
                 <img src="/static/landing/slack_0.png" />
               </Div3D>
-              <Div3D depth={30} className="absolute top-0">
+              <Div3D depth={50} className="absolute top-0">
                 <img src="/static/landing/slack_1.png" />
               </Div3D>
-              <Div3D depth={60} className="absolute top-0">
+              <Div3D depth={90} className="absolute top-0">
                 <img src="/static/landing/slack_2.png" />
               </Div3D>
             </Hover3D>
@@ -689,7 +689,7 @@ export default function Home({
             </H2>
 
             <Hover3D
-              depth={-10}
+              depth={-20}
               perspective={1000}
               className={classNames(
                 "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
@@ -701,10 +701,10 @@ export default function Home({
                 "2xl:col-span-4"
               )}
             >
-              <Div3D depth={20}>
+              <Div3D depth={30}>
                 <img src="/static/landing/apps_0.png" />
               </Div3D>
-              <Div3D depth={60} className="absolute top-0">
+              <Div3D depth={70} className="absolute top-0">
                 <img src="/static/landing/apps_1.png" />
               </Div3D>
             </Hover3D>
