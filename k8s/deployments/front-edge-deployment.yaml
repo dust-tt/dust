@@ -34,6 +34,10 @@ spec:
             # don't have the same memory limits as the regular front pods
             - name: NODE_OPTIONS
               value: "-r dd-trace/init --max-old-space-size=400"
+            - name: NEXTAUTH_URL
+              value: https://front-edge.dust.tt
+            - name: URL
+              value: https://front-edge.dust.tt
 
             - name: DD_AGENT_HOST
               valueFrom:
