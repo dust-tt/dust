@@ -56,10 +56,14 @@ impl TableSchema {
         let mut schema = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
-            let object = row
-                .content()
-                .as_object()
-                .ok_or_else(|| anyhow!("Row {} is not an object", row_index))?;
+            let object = match row.content().as_object() {
+                Some(object) => object,
+                None => Err(anyhow!(
+                    "Row [{}] {:?} is not an object",
+                    row_index,
+                    row.row_id()
+                ))?,
+            };
 
             for (k, v) in object {
                 if v.is_null() {
@@ -75,18 +79,24 @@ impl TableSchema {
                             TableSchemaFieldType::Float
                         }
                     }
-                    Value::String(_) | Value::Object(_) | Value::Array(_) => {
-                        TableSchemaFieldType::Text
-                    }
-                    _ => unreachable!(),
+                    Value::String(_) => TableSchemaFieldType::Text,
+                    Value::Object(_) | Value::Array(_) => Err(anyhow!(
+                        "Field {} is not a primitive type on row [{}] {:?} \
+                         (object and arrays are not supported)",
+                        k,
+                        row_index,
+                        row.row_id()
+                    ))?,
+                    Value::Null => unreachable!(),
                 };
 
                 if let Some(existing_type) = schema.get(k) {
                     if existing_type != &value_type {
                         return Err(anyhow!(
-                            "Field {} has conflicting types on row {}: {:?} and {:?}",
+                            "Field {} has conflicting types on row [{}] {:?}: {:?} and {:?}",
                             k,
                             row_index,
+                            row.row_id(),
                             existing_type,
                             value_type
                         ));
@@ -185,8 +195,8 @@ mod tests {
             "field2": 1.2,
             "field3": "text",
             "field4": true,
-            "field6": ["array", "elements"],
-            "field7": {"key": "value"}
+            // "field6": ["array", "elements"],
+            // "field7": {"key": "value"}
         });
         let row_2 = json!({
             "field1": 2,
@@ -194,12 +204,12 @@ mod tests {
             "field3": "more text",
             "field4": false,
             "field5": "not null anymore",
-            "field6": ["more", "elements"],
-            "field7": {"anotherKey": "anotherValue"}
+            // "field6": ["more", "elements"],
+            // "field7": {"anotherKey": "anotherValue"}
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), Some("1".to_string()), &row_1),
-            DatabaseRow::new(utils::now(), Some("2".to_string()), &row_2),
+            DatabaseRow::new(utils::now(), Some("1".to_string()), row_1),
+            DatabaseRow::new(utils::now(), Some("2".to_string()), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -209,8 +219,8 @@ mod tests {
             ("field3", TableSchemaFieldType::Text),
             ("field4", TableSchemaFieldType::Bool),
             ("field5", TableSchemaFieldType::Text),
-            ("field6", TableSchemaFieldType::Text),
-            ("field7", TableSchemaFieldType::Text),
+            // ("field6", TableSchemaFieldType::Text),
+            // ("field7", TableSchemaFieldType::Text),
         ]
         .iter()
         .map(|(field_id, field_type)| (field_id.to_string(), field_type.clone()))
@@ -224,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn test_table_schema_from_rows_conflicting_types() {
+    fn test_table_schema_from_invalid_rows() -> Result<()> {
         let row_1 = json!({
             "field1": 1,
             "field2": 1.2,
@@ -237,18 +247,44 @@ mod tests {
             "field1": 2,
             "field2": 2.4,
             "field3": "more text",
-            "field4": "this was a bool before",
+            "field4": false,
             "field5": "not null anymore",
             "field6": ["more", "elements"],
             "field7": {"anotherKey": "anotherValue"}
+        });
+        let rows = &vec![
+            DatabaseRow::new(utils::now(), Some("1".to_string()), row_1),
+            DatabaseRow::new(utils::now(), Some("2".to_string()), row_2),
+        ];
+
+        match TableSchema::from_rows(rows) {
+            Ok(_) => Err(anyhow!("Schema should have failed due to invalid rows.")),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn test_table_schema_from_rows_conflicting_types() {
+        let row_1 = json!({
+            "field1": 1,
+            "field2": 1.2,
+            "field3": "text",
+            "field4": true,
+        });
+        let row_2 = json!({
+            "field1": 2,
+            "field2": 2.4,
+            "field3": "more text",
+            "field4": "this was a bool before",
+            "field5": "not null anymore",
         });
         let row_3 = json!({
             "field1": "now it's a text field",
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), Some("1".to_string()), &row_1),
-            DatabaseRow::new(utils::now(), Some("2".to_string()), &row_2),
-            DatabaseRow::new(utils::now(), Some("3".to_string()), &row_3),
+            DatabaseRow::new(utils::now(), Some("1".to_string()), row_1),
+            DatabaseRow::new(utils::now(), Some("2".to_string()), row_2),
+            DatabaseRow::new(utils::now(), Some("3".to_string()), row_3),
         ];
 
         let schema = TableSchema::from_rows(rows);
@@ -312,7 +348,7 @@ mod tests {
         let row = DatabaseRow::new(
             utils::now(),
             None,
-            &json!({
+            json!({
                 "field1": 1,
                 "field2": 2.4,
                 "field3": "text",
@@ -363,7 +399,7 @@ mod tests {
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(schema.get_insert_params(
             &field_names,
-            &DatabaseRow::new(utils::now(), Some("1".to_string()), &row_content),
+            &DatabaseRow::new(utils::now(), Some("1".to_string()), row_content),
         )?);
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;

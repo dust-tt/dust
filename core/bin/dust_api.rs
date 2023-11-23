@@ -1942,31 +1942,45 @@ async fn databases_rows_upsert(
 
     match state
         .store
-        .batch_upsert_database_rows(
-            &project,
-            &data_source_id,
-            &database_id,
-            &table_id,
-            &payload.contents,
-            truncate,
-        )
+        .load_database(&project, &data_source_id, &database_id)
         .await
     {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
-            "Failed to upsert database rows",
+            "Failed to retrieve database",
             Some(e),
         ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
+        Ok(db) => match db {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "database_not_found",
+                &format!("No database found for id `{}`", database_id),
+                None,
+            ),
+            Some(db) => {
+                match db
+                    .batch_upsert_rows(state.store.clone(), &table_id, payload.contents, truncate)
+                    .await
+                {
+                    Err(e) => error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_database_rows_content",
+                        "The rows content is invalid",
+                        Some(e),
+                    ),
+                    Ok(()) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true
+                            })),
+                        }),
+                    ),
+                }
+            }
+        },
     }
 }
 

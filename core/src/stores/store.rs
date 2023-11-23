@@ -11,7 +11,6 @@ use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LL
 use crate::run::{Run, RunStatus, RunType};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::Value;
 use std::collections::HashMap;
 
 #[async_trait]
@@ -202,7 +201,7 @@ pub trait Store {
         data_source_id: &str,
         database_id: &str,
         table_id: &str,
-        contents: &HashMap<String, Value>,
+        rows: &Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()>;
     async fn load_database_row(
