@@ -4,6 +4,8 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { withRetries } from "./dust_front_api_helpers";
+
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
   throw new Error("FRONT_API not set");
@@ -29,41 +31,7 @@ type UpsertToDataSourceParams = {
   upsertContext: UpsertContext;
 };
 
-type UpsertToDataSourceRetryOptions = {
-  retries?: number;
-  delayBetweenRetriesMs?: number;
-};
-
-export async function upsertToDatasource({
-  retries = 10,
-  delayBetweenRetriesMs = 1000,
-  ...params
-}: UpsertToDataSourceParams & UpsertToDataSourceRetryOptions) {
-  if (retries < 1) {
-    throw new Error("retries must be >= 1");
-  }
-  const errors = [];
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await _upsertToDatasource(params);
-    } catch (e) {
-      const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
-      logger.warn(
-        {
-          error: e,
-          attempt: i + 1,
-          retries: retries,
-          sleepTime: sleepTime,
-        },
-        "Error upserting to data source. Retrying..."
-      );
-      await new Promise((resolve) => setTimeout(resolve, sleepTime));
-      errors.push(e);
-    }
-  }
-
-  throw new Error(errors.join("\n"));
-}
+export const upsertToDatasource = withRetries(_upsertToDatasource);
 
 async function _upsertToDatasource({
   dataSourceConfig,
