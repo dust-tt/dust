@@ -94,18 +94,26 @@ export { PageHeader };
 
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
+  LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLayer2 as LogoHorizontalColorLogoLayer2,
   LogoHorizontalDark as LogoHorizontalDarkLogo,
   LogoHorizontalWhite as LogoHorizontalWhiteLogo,
   LogoSquareColor as LogoSquareColorLogo,
+  LogoSquareColorLayer1 as LogoSquareColorLogoLayer1,
+  LogoSquareColorLayer2 as LogoSquareColorLogoLayer2,
   LogoSquareDark as LogoSquareDarkLogo,
   LogoSquareWhite as LogoSquareWhiteLogo,
 } from "./logo/dust";
 
 export {
   LogoHorizontalColorLogo,
+  LogoHorizontalColorLogoLayer1,
+  LogoHorizontalColorLogoLayer2,
   LogoHorizontalDarkLogo,
   LogoHorizontalWhiteLogo,
   LogoSquareColorLogo,
+  LogoSquareColorLogoLayer1,
+  LogoSquareColorLogoLayer2,
   LogoSquareDarkLogo,
   LogoSquareWhiteLogo,
 };
@@ -113,6 +121,7 @@ export {
 import {
   Ai21 as Ai21Logo,
   Anthropic as AnthropicLogo,
+  AnthropicWhite as AnthropicWhiteLogo,
   Claude as ClaudeLogo,
   Cohere as CohereLogo,
   Drive as DriveLogo,
@@ -127,6 +136,7 @@ import {
   Mistral as MistralLogo,
   Notion as NotionLogo,
   Openai as OpenaiLogo,
+  OpenaiWhite as OpenaiWhiteLogo,
   Replicate as ReplicateLogo,
   Slack as SlackLogo,
 } from "./logo/platforms";
@@ -134,6 +144,7 @@ import {
 export {
   Ai21Logo,
   AnthropicLogo,
+  AnthropicWhiteLogo,
   ClaudeLogo,
   CohereLogo,
   DriveLogo,
@@ -148,6 +159,7 @@ export {
   MistralLogo,
   NotionLogo,
   OpenaiLogo,
+  OpenaiWhiteLogo,
   ReplicateLogo,
   SlackLogo,
 };

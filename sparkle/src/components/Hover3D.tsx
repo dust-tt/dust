@@ -24,6 +24,9 @@ interface Hover3DProps {
   perspective?: number;
   className?: string;
   depth?: number;
+  range?: number;
+  fullscreenSensible?: boolean;
+  reference?: "screen" | "object";
 }
 
 function Hover3D({
@@ -35,14 +38,21 @@ function Hover3D({
   perspective = 500,
   depth = -10,
   className = "",
+  range = 3,
+  fullscreenSensible = false,
+  reference = "object",
 }: Hover3DProps) {
   const elementRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setHovered] = useState(false);
+  const [isHovered, setHovered] = useState(fullscreenSensible);
   const [transform, setTransform] = useState(
-    "perspective(500px) translateZ(0px)"
+    `perspective(${perspective}px) translateZ(${
+      fullscreenSensible ? depth : 0
+    }px)`
   );
   const [transition, setTransition] = useState("");
-
+  const clamp = (value: number, min: number, max: number) => {
+    return Math.min(Math.max(value, min), max);
+  };
   const map = (
     value: number,
     istart: number,
@@ -63,34 +73,50 @@ function Hover3D({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (element) {
-        const rect = element.getBoundingClientRect();
+        const rect =
+          reference === "object"
+            ? element.getBoundingClientRect()
+            : document.body.getBoundingClientRect();
         const dx = e.clientX - rect.left;
         const dy = e.clientY - rect.top;
 
-        const xRot = map(dx, 0, rect.width, -xOffset, xOffset);
-        const yRot = map(dy, 0, rect.height, yOffset, -yOffset);
+        const xRot = clamp(
+          map(dx, 0, rect.width, -xOffset, xOffset),
+          -xOffset,
+          xOffset
+        );
+        const yRot = clamp(
+          map(dy, 0, rect.height, yOffset, -yOffset),
+          -range * yOffset,
+          range * yOffset
+        );
 
         setTransform(
           `perspective(${perspective}px) rotateX(${yRot}deg) rotateY(${xRot}deg) translateZ(${depth}px)`
         );
       }
     };
+    if (fullscreenSensible) {
+      window.addEventListener("mousemove", handleMouseMove);
+    } else {
+      const handleMouseLeave = () => {
+        setTransition(`transform ${release}s`);
+        setTransform(
+          `perspective(${perspective}px) rotateX(0deg) rotateY(0deg)`
+        );
+        setHovered(false);
+      };
 
-    const handleMouseLeave = () => {
-      setTransition(`transform ${release}s`);
-      setTransform(`perspective(${perspective}px) rotateX(0deg) rotateY(0deg)`);
-      setHovered(false);
-    };
+      element?.addEventListener("mouseenter", handleMouseEnter);
+      element?.addEventListener("mousemove", handleMouseMove);
+      element?.addEventListener("mouseleave", handleMouseLeave);
 
-    element?.addEventListener("mouseenter", handleMouseEnter);
-    element?.addEventListener("mousemove", handleMouseMove);
-    element?.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      element?.removeEventListener("mouseenter", handleMouseEnter);
-      element?.removeEventListener("mousemove", handleMouseMove);
-      element?.removeEventListener("mouseleave", handleMouseLeave);
-    };
+      return () => {
+        element?.removeEventListener("mouseenter", handleMouseEnter);
+        element?.removeEventListener("mousemove", handleMouseMove);
+        element?.removeEventListener("mouseleave", handleMouseLeave);
+      };
+    }
   }, [attack, release, perspective, xOffset, yOffset]);
 
   return (
