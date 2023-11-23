@@ -80,7 +80,7 @@ impl SearchFilter {
     // the current `data_source_id`` and set `parents.is_in_map` to `None` since this is a virtual
     // filter that we never want to send to qdrant.
     pub fn postprocess_for_data_source(&self, data_source_id: &str) -> SearchFilter {
-        SearchFilter {
+        let filter = SearchFilter {
             tags: self.tags.clone(),
             parents: match &self.parents {
                 Some(parents) => {
@@ -108,6 +108,12 @@ impl SearchFilter {
                         None => (),
                     }
 
+                    utils::info(&format!(
+                        "Postprocessed `parents.in`: data_source_id={} \
+                         is_in={:?} is_in_map={:?} postprocessed_is_in={:?}",
+                        data_source_id, &parents.is_in, &parents.is_in_map, is_in,
+                    ));
+
                     Some(ParentsFilter {
                         is_in,
                         is_in_map: None,
@@ -117,7 +123,8 @@ impl SearchFilter {
                 None => None,
             },
             timestamp: self.timestamp.clone(),
-        }
+        };
+        filter
     }
 
     pub fn ensure_postprocessed(&self) -> Result<()> {
