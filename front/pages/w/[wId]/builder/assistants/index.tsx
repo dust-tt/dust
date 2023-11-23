@@ -75,10 +75,8 @@ export default function AssistantsBuilder({
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
 
-  const workspaceAgents = agentConfigurations.filter(
-    (a) => a.scope === "workspace"
-  );
-  const filtered = workspaceAgents.filter((a) => {
+  const localAgents = agentConfigurations.filter((a) => a.scope !== "global");
+  const filtered = localAgents.filter((a) => {
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
 
