@@ -6,7 +6,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership, User } from "@app/lib/models";
-import { MemberAgentVisibility } from "@app/lib/models/workspace";
+import { MemberAgentVisibility } from "@app/lib/models/assistant/agent";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
 
