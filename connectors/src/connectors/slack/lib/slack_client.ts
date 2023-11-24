@@ -26,7 +26,7 @@ export async function getSlackClient(
     if (!connector) {
       throw new Error(`Could not find connector ${connectorIdOrAccessToken}`);
     }
-    slackAccessToken = await getAccessToken(connector.connectionId);
+    slackAccessToken = await getSlackAccessToken(connector.connectionId);
   } else {
     slackAccessToken = connectorIdOrAccessToken;
   }
@@ -83,7 +83,9 @@ export async function getSlackClient(
   return proxied;
 }
 
-async function getAccessToken(nangoConnectionId: string): Promise<string> {
+export async function getSlackAccessToken(
+  nangoConnectionId: string
+): Promise<string> {
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
   }
