@@ -9,7 +9,10 @@ import PQueue from "p-queue";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackAccessToken,
+  getSlackClient,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
 import {
@@ -160,7 +163,8 @@ export async function updateSlackConnector(
   const updateParams: Parameters<typeof c.update>[0] = {};
 
   if (connectionId) {
-    const slackClient = await getSlackClient(c.id);
+    const accessToken = await getSlackAccessToken(connectionId);
+    const slackClient = await getSlackClient(accessToken);
     const teamInfoRes = await slackClient.team.info();
     if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
       return new Err({
