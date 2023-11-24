@@ -381,15 +381,15 @@ pub trait HasValue {
 pub struct DatabaseRow {
     created: u64,
     row_id: String,
-    content: Value,
+    value: Value,
 }
 
 impl DatabaseRow {
-    pub fn new(created: u64, row_id: String, content: Value) -> Self {
+    pub fn new(created: u64, row_id: String, value: Value) -> Self {
         DatabaseRow {
             created,
             row_id,
-            content,
+            value,
         }
     }
 
@@ -400,13 +400,13 @@ impl DatabaseRow {
         &self.row_id
     }
     pub fn content(&self) -> &Value {
-        &self.content
+        &self.value
     }
 }
 
 impl HasValue for DatabaseRow {
     fn value(&self) -> &Value {
-        &self.content
+        &self.value
     }
 }
 
@@ -438,14 +438,14 @@ impl DatabaseSchemaTable {
 
     pub fn render_dbml(&self) -> String {
         format!(
-            "Table {} {{\n{}\n  Note: '''\n{}\n  '''\n}}",
+            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
             self.table.name(),
-            self.schema.render_dbml_columns(),
-            self.table
-                .description()
-                .split("\n")
-                .map(|l| format!("    {}", l))
-                .join("\n")
+            self.schema
+                .columns()
+                .iter()
+                .map(|c| format!("  {}", c.render_dbml()))
+                .join("\n"),
+            self.table.description()
         )
     }
 }
@@ -487,17 +487,15 @@ mod tests {
         let table_schema = DatabaseSchemaTable::new(table, schema);
 
         let expected = r#"Table test_dbml {
-  label text [note: 'possible values: "foo", "bar"']
   user_id integer [note: 'possible values: 1, 2']
   temperature real [note: 'possible values: 1.2, 2.4']
-  ready integer [note: 'possible values: TRUE, FALSE']
+  label text [note: 'possible values: "foo", "bar"']
+  ready boolean [note: 'possible values: TRUE, FALSE']
   description text
 
-  Note: '''
-    Test records for DBML rendering
-  '''
-}
-"#;
+  Note: 'Test records for DBML rendering'
+}"#
+        .to_string();
         assert_eq!(table_schema.render_dbml(), expected);
 
         Ok(())

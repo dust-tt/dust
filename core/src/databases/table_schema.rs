@@ -71,12 +71,15 @@ impl TableSchemaColumn {
     pub fn render_dbml(&self) -> String {
         match &self.possible_values {
             Some(possible_values) => {
-                let mut note = format!("{} [note: 'possible values: ", self.name);
+                let mut note = format!(
+                    "{} {} [note: 'possible values: ",
+                    self.name, self.value_type
+                );
                 note.push_str(&possible_values.join(", "));
                 note.push_str("']");
                 note
             }
-            None => String::from(""),
+            None => format!("{} {}", self.name, self.value_type),
         }
     }
 }
@@ -91,6 +94,10 @@ impl TableSchema {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn columns(&self) -> &Vec<TableSchemaColumn> {
+        &self.0
     }
 
     fn accumulate_value(column: &mut TableSchemaColumn, v: &Value) -> () {
@@ -254,14 +261,6 @@ impl TableSchema {
                 })
                 .collect::<Result<Vec<_>>>(),
         }
-    }
-
-    pub fn render_dbml_columns(&self) -> String {
-        self.0
-            .iter()
-            .map(|c| c.render_dbml())
-            .collect::<Vec<_>>()
-            .join("\n")
     }
 }
 
