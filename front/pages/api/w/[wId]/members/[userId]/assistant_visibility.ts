@@ -1,12 +1,13 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import { NextApiRequest, NextApiResponse } from "next";
+
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership, User } from "@app/lib/models";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { MemberAgentVisibility } from "@app/lib/models/workspace";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
 
 export type PostMemberAssistantVisibilityResponseBody = {
