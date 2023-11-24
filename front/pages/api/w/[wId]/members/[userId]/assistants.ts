@@ -9,12 +9,12 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { MemberAgentVisibility } from "@app/lib/models/workspace";
 import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
 
-export type PostMemberAssistantsResponseBody = {
+export type PostMemberAssistantVisibilityResponseBody = {
   created: boolean | null;
   visibility: MemberAgentVisibilityType;
 };
 
-export const PostMemberAssistantsRequestBodySchema = t.type({
+export const PostMemberAssistantVisibilityRequestBodySchema = t.type({
   assistantSid: t.string,
   visibility: t.union([
     t.literal("workspace-unlisted"),
@@ -22,9 +22,15 @@ export const PostMemberAssistantsRequestBodySchema = t.type({
   ]),
 });
 
+export const DeleteMemberAssistantsVisibilityBodySchema = t.type({
+  assistantSid: t.string,
+});
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostMemberAssistantsResponseBody>
+  res: NextApiResponse<
+    PostMemberAssistantVisibilityResponseBody | { success: boolean }
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -80,9 +86,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMemberAssistantsRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        PostMemberAssistantVisibilityRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -121,7 +126,56 @@ async function handler(
         .status(200)
         .json({ created, visibility: memberAgentVisibility.visibility });
       return;
+    case "DELETE":
+      const bodyValidationDelete =
+        DeleteMemberAssistantsVisibilityBodySchema.decode(req.body);
+      if (isLeft(bodyValidationDelete)) {
+        const pathError = reporter.formatValidationErrors(
+          bodyValidationDelete.left
+        );
 
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+      const { assistantSid: assistantSidToDelete } = bodyValidationDelete.right;
+      // get the agent configuration
+      const deletionAgentConfiguration = await getAgentConfiguration(
+        auth,
+        assistantSidToDelete
+      );
+      if (!deletionAgentConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The agent configuration was not found.",
+          },
+        });
+      }
+      if (deletionAgentConfiguration.scope === "private") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Cannot remove visibility entry for a 'private'-scope assistant. Please delete the assistant instead.",
+          },
+        });
+      }
+      // delete the MemberAgentList entry
+      await MemberAgentVisibility.destroy({
+        where: {
+          membershipId: membership.id,
+          agentConfigurationId: deletionAgentConfiguration.id,
+        },
+      });
+      res.status(200).json({ success: true });
+      return;
     default:
       return apiError(req, res, {
         status_code: 405,
