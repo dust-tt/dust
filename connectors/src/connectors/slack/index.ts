@@ -176,14 +176,49 @@ export async function updateSlackConnector(
 
     const newTeamId = teamInfoRes.team.id;
     if (newTeamId !== currentSlackConfig.slackTeamId) {
-      nangoDeleteConnection(connectionId, NANGO_SLACK_CONNECTOR_ID).catch(
-        (e) => {
-          logger.error(
-            { error: e, connectionId },
-            "Error deleting Nango connection"
-          );
+      const configurations = await SlackConfiguration.findAll({
+        where: {
+          slackTeamId: newTeamId,
+        },
+      });
+
+      // Revoke the token if no other slack connector is active on the same slackTeamId.
+      if (configurations.length == 0) {
+        logger.info(
+          {
+            connectorId: c.id,
+            slackTeamId: newTeamId,
+            nangoConnectionId: connectionId,
+          },
+          `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
+        );
+        const uninstallRes = await uninstallSlack(connectionId);
+
+        if (uninstallRes.isErr()) {
+          return new Err({
+            error: {
+              message: "Failed to deactivate the mismatching Slack app",
+            },
+          });
         }
-      );
+        logger.info(
+          {
+            connectorId: c.id,
+            slackTeamId: newTeamId,
+            nangoConnectionId: connectionId,
+          },
+          `Deactivated Slack app [updateSlackConnector/team_id_mismatch]`
+        );
+      } else {
+        logger.info(
+          {
+            slackTeamId: newTeamId,
+            activeConfigurations: configurations.length,
+          },
+          `Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]`
+        );
+      }
+
       return new Err({
         error: {
           type: "connector_oauth_target_mismatch",
@@ -202,6 +237,68 @@ export async function updateSlackConnector(
   await c.update(updateParams);
 
   return new Ok(c.id.toString());
+}
+
+async function uninstallSlack(nangoConnectionId: string) {
+  if (!NANGO_SLACK_CONNECTOR_ID) {
+    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
+  }
+  if (!SLACK_CLIENT_ID) {
+    throw new Error("SLACK_CLIENT_ID is not defined");
+  }
+  if (!SLACK_CLIENT_SECRET) {
+    throw new Error("SLACK_CLIENT_SECRET is not defined");
+  }
+
+  const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
+  const slackClient = await getSlackClient(slackAccessToken);
+  try {
+    await slackClient.auth.test();
+    const deleteRes = await slackClient.apps.uninstall({
+      client_id: SLACK_CLIENT_ID,
+      client_secret: SLACK_CLIENT_SECRET,
+    });
+    if (deleteRes && !deleteRes.ok) {
+      return new Err(
+        new Error(
+          `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
+        )
+      );
+    }
+  } catch (e) {
+    const slackError = e as CodedError;
+    let shouldThrow = true;
+
+    if (slackError.code === ErrorCode.PlatformError) {
+      const platformError = e as WebAPIPlatformError;
+      if (
+        ["account_inactive", "invalid_auth"].includes(platformError.data.error)
+      ) {
+        shouldThrow = false;
+        logger.info(
+          {
+            nangoConnectionId,
+          },
+          `Slack auth is invalid, skipping uninstallation of the Slack app`
+        );
+      }
+    }
+
+    if (shouldThrow) {
+      throw e;
+    }
+  }
+
+  const nangoRes = await nangoDeleteConnection(
+    nangoConnectionId,
+    NANGO_SLACK_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    return nangoRes;
+  }
+  logger.info({ nangoConnectionId }, `Deactivated the Slack app`);
+
+  return new Ok(undefined);
 }
 
 export async function cleanupSlackConnector(
@@ -240,74 +337,35 @@ export async function cleanupSlackConnector(
 
     // We deactivate our connections only if we are the only live slack connection for this team.
     if (configurations.length == 1) {
-      if (!NANGO_SLACK_CONNECTOR_ID) {
-        return new Err(new Error("NANGO_SLACK_CONNECTOR_ID is not defined"));
-      }
-      if (!SLACK_CLIENT_ID) {
-        return new Err(new Error("SLACK_CLIENT_ID is not defined"));
-      }
-      if (!SLACK_CLIENT_SECRET) {
-        return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
-      }
-
-      const slackClient = await getSlackClient(connector.id);
-      try {
-        await slackClient.auth.test();
-        const deleteRes = await slackClient.apps.uninstall({
-          client_id: SLACK_CLIENT_ID,
-          client_secret: SLACK_CLIENT_SECRET,
-        });
-        if (deleteRes && !deleteRes.ok) {
-          return new Err(
-            new Error(
-              `Could not uninstall the Slack app from the user's workspace. Error: ${deleteRes.error}`
-            )
-          );
-        }
-      } catch (e) {
-        const slackError = e as CodedError;
-        let shouldThrow = true;
-
-        if (slackError.code === ErrorCode.PlatformError) {
-          const platformError = e as WebAPIPlatformError;
-          if (
-            ["account_inactive", "invalid_auth"].includes(
-              platformError.data.error
-            )
-          ) {
-            shouldThrow = false;
-            logger.info(
-              {
-                connectorId,
-              },
-              `Slack auth is invalid, skipping uninstallation of the Slack app`
-            );
-          }
-        }
-
-        if (shouldThrow) {
-          throw e;
-        }
-      }
-
-      const nangoRes = await nangoDeleteConnection(
-        connector.connectionId,
-        NANGO_SLACK_CONNECTOR_ID
-      );
-      if (nangoRes.isErr()) {
-        return nangoRes;
-      }
       logger.info(
-        { slackTeamId: configuration.slackTeamId },
-        `Deactivated the Slack app`
+        {
+          connectorId: connector.id,
+          slackTeamId: configuration.slackTeamId,
+          nangoConnectionId: connector.connectionId,
+        },
+        `Attempting Slack app deactivation [cleanupSlackConnector]`
+      );
+
+      const uninstallRes = await uninstallSlack(connector.connectionId);
+      if (uninstallRes.isErr()) {
+        return uninstallRes;
+      }
+
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId: configuration.slackTeamId,
+        },
+        `Deactivated Slack app [cleanupSlackConnector]`
       );
     } else {
       logger.info(
         {
+          connectorId: connector.id,
           slackTeamId: configuration.slackTeamId,
           activeConfigurations: configurations.length - 1,
         },
-        `Skipping deactivation of the Slack app`
+        `Skipping deactivation of the Slack app [cleanupSlackConnector]`
       );
     }
 
