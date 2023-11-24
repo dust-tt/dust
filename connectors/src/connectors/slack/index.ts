@@ -176,6 +176,14 @@ export async function updateSlackConnector(
 
     const newTeamId = teamInfoRes.team.id;
     if (newTeamId !== currentSlackConfig.slackTeamId) {
+      nangoDeleteConnection(connectionId, NANGO_SLACK_CONNECTOR_ID).catch(
+        (e) => {
+          logger.error(
+            { error: e, connectionId },
+            "Error deleting Nango connection"
+          );
+        }
+      );
       return new Err({
         error: {
           type: "connector_oauth_target_mismatch",
