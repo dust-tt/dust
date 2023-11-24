@@ -16,6 +16,7 @@ type ListDatabaseTablesResponseBody = {
 };
 
 const UpsertDatabaseTableRequestBodySchema = t.type({
+  table_id: t.union([t.string, t.undefined]),
   name: t.string,
   description: t.string,
 });
@@ -122,14 +123,18 @@ async function handler(
           status_code: 400,
         });
       }
-      const { name, description } = bodyValidation.right;
-      const id = generateModelSId();
+      const {
+        name,
+        description,
+        table_id: maybeTableId,
+      } = bodyValidation.right;
+      const tableId = maybeTableId || generateModelSId();
 
       const upsertRes = await CoreAPI.upsertDatabaseTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
-        tableId: id,
+        tableId,
         name,
         description,
       });
@@ -140,7 +145,9 @@ async function handler(
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
             databaseName: name,
-            databaseId: id,
+            databaseId,
+            tableId,
+            tableName: name,
             error: upsertRes.error,
           },
           "Failed to upsert database table."
