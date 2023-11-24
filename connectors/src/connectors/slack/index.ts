@@ -182,8 +182,8 @@ export async function updateSlackConnector(
         },
       });
 
-      // Reovoke the token if no other slack connector is active on the same slackTeamId.
-      if (configurations.length == 1) {
+      // Revoke the token if no other slack connector is active on the same slackTeamId.
+      if (configurations.length == 0) {
         await uninstallSlack(connectionId);
       } else {
         logger.info(
