@@ -192,7 +192,15 @@ export async function updateSlackConnector(
           },
           `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
         );
-        await uninstallSlack(connectionId);
+        const uninstallRes = await uninstallSlack(connectionId);
+
+        if (uninstallRes.isErr()) {
+          return new Err({
+            error: {
+              message: "Failed to deactivate the mismatching Slack app",
+            },
+          });
+        }
         logger.info(
           {
             connectorId: c.id,
@@ -233,13 +241,13 @@ export async function updateSlackConnector(
 
 async function uninstallSlack(nangoConnectionId: string) {
   if (!NANGO_SLACK_CONNECTOR_ID) {
-    return new Err(new Error("NANGO_SLACK_CONNECTOR_ID is not defined"));
+    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
   }
   if (!SLACK_CLIENT_ID) {
-    return new Err(new Error("SLACK_CLIENT_ID is not defined"));
+    throw new Error("SLACK_CLIENT_ID is not defined");
   }
   if (!SLACK_CLIENT_SECRET) {
-    return new Err(new Error("SLACK_CLIENT_SECRET is not defined"));
+    throw new Error("SLACK_CLIENT_SECRET is not defined");
   }
 
   const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
@@ -289,6 +297,8 @@ async function uninstallSlack(nangoConnectionId: string) {
     return nangoRes;
   }
   logger.info({ nangoConnectionId }, `Deactivated the Slack app`);
+
+  return new Ok(undefined);
 }
 
 export async function cleanupSlackConnector(
@@ -335,7 +345,12 @@ export async function cleanupSlackConnector(
         },
         `Attempting Slack app deactivation [cleanupSlackConnector]`
       );
-      await uninstallSlack(connector.connectionId);
+
+      const uninstallRes = await uninstallSlack(connector.connectionId);
+      if (uninstallRes.isErr()) {
+        return uninstallRes;
+      }
+
       logger.info(
         {
           connectorId: connector.id,
