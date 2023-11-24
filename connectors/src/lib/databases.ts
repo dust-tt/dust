@@ -78,8 +78,9 @@ type UpsertRowsParams = {
   databaseId: string;
   tableId: string;
   contents: {
-    rowId: string;
-    row: Record<string, string | number | boolean | null>;
+    created: number;
+    row_id: string;
+    value: Record<string, string | number | boolean | null>;
   }[];
   truncate: boolean | undefined;
 };
