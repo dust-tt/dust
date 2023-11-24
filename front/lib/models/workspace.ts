@@ -12,6 +12,8 @@ import { front_sequelize } from "@app/lib/databases";
 import { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 
+import { AgentConfiguration } from "./assistant/agent";
+
 export class Workspace extends Model<
   InferAttributes<Workspace>,
   InferCreationAttributes<Workspace>
@@ -120,6 +122,59 @@ Workspace.hasMany(Membership, {
   onDelete: "CASCADE",
 });
 Membership.belongsTo(Workspace);
+
+export class MemberAgentList extends Model<
+  InferAttributes<MemberAgentList>,
+  InferCreationAttributes<MemberAgentList>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare visibility: "published-listed" | "workspace-unlisted";
+
+  declare membershipId: ForeignKey<Membership["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+}
+
+MemberAgentList.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "member_agent_list",
+    sequelize: front_sequelize,
+    indexes: [{ fields: ["membershipId", "agentConfigurationId"] }],
+  }
+);
+
+Membership.hasMany(MemberAgentList, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+AgentConfiguration.hasMany(MemberAgentList, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,
