@@ -76,12 +76,12 @@ impl Database {
         &self,
         store: Box<dyn Store + Sync + Send>,
         table_id: &str,
-        contents: Vec<DatabaseRow>,
+        rows: Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()> {
         // This will be used to update the schema incrementally once we store schemas. For now this
         // is a way to validate the content of the rows (only primitive types).
-        let _ = TableSchema::from_rows(&contents)?;
+        let _ = TableSchema::from_rows(&rows)?;
 
         store
             .batch_upsert_database_rows(
@@ -89,7 +89,7 @@ impl Database {
                 &self.data_source_id,
                 &self.database_id,
                 table_id,
-                &contents,
+                &rows,
                 truncate,
             )
             .await
@@ -379,23 +379,15 @@ pub trait HasValue {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DatabaseRow {
-    created: u64,
     row_id: String,
     value: Value,
 }
 
 impl DatabaseRow {
-    pub fn new(created: u64, row_id: String, value: Value) -> Self {
-        DatabaseRow {
-            created,
-            row_id,
-            value,
-        }
+    pub fn new(row_id: String, value: Value) -> Self {
+        DatabaseRow { row_id, value }
     }
 
-    pub fn created(&self) -> u64 {
-        self.created
-    }
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
@@ -472,8 +464,8 @@ mod tests {
             "description": "not null anymore and prety long so that it's not shown in note",
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), "1".to_string(), row_1),
-            DatabaseRow::new(utils::now(), "2".to_string(), row_2),
+            DatabaseRow::new("1".to_string(), row_1),
+            DatabaseRow::new("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;

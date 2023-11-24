@@ -77,8 +77,7 @@ type UpsertRowsParams = {
   dataSourceConfig: DataSourceConfig;
   databaseId: string;
   tableId: string;
-  contents: {
-    created: number;
+  rows: {
     row_id: string;
     value: Record<string, string | number | boolean | null>;
   }[];
@@ -89,7 +88,7 @@ async function _upsertRows({
   dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceName },
   databaseId,
   tableId,
-  contents,
+  rows,
   truncate,
 }: UpsertRowsParams): Promise<void> {
   const res = await fetch(
@@ -100,7 +99,7 @@ async function _upsertRows({
         "Content-Type": "application/json",
         Authorization: `Bearer ${workspaceAPIKey}`,
       },
-      body: JSON.stringify({ contents, truncate }),
+      body: JSON.stringify({ rows, truncate }),
     }
   );
   if (!res.ok) {

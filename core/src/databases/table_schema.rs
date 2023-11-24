@@ -267,7 +267,6 @@ impl TableSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
     use rusqlite::{params_from_iter, Connection};
     use serde_json::json;
     use std::collections::HashMap;
@@ -288,8 +287,8 @@ mod tests {
             "field5": "not null anymore",
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), "1".to_string(), row_1),
-            DatabaseRow::new(utils::now(), "2".to_string(), row_2),
+            DatabaseRow::new("1".to_string(), row_1),
+            DatabaseRow::new("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -347,8 +346,8 @@ mod tests {
             "field7": {"anotherKey": "anotherValue"}
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), "1".to_string(), row_1),
-            DatabaseRow::new(utils::now(), "2".to_string(), row_2),
+            DatabaseRow::new("1".to_string(), row_1),
+            DatabaseRow::new("2".to_string(), row_2),
         ];
 
         match TableSchema::from_rows(rows) {
@@ -376,9 +375,9 @@ mod tests {
             "field1": "now it's a text field",
         });
         let rows = &vec![
-            DatabaseRow::new(utils::now(), "1".to_string(), row_1),
-            DatabaseRow::new(utils::now(), "2".to_string(), row_2),
-            DatabaseRow::new(utils::now(), "3".to_string(), row_3),
+            DatabaseRow::new("1".to_string(), row_1),
+            DatabaseRow::new("2".to_string(), row_2),
+            DatabaseRow::new("3".to_string(), row_3),
         ];
 
         let schema = TableSchema::from_rows(rows);
@@ -428,7 +427,6 @@ mod tests {
         let conn = setup_in_memory_db(&schema)?;
 
         let row = DatabaseRow::new(
-            utils::now(),
             "row_1".to_string(),
             json!({
                 "field1": 1,
@@ -481,7 +479,7 @@ mod tests {
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(schema.get_insert_params(
             &field_names,
-            &DatabaseRow::new(utils::now(), "1".to_string(), row_content),
+            &DatabaseRow::new("1".to_string(), row_content),
         )?);
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;

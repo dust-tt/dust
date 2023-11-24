@@ -1921,7 +1921,7 @@ async fn databases_tables_list(
 
 #[derive(serde::Deserialize)]
 struct DatabasesRowsUpsertPayload {
-    contents: Vec<DatabaseRow>,
+    rows: Vec<DatabaseRow>,
     truncate: Option<bool>,
 }
 
@@ -1961,7 +1961,7 @@ async fn databases_rows_upsert(
             ),
             Some(db) => {
                 match db
-                    .batch_upsert_rows(state.store.clone(), &table_id, payload.contents, truncate)
+                    .batch_upsert_rows(state.store.clone(), &table_id, payload.rows, truncate)
                     .await
                 {
                     Err(e) => error_response(
