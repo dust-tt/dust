@@ -138,6 +138,10 @@ export type CoreAPIDatabaseRow = {
   value: Record<string, unknown>;
 };
 
+export type CoreAPIDatabaseResult = {
+  value: Record<string, unknown>;
+};
+
 export type CoreAPIDatabaseSchema = Record<
   string,
   {
@@ -1118,7 +1122,7 @@ export const CoreAPI = {
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPIDatabaseSchema;
-      rows: CoreAPIDatabaseRow[];
+      results: CoreAPIDatabaseResult[];
     }>
   > {
     const response = await fetch(
