@@ -1,13 +1,11 @@
+use super::table_schema::TableSchema;
 use crate::{project::Project, stores::store::Store, utils};
 use anyhow::{anyhow, Result};
-
+use itertools::Itertools;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-
-use super::table_schema::TableSchema;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -53,23 +51,23 @@ impl Database {
         }
     }
 
-    pub async fn get_schema(&self, store: Box<dyn Store + Sync + Send>) -> Result<DatabaseSchema> {
+    pub async fn get_schema(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<Vec<DatabaseSchemaTable>> {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
                 let rows = self.get_rows(store).await?;
 
-                let schema = rows
-                    .par_iter()
+                rows.par_iter()
                     .map(|(table, r)| {
-                        Ok((
-                            table.name().to_string(),
-                            DatabaseSchemaTable::new(table.clone(), TableSchema::from_rows(&r)?),
+                        Ok(DatabaseSchemaTable::new(
+                            table.clone(),
+                            TableSchema::from_rows(&r)?,
                         ))
                     })
-                    .collect::<Result<HashMap<_, _>>>()?;
-
-                Ok(DatabaseSchema(schema))
+                    .collect::<Result<Vec<_>>>()
             }
         }
     }
@@ -78,14 +76,9 @@ impl Database {
         &self,
         store: Box<dyn Store + Sync + Send>,
         table_id: &str,
-        contents: HashMap<String, Value>,
+        rows: Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()> {
-        let rows = contents
-            .into_iter()
-            .map(|(row_id, content)| DatabaseRow::new(utils::now(), Some(row_id), content))
-            .collect::<Vec<_>>();
-
         // This will be used to update the schema incrementally once we store schemas. For now this
         // is a way to validate the content of the rows (only primitive types).
         let _ = TableSchema::from_rows(&rows)?;
@@ -120,13 +113,7 @@ impl Database {
                 ));
 
                 let time_get_rows_start = utils::now();
-                let rows_by_table = match self.get_rows(store.clone()).await {
-                    Ok(rows) => Ok(rows
-                        .into_iter()
-                        .map(|(table, rows)| (table.name().to_string(), rows))
-                        .collect::<HashMap<_, _>>()),
-                    _ => Err(anyhow!("Error retrieving rows from database.")),
-                }?;
+                let rows = self.get_rows(store.clone()).await?;
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished retrieving rows: duration={}ms",
                     utils::now() - time_get_rows_start
@@ -135,12 +122,8 @@ impl Database {
                 let generate_create_table_sql_start = utils::now();
                 let create_tables_sql: String = schema
                     .iter()
-                    .filter(|(_, table)| !table.schema.is_empty())
-                    .map(|(table_name, table)| {
-                        table
-                            .schema
-                            .get_create_table_sql_string(table_name.as_str())
-                    })
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.schema.get_create_table_sql_string(s.table.name()))
                     .collect::<Vec<_>>()
                     .join("\n");
                 utils::done(&format!(
@@ -158,16 +141,16 @@ impl Database {
                 ));
 
                 let insert_execute_start = utils::now();
-                rows_by_table
-                    .iter()
+                rows.iter()
                     .filter(|(_, rows)| !rows.is_empty())
-                    .map(|(table_name, rows)| {
-                        let table_schema = match schema.get(table_name) {
-                            Some(s) => Ok(s),
-                            None => Err(anyhow!("No schema found for table {}", table_name)),
-                        }?;
+                    .map(|(table, rows)| {
+                        let table_schema =
+                            match schema.iter().find(|s| s.table.name() == table.name()) {
+                                Some(s) => Ok(s),
+                                None => Err(anyhow!("No schema found for table {}", table.name())),
+                            }?;
 
-                        let (sql, field_names) = table_schema.schema.get_insert_sql(table_name);
+                        let (sql, field_names) = table_schema.schema.get_insert_sql(table.name());
                         let mut stmt = conn.prepare(&sql)?;
 
                         rows.par_iter()
@@ -176,7 +159,7 @@ impl Database {
                                     Ok(params) => Ok(params_from_iter(params)),
                                     Err(e) => Err(anyhow!(
                                         "Error getting insert params for row {}: {}",
-                                        r.row_id().unwrap_or_else(|| String::from("")),
+                                        r.row_id(),
                                         e
                                     )),
                                 },
@@ -204,7 +187,7 @@ impl Database {
         &self,
         store: Box<dyn Store + Sync + Send>,
         query: &str,
-    ) -> Result<(Vec<DatabaseRow>, TableSchema)> {
+    ) -> Result<(Vec<DatabaseResult>, TableSchema)> {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
@@ -272,7 +255,7 @@ impl Database {
                     })?
                     .collect::<Result<Vec<_>>>()?
                     .into_par_iter()
-                    .map(|v| DatabaseRow::new(utils::now(), None, v))
+                    .map(|value| DatabaseResult { value })
                     .collect::<Vec<_>>();
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished executing user query: duration={}ms",
@@ -389,30 +372,44 @@ impl DatabaseTable {
         &self.description
     }
 }
-#[derive(Debug, Serialize, Clone)]
+
+pub trait HasValue {
+    fn value(&self) -> &Value;
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DatabaseRow {
-    created: u64,
-    row_id: Option<String>,
-    content: Value,
+    row_id: String,
+    value: Value,
 }
 
 impl DatabaseRow {
-    pub fn new(created: u64, row_id: Option<String>, content: Value) -> Self {
-        DatabaseRow {
-            created: created,
-            row_id: row_id,
-            content,
-        }
+    pub fn new(row_id: String, value: Value) -> Self {
+        DatabaseRow { row_id, value }
     }
 
-    pub fn created(&self) -> u64 {
-        self.created
-    }
-    pub fn row_id(&self) -> Option<String> {
-        self.row_id.clone()
+    pub fn row_id(&self) -> &str {
+        &self.row_id
     }
     pub fn content(&self) -> &Value {
-        &self.content
+        &self.value
+    }
+}
+
+impl HasValue for DatabaseRow {
+    fn value(&self) -> &Value {
+        &self.value
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DatabaseResult {
+    value: Value,
+}
+
+impl HasValue for DatabaseResult {
+    fn value(&self) -> &Value {
+        &self.value
     }
 }
 
@@ -430,16 +427,69 @@ impl DatabaseSchemaTable {
     pub fn is_empty(&self) -> bool {
         self.schema.is_empty()
     }
+
+    pub fn render_dbml(&self) -> String {
+        format!(
+            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+            self.table.name(),
+            self.schema
+                .columns()
+                .iter()
+                .map(|c| format!("  {}", c.render_dbml()))
+                .join("\n"),
+            self.table.description()
+        )
+    }
 }
 
-#[derive(Debug, Serialize)]
-pub struct DatabaseSchema(HashMap<String, DatabaseSchemaTable>);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils;
+    use serde_json::json;
 
-impl DatabaseSchema {
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, DatabaseSchemaTable> {
-        self.0.iter()
-    }
-    pub fn get(&self, table_name: &str) -> Option<&DatabaseSchemaTable> {
-        self.0.get(table_name)
+    #[test]
+    fn test_database_schema_table_to_dbml() -> Result<()> {
+        let row_1 = json!({
+            "user_id": 1,
+            "temperature": 1.2,
+            "label": "foo",
+            "ready": true,
+        });
+        let row_2 = json!({
+            "user_id": 2,
+            "temperature": 2.4,
+            "label": "bar",
+            "ready": false,
+            "description": "not null anymore and prety long so that it's not shown in note",
+        });
+        let rows = &vec![
+            DatabaseRow::new("1".to_string(), row_1),
+            DatabaseRow::new("2".to_string(), row_2),
+        ];
+
+        let schema = TableSchema::from_rows(rows)?;
+        let table = DatabaseTable::new(
+            utils::now(),
+            "database_id",
+            "table_id",
+            "test_dbml",
+            "Test records for DBML rendering",
+        );
+        let table_schema = DatabaseSchemaTable::new(table, schema);
+
+        let expected = r#"Table test_dbml {
+  user_id integer [note: 'possible values: 1, 2']
+  temperature real [note: 'possible values: 1.2, 2.4']
+  label text [note: 'possible values: "foo", "bar"']
+  ready boolean [note: 'possible values: TRUE, FALSE']
+  description text
+
+  Note: 'Test records for DBML rendering'
+}"#
+        .to_string();
+        assert_eq!(table_schema.render_dbml(), expected);
+
+        Ok(())
     }
 }

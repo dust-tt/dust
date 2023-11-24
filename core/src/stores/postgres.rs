@@ -2207,11 +2207,7 @@ impl Store for PostgresStore {
 
         match d {
             None => Ok(None),
-            Some((created, row_id, data)) => Ok(Some(DatabaseRow::new(
-                created as u64,
-                Some(row_id),
-                Value::from_str(&data)?,
-            ))),
+            Some((_, row_id, data)) => Ok(Some(DatabaseRow::new(row_id, Value::from_str(&data)?))),
         }
     }
 
@@ -2289,11 +2285,10 @@ impl Store for PostgresStore {
         let rows: Vec<DatabaseRow> = rows
             .iter()
             .map(|row| {
-                let created: i64 = row.get(0);
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
                 let content: Value = serde_json::from_str(&data)?;
-                Ok(DatabaseRow::new(created as u64, Some(row_id), content))
+                Ok(DatabaseRow::new(row_id, content))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -2391,16 +2386,12 @@ impl Store for PostgresStore {
             .await?;
 
         for row in rows {
-            let row_id = match row.row_id() {
-                Some(row_id) => row_id.to_string(),
-                None => unreachable!(),
-            };
             c.execute(
                 &stmt,
                 &[
                     &table_row_id,
-                    &(row.created() as i64),
-                    &row_id,
+                    &(utils::now() as i64),
+                    &row.row_id().to_string(),
                     &row.content().to_string(),
                 ],
             )

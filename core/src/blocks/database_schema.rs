@@ -1,4 +1,5 @@
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
+use crate::databases::database::DatabaseSchemaTable;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -89,7 +90,7 @@ async fn get_database_schema(
     data_source_id: &String,
     database_id: &String,
     env: &Env,
-) -> Result<crate::databases::database::DatabaseSchema> {
+) -> Result<Vec<DatabaseSchemaTable>> {
     let project = get_data_source_project(workspace_id, data_source_id, env).await?;
     let database = match env
         .store
