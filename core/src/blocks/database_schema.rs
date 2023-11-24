@@ -4,7 +4,7 @@ use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::get_data_source_project;
@@ -71,7 +71,17 @@ impl Block for DatabaseSchema {
         let schema = get_database_schema(workspace_id, data_source_id, database_id, env).await?;
 
         Ok(BlockResult {
-            value: serde_json::to_value(schema)?,
+            value: serde_json::to_value(
+                schema
+                    .into_iter()
+                    .map(|t| {
+                        json!({
+                            "table_schema": t,
+                            "dbml": t.render_dbml(),
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            )?,
             meta: None,
         })
     }
