@@ -184,14 +184,30 @@ export async function updateSlackConnector(
 
       // Revoke the token if no other slack connector is active on the same slackTeamId.
       if (configurations.length == 0) {
+        logger.info(
+          {
+            connectorId: c.id,
+            slackTeamId: newTeamId,
+            nangoConnectionId: connectionId,
+          },
+          `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
+        );
         await uninstallSlack(connectionId);
+        logger.info(
+          {
+            connectorId: c.id,
+            slackTeamId: newTeamId,
+            nangoConnectionId: connectionId,
+          },
+          `Deactivated Slack app [updateSlackConnector/team_id_mismatch]`
+        );
       } else {
         logger.info(
           {
             slackTeamId: newTeamId,
             activeConfigurations: configurations.length,
           },
-          `Skipping deactivation of the Slack app`
+          `Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]`
         );
       }
 
@@ -311,14 +327,30 @@ export async function cleanupSlackConnector(
 
     // We deactivate our connections only if we are the only live slack connection for this team.
     if (configurations.length == 1) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId: configuration.slackTeamId,
+          nangoConnectionId: connector.connectionId,
+        },
+        `Attempting Slack app deactivation [cleanupSlackConnector]`
+      );
       await uninstallSlack(connector.connectionId);
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId: configuration.slackTeamId,
+        },
+        `Deactivated Slack app [cleanupSlackConnector]`
+      );
     } else {
       logger.info(
         {
+          connectorId: connector.id,
           slackTeamId: configuration.slackTeamId,
           activeConfigurations: configurations.length - 1,
         },
-        `Skipping deactivation of the Slack app`
+        `Skipping deactivation of the Slack app [cleanupSlackConnector]`
       );
     }
 
