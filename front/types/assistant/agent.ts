@@ -73,6 +73,10 @@ export type AgentConfigurationScope =
   | "published"
   | "private";
 
+export type MemberAgentVisibilityType =
+  | "workspace-unlisted"
+  | "published-listed";
+
 export type AgentConfigurationType = {
   id: ModelId;
 

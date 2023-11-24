@@ -1,3 +1,4 @@
+import assert from "assert";
 import {
   CreationOptional,
   DataTypes,
@@ -11,9 +12,9 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
+import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
 
 import { AgentConfiguration } from "./assistant/agent";
-import assert from "assert";
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
@@ -124,21 +125,21 @@ Workspace.hasMany(Membership, {
 });
 Membership.belongsTo(Workspace);
 
-export class MemberAgentList extends Model<
-  InferAttributes<MemberAgentList>,
-  InferCreationAttributes<MemberAgentList>
+export class MemberAgentVisibility extends Model<
+  InferAttributes<MemberAgentVisibility>,
+  InferCreationAttributes<MemberAgentVisibility>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare visibility: "published-listed" | "workspace-unlisted";
+  declare visibility: MemberAgentVisibilityType;
 
   declare membershipId: ForeignKey<Membership["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 }
 
-MemberAgentList.init(
+MemberAgentVisibility.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -162,25 +163,28 @@ MemberAgentList.init(
     },
   },
   {
-    modelName: "member_agent_list",
+    modelName: "member_agent_visibility",
     sequelize: front_sequelize,
-    indexes: [{ fields: ["membershipId", "agentConfigurationId"] }],
+    indexes: [
+      { fields: ["membershipId"] },
+      { fields: ["agentConfigurationId", "membershipId"], unique: true },
+    ],
   }
 );
 
-Membership.hasMany(MemberAgentList, {
+Membership.hasMany(MemberAgentVisibility, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-AgentConfiguration.hasMany(MemberAgentList, {
+AgentConfiguration.hasMany(MemberAgentVisibility, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
 
-MemberAgentList.addHook(
+MemberAgentVisibility.addHook(
   "beforeCreate",
-  "integrityConstraints",
-  async (memberAgentList, options) => {
+  "only_one_listing_for_private_agent",
+  async (memberAgentList) => {
     const agentConfiguration = await AgentConfiguration.findOne({
       where: {
         id: memberAgentList.dataValues.agentConfigurationId,
@@ -189,16 +193,12 @@ MemberAgentList.addHook(
     if (!agentConfiguration)
       throw new Error("Unexpected: Agent configuration not found");
     if (agentConfiguration.scope === "private") {
-      const existingMemberAgentList = await MemberAgentList.findOne({
+      const existingMemberAgentList = await MemberAgentVisibility.findOne({
         where: {
           agentConfigurationId: memberAgentList.dataValues.agentConfigurationId,
         },
       });
       assert(!existingMemberAgentList);
-    } else if (agentConfiguration.scope === "workspace") {
-      assert(memberAgentList.dataValues.visibility === "workspace-unlisted");
-    } else if (agentConfiguration.scope === "published") {
-      assert(memberAgentList.dataValues.visibility === "published-listed");
     }
   }
 );
