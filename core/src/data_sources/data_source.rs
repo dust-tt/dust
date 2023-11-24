@@ -140,6 +140,15 @@ impl SearchFilter {
     }
 }
 
+/// Section is used to represent the structure of document to be taken into account during chunking.
+/// Section prefixes are repeated in all chunks generated from the section (and its children).
+#[derive(Serialize, Deserialize)]
+pub struct Section {
+    pub prefix: String,
+    pub content: Option<String>,
+    pub sections: Vec<Section>,
+}
+
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
 /// leverage tags filtering there). It is used as unique ID for the chunk in vector search db.
