@@ -130,7 +130,7 @@ Dust apps can also define datasets which are arrays of JSON objects. Datasets' m
 - Store example inputs on which the app is run during its design. These datasets are pulled from
   `input` blocks.
 - Store few-shot examples used when prompting models. These datasets are made available to `llm`
-  blocks through the use of `data` blocks (see [core blocks](#)).
+  blocks through the use of `data` blocks (see [core blocks](/core-blocks)).
 
 All datasets are automatically versioned and each app version points to their specific dataset
 version.
@@ -142,7 +142,7 @@ Each input's execution trace is completely independent and these cannot be cross
 runs of an app are stored along with the app version and all the associated block outputs. They can
 be retrieved from the `Runs` panel.
 
-Other [core blocks](#) allow the further parallelization of the execution such as the `map` and
+Other [core blocks](/core-blocks) allow the further parallelization of the execution such as the `map` and
 `reduce` blocks. Dust's execution engine will also take care of automatically parallelizing
 execution eagearly when they are used.
 
