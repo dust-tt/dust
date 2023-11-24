@@ -258,7 +258,11 @@ export async function cleanupSlackConnector(
 
         if (slackError.code === ErrorCode.PlatformError) {
           const platformError = e as WebAPIPlatformError;
-          if (platformError.data.error === "account_inactive") {
+          if (
+            ["account_inactive", "invalid_auth"].includes(
+              platformError.data.error
+            )
+          ) {
             shouldThrow = false;
             logger.info(
               {
