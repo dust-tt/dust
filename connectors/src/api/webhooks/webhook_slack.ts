@@ -77,7 +77,6 @@ async function handleChatBot(req: Request, res: Response) {
     logger.error(
       {
         error: botRes.error,
-        slackMessage,
         slackTeamId,
         slackChannel,
         slackUserId,
