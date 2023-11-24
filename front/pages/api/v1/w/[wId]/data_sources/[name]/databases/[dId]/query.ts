@@ -7,7 +7,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import {
   CoreAPI,
-  CoreAPIDatabaseRow,
+  CoreAPIDatabaseResult,
   CoreAPIDatabaseSchema,
 } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
@@ -20,7 +20,7 @@ const GetDatabaseSchemaReqBodySchema = t.type({
 
 type QueryDatabaseSchemaResponseBody = {
   schema: CoreAPIDatabaseSchema;
-  rows: CoreAPIDatabaseRow[];
+  results: CoreAPIDatabaseResult[];
 };
 
 async function handler(
@@ -117,9 +117,9 @@ async function handler(
         });
       }
 
-      const { schema, rows } = queryRes.value;
+      const { schema, results } = queryRes.value;
 
-      return res.status(200).json({ schema, rows });
+      return res.status(200).json({ schema, results });
 
     default:
       return apiError(req, res, {
