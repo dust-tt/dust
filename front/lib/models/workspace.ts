@@ -13,6 +13,7 @@ import { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 
 import { AgentConfiguration } from "./assistant/agent";
+import assert from "assert";
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
@@ -175,6 +176,32 @@ AgentConfiguration.hasMany(MemberAgentList, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+
+MemberAgentList.addHook(
+  "beforeCreate",
+  "integrityConstraints",
+  async (memberAgentList, options) => {
+    const agentConfiguration = await AgentConfiguration.findOne({
+      where: {
+        id: memberAgentList.dataValues.agentConfigurationId,
+      },
+    });
+    if (!agentConfiguration)
+      throw new Error("Unexpected: Agent configuration not found");
+    if (agentConfiguration.scope === "private") {
+      const existingMemberAgentList = await MemberAgentList.findOne({
+        where: {
+          agentConfigurationId: memberAgentList.dataValues.agentConfigurationId,
+        },
+      });
+      assert(!existingMemberAgentList);
+    } else if (agentConfiguration.scope === "workspace") {
+      assert(memberAgentList.dataValues.visibility === "workspace-unlisted");
+    } else if (agentConfiguration.scope === "published") {
+      assert(memberAgentList.dataValues.visibility === "published-listed");
+    }
+  }
+);
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,
