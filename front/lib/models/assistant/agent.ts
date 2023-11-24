@@ -12,7 +12,11 @@ import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
 import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
-import { AgentStatus, GlobalAgentStatus } from "@app/types/assistant/agent";
+import {
+  AgentConfigurationScope,
+  AgentStatus,
+  GlobalAgentStatus,
+} from "@app/types/assistant/agent";
 
 import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
 
@@ -88,6 +92,7 @@ export class AgentConfiguration extends Model<
   declare version: number;
 
   declare status: AgentStatus;
+  declare scope: Exclude<AgentConfigurationScope, "global">;
   declare name: string;
   declare description: string;
   declare pictureUrl: string;
@@ -137,6 +142,11 @@ AgentConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "active",
+    },
+    scope: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "workspace",
     },
     name: {
       type: DataTypes.TEXT,

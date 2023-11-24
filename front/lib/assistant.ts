@@ -174,9 +174,9 @@ export function compareAgentsForSort(
   if (a.sId === GLOBAL_AGENTS_SID.GPT4) return -1;
   if (b.sId === GLOBAL_AGENTS_SID.GPT4) return 1;
 
-  // Check for agents with 'scope' set to 'workspace'
-  if (a.scope === "workspace" && b.scope !== "workspace") return -1;
-  if (b.scope === "workspace" && a.scope !== "workspace") return 1;
+  // Check for agents with non-global 'scope'
+  if (a.scope !== "global" && b.scope === "global") return -1;
+  if (b.scope !== "global" && a.scope === "global") return 1;
 
   // Check for customOrder (slack, notion, googledrive, github, claude)
   const aIndex = CUSTOM_ORDER.indexOf(a.sId);
