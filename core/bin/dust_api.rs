@@ -17,6 +17,7 @@ use dust::{
         data_source::{self, SearchFilter},
         qdrant::QdrantClients,
     },
+    databases::database::DatabaseRow,
     dataset,
     project::{self},
     providers::provider::{provider, ProviderID},
@@ -1920,7 +1921,7 @@ async fn databases_tables_list(
 
 #[derive(serde::Deserialize)]
 struct DatabasesRowsUpsertPayload {
-    contents: HashMap<String, serde_json::Value>,
+    contents: Vec<DatabaseRow>,
     truncate: Option<bool>,
 }
 

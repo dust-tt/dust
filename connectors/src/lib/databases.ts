@@ -77,7 +77,10 @@ type UpsertRowsParams = {
   dataSourceConfig: DataSourceConfig;
   databaseId: string;
   tableId: string;
-  contents: Record<string, Record<string, string | number | boolean | null>>;
+  contents: {
+    rowId: string;
+    row: Record<string, string | number | boolean | null>;
+  }[];
   truncate: boolean | undefined;
 };
 
