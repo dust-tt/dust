@@ -11,9 +11,14 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const UpsertDatabaseRowsRequestBodySchema = t.type({
-  contents: t.record(
-    t.string,
-    t.record(t.string, t.union([t.string, t.null, t.number, t.boolean]))
+  rows: t.array(
+    t.type({
+      row_id: t.string,
+      value: t.record(
+        t.string,
+        t.union([t.string, t.null, t.number, t.boolean])
+      ),
+    })
   ),
   truncate: t.union([t.boolean, t.undefined]),
 });
@@ -146,8 +151,8 @@ async function handler(
         });
       }
 
-      const { rows, total } = listRes.value;
-      return res.status(200).json({ rows, offset, limit, total });
+      const { rows: rowsList, total } = listRes.value;
+      return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":
       const bodyValidation = UpsertDatabaseRowsRequestBodySchema.decode(
@@ -163,14 +168,14 @@ async function handler(
           status_code: 400,
         });
       }
-      const { contents, truncate } = bodyValidation.right;
+      const { rows: rowsToUpsert, truncate } = bodyValidation.right;
 
       const upsertRes = await CoreAPI.upsertDatabaseRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
         tableId: tableId,
-        contents,
+        rows: rowsToUpsert,
         truncate,
       });
 

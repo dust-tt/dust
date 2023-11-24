@@ -134,10 +134,8 @@ export type CoreAPIDatabaseTable = {
 };
 
 export type CoreAPIDatabaseRow = {
-  created: number;
-  table_id: string;
   row_id: string;
-  content: Record<string, unknown>;
+  value: Record<string, unknown>;
 };
 
 export type CoreAPIDatabaseSchema = Record<
@@ -1002,14 +1000,14 @@ export const CoreAPI = {
     dataSourceName,
     databaseId,
     tableId,
-    contents,
+    rows,
     truncate,
   }: {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
     tableId: string;
-    contents: Record<string, CoreAPIDatabaseRow["content"]>;
+    rows: CoreAPIDatabaseRow[];
     truncate?: boolean;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
@@ -1020,7 +1018,7 @@ export const CoreAPI = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contents: contents,
+          rows,
           truncate: truncate || false,
         }),
       }

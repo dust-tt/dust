@@ -27,7 +27,7 @@ impl ToSql for SqlParam {
         match self {
             SqlParam::Int(i) => i.to_sql(),
             SqlParam::Float(f) => f.to_sql(),
-            SqlParam::Text(s) => Ok(ToSqlOutput::Owned(format!("\"{}\"", s).into())),
+            SqlParam::Text(s) => s.to_sql(),
             SqlParam::Bool(b) => match b {
                 true => 1.to_sql(),
                 false => 0.to_sql(),
@@ -456,7 +456,7 @@ mod tests {
 
             assert_eq!(field1, 1);
             assert_eq!(field2, 2.4);
-            assert_eq!(field3, "\"text\"");
+            assert_eq!(field3, "text");
             assert_eq!(field4, true);
         } else {
             return Err(anyhow!("No rows found after insert"));
