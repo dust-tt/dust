@@ -182,14 +182,17 @@ export async function deleteConversation(
  * Conversation Rendering
  */
 
-async function renderUserMessage(
-  message: Message,
-  userMessage: UserMessage
-): Promise<UserMessageType> {
-  const [mentions, user] = await Promise.all([
+async function batchRenderUserMessages(messages: Message[]) {
+  if (messages.find((m) => !m.userMessage)) {
+    throw new Error(
+      "Unreachable: batchRenderUserMessages must be called with only user messages"
+    );
+  }
+
+  const [mentions, users] = await Promise.all([
     Mention.findAll({
       where: {
-        messageId: message.id,
+        messageId: messages.map((m) => m.id),
       },
       include: [
         {
@@ -200,61 +203,79 @@ async function renderUserMessage(
       ],
     }),
     (async () => {
-      if (userMessage.userId) {
-        return await User.findOne({
-          where: {
-            id: userMessage.userId,
-          },
-        });
+      const userIds = messages
+        .map((m) => m.userMessage?.userId)
+        .filter((id) => !!id) as number[];
+      if (userIds.length === 0) {
+        return [];
       }
-      return null;
+      return await User.findAll({
+        where: {
+          id: userIds,
+        },
+      });
     })(),
   ]);
 
-  return {
-    id: message.id,
-    sId: message.sId,
-    type: "user_message",
-    visibility: message.visibility,
-    version: message.version,
-    created: message.createdAt.getTime(),
-    user: user
-      ? {
-          id: user.id,
-          provider: user.provider,
-          providerId: user.providerId,
-          username: user.username,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-          image: null,
-          workspaces: [],
+  return messages.map((message) => {
+    const messageMentions = mentions.filter((m) => m.messageId === message.id);
+    const messageUser =
+      users.find((u) => u.id === message.userMessage?.userId) || null;
+
+    if (!message.userMessage) {
+      throw new Error(
+        "Unreachable: batchRenderUserMessages must be called with only user messages"
+      );
+    }
+
+    const m = {
+      id: message.id,
+      sId: message.sId,
+      type: "user_message",
+      visibility: message.visibility,
+      version: message.version,
+      created: message.createdAt.getTime(),
+      user: messageUser
+        ? {
+            id: messageUser.id,
+            provider: messageUser.provider,
+            providerId: messageUser.providerId,
+            username: messageUser.username,
+            email: messageUser.email,
+            firstName: messageUser.firstName,
+            lastName: messageUser.lastName,
+            fullName:
+              messageUser.firstName +
+              (messageUser.lastName ? ` ${messageUser.lastName}` : ""),
+            image: null,
+            workspaces: [],
+          }
+        : null,
+      mentions: messageMentions.map((m) => {
+        if (m.agentConfigurationId) {
+          return {
+            configurationId: m.agentConfigurationId,
+          };
         }
-      : null,
-    mentions: mentions.map((m) => {
-      if (m.agentConfigurationId) {
-        return {
-          configurationId: m.agentConfigurationId,
-        };
-      }
-      if (m.user) {
-        return {
-          provider: m.user.provider,
-          providerId: m.user.providerId,
-        };
-      }
-      throw new Error("Unreachable: mention must be either agent or user");
-    }),
-    content: userMessage.content,
-    context: {
-      username: userMessage.userContextUsername,
-      timezone: userMessage.userContextTimezone,
-      fullName: userMessage.userContextFullName,
-      email: userMessage.userContextEmail,
-      profilePictureUrl: userMessage.userContextProfilePictureUrl,
-    },
-  };
+        if (m.user) {
+          return {
+            provider: m.user.provider,
+            providerId: m.user.providerId,
+          };
+        }
+        throw new Error("Unreachable: mention must be either agent or user");
+      }),
+      content: message.userMessage.content,
+      context: {
+        username: message.userMessage.userContextUsername,
+        timezone: message.userMessage.userContextTimezone,
+        fullName: message.userMessage.userContextFullName,
+        email: message.userMessage.userContextEmail,
+        profilePictureUrl: message.userMessage.userContextProfilePictureUrl,
+      },
+    };
+    return { m, rank: message.rank, version: message.version };
+  });
 }
 
 async function renderAgentMessage(
@@ -455,34 +476,43 @@ export async function getConversation(
     ],
   });
 
-  const render = await Promise.all(
-    messages.map((message) => {
-      return (async () => {
-        if (message.userMessage) {
-          const m = await renderUserMessage(message, message.userMessage);
-          return { m, rank: message.rank, version: message.version };
-        }
-        if (message.agentMessage) {
-          const m = await renderAgentMessage(auth, {
-            message,
-            agentMessage: message.agentMessage,
-            messages,
-          });
-          return { m, rank: message.rank, version: message.version };
-        }
-        if (message.contentFragment) {
-          const m = await renderContentFragment({
-            message: message,
-            contentFragment: message.contentFragment,
-          });
-          return { m, rank: message.rank, version: message.version };
-        }
-        throw new Error(
-          "Unreachable: message must be either user, agent or content fragment"
-        );
-      })();
-    })
+  const [userMessages] = await Promise.all([
+    (async () => {
+      return await batchRenderUserMessages(
+        messages.filter((m) => !!m.userMessage)
+      );
+    })(),
+  ]);
+
+  const renderAgentAndContentFragments = await Promise.all(
+    messages
+      .filter((m) => !m.userMessage)
+      .map((message) => {
+        return (async () => {
+          if (message.agentMessage) {
+            const m = await renderAgentMessage(auth, {
+              message,
+              agentMessage: message.agentMessage,
+              messages,
+            });
+            return { m, rank: message.rank, version: message.version };
+          }
+          if (message.contentFragment) {
+            const m = await renderContentFragment({
+              message: message,
+              contentFragment: message.contentFragment,
+            });
+            return { m, rank: message.rank, version: message.version };
+          }
+          throw new Error(
+            "Unreachable: message must be either user, agent or content fragment"
+          );
+        })();
+      })
   );
+
+  const render = [...userMessages, ...renderAgentAndContentFragments];
+
   render.sort((a, b) => {
     if (a.rank !== b.rank) {
       return a.rank - b.rank;
