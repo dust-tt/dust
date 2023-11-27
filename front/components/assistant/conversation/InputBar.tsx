@@ -29,7 +29,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { classNames, subFilter } from "@app/lib/utils";
+import { classNames, filterAndSortAgents } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { WorkspaceType } from "@app/types/user";
@@ -89,18 +89,8 @@ function AgentListImpl(
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
-  const filtered = activeAgents.filter((a) => {
-    return subFilter(filter.toLowerCase(), a.name.toLowerCase());
-  });
 
-  // Sort by position of the subFilter in the name (position of the first character matching).
-  if (filter.length > 0) {
-    filtered.sort((a, b) => {
-      const aPos = a.name.toLowerCase().indexOf(filter[0].toLowerCase());
-      const bPos = b.name.toLowerCase().indexOf(filter[0].toLowerCase());
-      return aPos - bPos;
-    });
-  }
+  const filtered = filterAndSortAgents(activeAgents, filter);
 
   useImperativeHandle(ref, () => ({
     prev: () => {

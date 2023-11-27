@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { subFilter } from "@app/lib/utils";
+import { filterAndSortAgents } from "@app/lib/utils";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { WorkspaceType } from "@app/types/user";
 
@@ -31,20 +31,7 @@ export function AssistantPicker({
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
 
   useEffect(() => {
-    const filtered = assistants.filter((a) =>
-      subFilter(searchText.toLowerCase(), a.name.toLowerCase())
-    );
-
-    // Sort by position of the subFilter in the name (position of the first character matching).
-    if (searchText.length > 0) {
-      filtered.sort((a, b) => {
-        const aPos = a.name.toLowerCase().indexOf(searchText[0].toLowerCase());
-        const bPos = b.name.toLowerCase().indexOf(searchText[0].toLowerCase());
-        return aPos - bPos;
-      });
-    }
-
-    setSearchedAssistants(filtered);
+    setSearchedAssistants(filterAndSortAgents(assistants, searchText));
   }, [searchText, assistants]);
 
   return (
