@@ -32,6 +32,7 @@ export type APIErrorType =
   | "workspace_not_found"
   | "action_unknown_error"
   | "action_api_error"
+  | "membership_not_found"
   | "invitation_not_found"
   | "plan_limit_error"
   | "template_not_found"
