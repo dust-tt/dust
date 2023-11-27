@@ -220,15 +220,14 @@ async function batchRenderUserMessages(messages: Message[]) {
   ]);
 
   return messages.map((message) => {
-    const messageMentions = mentions.filter((m) => m.messageId === message.id);
-    const messageUser =
-      users.find((u) => u.id === message.userMessage?.userId) || null;
-
     if (!message.userMessage) {
       throw new Error(
         "Unreachable: batchRenderUserMessages must be called with only user messages"
       );
     }
+    const userMessage = message.userMessage;
+    const messageMentions = mentions.filter((m) => m.messageId === message.id);
+    const user = users.find((u) => u.id === userMessage.userId) || null;
 
     const m = {
       id: message.id,
@@ -237,18 +236,17 @@ async function batchRenderUserMessages(messages: Message[]) {
       visibility: message.visibility,
       version: message.version,
       created: message.createdAt.getTime(),
-      user: messageUser
+      user: user
         ? {
-            id: messageUser.id,
-            provider: messageUser.provider,
-            providerId: messageUser.providerId,
-            username: messageUser.username,
-            email: messageUser.email,
-            firstName: messageUser.firstName,
-            lastName: messageUser.lastName,
+            id: user.id,
+            provider: user.provider,
+            providerId: user.providerId,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
             fullName:
-              messageUser.firstName +
-              (messageUser.lastName ? ` ${messageUser.lastName}` : ""),
+              user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
             image: null,
             workspaces: [],
           }
@@ -267,13 +265,13 @@ async function batchRenderUserMessages(messages: Message[]) {
         }
         throw new Error("Unreachable: mention must be either agent or user");
       }),
-      content: message.userMessage.content,
+      content: userMessage.content,
       context: {
-        username: message.userMessage.userContextUsername,
-        timezone: message.userMessage.userContextTimezone,
-        fullName: message.userMessage.userContextFullName,
-        email: message.userMessage.userContextEmail,
-        profilePictureUrl: message.userMessage.userContextProfilePictureUrl,
+        username: userMessage.userContextUsername,
+        timezone: userMessage.userContextTimezone,
+        fullName: userMessage.userContextFullName,
+        email: userMessage.userContextEmail,
+        profilePictureUrl: userMessage.userContextProfilePictureUrl,
       },
     };
     return { m, rank: message.rank, version: message.version };
