@@ -1,10 +1,9 @@
 FROM node:18.15.0 as front
 
 WORKDIR /types
-COPY /front/package*.json ./
-RUN npm ci
+COPY /types/package*.json ./
 COPY /types/ .
-RUN npm run build
+RUN npm ci
 
 WORKDIR /app
 
