@@ -420,6 +420,10 @@ async function syncOneFile(
   if (isGoogleDriveExportableMimeType(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
     mimeType = MIME_TYPES_TO_EXPORT[file.mimeType];
+    if (!mimeTypesToDownload.has(mimeType)) {
+      // We do not download this file type for this connector
+      return false;
+    }
     try {
       const res = await drive.files.export({
         fileId: file.id,
