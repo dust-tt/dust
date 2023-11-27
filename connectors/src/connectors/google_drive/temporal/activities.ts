@@ -39,13 +39,76 @@ import { registerWebhook } from "../lib";
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
-const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
+const GOOGLE_DRIVE_DOWNLOADABLE_MIME_TYPES = [
+  "text/plain",
+  "application/pdf",
+  "text/csv",
+] as const;
+type GoogleDriveDownloadableMimeType =
+  (typeof GOOGLE_DRIVE_DOWNLOADABLE_MIME_TYPES)[number];
+function isGoogleDriveDownloadableMimeType(
+  mimeType: string
+): mimeType is GoogleDriveDownloadableMimeType {
+  return GOOGLE_DRIVE_DOWNLOADABLE_MIME_TYPES.includes(
+    mimeType as GoogleDriveDownloadableMimeType
+  );
+}
+
+const GOOGLE_DRIVE_EXPORTABLE_MIME_TYPES = [
+  "application/vnd.google-apps.document",
+  "application/vnd.google-apps.presentation",
+] as const;
+type GoogleDriveExportableMimeType =
+  (typeof GOOGLE_DRIVE_EXPORTABLE_MIME_TYPES)[number];
+function isGoogleDriveExportableMimeType(
+  mimeType: string
+): mimeType is GoogleDriveExportableMimeType {
+  return GOOGLE_DRIVE_EXPORTABLE_MIME_TYPES.includes(
+    mimeType as GoogleDriveExportableMimeType
+  );
+}
+
+const MIME_TYPES_TO_EXPORT: Record<
+  GoogleDriveExportableMimeType,
+  GoogleDriveDownloadableMimeType
+> = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
+} as const;
+
+const GOOGLE_DRIVE_FOLDER_MIME_TYPE =
+  "application/vnd.google-apps.folder" as const;
+type GoogleDriveFolderMimeType = typeof GOOGLE_DRIVE_FOLDER_MIME_TYPE;
+
+type GoogleDriveFileIngestionMode = "SEMANTIC" | "STRUCTURED";
+
+const INGESTION_MODES_BY_MIME_TYPE: Record<
+  GoogleDriveDownloadableMimeType,
+  Set<GoogleDriveFileIngestionMode>
+> = {
+  "text/plain": new Set(["SEMANTIC"]),
+  "application/pdf": new Set(["SEMANTIC"]),
+  "text/csv": new Set(["STRUCTURED"]),
 };
 
-async function getMimeTypesToDownload(connectorId: ModelId) {
-  const mimeTypes = ["text/plain"];
+type HandledGoogleDriveMimeType =
+  | GoogleDriveDownloadableMimeType
+  | GoogleDriveExportableMimeType
+  | GoogleDriveFolderMimeType;
+function isHandledGoogleDriveMimeType(
+  mimeType: string
+): mimeType is HandledGoogleDriveMimeType {
+  return (
+    isGoogleDriveDownloadableMimeType(mimeType) ||
+    isGoogleDriveExportableMimeType(mimeType) ||
+    mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE
+  );
+}
+
+async function getMimeTypesToDownload(
+  connectorId: ModelId
+): Promise<Set<GoogleDriveDownloadableMimeType>> {
+  const mimeTypes: GoogleDriveDownloadableMimeType[] = ["text/plain"];
   const config = await GoogleDriveConfig.findOne({
     where: {
       connectorId: connectorId,
@@ -54,16 +117,21 @@ async function getMimeTypesToDownload(connectorId: ModelId) {
   if (config?.pdfEnabled) {
     mimeTypes.push("application/pdf");
   }
+  if (config?.csvEnabled) {
+    mimeTypes.push("text/csv");
+  }
 
-  return mimeTypes;
+  return new Set(mimeTypes);
 }
 
-async function getMimesTypeToSync(connectorId: ModelId) {
-  const mimeTypes = await getMimeTypesToDownload(connectorId);
-  mimeTypes.push(...Object.keys(MIME_TYPES_TO_EXPORT));
-  mimeTypes.push("application/vnd.google-apps.folder");
-
-  return mimeTypes;
+async function getMimesTypeToSync(
+  connectorId: ModelId
+): Promise<Set<HandledGoogleDriveMimeType>> {
+  return new Set([
+    ...(await getMimeTypesToDownload(connectorId)),
+    ...GOOGLE_DRIVE_EXPORTABLE_MIME_TYPES,
+    GOOGLE_DRIVE_FOLDER_MIME_TYPE,
+  ]);
 }
 
 export const statsDClient = new StatsD();
@@ -242,7 +310,7 @@ export async function syncFiles(
   }
 
   const drive = await getDriveClient(authCredentials);
-  const mimeTypesSearchString = mimeTypeToSync
+  const mimeTypesSearchString = Array.from(mimeTypeToSync)
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
 
@@ -336,12 +404,25 @@ async function syncOneFile(
     return false;
   }
 
-  if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
+  if (
+    !(
+      isGoogleDriveDownloadableMimeType(file.mimeType) ||
+      isGoogleDriveExportableMimeType(file.mimeType)
+    )
+  ) {
+    // We do not support this file type
+    return false;
+  }
+
+  let mimeType: GoogleDriveDownloadableMimeType;
+
+  if (isGoogleDriveExportableMimeType(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
+    mimeType = MIME_TYPES_TO_EXPORT[file.mimeType];
     try {
       const res = await drive.files.export({
         fileId: file.id,
-        mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
+        mimeType,
       });
       if (res.status !== 200) {
         logger.error(
@@ -372,7 +453,12 @@ async function syncOneFile(
       );
       throw e;
     }
-  } else if (mimeTypesToDownload.includes(file.mimeType)) {
+  } else {
+    mimeType = file.mimeType;
+    if (!mimeTypesToDownload.has(mimeType)) {
+      // We do not download this file type for this connector
+      return false;
+    }
     const drive = await getDriveClient(oauth2client);
 
     let res;
@@ -410,10 +496,13 @@ async function syncOneFile(
       );
     }
 
-    if (file.mimeType === "text/plain") {
-      if (res.data instanceof ArrayBuffer) {
-        documentContent = Buffer.from(res.data).toString("utf-8");
+    if (file.mimeType === "text/plain" || file.mimeType === "text/csv") {
+      if (!(res.data instanceof ArrayBuffer)) {
+        throw new Error(
+          `Unexpected response type for text/plain or text/csv: ${typeof res.data}`
+        );
       }
+      documentContent = Buffer.from(res.data).toString("utf-8");
     } else if (file.mimeType === "application/pdf") {
       const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
       try {
@@ -448,62 +537,56 @@ async function syncOneFile(
       } finally {
         await fs.unlink(pdf_path);
       }
+    } else {
+      return ((x: never) => {
+        throw new Error(
+          `Unreachable: unexpected GoogleDriveDownloadableMimeType "${x}"`
+        );
+      })(file.mimeType);
     }
-  } else {
-    // We do not support this file type
-    return false;
   }
-  //Adding the title of the file to the beginning of the document
-  documentContent = `$title:${file.name}\n\n${documentContent}`;
 
-  if (documentContent === undefined) {
-    throw new Error("documentContent is undefined");
+  if (!documentContent) {
+    throw new Error("Unreachable: documentContent is undefined");
   }
-  const tags = [`title:${file.name}`];
-  if (file.updatedAtMs) {
-    tags.push(`lastEditedAt:${file.updatedAtMs}`);
-  }
-  if (file.createdAtMs) {
-    tags.push(`createdAt:${file.createdAtMs}`);
-  }
-  if (file.lastEditor) {
-    tags.push(`lastEditor:${file.lastEditor.displayName}`);
-  }
-  tags.push(`mimeType:${file.mimeType}`);
 
+  const ingestionModes = INGESTION_MODES_BY_MIME_TYPE[mimeType];
   let upsertTimestampMs: number | undefined = undefined;
-
-  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
-    const parents = (
-      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
-    parents.push(file.id);
-    parents.reverse();
-
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentId,
-      documentText: documentContent,
-      documentUrl: file.webViewLink,
-      timestampMs: file.updatedAtMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-    });
-
-    upsertTimestampMs = file.updatedAtMs;
-  } else {
-    logger.info(
-      {
-        documentId,
-        dataSourceConfig,
-        documentLen: documentContent.length,
-        title: file.name,
-      },
-      `Document too big to be upserted. Skipping`
-    );
+  for (const ingestionMode of ingestionModes) {
+    let ingestedAt: number | undefined = undefined;
+    switch (ingestionMode) {
+      case "SEMANTIC":
+        ingestedAt = await upsertFileToDatasource({
+          file,
+          documentContent,
+          connectorId,
+          documentId,
+          dataSourceConfig,
+          startSyncTs,
+          oauth2client,
+          isBatchSync,
+        });
+        upsertTimestampMs = upsertTimestampMs || ingestedAt;
+        break;
+      case "STRUCTURED":
+        ingestedAt = await upsertFileToDatabase({
+          file,
+          documentContent,
+          connectorId,
+          documentId,
+          dataSourceConfig,
+          startSyncTs,
+          oauth2client,
+          isBatchSync,
+        });
+        break;
+      default:
+        ((x: never) => {
+          throw new Error(
+            `Unreachable: unexpected GoogleDriveFileIngestionMode "${x}"`
+          );
+        })(ingestionMode);
+    }
   }
 
   const params: CreationAttributes<GoogleDriveFiles> = {
@@ -523,6 +606,100 @@ async function syncOneFile(
   await GoogleDriveFiles.upsert(params);
 
   return !!upsertTimestampMs;
+}
+
+async function upsertFileToDatasource({
+  file,
+  documentContent,
+  connectorId,
+  documentId,
+  dataSourceConfig,
+  startSyncTs,
+  oauth2client,
+  isBatchSync = false,
+}: {
+  file: GoogleDriveObjectType;
+  documentContent: string;
+  connectorId: ModelId;
+  documentId: string;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+  oauth2client: OAuth2Client;
+  isBatchSync?: boolean;
+}): Promise<number | undefined> {
+  const documentContentWithTitle = `$title:${file.name}\n\n${documentContent}`;
+  const tags = [`title:${file.name}`];
+  if (file.updatedAtMs) {
+    tags.push(`lastEditedAt:${file.updatedAtMs}`);
+  }
+  if (file.createdAtMs) {
+    tags.push(`createdAt:${file.createdAtMs}`);
+  }
+  if (file.lastEditor) {
+    tags.push(`lastEditor:${file.lastEditor.displayName}`);
+  }
+  tags.push(`mimeType:${file.mimeType}`);
+
+  let upsertTimestampMs: number | undefined = undefined;
+
+  if (documentContentWithTitle.length <= MAX_DOCUMENT_TXT_LEN) {
+    const parents = (
+      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
+    ).map((f) => f.id);
+    parents.push(file.id);
+    parents.reverse();
+
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentId,
+      documentText: documentContentWithTitle,
+      documentUrl: file.webViewLink,
+      timestampMs: file.updatedAtMs,
+      tags,
+      parents: parents,
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+    });
+
+    upsertTimestampMs = file.updatedAtMs;
+  } else {
+    logger.info(
+      {
+        documentId,
+        dataSourceConfig,
+        documentLen: documentContentWithTitle.length,
+        title: file.name,
+      },
+      `Document too big to be upserted. Skipping`
+    );
+  }
+
+  return upsertTimestampMs;
+}
+
+async function upsertFileToDatabase({
+  file,
+  documentContent,
+  connectorId,
+  documentId,
+  dataSourceConfig,
+  startSyncTs,
+  oauth2client,
+  isBatchSync = false,
+}: {
+  file: GoogleDriveObjectType;
+  documentContent: string;
+  connectorId: ModelId;
+  documentId: string;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+  oauth2client: OAuth2Client;
+  isBatchSync?: boolean;
+}): Promise<number | undefined> {
+  // parse CSV, infer types, prepare JSONs, upsert database in connectors, then send to core.
+
+  return undefined;
 }
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
@@ -664,7 +841,8 @@ export async function incrementalSync(
       }
       if (
         !change.file.mimeType ||
-        !mimeTypesToSync.includes(change.file.mimeType)
+        !isHandledGoogleDriveMimeType(change.file.mimeType) ||
+        !mimeTypesToSync.has(change.file.mimeType)
       ) {
         continue;
       }

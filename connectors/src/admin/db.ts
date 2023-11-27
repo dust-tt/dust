@@ -1,6 +1,7 @@
 import { Sequelize } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Database } from "@connectors/lib/models/databases";
 import {
   GithubConnectorState,
   GithubDiscussion,
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
   await GoogleDriveConfig.sync({ alter: true });
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
+  await Database.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
