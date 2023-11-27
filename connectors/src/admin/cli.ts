@@ -13,19 +13,17 @@ import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
+import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
-import {
-  nango_client,
-  nangoDeleteConnection,
-} from "@connectors/lib/nango_client";
+import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
 
-const { NANGO_SLACK_CONNECTOR_ID = "" } = process.env;
+const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   if (!args.wId) {
@@ -392,16 +390,30 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       break;
     }
 
-    case "clean-nango-connection-id": {
+    case "uninstall-for-unknown-team-ids": {
+      if (!NANGO_SLACK_CONNECTOR_ID) {
+        throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
+      }
+
       const slackConfigurations = await SlackConfiguration.findAll();
       const connections = await nango_client().listConnections();
+
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
       const slackConnections = connections.connections.filter(
         (connection: {
           id: number;
           connection_id: string;
           provider: string;
           created: string;
-        }) => connection.provider === NANGO_SLACK_CONNECTOR_ID
+        }) => {
+          const createdAt = new Date(connection.created);
+          return (
+            connection.provider === NANGO_SLACK_CONNECTOR_ID &&
+            createdAt < oneHourAgo
+          );
+        }
       );
 
       let connectionDetail,
@@ -431,17 +443,13 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
 
         if (!slackConfigurations.find((sc) => sc.slackTeamId === slackTeamId)) {
           const answer: string = await askQuestion(
-            `Do you want to delete connection ${connection.connection_id} for team ${slackTeamId}? (y/N) `
+            `Do you want to delete Nango connection ${connection.connection_id} and auth token for team ${slackTeamId}? (y/N) `
           );
           if (answer.toLowerCase() !== "y") {
             continue;
           }
-
-          console.log("Deleting connection...");
-          await nangoDeleteConnection(
-            connection.connection_id,
-            NANGO_SLACK_CONNECTOR_ID
-          );
+          console.log("Uninstalling Slack and cleaning connection id...");
+          await uninstallSlack(connection.connection_id);
         }
       }
       break;
