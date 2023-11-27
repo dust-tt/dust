@@ -68,28 +68,9 @@ function isGoogleDriveExportableMimeType(
   );
 }
 
-const MIME_TYPES_TO_EXPORT: Record<
-  GoogleDriveExportableMimeType,
-  GoogleDriveDownloadableMimeType
-> = {
-  "application/vnd.google-apps.document": "text/plain",
-  "application/vnd.google-apps.presentation": "text/plain",
-} as const;
-
 const GOOGLE_DRIVE_FOLDER_MIME_TYPE =
   "application/vnd.google-apps.folder" as const;
 type GoogleDriveFolderMimeType = typeof GOOGLE_DRIVE_FOLDER_MIME_TYPE;
-
-type GoogleDriveFileIngestionMode = "SEMANTIC" | "STRUCTURED";
-
-const INGESTION_MODES_BY_MIME_TYPE: Record<
-  GoogleDriveDownloadableMimeType,
-  Set<GoogleDriveFileIngestionMode>
-> = {
-  "text/plain": new Set(["SEMANTIC"]),
-  "application/pdf": new Set(["SEMANTIC"]),
-  "text/csv": new Set(["STRUCTURED"]),
-};
 
 type HandledGoogleDriveMimeType =
   | GoogleDriveDownloadableMimeType
@@ -104,6 +85,25 @@ function isHandledGoogleDriveMimeType(
     mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE
   );
 }
+
+type GoogleDriveFileIngestionMode = "SEMANTIC" | "STRUCTURED";
+
+const MIME_TYPES_TO_EXPORT: Record<
+  GoogleDriveExportableMimeType,
+  GoogleDriveDownloadableMimeType
+> = {
+  "application/vnd.google-apps.document": "text/plain",
+  "application/vnd.google-apps.presentation": "text/plain",
+} as const;
+
+const MIME_TYPES_INGESTION_TYPES: Record<
+  GoogleDriveDownloadableMimeType,
+  Set<GoogleDriveFileIngestionMode>
+> = {
+  "text/plain": new Set(["SEMANTIC"]),
+  "application/pdf": new Set(["SEMANTIC"]),
+  "text/csv": new Set(["STRUCTURED"]),
+};
 
 async function getMimeTypesToDownload(
   connectorId: ModelId
@@ -550,7 +550,7 @@ async function syncOneFile(
     throw new Error("Unreachable: documentContent is undefined");
   }
 
-  const ingestionModes = INGESTION_MODES_BY_MIME_TYPE[mimeType];
+  const ingestionModes = MIME_TYPES_INGESTION_TYPES[mimeType];
   let upsertTimestampMs: number | undefined = undefined;
   for (const ingestionMode of ingestionModes) {
     let ingestedAt: number | undefined = undefined;
