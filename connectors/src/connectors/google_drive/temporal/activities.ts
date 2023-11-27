@@ -16,6 +16,7 @@ import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
 import { uuid4 } from "@temporalio/workflow";
+import { parse } from "csv-parse";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
@@ -697,7 +698,124 @@ async function upsertFileToDatabase({
   oauth2client: OAuth2Client;
   isBatchSync?: boolean;
 }): Promise<number | undefined> {
-  // parse CSV, infer types, prepare JSONs, upsert database in connectors, then send to core.
+  const parser = parse(documentContent);
+  let header: string[] | undefined = undefined;
+  const valuesByCol: Record<string, string[]> = {};
+
+  // Go through CSV and aggregate values by column.
+  for await (const anyRecord of parser) {
+    // Assert that record is string[].
+    if (!Array.isArray(anyRecord)) {
+      throw new Error("Record is not an array");
+    }
+    if (anyRecord.some((r) => typeof r !== "string")) {
+      throw new Error("Record contains non-string values");
+    }
+
+    const record = anyRecord as string[];
+
+    if (!header) {
+      header = record;
+      continue;
+    }
+
+    for (const [i, h] of header.entries()) {
+      const col = record[i];
+      if (col === undefined) {
+        throw new Error(`Invalid record length. Expected ${header.length}`);
+      }
+      if (!valuesByCol[h]) {
+        valuesByCol[h] = [col];
+      } else {
+        (valuesByCol[h] as string[]).push(col);
+      }
+    }
+  }
+
+  if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
+    throw new Error("Unreachable: CSV is empty.");
+  }
+
+  // Parse values and infer types for each column.
+  const parsedValuesByCol: Record<
+    string,
+    (number | boolean | string | null)[]
+  > = {};
+  for (const [col, values] of Object.entries(valuesByCol)) {
+    if (values.every((v) => v === "")) {
+      // All values are empty, we skip this column.
+      continue;
+    }
+
+    parsedValuesByCol[col] = (() => {
+      for (const parser of [
+        // number
+        (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
+        // bool
+        (v: string) => {
+          const lowerV = v.toLowerCase();
+          return lowerV === "true"
+            ? true
+            : lowerV === "false"
+            ? false
+            : undefined;
+        },
+        // string
+        (v: string) => v,
+      ]) {
+        const parsedValues = [];
+        for (const v of values) {
+          if (v === "") {
+            parsedValues.push(null);
+            continue;
+          }
+
+          const parsedV = parser(v);
+
+          if (parsedV === undefined) {
+            // move onto next parser
+            break;
+          }
+
+          parsedValues.push(parsedV);
+        }
+
+        if (parsedValues.length === values.length) {
+          return parsedValues;
+        }
+      }
+
+      throw new Error(
+        `Unreachable: could not infer type for column ${col}. Values: ${JSON.stringify(
+          values
+        )}`
+      );
+    })();
+  }
+
+  const nbRows = (Object.values(parsedValuesByCol)[0] || []).length;
+  for (let i = 0; i < nbRows; i++) {
+    const record = header.reduce((acc, h) => {
+      const parsedValues = parsedValuesByCol[h];
+      if (!parsedValues) {
+        throw new Error(
+          `Unreachable: could not find value for column ${h} at row ${i}`
+        );
+      }
+      const value = parsedValues[i];
+      if (value === undefined) {
+        throw new Error(
+          `Unreachable: could not find value for column ${h} at row ${i}`
+        );
+      }
+
+      acc[h] = value;
+      return acc;
+    }, {} as Record<string, number | boolean | string | null>);
+
+    void record;
+    // TODO: process
+  }
 
   return undefined;
 }
