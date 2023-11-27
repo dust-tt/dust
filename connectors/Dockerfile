@@ -14,6 +14,12 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
+WORKDIR /types
+COPY /front/package*.json ./
+RUN npm ci
+COPY /types/ .
+RUN npm run build
+
 WORKDIR /app
 
 COPY package*.json ./

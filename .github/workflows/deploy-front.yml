@@ -43,15 +43,15 @@ jobs:
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh front ./front/Dockerfile ../
 
-      - name: Deploy the image on Kubernetes
-        run: |
-          chmod +x ./k8s/deploy-image.sh
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-worker-deployment
+      # - name: Deploy the image on Kubernetes
+      #   run: |
+      #     chmod +x ./k8s/deploy-image.sh
+      #     ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-deployment
+      #     ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-worker-deployment
 
-      - name: Wait for rollout to complete
-        run: |
-          echo "Waiting for rollout to complete (web)"
-          kubectl rollout status deployment/front-deployment --timeout=10m
-          echo "Waiting for rollout to complete (worker)"
-          kubectl rollout status deployment/front-worker-deployment --timeout=10m
+      # - name: Wait for rollout to complete
+      #   run: |
+      #     echo "Waiting for rollout to complete (web)"
+      #     kubectl rollout status deployment/front-deployment --timeout=10m
+      #     echo "Waiting for rollout to complete (worker)"
+      #     kubectl rollout status deployment/front-worker-deployment --timeout=10m

@@ -1,3 +1,4 @@
+import { KeyType } from "@dust-tt/types";
 import {
   CodedError,
   ErrorCode,
@@ -40,6 +41,12 @@ export async function createSlackConnector(
   dataSourceConfig: DataSourceConfig,
   connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
+  const key: KeyType = {
+    secret: "abc",
+    status: "active",
+    isSystem: false,
+  };
+  console.log("key", key);
   const nangoConnectionId = connectionId;
 
   const res = await sequelize_conn.transaction(

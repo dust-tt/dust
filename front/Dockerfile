@@ -1,18 +1,17 @@
 FROM node:18.15.0 as front
 
-RUN mkdir -p /app 
-RUN mkdir -p /types
-
 WORKDIR /types
-COPY /types/ /types
-RUN npm install && npm run build
+COPY /front/package*.json ./
+RUN npm ci
+COPY /types/ .
+RUN npm run build
 
 WORKDIR /app
 
 COPY /front/package*.json ./
 RUN npm ci
 
-COPY /front /app
+COPY /front .
 
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
