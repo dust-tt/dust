@@ -416,9 +416,6 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         }
       );
 
-      let connectionDetail,
-        slackTeamId: string | null = null;
-
       const askQuestion = async (query: string): Promise<string> => {
         const rl = readline.createInterface({
           input: process.stdin,
@@ -434,12 +431,11 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       };
 
       for (const connection of slackConnections) {
-        connectionDetail = await nango_client().getConnection(
+        const connectionDetail = await nango_client().getConnection(
           connection.provider,
           connection.connection_id
         );
-
-        slackTeamId = connectionDetail.credentials.raw.team.id;
+        const slackTeamId = connectionDetail.credentials.raw.team.id;
 
         if (!slackConfigurations.find((sc) => sc.slackTeamId === slackTeamId)) {
           const answer: string = await askQuestion(
