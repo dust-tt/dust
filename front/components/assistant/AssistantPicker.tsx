@@ -31,11 +31,20 @@ export function AssistantPicker({
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
 
   useEffect(() => {
-    setSearchedAssistants(
-      assistants.filter((a) =>
-        subFilter(searchText.toLowerCase(), a.name.toLowerCase())
-      )
+    const filtered = assistants.filter((a) =>
+      subFilter(searchText.toLowerCase(), a.name.toLowerCase())
     );
+
+    // Sort by position of the subFilter in the name (position of the first character matching).
+    if (searchText.length > 0) {
+      filtered.sort((a, b) => {
+        const aPos = a.name.toLowerCase().indexOf(searchText[0].toLowerCase());
+        const bPos = b.name.toLowerCase().indexOf(searchText[0].toLowerCase());
+        return aPos - bPos;
+      });
+    }
+
+    setSearchedAssistants(filtered);
   }, [searchText, assistants]);
 
   return (
