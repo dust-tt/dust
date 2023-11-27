@@ -16,7 +16,7 @@ export type PostMemberAssistantVisibilityResponseBody = {
 };
 
 export const PostMemberAssistantVisibilityRequestBodySchema = t.type({
-  assistantSid: t.string,
+  assistantId: t.string,
   visibility: t.union([
     t.literal("workspace-unlisted"),
     t.literal("published-listed"),
@@ -24,7 +24,7 @@ export const PostMemberAssistantVisibilityRequestBodySchema = t.type({
 });
 
 export const DeleteMemberAssistantsVisibilityBodySchema = t.type({
-  assistantSid: t.string,
+  assistantId: t.string,
 });
 
 async function handler(
@@ -101,12 +101,9 @@ async function handler(
         });
       }
 
-      const { assistantSid, visibility } = bodyValidation.right;
+      const { assistantId, visibility } = bodyValidation.right;
       // get the agent configuration
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        assistantSid
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, assistantId);
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
@@ -143,11 +140,11 @@ async function handler(
           },
         });
       }
-      const { assistantSid: assistantSidToDelete } = bodyValidationDelete.right;
+      const { assistantId: assistantIdToDelete } = bodyValidationDelete.right;
       // get the agent configuration
       const deletionAgentConfiguration = await getAgentConfiguration(
         auth,
-        assistantSidToDelete
+        assistantIdToDelete
       );
       if (!deletionAgentConfiguration) {
         return apiError(req, res, {
