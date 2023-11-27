@@ -3,19 +3,19 @@ import { Authenticator } from "@app/lib/auth";
 import { Membership } from "@app/lib/models";
 import { MemberAgentVisibility } from "@app/lib/models/assistant/agent";
 import { Err, Ok, Result } from "@app/lib/result";
-import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
+import { AgentVisibilityOverrideType } from "@app/types/assistant/agent";
 
-export async function upsertAgentVisibility({
+export async function setVisibilityOverrideForUser({
   auth,
   agentId,
   visibility,
 }: {
   auth: Authenticator;
   agentId: string;
-  visibility: MemberAgentVisibilityType;
+  visibility: AgentVisibilityOverrideType;
 }): Promise<
   Result<
-    { visibility: MemberAgentVisibilityType; created: boolean | null },
+    { visibility: AgentVisibilityOverrideType; created: boolean | null },
     Error
   >
 > {
@@ -39,7 +39,7 @@ export async function upsertAgentVisibility({
   return new Ok({ visibility: memberAgentVisibility.visibility, created });
 }
 
-export async function deleteAgentVisibility({
+export async function deleteVisibilityOverrideForUser({
   auth,
   agentId,
 }: {

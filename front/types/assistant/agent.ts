@@ -73,7 +73,10 @@ export type AgentConfigurationScope =
   | "published"
   | "private";
 
-export type MemberAgentVisibilityType =
+/* By default, agents with scope 'workspace' are in users' assistants list, whereeas agents with
+ * scope 'published' aren't. But a user can override the default behaviour, as per the type below */
+
+export type AgentVisibilityOverrideType =
   | "workspace-unlisted"
   | "published-listed";
 

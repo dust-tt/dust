@@ -5,17 +5,17 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
-  deleteAgentVisibility,
-  upsertAgentVisibility,
-} from "@app/lib/api/assistant/visibility";
+  deleteVisibilityOverrideForUser,
+  setVisibilityOverrideForUser,
+} from "@app/lib/api/assistant/visibility_override";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
+import { AgentVisibilityOverrideType } from "@app/types/assistant/agent";
 
 export type PostMemberAssistantVisibilityResponseBody = {
   created: boolean | null;
-  visibility: MemberAgentVisibilityType;
+  visibility: AgentVisibilityOverrideType;
 };
 
 export const PostMemberAssistantVisibilityRequestBodySchema = t.type({
@@ -104,7 +104,7 @@ async function handler(
           },
         });
       }
-      const result = await upsertAgentVisibility({
+      const result = await setVisibilityOverrideForUser({
         auth,
         agentId: assistantId,
         visibility,
@@ -163,7 +163,7 @@ async function handler(
         });
       }
 
-      const deleteResult = await deleteAgentVisibility({
+      const deleteResult = await deleteVisibilityOverrideForUser({
         auth,
         agentId: assistantIdToDelete,
       });

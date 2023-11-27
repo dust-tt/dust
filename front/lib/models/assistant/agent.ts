@@ -16,8 +16,8 @@ import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_a
 import {
   AgentConfigurationScope,
   AgentStatus,
+  AgentVisibilityOverrideType,
   GlobalAgentStatus,
-  MemberAgentVisibilityType,
 } from "@app/types/assistant/agent";
 
 import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
@@ -295,7 +295,7 @@ export class MemberAgentVisibility extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare visibility: MemberAgentVisibilityType;
+  declare visibility: AgentVisibilityOverrideType;
 
   declare membershipId: ForeignKey<Membership["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
