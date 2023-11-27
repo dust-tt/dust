@@ -281,6 +281,7 @@ SlackChatBotMessage.init(
   {
     sequelize: sequelize_conn,
     modelName: "slack_chat_bot_messages",
+    indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
 Connector.hasOne(SlackChatBotMessage);
