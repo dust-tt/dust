@@ -626,6 +626,15 @@ async function makeContentFragment(
   let next_cursor = undefined;
 
   let shouldTake = false;
+
+  const slackBotMessages = await SlackChatBotMessage.findAll({
+    where: {
+      connectorId: connector.id,
+      channelId: channelId,
+      threadTs: threadTs,
+    },
+  });
+
   do {
     const replies: ConversationsRepliesResponse =
       await slackClient.conversations.replies({
@@ -657,15 +666,8 @@ async function makeContentFragment(
         continue;
       }
       if (shouldTake) {
-        const slackChatBotMessage = await SlackChatBotMessage.findOne({
-          where: {
-            connectorId: connector.id,
-            messageTs: m.ts,
-            channelId: channelId,
-          },
-        });
-        if (slackChatBotMessage) {
-          // If this message is a mention to the bot, we don't send it as a content fragment
+        if (slackBotMessages.find((sbm) => sbm.messageTs === m.ts)) {
+          // If this message is a mention to the bot, we don't send it as a content fragment.
           continue;
         }
         allMessages.push(m);
