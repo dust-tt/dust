@@ -2,6 +2,8 @@ import { hash as blake3 } from "blake3";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
+import { AgentConfigurationType } from "@app/types/assistant/agent";
+
 export const MODELS_STRING_MAX_LENGTH = 255;
 
 export function classNames(...classes: string[]) {
@@ -146,4 +148,28 @@ export function subFilter(a: string, b: string) {
     j++;
   }
   return i === a.length;
+}
+
+export function filterAndSortAgents(
+  agents: AgentConfigurationType[],
+  searchText: string
+) {
+  const filtered = agents.filter((a) =>
+    subFilter(searchText.toLowerCase(), a.name.toLowerCase())
+  );
+
+  // Sort by position of the subFilter in the name (position of the first character matching).
+  if (searchText.length > 0) {
+    filtered.sort((a, b) => {
+      const aPos = a.name.toLowerCase().indexOf(searchText[0].toLowerCase());
+      const bPos = b.name.toLowerCase().indexOf(searchText[0].toLowerCase());
+      return aPos - bPos;
+    });
+
+    // Finally sort by length of the name. Only do so if we filtered by a subsequence as otherwise
+    // we want to preserve the initial ordering of agents.
+    filtered.sort((a, b) => a.name.length - b.name.length);
+  }
+
+  return filtered;
 }
