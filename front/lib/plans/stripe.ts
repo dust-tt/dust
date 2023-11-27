@@ -44,6 +44,10 @@ export const createCheckoutSession = async ({
   if (!owner) {
     throw new Error("No workspace found");
   }
+  const user = auth.user();
+  if (!user) {
+    throw new Error("No user found");
+  }
 
   const plan = await Plan.findOne({ where: { code: planCode } });
   if (!plan) {
@@ -100,6 +104,7 @@ export const createCheckoutSession = async ({
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     client_reference_id: owner.sId,
+    customer_email: user.email,
     customer: auth.subscription()?.stripeCustomerId || undefined,
     metadata: {
       planCode: planCode,
