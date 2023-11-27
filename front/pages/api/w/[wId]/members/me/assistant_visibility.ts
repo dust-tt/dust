@@ -4,9 +4,12 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  deleteAgentVisibility,
+  upsertAgentVisibility,
+} from "@app/lib/api/assistant/visibility";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Membership, User } from "@app/lib/models";
-import { MemberAgentVisibility } from "@app/lib/models/assistant/agent";
+import { Membership } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { MemberAgentVisibilityType } from "@app/types/assistant/agent";
 
@@ -50,32 +53,8 @@ async function handler(
     });
   }
 
-  const userId = parseInt(req.query.userId as string);
-  if (isNaN(userId)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message: "The user requested was not found.",
-      },
-    });
-  }
-
-  const [user, membership] = await Promise.all([
-    User.findOne({
-      where: {
-        id: userId,
-      },
-    }),
-    Membership.findOne({
-      where: {
-        userId: userId,
-        workspaceId: owner.id,
-      },
-    }),
-  ]);
-
-  if (!user || !membership) {
+  const user = auth.user();
+  if (!user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -102,27 +81,44 @@ async function handler(
       }
 
       const { assistantId, visibility } = bodyValidation.right;
-      // get the agent configuration
       const agentConfiguration = await getAgentConfiguration(auth, assistantId);
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message: "The agent configuration was not found.",
+            message: "The agent requested was not found.",
           },
         });
       }
-      // create or update the MemberAgentList entry
-      const [memberAgentVisibility, created] =
-        await MemberAgentVisibility.upsert({
-          membershipId: membership.id,
-          agentConfigurationId: agentConfiguration.id,
-          visibility: visibility,
+      const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
+      const membership = await Membership.findOne({
+        where: { userId, workspaceId },
+      });
+      if (!membership) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "membership_not_found",
+            message: "The membership requested was not found.",
+          },
         });
-      res
-        .status(200)
-        .json({ created, visibility: memberAgentVisibility.visibility });
+      }
+      const result = await upsertAgentVisibility({
+        auth,
+        agentId: assistantId,
+        visibility,
+      });
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: result.error.message,
+          },
+        });
+      }
+      res.status(200).json(result.value);
       return;
     case "DELETE":
       const bodyValidationDelete =
@@ -141,38 +137,46 @@ async function handler(
         });
       }
       const { assistantId: assistantIdToDelete } = bodyValidationDelete.right;
-      // get the agent configuration
-      const deletionAgentConfiguration = await getAgentConfiguration(
+      const deleteAgentConfiguration = await getAgentConfiguration(
         auth,
         assistantIdToDelete
       );
-      if (!deletionAgentConfiguration) {
+      if (!deleteAgentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message: "The agent configuration was not found.",
+            message: "The agent requested was not found.",
           },
         });
       }
-      if (deletionAgentConfiguration.scope === "private") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Cannot remove visibility entry for a 'private'-scope assistant. Please delete the assistant instead.",
-          },
-        });
-      }
-      // delete the MemberAgentList entry
-      await MemberAgentVisibility.destroy({
-        where: {
-          membershipId: membership.id,
-          agentConfigurationId: deletionAgentConfiguration.id,
-        },
+      const delMembership = await Membership.findOne({
+        where: { userId: auth.user()?.id, workspaceId: auth.workspace()?.id },
       });
-      res.status(200).json({ success: true });
+      if (!delMembership) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "membership_not_found",
+            message: "The membership requested was not found.",
+          },
+        });
+      }
+
+      const deleteResult = await deleteAgentVisibility({
+        auth,
+        agentId: assistantIdToDelete,
+      });
+      if (deleteResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: deleteResult.error.message,
+          },
+        });
+      }
+      res.status(200).json(deleteResult.value);
       return;
     default:
       return apiError(req, res, {
