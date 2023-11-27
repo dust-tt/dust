@@ -1,5 +1,6 @@
 import parseArgs from "minimist";
 import PQueue from "p-queue";
+import readline from "readline";
 
 import {
   DELETE_CONNECTOR_BY_TYPE,
@@ -17,7 +18,14 @@ import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/t
 import { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { SlackConfiguration } from "@connectors/lib/models/slack";
+import {
+  nango_client,
+  nangoDeleteConnection,
+} from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+
+const { NANGO_SLACK_CONNECTOR_ID = "" } = process.env;
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   if (!args.wId) {
@@ -381,6 +389,61 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         )
       );
 
+      break;
+    }
+
+    case "clean-nango-connection-id": {
+      const slackConfigurations = await SlackConfiguration.findAll();
+      const connections = await nango_client().listConnections();
+      const slackConnections = connections.connections.filter(
+        (connection: {
+          id: number;
+          connection_id: string;
+          provider: string;
+          created: string;
+        }) => connection.provider === NANGO_SLACK_CONNECTOR_ID
+      );
+
+      let connectionDetail,
+        slackTeamId: string | null = null;
+
+      const askQuestion = async (query: string): Promise<string> => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+
+        return new Promise((resolve) => {
+          rl.question(query, (answer) => {
+            rl.close();
+            resolve(answer);
+          });
+        });
+      };
+
+      for (const connection of slackConnections) {
+        connectionDetail = await nango_client().getConnection(
+          connection.provider,
+          connection.connection_id
+        );
+
+        slackTeamId = connectionDetail.credentials.raw.team.id;
+
+        if (!slackConfigurations.find((sc) => sc.slackTeamId === slackTeamId)) {
+          const answer: string = await askQuestion(
+            `Do you want to delete connection ${connection.connection_id} for team ${slackTeamId}? (y/N) `
+          );
+          if (answer.toLowerCase() !== "y") {
+            continue;
+          }
+
+          console.log("Deleting connection...");
+          await nangoDeleteConnection(
+            connection.connection_id,
+            NANGO_SLACK_CONNECTOR_ID
+          );
+        }
+      }
       break;
     }
   }

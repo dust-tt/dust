@@ -48,6 +48,10 @@ class CustomNango extends Nango {
       throw e;
     }
   }
+
+  async listConnections() {
+    return await super.listConnections();
+  }
 }
 
 export function nango_client() {
