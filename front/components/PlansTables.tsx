@@ -68,7 +68,7 @@ function ProPriceTable({
       <PriceTable.Item label="Privacy and Data Security" />
       <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
-      <PriceTable.Item label="Unlimited messages" />
+      <PriceTable.Item label="Unlimited messages with a fair usage cap: 50 messages/3 hours" />
       <PriceTable.Item label="Up to 1Gb/user of data sources" />
       <PriceTable.Item
         label="Connections
@@ -110,7 +110,7 @@ function EnterprisePriceTable({
       <PriceTable.Item label="Privacy and Data Security" />
       <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
       <PriceTable.Item label="Unlimited custom assistants" />
-      <PriceTable.Item label="Unlimited messages" />
+      <PriceTable.Item label="Unlimited messages with a fair usage cap: 50 messages/3 hours" />
       <PriceTable.Item label="Unlimited data sources" />
       <PriceTable.Item
         label="Connections
