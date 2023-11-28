@@ -545,7 +545,9 @@ export function useDatabaseTables({
   const tablesFetcher: Fetcher<ListDatabaseTablesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+    databaseId
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`
+      : null,
     tablesFetcher
   );
 
