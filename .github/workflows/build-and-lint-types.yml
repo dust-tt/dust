@@ -1,0 +1,21 @@
+name: Build & Lint (types)
+
+on:
+  push:
+    paths:
+      - types/**
+      - .github/workflows/build-and-lint-types.yml
+
+jobs:
+  check-eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: "npm"
+          cache-dependency-path: ./types/package-lock.json
+      - working-directory: types
+        run: npm install && npm run lint && npm run build
+
