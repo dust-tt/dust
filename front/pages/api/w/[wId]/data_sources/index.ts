@@ -109,7 +109,7 @@ async function handler(
 
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 256;
+      const dataSourceMaxChunkSize = 512;
 
       const dustProject = await CoreAPI.createProject();
       if (dustProject.isErr()) {
