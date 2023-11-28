@@ -60,7 +60,6 @@ import { PlanType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
-import { getGlobalAgents } from "./global_agents";
 /**
  * Conversation Creation, update and deletion
  */
@@ -288,73 +287,63 @@ async function batchRenderAgentMessages(
     );
   }
 
-  const [
-    localAgentConfigurations,
-    globalAgentConfigurations,
-    agentRetrievalActions,
-    agentDustAppRunActions,
-  ] = await Promise.all([
-    (async () => {
-      const agentConfigurationIds: string[] = messages.reduce(
-        (acc: string[], m) => {
-          const agentId = m.agentMessage?.agentConfigurationId;
-          if (agentId && !acc.includes(agentId)) {
-            acc.push(agentId);
-          }
-          return acc;
-        },
-        []
-      );
-      const agents = (
-        await Promise.all(
-          agentConfigurationIds.map((agentConfigId) => {
-            return getAgentConfiguration(auth, agentConfigId);
-          })
-        )
-      ).filter((a) => a !== null) as AgentConfigurationType[];
-      return agents;
-    })(),
-    getGlobalAgents(auth),
-    (async () => {
-      return await Promise.all(
-        messages
-          .filter((m) => m.agentMessage?.agentRetrievalActionId)
-          .map((m) => {
-            return renderRetrievalActionByModelId(
-              m.agentMessage?.agentRetrievalActionId as number
-            );
-          })
-      );
-    })(),
-    (async () => {
-      const actions = await AgentDustAppRunAction.findAll({
-        where: {
-          id: {
-            [Op.in]: messages
-              .filter((m) => m.agentMessage?.agentDustAppRunActionId)
-              .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
+  const [agentConfigurations, agentRetrievalActions, agentDustAppRunActions] =
+    await Promise.all([
+      (async () => {
+        const agentConfigurationIds: string[] = messages.reduce(
+          (acc: string[], m) => {
+            const agentId = m.agentMessage?.agentConfigurationId;
+            if (agentId && !acc.includes(agentId)) {
+              acc.push(agentId);
+            }
+            return acc;
           },
-        },
-      });
-      return actions.map((action) => {
-        return {
-          id: action.id,
-          type: "dust_app_run_action",
-          appWorkspaceId: action.appWorkspaceId,
-          appId: action.appId,
-          appName: action.appName,
-          params: action.params,
-          runningBlock: null,
-          output: action.output,
-        };
-      });
-    })(),
-  ]);
-
-  const agentConfigurations = [
-    ...localAgentConfigurations,
-    ...globalAgentConfigurations,
-  ];
+          []
+        );
+        const agents = (
+          await Promise.all(
+            agentConfigurationIds.map((agentConfigId) => {
+              return getAgentConfiguration(auth, agentConfigId);
+            })
+          )
+        ).filter((a) => a !== null) as AgentConfigurationType[];
+        return agents;
+      })(),
+      (async () => {
+        return await Promise.all(
+          messages
+            .filter((m) => m.agentMessage?.agentRetrievalActionId)
+            .map((m) => {
+              return renderRetrievalActionByModelId(
+                m.agentMessage?.agentRetrievalActionId as number
+              );
+            })
+        );
+      })(),
+      (async () => {
+        const actions = await AgentDustAppRunAction.findAll({
+          where: {
+            id: {
+              [Op.in]: messages
+                .filter((m) => m.agentMessage?.agentDustAppRunActionId)
+                .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
+            },
+          },
+        });
+        return actions.map((action) => {
+          return {
+            id: action.id,
+            type: "dust_app_run_action",
+            appWorkspaceId: action.appWorkspaceId,
+            appId: action.appId,
+            appName: action.appName,
+            params: action.params,
+            runningBlock: null,
+            output: action.output,
+          };
+        });
+      })(),
+    ]);
 
   return messages.map((message) => {
     if (!message.agentMessage) {
