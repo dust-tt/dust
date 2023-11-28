@@ -1,13 +1,16 @@
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
-
 use crate::run::Credentials;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
+use async_recursion::async_recursion;
 use async_trait::async_trait;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{cmp, str::FromStr};
+use tokio::try_join;
+
+use super::data_source::Section;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -35,6 +38,65 @@ impl FromStr for SplitterID {
     }
 }
 
+pub struct TokenizedText {
+    pub text: String,
+    pub tokens: Vec<usize>,
+}
+
+impl TokenizedText {
+    pub async fn from(
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        text: Option<&String>,
+    ) -> Result<Option<Self>> {
+        match text {
+            Some(text) => {
+                let tokens = embedder.encode(text).await?;
+                Ok(Some(TokenizedText {
+                    text: text.to_string(),
+                    tokens,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+pub struct TokenizedSection {
+    pub prefix: Option<TokenizedText>,
+    pub content: Option<TokenizedText>,
+    pub sections: Vec<TokenizedSection>,
+}
+
+impl TokenizedSection {
+    #[async_recursion]
+    pub async fn from(
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        section: &Section,
+    ) -> Result<Self> {
+        let (prefix, content) = try_join!(
+            TokenizedText::from(embedder, section.prefix.as_ref()),
+            TokenizedText::from(embedder, section.content.as_ref())
+        )?;
+
+        // process sections in parallel
+        let sections = futures::future::join_all(
+            section
+                .sections
+                .iter()
+                .map(|s| TokenizedSection::from(embedder, s)),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>>>()?;
+
+        Ok(TokenizedSection {
+            prefix,
+            content,
+            sections,
+        })
+    }
+}
+
 #[async_trait]
 pub trait Splitter {
     fn id(&self) -> SplitterID;
@@ -46,6 +108,7 @@ pub trait Splitter {
         model_id: &str,
         max_chunk_size: usize,
         text: &str,
+        sections: Option<Section>,
     ) -> Result<Vec<String>>;
 }
 
@@ -66,7 +129,7 @@ impl BaseV0Splitter {
         &self,
         embedder: &Box<dyn Embedder + Sync + Send>,
         chunk: &[usize],
-    ) -> Result<(Option<String>, Option<Vec<usize>>)> {
+    ) -> Result<(String, Vec<usize>)> {
         // The maximum number of tokens to slide the window by when decoding fails.
         const MAX_ERROR_SLIDE: usize = 4;
 
@@ -78,11 +141,7 @@ impl BaseV0Splitter {
             }
             match embedder.decode(chunk[0..end].to_vec()).await {
                 Ok(decoded_string) => {
-                    let mut remaining: Option<Vec<usize>> = None;
-                    if end != chunk.len() {
-                        remaining = Some(chunk[end..].to_vec());
-                    }
-                    return Ok((Some(decoded_string), remaining));
+                    return Ok((decoded_string, chunk[end..].to_vec()));
                 }
                 Err(_) => {
                     end -= 1;
@@ -93,15 +152,8 @@ impl BaseV0Splitter {
 
         return Err(anyhow!("Could not tokenize the provided document."));
     }
-}
 
-#[async_trait]
-impl Splitter for BaseV0Splitter {
-    fn id(&self) -> SplitterID {
-        SplitterID::BaseV0
-    }
-
-    async fn split(
+    async fn split_text(
         &self,
         credentials: Credentials,
         provider_id: ProviderID,
@@ -130,18 +182,9 @@ impl Splitter for BaseV0Splitter {
                 .decode_chunk_with_remainder(&embedder, tokenized_chunk)
                 .await
             {
-                Ok((Some(chunk), Some(remainder))) => {
+                Ok((chunk, remainder)) => {
                     current_chunk_size = current_chunk_size - remainder.len();
                     decoded.push(chunk);
-                }
-                Ok((Some(chunk), None)) => {
-                    decoded.push(chunk);
-                }
-                Ok((None, Some(_remainder))) => {
-                    return Err(anyhow!("Could not tokenize the provided document"));
-                }
-                Ok((None, None)) => {
-                    return Err(anyhow!("Could not tokenize the provided document"));
                 }
                 Err(e) => {
                     return Err(e);
@@ -154,6 +197,45 @@ impl Splitter for BaseV0Splitter {
         }
 
         Ok(decoded)
+    }
+
+    async fn split_sections(
+        &self,
+        credentials: Credentials,
+        provider_id: ProviderID,
+        model_id: &str,
+        max_chunk_size: usize,
+        section: Section,
+    ) -> Result<Vec<String>> {
+        return Ok(vec![]);
+    }
+}
+
+#[async_trait]
+impl Splitter for BaseV0Splitter {
+    fn id(&self) -> SplitterID {
+        SplitterID::BaseV0
+    }
+
+    async fn split(
+        &self,
+        credentials: Credentials,
+        provider_id: ProviderID,
+        model_id: &str,
+        max_chunk_size: usize,
+        text: &str,
+        sections: Option<Section>,
+    ) -> Result<Vec<String>> {
+        match sections {
+            Some(sections) => {
+                self.split_sections(credentials, provider_id, model_id, max_chunk_size, sections)
+                    .await
+            }
+            None => {
+                self.split_text(credentials, provider_id, model_id, max_chunk_size, text)
+                    .await
+            }
+        }
     }
 }
 
@@ -169,7 +251,14 @@ mod tests {
 
         let text = input;
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, max_chunk_size, &text)
+            .split(
+                credentials,
+                provider_id,
+                model_id,
+                max_chunk_size,
+                &text,
+                None,
+            )
             .await?;
 
         assert_eq!(&splitted.join(""), expected);
@@ -182,7 +271,8 @@ mod tests {
         // A single '🔥' emoji gets tokenized as : [9468, 242, 98].
         // So the string '🔥🔥' gets tokenized as : [9468, 242, 98, 9468, 242, 98]
         // With max_chunk_size=4, we end up with two chunks : [9468, 242, 98, 9468] and [242, 98].
-        // Without proper handling, the decoding of the first chunk would fail because the token "9468" alone is incomplete.
+        // Without proper handling, the decoding of the first chunk would fail because the token
+        // "9468" alone is incomplete.
         // We test that the splitter() function is properly handling this case.
         let input = "🔥🔥".to_string();
 

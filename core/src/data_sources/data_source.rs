@@ -144,7 +144,7 @@ impl SearchFilter {
 /// Section prefixes are repeated in all chunks generated from the section (and its children).
 #[derive(Serialize, Deserialize)]
 pub struct Section {
-    pub prefix: String,
+    pub prefix: Option<String>,
     pub content: Option<String>,
     pub sections: Vec<Section>,
 }
@@ -787,6 +787,7 @@ impl DataSource {
                 &self.config.model_id,
                 self.config.max_chunk_size,
                 text,
+                None,
             )
             .await?;
 
