@@ -1,6 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  checkConversationMessageExists,
+  getConversation,
+  getConversationWithoutContent,
+} from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -58,7 +62,10 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return apiError(req, res, {
@@ -81,12 +88,13 @@ async function handler(
   }
 
   const messageId = req.query.mId;
+  const messageExists = await checkConversationMessageExists(
+    auth,
+    conversation,
+    messageId
+  );
 
-  const message = conversation.content
-    .flat()
-    .find((message) => message.sId === messageId);
-
-  if (!message) {
+  if (!messageExists) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
