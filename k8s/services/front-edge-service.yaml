@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: front-edge-service
   annotations:
-    cloud.google.com/backend-config: '{"default": "front-edge-backendconfig"}'
+    cloud.google.com/backend-config: '{"default": "front-backendconfig"}'
 spec:
   selector:
     app: front-edge
