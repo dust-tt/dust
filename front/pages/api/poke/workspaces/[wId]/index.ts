@@ -15,11 +15,16 @@ export const WorkspaceTypeSchema = t.type({
 
 export type SegmentWorkspaceResponseBody = {
   workspace: WorkspaceType;
+
+import { dangerousSuperAdminDeleteWorkspaceData } from "@app/lib/api/workspace";
+
+export type DeleteWorkspaceResponseBody = {
+  success: true;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SegmentWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<SegmentWorkspaceResponseBody | DeleteWorkspaceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -62,13 +67,26 @@ async function handler(
       return res.status(200).json({
         workspace,
       });
+    case "DELETE":
+      try {
+        await dangerousSuperAdminDeleteWorkspaceData({ auth });
+      } catch (e) {
+        return apiError(req, res, {
+          status_code: 405,
+          api_error: {
+            type: "internal_server_error",
+            message: "An error occured while deleting the workspace data.",
+          },
+        });
+      }
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, PATCH OR DELETE is expected.",
         },
       });
   }
