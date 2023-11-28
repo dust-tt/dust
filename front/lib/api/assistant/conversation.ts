@@ -518,8 +518,6 @@ export async function getConversation(
   conversationId: string,
   includeDeleted?: boolean
 ): Promise<ConversationType | null> {
-  const now = new Date();
-
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -572,10 +570,6 @@ export async function getConversation(
     ),
     batchRenderContentFragment(messages.filter((m) => !!m.contentFragment)),
   ]);
-
-  console.log("getConversationLatency", {
-    latency: new Date().getTime() - now.getTime(),
-  });
 
   const render = [...userMessages, ...agentMessages, ...contentFragments];
   render.sort((a, b) => {
