@@ -239,7 +239,7 @@ export async function updateSlackConnector(
   return new Ok(c.id.toString());
 }
 
-async function uninstallSlack(nangoConnectionId: string) {
+export async function uninstallSlack(nangoConnectionId: string) {
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
   }
