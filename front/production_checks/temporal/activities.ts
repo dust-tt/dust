@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
 import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
+import { nangoConnectionIdCleanupSlack } from "@app/production_checks/checks/nango_connection_id_cleanup_slack";
 import { Check } from "@app/production_checks/types/check";
 
 export async function runAllChecksActivity() {
@@ -10,6 +11,10 @@ export async function runAllChecksActivity() {
     {
       name: "managed_data_source_gdrive_gc",
       check: managedDataSourceGCGdriveCheck,
+    },
+    {
+      name: "nango_connection_id_cleanup_slack",
+      check: nangoConnectionIdCleanupSlack,
     },
   ];
   await runAllChecks(checks);

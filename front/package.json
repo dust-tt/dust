@@ -19,6 +19,7 @@
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@nangohq/frontend": "^0.16.1",
+    "@nangohq/node": "^0.36.37",
     "@sendgrid/mail": "^7.7.0",
     "@slack/web-api": "^6.8.1",
     "@tailwindcss/forms": "^0.5.3",
