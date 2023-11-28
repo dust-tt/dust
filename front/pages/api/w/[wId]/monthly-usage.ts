@@ -97,48 +97,55 @@ async function getMonthlyUsage(
   referenceDate: Date,
   wId: string
 ): Promise<string> {
+  // We return the ModelId as conversationInternalId to avoid leaking the conversation.sId which
+  // would let the admin introspect all converstaions.
   const results = await front_sequelize.query<QueryResult>(
     `
-    SELECT 
+    SELECT
       TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-      c."id" AS "conversationModelId",
-      m."id" as "messageId",
-      um."id" AS "userMessageId", 
-      am."id" AS "agentMessageId",
-      u."id" as "userId",
+      c."id" AS "conversationInternalId",
+      m."sId" AS "messageId",
+      CASE
+        WHEN um."id" IS NOT NULL THEN 'user'
+        WHEN am."id" IS NOT NULL THEN 'assistant'
+        WHEN cf."id" IS NOT NULL THEN 'content_fragment'
+      END AS "messageType",
       um."userContextFullName" AS "userFullName",
-      COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId", 
-      COALESCE(ac."name", am."agentConfigurationId") AS "assistantName", 
-      CASE 
+      um."userContextEmail" AS "userEmail",
+      COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
+      COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
+      CASE
           WHEN ac."retrievalConfigurationId" IS NOT NULL THEN 'retrieval'
           WHEN ac."dustAppRunConfigurationId" IS NOT NULL THEN 'dustAppRun'
           ELSE NULL
       END AS "actionType",
-      CASE 
-          WHEN um."id" IS NOT NULL THEN 
-              CASE 
+      CASE
+          WHEN um."id" IS NOT NULL THEN
+              CASE
                   WHEN um."userId" IS NOT NULL THEN 'web'
                   ELSE 'slack'
               END
       END AS "source"
-  FROM 
+  FROM
       "messages" m
-  JOIN 
+  JOIN
       "conversations" c ON m."conversationId" = c."id"
-  JOIN 
+  JOIN
       "workspaces" w ON c."workspaceId" = w."id"
-  LEFT JOIN 
+  LEFT JOIN
       "user_messages" um ON m."userMessageId" = um."id"
-  LEFT JOIN 
+  LEFT JOIN
       "users" u ON um."userId" = u."id"
-  LEFT JOIN 
+  LEFT JOIN
       "agent_messages" am ON m."agentMessageId" = am."id"
-  LEFT JOIN 
+  LEFT JOIN
+      "content_fragments" cf ON m."contentFragmentId" = cf."id"
+  LEFT JOIN
       "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
-  WHERE 
+  WHERE
       w."sId" = :wId AND
       DATE_TRUNC('month', m."createdAt") = DATE_TRUNC('month', :referenceDate::timestamp)
-  ORDER BY 
+  ORDER BY
       "createdAt" DESC
   `,
     {
