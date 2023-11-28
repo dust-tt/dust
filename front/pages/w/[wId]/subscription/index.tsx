@@ -7,6 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect } from "react";
 
@@ -256,6 +257,9 @@ export default function Subscription({
                   </div>
                 </div>
               ))}
+            <Link href="/terms" target="_blank" className="text-sm">
+              Terms of use apply to all plans.
+            </Link>
           </Page.Vertical>
         ) : (
           <Page.Vertical>

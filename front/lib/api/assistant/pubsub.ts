@@ -52,8 +52,8 @@ export async function postUserMessageWithPubSub(
   let timeframeSeconds: number | undefined = undefined;
   let rateLimitKey: string | undefined = "";
   if (auth.user()?.id) {
-    maxPerTimeframe = 256;
-    timeframeSeconds = 60 * 60;
+    maxPerTimeframe = 50;
+    timeframeSeconds = 60 * 60 * 3;
     rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
   } else {
     maxPerTimeframe = 512;
