@@ -14,7 +14,7 @@ use dust::{
     app,
     blocks::block::BlockType,
     data_sources::{
-        data_source::{self, SearchFilter},
+        data_source::{self, SearchFilter, Section},
         qdrant::QdrantClients,
     },
     databases::database::DatabaseRow,
@@ -1382,6 +1382,7 @@ struct DataSourcesDocumentsUpsertPayload {
     parents: Vec<String>,
     source_url: Option<String>,
     text: String,
+    section: Option<Section>,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
 }
@@ -1425,7 +1426,14 @@ async fn data_sources_documents_upsert(
                         &payload.tags,
                         &payload.parents,
                         &payload.source_url,
-                        &payload.text,
+                        match payload.section {
+                            Some(s) => s,
+                            None => Section {
+                                prefix: None,
+                                content: Some(payload.text),
+                                sections: vec![],
+                            },
+                        },
                         true, // preserve system tags
                     )
                     .await

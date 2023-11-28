@@ -5,7 +5,6 @@ use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_recursion::async_recursion;
 use async_trait::async_trait;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{cmp, str::FromStr};
@@ -102,18 +101,7 @@ async fn split_text(
     embedder: &Box<dyn Embedder + Sync + Send>,
     max_chunk_size: usize,
     text: &str,
-    remove_spaces: bool,
 ) -> Result<Vec<TokenizedText>> {
-    // Replace all \s+ with " " and trim.
-    let re = Regex::new(r"\s+").unwrap();
-    let clean = re.replace_all(text, " ");
-    let clean = clean.trim();
-
-    let text = match remove_spaces {
-        true => clean,
-        false => text,
-    };
-
     // Encode the clean text.
     let mut encoded = embedder.encode(text).await?;
 
@@ -206,8 +194,7 @@ impl TokenizedSection {
             let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
 
             if c.tokens.len() > effective_max_chunk_size {
-                let splits =
-                    split_text(&embedder, effective_max_chunk_size, &c.text, false).await?;
+                let splits = split_text(&embedder, effective_max_chunk_size, &c.text).await?;
 
                 // Prepend to childrens the splits of the content with no additional prefixes (they
                 // will inherit the current section prefixes whose content will be removed).
@@ -341,8 +328,7 @@ pub trait Splitter {
         provider_id: ProviderID,
         model_id: &str,
         max_chunk_size: usize,
-        text: &str,
-        sections: Option<Section>,
+        sections: Section,
     ) -> Result<Vec<String>>;
 }
 
@@ -358,27 +344,15 @@ impl BaseV0Splitter {
     pub fn new() -> Self {
         BaseV0Splitter {}
     }
+}
 
-    async fn split_text(
-        &self,
-        credentials: Credentials,
-        provider_id: ProviderID,
-        model_id: &str,
-        max_chunk_size: usize,
-        text: &str,
-    ) -> Result<Vec<String>> {
-        // Get the embedder and initialize.
-        let mut embedder = provider(provider_id).embedder(model_id.to_string());
-        embedder.initialize(credentials).await?;
-
-        Ok(split_text(&embedder, max_chunk_size, text, true)
-            .await?
-            .into_iter()
-            .map(|t| t.text)
-            .collect())
+#[async_trait]
+impl Splitter for BaseV0Splitter {
+    fn id(&self) -> SplitterID {
+        SplitterID::BaseV0
     }
 
-    async fn split_sections(
+    async fn split(
         &self,
         credentials: Credentials,
         provider_id: ProviderID,
@@ -400,41 +374,18 @@ impl BaseV0Splitter {
     }
 }
 
-#[async_trait]
-impl Splitter for BaseV0Splitter {
-    fn id(&self) -> SplitterID {
-        SplitterID::BaseV0
-    }
-
-    async fn split(
-        &self,
-        credentials: Credentials,
-        provider_id: ProviderID,
-        model_id: &str,
-        max_chunk_size: usize,
-        text: &str,
-        sections: Option<Section>,
-    ) -> Result<Vec<String>> {
-        match sections {
-            Some(sections) => {
-                self.split_sections(credentials, provider_id, model_id, max_chunk_size, sections)
-                    .await
-            }
-            None => {
-                self.split_text(credentials, provider_id, model_id, max_chunk_size, text)
-                    .await
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use anyhow::Ok;
 
     use super::*;
 
-    async fn test_splitter(input: &String, expected: &String, max_chunk_size: usize) -> Result<()> {
+    async fn test_splitter(
+        input: &String,
+        expected: &String,
+        max_chunk_size: usize,
+        splits_count: usize,
+    ) -> Result<()> {
         let provider_id = ProviderID::OpenAI;
         let model_id = "text-embedding-ada-002";
 
@@ -447,12 +398,16 @@ mod tests {
                 provider_id,
                 model_id,
                 max_chunk_size,
-                &text,
-                None,
+                Section {
+                    prefix: None,
+                    content: Some(text.to_string()),
+                    sections: vec![],
+                },
             )
             .await?;
 
         assert_eq!(&splitted.join(""), expected);
+        assert_eq!(splitted.len(), splits_count);
         Ok(())
     }
     #[tokio::test]
@@ -467,22 +422,24 @@ mod tests {
         // We test that the splitter() function is properly handling this case.
         let input = "🔥🔥".to_string();
 
-        test_splitter(&input, &input, max_chunk_size).await.unwrap();
+        test_splitter(&input, &input, max_chunk_size, 2)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn test_splitter_basic_text() {
-        let cases: [String; 2] = [
-            "a random document string with no double space".repeat(10),
-            "a  random  document string WITH double spaces".repeat(10),
+        let cases: [(String, usize); 2] = [
+            (
+                "a random document string with no double space".repeat(10),
+                10,
+            ),
+            ("a  random  document string WITH double spaces".repeat(8), 9),
         ];
-        let re = Regex::new(r"\s+").unwrap();
-
         let max_chunk_size = 8;
 
-        for case in cases {
-            let expected = re.replace_all(&case, " ");
-            test_splitter(&case, &expected.to_string(), max_chunk_size)
+        for (case, splits_count) in cases {
+            test_splitter(&case, &case, max_chunk_size, splits_count)
                 .await
                 .unwrap();
         }
@@ -527,7 +484,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, "", Some(section))
+            .split(credentials, provider_id, model_id, 12, section)
             .await
             .unwrap();
 
@@ -581,7 +538,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, "", Some(section))
+            .split(credentials, provider_id, model_id, 12, section)
             .await
             .unwrap();
 
@@ -639,7 +596,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, "", Some(section))
+            .split(credentials, provider_id, model_id, 12, section)
             .await
             .unwrap();
 

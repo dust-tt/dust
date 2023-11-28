@@ -149,6 +149,38 @@ pub struct Section {
     pub sections: Vec<Section>,
 }
 
+impl Section {
+    fn dfs(&self) -> Vec<&Self> {
+        let mut res = vec![self];
+        for section in &self.sections {
+            res.extend(section.dfs());
+        }
+        res
+    }
+
+    /// Reconstructs the full text of the Section object.
+    pub fn full_text(&self) -> String {
+        let mut text = String::new();
+
+        for s in self.dfs() {
+            match s.prefix {
+                Some(ref prefix) => {
+                    text += &prefix;
+                }
+                None => (),
+            }
+            match s.content {
+                Some(ref content) => {
+                    text += &content;
+                }
+                None => (),
+            }
+        }
+
+        text
+    }
+}
+
 /// A Chunk is a subset of a document that was inserted into vector search db. `hash` covers both
 /// the chunk text and the parent document tags (inserted into vector db search on each chunk to
 /// leverage tags filtering there). It is used as unique ID for the chunk in vector search db.
@@ -648,11 +680,12 @@ impl DataSource {
         tags: &Vec<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
-        text: &str,
+        text: Section,
         preserve_system_tags: bool,
     ) -> Result<Document> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
 
+        let full_text = text.full_text();
         // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
         // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
         if preserve_system_tags
@@ -706,7 +739,7 @@ impl DataSource {
         // Hash document.
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
-        hasher.update(text.as_bytes());
+        hasher.update(full_text.as_bytes());
         hasher.update(format!("{}", timestamp).as_bytes());
         tags.iter().for_each(|tag| {
             hasher.update(tag.as_bytes());
@@ -728,7 +761,7 @@ impl DataSource {
             &parents,
             source_url,
             &document_hash,
-            text.len() as u64,
+            full_text.len() as u64,
         )?;
 
         // GCP store raw text and document_id.
@@ -757,7 +790,7 @@ impl DataSource {
             ),
             Object::create(
                 &bucket,
-                text.as_bytes().to_vec(),
+                full_text.as_bytes().to_vec(),
                 &content_path,
                 "application/text",
             ),
@@ -787,7 +820,6 @@ impl DataSource {
                 &self.config.model_id,
                 self.config.max_chunk_size,
                 text,
-                None,
             )
             .await?;
 
@@ -2035,5 +2067,42 @@ mod tests {
                 result
             );
         }
+    }
+
+    #[test]
+    fn test_section_simple() {
+        let section = Section {
+            prefix: None,
+            content: Some("Hello world".to_string()),
+            sections: vec![],
+        };
+
+        assert_eq!(section.full_text(), "Hello world");
+    }
+
+    #[test]
+    fn test_sections() {
+        let section = Section {
+            prefix: Some("# title\n".to_string()),
+            content: Some("This is an introduction.\n".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("## paragraph 2\n".to_string()),
+                    content: Some("This is a paragraph1.\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some("## paragraph 2\n".to_string()),
+                    content: Some("This is a paragraph2.\n".to_string()),
+                    sections: vec![],
+                },
+            ],
+        };
+
+        assert_eq!(
+            section.full_text(),
+            "# title\nThis is an introduction.\n## paragraph 2\nThis \
+             is a paragraph1.\n## paragraph 2\nThis is a paragraph2.\n"
+        );
     }
 }
