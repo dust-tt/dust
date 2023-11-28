@@ -8,7 +8,8 @@ export type APIErrorType =
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
   | "not_found"
-  | "slack_channel_not_found";
+  | "slack_channel_not_found"
+  | "connector_rate_limit_error";
 
 export type APIError = {
   type: APIErrorType;
@@ -34,8 +35,7 @@ export type WorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "transient_upstream_activity_error"
   | "transient_nango_activity_error"
-  | "upstream_is_down_activity_error"
-  | "connector_rate_limit_activity_error";
+  | "upstream_is_down_activity_error";
 
 export type WorkflowError = {
   type: WorkflowErrorType;
