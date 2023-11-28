@@ -24,6 +24,7 @@ export async function getMessageReactions(
     where: {
       conversationId: conversation.id,
     },
+    attributes: ["sId"],
     include: [
       {
         model: MessageReaction,
