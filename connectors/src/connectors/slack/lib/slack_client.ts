@@ -52,6 +52,21 @@ export async function getSlackClient(
         // @ts-expect-error can't get typescript to be happy with this, but it works.
         return await Reflect.apply(target, thisArg, argumentsList);
       } catch (e) {
+        // If we get rate limited, we throw a known error.
+        // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
+        // see PR #2689 for details
+        if (
+          e instanceof Error &&
+          e.message.startsWith("A rate limit was exceeded")
+        ) {
+          throw {
+            __is_dust_error: true,
+            message: e.message,
+            triggeringError: e,
+            type: "connector_rate_limit_error",
+          };
+        }
+
         const slackError = e as CodedError;
         if (slackError.code === ErrorCode.HTTPError) {
           const httpError = slackError as WebAPIHTTPError;
@@ -63,15 +78,6 @@ export async function getSlackClient(
             };
             throw workflowError;
           }
-        }
-        if (slackError.code === ErrorCode.RateLimitedError) {
-          // If we get rate limited, we throw a known error. The activity will be
-          // automatically retried, no need to generate an alert
-          throw {
-            __is_dust_error: true,
-            message: slackError.message,
-            type: "connector_rate_limit_activity_error",
-          };
         }
         throw e;
       }
