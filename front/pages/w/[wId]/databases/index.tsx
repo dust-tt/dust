@@ -12,11 +12,12 @@ import {
 } from "@dust-tt/sparkle";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import React, { useRef } from "react";
+import React, { useContext, useRef } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -247,6 +248,8 @@ function DatabaseModal({
   // Not empty, only alphanumeric, and not too long
   const isNameValid = () => name !== "" && /^[a-zA-Z0-9_]{1,32}$/.test(name);
 
+  const sendNotification = useContext(SendNotificationsContext);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -264,25 +267,39 @@ function DatabaseModal({
           if (!file) return;
           if (file.size > 5_000_000) {
             // TODO handle ?
-            console.error("File too large");
+            sendNotification({
+              type: "error",
+              title: "File too large",
+              description: "Please upload a file smaller than 5MB.",
+            });
             return;
           }
           if (file.type !== "text/csv") {
-            // TODO handle ?
-            console.error("Invalid file type");
+            sendNotification({
+              type: "error",
+              title: "Invalid file type",
+              description: "Please upload a CSV file.",
+            });
             return;
           }
 
           const res = await handleFileUploadToText(file);
           if (res.isErr()) {
-            // TODO handle ?
-            console.error(res.error);
+            sendNotification({
+              type: "error",
+              title: "Error uploading file",
+              description: `An unexpected error occured: ${res.error}.`,
+            });
             return;
           }
           const { content } = res.value;
           if (res.value.content.length > 1_000_000) {
-            // TODO handle ?
-            console.error("Extracted file too large");
+            sendNotification({
+              type: "error",
+              title: "File too large",
+              description:
+                "Please upload a file containing less than 1 million characters.",
+            });
             return;
           }
 
@@ -302,8 +319,11 @@ function DatabaseModal({
           );
 
           if (!uploadRes.ok) {
-            // TODO handle ?
-            console.error(uploadRes.statusText);
+            sendNotification({
+              type: "error",
+              title: "Error uploading file",
+              description: `An error occured: ${await uploadRes.text()}.`,
+            });
             return;
           }
 
