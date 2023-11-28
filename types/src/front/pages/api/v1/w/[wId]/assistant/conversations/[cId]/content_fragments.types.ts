@@ -1,12 +1,12 @@
-import * as t from 'io-ts';
+import * as t from "io-ts";
 
 export const PostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
   contentType: t.union([
-    t.literal('slack_thread_content'),
-    t.literal('file_attachment'),
+    t.literal("slack_thread_content"),
+    t.literal("file_attachment"),
   ]),
   context: t.union([
     t.type({
