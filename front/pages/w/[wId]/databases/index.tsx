@@ -232,10 +232,8 @@ function DatabaseModal({
   });
 
   const [name, setName] = React.useState("");
-
   const [editedDescriptionByTableId, setEditedDescriptionByTableId] =
     React.useState<Record<string, string>>({});
-
   const [newTableDescription, setNewTableDescription] = React.useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -245,6 +243,9 @@ function DatabaseModal({
     setEditedDescriptionByTableId({});
     onClose();
   };
+
+  // Not empty, only alphanumeric, and not too long
+  const isNameValid = () => name !== "" && /^[a-zA-Z0-9_]{1,32}$/.test(name);
 
   return (
     <Modal
@@ -329,6 +330,7 @@ function DatabaseModal({
                   setName(v);
                 }}
                 className="w-full"
+                error={isNameValid() ? null : "Invalid name"}
               />
             )}
             {!database && (
@@ -340,6 +342,7 @@ function DatabaseModal({
                 onChange={(v) => {
                   setNewTableDescription(v);
                 }}
+                error={newTableDescription.length === 0 ? "Required" : null}
               />
             )}
           </div>
@@ -368,6 +371,9 @@ function DatabaseModal({
                           [t.table_id]: v,
                         });
                       }}
+                      error={
+                        editedDescription?.length === 0 ? "Required" : null
+                      }
                     />
                   </div>
                 );
@@ -380,7 +386,7 @@ function DatabaseModal({
             <Button
               label={"Upload CSV"}
               size="xs"
-              disabled={name === "" || newTableDescription === ""}
+              disabled={!isNameValid() || newTableDescription === ""}
               onClick={() => fileInputRef.current?.click()}
             />
           )}
