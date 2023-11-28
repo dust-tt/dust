@@ -103,7 +103,7 @@ async function getMonthlyUsage(
     `
     SELECT
       TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-      c."id" AS "conversationInternaId",
+      c."id" AS "conversationInternalId",
       m."sId" AS "messageId",
       CASE
         WHEN um."id" IS NOT NULL THEN 'user'
