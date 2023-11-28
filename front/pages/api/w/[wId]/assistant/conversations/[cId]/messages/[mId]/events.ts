@@ -1,11 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  getConversationMessageType,
+  getConversationWithoutContent,
+} from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
@@ -58,7 +60,10 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return apiError(req, res, {
@@ -81,12 +86,13 @@ async function handler(
   }
 
   const messageId = req.query.mId;
+  const messageType = await getConversationMessageType(
+    auth,
+    conversation,
+    messageId
+  );
 
-  const message = conversation.content
-    .flat()
-    .find((message) => message.sId === messageId);
-
-  if (!message) {
+  if (!messageType) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -95,7 +101,7 @@ async function handler(
       },
     });
   }
-  if (!isAgentMessageType(message)) {
+  if (messageType !== "agent_message") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

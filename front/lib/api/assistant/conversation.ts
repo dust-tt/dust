@@ -545,6 +545,40 @@ export async function getConversationWithoutContent(
   };
 }
 
+export async function getConversationMessageType(
+  auth: Authenticator,
+  conversation: ConversationType | ConversationWithoutContentType,
+  messageId: string
+): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const message = await Message.findOne({
+    where: {
+      conversationId: conversation.id,
+      sId: messageId,
+    },
+  });
+
+  if (!message) {
+    return null;
+  }
+
+  if (message.userMessageId) {
+    return "user_message";
+  }
+  if (message.agentMessageId) {
+    return "agent_message";
+  }
+  if (message.contentFragment) {
+    return "content_fragment";
+  }
+
+  return null;
+}
+
 /**
  * Title generation
  */

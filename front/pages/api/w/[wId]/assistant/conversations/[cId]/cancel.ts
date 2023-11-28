@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -68,7 +68,10 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return apiError(req, res, {
