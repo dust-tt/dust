@@ -72,10 +72,10 @@ export const Span = ({ children, className = "" }: ContentProps) => (
 );
 
 const pClasses = {
-  xs: "font-regular text-sm text-slate-400 md:text-base",
-  sm: "font-regular text-base text-slate-400 md:text-lg",
-  md: "font-regular text-base md:text-lg text-slate-400 lg:text-xl drop-shadow",
-  lg: "font-regular text-lg md:text-xl text-slate-400 lg:text-2xl drop-shadow",
+  xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
+  sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
+  md: "font-objektiv text-base md:text-lg text-slate-400 lg:text-xl drop-shadow leading-relaxed",
+  lg: "font-objektiv text-lg md:text-xl text-slate-400 lg:text-2xl drop-shadow leading-relaxed",
 };
 
 interface PProps {
