@@ -10,6 +10,7 @@ import {
   PaperAirplaneIcon,
   PlanetIcon,
   RobotIcon,
+  ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
@@ -33,7 +34,8 @@ export type SubNavigationAdminId =
   | "members"
   | "developers"
   | "assistants"
-  | "extract";
+  | "extract"
+  | "databases";
 export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
@@ -41,7 +43,7 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "extract";
+export type SubNavigationLabId = "extract" | "databases";
 export type SparkleAppLayoutNavigation = {
   id:
     | TopNavigationId
@@ -217,6 +219,13 @@ export const subNavigationAdmin = ({
           icon: ArrowUpOnSquareIcon,
           href: `/w/${owner.sId}/u/extract`,
           current: current === "extract",
+        },
+        {
+          id: "databases",
+          label: "Databases",
+          icon: ServerIcon,
+          href: `/w/${owner.sId}/databases`,
+          current: current === "databases",
         },
       ],
     });

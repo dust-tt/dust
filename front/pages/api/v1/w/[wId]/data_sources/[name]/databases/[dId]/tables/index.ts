@@ -11,7 +11,7 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type ListDatabaseTablesResponseBody = {
+export type ListDatabaseTablesResponseBody = {
   tables: CoreAPIDatabaseTable[];
 };
 
