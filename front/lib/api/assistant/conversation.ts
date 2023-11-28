@@ -184,16 +184,13 @@ export async function deleteConversation(
  */
 
 async function batchRenderUserMessages(messages: Message[]) {
-  if (messages.find((m) => !m.userMessage)) {
-    throw new Error(
-      "Unreachable: batchRenderUserMessages must be called with only user messages"
-    );
-  }
-
+  const userMessages = messages.filter(
+    (m) => m.userMessage !== null && m.userMessage !== undefined
+  );
   const [mentions, users] = await Promise.all([
     Mention.findAll({
       where: {
-        messageId: messages.map((m) => m.id),
+        messageId: userMessages.map((m) => m.id),
       },
       include: [
         {
@@ -204,7 +201,7 @@ async function batchRenderUserMessages(messages: Message[]) {
       ],
     }),
     (async () => {
-      const userIds = messages
+      const userIds = userMessages
         .map((m) => m.userMessage?.userId)
         .filter((id) => !!id) as number[];
       if (userIds.length === 0) {
@@ -218,10 +215,10 @@ async function batchRenderUserMessages(messages: Message[]) {
     })(),
   ]);
 
-  return messages.map((message) => {
+  return userMessages.map((message) => {
     if (!message.userMessage) {
       throw new Error(
-        "Unreachable: batchRenderUserMessages must be called with only user messages"
+        "Unreachable: batchRenderUserMessages has been filtered on user messages"
       );
     }
     const userMessage = message.userMessage;
@@ -281,12 +278,6 @@ async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
 ) {
-  if (messages.find((m) => !m.agentMessage && !m.userMessage)) {
-    throw new Error(
-      "Unreachable: batchRenderAgentMessages must be called with only agent & user messages"
-    );
-  }
-
   const agentMessages = messages.filter((m) => !!m.agentMessage);
   const userMessages = messages.filter((m) => !!m.userMessage);
 
@@ -351,7 +342,7 @@ async function batchRenderAgentMessages(
   return agentMessages.map((message) => {
     if (!message.agentMessage) {
       throw new Error(
-        "Unreachable: batchRenderAgentMessages loop must be called with only agent messages"
+        "Unreachable: batchRenderAgentMessages has been filtered on agent message"
       );
     }
     const agentMessage = message.agentMessage;
@@ -425,13 +416,16 @@ function renderContentFragment({
 }
 
 async function batchRenderContentFragment(messages: Message[]) {
-  if (messages.find((m) => !m.contentFragment)) {
+  const messagesWithContentFragment = messages.filter(
+    (m) => !!m.contentFragment
+  );
+  if (messagesWithContentFragment.find((m) => !m.contentFragment)) {
     throw new Error(
       "Unreachable: batchRenderContentFragment must be called with only content fragments"
     );
   }
 
-  return messages.map((message) => {
+  return messagesWithContentFragment.map((message) => {
     if (!message.contentFragment) {
       throw new Error(
         "Unreachable: batchRenderContentFragment must be called with only content fragments"
@@ -554,12 +548,9 @@ export async function getConversation(
   });
 
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
-    batchRenderUserMessages(messages.filter((m) => !!m.userMessage)),
-    batchRenderAgentMessages(
-      auth,
-      messages.filter((m) => !!m.agentMessage || !!m.userMessage)
-    ),
-    batchRenderContentFragment(messages.filter((m) => !!m.contentFragment)),
+    batchRenderUserMessages(messages),
+    batchRenderAgentMessages(auth, messages),
+    batchRenderContentFragment(messages),
   ]);
 
   const render = [...userMessages, ...agentMessages, ...contentFragments];
