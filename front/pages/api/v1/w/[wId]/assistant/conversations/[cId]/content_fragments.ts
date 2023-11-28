@@ -1,4 +1,4 @@
-import {PostContentFragmentRequestBodySchema} from "@dust-tt/types"
+import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,8 +16,6 @@ import { ContentFragmentType } from "@app/types/assistant/conversation";
 export type PostContentFragmentsResponseBody = {
   contentFragment: ContentFragmentType;
 };
-
-
 
 export type PostContentFragmentRequestBody = t.TypeOf<
   typeof PostContentFragmentRequestBodySchema
