@@ -43,12 +43,12 @@ jobs:
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh core ./Dockerfile ./core/
 
-      # - name: Deploy the image on Kubernetes
-      #   run: |
-      #     chmod +x ./k8s/deploy-image.sh
-      #     ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/core-image:${{ steps.short_sha.outputs.short_sha }} core-deployment
+      - name: Deploy the image on Kubernetes
+        run: |
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/core-image:${{ steps.short_sha.outputs.short_sha }} core-deployment
 
-      # - name: Wait for rollout to complete
-      #   run: |
-      #     echo "Waiting for rollout to complete (web)"
-      #     kubectl rollout status deployment/core-deployment --timeout=10m
+      - name: Wait for rollout to complete
+        run: |
+          echo "Waiting for rollout to complete (web)"
+          kubectl rollout status deployment/core-deployment --timeout=10m
