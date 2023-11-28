@@ -82,6 +82,15 @@ async function handler(
       }
 
       const csvRows = csvRowsRes.value;
+      if (csvRows.length > 2000) {
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: `CSV has too many rows: ${csvRows.length} (max 2000).`,
+          },
+          status_code: 400,
+        });
+      }
 
       const id = generateModelSId();
 
