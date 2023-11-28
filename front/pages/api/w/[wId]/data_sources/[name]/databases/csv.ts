@@ -249,6 +249,7 @@ async function rowsFromCsv(
       continue;
     }
 
+    // We keep the parsed values from the first parser that succeeds for all non-null values in the column.
     parsedValuesByCol[col] = (() => {
       for (const parser of [
         // number
