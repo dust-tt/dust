@@ -23,9 +23,11 @@ import { OAuth2Client } from "googleapis-common";
 import { CreationAttributes, literal, Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { createDatabase, upsertTable } from "@connectors/lib/databases";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Database } from "@connectors/lib/models/databases";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -555,6 +557,18 @@ async function syncOneFile(
     throw new Error("Unreachable: documentContent is undefined");
   }
 
+  const params: CreationAttributes<GoogleDriveFiles> = {
+    connectorId: connectorId,
+    dustFileId: documentId,
+    driveFileId: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    parentId: file.parent,
+    lastSeenTs: new Date(),
+  };
+
+  const [googleDriveFile] = await GoogleDriveFiles.upsert(params);
+
   const ingestionModes = MIME_TYPES_INGESTION_TYPES[mimeType];
   let upsertTimestampMs: number | undefined = undefined;
   for (const ingestionMode of ingestionModes) {
@@ -575,14 +589,9 @@ async function syncOneFile(
         break;
       case "STRUCTURED":
         ingestedAt = await upsertFileToDatabase({
-          file,
           documentContent,
-          connectorId,
-          documentId,
           dataSourceConfig,
-          startSyncTs,
-          oauth2client,
-          isBatchSync,
+          googleDriveFileModel: googleDriveFile,
         });
         break;
       default:
@@ -594,21 +603,11 @@ async function syncOneFile(
     }
   }
 
-  const params: CreationAttributes<GoogleDriveFiles> = {
-    connectorId: connectorId,
-    dustFileId: documentId,
-    driveFileId: file.id,
-    name: file.name,
-    mimeType: file.mimeType,
-    parentId: file.parent,
-    lastSeenTs: new Date(),
-  };
-
   if (upsertTimestampMs) {
-    params.lastUpsertedTs = new Date(upsertTimestampMs);
+    await googleDriveFile.update({
+      lastUpsertedTs: new Date(upsertTimestampMs),
+    });
   }
-
-  await GoogleDriveFiles.upsert(params);
 
   return !!upsertTimestampMs;
 }
@@ -684,27 +683,43 @@ async function upsertFileToDatasource({
 }
 
 async function upsertFileToDatabase({
-  file,
   documentContent,
-  connectorId,
-  documentId,
+  googleDriveFileModel,
   dataSourceConfig,
-  startSyncTs,
-  oauth2client,
-  isBatchSync = false,
 }: {
-  file: GoogleDriveObjectType;
   documentContent: string;
-  connectorId: ModelId;
-  documentId: string;
+
+  googleDriveFileModel: GoogleDriveFiles;
+
   dataSourceConfig: DataSourceConfig;
-  startSyncTs: number;
-  oauth2client: OAuth2Client;
-  isBatchSync?: boolean;
 }): Promise<number | undefined> {
   const parser = parse(documentContent);
   let header: string[] | undefined = undefined;
   const valuesByCol: Record<string, string[]> = {};
+
+  let database = await Database.findOne({
+    where: {
+      googleDriveFileId: googleDriveFileModel.id,
+    },
+  });
+
+  if (!database) {
+    const coreDbId = await createDatabase({
+      dataSourceConfig,
+      databaseName: googleDriveFileModel.driveFileId,
+    });
+    await upsertTable({
+      dataSourceConfig,
+      databaseId: coreDbId,
+      name: googleDriveFileModel.driveFileId,
+      description: `CSV file from Google Drive. Title: ${googleDriveFileModel.name}.`,
+    });
+    database = await Database.create({
+      coreDatabaseId: coreDbId,
+      googleDriveFileId: googleDriveFileModel.id,
+    });
+    // TODO: transactions, delete on `core` if failure
+  }
 
   // Go through CSV and aggregate values by column.
   for await (const anyRecord of parser) {
