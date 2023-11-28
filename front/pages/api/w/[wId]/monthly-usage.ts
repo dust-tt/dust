@@ -97,11 +97,13 @@ async function getMonthlyUsage(
   referenceDate: Date,
   wId: string
 ): Promise<string> {
+  // We return the ModelId as converstionModelId to avoid leaking the conversation.sId which would
+  // let the admin introspect all converstaions.
   const results = await front_sequelize.query<QueryResult>(
     `
     SELECT
       TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-      c."sId" AS "conversationId",
+      c."id" AS "conversationInternaId",
       m."sId" AS "messageId",
       CASE
         WHEN um."id" IS NOT NULL THEN 'user'
