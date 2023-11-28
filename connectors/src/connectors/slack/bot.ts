@@ -34,7 +34,7 @@ const { DUST_CLIENT_FACING_URL } = process.env;
 
 class SlackExternalUserError extends Error {}
 
-const BLACKLISTED_BOT_NAME = ["Slackbot", "tidybot"];
+const WHITELISTED_BOT_NAME = ["Beaver"];
 
 export async function botAnswerMessageWithErrorHandling(
   message: string,
@@ -171,8 +171,10 @@ async function botAnswerMessage(
 
   if (
     slackUserInfo.user.is_bot &&
-    (BLACKLISTED_BOT_NAME.includes(displayName || "") ||
-      BLACKLISTED_BOT_NAME.includes(realName || ""))
+    !(
+      WHITELISTED_BOT_NAME.includes(displayName || "") ||
+      WHITELISTED_BOT_NAME.includes(realName || "")
+    )
   ) {
     logger.info(
       {
