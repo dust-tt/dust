@@ -261,7 +261,7 @@ impl TokenizedSection {
         TokenizedText { text, tokens }
     }
 
-    fn tokens_count(sections: Vec<&Self>) -> usize {
+    fn tokens_count_from_sections(sections: Vec<&Self>) -> usize {
         let mut seen_prefixes: HashSet<String> = HashSet::new();
         let mut tokens_count: usize = 0;
 
@@ -303,7 +303,7 @@ impl TokenizedSection {
             let mut attempt = chunk.clone();
             attempt.push(s);
 
-            if Self::tokens_count(attempt) <= max_chunk_size {
+            if Self::tokens_count_from_sections(attempt) <= max_chunk_size {
                 chunk.push(s);
             } else {
                 chunks.push(self.chunk_from_sections(chunk.clone()));
