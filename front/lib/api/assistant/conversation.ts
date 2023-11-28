@@ -288,78 +288,73 @@ async function batchRenderAgentMessages(
     );
   }
 
-  const [agentConfigurations, agentRetrievalActions, agentDustAppRunActions] =
-    await Promise.all([
-      (async () => {
-        const agentConfigurationIds: string[] = messages.reduce(
-          (acc: string[], m) => {
-            const agentId = m.agentMessage?.agentConfigurationId;
-            if (agentId && !acc.includes(agentId)) {
-              acc.push(agentId);
-            }
-            return acc;
-          },
-          []
-        );
-        const agents = (
-          await Promise.all(
-            agentConfigurationIds.map(async (agentConfigId) => {
-              return await getAgentConfiguration(auth, agentConfigId);
-            })
-          )
-        ).filter((a) => a !== null) as AgentConfigurationType[];
-        const globalAgents = await getGlobalAgents(auth);
-        return [...globalAgents, ...agents];
-      })(),
-      (async () => {
-        const agentRetrievalActionIds: number[] = messages.reduce(
-          (acc: number[], m) => {
-            const agentId = m.agentMessage?.agentRetrievalActionId;
-            if (agentId && !acc.includes(agentId)) {
-              acc.push(agentId);
-            }
-            return acc;
-          },
-          []
-        );
-        return await Promise.all(
-          agentRetrievalActionIds.map(async (agentRetrievalActionId) => {
-            return await renderRetrievalActionByModelId(agentRetrievalActionId);
+  const [
+    localAgentConfigurations,
+    globalAgentConfigurations,
+    agentRetrievalActions,
+    agentDustAppRunActions,
+  ] = await Promise.all([
+    (async () => {
+      const agentConfigurationIds: string[] = messages.reduce(
+        (acc: string[], m) => {
+          const agentId = m.agentMessage?.agentConfigurationId;
+          if (agentId && !acc.includes(agentId)) {
+            acc.push(agentId);
+          }
+          return acc;
+        },
+        []
+      );
+      const agents = (
+        await Promise.all(
+          agentConfigurationIds.map((agentConfigId) => {
+            return getAgentConfiguration(auth, agentConfigId);
           })
-        );
-      })(),
-      (async () => {
-        const agentDustAppRunActionsIds: number[] = messages.reduce(
-          (acc: number[], m) => {
-            const agentId = m.agentMessage?.agentDustAppRunActionId;
-            if (agentId && !acc.includes(agentId)) {
-              acc.push(agentId);
-            }
-            return acc;
+        )
+      ).filter((a) => a !== null) as AgentConfigurationType[];
+      return agents;
+    })(),
+    getGlobalAgents(auth),
+    (async () => {
+      return await Promise.all(
+        messages
+          .filter((m) => m.agentMessage?.agentRetrievalActionId)
+          .map((m) => {
+            return renderRetrievalActionByModelId(
+              m.agentMessage?.agentRetrievalActionId as number
+            );
+          })
+      );
+    })(),
+    (async () => {
+      const actions = await AgentDustAppRunAction.findAll({
+        where: {
+          id: {
+            [Op.in]: messages
+              .filter((m) => m.agentMessage?.agentDustAppRunActionId)
+              .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
           },
-          []
-        );
-        const actions = await AgentDustAppRunAction.findAll({
-          where: {
-            id: {
-              [Op.in]: agentDustAppRunActionsIds,
-            },
-          },
-        });
-        return actions.map((action) => {
-          return {
-            id: action.id,
-            type: "dust_app_run_action",
-            appWorkspaceId: action.appWorkspaceId,
-            appId: action.appId,
-            appName: action.appName,
-            params: action.params,
-            runningBlock: null,
-            output: action.output,
-          };
-        });
-      })(),
-    ]);
+        },
+      });
+      return actions.map((action) => {
+        return {
+          id: action.id,
+          type: "dust_app_run_action",
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          appName: action.appName,
+          params: action.params,
+          runningBlock: null,
+          output: action.output,
+        };
+      });
+    })(),
+  ]);
+
+  const agentConfigurations = [
+    ...localAgentConfigurations,
+    ...globalAgentConfigurations,
+  ];
 
   return messages.map((message) => {
     if (!message.agentMessage) {
@@ -383,6 +378,7 @@ async function batchRenderAgentMessages(
       code: string;
       message: string;
     } | null = null;
+
     if (agentMessage.errorCode !== null && agentMessage.errorMessage !== null) {
       error = {
         code: agentMessage.errorCode,
@@ -451,25 +447,11 @@ async function batchRenderContentFragment(messages: Message[]) {
     }
     const contentFragment = message.contentFragment;
 
-    const m = {
-      id: message.id,
-      sId: message.sId,
-      created: message.createdAt.getTime(),
-      type: "content_fragment",
-      visibility: message.visibility,
+    return {
+      m: renderContentFragment({ message, contentFragment }),
+      rank: message.rank,
       version: message.version,
-      title: contentFragment.title,
-      content: contentFragment.content,
-      url: contentFragment.url,
-      contentType: contentFragment.contentType,
-      context: {
-        profilePictureUrl: contentFragment.userContextProfilePictureUrl,
-        fullName: contentFragment.userContextFullName,
-        email: contentFragment.userContextEmail,
-        username: contentFragment.userContextUsername,
-      },
     };
-    return { m, rank: message.rank, version: message.version };
   });
 }
 
@@ -580,22 +562,12 @@ export async function getConversation(
   });
 
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
-    (async () => {
-      return await batchRenderUserMessages(
-        messages.filter((m) => !!m.userMessage)
-      );
-    })(),
-    (async () => {
-      return await batchRenderAgentMessages(
-        auth,
-        messages.filter((m) => !!m.agentMessage)
-      );
-    })(),
-    (async () => {
-      return await batchRenderContentFragment(
-        messages.filter((m) => !!m.contentFragment)
-      );
-    })(),
+    batchRenderUserMessages(messages.filter((m) => !!m.userMessage)),
+    batchRenderAgentMessages(
+      auth,
+      messages.filter((m) => !!m.agentMessage)
+    ),
+    batchRenderContentFragment(messages.filter((m) => !!m.contentFragment)),
   ]);
 
   const render = [...userMessages, ...agentMessages, ...contentFragments];
