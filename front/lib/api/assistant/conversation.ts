@@ -281,16 +281,19 @@ async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
 ) {
-  if (messages.find((m) => !m.agentMessage)) {
+  if (messages.find((m) => !m.agentMessage && !m.userMessage)) {
     throw new Error(
-      "Unreachable: batchRenderAgentMessages must be called with only agent messages"
+      "Unreachable: batchRenderAgentMessages must be called with only agent & user messages"
     );
   }
+
+  const agentMessages = messages.filter((m) => !!m.agentMessage);
+  const userMessages = messages.filter((m) => !!m.userMessage);
 
   const [agentConfigurations, agentRetrievalActions, agentDustAppRunActions] =
     await Promise.all([
       (async () => {
-        const agentConfigurationIds: string[] = messages.reduce(
+        const agentConfigurationIds: string[] = agentMessages.reduce(
           (acc: string[], m) => {
             const agentId = m.agentMessage?.agentConfigurationId;
             if (agentId && !acc.includes(agentId)) {
@@ -311,7 +314,7 @@ async function batchRenderAgentMessages(
       })(),
       (async () => {
         return await Promise.all(
-          messages
+          agentMessages
             .filter((m) => m.agentMessage?.agentRetrievalActionId)
             .map((m) => {
               return renderRetrievalActionByModelId(
@@ -324,7 +327,7 @@ async function batchRenderAgentMessages(
         const actions = await AgentDustAppRunAction.findAll({
           where: {
             id: {
-              [Op.in]: messages
+              [Op.in]: agentMessages
                 .filter((m) => m.agentMessage?.agentDustAppRunActionId)
                 .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
             },
@@ -345,10 +348,10 @@ async function batchRenderAgentMessages(
       })(),
     ]);
 
-  return messages.map((message) => {
+  return agentMessages.map((message) => {
     if (!message.agentMessage) {
       throw new Error(
-        "Unreachable: batchRenderUserMessages must be called with only user messages"
+        "Unreachable: batchRenderAgentMessages loop must be called with only agent messages"
       );
     }
     const agentMessage = message.agentMessage;
@@ -383,7 +386,7 @@ async function batchRenderAgentMessages(
       visibility: message.visibility,
       version: message.version,
       parentMessageId:
-        messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        userMessages.find((m) => m.id === message.parentId)?.sId ?? null,
       status: agentMessage.status,
       action,
       content: agentMessage.content,
@@ -554,7 +557,7 @@ export async function getConversation(
     batchRenderUserMessages(messages.filter((m) => !!m.userMessage)),
     batchRenderAgentMessages(
       auth,
-      messages.filter((m) => !!m.agentMessage)
+      messages.filter((m) => !!m.agentMessage || !!m.userMessage)
     ),
     batchRenderContentFragment(messages.filter((m) => !!m.contentFragment)),
   ]);
