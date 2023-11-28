@@ -33,11 +33,14 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
       logging: false,
     }
   );
-  const dbSlackConfigurations: { id: number; slackTeamId: string }[] =
+  const dbSlackConfigurationsData: { id: number; slackTeamId: string }[] =
     await connectorsSequelize.query(
       `SELECT id, "slackTeamId" FROM "slack_configurations"`,
       { type: QueryTypes.SELECT }
     );
+  const dbSlackConfigurations = new Set(
+    dbSlackConfigurationsData.map((sc) => sc.slackTeamId)
+  );
 
   // Get all the Slack connections in Nango (created more than 1 hour ago)
   const oneHourAgo = new Date();
@@ -62,7 +65,7 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
       conn.connection_id
     );
     const slackTeamId = connectionDetail.credentials.raw.team.id;
-    if (!dbSlackConfigurations.find((sc) => sc.slackTeamId === slackTeamId)) {
+    if (!dbSlackConfigurations.has(slackTeamId)) {
       unknownNangoSlackConnections.push({
         connectionId: conn.connection_id,
         slackTeamId,
