@@ -1,3 +1,4 @@
+import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
@@ -84,22 +85,6 @@ const PostMessagesRequestBodySchemaIoTs = t.type({
   }),
 });
 
-export const PostContentFragmentRequestBodySchemaIoTs = t.type({
-  title: t.string,
-  content: t.string,
-  url: t.union([t.string, t.null]),
-  contentType: t.literal("slack_thread_content"),
-  context: t.union([
-    t.type({
-      username: t.string,
-      fullName: t.union([t.string, t.null]),
-      email: t.union([t.string, t.null]),
-      profilePictureUrl: t.union([t.string, t.null]),
-    }),
-    t.null,
-  ]),
-});
-
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
@@ -108,10 +93,7 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("deleted"),
   ]),
   message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
-  contentFragment: t.union([
-    PostContentFragmentRequestBodySchemaIoTs,
-    t.undefined,
-  ]),
+  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -123,7 +105,7 @@ export type PostMessagesRequestBodySchema = t.TypeOf<
 >;
 
 export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PostContentFragmentRequestBodySchemaIoTs
+  typeof PostContentFragmentRequestBodySchema
 >;
 
 // Event sent when the user message is created.

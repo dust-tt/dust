@@ -55,6 +55,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "dts-cli": "^2.0.3"
+    "dts-cli": "^2.0.3",
+    "io-ts": "^2.2.20"
   }
 }
