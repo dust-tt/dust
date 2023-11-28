@@ -1,15 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  checkConversationMessageExists,
-  getConversation,
+  getConversationMessageType,
   getConversationWithoutContent,
 } from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,
@@ -88,13 +86,13 @@ async function handler(
   }
 
   const messageId = req.query.mId;
-  const messageExists = await checkConversationMessageExists(
+  const messageType = await getConversationMessageType(
     auth,
     conversation,
     messageId
   );
 
-  if (!messageExists) {
+  if (!messageType) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -103,7 +101,7 @@ async function handler(
       },
     });
   }
-  if (!isAgentMessageType(message)) {
+  if (messageType !== "agent_message") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

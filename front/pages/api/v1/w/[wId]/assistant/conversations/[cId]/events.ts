@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
@@ -30,7 +30,10 @@ async function handler(
     });
   }
 
-  const conversation = await getConversation(auth, req.query.cId as string);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    req.query.cId as string
+  );
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
