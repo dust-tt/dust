@@ -1,9 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getConversation,
-  getConversationWithoutContent,
-} from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
