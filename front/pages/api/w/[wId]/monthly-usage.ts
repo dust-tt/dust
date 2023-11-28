@@ -107,7 +107,7 @@ async function getMonthlyUsage(
       m."sId" AS "messageId",
       CASE
         WHEN um."id" IS NOT NULL THEN 'user'
-        WHEN am."id" IS NOT NULL THEN 'agent'
+        WHEN am."id" IS NOT NULL THEN 'assistant'
         WHEN cf."id" IS NOT NULL THEN 'content_fragment'
       END AS "messageType",
       um."userContextFullName" AS "userFullName",
