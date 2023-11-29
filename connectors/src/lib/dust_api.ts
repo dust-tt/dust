@@ -1,22 +1,13 @@
-import { ModelId, PostContentFragmentRequestBodySchema } from "@dust-tt/types";
+import {
+  DataSourceType,
+  ModelId,
+  PostContentFragmentRequestBodySchema,
+} from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorProvider } from "@connectors/types/connector";
-
-type DataSourceVisibility = "public" | "private";
-
-type DataSourceType = {
-  name: string;
-  description?: string;
-  visibility: DataSourceVisibility;
-  config?: string;
-  dustAPIProjectId: string;
-  connectorId?: string;
-  connectorProvider?: ConnectorProvider;
-};
 
 const { DUST_FRONT_API } = process.env;
 

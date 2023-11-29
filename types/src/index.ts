@@ -6,8 +6,11 @@ import { PostContentFragmentRequestBodySchema } from "./front/pages/api/v1/w/[wI
 
 export { PostContentFragmentRequestBodySchema };
 
-import { ConnectorProvider } from "./front/types/data_source";
-export { ConnectorProvider };
+import {
+  ConnectorProvider,
+  CONNECTOR_PROVIDERS,
+} from "./front/types/data_source";
+export { ConnectorProvider, CONNECTOR_PROVIDERS };
 import { DataSourceType } from "./front/types/data_source";
 export { DataSourceType };
 import { DataSourceVisibility } from "./front/types/data_source";

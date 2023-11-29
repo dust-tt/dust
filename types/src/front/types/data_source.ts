@@ -4,7 +4,7 @@ import { ModelId } from "../../shared/model_id";
 
 export type DataSourceVisibility = "public" | "private";
 
-const CONNECTOR_PROVIDERS = [
+export const CONNECTOR_PROVIDERS = [
   "slack",
   "notion",
   "github",
