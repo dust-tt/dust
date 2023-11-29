@@ -164,49 +164,34 @@ impl TokenizedSection {
 
         let mut sections: Vec<TokenizedSection> = vec![];
 
-        // Create new children for content if content overflows max_chunk_size. This will result in
-        // moving the content in childrens that will be leaf nodes.
+        // Create new children for content to enforce the invariant that content nodes are leaf
+        // nodes. If content overflows max_chunk_size, we split in multiple nodes to enforce the
+        // invariant that any content node fit in a `max_chunk_size`.
         if let Some(c) = content.as_ref() {
             let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
 
-            if c.tokens.len() > effective_max_chunk_size {
-                let splits = split_text(&embedder, effective_max_chunk_size, &c.text).await?;
+            let splits = match c.tokens.len() > effective_max_chunk_size {
+                true => split_text(&embedder, effective_max_chunk_size, &c.text).await?,
+                false => vec![c.clone()],
+            };
 
-                // Prepend to childrens the splits of the content with no additional prefixes (they
-                // will inherit the current section prefixes whose content will be removed).
-                sections.extend(
-                    splits
-                        .into_iter()
-                        .map(|t| TokenizedSection {
-                            max_chunk_size,
-                            prefixes: prefixes.clone(),
-                            tokens_count: prefixes_tokens_count + t.tokens.len(),
-                            content: Some(t),
-                            sections: vec![],
-                        })
-                        .collect::<Vec<_>>(),
-                );
+            // Prepend to childrens the splits of the content with no additional prefixes (they
+            // will inherit the current section prefixes whose content will be removed).
+            sections.extend(
+                splits
+                    .into_iter()
+                    .map(|t| TokenizedSection {
+                        max_chunk_size,
+                        prefixes: prefixes.clone(),
+                        tokens_count: prefixes_tokens_count + t.tokens.len(),
+                        content: Some(t),
+                        sections: vec![],
+                    })
+                    .collect::<Vec<_>>(),
+            );
 
-                // Remove the content from the current section.
-                content = None;
-            }
-        }
-
-        // Create a new leaf children for content if prefix is not None and content is not None to
-        // preserve the invariant that content nodes are leaf nodes.
-        if let Some(c) = content.as_ref() {
-            if let Some(_) = prefix.as_ref() {
-                sections.push(TokenizedSection {
-                    max_chunk_size,
-                    prefixes: prefixes.clone(),
-                    tokens_count: prefixes_tokens_count + c.tokens.len(),
-                    content: Some(c.clone()),
-                    sections: vec![],
-                });
-
-                // Remove the content from the current section.
-                content = None;
-            }
+            // Remove the content from the current section.
+            content = None;
         }
 
         sections.extend(
@@ -225,11 +210,11 @@ impl TokenizedSection {
             max_chunk_size,
             prefixes,
             // The tokens_count is `prefixes_tokens_count` to which we add:
-            // - the sum of the content tokens
-            // OR (or because content nodes are leaf nodes)
-            // - the tokens_count of the childrens to which we remove childrens times the
-            // `prefixes_tokens_count` as they would not be repeated in children if we were to
-            // reconstruct that node as a full chunk.
+            // - (for contet leaf nodes) the sum of the content tokens
+            // OR
+            // - (for non content nodes) the tokens_count of the childrens to which we remove
+            // childrens times the `prefixes_tokens_count` as they would not be repeated in children
+            // if we were to reconstruct that node as a full chunk
             tokens_count: prefixes_tokens_count
                 + match content.as_ref() {
                     Some(c) => c.tokens.len(),
@@ -284,16 +269,10 @@ impl TokenizedSection {
             // If the current node holds within `max_chunk_size` tokens, we have a chunk.
             true => {
                 let c = self.chunk();
-                // println!("-----------");
-                // println!("chunk: {:?} tokens_count={}", c, c.tokens.len());
-                // println!("self: {:?}", self);
-                // println!("-----------");
                 assert_eq!(c.tokens.len(), self.tokens_count);
                 assert!(c.tokens.len() <= self.max_chunk_size);
                 vec![c]
             }
-            // Otherwise we recurse in all childrens which will mean we'll have at least as many
-            // chunks as childrens.
             false => {
                 // This is the non-fancy implementation.
                 // self.sections
