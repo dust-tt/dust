@@ -57,6 +57,21 @@ export type CoreAPIDataSource = {
   config: CoreAPIDataSourceConfig;
 };
 
+export type CoreAPIDataSourceDocumentSection = {
+  prefix: string | null;
+  content: string | null;
+  sections: CoreAPIDataSourceDocumentSection[];
+};
+
+export function sectionFullText(
+  section: CoreAPIDataSourceDocumentSection
+): string {
+  return (
+    `${section.prefix || ""}${section.content || ""}` +
+    section.sections.map(sectionFullText).join("")
+  );
+}
+
 export type CoreAPIDocument = {
   data_source_id: string;
   created: number;
@@ -686,7 +701,7 @@ export const CoreAPI = {
     tags,
     parents,
     sourceUrl,
-    text,
+    section,
     credentials,
     lightDocumentOutput = false,
   }: {
@@ -697,7 +712,7 @@ export const CoreAPI = {
     tags: string[];
     parents: string[];
     sourceUrl?: string | null;
-    text: string;
+    section: CoreAPIDataSourceDocumentSection;
     credentials: CredentialsType;
     lightDocumentOutput?: boolean;
   }): Promise<
@@ -730,7 +745,7 @@ export const CoreAPI = {
             body: JSON.stringify({
               document_id: documentId,
               timestamp,
-              text,
+              section,
               tags,
               parents,
               source_url: sourceUrl,
