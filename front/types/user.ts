@@ -1,5 +1,6 @@
+import { ModelId } from "@dust-tt/types";
+
 import { RoleType } from "@app/lib/auth";
-import { ModelId } from "@app/lib/databases";
 
 export type WorkspaceType = {
   id: ModelId;

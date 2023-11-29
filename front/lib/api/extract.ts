@@ -1,7 +1,7 @@
+import { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { ModelId } from "@app/lib/databases";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";

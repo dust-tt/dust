@@ -1,10 +1,11 @@
+import { ConnectorProvider } from "@dust-tt/types";
+
 import { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
 import { newUpsertSignal } from "@app/documents_post_process_hooks/temporal/signals";
 import {
   runPostDeleteHoosWorkflow,
   runPostUpsertHooksWorkflow,
 } from "@app/documents_post_process_hooks/temporal/workflows";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { getTemporalClient } from "@app/lib/temporal";
 
 const QUEUE_NAME = "post-upsert-hooks-queue"; // TODO: rename to post-process-hooks-queue

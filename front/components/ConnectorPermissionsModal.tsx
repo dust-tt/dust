@@ -1,15 +1,11 @@
 import { Checkbox, Modal } from "@dust-tt/sparkle";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  ConnectorPermission,
-  ConnectorProvider,
-  ConnectorType,
-} from "@app/lib/connectors_api";
+import { ConnectorPermission, ConnectorType } from "@app/lib/connectors_api";
 import { useConnectorDefaultNewResourcePermission } from "@app/lib/swr";
-import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";

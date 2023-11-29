@@ -1,6 +1,7 @@
+import { ModelId } from "@dust-tt/types";
+
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { ModelId } from "@app/lib/databases";
 import { DustAPI } from "@app/lib/dust_api";
 import { AgentDustAppRunAction } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";

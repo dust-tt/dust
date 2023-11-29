@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -41,7 +42,7 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,

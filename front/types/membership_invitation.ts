@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
 
 export type MembershipInvitationType = {
   id: ModelId;

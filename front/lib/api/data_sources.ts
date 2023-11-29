@@ -1,8 +1,8 @@
+import { DataSourceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
-import { DataSourceType } from "@app/types/data_source";
 
 export async function getDataSource(
   auth: Authenticator,

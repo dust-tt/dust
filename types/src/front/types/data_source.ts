@@ -1,7 +1,15 @@
-import { ConnectorProvider } from "@app/lib/connectors_api";
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "../../shared/model_id";
 
 export type DataSourceVisibility = "public" | "private";
+
+export const CONNECTOR_PROVIDERS = [
+  "slack",
+  "notion",
+  "github",
+  "google_drive",
+  "intercom",
+] as const;
+export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type DataSourceType = {
   id: ModelId;

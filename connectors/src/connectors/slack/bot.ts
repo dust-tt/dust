@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
@@ -15,7 +16,7 @@ import {
   RetrievalDocumentType,
   UserMessageType,
 } from "@connectors/lib/dust_api";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
   SlackChatBotMessage,

@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
@@ -6,7 +7,7 @@ import {
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   NotionConnectorState,
   NotionDatabase,

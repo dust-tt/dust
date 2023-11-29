@@ -6,6 +6,7 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -16,9 +17,7 @@ import {
 } from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
-import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 export default function AssistantBuilderDataSourceModal({

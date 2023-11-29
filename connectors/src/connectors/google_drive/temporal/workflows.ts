@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   executeChild,
@@ -8,7 +9,6 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
-import { ModelId } from "@connectors/lib/models";
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 

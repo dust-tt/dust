@@ -1,3 +1,4 @@
+import { type ConnectorProvider } from "@dust-tt/types";
 import {
   type CreationOptional,
   DataTypes,
@@ -9,7 +10,6 @@ import {
 
 import {
   ConnectorErrorType,
-  type ConnectorProvider,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";
 import { ConnectorPermission } from "@connectors/types/resources";
@@ -22,8 +22,6 @@ if (!CONNECTORS_DATABASE_URI) {
 export const sequelize_conn = new Sequelize(CONNECTORS_DATABASE_URI as string, {
   logging: false,
 });
-
-export type ModelId = number;
 
 export class Connector extends Model<
   InferAttributes<Connector>,

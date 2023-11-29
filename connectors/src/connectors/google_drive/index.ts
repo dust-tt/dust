@@ -7,7 +7,7 @@ import {
   registerWebhook,
 } from "@connectors/connectors/google_drive/lib";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -38,6 +38,7 @@ import {
 } from "./temporal/activities";
 import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
 export type NangoConnectionId = string;
+import { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 const {

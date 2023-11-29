@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import {
   CodedError,
   ErrorCode,
@@ -6,7 +7,7 @@ import {
 } from "@slack/web-api";
 
 import { WorkflowError } from "@connectors/lib/error";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 

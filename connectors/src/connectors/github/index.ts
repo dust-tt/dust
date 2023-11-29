@@ -1,9 +1,11 @@
+import { ModelId } from "@dust-tt/types";
+
 import {
   getReposPage,
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GithubConnectorState,
   GithubIssue,

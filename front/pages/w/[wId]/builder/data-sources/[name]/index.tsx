@@ -14,6 +14,7 @@ import {
   SlackLogo,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -31,7 +32,6 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   connectorIsUsingNango,
-  ConnectorProvider,
   ConnectorsAPI,
   ConnectorType,
 } from "@app/lib/connectors_api";
@@ -40,7 +40,6 @@ import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
 import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

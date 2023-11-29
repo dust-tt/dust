@@ -1,19 +1,18 @@
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { dustManagedCredentials } from "@app/lib/api/credentials";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
-  ConnectorProvider,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@app/lib/connectors_api";
+  Authenticator,
+  getOrCreateSystemApiKey,
+  getSession,
+} from "@app/lib/auth";
+import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 
 const { NODE_ENV } = process.env;
 

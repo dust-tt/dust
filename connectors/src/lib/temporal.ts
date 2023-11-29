@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import {
   Client,
   Connection,
@@ -6,8 +7,6 @@ import {
 } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
-
-import { ModelId } from "@connectors/lib/models";
 
 // This is a singleton connection to the Temporal server.
 let TEMPORAL_CLIENT: Client | undefined;

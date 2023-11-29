@@ -1,4 +1,5 @@
 import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
+import { DataSourceType, DataSourceVisibility } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -12,7 +13,6 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
-import { DataSourceType, DataSourceVisibility } from "@app/types/data_source";
 import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

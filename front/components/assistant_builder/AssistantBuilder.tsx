@@ -15,6 +15,7 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { ReactNode, useCallback, useEffect, useState } from "react";
@@ -47,7 +48,6 @@ import {
   SupportedModel,
 } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   useAgentConfigurations,
@@ -57,7 +57,6 @@ import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
-import { DataSourceType } from "@app/types/data_source";
 import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

@@ -5,10 +5,11 @@ import {
   EyeIcon,
   Page,
 } from "@dust-tt/sparkle";
+import { DataSourceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -18,7 +19,6 @@ import { CoreAPI, CoreAPIDataSource } from "@app/lib/core_api";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{

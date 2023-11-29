@@ -1,13 +1,6 @@
-import { ConnectorPermission } from "@connectors/types/resources";
+import { CONNECTOR_PROVIDERS, ConnectorProvider } from "@dust-tt/types";
 
-const CONNECTOR_PROVIDERS = [
-  "slack",
-  "notion",
-  "github",
-  "google_drive",
-  "intercom",
-] as const;
-export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
+import { ConnectorPermission } from "@connectors/types/resources";
 
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
