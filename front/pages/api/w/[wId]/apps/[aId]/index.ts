@@ -7,13 +7,13 @@ import { App } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { AppType } from "@app/types/app";
 
-export type PostAppResponseBody = {
+export type GetOrPostAppResponseBody = {
   app: AppType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostAppResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<GetOrPostAppResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -60,6 +60,21 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      res.status(200).json({
+        app: {
+          id: app.id,
+          sId: app.sId,
+          name: app.name,
+          description: app.description,
+          visibility: app.visibility,
+          savedSpecification: app.savedSpecification,
+          savedConfig: app.savedConfig,
+          savedRun: app.savedRun,
+          dustAPIProjectId: app.dustAPIProjectId,
+        },
+      });
+      break;
     case "POST":
       if (!auth.isBuilder()) {
         return apiError(req, res, {
