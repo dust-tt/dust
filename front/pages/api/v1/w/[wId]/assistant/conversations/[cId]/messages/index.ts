@@ -1,5 +1,5 @@
+import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -13,26 +13,6 @@ import { UserMessageType } from "@app/types/assistant/conversation";
 export type PostMessagesResponseBody = {
   message: UserMessageType;
 };
-
-export const PostMessagesRequestBodySchema = t.type({
-  content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
-  context: t.type({
-    timezone: t.string,
-    username: t.string,
-    fullName: t.union([t.string, t.null]),
-    email: t.union([t.string, t.null]),
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -71,7 +51,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMessagesRequestBodySchema.decode(req.body);
+      const bodyValidation = PublicPostMessagesRequestBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {

@@ -1,4 +1,4 @@
-import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,7 +18,7 @@ export type PostContentFragmentsResponseBody = {
 };
 
 export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PostContentFragmentRequestBodySchema
+  typeof PublicPostContentFragmentRequestBodySchema
 >;
 
 async function handler(
@@ -58,7 +58,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostContentFragmentRequestBodySchema.decode(
+      const bodyValidation = PublicPostContentFragmentRequestBodySchema.decode(
         req.body
       );
 
