@@ -113,19 +113,22 @@ async fn split_text(
 /// During the construction of the tokenized tree, we also enforce that all content + inherihted
 /// prefix hold in max_chunk_size. When that's not the case, we split the content and add childrens
 /// to the node (without prefix of their own since these splits don't induce new prefixes and will
-/// inherit of the current node).
+/// inherit of the current node). We also dissociate content from the node as a children if the node
+/// has both a prefix and a content.
 ///
 /// Invariants:
-/// - All content + inherited prefixes hold in `max_chunk_size``.
-/// - DFS traversal reconstructs the orginal document.
+/// - All content + inherited prefixes hold in `max_chunk_size`.
+/// - All TokenizedSection with content are materialied as leaf nodes.
+/// - DFS traversal maintains the order and structure of the orginal document (see `fn chunk`).
+/// - A node tokens_count is the token count to render the entire node (with prefixes).
 ///
-/// Once this tree is constructed we can traverse it doing a DFS and accumulate as much as possible
-/// in each chunk. We store on each section all its parents prefixes. This will be used when
-/// generating the final chunks.
+/// Once this tree is constructed we can create chunks grouped by subtrees that hold inside the
+/// `max_chunk_size` limit.
 #[derive(Debug, Clone)]
 pub struct TokenizedSection {
+    pub max_chunk_size: usize,
     pub prefixes: Vec<TokenizedText>,
-    // pub prefix: Option<TokenizedText>,
+    pub tokens_count: usize,
     pub content: Option<TokenizedText>,
     pub sections: Vec<TokenizedSection>,
 }
@@ -155,7 +158,7 @@ impl TokenizedSection {
         if prefixes_tokens_count >= max_chunk_size / 2 {
             Err(anyhow!(
                 "Could not tokenize the provided document,
-                 prefixes acrrue to more than half `max_chunk_size`"
+                 prefixes accrue to more than half `max_chunk_size`"
             ))?;
         }
 
@@ -174,12 +177,30 @@ impl TokenizedSection {
                     splits
                         .into_iter()
                         .map(|t| TokenizedSection {
+                            max_chunk_size,
                             prefixes: prefixes.clone(),
+                            tokens_count: prefixes_tokens_count + t.tokens.len(),
                             content: Some(t),
                             sections: vec![],
                         })
                         .collect::<Vec<_>>(),
                 );
+
+                // Remove the content from the current section.
+                content = None;
+            }
+        }
+
+        // Create a new leaf children for content if prefix is not None and content is not None.
+        if let Some(c) = content.as_ref() {
+            if let Some(_) = prefix.as_ref() {
+                sections.push(TokenizedSection {
+                    max_chunk_size,
+                    prefixes: prefixes.clone(),
+                    tokens_count: prefixes_tokens_count + c.tokens.len(),
+                    content: Some(c.clone()),
+                    sections: vec![],
+                });
 
                 // Remove the content from the current section.
                 content = None;
@@ -199,60 +220,25 @@ impl TokenizedSection {
         );
 
         Ok(TokenizedSection {
+            max_chunk_size,
             prefixes,
+            // The tokens_count is `prefixes_tokens_count` to which we add:
+            // - the sum of the content tokens
+            // OR (or because content nodes are leaf nodes)
+            // - the tokens_count of the childrens to which we remove childrens times the
+            // `prefixes_tokens_count` as they would not be repeated in children if we were to
+            // reconstruct that node as a full chunk.
+            tokens_count: prefixes_tokens_count
+                + match content.as_ref() {
+                    Some(c) => c.tokens.len(),
+                    None => {
+                        sections.iter().map(|s| s.tokens_count).sum::<usize>()
+                            - sections.len() * prefixes_tokens_count
+                    }
+                },
             content,
             sections,
         })
-    }
-
-    /// Generate the chunk induced by sublist of DFS traversal sections. We add prefixes if we've
-    /// never seen them only which leads to the exact reconstruction of the original document.
-    fn chunk_from_sections(&self, sections: Vec<&Self>) -> TokenizedText {
-        let mut seen_prefixes: HashSet<String> = HashSet::new();
-        let mut text = String::new();
-        let mut tokens: Vec<usize> = vec![];
-
-        sections.iter().for_each(|s| {
-            s.prefixes.iter().for_each(|p| {
-                if !seen_prefixes.contains(&p.text) {
-                    tokens.extend(p.tokens.clone());
-                    text += &p.text;
-                    seen_prefixes.insert(p.text.clone());
-                }
-            });
-
-            match s.content.as_ref() {
-                Some(c) => {
-                    tokens.extend(c.tokens.clone());
-                    text += &c.text;
-                }
-                None => (),
-            };
-        });
-
-        TokenizedText { text, tokens }
-    }
-
-    fn tokens_count_from_sections(sections: Vec<&Self>) -> usize {
-        let mut seen_prefixes: HashSet<String> = HashSet::new();
-        let mut tokens_count: usize = 0;
-
-        sections.iter().for_each(|s| {
-            s.prefixes.iter().for_each(|p| {
-                if !seen_prefixes.contains(&p.text) {
-                    tokens_count += p.tokens.len();
-                    seen_prefixes.insert(p.text.clone());
-                }
-            });
-            match s.content.as_ref() {
-                Some(c) => {
-                    tokens_count += c.tokens.len();
-                }
-                None => (),
-            };
-        });
-
-        tokens_count
     }
 
     /// DFS traversal of the TokenizedSection tree to generate a vector.
@@ -264,28 +250,54 @@ impl TokenizedSection {
         res
     }
 
-    /// This function traverses the tree (using DFS) and generates chunks of at most
-    /// `max_chunk_size` tokens.
-    pub fn chunks(&self, max_chunk_size: usize) -> Vec<TokenizedText> {
-        let mut chunk: Vec<&Self> = vec![];
-        let mut chunks: Vec<TokenizedText> = vec![];
+    /// This function materialize a chunk from a TokenizedSection node.
+    fn chunk(&self) -> TokenizedText {
+        let mut seen_prefixes: HashSet<String> = HashSet::new();
+        let mut text = String::new();
+        let mut tokens: Vec<usize> = vec![];
 
         for s in self.dfs() {
-            let mut attempt = chunk.clone();
-            attempt.push(s);
+            s.prefixes.iter().for_each(|p| {
+                if !seen_prefixes.contains(&p.text) {
+                    seen_prefixes.insert(p.text.clone());
+                    tokens.extend(p.tokens.clone());
+                    text += &p.text;
+                }
+            });
 
-            if Self::tokens_count_from_sections(attempt) <= max_chunk_size {
-                chunk.push(s);
-            } else {
-                chunks.push(self.chunk_from_sections(chunk.clone()));
-                chunk = vec![s];
+            match s.content.as_ref() {
+                Some(c) => {
+                    tokens.extend(c.tokens.clone());
+                    text += &c.text;
+                }
+                None => (),
+            };
+        }
+
+        TokenizedText { text, tokens }
+    }
+
+    fn chunks(&self) -> Vec<TokenizedText> {
+        match self.tokens_count <= self.max_chunk_size {
+            // If the current node holds within `max_chunk_size` tokens, we have a chunk.
+            true => {
+                let c = self.chunk();
+                // println!("-----------");
+                // println!("chunk: {:?} tokens_count={}", c, c.tokens.len());
+                // println!("self: {:?}", self);
+                // println!("-----------");
+                assert_eq!(c.tokens.len(), self.tokens_count);
+                assert!(c.tokens.len() <= self.max_chunk_size);
+                vec![c]
             }
+            // Otherwise we recurse in all childrens.
+            false => self
+                .sections
+                .iter()
+                .map(|s| s.chunks())
+                .flatten()
+                .collect::<Vec<_>>(),
         }
-        if chunk.len() > 0 {
-            chunks.push(self.chunk_from_sections(chunk.clone()));
-        }
-
-        chunks
     }
 }
 
@@ -364,7 +376,7 @@ impl Splitter for BaseV0Splitter {
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section).await?;
 
         Ok(tokenized_section
-            .chunks(max_chunk_size)
+            .chunks()
             .into_iter()
             .map(|t| t.text)
             .collect())
