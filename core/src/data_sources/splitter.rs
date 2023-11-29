@@ -623,7 +623,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_splitter_v0_sections_no_content() {
+    async fn test_splitter_v0_sections_variant() {
         let section = Section {
             prefix: Some("p".to_string()),
             content: Some("c..".to_string()),
@@ -672,6 +672,103 @@ mod tests {
                 "pp0c0........c01......".to_string(),
                 "pp0p02c02....".to_string(),
                 "pp1p10c10........".to_string(),
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections_no_content() {
+        let section = Section {
+            prefix: Some("p".to_string()),
+            content: None,
+            sections: vec![
+                Section {
+                    prefix: Some("p0".to_string()),
+                    content: None,
+                    sections: vec![
+                        Section {
+                            prefix: Some("p01".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p02".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p1".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p10".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p2".to_string()),
+                    content: None,
+                    sections: vec![
+                        Section {
+                            prefix: Some("p21".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p22".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p3".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p30".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p4".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p40".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p5".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p50".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 12, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "pp0p01p02p1p10".to_string(),
+                "pp2p21p22p3p30".to_string(),
+                "pp4p40p5p50".to_string()
             ]
             .join("|")
         )
