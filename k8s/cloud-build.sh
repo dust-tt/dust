@@ -1,11 +1,11 @@
 #!/bin/sh
 # first arg : name of image to build
 # second arg: path to the Dockerfile, relative to the resolved WORKING_DIR.
-# thid arg (optional) : working directory. If not provided, it defaults to "../$1"
+# thid arg : path to the docker build context.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
-WORKING_DIR="${3:-${SCRIPT_DIR}/../$1}"
+WORKING_DIR="${3}"
 
 
 # Change the current working directory to the directory in which to build the image
