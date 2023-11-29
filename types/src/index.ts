@@ -9,7 +9,7 @@ import { DataSourceVisibility } from "./front/types/data_source";
 import {
   PublicPostContentFragmentRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
-} from "./front/api_handlers/assistant";
+} from "./front/api_handlers/public/assistant/types";
 
 import { ModelId } from "./shared/model_id";
 
