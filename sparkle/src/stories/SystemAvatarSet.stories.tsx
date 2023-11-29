@@ -47,7 +47,7 @@ export const SystemAvatarSet = () => (
     <div className="s-py-4 s-text-base">
       url is{" "}
       <span className="s-font-bold">
-        "https://dust.tt/static/droidavatar/filename"
+        "https://dust.tt/static/systemavatar/filename"
       </span>
     </div>
     <div style={gridStyle}>
