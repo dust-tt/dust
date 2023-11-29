@@ -1,24 +1,20 @@
-// front starts
 import { KeyType } from "./front/types/key";
-export { KeyType };
 
 import { PostContentFragmentRequestBodySchema } from "./front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/content_fragments.types";
-
-export { PostContentFragmentRequestBodySchema };
 
 import {
   ConnectorProvider,
   CONNECTOR_PROVIDERS,
 } from "./front/types/data_source";
-export { ConnectorProvider, CONNECTOR_PROVIDERS };
 import { DataSourceType } from "./front/types/data_source";
-export { DataSourceType };
 import { DataSourceVisibility } from "./front/types/data_source";
-export { DataSourceVisibility };
 
-// front ends
 
-// shared starts
 import { ModelId } from "./shared/model_id";
+export { KeyType };
+
+export { PostContentFragmentRequestBodySchema };
+export { ConnectorProvider, CONNECTOR_PROVIDERS };
+export { DataSourceType };
+export { DataSourceVisibility };
 export { ModelId };
-// shared ends
