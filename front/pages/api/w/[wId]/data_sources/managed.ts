@@ -118,7 +118,7 @@ async function handler(
         : `Managed Data Source for ${provider}`;
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 256;
+      const dataSourceMaxChunkSize = 512;
 
       let isDataSourceAllowedInPlan: boolean;
       switch (provider) {

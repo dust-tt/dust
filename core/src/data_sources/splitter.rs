@@ -1,13 +1,358 @@
+use crate::data_sources::data_source::Section;
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
-
 use crate::run::Credentials;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
+use async_recursion::async_recursion;
 use async_trait::async_trait;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{cmp, str::FromStr};
+use tokio::try_join;
+
+#[derive(Debug, Clone)]
+pub struct TokenizedText {
+    pub text: String,
+    pub tokens: Vec<usize>,
+}
+
+impl TokenizedText {
+    pub async fn from(
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        text: Option<&String>,
+    ) -> Result<Option<Self>> {
+        match text {
+            Some(text) => {
+                let tokens = embedder.encode(text).await?;
+                Ok(Some(TokenizedText {
+                    text: text.to_string(),
+                    tokens,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+// This function tries to decode a chunk of token with allowance for utf8 encoding (possibly leaving
+// a remainder if the chunk does not decode properly).
+async fn decode_chunk_with_remainder(
+    embedder: &Box<dyn Embedder + Sync + Send>,
+    chunk: &[usize],
+) -> Result<(String, Vec<usize>, Vec<usize>)> {
+    // The maximum number of tokens to slide the window by when decoding fails.
+    const MAX_ERROR_SLIDE: usize = 4;
+
+    let mut end = chunk.len();
+
+    while end > 0 {
+        if chunk.len() - end > MAX_ERROR_SLIDE {
+            return Err(anyhow!("Could not tokenize the provided document"));
+        }
+        match embedder.decode(chunk[0..end].to_vec()).await {
+            Ok(decoded_string) => {
+                return Ok((
+                    decoded_string,
+                    chunk[0..end].to_vec(),
+                    chunk[end..].to_vec(),
+                ));
+            }
+            Err(_) => {
+                end -= 1;
+                continue;
+            }
+        }
+    }
+
+    return Err(anyhow!("Could not tokenize the provided document."));
+}
+
+// This function splits text into chunks of at most `max_chunk_size`` tokens, returning the splitted
+// strings and associated tokens.
+async fn split_text(
+    embedder: &Box<dyn Embedder + Sync + Send>,
+    max_chunk_size: usize,
+    text: &str,
+) -> Result<Vec<TokenizedText>> {
+    let mut encoded = embedder.encode(text).await?;
+
+    // Construct valid decoded chunks.
+    let mut splits: Vec<TokenizedText> = vec![];
+
+    while encoded.len() > 0 {
+        let mut current_chunk_size = cmp::min(max_chunk_size, encoded.len());
+        let tokenized_chunk = &encoded[0..current_chunk_size];
+
+        match decode_chunk_with_remainder(&embedder, tokenized_chunk).await {
+            Ok((decoded, chunk, remainder)) => {
+                current_chunk_size = current_chunk_size - remainder.len();
+                splits.push(TokenizedText {
+                    text: decoded,
+                    tokens: chunk,
+                });
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+        if current_chunk_size <= 0 {
+            return Err(anyhow!("Could not tokenize the provided document"));
+        }
+        encoded = encoded[current_chunk_size..].to_vec();
+    }
+
+    Ok(splits)
+}
+
+/// TokenizedSection represents a section tree where each node contains the tokenized prefix and
+/// tokenized content of the section.
+///
+/// As a remainder prefixes are propagated to childrens during chunking.
+///
+/// During the construction of the tokenized tree, we also enforce that all content + inherihted
+/// prefix hold in max_chunk_size. When that's not the case, we split the content and add childrens
+/// to the node (without prefix of their own since these splits don't induce new prefixes and will
+/// inherit of the current node). We also dissociate content from the node as a children if the node
+/// has both a prefix and a content.
+///
+/// Invariants:
+/// - All content + inherited prefixes hold in `max_chunk_size`.
+/// - All TokenizedSection with content are materialied as leaf nodes.
+/// - DFS traversal maintains the order and structure of the orginal document (see `fn chunk`).
+/// - A node tokens_count is the token count to render the entire node (with prefixes).
+///
+/// Once this tree is constructed we can create chunks grouped by subtrees that hold inside the
+/// `max_chunk_size` limit (see `fn chunks`).
+#[derive(Debug, Clone)]
+pub struct TokenizedSection {
+    pub max_chunk_size: usize,
+    pub prefixes: Vec<TokenizedText>,
+    pub tokens_count: usize,
+    pub content: Option<TokenizedText>,
+    pub sections: Vec<TokenizedSection>,
+}
+
+impl TokenizedSection {
+    #[async_recursion]
+    pub async fn from(
+        embedder: &Box<dyn Embedder + Sync + Send>,
+        max_chunk_size: usize,
+        mut prefixes: Vec<TokenizedText>,
+        section: &Section,
+    ) -> Result<Self> {
+        let (prefix, mut content) = try_join!(
+            TokenizedText::from(embedder, section.prefix.as_ref()),
+            TokenizedText::from(embedder, section.content.as_ref())
+        )?;
+
+        // Add the new prefix to the list of prefixes to be passed down children.
+        match prefix.as_ref() {
+            Some(prefix) => {
+                prefixes.push(prefix.clone());
+            }
+            None => (),
+        };
+
+        let prefixes_tokens_count = prefixes.iter().map(|p| p.tokens.len()).sum::<usize>();
+        if prefixes_tokens_count >= max_chunk_size / 2 {
+            Err(anyhow!(
+                "Could not tokenize the provided document,
+                 prefixes accrue to more than half `max_chunk_size`"
+            ))?;
+        }
+
+        let mut sections: Vec<TokenizedSection> = vec![];
+
+        // Create new children for content to enforce the invariant that content nodes are leaf
+        // nodes. If content overflows max_chunk_size, we split in multiple nodes to enforce the
+        // invariant that any content node fit in a `max_chunk_size`.
+        if let Some(c) = content.as_ref() {
+            let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
+
+            let splits = match c.tokens.len() > effective_max_chunk_size {
+                true => split_text(&embedder, effective_max_chunk_size, &c.text).await?,
+                false => vec![c.clone()],
+            };
+
+            // Prepend to childrens the splits of the content with no additional prefixes (they
+            // will inherit the current section prefixes whose content will be removed).
+            sections.extend(
+                splits
+                    .into_iter()
+                    .map(|t| TokenizedSection {
+                        max_chunk_size,
+                        prefixes: prefixes.clone(),
+                        tokens_count: prefixes_tokens_count + t.tokens.len(),
+                        content: Some(t),
+                        sections: vec![],
+                    })
+                    .collect::<Vec<_>>(),
+            );
+
+            // Remove the content from the current section.
+            content = None;
+        }
+
+        sections.extend(
+            futures::future::join_all(
+                section
+                    .sections
+                    .iter()
+                    .map(|s| TokenizedSection::from(embedder, max_chunk_size, prefixes.clone(), s)),
+            )
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?,
+        );
+
+        Ok(TokenizedSection {
+            max_chunk_size,
+            prefixes,
+            // The tokens_count is `prefixes_tokens_count` to which we add:
+            // - (for contet leaf nodes) the sum of the content tokens
+            // OR
+            // - (for non content nodes) the tokens_count of the childrens to which we remove
+            // childrens times the `prefixes_tokens_count` as they would not be repeated in children
+            // if we were to reconstruct that node as a full chunk
+            tokens_count: prefixes_tokens_count
+                + match content.as_ref() {
+                    Some(c) => c.tokens.len(),
+                    None => {
+                        sections.iter().map(|s| s.tokens_count).sum::<usize>()
+                            - sections.len() * prefixes_tokens_count
+                    }
+                },
+            content,
+            sections,
+        })
+    }
+
+    /// DFS traversal of the TokenizedSection tree to generate a vector.
+    fn dfs(&self) -> Vec<&Self> {
+        let mut res = vec![self];
+        for section in &self.sections {
+            res.extend(section.dfs());
+        }
+        res
+    }
+
+    /// This function materialize a chunk from a TokenizedSection node.
+    fn chunk(&self) -> TokenizedText {
+        let mut seen_prefixes: HashSet<String> = HashSet::new();
+        let mut text = String::new();
+        let mut tokens: Vec<usize> = vec![];
+
+        for s in self.dfs() {
+            s.prefixes.iter().for_each(|p| {
+                if !seen_prefixes.contains(&p.text) {
+                    seen_prefixes.insert(p.text.clone());
+                    tokens.extend(p.tokens.clone());
+                    text += &p.text;
+                }
+            });
+
+            match s.content.as_ref() {
+                Some(c) => {
+                    tokens.extend(c.tokens.clone());
+                    text += &c.text;
+                }
+                None => (),
+            };
+        }
+
+        TokenizedText { text, tokens }
+    }
+
+    fn chunks(self) -> Vec<TokenizedText> {
+        match self.tokens_count <= self.max_chunk_size {
+            // If the current node holds within `max_chunk_size` tokens, we have a chunk.
+            true => {
+                let c = self.chunk();
+                assert_eq!(c.tokens.len(), self.tokens_count);
+                assert!(c.tokens.len() <= self.max_chunk_size);
+                vec![c]
+            }
+            false => {
+                // This is the non-fancy implementation.
+                // self.sections
+                //     .iter()
+                //     .map(|s| s.chunks())
+                //     .flatten()
+                //     .collect::<Vec<_>>()
+
+                // This is the fancy implementation. Instead of splitting and recursing, we grow a
+                // selection of nodes if they are below the `max_chunk_size` and generate a chunk
+                // from them when needed (a new node grows the selection above `max_chunk_size` or a
+                // node is simply above `max_chunk_size` itself).
+
+                let mut results: Vec<TokenizedText> = vec![];
+
+                let max_chunk_size = self.max_chunk_size;
+                let prefixes = self.prefixes.clone();
+                assert!(self.content.is_none());
+
+                let prefixes_tokens_count =
+                    self.prefixes.iter().map(|p| p.tokens.len()).sum::<usize>();
+
+                let mut selection: Vec<TokenizedSection> = vec![];
+                let mut selection_tokens_count: usize = prefixes_tokens_count;
+
+                // Define closure to flush the current selection
+                let flush_selection =
+                    |selection: &mut Vec<TokenizedSection>,
+                     selection_tokens_count: &mut usize,
+                     results: &mut Vec<TokenizedText>| {
+                        if !selection.is_empty() {
+                            results.extend(
+                                TokenizedSection {
+                                    max_chunk_size,
+                                    prefixes: prefixes.clone(),
+                                    tokens_count: *selection_tokens_count,
+                                    content: None,
+                                    sections: selection.drain(..).collect(),
+                                }
+                                .chunks(),
+                            );
+                            *selection_tokens_count = prefixes_tokens_count;
+                        }
+                    };
+
+                for s in self.sections {
+                    if s.tokens_count > max_chunk_size {
+                        // If the node is above max_chunk_size we flush the current selection and
+                        // recurse into it, it will get splitted and can't be merged with anyone
+                        // else.
+                        flush_selection(&mut selection, &mut selection_tokens_count, &mut results);
+                        results.extend(s.chunks());
+                    } else {
+                        if selection_tokens_count + s.tokens_count - prefixes_tokens_count
+                            <= self.max_chunk_size
+                        {
+                            // The current node can be added to the current selection.
+                            selection_tokens_count += s.tokens_count - prefixes_tokens_count;
+                            selection.push(s);
+                        } else {
+                            // The node can't be added so we flush the current selection and make
+                            // that node the new selection.
+                            flush_selection(
+                                &mut selection,
+                                &mut selection_tokens_count,
+                                &mut results,
+                            );
+                            selection_tokens_count += s.tokens_count - prefixes_tokens_count;
+                            selection.push(s);
+                        }
+                    }
+                }
+                // Finally if the selection is not empty we flush it.
+                flush_selection(&mut selection, &mut selection_tokens_count, &mut results);
+
+                results
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -45,7 +390,7 @@ pub trait Splitter {
         provider_id: ProviderID,
         model_id: &str,
         max_chunk_size: usize,
-        text: &str,
+        sections: Section,
     ) -> Result<Vec<String>>;
 }
 
@@ -61,38 +406,6 @@ impl BaseV0Splitter {
     pub fn new() -> Self {
         BaseV0Splitter {}
     }
-
-    async fn decode_chunk_with_remainder(
-        &self,
-        embedder: &Box<dyn Embedder + Sync + Send>,
-        chunk: &[usize],
-    ) -> Result<(Option<String>, Option<Vec<usize>>)> {
-        // The maximum number of tokens to slide the window by when decoding fails.
-        const MAX_ERROR_SLIDE: usize = 4;
-
-        let mut end = chunk.len();
-
-        while end > 0 {
-            if chunk.len() - end > MAX_ERROR_SLIDE {
-                return Err(anyhow!("Could not tokenize the provided document"));
-            }
-            match embedder.decode(chunk[0..end].to_vec()).await {
-                Ok(decoded_string) => {
-                    let mut remaining: Option<Vec<usize>> = None;
-                    if end != chunk.len() {
-                        remaining = Some(chunk[end..].to_vec());
-                    }
-                    return Ok((Some(decoded_string), remaining));
-                }
-                Err(_) => {
-                    end -= 1;
-                    continue;
-                }
-            }
-        }
-
-        return Err(anyhow!("Could not tokenize the provided document."));
-    }
 }
 
 #[async_trait]
@@ -107,61 +420,33 @@ impl Splitter for BaseV0Splitter {
         provider_id: ProviderID,
         model_id: &str,
         max_chunk_size: usize,
-        text: &str,
+        section: Section,
     ) -> Result<Vec<String>> {
-        // Replace all \s+ with " " and trim.
-        let re = Regex::new(r"\s+").unwrap();
-        let clean = re.replace_all(text, " ");
-        let clean = clean.trim();
-        // Get the embedder and initialize.
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
 
-        // Encode the clean text.
-        let mut encoded = embedder.encode(clean).await?;
+        let tokenized_section =
+            TokenizedSection::from(&embedder, max_chunk_size, vec![], &section).await?;
 
-        let mut decoded = vec![];
-
-        while encoded.len() > 0 {
-            let mut current_chunk_size = cmp::min(max_chunk_size, encoded.len());
-            let tokenized_chunk = &encoded[0..current_chunk_size];
-
-            match self
-                .decode_chunk_with_remainder(&embedder, tokenized_chunk)
-                .await
-            {
-                Ok((Some(chunk), Some(remainder))) => {
-                    current_chunk_size = current_chunk_size - remainder.len();
-                    decoded.push(chunk);
-                }
-                Ok((Some(chunk), None)) => {
-                    decoded.push(chunk);
-                }
-                Ok((None, Some(_remainder))) => {
-                    return Err(anyhow!("Could not tokenize the provided document"));
-                }
-                Ok((None, None)) => {
-                    return Err(anyhow!("Could not tokenize the provided document"));
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-            if current_chunk_size <= 0 {
-                return Err(anyhow!("Could not tokenize the provided document"));
-            }
-            encoded = encoded[current_chunk_size..].to_vec();
-        }
-
-        Ok(decoded)
+        Ok(tokenized_section
+            .chunks()
+            .into_iter()
+            .map(|t| t.text)
+            .collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Ok;
+
     use super::*;
 
-    async fn test_splitter(input: &String, expected: &String, max_chunk_size: usize) -> Result<()> {
+    async fn test_splitter_v0(
+        input: &String,
+        max_chunk_size: usize,
+        splits_count: usize,
+    ) -> Result<()> {
         let provider_id = ProviderID::OpenAI;
         let model_id = "text-embedding-ada-002";
 
@@ -169,10 +454,21 @@ mod tests {
 
         let text = input;
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, max_chunk_size, &text)
+            .split(
+                credentials,
+                provider_id,
+                model_id,
+                max_chunk_size,
+                Section {
+                    prefix: None,
+                    content: Some(text.to_string()),
+                    sections: vec![],
+                },
+            )
             .await?;
 
-        assert_eq!(&splitted.join(""), expected);
+        assert_eq!(&splitted.join(""), input);
+        assert_eq!(splitted.len(), splits_count);
         Ok(())
     }
     #[tokio::test]
@@ -182,28 +478,339 @@ mod tests {
         // A single '🔥' emoji gets tokenized as : [9468, 242, 98].
         // So the string '🔥🔥' gets tokenized as : [9468, 242, 98, 9468, 242, 98]
         // With max_chunk_size=4, we end up with two chunks : [9468, 242, 98, 9468] and [242, 98].
-        // Without proper handling, the decoding of the first chunk would fail because the token "9468" alone is incomplete.
+        // Without proper handling, the decoding of the first chunk would fail because the token
+        // "9468" alone is incomplete.
         // We test that the splitter() function is properly handling this case.
         let input = "🔥🔥".to_string();
 
-        test_splitter(&input, &input, max_chunk_size).await.unwrap();
+        test_splitter_v0(&input, max_chunk_size, 2).await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_splitter_basic_text() {
-        let cases: [String; 2] = [
-            "a random document string with no double space".repeat(10),
-            "a  random  document string WITH double spaces".repeat(10),
+    async fn test_splitter_v0_basic_text() {
+        let cases: [(String, usize); 2] = [
+            (
+                "a random document string with no double space".repeat(10),
+                10,
+            ),
+            (
+                "a  random  document \nstring WITH double spaces".repeat(8),
+                10,
+            ),
         ];
-        let re = Regex::new(r"\s+").unwrap();
 
         let max_chunk_size = 8;
 
-        for case in cases {
-            let expected = re.replace_all(&case, " ");
-            test_splitter(&case, &expected.to_string(), max_chunk_size)
+        for (case, splits_count) in cases {
+            test_splitter_v0(&case, max_chunk_size, splits_count)
                 .await
                 .unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections_normal() {
+        let section = Section {
+            prefix: Some("# title\n".to_string()),
+            content: Some("A line.\nAnother line.\n".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("# p1\n".to_string()),
+                    content: Some("A paragraph\nAnother paragraph.\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some("# p2 alone\n".to_string()),
+                    content: None,
+                    sections: vec![],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 18, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "# title\nA line.\nAnother line.\n".to_string(),
+                "# title\n# p1\nA paragraph\nAnother paragraph.\n# p2 alone\n".to_string()
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections() {
+        let section = Section {
+            prefix: Some("p".to_string()),
+            content: Some("c..".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("p0".to_string()),
+                    content: Some("c0........".to_string()),
+                    sections: vec![
+                        Section {
+                            prefix: None,
+                            content: Some("c01......".to_string()),
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p02".to_string()),
+                            content: Some("c02....".to_string()),
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p1".to_string()),
+                    content: Some("c1".to_string()),
+                    sections: vec![Section {
+                        prefix: Some("p10".to_string()),
+                        content: Some("c10........".to_string()),
+                        sections: vec![],
+                    }],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 12, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "pc..".to_string(),
+                "pp0c0........c01......".to_string(),
+                "pp0p02c02....".to_string(),
+                "pp1c1p10c10........".to_string(),
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections_variant() {
+        let section = Section {
+            prefix: Some("p".to_string()),
+            content: Some("c..".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("p0".to_string()),
+                    content: Some("c0........".to_string()),
+                    sections: vec![
+                        Section {
+                            prefix: None,
+                            content: Some("c01......".to_string()),
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p02".to_string()),
+                            content: Some("c02....".to_string()),
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p1".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p10".to_string()),
+                        content: Some("c10........".to_string()),
+                        sections: vec![],
+                    }],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 12, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "pc..".to_string(),
+                "pp0c0........c01......".to_string(),
+                "pp0p02c02....".to_string(),
+                "pp1p10c10........".to_string(),
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections_no_content() {
+        let section = Section {
+            prefix: Some("p".to_string()),
+            content: None,
+            sections: vec![
+                Section {
+                    prefix: Some("p0".to_string()),
+                    content: None,
+                    sections: vec![
+                        Section {
+                            prefix: Some("p01".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p02".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p1".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p10".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p2".to_string()),
+                    content: None,
+                    sections: vec![
+                        Section {
+                            prefix: Some("p21".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p22".to_string()),
+                            content: None,
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p3".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p30".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p4".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p40".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+                Section {
+                    prefix: Some("p5".to_string()),
+                    content: None,
+                    sections: vec![Section {
+                        prefix: Some("p50".to_string()),
+                        content: None,
+                        sections: vec![],
+                    }],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 12, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "pp0p01p02p1p10".to_string(),
+                "pp2p21p22p3p30".to_string(),
+                "pp4p40p5p50".to_string()
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections_long_content() {
+        let section = Section {
+            prefix: Some("p".to_string()),
+            content: Some("c..".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("p0".to_string()),
+                    content: Some(
+                        "c0........+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-+-++-+-+-+-+-+-+-\
+                         +-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-+-++-+-+-+-+-+-+-"
+                            .to_string(),
+                    ),
+                    sections: vec![
+                        Section {
+                            prefix: None,
+                            content: Some("c01......".to_string()),
+                            sections: vec![],
+                        },
+                        Section {
+                            prefix: Some("p02".to_string()),
+                            content: Some("c02....".to_string()),
+                            sections: vec![],
+                        },
+                    ],
+                },
+                Section {
+                    prefix: Some("p1".to_string()),
+                    content: Some("c1".to_string()),
+                    sections: vec![Section {
+                        prefix: Some("p10".to_string()),
+                        content: Some("c10........".to_string()),
+                        sections: vec![],
+                    }],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 12, section)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "pc..".to_string(),
+                "pp0c0........+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-".to_string(),
+                "pp0+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-".to_string(),
+                "pp0+-+-+-+-+-++-+-+-+-+-+-+-c01......".to_string(),
+                "pp0p02c02....".to_string(),
+                "pp1c1p10c10........".to_string(),
+            ]
+            .join("|")
+        )
     }
 }

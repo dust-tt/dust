@@ -1,4 +1,5 @@
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
+use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
 use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -10,6 +11,7 @@ use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use itertools::Itertools;
 use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{
     points_selector::PointsSelectorOneOf, Filter, PointId, PointsSelector, RetrievedPoint,
@@ -26,8 +28,6 @@ use std::sync::Arc;
 use tokio::try_join;
 use tokio_stream::{self as stream};
 use uuid::Uuid;
-
-use super::qdrant::{QdrantClients, QdrantDataSourceConfig};
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
@@ -137,6 +137,34 @@ impl SearchFilter {
             },
             None => Ok(()),
         }
+    }
+}
+
+/// Section is used to represent the structure of document to be taken into account during chunking.
+/// Section prefixes are repeated in all chunks generated from the section (and its children). We do
+/// not insert any separators the separators are the responsibility of the caller (\n at end of
+/// sections, ...)
+#[derive(Serialize, Deserialize)]
+pub struct Section {
+    pub prefix: Option<String>,
+    pub content: Option<String>,
+    pub sections: Vec<Section>,
+}
+
+impl Section {
+    pub fn full_text(&self) -> String {
+        format!(
+            "{}{}{}",
+            match self.prefix {
+                Some(ref prefix) => prefix,
+                None => "",
+            },
+            match self.content {
+                Some(ref content) => content,
+                None => "",
+            },
+            self.sections.iter().map(|s| s.full_text()).join("")
+        )
     }
 }
 
@@ -639,11 +667,12 @@ impl DataSource {
         tags: &Vec<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
-        text: &str,
+        text: Section,
         preserve_system_tags: bool,
     ) -> Result<Document> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
 
+        let full_text = text.full_text();
         // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
         // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
         if preserve_system_tags
@@ -697,7 +726,7 @@ impl DataSource {
         // Hash document.
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
-        hasher.update(text.as_bytes());
+        hasher.update(full_text.as_bytes());
         hasher.update(format!("{}", timestamp).as_bytes());
         tags.iter().for_each(|tag| {
             hasher.update(tag.as_bytes());
@@ -719,7 +748,7 @@ impl DataSource {
             &parents,
             source_url,
             &document_hash,
-            text.len() as u64,
+            full_text.len() as u64,
         )?;
 
         // GCP store raw text and document_id.
@@ -748,7 +777,7 @@ impl DataSource {
             ),
             Object::create(
                 &bucket,
-                text.as_bytes().to_vec(),
+                full_text.as_bytes().to_vec(),
                 &content_path,
                 "application/text",
             ),
@@ -2025,5 +2054,42 @@ mod tests {
                 result
             );
         }
+    }
+
+    #[test]
+    fn test_section_simple() {
+        let section = Section {
+            prefix: None,
+            content: Some("Hello world".to_string()),
+            sections: vec![],
+        };
+
+        assert_eq!(section.full_text(), "Hello world");
+    }
+
+    #[test]
+    fn test_sections() {
+        let section = Section {
+            prefix: Some("# title\n".to_string()),
+            content: Some("This is an introduction.\n".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("## paragraph 2\n".to_string()),
+                    content: Some("This is a paragraph1.\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some("## paragraph 2\n".to_string()),
+                    content: Some("This is a paragraph2.\n".to_string()),
+                    sections: vec![],
+                },
+            ],
+        };
+
+        assert_eq!(
+            section.full_text(),
+            "# title\nThis is an introduction.\n## paragraph 2\nThis \
+             is a paragraph1.\n## paragraph 2\nThis is a paragraph2.\n"
+        );
     }
 }
