@@ -1,4 +1,5 @@
 import { Button, SectionHeader } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -11,7 +12,6 @@ import { APIError } from "@app/lib/error";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { AppType } from "@app/types/app";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

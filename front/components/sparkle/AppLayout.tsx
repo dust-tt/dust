@@ -6,6 +6,7 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -19,7 +20,6 @@ import React from "react";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import {
   SidebarNavigation,

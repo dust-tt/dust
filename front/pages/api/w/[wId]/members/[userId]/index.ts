@@ -1,10 +1,10 @@
+import { UserType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership, User } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { UserType } from "@app/types/user";
 
 export type PostMemberResponseBody = {
   member: UserType;

@@ -1,15 +1,17 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { WorkspaceType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import DatabasePicker from "@app/components/database/DatabasePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import { SpecificationBlockType, SpecificationType } from "@app/types/app";
-import { AppType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
-import { RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
+import {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import { BlockType, RunType } from "@app/types/run";
 
 import Block from "./Block";
 

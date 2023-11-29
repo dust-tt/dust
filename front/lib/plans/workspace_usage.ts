@@ -1,8 +1,8 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { Membership, Workspace } from "@app/lib/models/workspace";
-import { WorkspaceType } from "@app/types/user";
 
 export async function countActiveSeatsInWorkspace(
   workspaceId: string

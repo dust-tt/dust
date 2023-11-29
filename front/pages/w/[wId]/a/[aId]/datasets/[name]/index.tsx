@@ -1,6 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Tab } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -19,7 +20,6 @@ import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { AppType } from "@app/types/app";
 import { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -8,7 +9,6 @@ import {
   pokeInviteWorkspaceToEnterprisePlan,
 } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { WorkspaceType } from "@app/types/user";
 
 export type UpgradeWorkspaceResponseBody = {
   workspace: WorkspaceType;

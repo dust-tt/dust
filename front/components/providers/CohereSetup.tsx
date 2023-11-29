@@ -1,10 +1,10 @@
 import { Button } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
-import { WorkspaceType } from "@app/types/user";
 
 export default function CohereSetup({
   owner,

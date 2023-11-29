@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import crypto from "crypto";
 import { Op, Transaction } from "sequelize";
 
@@ -57,7 +58,6 @@ import {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { PlanType } from "@app/types/plan";
-import { WorkspaceType } from "@app/types/user";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 /**

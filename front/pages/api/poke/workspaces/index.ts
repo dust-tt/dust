@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { FindOptions, Op, WhereOptions } from "sequelize";
 
@@ -5,7 +6,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Subscription, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { WorkspaceType } from "@app/types/user";
 
 export type GetWorkspacesResponseBody = {
   workspaces: WorkspaceType[];

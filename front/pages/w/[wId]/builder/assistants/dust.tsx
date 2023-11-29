@@ -8,6 +8,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { DataSourceType } from "@dust-tt/types";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
@@ -22,7 +23,6 @@ import { APIError } from "@app/lib/error";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

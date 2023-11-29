@@ -5,6 +5,7 @@ import {
   Page,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
@@ -16,7 +17,6 @@ import {
   eventSchemaPropertyAllTypes,
   EventSchemaType,
 } from "@app/types/extract";
-import { WorkspaceType } from "@app/types/user";
 
 type EventSchemaPropertyType = {
   name: string;

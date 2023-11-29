@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { Authenticator } from "@app/lib/auth";
@@ -28,7 +29,6 @@ import {
   PlanType,
   SubscriptionType,
 } from "@app/types/plan";
-import { WorkspaceType } from "@app/types/user";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.

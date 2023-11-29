@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
@@ -9,7 +10,6 @@ import { SpecificationBlockType, SpecificationType } from "@app/types/app";
 import { AppType } from "@app/types/app";
 import { BlockType } from "@app/types/run";
 import { RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 
 import Block from "./Block";
 

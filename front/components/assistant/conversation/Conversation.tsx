@@ -1,3 +1,4 @@
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -19,7 +20,6 @@ import {
   isAgentMention,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import { ContentFragment } from "./ContentFragment";
 

@@ -1,13 +1,12 @@
 import { ChevronDownIcon } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 
 export default function ModelPicker({
   owner,

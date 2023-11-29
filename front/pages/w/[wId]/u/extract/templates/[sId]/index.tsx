@@ -9,12 +9,12 @@ import {
   PencilSquareIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { Fragment } from "react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -27,7 +27,6 @@ import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{

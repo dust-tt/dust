@@ -16,6 +16,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { ReactNode, useCallback, useEffect, useState } from "react";
@@ -58,7 +59,6 @@ import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w
 import { AppType } from "@app/types/app";
 import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { PlanType, SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";

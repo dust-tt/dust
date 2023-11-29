@@ -1,4 +1,4 @@
-import { WorkspaceType } from "@app/types/user";
+import { WorkspaceType } from "@dust-tt/types";
 
 const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 export function isDevelopment() {

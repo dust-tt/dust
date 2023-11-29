@@ -1,4 +1,5 @@
 import { Button, Tab } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -37,7 +38,6 @@ import { AppType, BlockRunConfig, SpecificationType } from "@app/types/app";
 import { DatasetType } from "@app/types/dataset";
 import { SubscriptionType } from "@app/types/plan";
 import { TraceType } from "@app/types/run";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

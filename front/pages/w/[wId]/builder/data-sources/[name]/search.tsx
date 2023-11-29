@@ -1,4 +1,4 @@
-import { DataSourceType } from "@dust-tt/types";
+import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -14,10 +14,8 @@ import {
   getProviderLogoPathForDataSource,
 } from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { UserType } from "@app/types//user";
 import { DocumentType } from "@app/types/document";
 import { SubscriptionType } from "@app/types/plan";
-import { WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

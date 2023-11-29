@@ -6,6 +6,7 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { DataSourceType } from "@dust-tt/types";
+import { WorkspaceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -19,7 +20,6 @@ import { CoreAPI, CoreAPIDataSource } from "@app/lib/core_api";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;

@@ -1,9 +1,9 @@
+import { UserType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { UserType } from "@app/types/user";
 
 export type GetMembersResponseBody = {
   members: UserType[];

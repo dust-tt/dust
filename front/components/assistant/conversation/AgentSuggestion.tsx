@@ -1,4 +1,5 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
@@ -13,7 +14,6 @@ import {
   isUserMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
 
 export function AgentSuggestion({
   owner,

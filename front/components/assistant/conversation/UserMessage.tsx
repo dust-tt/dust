@@ -1,3 +1,5 @@
+import { UserType, WorkspaceType } from "@dust-tt/types";
+
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -6,7 +8,6 @@ import {
   MessageReactionType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import { AgentSuggestion } from "./AgentSuggestion";
 

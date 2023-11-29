@@ -14,27 +14,22 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
+import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  Authenticator,
-  getSession,
-  getUserFromSession,
-  RoleType,
-} from "@app/lib/auth";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import { MembershipInvitationType } from "@app/types/membership_invitation";
 import { PlanType, SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 

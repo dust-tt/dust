@@ -1,4 +1,5 @@
 import { Button, Input, RadioButton } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -7,7 +8,6 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

@@ -1,4 +1,5 @@
 import { Button, ChatBubbleBottomCenterTextIcon, Item } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -6,7 +7,6 @@ import React from "react";
 
 import { useConversations } from "@app/lib/swr";
 import { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
 
 export function AssistantSidebarMenu({
   owner,

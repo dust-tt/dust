@@ -1,5 +1,6 @@
+import { WorkspaceType } from "@dust-tt/types";
+
 import { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
-import { WorkspaceType } from "@app/types/user";
 
 import { useProviders } from "./swr";
 

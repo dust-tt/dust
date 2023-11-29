@@ -1,10 +1,10 @@
+import { WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
 import { useRef } from "react";
 import React from "react";
 
 import Particles from "@app/components/home/particles";
-import { WorkspaceType } from "@app/types/user";
 
 export default function OnboardingLayout({
   owner,

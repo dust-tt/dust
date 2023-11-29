@@ -1,4 +1,5 @@
 import { DataSourceType } from "@dust-tt/types";
+import { WorkspaceType } from "@dust-tt/types";
 import useSWR, { Fetcher } from "swr";
 
 import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
@@ -29,7 +30,6 @@ import {
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { RunRunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 
 import { ConnectorPermission } from "./connectors_api";
 
