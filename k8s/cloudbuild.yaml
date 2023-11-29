@@ -9,6 +9,8 @@ steps:
       - -t
       - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest
       - --push
+      - -f
+      - ${_DOCKERFILE_PATH}
       - .
     secretEnv: ["DEPOT_TOKEN"]
 

@@ -1,0 +1,31 @@
+{
+  "name": "@dust-tt/types",
+  "version": "0.1.0",
+  "author": "Dust",
+  "main": "dist/index.js",
+  "module": "dist/types.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "dts build",
+    "lint": "dts lint",
+    "format": "dts lint --fix",
+    "prepare": "dts build",
+    "start": "dts watch"
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "tslib": "^2.6.2",
+    "typescript": "^5.0.3"
+  },
+  "dependencies": {
+    "dts-cli": "^2.0.3",
+    "io-ts": "^2.2.20"
+  }
+}

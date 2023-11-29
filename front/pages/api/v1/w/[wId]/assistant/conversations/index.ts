@@ -1,3 +1,4 @@
+import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,8 +19,6 @@ import {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-
-import { PostContentFragmentRequestBodySchema } from "./[cId]/content_fragments";
 
 const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

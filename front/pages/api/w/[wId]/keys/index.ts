@@ -1,10 +1,10 @@
+import { KeyType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Key } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
-import { KeyType } from "@app/types/key";
 
 export type GetKeysResponseBody = {
   keys: KeyType[];

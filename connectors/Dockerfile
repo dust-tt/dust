@@ -3,7 +3,7 @@
 FROM node:18.15.0 as build
  
 WORKDIR /tmp/
-COPY ./admin/docker_build/install_poppler_tools.sh ./
+COPY ./connectors/admin/docker_build/install_poppler_tools.sh ./
 RUN chmod +x ./install_poppler_tools.sh
 RUN ./install_poppler_tools.sh
 # end installing poppler tools
@@ -14,13 +14,16 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
-WORKDIR /app
-
-COPY package*.json ./
+WORKDIR /types
+COPY /types/package*.json ./
+COPY /types/ .
 RUN npm ci
 
-COPY . .
+WORKDIR /app
 
+COPY ./connectors/package*.json ./
+RUN npm ci
+COPY ./connectors/ .
 RUN npm run build
 
 
