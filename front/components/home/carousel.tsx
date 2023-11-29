@@ -3,6 +3,7 @@ import "slick-carousel/slick/slick-theme.css";
 
 import {
   Avatar,
+  Button,
   ChevronLeftIcon,
   ChevronRightIcon,
   Div3D,
@@ -13,6 +14,14 @@ import React, { Component, createRef, RefObject } from "react";
 import Slider from "react-slick";
 
 import { classNames } from "@app/lib/utils";
+
+export const breakpoints = {
+  sm: 640, // Tailwind's default for `sm`
+  md: 768, // Tailwind's default for `md`
+  lg: 1024, // Tailwind's default for `lg`
+  xl: 1280, // Tailwind's default for `xl`
+  xxl: 1536, // Tailwind's default for `2xl`
+};
 
 interface SliderExtended extends Slider {
   slickNext: () => void;
@@ -25,19 +34,45 @@ export default class SimpleSlider extends Component {
   slider: RefObject<SliderExtended> = createRef();
   state = {
     currentSlide: 0,
+    slidesToShow: 1, // Default value
   };
 
+  updateSlidesToShow = () => {
+    const windowWidth = window.innerWidth;
+    let slidesToShow = 1; // Default to the smallest number
+
+    if (windowWidth >= breakpoints.xxl) {
+      slidesToShow = 3;
+    } else if (windowWidth >= breakpoints.xl) {
+      slidesToShow = 2;
+    } else if (windowWidth >= breakpoints.lg) {
+      slidesToShow = 2;
+    } else if (windowWidth >= breakpoints.md) {
+      slidesToShow = 2;
+    } else if (windowWidth >= breakpoints.sm) {
+      slidesToShow = 1;
+    }
+
+    this.setState({ slidesToShow });
+  };
+
+  componentDidMount() {
+    this.updateSlidesToShow();
+    window.addEventListener("resize", this.updateSlidesToShow);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateSlidesToShow);
+  }
+
   goToNext = () => {
-    const { currentSlide } = this.state;
-    // Assuming you have a constant for the number of slides to scroll
-    const slidesToScroll = 3;
-    this.slider.current?.slickGoTo(currentSlide + slidesToScroll);
+    const { currentSlide, slidesToShow } = this.state;
+    this.slider.current?.slickGoTo(currentSlide + slidesToShow);
   };
 
   goToPrevious = () => {
-    const { currentSlide } = this.state;
-    const slidesToScroll = 3;
-    this.slider.current?.slickGoTo(currentSlide - slidesToScroll);
+    const { currentSlide, slidesToShow } = this.state;
+    this.slider.current?.slickGoTo(Math.max(currentSlide - slidesToShow, 0));
   };
 
   handleBeforeChange = (oldIndex: number, newIndex: number): void => {
@@ -48,90 +83,137 @@ export default class SimpleSlider extends Component {
     const settings = {
       infinite: true,
       centerMode: true,
-      slidesToShow: 4,
-      slidesToScroll: 4,
-      centerPadding: "120px",
+      slidesToShow: 1,
+      slidesToScroll: 1,
+      centerPadding: "60px",
+      accessibility: true,
       speed: 800,
       arrows: false,
       beforeChange: this.handleBeforeChange,
+      responsive: [
+        {
+          breakpoint: breakpoints.xxl,
+          settings: {
+            slidesToShow: 3,
+            slidesToScroll: 3,
+            centerPadding: "240px",
+          },
+        },
+        {
+          breakpoint: breakpoints.xl,
+          settings: {
+            slidesToShow: 2,
+            slidesToScroll: 2,
+            centerPadding: "180px",
+          },
+        },
+        {
+          breakpoint: breakpoints.lg,
+          settings: {
+            slidesToShow: 2,
+            slidesToScroll: 2,
+            centerPadding: "120px",
+          },
+        },
+        {
+          breakpoint: breakpoints.md,
+          settings: {
+            slidesToShow: 2,
+            slidesToScroll: 2,
+            centerPadding: "80px",
+          },
+        },
+        {
+          breakpoint: breakpoints.sm,
+          settings: {
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            centerPadding: "60px",
+          },
+        },
+      ],
     };
     return (
       <>
         <Slider ref={this.slider} {...settings}>
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
+            visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
             name="@notion"
-            question="What are you exactly?"
+            question="Can you find the onboarding checklist for new hires?"
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
+            visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
             name="@hiringExpert"
-            question="What are you exactly?"
+            question="Draft me a job description following company script for this job."
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Pink_6.jpg"
+            visual="https://dust.tt/static/droidavatar/Droid_Pink_1.jpg"
             name="@onboardingBuddy"
-            question="What are you exactly?"
+            question="Could you walk me through the typical workflow for a project in my department?"
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
+            visual="https://dust.tt/static/droidavatar/Droid_Sky_8.jpg"
             name="@salesExpert"
-            question="What are you exactly?"
+            question="What are our new product features and associated sales script?"
+          />
+          <AssistantItem
+            visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+            name="@drive"
+            question="Can you find the slide deck from last month's marketing presentation for me?"
           />
           <AssistantItem
             visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
             name="@dataExpert"
-            question="What are you exactly?"
+            question="How do I write an SQL query to find the top-performing products by region?"
           />
           <AssistantItem
             visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
-            name="@contentAssistant"
-            question="What are you exactly?"
+            name="@uxWriterAssistant"
+            question="Can you draft 3 proposals for a 140 character version for this text?"
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
-            name="@codingAssistant"
-            question="What are you exactly?"
+            visual="https://dust.tt/static/droidavatar/Droid_Indigo_6.jpg"
+            name="@weeklyReport"
+            question="Write me the report for last week's feature releases."
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
+            visual="https://dust.tt/static/droidavatar/Droid_Orange_1.jpg"
             name="@companyGenius"
-            question="What are you exactly?"
+            question="What was the outcome of the last board meeting regarding our expansion plans?"
           />
           <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
-            name="@salesExpert"
-            question="What are you exactly?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
-            name="@codingAssistant"
-            question="What are you exactly?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
-            name="@spreadsheetExpert"
-            question="What are you exactly?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
+            visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
             name="@slack"
-            question="What are you exactly?"
+            question="Summarize me last month's daily stand-ups for the team."
+          />
+          <AssistantItem
+            visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
+            name="@officeManager"
+            question="Where can I find white paper and office supplies?"
+          />
+          <AssistantItem
+            visual="https://dust.tt/static/droidavatar/Droid_Orange_5.jpg"
+            name="@spreadsheetExpert"
+            question="Can you help me write a VLOOKUP formula to match employee names with their IDs?"
           />
         </Slider>
         <div className="flex w-full flex-row justify-center gap-4">
-          <div
-            className="transition-300 h-5 w-5 rounded-full bg-slate-400 transition-all hover:bg-slate-200"
+          <Button
+            icon={ChevronLeftIcon}
+            label="Previous"
+            labelVisible={false}
+            size="xs"
+            variant="tertiary"
             onClick={this.goToPrevious}
-          >
-            <IconButton icon={ChevronLeftIcon} size="sm" variant="secondary" />
-          </div>
-          <div
-            className="transition-300 h-5 w-5 rounded-full bg-slate-400 transition-all hover:bg-slate-200"
+          />
+          <Button
+            icon={ChevronRightIcon}
+            label="Next"
+            labelVisible={false}
+            size="xs"
+            variant="tertiary"
             onClick={this.goToNext}
-          >
-            <IconButton icon={ChevronRightIcon} size="sm" variant="secondary" />
-          </div>
+          />
         </div>
       </>
     );
@@ -152,24 +234,24 @@ const AssistantItem = ({
   return (
     <Hover3D
       className={classNames(
-        "grid w-[320px] cursor-default grid-cols-3 gap-x-3 gap-y-1 px-2 py-10",
+        "grid w-full cursor-default grid-cols-4 gap-x-3 gap-y-1 px-2 py-10",
         className
       )}
     >
-      <Div3D depth={30} className="row-span-2">
+      <Div3D depth={50} className="row-span-2">
         <Avatar size="auto" isRounded visual={visual} className="" />
       </Div3D>
       <Div3D
-        depth={80}
+        depth={30}
         className={classNames(
-          "col-span-2 font-objektiv text-base font-semibold text-slate-100"
+          "col-span-3 w-full truncate font-objektiv text-base font-semibold text-slate-100"
         )}
       >
         {name}
       </Div3D>
       <Div3D
-        depth={60}
-        className="font-regular col-span-2 font-objektiv text-base text-slate-400"
+        depth={80}
+        className="font-regular col-span-3 font-objektiv text-base text-slate-400"
       >
         {question}
       </Div3D>

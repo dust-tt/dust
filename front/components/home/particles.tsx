@@ -427,7 +427,7 @@ export default function Particules({
       }
     };
 
-    window.addEventListener("keydown", onKeydown, false);
+    //window.addEventListener("keydown", onKeydown, false);
     window.addEventListener("resize", onWindowResize, false);
     if (hasScrollBehavior) {
       window.addEventListener("scroll", onScroll, false);
