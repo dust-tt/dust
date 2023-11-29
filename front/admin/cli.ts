@@ -662,11 +662,3 @@ main()
     console.log(err);
     process.exit(1);
   });
-
-async function throwOnError<T>(p: Promise<Result<T, Error>>) {
-  const res = await p;
-  if (res.isErr()) {
-    throw res.error;
-  }
-  return res;
-}
