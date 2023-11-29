@@ -140,7 +140,9 @@ impl SearchFilter {
 }
 
 /// Section is used to represent the structure of document to be taken into account during chunking.
-/// Section prefixes are repeated in all chunks generated from the section (and its children).
+/// Section prefixes are repeated in all chunks generated from the section (and its children). We do
+/// not insert any separators the separators are the responsibility of the caller (\n at end of
+/// sections, ...)
 #[derive(Serialize, Deserialize)]
 pub struct Section {
     pub prefix: Option<String>,
