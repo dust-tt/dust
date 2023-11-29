@@ -17,6 +17,7 @@ import {
   internalSubscribeWorkspaceToFreeUpgradedPlan,
 } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
+import { Result } from "@app/lib/result";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
@@ -465,6 +466,60 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           })
         );
       }
+
+      return;
+    }
+
+    case "delete-document": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.name) {
+        throw new Error("Missing --name argument");
+      }
+      if (!args.documentId) {
+        throw new Error("Missing --documentId argument");
+      }
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+      if (!workspace) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const dataSource = await DataSource.findOne({
+        where: {
+          workspaceId: workspace.id,
+          name: args.name,
+        },
+      });
+      if (!dataSource) {
+        throw new Error(
+          `DataSource not found: wId='${args.wId}' name='${args.name}'`
+        );
+      }
+
+      const getRes = await CoreAPI.getDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId: args.documentId,
+      });
+      if (getRes.isErr()) {
+        throw new Error(
+          `Error while getting the document: ` + getRes.error.message
+        );
+      }
+      const delRes = await CoreAPI.deleteDataSourceDocument({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        documentId: args.documentId,
+      });
+      if (delRes.isErr()) {
+        throw new Error(`Error deleting document: ${delRes.error.message}`);
+      }
+      console.log(`Data Source document deleted: ${args.documentId}`);
 
       return;
     }
