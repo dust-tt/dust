@@ -1381,8 +1381,7 @@ struct DataSourcesDocumentsUpsertPayload {
     tags: Vec<String>,
     parents: Vec<String>,
     source_url: Option<String>,
-    text: String,
-    section: Option<Section>,
+    section: Section,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
 }
@@ -1426,14 +1425,7 @@ async fn data_sources_documents_upsert(
                         &payload.tags,
                         &payload.parents,
                         &payload.source_url,
-                        match payload.section {
-                            Some(s) => s,
-                            None => Section {
-                                prefix: None,
-                                content: Some(payload.text),
-                                sections: vec![],
-                            },
-                        },
+                        payload.section,
                         true, // preserve system tags
                     )
                     .await

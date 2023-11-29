@@ -74,7 +74,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.type({
   tags: t.union([t.array(t.string), t.undefined, t.null]),
   parents: t.union([t.array(t.string), t.undefined, t.null]),
   source_url: t.union([t.string, t.undefined, t.null]),
-  upsert_context: t.union([UpsertContextSchema, t.null]),
+  upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
   section: t.union([Section, t.undefined, t.null]),
   light_document_output: t.union([t.boolean, t.undefined]),
 });
