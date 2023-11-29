@@ -1,7 +1,8 @@
 import {
   DataSourceType,
   ModelId,
-  PostContentFragmentRequestBodySchema,
+  PublicPostContentFragmentRequestBodySchema,
+  PublicPostMessagesRequestBodySchema,
 } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
@@ -55,26 +56,6 @@ export type AgentGenerationSuccessEvent = {
   text: string;
 };
 
-const PostMessagesRequestBodySchemaIoTs = t.type({
-  content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
-  context: t.type({
-    timezone: t.string,
-    username: t.string,
-    fullName: t.union([t.string, t.null]),
-    email: t.union([t.string, t.null]),
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
-});
-
 const PostConversationsRequestBodySchemaIoTs = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
@@ -82,8 +63,11 @@ const PostConversationsRequestBodySchemaIoTs = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PostMessagesRequestBodySchemaIoTs, t.undefined]),
-  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
+  message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
+  contentFragment: t.union([
+    PublicPostContentFragmentRequestBodySchema,
+    t.undefined,
+  ]),
 });
 
 type PostConversationsRequestBodySchema = t.TypeOf<
@@ -91,11 +75,11 @@ type PostConversationsRequestBodySchema = t.TypeOf<
 >;
 
 export type PostMessagesRequestBodySchema = t.TypeOf<
-  typeof PostMessagesRequestBodySchemaIoTs
+  typeof PublicPostMessagesRequestBodySchema
 >;
 
 export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PostContentFragmentRequestBodySchema
+  typeof PublicPostContentFragmentRequestBodySchema
 >;
 
 // Event sent when the user message is created.

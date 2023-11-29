@@ -1,4 +1,7 @@
-import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
+import {
+  PublicPostContentFragmentRequestBodySchema,
+  PublicPostMessagesRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,7 +16,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PostMessagesRequestBodySchema } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages";
 import {
   ContentFragmentType,
   ConversationType,
@@ -27,8 +29,11 @@ const PostConversationsRequestBodySchema = t.type({
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PostMessagesRequestBodySchema, t.undefined]),
-  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
+  message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
+  contentFragment: t.union([
+    PublicPostContentFragmentRequestBodySchema,
+    t.undefined,
+  ]),
 });
 
 export type PostConversationsResponseBody = {
