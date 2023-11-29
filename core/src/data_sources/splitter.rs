@@ -1,3 +1,4 @@
+use crate::data_sources::data_source::Section;
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
@@ -9,34 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{cmp, str::FromStr};
 use tokio::try_join;
-
-use super::data_source::Section;
-
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SplitterID {
-    BaseV0,
-}
-
-impl ToString for SplitterID {
-    fn to_string(&self) -> String {
-        match self {
-            SplitterID::BaseV0 => String::from("base_v0"),
-        }
-    }
-}
-
-impl FromStr for SplitterID {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "base_v0" => Ok(SplitterID::BaseV0),
-            _ => Err(ParseError::with_message(
-                "Unknown splitter ID (possible values: base_v0)",
-            ))?,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct TokenizedText {
@@ -102,10 +75,9 @@ async fn split_text(
     max_chunk_size: usize,
     text: &str,
 ) -> Result<Vec<TokenizedText>> {
-    // Encode the clean text.
     let mut encoded = embedder.encode(text).await?;
 
-    // Construct a valid decoded chunks.
+    // Construct valid decoded chunks.
     let mut splits: Vec<TokenizedText> = vec![];
 
     while encoded.len() > 0 {
@@ -241,16 +213,16 @@ impl TokenizedSection {
         let mut tokens: Vec<usize> = vec![];
 
         sections.iter().for_each(|s| {
+            s.prefixes.iter().for_each(|p| {
+                if !seen_prefixes.contains(&p.text) {
+                    tokens.extend(p.tokens.clone());
+                    text += &p.text;
+                    seen_prefixes.insert(p.text.clone());
+                }
+            });
+
             match s.content.as_ref() {
                 Some(c) => {
-                    s.prefixes.iter().for_each(|p| {
-                        if !seen_prefixes.contains(&p.text) {
-                            tokens.extend(p.tokens.clone());
-                            text += &p.text;
-                            seen_prefixes.insert(p.text.clone());
-                        }
-                    });
-
                     tokens.extend(c.tokens.clone());
                     text += &c.text;
                 }
@@ -266,15 +238,14 @@ impl TokenizedSection {
         let mut tokens_count: usize = 0;
 
         sections.iter().for_each(|s| {
+            s.prefixes.iter().for_each(|p| {
+                if !seen_prefixes.contains(&p.text) {
+                    tokens_count += p.tokens.len();
+                    seen_prefixes.insert(p.text.clone());
+                }
+            });
             match s.content.as_ref() {
                 Some(c) => {
-                    s.prefixes.iter().for_each(|p| {
-                        if !seen_prefixes.contains(&p.text) {
-                            tokens_count += p.tokens.len();
-                            seen_prefixes.insert(p.text.clone());
-                        }
-                    });
-
                     tokens_count += c.tokens.len();
                 }
                 None => (),
@@ -315,6 +286,32 @@ impl TokenizedSection {
         }
 
         chunks
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SplitterID {
+    BaseV0,
+}
+
+impl ToString for SplitterID {
+    fn to_string(&self) -> String {
+        match self {
+            SplitterID::BaseV0 => String::from("base_v0"),
+        }
+    }
+}
+
+impl FromStr for SplitterID {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "base_v0" => Ok(SplitterID::BaseV0),
+            _ => Err(ParseError::with_message(
+                "Unknown splitter ID (possible values: base_v0)",
+            ))?,
+        }
     }
 }
 
@@ -380,9 +377,8 @@ mod tests {
 
     use super::*;
 
-    async fn test_splitter(
+    async fn test_splitter_v0(
         input: &String,
-        expected: &String,
         max_chunk_size: usize,
         splits_count: usize,
     ) -> Result<()> {
@@ -406,7 +402,7 @@ mod tests {
             )
             .await?;
 
-        assert_eq!(&splitted.join(""), expected);
+        assert_eq!(&splitted.join(""), input);
         assert_eq!(splitted.len(), splits_count);
         Ok(())
     }
@@ -422,31 +418,73 @@ mod tests {
         // We test that the splitter() function is properly handling this case.
         let input = "🔥🔥".to_string();
 
-        test_splitter(&input, &input, max_chunk_size, 2)
-            .await
-            .unwrap();
+        test_splitter_v0(&input, max_chunk_size, 2).await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_splitter_basic_text() {
+    async fn test_splitter_v0_basic_text() {
         let cases: [(String, usize); 2] = [
             (
                 "a random document string with no double space".repeat(10),
                 10,
             ),
-            ("a  random  document string WITH double spaces".repeat(8), 9),
+            (
+                "a  random  document \nstring WITH double spaces".repeat(8),
+                10,
+            ),
         ];
+
         let max_chunk_size = 8;
 
         for (case, splits_count) in cases {
-            test_splitter(&case, &case, max_chunk_size, splits_count)
+            test_splitter_v0(&case, max_chunk_size, splits_count)
                 .await
                 .unwrap();
         }
     }
 
     #[tokio::test]
-    async fn test_splitter_sections() {
+    async fn test_splitter_v0_sections_normal() {
+        let section = Section {
+            prefix: Some("# title\n".to_string()),
+            content: Some("A line.\nAnother line.\n".to_string()),
+            sections: vec![
+                Section {
+                    prefix: Some("# p1\n".to_string()),
+                    content: Some("A paragraph\nAnother paragraph.\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some("# p2 alone\n".to_string()),
+                    content: None,
+                    sections: vec![],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 24, section)
+            .await
+            .unwrap();
+
+        println!("{:?}", splitted);
+
+        assert_eq!(
+            splitted.join("|"),
+            vec![
+                "# title\nA line.\nAnother line.\n# p1\nA paragraph\nAnother paragraph.\n# p2 alone\n"
+                    .to_string(),
+            ]
+            .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_sections() {
         let section = Section {
             prefix: Some("p".to_string()),
             content: Some("c..".to_string()),
@@ -500,7 +538,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_splitter_sections_skip_no_content() {
+    async fn test_splitter_v0_sections_do_not_skip_no_content() {
         let section = Section {
             prefix: Some("p".to_string()),
             content: Some("c..".to_string()),
@@ -546,7 +584,7 @@ mod tests {
             splitted.join("|"),
             vec![
                 "pc..p0c0........c01......".to_string(),
-                "pp0p02c02....".to_string(), // p1 has no content it must not be rendered alone
+                "pp0p02c02....p1".to_string(), // p1 has no content but is taken here
                 "pp1p10c10........".to_string(),
             ]
             .join("|")
@@ -554,7 +592,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_splitter_sections_long_content() {
+    async fn test_splitter_v0_sections_long_content() {
         let section = Section {
             prefix: Some("p".to_string()),
             content: Some("c..".to_string()),
@@ -603,7 +641,7 @@ mod tests {
         assert_eq!(
             splitted.join("|"),
             vec![
-                "pc..".to_string(),
+                "pc..p0".to_string(),
                 "pp0c0........+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-".to_string(),
                 "pp0+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-".to_string(),
                 "pp0+-+-+-+-+-++-+-+-+-+-+-+-c01......".to_string(),

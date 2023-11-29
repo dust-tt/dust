@@ -1,4 +1,5 @@
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
+use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
 use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
@@ -26,8 +27,6 @@ use std::sync::Arc;
 use tokio::try_join;
 use tokio_stream::{self as stream};
 use uuid::Uuid;
-
-use super::qdrant::{QdrantClients, QdrantDataSourceConfig};
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
