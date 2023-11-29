@@ -279,7 +279,6 @@ async function batchRenderAgentMessages(
   messages: Message[]
 ) {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
-  const userMessages = messages.filter((m) => !!m.userMessage);
 
   const [agentConfigurations, agentRetrievalActions, agentDustAppRunActions] =
     await Promise.all([
@@ -377,7 +376,7 @@ async function batchRenderAgentMessages(
       visibility: message.visibility,
       version: message.version,
       parentMessageId:
-        userMessages.find((m) => m.id === message.parentId)?.sId ?? null,
+        messages.find((m) => m.id === message.parentId)?.sId ?? null,
       status: agentMessage.status,
       action,
       content: agentMessage.content,
