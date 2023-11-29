@@ -44,7 +44,6 @@ import {
   SignInDropDownButton,
   SignUpDropDownButton,
 } from "@app/components/Button";
-import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
@@ -80,10 +79,6 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: { gaTrackingId: GA_TRACKING_ID },
   };
-};
-
-const AssistantQuestions = () => {
-  return <SimpleSlider />;
 };
 
 export default function Home({
@@ -250,12 +245,6 @@ export default function Home({
               </div>
             </div>
           </Grid>
-          <div className="h-24">
-            <div className="absolute left-0 right-0 w-[100vw]">
-              <AssistantQuestions />
-            </div>
-          </div>
-
           <Grid className="items-center">
             <Hover3D
               className={classNames(

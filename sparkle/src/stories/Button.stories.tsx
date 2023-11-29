@@ -625,3 +625,16 @@ export const IconOnlyPlusTooltip: Story = {
     tooltipPosition: "below",
   },
 };
+
+export const IconOnlyNoTooltip: Story = {
+  args: {
+    variant: "primary",
+    size: "xs",
+    label: "Settings",
+    labelVisible: false,
+    icon: Cog6ToothIcon,
+    disabled: false,
+    tooltipPosition: "below",
+    disabledTooltip: true,
+  },
+};

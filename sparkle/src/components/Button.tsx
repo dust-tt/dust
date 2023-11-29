@@ -33,6 +33,7 @@ export type ButtonProps = {
   avatar?: string;
   className?: string;
   tooltipPosition?: TooltipProps["position"];
+  disabledTooltip?: boolean;
 };
 
 const textClasses = {
@@ -174,6 +175,7 @@ export function Button({
   className = "",
   tooltipPosition = "above",
   hasMagnifying = true,
+  disabledTooltip = false,
   avatar,
 }: ButtonProps) {
   let buttonClasses = classNames(
@@ -236,7 +238,7 @@ export function Button({
     </button>
   );
 
-  return labelVisible ? (
+  return labelVisible || disabledTooltip ? (
     buttonBase
   ) : (
     <Tooltip label={label} position={tooltipPosition}>

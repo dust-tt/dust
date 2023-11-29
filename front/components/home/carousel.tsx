@@ -8,7 +8,6 @@ import {
   ChevronRightIcon,
   Div3D,
   Hover3D,
-  IconButton,
 } from "@dust-tt/sparkle";
 import React, { Component, createRef, RefObject } from "react";
 import Slider from "react-slick";
@@ -32,9 +31,21 @@ interface SliderExtended extends Slider {
 export default class SimpleSlider extends Component {
   // Create a ref for the Slider component
   slider: RefObject<SliderExtended> = createRef();
+  sliderContainerRef = createRef<HTMLDivElement>();
+
   state = {
     currentSlide: 0,
     slidesToShow: 1, // Default value
+    sliderHeight: 0,
+    totalSlides: slides.length,
+  };
+
+  updateSliderHeight = () => {
+    // Use the ref to get the current height of the slider container
+    const height = this.sliderContainerRef.current
+      ? this.sliderContainerRef.current.offsetHeight
+      : 0;
+    this.setState({ sliderHeight: height });
   };
 
   updateSlidesToShow = () => {
@@ -58,21 +69,26 @@ export default class SimpleSlider extends Component {
 
   componentDidMount() {
     this.updateSlidesToShow();
+    this.updateSliderHeight();
     window.addEventListener("resize", this.updateSlidesToShow);
+    window.addEventListener("resize", this.updateSliderHeight);
   }
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.updateSlidesToShow);
+    window.removeEventListener("resize", this.updateSliderHeight);
   }
 
   goToNext = () => {
-    const { currentSlide, slidesToShow } = this.state;
-    this.slider.current?.slickGoTo(currentSlide + slidesToShow);
+    const { currentSlide, slidesToShow, totalSlides } = this.state;
+    this.slider.current?.slickGoTo((currentSlide + slidesToShow) % totalSlides);
   };
 
   goToPrevious = () => {
-    const { currentSlide, slidesToShow } = this.state;
-    this.slider.current?.slickGoTo(Math.max(currentSlide - slidesToShow, 0));
+    const { currentSlide, slidesToShow, totalSlides } = this.state;
+    const newSlideIndex =
+      (currentSlide - slidesToShow + totalSlides) % totalSlides;
+    this.slider.current?.slickGoTo(newSlideIndex);
   };
 
   handleBeforeChange = (oldIndex: number, newIndex: number): void => {
@@ -80,12 +96,13 @@ export default class SimpleSlider extends Component {
   };
 
   render() {
+    const { sliderHeight } = this.state;
     const settings = {
       infinite: true,
       centerMode: true,
       slidesToShow: 1,
       slidesToScroll: 1,
-      centerPadding: "60px",
+      centerPadding: "15%",
       accessibility: true,
       speed: 800,
       arrows: false,
@@ -96,7 +113,6 @@ export default class SimpleSlider extends Component {
           settings: {
             slidesToShow: 3,
             slidesToScroll: 3,
-            centerPadding: "240px",
           },
         },
         {
@@ -104,7 +120,6 @@ export default class SimpleSlider extends Component {
           settings: {
             slidesToShow: 2,
             slidesToScroll: 2,
-            centerPadding: "180px",
           },
         },
         {
@@ -112,7 +127,6 @@ export default class SimpleSlider extends Component {
           settings: {
             slidesToShow: 2,
             slidesToScroll: 2,
-            centerPadding: "120px",
           },
         },
         {
@@ -120,7 +134,6 @@ export default class SimpleSlider extends Component {
           settings: {
             slidesToShow: 2,
             slidesToScroll: 2,
-            centerPadding: "80px",
           },
         },
         {
@@ -128,94 +141,38 @@ export default class SimpleSlider extends Component {
           settings: {
             slidesToShow: 1,
             slidesToScroll: 1,
-            centerPadding: "60px",
           },
         },
       ],
     };
     return (
-      <>
-        <Slider ref={this.slider} {...settings}>
-          <AssistantItem
-            visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
-            name="@notion"
-            question="Can you find the onboarding checklist for new hires?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
-            name="@hiringExpert"
-            question="Draft me a job description following company script for this job."
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Pink_1.jpg"
-            name="@onboardingBuddy"
-            question="Could you walk me through the typical workflow for a project in my department?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Sky_8.jpg"
-            name="@salesExpert"
-            question="What are our new product features and associated sales script?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
-            name="@drive"
-            question="Can you find the slide deck from last month's marketing presentation for me?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
-            name="@dataExpert"
-            question="How do I write an SQL query to find the top-performing products by region?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
-            name="@uxWriterAssistant"
-            question="Can you draft 3 proposals for a 140 character version for this text?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Indigo_6.jpg"
-            name="@weeklyReport"
-            question="Write me the report for last week's feature releases."
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Orange_1.jpg"
-            name="@companyGenius"
-            question="What was the outcome of the last board meeting regarding our expansion plans?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-            name="@slack"
-            question="Summarize me last month's daily stand-ups for the team."
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
-            name="@officeManager"
-            question="Where can I find white paper and office supplies?"
-          />
-          <AssistantItem
-            visual="https://dust.tt/static/droidavatar/Droid_Orange_5.jpg"
-            name="@spreadsheetExpert"
-            question="Can you help me write a VLOOKUP formula to match employee names with their IDs?"
-          />
-        </Slider>
-        <div className="flex w-full flex-row justify-center gap-4">
-          <Button
-            icon={ChevronLeftIcon}
-            label="Previous"
-            labelVisible={false}
-            size="xs"
-            variant="tertiary"
-            onClick={this.goToPrevious}
-          />
-          <Button
-            icon={ChevronRightIcon}
-            label="Next"
-            labelVisible={false}
-            size="xs"
-            variant="tertiary"
-            onClick={this.goToNext}
-          />
+      <div style={{ height: sliderHeight + "px" }}>
+        <div className="absolute left-0 right-0 w-[100vw]">
+          <div ref={this.sliderContainerRef}>
+            <Slider ref={this.slider} {...settings}>
+              {slides}
+            </Slider>
+            <div className="flex w-full flex-row justify-center gap-4">
+              <Button
+                icon={ChevronLeftIcon}
+                label="Previous"
+                labelVisible={false}
+                size="xs"
+                variant="tertiary"
+                onClick={this.goToPrevious}
+              />
+              <Button
+                icon={ChevronRightIcon}
+                label="Next"
+                labelVisible={false}
+                size="xs"
+                variant="tertiary"
+                onClick={this.goToNext}
+              />
+            </div>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 }
@@ -234,7 +191,7 @@ const AssistantItem = ({
   return (
     <Hover3D
       className={classNames(
-        "grid w-full cursor-default grid-cols-4 gap-x-3 gap-y-1 px-2 py-10",
+        "grid w-full cursor-default grid-cols-4 gap-x-3 gap-y-1 px-4 py-10",
         className
       )}
     >
@@ -258,3 +215,78 @@ const AssistantItem = ({
     </Hover3D>
   );
 };
+
+const slides = [
+  <AssistantItem
+    key="1"
+    visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
+    name="@notion"
+    question="Can you find the onboarding checklist for new hires?"
+  />,
+  <AssistantItem
+    key="2"
+    visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
+    name="@hiringExpert"
+    question="Draft me a job description following company script for this job."
+  />,
+  <AssistantItem
+    key="3"
+    visual="https://dust.tt/static/droidavatar/Droid_Pink_1.jpg"
+    name="@onboardingBuddy"
+    question="Could you walk me through the typical workflow for a project in my department?"
+  />,
+  <AssistantItem
+    key="4"
+    visual="https://dust.tt/static/droidavatar/Droid_Sky_8.jpg"
+    name="@salesExpert"
+    question="What are our new product features and associated sales script?"
+  />,
+  <AssistantItem
+    key="5"
+    visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+    name="@drive"
+    question="Can you find the slide deck from last month's marketing presentation for me?"
+  />,
+  <AssistantItem
+    key="6"
+    visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+    name="@dataExpert"
+    question="How do I write an SQL query to find the top-performing products by region?"
+  />,
+  <AssistantItem
+    key="7"
+    visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
+    name="@uxWriterAssistant"
+    question="Can you draft 3 proposals for a 140 character version for this text?"
+  />,
+  <AssistantItem
+    key="8"
+    visual="https://dust.tt/static/droidavatar/Droid_Indigo_6.jpg"
+    name="@weeklyReport"
+    question="Write me the report for last week's feature releases."
+  />,
+  <AssistantItem
+    key="9"
+    visual="https://dust.tt/static/droidavatar/Droid_Orange_1.jpg"
+    name="@companyGenius"
+    question="What was the outcome of the last board meeting regarding our expansion plans?"
+  />,
+  <AssistantItem
+    key="10"
+    visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+    name="@slack"
+    question="Summarize me last month's daily stand-ups for the team."
+  />,
+  <AssistantItem
+    key="11"
+    visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
+    name="@officeManager"
+    question="Where can I find white paper and office supplies?"
+  />,
+  <AssistantItem
+    key="12"
+    visual="https://dust.tt/static/droidavatar/Droid_Orange_5.jpg"
+    name="@spreadsheetExpert"
+    question="Can you help me write a VLOOKUP formula to match employee names with their IDs?"
+  />,
+];
