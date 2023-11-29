@@ -11,6 +11,7 @@ use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use itertools::Itertools;
 use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{
     points_selector::PointsSelectorOneOf, Filter, PointId, PointsSelector, RetrievedPoint,
@@ -151,34 +152,19 @@ pub struct Section {
 }
 
 impl Section {
-    fn dfs(&self) -> Vec<&Self> {
-        let mut res = vec![self];
-        for section in &self.sections {
-            res.extend(section.dfs());
-        }
-        res
-    }
-
-    /// Reconstructs the full text of the Section object.
     pub fn full_text(&self) -> String {
-        let mut text = String::new();
-
-        for s in self.dfs() {
-            match s.prefix {
-                Some(ref prefix) => {
-                    text += &prefix;
-                }
-                None => (),
-            }
-            match s.content {
-                Some(ref content) => {
-                    text += &content;
-                }
-                None => (),
-            }
-        }
-
-        text
+        format!(
+            "{}{}{}",
+            match self.prefix {
+                Some(ref prefix) => prefix,
+                None => "",
+            },
+            match self.content {
+                Some(ref content) => content,
+                None => "",
+            },
+            self.sections.iter().map(|s| s.full_text()).join("")
+        )
     }
 }
 
