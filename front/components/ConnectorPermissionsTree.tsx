@@ -5,16 +5,13 @@ import {
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import {
-  ConnectorPermission,
-  ConnectorProvider,
-} from "@app/lib/connectors_api";
+import { ConnectorPermission } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
 import { WorkspaceType } from "@app/types/user";
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<

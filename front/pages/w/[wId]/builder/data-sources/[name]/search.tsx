@@ -1,3 +1,4 @@
+import { DataSourceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -14,7 +15,6 @@ import {
 } from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { UserType } from "@app/types//user";
-import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 import { SubscriptionType } from "@app/types/plan";
 import { WorkspaceType } from "@app/types/user";

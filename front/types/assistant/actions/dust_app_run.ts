@@ -1,4 +1,5 @@
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
+
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
 import { AgentActionType } from "@app/types/assistant/conversation";
 

@@ -1,5 +1,6 @@
+import { ModelId } from "@dust-tt/types";
+
 import { SupportedModel } from "@app/lib/assistant";
-import { ModelId } from "@app/lib/databases";
 import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
 import { RetrievalConfigurationType } from "@app/types/assistant/actions/retrieval";
 

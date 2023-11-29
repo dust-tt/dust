@@ -1,3 +1,4 @@
+import { DataSourceType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -17,7 +18,6 @@ import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 import { DocumentType } from "@app/types/document";
 
 export const config = {

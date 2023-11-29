@@ -1,7 +1,8 @@
+import { ModelId } from "@dust-tt/types";
 import { WorkflowHandle, WorkflowNotFoundError } from "@temporalio/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";

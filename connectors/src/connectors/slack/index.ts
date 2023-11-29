@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import {
   CodedError,
   ErrorCode,
@@ -14,7 +15,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   SlackChannel,
   SlackConfiguration,

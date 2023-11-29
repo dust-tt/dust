@@ -1,3 +1,4 @@
+import { DataSourceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
@@ -5,7 +6,6 @@ import { getApps } from "@app/lib/api/app";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { AppType } from "@app/types/app";
-import { DataSourceType } from "@app/types/data_source";
 import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

@@ -1,10 +1,10 @@
+import { DataSourceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 
 export type GetDataSourcesResponseBody = {
   data_sources: Array<DataSourceType>;

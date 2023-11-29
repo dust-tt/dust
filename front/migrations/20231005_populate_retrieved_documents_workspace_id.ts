@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 
-import { ModelId } from "@app/lib/databases";
 import {
   AgentMessage,
   Conversation,
@@ -8,6 +7,7 @@ import {
   RetrievalDocument,
   Workspace,
 } from "@app/lib/models";
+import { ModelId } from "@dust-tt/types";
 
 const { LIVE = false } = process.env;
 

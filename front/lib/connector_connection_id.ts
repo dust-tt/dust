@@ -1,4 +1,5 @@
-import { ConnectorProvider } from "@app/lib/connectors_api";
+import { ConnectorProvider } from "@dust-tt/types";
+
 import { client_side_new_id } from "@app/lib/utils";
 
 export function buildConnectionId(

@@ -1,8 +1,8 @@
+import { ConnectorProvider } from "@dust-tt/types";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import type { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
 import type * as activities from "@app/documents_post_process_hooks/temporal/activities";
-import type { ConnectorProvider } from "@app/lib/connectors_api";
 
 import { newUpsertSignal } from "./signals";
 

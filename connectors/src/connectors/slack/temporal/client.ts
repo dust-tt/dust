@@ -1,4 +1,6 @@
-import { Connector, ModelId } from "@connectors/lib/models";
+import { ModelId } from "@dust-tt/types";
+
+import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";

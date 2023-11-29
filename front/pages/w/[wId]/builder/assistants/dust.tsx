@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { DataSourceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
@@ -20,7 +21,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { APIError } from "@app/lib/error";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { DataSourceType } from "@app/types/data_source";
 import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

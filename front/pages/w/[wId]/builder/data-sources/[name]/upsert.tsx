@@ -16,6 +16,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { DataSourceType } from "@dust-tt/types";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -25,7 +26,6 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
 import { PlanType, SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

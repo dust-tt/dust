@@ -2,7 +2,8 @@
  * Data Source configuration
  */
 
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
+
 import { ioTsEnum } from "@app/lib/utils";
 import { AgentActionConfigurationType } from "@app/types/assistant/agent";
 import { AgentActionType } from "@app/types/assistant/conversation";

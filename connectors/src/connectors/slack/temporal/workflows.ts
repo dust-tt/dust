@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -8,7 +9,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import { ModelId } from "@connectors/lib/models";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";

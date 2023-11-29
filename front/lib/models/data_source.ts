@@ -1,3 +1,4 @@
+import { ConnectorProvider } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -8,7 +9,6 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
 

@@ -1,3 +1,4 @@
+import { DataSourceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -6,7 +7,6 @@ import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 
 export type GetOrPostDataSourceResponseBody = {
   dataSource: DataSourceType;

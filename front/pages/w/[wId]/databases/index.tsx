@@ -10,6 +10,7 @@ import {
   Page,
   SectionHeader,
 } from "@dust-tt/sparkle";
+import { DataSourceType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useContext, useRef } from "react";
@@ -24,7 +25,6 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { CoreAPIDatabase } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { useDatabases, useDatabaseTables } from "@app/lib/swr";
-import { DataSourceType } from "@app/types/data_source";
 import { SubscriptionType } from "@app/types/plan";
 import { UserType, WorkspaceType } from "@app/types/user";
 

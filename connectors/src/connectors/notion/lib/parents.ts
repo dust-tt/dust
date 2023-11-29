@@ -1,3 +1,4 @@
+import { ModelId } from "@dust-tt/types";
 import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 
@@ -8,7 +9,7 @@ import {
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 

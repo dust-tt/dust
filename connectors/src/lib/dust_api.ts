@@ -1,8 +1,7 @@
-import { PostContentFragmentRequestBodySchema } from "@dust-tt/types";
+import { ModelId, PostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
-import { ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorProvider } from "@connectors/types/connector";

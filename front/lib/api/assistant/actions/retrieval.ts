@@ -1,3 +1,5 @@
+import { ModelId } from "@dust-tt/types";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -7,7 +9,7 @@ import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { ModelMessageType } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize, ModelId } from "@app/lib/databases";
+import { front_sequelize } from "@app/lib/databases";
 import {
   AgentRetrievalAction,
   RetrievalDocument,

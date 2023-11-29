@@ -15,6 +15,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
+import { ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
@@ -24,7 +25,7 @@ import { CreationAttributes, literal, Op } from "sequelize";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { Connector, ModelId, sequelize_conn } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,

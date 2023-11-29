@@ -1,3 +1,5 @@
+import { ConnectorProvider, ModelId } from "@dust-tt/types";
+
 import {
   cleanupGithubConnector,
   createGithubConnector,
@@ -70,10 +72,8 @@ import {
   toggleSlackbot,
 } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { ModelId } from "@connectors/lib/models";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorProvider } from "@connectors/types/connector";
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,

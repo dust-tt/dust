@@ -1,3 +1,4 @@
+import { DataSourceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { dustManagedCredentials } from "@app/lib/api/credentials";
@@ -8,7 +9,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DataSourceType } from "@app/types/data_source";
 
 const { NODE_ENV } = process.env;
 

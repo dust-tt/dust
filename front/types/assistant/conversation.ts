@@ -1,4 +1,5 @@
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
+
 import { DustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 import { RetrievalActionType } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";

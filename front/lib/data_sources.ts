@@ -1,5 +1,6 @@
+import { DataSourceType } from "@dust-tt/types";
+
 import { CoreAPIDocument } from "@app/lib/core_api";
-import { DataSourceType } from "@app/types/data_source";
 
 export function getProviderLogoPathForDataSource(
   ds: DataSourceType

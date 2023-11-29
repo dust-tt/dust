@@ -1,3 +1,5 @@
+import { ConnectorProvider } from "@dust-tt/types";
+
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 
@@ -17,14 +19,6 @@ export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";
 
-const CONNECTOR_PROVIDERS = [
-  "slack",
-  "notion",
-  "github",
-  "google_drive",
-  "intercom",
-] as const;
-export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "slack",
   "notion",

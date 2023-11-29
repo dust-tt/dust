@@ -1,4 +1,5 @@
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
+
 import { BlockType } from "@app/types/run";
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 

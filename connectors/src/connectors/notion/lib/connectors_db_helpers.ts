@@ -1,4 +1,6 @@
-import { Connector, ModelId } from "@connectors/lib/models";
+import { ModelId } from "@dust-tt/types";
+
+import { Connector } from "@connectors/lib/models";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { DataSourceInfo } from "@connectors/types/data_source_config";
 

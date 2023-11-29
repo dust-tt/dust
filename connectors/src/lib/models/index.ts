@@ -23,8 +23,6 @@ export const sequelize_conn = new Sequelize(CONNECTORS_DATABASE_URI as string, {
   logging: false,
 });
 
-export type ModelId = number;
-
 export class Connector extends Model<
   InferAttributes<Connector>,
   InferCreationAttributes<Connector>

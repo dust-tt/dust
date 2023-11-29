@@ -1,6 +1,8 @@
+import { ModelId } from "@dust-tt/types";
+
 import { validateAccessToken } from "@connectors/connectors/intercom/lib/intercom_api";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector, ModelId } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";

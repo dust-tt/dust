@@ -1,3 +1,5 @@
+import { ConnectorProvider } from "@dust-tt/types";
+
 import {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnDeleteParams,
@@ -5,7 +7,6 @@ import {
 } from "@app/documents_post_process_hooks/hooks";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import { TrackedDocument } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";

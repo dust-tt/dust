@@ -1,4 +1,4 @@
-import { ModelId } from "@app/lib/databases";
+import { ModelId } from "@dust-tt/types";
 
 export type EventSchemaStatus = "active" | "disabled";
 export type ExtractedEventStatus = "pending" | "accepted" | "rejected";

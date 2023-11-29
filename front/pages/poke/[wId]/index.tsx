@@ -1,4 +1,5 @@
 import { Button, Collapsible, SliderToggle } from "@dust-tt/sparkle";
+import { DataSourceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -17,7 +18,6 @@ import {
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import { DataSourceType } from "@app/types/data_source";
 import {
   PlanInvitationType,
   PlanType,

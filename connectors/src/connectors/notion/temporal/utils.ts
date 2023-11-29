@@ -1,4 +1,5 @@
-import { ModelId } from "@connectors/lib/models";
+import { ModelId } from "@dust-tt/types";
+
 import { DataSourceInfo } from "@connectors/types/data_source_config";
 
 export function getWorkflowId(dataSourceInfo: DataSourceInfo) {
