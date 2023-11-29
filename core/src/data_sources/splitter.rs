@@ -467,17 +467,15 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 24, section)
+            .split(credentials, provider_id, model_id, 18, section)
             .await
             .unwrap();
-
-        println!("{:?}", splitted);
 
         assert_eq!(
             splitted.join("|"),
             vec![
-                "# title\nA line.\nAnother line.\n# p1\nA paragraph\nAnother paragraph.\n# p2 alone\n"
-                    .to_string(),
+                "# title\nA line.\nAnother line.\n".to_string(),
+                "# title\n# p1\nA paragraph\nAnother paragraph.\n# p2 alone\n".to_string()
             ]
             .join("|")
         )
