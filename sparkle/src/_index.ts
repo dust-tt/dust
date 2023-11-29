@@ -165,10 +165,13 @@ export {
 };
 
 import {
+  ArrowDown as ArrowDownIcon,
   ArrowDownCircle as ArrowDownCircleIcon,
   ArrowDownOnSquare as ArrowDownOnSquareIcon,
+  ArrowLeft as ArrowLeftIcon,
   ArrowPath as ArrowPathIcon,
   ArrowRight as ArrowRightIcon,
+  ArrowUp as ArrowUpIcon,
   ArrowUpOnSquare as ArrowUpOnSquareIcon,
   Attachment as AttachmentIcon,
   Backspace as BackspaceIcon,
@@ -263,9 +266,12 @@ import {
 
 export {
   ArrowDownCircleIcon,
+  ArrowDownIcon,
   ArrowDownOnSquareIcon,
+  ArrowLeftIcon,
   ArrowPathIcon,
   ArrowRightIcon,
+  ArrowUpIcon,
   ArrowUpOnSquareIcon,
   AttachmentIcon,
   BackspaceIcon,
@@ -359,10 +365,13 @@ export {
 };
 
 import {
+  ArrowDown as ArrowDownStrokeIcon,
   ArrowDownCircle as ArrowDownCircleStrokeIcon,
   ArrowDownOnSquare as ArrowDownOnSquareStrokeIcon,
+  ArrowLeft as ArrowLeftStrokeIcon,
   ArrowPath as ArrowPathStrokeIcon,
   ArrowRight as ArrowRightStrokeIcon,
+  ArrowUp as ArrowUpStrokeIcon,
   ArrowUpOnSquare as ArrowUpOnSquareStrokeIcon,
   Attachment as AttachmentStrokeIcon,
   Backspace as BackspaceStrokeIcon,
@@ -458,9 +467,12 @@ import {
 export {
   ArrowDownCircleStrokeIcon,
   ArrowDownOnSquareStrokeIcon,
+  ArrowDownStrokeIcon,
+  ArrowLeftStrokeIcon,
   ArrowPathStrokeIcon,
   ArrowRightStrokeIcon,
   ArrowUpOnSquareStrokeIcon,
+  ArrowUpStrokeIcon,
   AttachmentStrokeIcon,
   BackspaceStrokeIcon,
   BookmarkStrokeIcon,

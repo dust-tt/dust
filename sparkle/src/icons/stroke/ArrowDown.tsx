@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgArrowRight = (props: SVGProps<SVGSVGElement>) => (
+const SvgArrowDown = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -11,8 +11,8 @@ const SvgArrowRight = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m15.5 10.5-5-5 2-2L21 12l-8.5 8.5-2-2 5-5H3v-3h12.5Z"
+      d="m13 16.171 5.364-5.364 1.414 1.415L12 20l-7.778-7.778 1.414-1.415L11 16.171V4h2V16.17Z"
     />
   </svg>
 );
-export default SvgArrowRight;
+export default SvgArrowDown;

@@ -1,7 +1,10 @@
+export { default as ArrowDown } from "./ArrowDown";
 export { default as ArrowDownCircle } from "./ArrowDownCircle";
 export { default as ArrowDownOnSquare } from "./ArrowDownOnSquare";
+export { default as ArrowLeft } from "./ArrowLeft";
 export { default as ArrowPath } from "./ArrowPath";
 export { default as ArrowRight } from "./ArrowRight";
+export { default as ArrowUp } from "./ArrowUp";
 export { default as ArrowUpOnSquare } from "./ArrowUpOnSquare";
 export { default as Attachment } from "./Attachment";
 export { default as Backspace } from "./Backspace";

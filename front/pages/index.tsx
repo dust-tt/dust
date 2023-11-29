@@ -6,7 +6,6 @@ import {
   GithubWhiteLogo,
   GoogleLogo,
   Hover3D,
-  Logo,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
@@ -205,7 +204,17 @@ export default function Home({
               )}
             >
               <div ref={logoRef}>
-                <Logo className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]" />
+                <Hover3D className="relative h-[36px] w-[144px] md:h-[48px] md:w-[192px]">
+                  <Div3D
+                    depth={0}
+                    className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]"
+                  >
+                    <LogoHorizontalColorLogoLayer1 className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]" />
+                  </Div3D>
+                  <Div3D depth={25} className="absolute top-0">
+                    <LogoHorizontalColorLogoLayer2 className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]" />
+                  </Div3D>
+                </Hover3D>
               </div>
               <div className="flex flex-col gap-12">
                 <H1 className="text-slate-100">
