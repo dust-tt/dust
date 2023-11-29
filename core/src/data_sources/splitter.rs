@@ -123,7 +123,7 @@ async fn split_text(
 /// - A node tokens_count is the token count to render the entire node (with prefixes).
 ///
 /// Once this tree is constructed we can create chunks grouped by subtrees that hold inside the
-/// `max_chunk_size` limit.
+/// `max_chunk_size` limit (see `fn chunks`).
 #[derive(Debug, Clone)]
 pub struct TokenizedSection {
     pub max_chunk_size: usize,
@@ -164,7 +164,8 @@ impl TokenizedSection {
 
         let mut sections: Vec<TokenizedSection> = vec![];
 
-        // Create new children for content if content overflows max_chunk_size.
+        // Create new children for content if content overflows max_chunk_size. This will result in
+        // moving the content in childrens that will be leaf nodes.
         if let Some(c) = content.as_ref() {
             let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
 
@@ -191,7 +192,8 @@ impl TokenizedSection {
             }
         }
 
-        // Create a new leaf children for content if prefix is not None and content is not None.
+        // Create a new leaf children for content if prefix is not None and content is not None to
+        // preserve the invariant that content nodes are leaf nodes.
         if let Some(c) = content.as_ref() {
             if let Some(_) = prefix.as_ref() {
                 sections.push(TokenizedSection {
@@ -277,7 +279,7 @@ impl TokenizedSection {
         TokenizedText { text, tokens }
     }
 
-    fn chunks(&self) -> Vec<TokenizedText> {
+    fn chunks(self) -> Vec<TokenizedText> {
         match self.tokens_count <= self.max_chunk_size {
             // If the current node holds within `max_chunk_size` tokens, we have a chunk.
             true => {
@@ -290,13 +292,85 @@ impl TokenizedSection {
                 assert!(c.tokens.len() <= self.max_chunk_size);
                 vec![c]
             }
-            // Otherwise we recurse in all childrens.
-            false => self
-                .sections
-                .iter()
-                .map(|s| s.chunks())
-                .flatten()
-                .collect::<Vec<_>>(),
+            // Otherwise we recurse in all childrens which will mean we'll have at least as many
+            // chunks as childrens.
+            false => {
+                // This is the non-fancy implementation.
+                // self.sections
+                //     .iter()
+                //     .map(|s| s.chunks())
+                //     .flatten()
+                //     .collect::<Vec<_>>()
+
+                // This is the fancy implementation. Instead of splitting and recursing, we grow a
+                // selection of nodes if they are below the `max_chunk_size` and generate a chunk
+                // from them when needed (a new node grows the selection above `max_chunk_size` or a
+                // node is simply above `max_chunk_size` itself).
+
+                let mut results: Vec<TokenizedText> = vec![];
+
+                let max_chunk_size = self.max_chunk_size;
+                let prefixes = self.prefixes.clone();
+                assert!(self.content.is_none());
+
+                let prefixes_tokens_count =
+                    self.prefixes.iter().map(|p| p.tokens.len()).sum::<usize>();
+
+                let mut selection: Vec<TokenizedSection> = vec![];
+                let mut selection_tokens_count: usize = prefixes_tokens_count;
+
+                // Define closure to flush the current selection
+                let flush_selection =
+                    |selection: &mut Vec<TokenizedSection>,
+                     selection_tokens_count: &mut usize,
+                     results: &mut Vec<TokenizedText>| {
+                        if !selection.is_empty() {
+                            results.extend(
+                                TokenizedSection {
+                                    max_chunk_size,
+                                    prefixes: prefixes.clone(),
+                                    tokens_count: *selection_tokens_count,
+                                    content: None,
+                                    sections: selection.drain(..).collect(),
+                                }
+                                .chunks(),
+                            );
+                            *selection_tokens_count = prefixes_tokens_count;
+                        }
+                    };
+
+                for s in self.sections {
+                    if s.tokens_count > max_chunk_size {
+                        // If the node is above max_chunk_size we flush the current selection and
+                        // recurse into it, it will get splitted and can't be merged with anyone
+                        // else.
+                        flush_selection(&mut selection, &mut selection_tokens_count, &mut results);
+                        results.extend(s.chunks());
+                    } else {
+                        if selection_tokens_count + s.tokens_count - prefixes_tokens_count
+                            <= self.max_chunk_size
+                        {
+                            // The current node can be added to the current selection.
+                            selection_tokens_count += s.tokens_count - prefixes_tokens_count;
+                            selection.push(s);
+                        } else {
+                            // The node can't be added so we flush the current selection and make
+                            // that node the new selection.
+                            flush_selection(
+                                &mut selection,
+                                &mut selection_tokens_count,
+                                &mut results,
+                            );
+                            selection_tokens_count += s.tokens_count - prefixes_tokens_count;
+                            selection.push(s);
+                        }
+                    }
+                }
+                // Finally if the selection is not empty we flush it.
+                flush_selection(&mut selection, &mut selection_tokens_count, &mut results);
+
+                results
+            }
         }
     }
 }
@@ -539,16 +613,17 @@ mod tests {
         assert_eq!(
             splitted.join("|"),
             vec![
-                "pc..p0c0........c01......".to_string(),
-                "pp0p02c02....p1c1".to_string(), // notice p1c1 rendered here
-                "pp1p10c10........".to_string(), // with p and p1 repeated in that chunk
+                "pc..".to_string(),
+                "pp0c0........c01......".to_string(),
+                "pp0p02c02....".to_string(),
+                "pp1c1p10c10........".to_string(),
             ]
             .join("|")
         )
     }
 
     #[tokio::test]
-    async fn test_splitter_v0_sections_do_not_skip_no_content() {
+    async fn test_splitter_v0_sections_no_content() {
         let section = Section {
             prefix: Some("p".to_string()),
             content: Some("c..".to_string()),
@@ -593,8 +668,9 @@ mod tests {
         assert_eq!(
             splitted.join("|"),
             vec![
-                "pc..p0c0........c01......".to_string(),
-                "pp0p02c02....p1".to_string(), // p1 has no content but is taken here
+                "pc..".to_string(),
+                "pp0c0........c01......".to_string(),
+                "pp0p02c02....".to_string(),
                 "pp1p10c10........".to_string(),
             ]
             .join("|")
@@ -651,12 +727,12 @@ mod tests {
         assert_eq!(
             splitted.join("|"),
             vec![
-                "pc..p0".to_string(),
+                "pc..".to_string(),
                 "pp0c0........+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-".to_string(),
                 "pp0+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-".to_string(),
                 "pp0+-+-+-+-+-++-+-+-+-+-+-+-c01......".to_string(),
-                "pp0p02c02....p1c1".to_string(),
-                "pp1p10c10........".to_string(),
+                "pp0p02c02....".to_string(),
+                "pp1c1p10c10........".to_string(),
             ]
             .join("|")
         )
