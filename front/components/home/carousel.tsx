@@ -2,10 +2,10 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
   Avatar,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   Div3D,
   Hover3D,
 } from "@dust-tt/sparkle";
@@ -13,6 +13,8 @@ import React, { Component, createRef, RefObject } from "react";
 import Slider from "react-slick";
 
 import { classNames } from "@app/lib/utils";
+
+import { H5, P } from "./contentComponents";
 
 export const breakpoints = {
   sm: 640, // Tailwind's default for `sm`
@@ -102,6 +104,9 @@ export default class SimpleSlider extends Component {
       centerMode: true,
       slidesToShow: 1,
       slidesToScroll: 1,
+      swipe: true,
+      draggable: true,
+      swipeToSlide: true,
       centerPadding: "15%",
       accessibility: true,
       speed: 800,
@@ -154,20 +159,22 @@ export default class SimpleSlider extends Component {
             </Slider>
             <div className="flex w-full flex-row justify-center gap-4">
               <Button
-                icon={ChevronLeftIcon}
+                icon={ArrowLeftIcon}
                 label="Previous"
                 labelVisible={false}
                 size="xs"
                 variant="tertiary"
                 onClick={this.goToPrevious}
+                disabledTooltip
               />
               <Button
-                icon={ChevronRightIcon}
+                icon={ArrowRightIcon}
                 label="Next"
                 labelVisible={false}
                 size="xs"
                 variant="tertiary"
                 onClick={this.goToNext}
+                disabledTooltip
               />
             </div>
           </div>
@@ -191,28 +198,48 @@ const AssistantItem = ({
   return (
     <Hover3D
       className={classNames(
-        "grid w-full cursor-default grid-cols-4 gap-x-3 gap-y-1 px-4 py-10",
+        "grid w-full cursor-default grid-cols-4 gap-y-3 px-4 py-10",
         className
       )}
     >
-      <Div3D depth={50} className="row-span-2">
-        <Avatar size="auto" isRounded visual={visual} className="" />
+      <Div3D depth={40}>
+        <div className="h-16 w-16">
+          <Avatar size="auto" visual={visual} className="" />
+        </div>
       </Div3D>
-      <Div3D
-        depth={30}
-        className={classNames(
-          "col-span-3 w-full truncate font-objektiv text-base font-semibold text-slate-100"
-        )}
-      >
-        {name}
+      <Div3D depth={20} className="col-span-4">
+        <H5 className="truncate text-slate-100">{name}</H5>
       </Div3D>
-      <Div3D
-        depth={80}
-        className="font-regular col-span-3 font-objektiv text-base text-slate-400"
-      >
-        {question}
+      <Div3D depth={60} className="col-span-4">
+        <P size="sm">{question}</P>
       </Div3D>
     </Hover3D>
+    // <Hover3D
+    //   className={classNames(
+    //     "grid w-full cursor-default grid-cols-1 items-center justify-items-center gap-x-3 gap-y-3 px-4 py-10",
+    //     className
+    //   )}
+    // >
+    //   <Div3D depth={50}>
+    //     <div className="h-16 w-16">
+    //       <Avatar size="auto" isRounded visual={visual} className="" />
+    //     </div>
+    //   </Div3D>
+    //   <Div3D
+    //     depth={30}
+    //     className={classNames(
+    //       "w-full truncate text-center font-objektiv text-xl font-semibold text-slate-100"
+    //     )}
+    //   >
+    //     {name}
+    //   </Div3D>
+    //   <Div3D
+    //     depth={80}
+    //     className="font-regular text-center font-objektiv text-base text-slate-400"
+    //   >
+    //     {question}
+    //   </Div3D>
+    // </Hover3D>
   );
 };
 

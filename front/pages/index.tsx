@@ -44,6 +44,7 @@ import {
   SignInDropDownButton,
   SignUpDropDownButton,
 } from "@app/components/Button";
+import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
@@ -332,6 +333,7 @@ export default function Home({
             </P>
           </Grid>
 
+          <SimpleSlider />
           {/* Get state of the art*/}
           <Grid>
             <div
