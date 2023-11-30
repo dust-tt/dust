@@ -11,4 +11,5 @@ export * from "./front/assistant/actions/retrieval";
 export * from "./front/assistant/conversation";
 export * from "./front/assistant/actions/dust_app_run";
 export * from "./front/api_handlers/public/assistant";
+export * from "./front/api_handlers/public/data_sources";
 export * from "./front/api_handlers/internal/assistant";

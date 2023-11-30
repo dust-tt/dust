@@ -1,3 +1,4 @@
+import { PostDataSourceDocumentRequestBody } from "@dust-tt/types";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 import logger from "@connectors/logger/logger";
@@ -64,8 +65,9 @@ async function _upsertToDatasource({
 
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
-  const dustRequestPayload = {
+  const dustRequestPayload: PostDataSourceDocumentRequestBody = {
     text: documentText,
+    section: null,
     source_url: documentUrl,
     timestamp: timestampMs,
     tags: tags?.map((tag) => tag.substring(0, 512)),

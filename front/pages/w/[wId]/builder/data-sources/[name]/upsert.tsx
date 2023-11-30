@@ -15,7 +15,12 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  DataSourceType,
+  PostDataSourceDocumentRequestBody,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -145,6 +150,22 @@ export default function DataSourceUpsert({
 
   const handleUpsert = async () => {
     setLoading(true);
+
+    const body: PostDataSourceDocumentRequestBody = {
+      timestamp: null,
+      parents: null,
+      section: {
+        prefix: null,
+        content: text,
+        sections: [],
+      },
+      text: null,
+      source_url: sourceUrl || undefined,
+      tags: tags.filter((tag) => tag),
+      light_document_output: true,
+      upsert_context: null,
+    };
+
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${
         dataSource.name
@@ -154,15 +175,7 @@ export default function DataSourceUpsert({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          section: {
-            prefix: null,
-            content: text,
-            sections: [],
-          },
-          source_url: sourceUrl || undefined,
-          tags: tags.filter((tag) => tag),
-        }),
+        body: JSON.stringify(body),
       }
     );
 
