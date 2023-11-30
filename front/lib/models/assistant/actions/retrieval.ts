@@ -1,3 +1,4 @@
+import { TimeframeUnit } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -10,7 +11,6 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { DataSource } from "@app/lib/models/data_source";
-import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 
 /**
  * Action Retrieval configuration

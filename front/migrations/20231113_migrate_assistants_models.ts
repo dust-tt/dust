@@ -1,8 +1,8 @@
-import {
-  CLAUDE_2_1_MODEL_ID,
-  // GPT_3_5_TURBO_MODEL_ID,
-  // GPT_4_TURBO_MODEL_ID,
-} from "@app/lib/assistant";
+import { CLAUDE_2_1_MODEL_ID } from "@dust-tt/types";
+
+import // GPT_3_5_TURBO_MODEL_ID,
+// GPT_4_TURBO_MODEL_ID,
+"@app/lib/assistant";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,

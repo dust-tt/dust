@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { DataSourceType } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
@@ -21,7 +22,6 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { APIError } from "@app/lib/error";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;

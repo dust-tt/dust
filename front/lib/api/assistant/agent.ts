@@ -1,4 +1,23 @@
 import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_32K_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+} from "@dust-tt/types";
+import {
+  AgentActionSpecification,
+  AgentConfigurationType,
+} from "@dust-tt/types";
+import {
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@dust-tt/types";
+import { isDustAppRunConfiguration } from "@dust-tt/types";
+import { isRetrievalConfiguration } from "@dust-tt/types";
+
+import {
   cloneBaseConfig,
   DustProdActionRegistry,
 } from "@app/lib/actions/registry";
@@ -13,28 +32,10 @@ import {
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
-import {
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_32K_MODEL_CONFIG,
-  GPT_4_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { isDustAppRunConfiguration } from "@app/types/assistant/actions/dust_app_run";
-import { isRetrievalConfiguration } from "@app/types/assistant/actions/retrieval";
-import {
-  AgentActionSpecification,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
-import {
-  AgentActionType,
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 import {
   DustAppRunBlockEvent,

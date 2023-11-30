@@ -3,6 +3,9 @@
   "include": ["src", "types"],
   "compilerOptions": {
     "module": "esnext",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "emitDeclarationOnly": false,
+    "declaration": true,
+    "baseUrl": "./src"
   }
 }

@@ -1,4 +1,18 @@
 import { ModelId } from "@dust-tt/types";
+import {
+  DustAppParameters,
+  DustAppRunActionType,
+  isDustAppRunConfiguration,
+} from "@dust-tt/types";
+import {
+  AgentActionSpecification,
+  AgentConfigurationType,
+} from "@dust-tt/types";
+import {
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@dust-tt/types";
 
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -7,20 +21,6 @@ import { AgentDustAppRunAction } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 import { AppType, SpecificationType } from "@app/types/app";
-import {
-  DustAppParameters,
-  DustAppRunActionType,
-  isDustAppRunConfiguration,
-} from "@app/types/assistant/actions/dust_app_run";
-import {
-  AgentActionSpecification,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
-import {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 import { DatasetSchema } from "@app/types/dataset";
 
 import { getApp } from "../../app";

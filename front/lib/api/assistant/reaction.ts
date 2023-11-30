@@ -1,13 +1,13 @@
 import { UserType } from "@dust-tt/types";
-
-import { Authenticator } from "@app/lib/auth";
-import { Message, MessageReaction } from "@app/lib/models";
 import {
   ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
   MessageReactionType,
-} from "@app/types/assistant/conversation";
+} from "@dust-tt/types";
+
+import { Authenticator } from "@app/lib/auth";
+import { Message, MessageReaction } from "@app/lib/models";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.

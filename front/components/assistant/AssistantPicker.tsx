@@ -7,12 +7,11 @@ import {
   Searchbar,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
+import { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function AssistantPicker({
   owner,

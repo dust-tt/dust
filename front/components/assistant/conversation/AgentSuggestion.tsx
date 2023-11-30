@@ -1,5 +1,12 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  ConversationType,
+  isAgentMention,
+  isUserMessageType,
+  UserMessageType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
@@ -7,13 +14,6 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  ConversationType,
-  isAgentMention,
-  isUserMessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 export function AgentSuggestion({
   owner,

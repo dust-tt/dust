@@ -1,5 +1,6 @@
 import { DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
+import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import useSWR, { Fetcher } from "swr";
 
 import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
@@ -25,10 +26,6 @@ import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import { AppType } from "@app/types/app";
-import {
-  ConversationMessageReactions,
-  ConversationType,
-} from "@app/types/assistant/conversation";
 import { RunRunType } from "@app/types/run";
 
 import { ConnectorPermission } from "./connectors_api";

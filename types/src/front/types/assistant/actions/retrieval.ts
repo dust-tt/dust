@@ -2,11 +2,11 @@
  * Data Source configuration
  */
 
-import { ModelId } from "@dust-tt/types";
+import { ModelId } from "../../../../shared/model_id";
 
-import { ioTsEnum } from "@app/lib/utils";
-import { AgentActionConfigurationType } from "@app/types/assistant/agent";
-import { AgentActionType } from "@app/types/assistant/conversation";
+import { ioTsEnum } from "../../../../shared/utils/iots_utils";
+import { AgentActionConfigurationType } from "../../../../front/types/assistant/agent";
+import { AgentActionType } from "../../../../front/types/assistant/conversation";
 
 export const TIME_FRAME_UNITS = [
   "hour",

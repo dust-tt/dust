@@ -2,6 +2,11 @@ import {
   PublicPostContentFragmentRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
 } from "@dust-tt/types";
+import {
+  ContentFragmentType,
+  ConversationType,
+  UserMessageType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,11 +21,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  ContentFragmentType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

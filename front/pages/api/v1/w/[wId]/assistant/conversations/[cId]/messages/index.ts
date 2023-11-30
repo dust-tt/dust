@@ -1,4 +1,5 @@
 import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
+import { UserMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -8,7 +9,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { UserMessageType } from "@app/types/assistant/conversation";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;

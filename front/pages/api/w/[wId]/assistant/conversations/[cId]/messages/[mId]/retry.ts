@@ -1,3 +1,4 @@
+import { AgentMessageType, isAgentMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -8,10 +9,6 @@ import { retryAgentMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  AgentMessageType,
-  isAgentMessageType,
-} from "@app/types/assistant/conversation";
 
 export const PostRetryRequestBodySchema = t.union([
   t.null,

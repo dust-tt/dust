@@ -7,14 +7,11 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { RetrievalActionType, RetrievalDocumentType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
-import {
-  RetrievalActionType,
-  RetrievalDocumentType,
-} from "@app/types/assistant/actions/retrieval";
 
 export const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",

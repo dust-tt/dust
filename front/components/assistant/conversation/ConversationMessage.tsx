@@ -1,6 +1,7 @@
 import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { MessageReactionType } from "@dust-tt/types";
 import { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import {
@@ -15,7 +16,6 @@ import { mutate } from "swr";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
-import { MessageReactionType } from "@app/types/assistant/conversation";
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;
 
