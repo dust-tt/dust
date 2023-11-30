@@ -34,7 +34,7 @@ async function runAllChecks(checks: Check[]) {
   for (const check of checks) {
     const uuid = uuidv4();
     const logger = mainLogger.child({
-      name: check.name,
+      checkName: check.name,
       uuid,
     });
     try {

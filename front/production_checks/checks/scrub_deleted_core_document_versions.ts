@@ -75,7 +75,9 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     deletedCount,
   });
 
-  reportSuccess({});
+  reportSuccess({
+    deletedCount,
+  });
 };
 
 async function scrubDocument(
