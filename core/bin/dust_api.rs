@@ -1381,7 +1381,7 @@ struct DataSourcesDocumentsUpsertPayload {
     tags: Vec<String>,
     parents: Vec<String>,
     source_url: Option<String>,
-    text: String,
+    text: Option<String>,
     section: Option<Section>,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
@@ -1397,6 +1397,32 @@ async fn data_sources_documents_upsert(
         Some(v) => v,
         None => false,
     };
+
+    utils::info(&format!(
+        "Upserting document: section_is_set={} text_is_set={}",
+        payload.section.is_some(),
+        payload.text.is_some()
+    ));
+
+    let section = match payload.section {
+        Some(s) => s,
+        None => match payload.text {
+            Some(text) => Section {
+                prefix: None,
+                content: Some(text),
+                sections: vec![],
+            },
+            None => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "bad_request",
+                    "Either `section` or `text` must be provided",
+                    None,
+                )
+            }
+        },
+    };
+
     match state
         .store
         .load_data_source(&project, &data_source_id)
@@ -1426,14 +1452,7 @@ async fn data_sources_documents_upsert(
                         &payload.tags,
                         &payload.parents,
                         &payload.source_url,
-                        match payload.section {
-                            Some(s) => s,
-                            None => Section {
-                                prefix: None,
-                                content: Some(payload.text),
-                                sections: vec![],
-                            },
-                        },
+                        section,
                         true, // preserve system tags
                     )
                     .await

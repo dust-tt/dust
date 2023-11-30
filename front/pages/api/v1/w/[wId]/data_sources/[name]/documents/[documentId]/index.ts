@@ -1,6 +1,7 @@
 import { DataSourceType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -14,7 +15,12 @@ import {
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
+import {
+  CoreAPI,
+  CoreAPIDataSourceDocumentSection,
+  CoreAPILightDocument,
+  sectionFullText,
+} from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -50,6 +56,28 @@ const UpsertContextSchema = t.type({
   ]),
 });
 export type UpsertContext = t.TypeOf<typeof UpsertContextSchema>;
+
+const Section: t.RecursiveType<
+  t.Type<CoreAPIDataSourceDocumentSection>,
+  CoreAPIDataSourceDocumentSection
+> = t.recursion("Section", () =>
+  t.type({
+    prefix: t.union([t.string, t.null]),
+    content: t.union([t.string, t.null]),
+    sections: t.array(Section),
+  })
+);
+
+export const PostDataSourceDocumentRequestBodySchema = t.type({
+  timestamp: t.union([t.number, t.undefined, t.null]),
+  tags: t.union([t.array(t.string), t.undefined, t.null]),
+  parents: t.union([t.array(t.string), t.undefined, t.null]),
+  source_url: t.union([t.string, t.undefined, t.null]),
+  upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
+  text: t.union([t.string, t.undefined, t.null]),
+  section: t.union([Section, t.undefined, t.null]),
+  light_document_output: t.union([t.boolean, t.undefined]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -139,75 +167,24 @@ async function handler(
         });
       }
 
-      if (!req.body || !(typeof req.body.text == "string")) {
+      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body, `text` (string) is required.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      let timestamp = null;
-      if (req.body.timestamp) {
-        if (typeof req.body.timestamp !== "number") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `timestamp` if provided must be a number.",
-            },
-          });
-        }
-        timestamp = req.body.timestamp;
-      }
-
-      let tags = [];
-      if (req.body.tags) {
-        if (!Array.isArray(req.body.tags)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `tags` if provided must be an array of strings.",
-            },
-          });
-        }
-        tags = req.body.tags;
-      }
-
-      let parents = [];
-      if (req.body.parents) {
-        if (!Array.isArray(req.body.parents)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `parents` if provided must be an array of strings.",
-            },
-          });
-        }
-        parents = req.body.parents;
-      }
-
       let sourceUrl: string | null = null;
-      if (req.body.source_url) {
-        if (typeof req.body.source_url !== "string") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `source_url` if provided must be a string.",
-            },
-          });
-        }
+      if (bodyValidation.right.source_url) {
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
-          validateUrl(req.body.source_url);
+          validateUrl(bodyValidation.right.source_url);
 
         if (!isSourceUrlValid) {
           return apiError(req, res, {
@@ -221,6 +198,27 @@ async function handler(
         }
         sourceUrl = standardizedSourceUrl;
       }
+
+      const section = bodyValidation.right.text
+        ? {
+            prefix: null,
+            content: bodyValidation.right.text,
+            sections: [],
+          }
+        : bodyValidation.right.section || null;
+
+      if (!section) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid request body, `text` or `section` must be provided.",
+          },
+        });
+      }
+
+      const fullText = sectionFullText(section);
 
       // Enforce plan limits: DataSource documents count.
       // We only load the number of documents if the limit is not -1 (unlimited).
@@ -263,8 +261,7 @@ async function handler(
       // Enforce plan limits: DataSource document size.
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
-        req.body.text.length >
-          1024 * 1024 * plan.limits.dataSources.documents.sizeMb
+        fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
           status_code: 401,
@@ -284,13 +281,14 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
-        timestamp,
-        tags,
-        parents,
+        tags: bodyValidation.right.tags || [],
+        parents: bodyValidation.right.parents || [],
         sourceUrl,
-        text: req.body.text,
+        timestamp: bodyValidation.right.timestamp || null,
+        section,
         credentials,
-        lightDocumentOutput: req.body.light_document_output === true,
+        lightDocumentOutput:
+          bodyValidation.right.light_document_output === true,
       });
 
       if (upsertRes.isErr()) {
@@ -309,24 +307,15 @@ async function handler(
         data_source: dataSource,
       });
 
-      const upsertContextValidation = UpsertContextSchema.decode(
-        req.body.upsert_context
-      );
-
-      let upsertContext: UpsertContext | undefined = undefined;
-      if (!isLeft(upsertContextValidation)) {
-        upsertContext = upsertContextValidation.right;
-      }
-
       const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
         auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
-        documentText: req.body.text,
+        documentText: fullText,
         documentHash: upsertRes.value.document.hash,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
         documentSourceUrl: sourceUrl || undefined,
-        upsertContext,
+        upsertContext: bodyValidation.right.upsert_context || undefined,
       });
 
       // TODO: parallel.

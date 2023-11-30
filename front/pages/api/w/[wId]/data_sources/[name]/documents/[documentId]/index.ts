@@ -1,12 +1,19 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI, CoreAPILightDocument } from "@app/lib/core_api";
+import {
+  CoreAPI,
+  CoreAPILightDocument,
+  sectionFullText,
+} from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { PostDataSourceDocumentRequestBodySchema } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/documents/[documentId]";
 import { DocumentType } from "@app/types/document";
 
 export type GetDocumentResponseBody = {
@@ -70,61 +77,24 @@ async function handler(
         });
       }
 
-      if (!req.body || !(typeof req.body.text == "string")) {
+      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body, `text` (string) is required.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      let tags = [];
-      if (req.body.tags) {
-        if (!Array.isArray(req.body.tags)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `tags` if provided must be an array of strings.",
-            },
-          });
-        }
-        tags = req.body.tags;
-      }
-
-      let parents = [];
-      if (req.body.parents) {
-        if (!Array.isArray(req.body.parents)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `parents` if provided must be an array of strings.",
-            },
-          });
-        }
-        parents = req.body.parents;
-      }
-
       let sourceUrl: string | null = null;
-      if (req.body.source_url) {
-        if (typeof req.body.source_url !== "string") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Invalid request body, `sourceUrl` if provided must be a string.",
-            },
-          });
-        }
-
+      if (bodyValidation.right.source_url) {
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
-          validateUrl(req.body.source_url);
+          validateUrl(bodyValidation.right.source_url);
 
         if (!isSourceUrlValid) {
           return apiError(req, res, {
@@ -132,13 +102,33 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "Invalid request body, `sourceUrl` if provided must be a valid URL.",
+                "Invalid request body, `source_url` if provided must be a valid URL.",
             },
           });
         }
-
         sourceUrl = standardizedSourceUrl;
       }
+
+      const section = bodyValidation.right.text
+        ? {
+            prefix: null,
+            content: bodyValidation.right.text,
+            sections: [],
+          }
+        : bodyValidation.right.section || null;
+
+      if (!section) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid request body, `text` or `section` must be provided.",
+          },
+        });
+      }
+
+      const fullText = sectionFullText(section);
 
       // Enforce plan limits: DataSource documents count.
       // We only load the number of documents if the limit is not -1 (unlimited).
@@ -180,8 +170,7 @@ async function handler(
       // Enforce plan limits: DataSource document size.
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
-        req.body.text.length >
-          1024 * 1024 * plan.limits.dataSources.documents.sizeMb
+        fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
           status_code: 401,
@@ -197,29 +186,33 @@ async function handler(
       const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
-      const data = await CoreAPI.upsertDataSourceDocument({
+      const upsertRes = await CoreAPI.upsertDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
-        tags,
-        parents,
+        tags: bodyValidation.right.tags || [],
+        parents: bodyValidation.right.parents || [],
         sourceUrl,
+        timestamp: bodyValidation.right.timestamp || null,
+        section,
         credentials,
-        text: req.body.text,
+        lightDocumentOutput:
+          bodyValidation.right.light_document_output === true,
       });
-      if (data.isErr()) {
+
+      if (upsertRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
             message: "There was an error upserting the document.",
-            data_source_error: data.error,
+            data_source_error: upsertRes.error,
           },
         });
       }
 
       res.status(201).json({
-        document: data.value.document,
+        document: upsertRes.value.document,
       });
       return;
 
