@@ -1,6 +1,8 @@
-import { UserMessageType } from "@dust-tt/types";
+import {
+  InternalPostMessagesRequestBodySchema,
+  UserMessageType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,23 +11,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-export const PostMessagesRequestBodySchema = t.type({
-  content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
-  context: t.type({
-    timezone: t.string,
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -93,7 +78,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMessagesRequestBodySchema.decode(req.body);
+      const bodyValidation = InternalPostMessagesRequestBodySchema.decode(
+        req.body
+      );
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
