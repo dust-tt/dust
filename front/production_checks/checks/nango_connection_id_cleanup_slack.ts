@@ -11,6 +11,7 @@ const {
 
 export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   checkName,
+  logger,
   reportSuccess,
   reportFailure
 ) => {
