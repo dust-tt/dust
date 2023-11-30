@@ -14,6 +14,8 @@ import {
   CommandLineIcon,
   Button,
   TrashIcon,
+  PlusIcon,
+  DashIcon,
 } from "@dust-tt/sparkle";
 import ReactMarkdown from "react-markdown";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -21,7 +23,6 @@ import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useApp } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
 import { useContext, useState } from "react";
-import { useRouter } from "next/router";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function AssistantDetails({
@@ -189,8 +190,33 @@ function ButtonsSection({
       ["builder", "admin"].includes(owner.role)) ||
     (["published", "private"].includes(agentConfiguration.scope) &&
       inMyList(agentConfiguration));
+  const canAddRemoveList = ["published", "workspace"].includes(
+    agentConfiguration.scope
+  );
   return (
     <Button.List className="flex items-center justify-end gap-1">
+      {canAddRemoveList &&
+        (inMyList(agentConfiguration) ? (
+          <Button
+            label="Remove from my list"
+            variant="tertiary"
+            icon={DashIcon}
+            size="xs"
+            onClick={() => {
+              // TODO IMPLEMENT
+            }}
+          />
+        ) : (
+          <Button
+            label="Add to my list"
+            variant="tertiary"
+            icon={PlusIcon}
+            size="xs"
+            onClick={() => {
+              // TODO IMPLEMENT
+            }}
+          />
+        ))}
       {canDelete && (
         <>
           <DeletionModal
@@ -227,7 +253,6 @@ function DeletionModal({
   onClose: () => void;
   detailsModalClose: () => void;
 }) {
-  const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
