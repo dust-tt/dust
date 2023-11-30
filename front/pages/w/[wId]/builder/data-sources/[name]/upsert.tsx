@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import * as PDFJS from "pdfjs-dist/build/pdf";
 import { useContext, useEffect, useRef, useState } from "react";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
-
 import {
   Button,
   DocumentPlusIcon,
@@ -157,7 +156,11 @@ export default function DataSourceUpsert({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text,
+          section: {
+            prefix: null,
+            content: text,
+            sections: [],
+          },
           source_url: sourceUrl || undefined,
           tags: tags.filter((tag) => tag),
         }),
@@ -170,7 +173,6 @@ export default function DataSourceUpsert({
       );
     } else {
       const data = await res.json();
-      console.log("UPSERT Error", data.error);
       sendNotification({
         type: "error",
         title: "Error upserting document",
