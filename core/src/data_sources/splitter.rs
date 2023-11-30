@@ -434,9 +434,12 @@ impl Splitter for BaseV0Splitter {
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section).await?;
 
+        // We filter out whitespace only or empty strings which is possible to obtain if the section
+        // passed have empty or whitespace only content.
         Ok(tokenized_section
             .chunks()
             .into_iter()
+            .filter(|t| t.text.trim().len() > 0)
             .map(|t| t.text)
             .collect())
     }
