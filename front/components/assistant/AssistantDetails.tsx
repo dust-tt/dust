@@ -8,23 +8,23 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { ConnectorProvider } from "@dust-tt/types";
+import {
+  DustAppRunConfigurationType,
+  isDustAppRunConfiguration,
+} from "@dust-tt/types";
+import {
+  DataSourceConfiguration,
+  isRetrievalConfiguration,
+} from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
+import { WorkspaceType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
 import { useApp } from "@app/lib/swr";
-import {
-  DustAppRunConfigurationType,
-  isDustAppRunConfiguration,
-} from "@app/types/assistant/actions/dust_app_run";
-import {
-  DataSourceConfiguration,
-  isRetrievalConfiguration,
-} from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { WorkspaceType } from "@app/types/user";
 
 export function AssistantDetails({
   owner,
