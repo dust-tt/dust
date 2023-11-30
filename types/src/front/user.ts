@@ -1,4 +1,4 @@
-import { ModelId } from "../../shared/model_id";
+import { ModelId } from "../shared/model_id";
 
 export type RoleType = "admin" | "builder" | "user" | "none";
 
