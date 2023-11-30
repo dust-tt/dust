@@ -6,11 +6,10 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { DustAppRunActionType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
-
-import { DustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),

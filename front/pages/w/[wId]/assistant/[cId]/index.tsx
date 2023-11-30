@@ -1,3 +1,5 @@
+import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AgentMention, MentionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
@@ -12,9 +14,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
-import { AgentMention, MentionType } from "@app/types/assistant/conversation";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

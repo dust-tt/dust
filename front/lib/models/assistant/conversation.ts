@@ -1,4 +1,11 @@
 import {
+  AgentMessageStatus,
+  ContentFragmentContentType,
+  ConversationVisibility,
+  MessageVisibility,
+  ParticipantActionType,
+} from "@dust-tt/types";
+import {
   CreationOptional,
   DataTypes,
   ForeignKey,
@@ -12,13 +19,6 @@ import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  AgentMessageStatus,
-  ContentFragmentContentType,
-  ConversationVisibility,
-  MessageVisibility,
-  ParticipantActionType,
-} from "@app/types/assistant/conversation";
 
 import { AgentDustAppRunAction } from "./actions/dust_app_run";
 

@@ -1,9 +1,10 @@
+import { AgentVisibilityOverrideType } from "@dust-tt/types";
+
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { Membership } from "@app/lib/models";
 import { MemberAgentVisibility } from "@app/lib/models/assistant/agent";
 import { Err, Ok, Result } from "@app/lib/result";
-import { AgentVisibilityOverrideType } from "@app/types/assistant/agent";
 
 export async function setVisibilityOverrideForUser({
   auth,

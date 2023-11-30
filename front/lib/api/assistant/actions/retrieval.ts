@@ -1,4 +1,21 @@
 import { ModelId } from "@dust-tt/types";
+import {
+  DataSourceConfiguration,
+  isRetrievalConfiguration,
+  RetrievalActionType,
+  RetrievalConfigurationType,
+  RetrievalDocumentType,
+  TimeFrame,
+} from "@dust-tt/types";
+import {
+  AgentActionSpecification,
+  AgentConfigurationType,
+} from "@dust-tt/types";
+import {
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@dust-tt/types";
 
 import {
   cloneBaseConfig,
@@ -17,23 +34,6 @@ import {
 } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import {
-  DataSourceConfiguration,
-  isRetrievalConfiguration,
-  RetrievalActionType,
-  RetrievalConfigurationType,
-  RetrievalDocumentType,
-  TimeFrame,
-} from "@app/types/assistant/actions/retrieval";
-import {
-  AgentActionSpecification,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
-import {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 /**
  * TimeFrame parsing

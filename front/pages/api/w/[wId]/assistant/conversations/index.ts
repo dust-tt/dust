@@ -1,3 +1,9 @@
+import {
+  ContentFragmentType,
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,12 +21,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { PostContentFragmentRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/content_fragment";
 import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import {
-  ContentFragmentType,
-  ConversationType,
-  ConversationWithoutContentType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 export const PostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

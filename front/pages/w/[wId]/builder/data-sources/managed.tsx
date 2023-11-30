@@ -10,7 +10,12 @@ import {
   Page,
   Popup,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  ConnectorProvider,
+  DataSourceType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -31,7 +36,6 @@ import {
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import { PlanType, SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const {
   GA_TRACKING_ID = "",

@@ -1,3 +1,4 @@
+import { DustAppParameters } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -7,7 +8,6 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { DustAppParameters } from "@app/types/assistant/actions/dust_app_run";
 
 /**
  * Action DustAppRun Configuration

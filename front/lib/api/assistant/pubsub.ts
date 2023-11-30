@@ -1,4 +1,12 @@
 import {
+  AgentMessageType,
+  ConversationType,
+  MentionType,
+  UserMessageContext,
+  UserMessageType,
+} from "@dust-tt/types";
+
+import {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -24,13 +32,6 @@ import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
-import {
-  AgentMessageType,
-  ConversationType,
-  MentionType,
-  UserMessageContext,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 export type PubSubError = APIErrorWithStatusCode;
 

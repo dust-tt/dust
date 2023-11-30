@@ -1,5 +1,6 @@
+import { UserMetadataType, UserType } from "@dust-tt/types";
+
 import { User, UserMetadata } from "@app/lib/models";
-import { UserMetadataType, UserType } from "@app/types/user";
 
 /**
  * Server-side interface to get user metadata.

@@ -1,3 +1,4 @@
+import { ContentFragmentType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,7 +11,6 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ContentFragmentType } from "@app/types/assistant/conversation";
 
 export const PostContentFragmentRequestBodySchema = t.type({
   title: t.string,

@@ -1,4 +1,5 @@
 import { GoogleLogo, Logo } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
@@ -6,7 +7,6 @@ import { SignInButton } from "@app/components/Button";
 import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

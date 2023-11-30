@@ -5,24 +5,21 @@ import { promisify } from "util";
 const readFileAsync = promisify(fs.readFile);
 
 import { ConnectorProvider } from "@dust-tt/types";
-
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-} from "@app/lib/assistant";
+} from "@dust-tt/types";
+import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
+
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { DustAPI } from "@app/lib/dust_api";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
-import {
-  AgentConfigurationType,
-  GlobalAgentStatus,
-} from "@app/types/assistant/agent";
 import { PlanType } from "@app/types/plan";
 
 class HelperAssistantPrompt {

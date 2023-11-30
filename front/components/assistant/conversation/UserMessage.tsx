@@ -1,12 +1,13 @@
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
   ConversationType,
   MessageReactionType,
   UserMessageType,
-} from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
+} from "@dust-tt/types";
+
+import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import { useAgentConfigurations } from "@app/lib/swr";
 
 import { AgentSuggestion } from "./AgentSuggestion";
 

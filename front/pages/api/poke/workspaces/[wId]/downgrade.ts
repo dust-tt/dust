@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -5,7 +6,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Workspace } from "@app/lib/models";
 import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { WorkspaceType } from "@app/types/user";
 
 export type DowngradeWorkspaceResponseBody = {
   workspace: WorkspaceType;

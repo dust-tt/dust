@@ -1,15 +1,17 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useState } from "react";
 
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import { SpecificationBlockType, SpecificationType } from "@app/types/app";
-import { AppType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
-import { RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
+import {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import { BlockType, RunType } from "@app/types/run";
 
 import Block from "./Block";
 

@@ -8,12 +8,12 @@ import {
   Modal,
   Tab,
 } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { ChangeEvent, useRef, useState } from "react";
 import React from "react";
 import ReactCrop, { centerCrop, Crop, makeAspectCrop } from "react-image-crop";
 
 import { classNames } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 
 const DEFAULT_CROP: Crop = {
   unit: "%",

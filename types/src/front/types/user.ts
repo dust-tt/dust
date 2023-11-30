@@ -1,6 +1,6 @@
-import { ModelId } from "@dust-tt/types";
+import { ModelId } from "../../shared/model_id";
 
-import { RoleType } from "@app/lib/auth";
+export type RoleType = "admin" | "builder" | "user" | "none";
 
 export type WorkspaceType = {
   id: ModelId;

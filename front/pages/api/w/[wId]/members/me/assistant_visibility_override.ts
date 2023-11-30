@@ -1,3 +1,4 @@
+import { AgentVisibilityOverrideType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,7 +12,6 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Membership } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { AgentVisibilityOverrideType } from "@app/types/assistant/agent";
 
 export type PostMemberAssistantVisibilityResponseBody = {
   created: boolean | null;

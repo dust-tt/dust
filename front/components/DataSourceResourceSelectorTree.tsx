@@ -6,7 +6,7 @@ import {
   DocumentTextIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { DataSourceType } from "@dust-tt/types";
+import { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -16,7 +16,6 @@ import {
 } from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 
 export default function DataSourceResourceSelectorTree({
   owner,

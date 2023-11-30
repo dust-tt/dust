@@ -1,10 +1,12 @@
+import { WorkspaceType } from "@dust-tt/types";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { SpecificationBlockType, SpecificationType } from "@app/types/app";
-import { AppType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
-import { RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
+import {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import { BlockType, RunType } from "@app/types/run";
 
 import Browser from "./blocks/Browser";
 import Chat from "./blocks/Chat";

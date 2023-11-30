@@ -1,7 +1,7 @@
-import { ModelId } from "@dust-tt/types";
+import { ModelId } from "../../../../shared/model_id";
 
-import { AgentActionConfigurationType } from "@app/types/assistant/agent";
-import { AgentActionType } from "@app/types/assistant/conversation";
+import { AgentActionConfigurationType } from "../../../../front/types/assistant/agent";
+import { AgentActionType } from "../../../../front/types/assistant/conversation";
 
 export type DustAppRunConfigurationType = {
   id: ModelId;

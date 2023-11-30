@@ -1,3 +1,4 @@
+import { WorkspaceType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
@@ -5,7 +6,6 @@ import { useEffect, useState } from "react";
 
 import { useDataSources } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { WorkspaceType } from "@app/types/user";
 
 export default function DataSourcePicker({
   owner,

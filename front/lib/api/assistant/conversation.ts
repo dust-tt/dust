@@ -1,3 +1,22 @@
+import { WorkspaceType } from "@dust-tt/types";
+import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
+import {
+  AgentMessageType,
+  ContentFragmentContentType,
+  ContentFragmentContextType,
+  ContentFragmentType,
+  ConversationType,
+  ConversationVisibility,
+  ConversationWithoutContentType,
+  isAgentMention,
+  isAgentMessageType,
+  isUserMention,
+  isUserMessageType,
+  MentionType,
+  UserMessageContext,
+  UserMessageType,
+} from "@dust-tt/types";
 import crypto from "crypto";
 import { Op, Transaction } from "sequelize";
 
@@ -21,7 +40,6 @@ import {
   GenerationTokensEvent,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
-import { GPT_3_5_TURBO_MODEL_CONFIG } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -39,25 +57,7 @@ import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  AgentMessageType,
-  ContentFragmentContentType,
-  ContentFragmentContextType,
-  ContentFragmentType,
-  ConversationType,
-  ConversationVisibility,
-  ConversationWithoutContentType,
-  isAgentMention,
-  isAgentMessageType,
-  isUserMention,
-  isUserMessageType,
-  MentionType,
-  UserMessageContext,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 import { PlanType } from "@app/types/plan";
-import { WorkspaceType } from "@app/types/user";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 /**

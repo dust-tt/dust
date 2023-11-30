@@ -1,8 +1,6 @@
+import { AgentConfigurationType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
-import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
-
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -116,22 +114,6 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
 
   return markdown;
 };
-
-export function ioTsEnum<EnumType>(
-  enumValues: readonly string[],
-  enumName?: string
-) {
-  const isEnumValue = (input: unknown): input is EnumType =>
-    enumValues.includes(input as string);
-
-  return new t.Type<EnumType>(
-    enumName || uuidv4(),
-    isEnumValue,
-    (input, context) =>
-      isEnumValue(input) ? t.success(input) : t.failure(input, context),
-    t.identity
-  );
-}
 
 export function assertNever(x: never): never {
   throw new Error(`${x} is not of type never. This should never happen.`);

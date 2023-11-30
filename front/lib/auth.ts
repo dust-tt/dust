@@ -1,3 +1,4 @@
+import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
 import {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -21,7 +22,6 @@ import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 import { PlanType, SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import { DustAPICredentials } from "./dust_api";
 
@@ -31,8 +31,6 @@ const {
   NODE_ENV,
   DUST_PROD_API = "https://dust.tt",
 } = process.env;
-
-export type RoleType = "admin" | "builder" | "user" | "none";
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.

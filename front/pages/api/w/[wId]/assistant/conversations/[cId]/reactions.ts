@@ -1,3 +1,4 @@
+import { ConversationMessageReactions } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
@@ -5,7 +6,6 @@ import { getMessageReactions } from "@app/lib/api/assistant/reaction";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ConversationMessageReactions } from "@app/types/assistant/conversation";
 
 async function handler(
   req: NextApiRequest,

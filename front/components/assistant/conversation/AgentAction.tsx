@@ -1,6 +1,6 @@
-import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
-import { isRetrievalActionType } from "@app/types/assistant/actions/retrieval";
-import { AgentActionType } from "@app/types/assistant/conversation";
+import { isDustAppRunActionType } from "@dust-tt/types";
+import { isRetrievalActionType } from "@dust-tt/types";
+import { AgentActionType } from "@dust-tt/types";
 
 import DustAppRunAction from "./DustAppRunAction";
 import RetrievalAction from "./RetrievalAction";

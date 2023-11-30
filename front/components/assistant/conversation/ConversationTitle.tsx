@@ -10,13 +10,13 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
+import { ConversationType } from "@dust-tt/types";
 import React, { MouseEvent, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { classNames } from "@app/lib/utils";
-import { ConversationType } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
 
 export function ConversationTitle({
   owner,

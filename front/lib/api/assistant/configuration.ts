@@ -1,3 +1,20 @@
+import { SupportedModel } from "@dust-tt/types";
+import { DustAppRunConfigurationType } from "@dust-tt/types";
+import {
+  DataSourceConfiguration,
+  isTemplatedQuery,
+  isTimeFrame,
+  RetrievalConfigurationType,
+  RetrievalQuery,
+  RetrievalTimeframe,
+} from "@dust-tt/types";
+import {
+  AgentActionConfigurationType,
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  AgentGenerationConfigurationType,
+  AgentStatus,
+} from "@dust-tt/types";
 import { Op, Transaction } from "sequelize";
 
 import {
@@ -5,7 +22,7 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
-import { isSupportedModel, SupportedModel } from "@app/lib/assistant";
+import { isSupportedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -18,22 +35,6 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
-import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
-import {
-  DataSourceConfiguration,
-  isTemplatedQuery,
-  isTimeFrame,
-  RetrievalConfigurationType,
-  RetrievalQuery,
-  RetrievalTimeframe,
-} from "@app/types/assistant/actions/retrieval";
-import {
-  AgentActionConfigurationType,
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  AgentGenerationConfigurationType,
-  AgentStatus,
-} from "@app/types/assistant/agent";
 
 /**
  * Get an agent configuration

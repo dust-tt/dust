@@ -1,3 +1,9 @@
+import { SupportedModel, TimeframeUnitCodec } from "@dust-tt/types";
+import {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  AgentGenerationConfigurationType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,16 +15,10 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
-import { isSupportedModel, SupportedModel } from "@app/lib/assistant";
+import { isSupportedModel } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { TimeframeUnitCodec } from "@app/types/assistant/actions/retrieval";
-import {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  AgentGenerationConfigurationType,
-} from "@app/types/assistant/agent";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: AgentConfigurationType[];

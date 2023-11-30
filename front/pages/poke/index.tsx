@@ -1,3 +1,4 @@
+import { UserType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import React, { ChangeEvent, useState } from "react";
@@ -5,7 +6,6 @@ import React, { ChangeEvent, useState } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokeWorkspaces } from "@app/lib/swr";
-import { UserType } from "@app/types/user";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;

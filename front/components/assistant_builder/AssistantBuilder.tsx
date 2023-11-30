@@ -16,6 +16,16 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  CLAUDE_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  SupportedModel,
+} from "@dust-tt/types";
+import { TimeframeUnit } from "@dust-tt/types";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { ReactNode, useCallback, useEffect, useState } from "react";
@@ -38,15 +48,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  CLAUDE_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  getSupportedModelConfig,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-  SupportedModel,
-} from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
@@ -56,9 +58,7 @@ import {
 import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { AppType } from "@app/types/app";
-import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
 import { PlanType, SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";

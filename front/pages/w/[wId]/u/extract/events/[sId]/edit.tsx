@@ -4,6 +4,7 @@ import {
   Page,
   SectionHeader,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
@@ -16,7 +17,6 @@ import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{

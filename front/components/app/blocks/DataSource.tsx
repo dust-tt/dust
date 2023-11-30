@@ -1,5 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { WorkspaceType } from "@dust-tt/types";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import { useState } from "react";
@@ -12,7 +13,6 @@ import {
   SpecificationType,
 } from "@app/types/app";
 import { BlockType, RunType } from "@app/types/run";
-import { WorkspaceType } from "@app/types/user";
 
 import Block from "./Block";
 

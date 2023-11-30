@@ -1,6 +1,5 @@
 import { ConnectorProvider } from "@dust-tt/types";
-
-import { TimeframeUnit } from "@app/types/assistant/actions/retrieval";
+import { TimeframeUnit } from "@dust-tt/types";
 
 export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
 export type FilteringMode = (typeof FILTERING_MODES)[number];

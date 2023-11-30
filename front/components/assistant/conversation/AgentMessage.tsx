@@ -9,6 +9,9 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
+import { isRetrievalActionType, RetrievalDocumentType } from "@dust-tt/types";
+import { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -31,15 +34,6 @@ import {
 } from "@app/lib/api/assistant/agent";
 import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import {
-  isRetrievalActionType,
-  RetrievalDocumentType,
-} from "@app/types/assistant/actions/retrieval";
-import {
-  AgentMessageType,
-  MessageReactionType,
-} from "@app/types/assistant/conversation";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;

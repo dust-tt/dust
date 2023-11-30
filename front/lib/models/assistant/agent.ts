@@ -1,3 +1,10 @@
+import { DustAppRunConfigurationType } from "@dust-tt/types";
+import {
+  AgentConfigurationScope,
+  AgentStatus,
+  AgentVisibilityOverrideType,
+  GlobalAgentStatus,
+} from "@dust-tt/types";
 import assert from "assert";
 import {
   CreationOptional,
@@ -12,13 +19,6 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Membership, Workspace } from "@app/lib/models/workspace";
-import { DustAppRunConfigurationType } from "@app/types/assistant/actions/dust_app_run";
-import {
-  AgentConfigurationScope,
-  AgentStatus,
-  AgentVisibilityOverrideType,
-  GlobalAgentStatus,
-} from "@app/types/assistant/agent";
 
 import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
 

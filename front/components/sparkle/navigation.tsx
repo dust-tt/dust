@@ -13,11 +13,11 @@ import {
   ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AppType } from "@app/types/app";
-import { WorkspaceType } from "@app/types/user";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need

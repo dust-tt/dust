@@ -1,3 +1,21 @@
+import {
+  GPT_4_32K_MODEL_ID,
+  GPT_4_MODEL_CONFIG,
+  isDustAppRunActionType,
+} from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
+import {
+  isRetrievalActionType,
+  isRetrievalConfiguration,
+} from "@dust-tt/types";
+import {
+  AgentMessageType,
+  ConversationType,
+  isAgentMessageType,
+  isContentFragmentType,
+  isUserMessageType,
+  UserMessageType,
+} from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import {
@@ -9,32 +27,13 @@ import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import {
-  getSupportedModelConfig,
-  GPT_4_32K_MODEL_ID,
-  GPT_4_MODEL_CONFIG,
-  isLargeModel,
-} from "@app/lib/assistant";
+import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { isDustAppRunActionType } from "@app/types/assistant/actions/dust_app_run";
-import {
-  isRetrievalActionType,
-  isRetrievalConfiguration,
-} from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  AgentMessageType,
-  ConversationType,
-  isAgentMessageType,
-  isContentFragmentType,
-  isUserMessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 
 import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
 import { getAgentConfigurations } from "./configuration";

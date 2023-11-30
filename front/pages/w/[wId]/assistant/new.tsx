@@ -10,6 +10,12 @@ import {
   Popup,
   WrenchIcon,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  ContentFragmentContentType,
+  ConversationType,
+  MentionType,
+} from "@dust-tt/types";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -32,13 +38,7 @@ import type {
   PostConversationsRequestBodySchema,
   PostConversationsResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations";
-import {
-  ContentFragmentContentType,
-  ConversationType,
-  MentionType,
-} from "@app/types/assistant/conversation";
 import { SubscriptionType } from "@app/types/plan";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

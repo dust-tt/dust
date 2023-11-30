@@ -6,6 +6,7 @@ import {
   SparklesIcon,
   Tab,
 } from "@dust-tt/sparkle";
+import { UserType, WorkspaceType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -40,7 +41,6 @@ import {
 } from "@app/types/app";
 import { SubscriptionType } from "@app/types/plan";
 import { BlockType } from "@app/types/run";
-import { UserType, WorkspaceType } from "@app/types/user";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

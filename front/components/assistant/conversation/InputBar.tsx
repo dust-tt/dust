@@ -8,6 +8,9 @@ import {
   StopIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { WorkspaceType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
+import { AgentMention, MentionType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import {
   createContext,
@@ -30,9 +33,6 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, filterAndSortAgents } from "@app/lib/utils";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { AgentMention, MentionType } from "@app/types/assistant/conversation";
-import { WorkspaceType } from "@app/types/user";
 
 // AGENT MENTION
 

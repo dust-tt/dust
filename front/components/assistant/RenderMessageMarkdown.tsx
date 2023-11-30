@@ -4,6 +4,8 @@ import {
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { AgentConfigurationType } from "@dust-tt/types";
+import { RetrievalDocumentType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -20,9 +22,6 @@ import {
   yellow,
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
-
-import { RetrievalDocumentType } from "@app/types/assistant/actions/retrieval";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
 
 import { linkFromDocument } from "./conversation/RetrievalAction";
 
