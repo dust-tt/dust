@@ -75,7 +75,7 @@ async function runAllChecks(checks: Check[]) {
         logger.info("Check done");
       }
     } catch (e) {
-      logger.error({ error: e }, "Check failed");
+      logger.error({ error: e }, "Production check failed");
     }
   }
   mainLogger.info({ uuid: allCheckUuid }, "Done running all checks");
