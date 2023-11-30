@@ -290,9 +290,13 @@ impl TableSchema {
                         our_column.value_type =
                             match (&our_column.value_type, &other_column.value_type) {
                                 // Ints and Floats can be merged into Floats.
-                                // Other types are widened to Text.
+                                // Other types are incompatible.
                                 (Int, Float) | (Float, Int) => TableSchemaFieldType::Float,
-                                _ => TableSchemaFieldType::Text,
+                                _ => Err(anyhow!(
+                                    "Cannot merge types {:?} and {:?}",
+                                    our_column.value_type,
+                                    other_column.value_type
+                                ))?,
                             };
                     }
 
