@@ -115,7 +115,7 @@ export function Modal({
   } = getModalClasses(type);
 
   return (
-    <Transition.Root show={isOpen} as={Fragment}>
+    <Transition show={isOpen} as={Fragment} appear={true}>
       <Dialog as="div" className="s-relative s-z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}
@@ -165,6 +165,6 @@ export function Modal({
           </div>
         </div>
       </Dialog>
-    </Transition.Root>
+    </Transition>
   );
 }
