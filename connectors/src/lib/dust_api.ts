@@ -6,6 +6,7 @@ import {
   ConversationType,
   DataSourceType,
   PublicPostContentFragmentRequestBodySchema,
+  PublicPostConversationsRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
   UserMessageType,
 } from "@dust-tt/types";
@@ -61,22 +62,8 @@ export type AgentGenerationSuccessEvent = {
   text: string;
 };
 
-const PostConversationsRequestBodySchemaIoTs = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-  ]),
-  message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
-  contentFragment: t.union([
-    PublicPostContentFragmentRequestBodySchema,
-    t.undefined,
-  ]),
-});
-
 type PostConversationsRequestBodySchema = t.TypeOf<
-  typeof PostConversationsRequestBodySchemaIoTs
+  typeof PublicPostConversationsRequestBodySchema
 >;
 
 export type PostMessagesRequestBodySchema = t.TypeOf<

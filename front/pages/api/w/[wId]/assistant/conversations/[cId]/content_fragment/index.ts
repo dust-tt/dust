@@ -1,4 +1,7 @@
-import { ContentFragmentType } from "@dust-tt/types";
+import {
+  ContentFragmentType,
+  InternalPostContentFragmentRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,21 +15,8 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export const PostContentFragmentRequestBodySchema = t.type({
-  title: t.string,
-  content: t.string,
-  url: t.union([t.string, t.null]),
-  contentType: t.union([
-    t.literal("slack_thread_content"),
-    t.literal("file_attachment"),
-  ]),
-  context: t.type({
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
-});
-
 export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PostContentFragmentRequestBodySchema
+  typeof InternalPostContentFragmentRequestBodySchema
 >;
 
 async function handler(
@@ -87,9 +77,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostContentFragmentRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        InternalPostContentFragmentRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

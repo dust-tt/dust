@@ -1,14 +1,10 @@
-import {
-  PublicPostContentFragmentRequestBodySchema,
-  PublicPostMessagesRequestBodySchema,
-} from "@dust-tt/types";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
 import {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -21,20 +17,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const PostConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-  ]),
-  message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
-  contentFragment: t.union([
-    PublicPostContentFragmentRequestBodySchema,
-    t.undefined,
-  ]),
-});
 
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
@@ -79,7 +61,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostConversationsRequestBodySchema.decode(
+      const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
         req.body
       );
 

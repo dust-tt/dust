@@ -2,10 +2,10 @@ import {
   ContentFragmentType,
   ConversationType,
   ConversationWithoutContentType,
+  InternalPostConversationsRequestBodySchema,
   UserMessageType,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -19,19 +19,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PostContentFragmentRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/content_fragment";
-import { PostMessagesRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-
-export const PostConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-  ]),
-  message: t.union([PostMessagesRequestBodySchema, t.null]),
-  contentFragment: t.union([PostContentFragmentRequestBodySchema, t.undefined]),
-});
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -107,7 +94,7 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostConversationsRequestBodySchema.decode(
+      const bodyValidation = InternalPostConversationsRequestBodySchema.decode(
         req.body
       );
 

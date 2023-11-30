@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-export const PublicPostMessagesRequestBodySchema = t.type({
+export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(
     t.union([
@@ -13,14 +13,11 @@ export const PublicPostMessagesRequestBodySchema = t.type({
   ),
   context: t.type({
     timezone: t.string,
-    username: t.string,
-    fullName: t.union([t.string, t.null]),
-    email: t.union([t.string, t.null]),
     profilePictureUrl: t.union([t.string, t.null]),
   }),
 });
 
-export const PublicPostContentFragmentRequestBodySchema = t.type({
+export const InternalPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
@@ -28,27 +25,21 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
     t.literal("slack_thread_content"),
     t.literal("file_attachment"),
   ]),
-  context: t.union([
-    t.type({
-      profilePictureUrl: t.union([t.string, t.null]),
-      fullName: t.union([t.string, t.null]),
-      email: t.union([t.string, t.null]),
-      username: t.union([t.string, t.null]),
-    }),
-    t.null,
-  ]),
+  context: t.type({
+    profilePictureUrl: t.union([t.string, t.null]),
+  }),
 });
 
-export const PublicPostConversationsRequestBodySchema = t.type({
+export const InternalPostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
     t.literal("unlisted"),
     t.literal("workspace"),
     t.literal("deleted"),
   ]),
-  message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
+  message: t.union([InternalPostMessagesRequestBodySchema, t.null]),
   contentFragment: t.union([
-    PublicPostContentFragmentRequestBodySchema,
+    InternalPostContentFragmentRequestBodySchema,
     t.undefined,
   ]),
 });

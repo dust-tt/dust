@@ -10,7 +10,11 @@ import {
   Popup,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  InternalPostConversationsRequestBodySchema,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import {
   ContentFragmentContentType,
   ConversationType,
@@ -34,10 +38,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
-import type {
-  PostConversationsRequestBodySchema,
-  PostConversationsResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -113,28 +114,30 @@ export default function AssistantNew({
         content: string;
       }
     ) => {
-      const body: t.TypeOf<typeof PostConversationsRequestBodySchema> = {
-        title: null,
-        visibility: "unlisted",
-        message: {
-          content: input,
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-            profilePictureUrl: user.image,
+      const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
+        {
+          title: null,
+          visibility: "unlisted",
+          message: {
+            content: input,
+            context: {
+              timezone:
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+              profilePictureUrl: user.image,
+            },
+            mentions,
           },
-          mentions,
-        },
-        contentFragment: contentFragment
-          ? {
-              ...contentFragment,
-              contentType: "file_attachment",
-              url: null,
-              context: {
-                profilePictureUrl: user.image,
-              },
-            }
-          : undefined,
-      };
+          contentFragment: contentFragment
+            ? {
+                ...contentFragment,
+                contentType: "file_attachment",
+                url: null,
+                context: {
+                  profilePictureUrl: user.image,
+                },
+              }
+            : undefined,
+        };
 
       // Create new conversation and post the initial message at the same time.
       const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
