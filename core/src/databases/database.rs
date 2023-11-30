@@ -68,11 +68,11 @@ impl Database {
                     .await?;
 
                 Ok(tables
-                    .iter()
+                    .into_iter()
                     // Ignore empty tables.
                     .filter_map(|t| match t.schema() {
                         None => None,
-                        Some(s) => Some(DatabaseSchemaTable::new(t.clone(), s.clone())),
+                        Some(s) => Some(DatabaseSchemaTable::new(t, s)),
                     })
                     .collect::<Vec<_>>())
             }
@@ -417,8 +417,8 @@ impl DatabaseTable {
     pub fn description(&self) -> &str {
         &self.description
     }
-    pub fn schema(&self) -> Option<&TableSchema> {
-        self.schema.as_ref()
+    pub fn schema(&self) -> Option<TableSchema> {
+        self.schema.clone()
     }
 }
 
