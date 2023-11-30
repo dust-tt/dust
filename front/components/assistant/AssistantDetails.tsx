@@ -137,7 +137,7 @@ function DataSourcesSection({
           : CloudArrowDownIcon;
         const dsDocumentNumberText = `(${
           ds.filter.parents?.in.length ?? "all"
-        } elements)`;
+        } element(s))`;
         return (
           <div className="flex flex-col gap-2" key={ds.dataSourceId}>
             <div className="flex items-center gap-2 capitalize">
