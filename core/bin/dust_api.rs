@@ -2098,49 +2098,6 @@ async fn databases_rows_list(
     }
 }
 
-async fn databases_schema_retrieve(
-    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    let project = project::Project::new_from_id(project_id);
-
-    match state
-        .store
-        .load_database(&project, &data_source_id, &database_id)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to retrieve database",
-            Some(e),
-        ),
-        Ok(None) => error_response(
-            StatusCode::NOT_FOUND,
-            "database_not_found",
-            &format!("No database found for id `{}`", database_id),
-            None,
-        ),
-        Ok(Some(db)) => match db.get_schema(state.store.clone()).await {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to retrieve database schema",
-                Some(e),
-            ),
-            Ok(schema) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "schema": schema
-                    })),
-                }),
-            ),
-        },
-    }
-}
-
 #[derive(serde::Deserialize)]
 struct DatabaseQueryRunPayload {
     query: String,
@@ -2394,10 +2351,6 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables/:table_id/rows",
             get(databases_rows_list),
-        )
-        .route(
-            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/schema",
-            get(databases_schema_retrieve),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/query",

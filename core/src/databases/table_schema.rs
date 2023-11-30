@@ -1,5 +1,8 @@
+use std::collections::{HashMap, HashSet};
+
 use super::database::{DatabaseRow, HasValue};
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -262,6 +265,89 @@ impl TableSchema {
                 .collect::<Result<Vec<_>>>(),
         }
     }
+
+    pub fn merge(&self, other: &Self) -> Result<Self, anyhow::Error> {
+        // Index our and other columns by name.
+        let our_columns_set = self.0.iter().map(|c| &c.name).collect::<HashSet<_>>();
+        let other_columns_map = other
+            .0
+            .iter()
+            .map(|c| (&c.name, c))
+            .collect::<HashMap<_, _>>();
+
+        let merged_schema = self
+            .0
+            .iter()
+            // Iterate over all of our columns.
+            .map(|our_column| {
+                let mut our_column = our_column.clone();
+
+                // If the other schema has a column with the same name, merge it into our column.
+                if let Some(other_column) = other_columns_map.get(&our_column.name) {
+                    // If types are different, we need to merge them.
+                    if our_column.value_type != other_column.value_type {
+                        use TableSchemaFieldType::*;
+                        our_column.value_type =
+                            match (&our_column.value_type, &other_column.value_type) {
+                                // Ints and Floats can be merged into Floats.
+                                // Other types are incompatible.
+                                (Int, Float) | (Float, Int) => TableSchemaFieldType::Float,
+                                _ => Err(anyhow!(
+                                    "Cannot merge types {:?} and {:?}",
+                                    our_column.value_type,
+                                    other_column.value_type
+                                ))?,
+                            };
+                    }
+
+                    // Concatenate the unique possible values from both columns.
+                    our_column.possible_values = match our_column
+                        .possible_values
+                        .as_ref()
+                        .unwrap_or(&vec![])
+                        .iter()
+                        .chain(other_column.possible_values.as_ref().unwrap_or(&vec![]))
+                        .map(|v| v.to_string())
+                        .unique()
+                        .enumerate()
+                        .map(|(i, v)| {
+                            // If the total number of possible values is too large, or if any of the values are
+                            // too long, then we give up on possible values.
+                            // If there are no possible values, then we set it to None.
+                            if v.len() > POSSIBLE_VALUES_MAX_LEN || i >= POSSIBLE_VALUES_MAX_COUNT {
+                                None
+                            } else {
+                                Some(v)
+                            }
+                        })
+                        .collect::<Option<Vec<String>>>()
+                    {
+                        None => None,
+                        Some(possible_values) => {
+                            if possible_values.is_empty() {
+                                None
+                            } else {
+                                Some(possible_values)
+                            }
+                        }
+                    }
+                }
+
+                Ok(our_column)
+            })
+            // Include all of the other columns that we don't have.
+            .chain(other.0.iter().filter_map(|other_column| {
+                if our_columns_set.contains(&other_column.name) {
+                    // We already have this column.
+                    None
+                } else {
+                    Some(Ok(other_column.clone()))
+                }
+            }))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(TableSchema(merged_schema))
+    }
 }
 
 #[cfg(test)]
@@ -439,7 +525,6 @@ mod tests {
         let (sql, field_names) = schema.get_insert_sql("test_table");
 
         let params_vec = schema.get_insert_params(&field_names, &row)?;
-        println!("{:?}", params_vec);
 
         let mut stmt = conn.prepare(&sql)?;
 
@@ -530,11 +615,179 @@ mod tests {
         ])
     }
 
+    #[test]
+    fn test_merge() -> Result<()> {
+        let test_cases = vec![
+            // (col_schema1, col_schema2, expected_type, expected_possible_values)
+            // Test float / int merge.
+            (
+                Some(create_test_column_with_values(
+                    "float_int_merge",
+                    TableSchemaFieldType::Int,
+                    vec!["1", "2"],
+                )),
+                Some(create_test_column_with_values(
+                    "float_int_merge",
+                    TableSchemaFieldType::Float,
+                    vec!["3.5", "4.5", "5"],
+                )),
+                TableSchemaFieldType::Float,
+                Some(vec!["1", "2", "3.5", "4.5", "5"]),
+            ),
+            // Test when our_column doesn't exist.
+            (
+                None,
+                Some(create_test_column_with_values(
+                    "other_column",
+                    TableSchemaFieldType::Text,
+                    vec!["The value is 1234", "The value is 5678", "12"],
+                )),
+                TableSchemaFieldType::Text,
+                Some(vec!["The value is 1234", "The value is 5678", "12"]),
+            ),
+            // Test when other_column doesn't exist.
+            (
+                Some(create_test_column_with_values(
+                    "our_column",
+                    TableSchemaFieldType::Float,
+                    vec!["1.2", "1.3"],
+                )),
+                None,
+                TableSchemaFieldType::Float,
+                Some(vec!["1.2", "1.3"]),
+            ),
+            // Test without possible values.
+            (
+                Some(TableSchemaColumn::new(
+                    "no_possible_values",
+                    TableSchemaFieldType::Text,
+                )),
+                Some(TableSchemaColumn::new(
+                    "no_possible_values",
+                    TableSchemaFieldType::Text,
+                )),
+                TableSchemaFieldType::Text,
+                None,
+            ),
+            // Test when only other column has possible values.
+            (
+                None,
+                Some(create_test_column_with_values(
+                    "other_column_possible_values",
+                    TableSchemaFieldType::Text,
+                    vec!["The value is 1234", "The value is 5678", "12"],
+                )),
+                TableSchemaFieldType::Text,
+                Some(vec!["The value is 1234", "The value is 5678", "12"]),
+            ),
+            // Test when only our column has possible values.
+            (
+                Some(create_test_column_with_values(
+                    "our_column_possible_values",
+                    TableSchemaFieldType::Text,
+                    vec!["The value is 1234", "The value is 5678", "12"],
+                )),
+                None,
+                TableSchemaFieldType::Text,
+                Some(vec!["The value is 1234", "The value is 5678", "12"]),
+            ),
+            // Test case for possible values going over max count.
+            (
+                Some(create_test_column_with_values(
+                    "going_over_max_count",
+                    TableSchemaFieldType::Int,
+                    (1..=POSSIBLE_VALUES_MAX_COUNT)
+                        .map(|i| i.to_string())
+                        .collect::<Vec<String>>()
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .collect(),
+                )),
+                Some(create_test_column_with_values(
+                    "going_over_max_count",
+                    TableSchemaFieldType::Int,
+                    vec!["that's one too many"],
+                )),
+                TableSchemaFieldType::Int,
+                None,
+            ),
+            // Test case for possible values going over max length.
+            (
+                Some(create_test_column_with_values(
+                    "going_over_max_length",
+                    TableSchemaFieldType::Text,
+                    vec!["hello"],
+                )),
+                Some(create_test_column_with_values(
+                    "going_over_max_length",
+                    TableSchemaFieldType::Text,
+                    vec![&"a".repeat(POSSIBLE_VALUES_MAX_LEN + 1)],
+                )),
+                TableSchemaFieldType::Text,
+                None,
+            ),
+        ];
+
+        let mut schema1_columns = Vec::new();
+        let mut schema2_columns = Vec::new();
+
+        for (col1, col2, _, _) in test_cases.iter() {
+            if col1.is_some() {
+                schema1_columns.push(col1.clone().unwrap());
+            }
+            if col2.is_some() {
+                schema2_columns.push(col2.clone().unwrap());
+            }
+        }
+
+        let schema1 = TableSchema(schema1_columns);
+        let schema2 = TableSchema(schema2_columns);
+
+        let merged_schema = schema1.merge(&schema2)?;
+
+        for (col_1, col_2, expected_type, expected_values) in test_cases.into_iter() {
+            let field_name = col_1
+                .map(|c| c.name)
+                .or_else(|| col_2.map(|c| c.name))
+                .unwrap();
+
+            let column = merged_schema
+                .columns()
+                .iter()
+                .find(|c| c.name == field_name)
+                .expect(&format!("Column {} not found", field_name));
+
+            assert_eq!(column.value_type, expected_type, "{}", field_name);
+            assert_eq!(
+                column.possible_values,
+                expected_values.map(|vals| vals.into_iter().map(|v| v.to_string()).collect()),
+                "{}",
+                field_name
+            );
+        }
+
+        Ok(())
+    }
+
     // Helper function to set up an in-memory database with a test table
     fn setup_in_memory_db(schema: &TableSchema) -> Result<Connection> {
         let conn = Connection::open_in_memory()?;
         let sql_create_table = schema.get_create_table_sql_string("test_table");
         conn.execute(&sql_create_table, [])?;
         Ok(conn)
+    }
+
+    // Helper function to create a test column with possible values
+    fn create_test_column_with_values(
+        name: &str,
+        value_type: TableSchemaFieldType,
+        values: Vec<&str>,
+    ) -> TableSchemaColumn {
+        let possible_values = values.into_iter().map(|v| v.to_string()).collect();
+        TableSchemaColumn {
+            name: name.to_string(),
+            value_type,
+            possible_values: Some(possible_values),
+        }
     }
 }
