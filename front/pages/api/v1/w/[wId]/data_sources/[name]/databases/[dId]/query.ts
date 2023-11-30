@@ -8,7 +8,7 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import {
   CoreAPI,
   CoreAPIDatabaseResult,
-  CoreAPIDatabaseSchema,
+  CoreAPIDatabaseTableSchema,
 } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
@@ -19,7 +19,7 @@ const GetDatabaseSchemaReqBodySchema = t.type({
 });
 
 type QueryDatabaseSchemaResponseBody = {
-  schema: CoreAPIDatabaseSchema;
+  schema: CoreAPIDatabaseTableSchema;
   results: CoreAPIDatabaseResult[];
 };
 

@@ -51,10 +51,10 @@ impl Database {
         }
     }
 
-    pub async fn get_schema(
+    pub async fn get_tables(
         &self,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<Vec<DatabaseSchemaTable>> {
+    ) -> Result<Vec<DatabaseTable>> {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
@@ -72,7 +72,7 @@ impl Database {
                     // Ignore empty tables.
                     .filter_map(|t| match t.schema() {
                         None => None,
-                        Some(s) => Some(DatabaseSchemaTable::new(t, s)),
+                        Some(_) => Some(t),
                     })
                     .collect::<Vec<_>>())
             }
@@ -149,7 +149,7 @@ impl Database {
             DatabaseType::LOCAL => {
                 let time_build_db_start = utils::now();
 
-                let schema = self.get_schema(store.clone()).await?;
+                let tables = self.get_tables(store.clone()).await?;
                 utils::done(&format!(
                     "DSSTRUCTSTAT Finished retrieving schema: duration={}ms",
                     utils::now() - time_build_db_start
@@ -163,10 +163,18 @@ impl Database {
                 ));
 
                 let generate_create_table_sql_start = utils::now();
-                let create_tables_sql: String = schema
-                    .iter()
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.schema.get_create_table_sql_string(s.table.name()))
+                let create_tables_sql: String = tables
+                    .into_iter()
+                    .filter_map(|t| match t.schema() {
+                        Some(s) => {
+                            if s.is_empty() {
+                                None
+                            } else {
+                                Some(s.get_create_table_sql_string(t.name()))
+                            }
+                        }
+                        None => None,
+                    })
                     .collect::<Vec<_>>()
                     .join("\n");
                 utils::done(&format!(
@@ -187,26 +195,22 @@ impl Database {
                 rows.iter()
                     .filter(|(_, rows)| !rows.is_empty())
                     .map(|(table, rows)| {
-                        let table_schema =
-                            match schema.iter().find(|s| s.table.name() == table.name()) {
-                                Some(s) => Ok(s),
-                                None => Err(anyhow!("No schema found for table {}", table.name())),
-                            }?;
-
-                        let (sql, field_names) = table_schema.schema.get_insert_sql(table.name());
+                        if table.schema().is_none() {
+                            Err(anyhow!("No schema found for table {}", table.name()))?;
+                        }
+                        let table_schema = table.schema().unwrap();
+                        let (sql, field_names) = table_schema.get_insert_sql(table.name());
                         let mut stmt = conn.prepare(&sql)?;
 
                         rows.par_iter()
-                            .map(
-                                |r| match table_schema.schema.get_insert_params(&field_names, r) {
-                                    Ok(params) => Ok(params_from_iter(params)),
-                                    Err(e) => Err(anyhow!(
-                                        "Error getting insert params for row {}: {}",
-                                        r.row_id(),
-                                        e
-                                    )),
-                                },
-                            )
+                            .map(|r| match table_schema.get_insert_params(&field_names, r) {
+                                Ok(params) => Ok(params_from_iter(params)),
+                                Err(e) => Err(anyhow!(
+                                    "Error getting insert params for row {}: {}",
+                                    r.row_id(),
+                                    e
+                                )),
+                            })
                             .collect::<Result<Vec<_>>>()?
                             .into_iter()
                             .map(|params| match stmt.execute(params) {
@@ -417,8 +421,24 @@ impl DatabaseTable {
     pub fn description(&self) -> &str {
         &self.description
     }
-    pub fn schema(&self) -> Option<TableSchema> {
-        self.schema.clone()
+    pub fn schema(&self) -> Option<&TableSchema> {
+        self.schema.as_ref()
+    }
+
+    pub fn render_dbml(&self) -> String {
+        match self.schema {
+            None => format!("Table {} {{\n}}", self.name()),
+            Some(ref schema) => format!(
+                "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+                self.name(),
+                schema
+                    .columns()
+                    .iter()
+                    .map(|c| format!("  {}", c.render_dbml()))
+                    .join("\n"),
+                self.description()
+            ),
+        }
     }
 }
 
@@ -462,39 +482,6 @@ impl HasValue for DatabaseResult {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct DatabaseSchemaTable {
-    table: DatabaseTable,
-    schema: TableSchema,
-}
-
-impl DatabaseSchemaTable {
-    pub fn new(table: DatabaseTable, schema: TableSchema) -> Self {
-        DatabaseSchemaTable { table, schema }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.schema.is_empty()
-    }
-
-    pub fn render_dbml(&self) -> String {
-        format!(
-            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
-            self.table.name(),
-            self.schema
-                .columns()
-                .iter()
-                .map(|c| format!("  {}", c.render_dbml()))
-                .join("\n"),
-            self.table.description()
-        )
-    }
-
-    pub fn table(&self) -> &DatabaseTable {
-        &self.table
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -502,7 +489,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_database_schema_table_to_dbml() -> Result<()> {
+    fn test_database_table_to_dbml() -> Result<()> {
         let row_1 = json!({
             "user_id": 1,
             "temperature": 1.2,
@@ -528,9 +515,8 @@ mod tests {
             "table_id",
             "test_dbml",
             "Test records for DBML rendering",
-            &None,
+            &Some(schema),
         );
-        let table_schema = DatabaseSchemaTable::new(table, schema);
 
         let expected = r#"Table test_dbml {
   user_id integer [note: 'possible values: 1, 2']
@@ -542,7 +528,7 @@ mod tests {
   Note: 'Test records for DBML rendering'
 }"#
         .to_string();
-        assert_eq!(table_schema.render_dbml(), expected);
+        assert_eq!(table.render_dbml(), expected);
 
         Ok(())
     }

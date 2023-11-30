@@ -1,5 +1,5 @@
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::DatabaseSchemaTable;
+use crate::databases::database::DatabaseTable;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -76,7 +76,7 @@ impl Block for DatabaseSchema {
                     .into_iter()
                     .map(|t| {
                         json!({
-                            "table_schema": t,
+                            "table_schema": t.schema(),
                             "dbml": t.render_dbml(),
                         })
                     })
@@ -100,7 +100,7 @@ async fn get_database_schema(
     data_source_id: &String,
     database_id: &String,
     env: &Env,
-) -> Result<Vec<DatabaseSchemaTable>> {
+) -> Result<Vec<DatabaseTable>> {
     let project = get_data_source_project(workspace_id, data_source_id, env).await?;
     let database = match env
         .store
@@ -115,7 +115,7 @@ async fn get_database_schema(
         ))?,
     };
 
-    match database.get_schema(env.store.clone()).await {
+    match database.get_tables(env.store.clone()).await {
         Ok(s) => Ok(s),
         Err(e) => Err(anyhow!(
             "Error getting schema for database `{}` in data source `{}`: {}",

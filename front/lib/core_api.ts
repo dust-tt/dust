@@ -83,12 +83,18 @@ export type CoreAPIDatabase = {
   name: string;
 };
 
+export type CoreAPIDatabaseTableSchema = Record<
+  string,
+  "int" | "float" | "text" | "bool"
+>;
+
 export type CoreAPIDatabaseTable = {
   created: number;
   database_id: string;
   table_id: string;
   name: string;
   description: string;
+  schema: CoreAPIDatabaseTableSchema;
 };
 
 export type CoreAPIDatabaseRow = {
@@ -99,14 +105,6 @@ export type CoreAPIDatabaseRow = {
 export type CoreAPIDatabaseResult = {
   value: Record<string, unknown>;
 };
-
-export type CoreAPIDatabaseSchema = Record<
-  string,
-  {
-    table: CoreAPIDatabaseTable;
-    schema: Record<string, "int" | "float" | "text" | "bool">;
-  }
->;
 
 export const CoreAPI = {
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
@@ -1044,29 +1042,6 @@ export const CoreAPI = {
     return _resultFromResponse(response);
   },
 
-  async getDatabaseSchema({
-    projectId,
-    dataSourceName,
-    databaseId,
-  }: {
-    projectId: string;
-    dataSourceName: string;
-    databaseId: string;
-  }): Promise<
-    CoreAPIResponse<{
-      schema: CoreAPIDatabaseSchema;
-    }>
-  > {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/schema`,
-      {
-        method: "GET",
-      }
-    );
-
-    return _resultFromResponse(response);
-  },
-
   async queryDatabase({
     projectId,
     dataSourceName,
@@ -1079,7 +1054,7 @@ export const CoreAPI = {
     query: string;
   }): Promise<
     CoreAPIResponse<{
-      schema: CoreAPIDatabaseSchema;
+      schema: CoreAPIDatabaseTableSchema;
       results: CoreAPIDatabaseResult[];
     }>
   > {
