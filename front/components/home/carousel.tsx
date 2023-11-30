@@ -2,17 +2,21 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import {
-  Avatar,
+  ArrowLeftIcon,
+  ArrowRightIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   Div3D,
+  DriveLogo,
   Hover3D,
+  NotionLogo,
+  SlackLogo,
 } from "@dust-tt/sparkle";
-import React, { Component, createRef, RefObject } from "react";
+import React, { Component, createRef, ReactNode, RefObject } from "react";
 import Slider from "react-slick";
 
 import { classNames } from "@app/lib/utils";
+
+import { H5, P } from "./contentComponents";
 
 export const breakpoints = {
   sm: 640, // Tailwind's default for `sm`
@@ -100,8 +104,11 @@ export default class SimpleSlider extends Component {
     const settings = {
       infinite: true,
       centerMode: true,
-      slidesToShow: 1,
-      slidesToScroll: 1,
+      slidesToShow: 3,
+      slidesToScroll: 3,
+      swipe: true,
+      draggable: true,
+      swipeToSlide: true,
       centerPadding: "15%",
       accessibility: true,
       speed: 800,
@@ -154,20 +161,22 @@ export default class SimpleSlider extends Component {
             </Slider>
             <div className="flex w-full flex-row justify-center gap-4">
               <Button
-                icon={ChevronLeftIcon}
+                icon={ArrowLeftIcon}
                 label="Previous"
                 labelVisible={false}
                 size="xs"
                 variant="tertiary"
                 onClick={this.goToPrevious}
+                disabledTooltip
               />
               <Button
-                icon={ChevronRightIcon}
+                icon={ArrowRightIcon}
                 label="Next"
                 labelVisible={false}
                 size="xs"
                 variant="tertiary"
                 onClick={this.goToNext}
+                disabledTooltip
               />
             </div>
           </div>
@@ -177,115 +186,200 @@ export default class SimpleSlider extends Component {
   }
 }
 
-const AssistantItem = ({
+const SystemItem = ({
+  children,
+  name,
+  background = "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
+  question,
+  className = "",
+}: {
+  children: ReactNode;
+  name: string;
+  background?: string;
+  question: string;
+  className?: string;
+}) => {
+  const singleChild = React.Children.only(children);
+
+  if (!React.isValidElement(singleChild)) {
+    console.error(
+      "Invalid children for ReactiveIcon. It must be a single React element."
+    );
+    return null;
+  }
+
+  const modifiedChild = React.cloneElement(
+    singleChild as React.ReactElement<any, any>,
+    {
+      className: classNames(
+        singleChild.props.className,
+        "h-8 w-8 md:h-12 md:w-12"
+      ),
+    }
+  );
+  return (
+    <div
+      className={classNames(
+        "grid w-full cursor-default grid-cols-4 gap-y-3 px-4 py-10",
+        className
+      )}
+    >
+      <Hover3D>
+        <Div3D depth={-10} className="h-20 w-20">
+          <div
+            className="h-20 w-20 rounded-3xl shadow-xl"
+            style={{ background: background }}
+          />
+        </Div3D>
+        <Div3D depth={40} className="absolute left-0 top-0 h-20 w-20 p-4">
+          {modifiedChild}
+        </Div3D>
+      </Hover3D>
+      <H5 className="col-span-4 truncate text-slate-100">{name}</H5>
+      <P className="col-span-4" size="sm">
+        {question}
+      </P>
+    </div>
+  );
+};
+
+const DroidItem = ({
   name,
   question,
   visual,
+  background = "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
   className = "",
 }: {
   name: string;
   question: string;
   visual: string;
+  background?: string;
   className?: string;
 }) => {
   return (
-    <Hover3D
+    <div
       className={classNames(
-        "grid w-full cursor-default grid-cols-4 gap-x-3 gap-y-1 px-4 py-10",
+        "grid w-full cursor-default grid-cols-4 gap-y-3 px-4 py-10",
         className
       )}
     >
-      <Div3D depth={50} className="row-span-2">
-        <Avatar size="auto" isRounded visual={visual} className="" />
-      </Div3D>
-      <Div3D
-        depth={30}
-        className={classNames(
-          "col-span-3 w-full truncate font-objektiv text-base font-semibold text-slate-100"
-        )}
-      >
-        {name}
-      </Div3D>
-      <Div3D
-        depth={80}
-        className="font-regular col-span-3 font-objektiv text-base text-slate-400"
-      >
+      <Hover3D className="relative h-20 w-20">
+        <Div3D depth={-10}>
+          <div
+            className="h-20 w-20 rounded-3xl shadow-xl"
+            style={{ background: background }}
+          />
+        </Div3D>
+        <Div3D depth={30} className="absolute top-0 h-20 w-20">
+          <img
+            src="./static/landing/droids/Droid_Shadow.png"
+            className="h-20 w-20"
+          />
+        </Div3D>
+        <Div3D depth={50} className="absolute top-0 h-20 w-20">
+          <img src={visual} className="h-20 w-20" />
+        </Div3D>
+      </Hover3D>
+      <H5 className="col-span-4 truncate text-slate-100">{name}</H5>
+      <P className="col-span-4" size="sm">
         {question}
-      </Div3D>
-    </Hover3D>
+      </P>
+    </div>
   );
 };
 
 const slides = [
-  <AssistantItem
-    key="1"
-    visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
-    name="@notion"
-    question="Can you find the onboarding checklist for new hires?"
-  />,
-  <AssistantItem
+  <DroidItem
     key="2"
-    visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
+    background="linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)"
+    visual="./static/landing/droids/Droid_Cream_7.png"
     name="@hiringExpert"
     question="Draft me a job description following company script for this job."
   />,
-  <AssistantItem
+  <DroidItem
     key="3"
-    visual="https://dust.tt/static/droidavatar/Droid_Pink_1.jpg"
+    background="linear-gradient(180deg, rgba(180,157,87,1) 0%, rgba(159,134,61,1) 72%, rgba(105,85,38,1) 73%, rgba(196,173,98,1) 74%, rgba(158,136,71,1) 100%)"
+    visual="./static/landing/droids/Droid_Green_4.png"
     name="@onboardingBuddy"
     question="Could you walk me through the typical workflow for a project in my department?"
   />,
-  <AssistantItem
+  <SystemItem
+    key="1"
+    name="@notion"
+    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
+    question="Can you find the onboarding checklist for new hires?"
+  >
+    <NotionLogo />
+  </SystemItem>,
+  <DroidItem
     key="4"
-    visual="https://dust.tt/static/droidavatar/Droid_Sky_8.jpg"
+    visual="./static/landing/droids/Droid_Sky_8.png"
+    background="linear-gradient(180deg, rgba(196,208,217,1) 0%, rgba(174,186,194,1) 72%, rgba(89,92,98,1) 73%, rgba(210,202,196,1) 74%, rgba(199,188,180,1) 100%)"
     name="@salesExpert"
-    question="What are our new product features and associated sales script?"
+    question="Which potential customers wanted to wait until we had the Android version live?"
   />,
-  <AssistantItem
-    key="5"
-    visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
-    name="@drive"
-    question="Can you find the slide deck from last month's marketing presentation for me?"
-  />,
-  <AssistantItem
+  <DroidItem
     key="6"
-    visual="https://dust.tt/static/droidavatar/Droid_Indigo_7.jpg"
+    visual="./static/landing/droids/Droid_Orange_6.png"
+    background="linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)"
+    name="@salesWriter"
+    question="Draft an email to the following prospects updating them about our new Android capabilities."
+  />,
+  <DroidItem
+    key="6"
+    visual="./static/landing/droids/Droid_Red_8.png"
+    background="linear-gradient(180deg, rgba(224,224,218,1) 0%, rgba(166,167,159,1) 72%, rgba(113,90,81,1) 73%, rgba(211,208,201,1) 74%, rgba(206,203,199,1) 100%)"
     name="@dataExpert"
     question="How do I write an SQL query to find the top-performing products by region?"
   />,
-  <AssistantItem
+  <DroidItem
     key="7"
-    visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
+    visual="./static/landing/droids/Droid_Yellow_4.png"
+    background="linear-gradient(180deg, rgba(193,184,173,1) 0%, rgba(193,183,172,1) 72%, rgba(124,95,72,1) 73%, rgba(207,197,187,1) 74%, rgba(215,210,205,1) 100%)"
     name="@uxWriterAssistant"
     question="Can you draft 3 proposals for a 140 character version for this text?"
   />,
-  <AssistantItem
+  <SystemItem
+    key="5"
+    name="@drive"
+    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
+    question="Can you find the slide deck from last month's marketing presentation for me?"
+  >
+    <DriveLogo />
+  </SystemItem>,
+  <DroidItem
     key="8"
-    visual="https://dust.tt/static/droidavatar/Droid_Indigo_6.jpg"
+    visual="./static/landing/droids/Droid_Pink_6.png"
+    background="linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)"
     name="@weeklyReport"
     question="Write me the report for last week's feature releases."
   />,
-  <AssistantItem
+  <DroidItem
     key="9"
-    visual="https://dust.tt/static/droidavatar/Droid_Orange_1.jpg"
+    visual="./static/landing/droids/Droid_Teal_5.png"
+    background="linear-gradient(180deg, rgba(125,154,148,1) 0%, rgba(78,111,107,1) 72%, rgba(52,74,71,1) 73%, rgba(136,169,164,1) 74%, rgba(152,178,172,1) 100%)"
     name="@companyGenius"
     question="What was the outcome of the last board meeting regarding our expansion plans?"
   />,
-  <AssistantItem
-    key="10"
-    visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-    name="@slack"
-    question="Summarize me last month's daily stand-ups for the team."
-  />,
-  <AssistantItem
+  <DroidItem
     key="11"
-    visual="https://dust.tt/static/droidavatar/Droid_Sky_5.jpg"
+    visual="./static/landing/droids/Droid_Sky_4.png"
+    background="linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)"
     name="@officeManager"
     question="Where can I find white paper and office supplies?"
   />,
-  <AssistantItem
+  <SystemItem
+    key="10"
+    name="@slack"
+    background="linear-gradient(0deg, rgba(58,18,62,1) 0%, rgba(109,53,115,1) 100%)"
+    question="Summarize me last month's daily stand-ups for the team."
+  >
+    <SlackLogo />
+  </SystemItem>,
+  <DroidItem
     key="12"
-    visual="https://dust.tt/static/droidavatar/Droid_Orange_5.jpg"
+    visual="./static/landing/droids/Droid_Red_5.png"
+    background="linear-gradient(180deg, rgba(215,189,176,1) 0%, rgba(173,136,115,1) 72%, rgba(127,62,45,1) 73%, rgba(225,204,190,1) 74%, rgba(222,200,184,1) 100%)"
     name="@spreadsheetExpert"
     question="Can you help me write a VLOOKUP formula to match employee names with their IDs?"
   />,

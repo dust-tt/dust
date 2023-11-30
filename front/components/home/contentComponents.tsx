@@ -42,6 +42,7 @@ const hClasses = {
   h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl drop-shadow-lg",
   h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl drop-shadow-md",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",
+  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl drop-shadow-md",
 };
 
 interface ContentProps {
@@ -50,7 +51,7 @@ interface ContentProps {
   className?: string;
 }
 
-type TagName = "h1" | "h2" | "h3" | "h4";
+type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
 
 const createHeadingComponent = (Tag: TagName) => {
   const Component: React.FC<ContentProps> = ({ children, className = "" }) => {
@@ -66,6 +67,7 @@ export const H1 = createHeadingComponent("h1");
 export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
+export const H5 = createHeadingComponent("h5");
 
 export const Span = ({ children, className = "" }: ContentProps) => (
   <span className={classNames(className)}>{children}</span>
@@ -267,7 +269,7 @@ export const ReactiveIcon = ({ children }: ReactImgProps) => {
       release={1}
       className={classNames(
         "rounded-2xl border p-3 shadow-xl",
-        "bg-gradient-to-b from-zinc-700/60 to-zinc-900/80",
+        "bg-gradient-to-b from-slate-700/60 to-slate-900/80",
         "border-stone-700/40"
       )}
       depth={-10}

@@ -44,6 +44,7 @@ import {
   SignInDropDownButton,
   SignUpDropDownButton,
 } from "@app/components/Button";
+import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
@@ -332,6 +333,7 @@ export default function Home({
             </P>
           </Grid>
 
+          <SimpleSlider />
           {/* Get state of the art*/}
           <Grid>
             <div
@@ -340,7 +342,7 @@ export default function Home({
                 defaultFlexClasses,
                 "col-span-12",
                 "lg:col-span-10 lg:col-start-2",
-                "xl:col-span-8 xl:col-start-5 xl:text-right",
+                "xl:col-span-8 xl:col-start-2",
                 "2xl:col-start-3"
               )}
             >
@@ -367,8 +369,8 @@ export default function Home({
                 "col-span-12 px-4",
                 "sm:col-span-6 sm:p-0",
                 "lg:col-span-5 lg:col-start-2",
-                "xl:order-3 xl:col-span-5 xl:col-start-auto xl:row-span-3 xl:pl-8 xl:pr-2",
-                "2xl:order-3 2xl:col-span-4 2xl:col-start-2 2xl:row-span-3"
+                "xl:col-span-4 xl:col-start-3",
+                "2xl:col-span-3 2xl:col-start-4"
               )}
             >
               <Hover3D
@@ -391,8 +393,9 @@ export default function Home({
               className={classNames(
                 "order-2 col-span-12",
                 "sm:col-span-6 sm:self-center",
-                "xl:order-1 xl:col-span-6 xl:col-start-auto xl:self-end",
-                "2xl:order-1 2xl:col-span-5  2xl:col-start-2 2xl:self-end"
+                "lg:col-span-5",
+                "xl:col-span-4",
+                "2xl:col-span-3"
               )}
             >
               Your own knowledge base continuously in&nbsp;sync: <br />
@@ -406,9 +409,10 @@ export default function Home({
               className={classNames(
                 "flex w-full flex-wrap justify-center gap-4",
                 "order-3 col-span-12",
-                "sm:col-span-6 sm:justify-end",
-                "xl:order-2 xl:col-span-6 xl:justify-start xl:self-start",
-                "2xl:order-2 2xl:col-span-6"
+                "sm:col-span-5 sm:justify-end",
+                "lg:col-span-4 lg:col-start-2",
+                "xl:col-span-3 xl:col-start-3 xl:pl-0",
+                "2xl:pl-6"
               )}
             >
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Google Workspace">
@@ -426,11 +430,7 @@ export default function Home({
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Slack">
                 <SlackLogo />
               </ReactiveIcon>
-              <ReactiveIcon
-                colorHEX="#1E3A8A"
-                className="xl:hidden 2xl:block"
-                tooltipLabel="More coming…"
-              >
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="More coming…">
                 <MoreIcon className="text-slate-50" />
               </ReactiveIcon>
             </div>
@@ -439,9 +439,10 @@ export default function Home({
               shape="circle"
               className={classNames(
                 "order-4 col-span-12",
-                "sm:col-span-6 sm:self-center",
-                "xl:order-4 xl:col-start-7 xl:self-start",
-                "2xl:col-span-5 2xl:col-start-7"
+                "sm:col-span-7 sm:self-center",
+                "lg:col-span-7",
+                "xl:col-span-6",
+                "2xl:col-span-4"
               )}
             >
               With the support of&nbsp;multiple sources of&nbsp;data
@@ -457,8 +458,10 @@ export default function Home({
               className={classNames(
                 "flex w-full flex-wrap justify-center gap-4",
                 "order-5 col-span-12",
-                "sm:col-span-6 sm:justify-end",
-                "xl:order-5 xl:col-start-7 xl:justify-start"
+                "sm:col-span-5 sm:col-start-2 sm:justify-end",
+                "lg:col-span-4 lg:col-start-3",
+                "xl:col-span-3 xl:col-start-4 xl:pl-0",
+                "2xl:pl-6"
               )}
             >
               <ReactiveIcon
@@ -486,8 +489,7 @@ export default function Home({
               className={classNames(
                 "order-6 col-span-12",
                 "sm:order-5 sm:col-span-6 sm:self-center",
-                "xl:col-start-7 xl:self-start",
-                "2xl:col-span-5 2xl:col-start-7"
+                "lg:col-span-3"
               )}
             >
               Proprietary and&nbsp;open-source models suited
