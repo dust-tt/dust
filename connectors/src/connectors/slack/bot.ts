@@ -1,4 +1,12 @@
-import { ModelId } from "@dust-tt/types";
+import {
+  AgentActionType,
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  ModelId,
+  RetrievalDocumentType,
+  UserMessageType,
+} from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
@@ -6,15 +14,9 @@ import levenshtein from "fast-levenshtein";
 
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
-  AgentActionType,
-  AgentConfigurationType,
   AgentGenerationSuccessEvent,
-  AgentMessageType,
-  ConversationType,
   DustAPI,
   PostContentFragmentRequestBody,
-  RetrievalDocumentType,
-  UserMessageType,
 } from "@connectors/lib/dust_api";
 import { Connector } from "@connectors/lib/models";
 import {
