@@ -69,12 +69,12 @@ const Section: t.RecursiveType<
 );
 
 export const PostDataSourceDocumentRequestBodySchema = t.type({
-  text: t.union([t.string, t.undefined, t.null]),
   timestamp: t.union([t.number, t.undefined, t.null]),
   tags: t.union([t.array(t.string), t.undefined, t.null]),
   parents: t.union([t.array(t.string), t.undefined, t.null]),
   source_url: t.union([t.string, t.undefined, t.null]),
   upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
+  text: t.union([t.string, t.undefined, t.null]),
   section: t.union([Section, t.undefined, t.null]),
   light_document_output: t.union([t.boolean, t.undefined]),
 });
