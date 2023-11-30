@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { log } from "console";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -61,6 +62,12 @@ async function _upsertToDatasource({
   statsDClient.increment("data_source_upserts_attempt.count", 1, statsDTags);
 
   const now = new Date();
+
+  if (documentId === "slack-C01LV3NED08-thread-1701302546.665219") {
+    logger.info("documentId: slack-C01LV3NED08-thread-1701302546.665219", {
+      text: documentText,
+    });
+  }
 
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
