@@ -1,3 +1,3 @@
-import { CoreAPIDocument } from "@app/lib/core_api";
+import { CoreAPIDocument } from "@dust-tt/types";
 
 export type DocumentType = CoreAPIDocument;

@@ -1,11 +1,15 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import {
+  ConnectorProvider,
+  CoreAPIDataSource,
+  CoreAPIDocument,
+} from "@dust-tt/types";
 
 import {
   DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE,
   DocumentsPostProcessHookType,
 } from "@app/documents_post_process_hooks/hooks";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDataSource, CoreAPIDocument } from "@app/lib/core_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
 

@@ -2,11 +2,11 @@
  * Data Source configuration
  */
 
-import { ModelId } from "../../../../shared/model_id";
+import { ModelId } from "../../../shared/model_id";
 
-import { ioTsEnum } from "../../../../shared/utils/iots_utils";
-import { AgentActionConfigurationType } from "../../../../front/types/assistant/agent";
-import { AgentActionType } from "../../../../front/types/assistant/conversation";
+import { ioTsEnum } from "../../../shared/utils/iots_utils";
+import { AgentActionConfigurationType } from "../../../front/assistant/agent";
+import { AgentActionType } from "../../../front/assistant/conversation";
 
 export const TIME_FRAME_UNITS = [
   "hour",

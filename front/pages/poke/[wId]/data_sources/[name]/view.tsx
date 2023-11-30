@@ -1,10 +1,11 @@
 import { Input, Page } from "@dust-tt/sparkle";
+import { CoreAPIDocument } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDocument } from "@app/lib/core_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { classNames } from "@app/lib/utils";
 
 export const getServerSideProps: GetServerSideProps<{

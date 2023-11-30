@@ -1,4 +1,9 @@
-import { DataSourceType } from "@dust-tt/types";
+import {
+  CoreAPIDataSourceDocumentSection,
+  CoreAPILightDocument,
+  DataSourceType,
+  sectionFullText,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,12 +20,7 @@ import {
 import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import {
-  CoreAPI,
-  CoreAPIDataSourceDocumentSection,
-  CoreAPILightDocument,
-  sectionFullText,
-} from "@app/lib/core_api";
+import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
