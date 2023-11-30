@@ -106,13 +106,14 @@ async function handler(
         sourceUrl = standardizedSourceUrl;
       }
 
-      const section = bodyValidation.right.text
-        ? {
-            prefix: null,
-            content: bodyValidation.right.text,
-            sections: [],
-          }
-        : bodyValidation.right.section || null;
+      const section =
+        typeof bodyValidation.right.text === "string"
+          ? {
+              prefix: null,
+              content: bodyValidation.right.text,
+              sections: [],
+            }
+          : bodyValidation.right.section || null;
 
       if (!section) {
         return apiError(req, res, {

@@ -398,11 +398,13 @@ export async function syncNonThreaded(
     }
     hasMore = c.has_more;
   } while (hasMore);
+
   if (messages.length === 0) {
     // no non threaded messages, so we're done
     return;
   }
   messages.reverse();
+
   const text = await formatMessagesForUpsert(
     channelId,
     messages,
@@ -571,6 +573,11 @@ export async function syncThread(
   const botUserId = await getBotUserIdMemoized(slackClient);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
+  if (allMessages.length === 0) {
+    // No threaded messages, so we're done.
+    return;
+  }
+
   const text = await formatMessagesForUpsert(
     channelId,
     allMessages,
@@ -603,6 +610,7 @@ export async function syncThread(
     messageTs: threadTs,
     documentId: documentId,
   });
+
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
