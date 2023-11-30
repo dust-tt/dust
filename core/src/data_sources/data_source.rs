@@ -144,7 +144,7 @@ impl SearchFilter {
 /// Section prefixes are repeated in all chunks generated from the section (and its children). We do
 /// not insert any separators the separators are the responsibility of the caller (\n at end of
 /// sections, ...)
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Section {
     pub prefix: Option<String>,
     pub content: Option<String>,
@@ -797,6 +797,13 @@ impl DataSource {
         struct ChunkInfo {
             text: String,
             hash: String,
+        }
+
+        if document_id == "slack-C01LV3NED08-thread-1701302546.665219" {
+            utils::info(&format!(
+                "Content slack-C01LV3NED08-thread-1701302546.665219: {:?}",
+                text,
+            ));
         }
 
         // Split text in chunks.
