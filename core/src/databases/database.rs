@@ -58,16 +58,23 @@ impl Database {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
-                let rows = self.get_rows(store).await?;
+                let (tables, _) = store
+                    .list_databases_tables(
+                        &self.project,
+                        &self.data_source_id,
+                        &self.database_id,
+                        None,
+                    )
+                    .await?;
 
-                rows.par_iter()
-                    .map(|(table, r)| {
-                        Ok(DatabaseSchemaTable::new(
-                            table.clone(),
-                            TableSchema::from_rows(&r)?,
-                        ))
+                Ok(tables
+                    .iter()
+                    // Ignore empty tables.
+                    .filter_map(|t| match t.schema() {
+                        None => None,
+                        Some(s) => Some(DatabaseSchemaTable::new(t.clone(), s.clone())),
                     })
-                    .collect::<Result<Vec<_>>>()
+                    .collect::<Vec<_>>())
             }
         }
     }
@@ -79,9 +86,40 @@ impl Database {
         rows: Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()> {
-        // This will be used to update the schema incrementally once we store schemas. For now this
-        // is a way to validate the content of the rows (only primitive types).
-        let _ = TableSchema::from_rows(&rows)?;
+        let table = match store
+            .load_database_table(
+                &self.project,
+                &self.data_source_id,
+                &self.database_id,
+                table_id,
+            )
+            .await?
+        {
+            Some(t) => t,
+            None => Err(anyhow!(
+                "Table {} not found in database {}",
+                table_id,
+                self.database_id
+            ))?,
+        };
+
+        let new_rows_table_schema = TableSchema::from_rows(&rows)?;
+        let table_schema = match table.schema() {
+            // If there is no existing schema cache, simply use the new schema.
+            None => new_rows_table_schema,
+            Some(existing_table_schema) => {
+                // If there is an existing schema cache, merge it with the new schema.
+                existing_table_schema.merge(&new_rows_table_schema)?
+            }
+        };
+
+        let update_table_schema_future = store.update_database_table_schema(
+            &self.project,
+            &self.data_source_id,
+            &self.database_id,
+            table_id,
+            &table_schema,
+        );
 
         store
             .batch_upsert_database_rows(
@@ -92,7 +130,12 @@ impl Database {
                 &rows,
                 truncate,
             )
-            .await
+            .await?;
+
+        // Wait for the schema cache to finish updating.
+        update_table_schema_future.await?;
+
+        Ok(())
     }
 
     pub async fn create_in_memory_sqlite_conn(
@@ -337,6 +380,7 @@ pub struct DatabaseTable {
     table_id: String,
     name: String,
     description: String,
+    schema: Option<TableSchema>,
 }
 
 impl DatabaseTable {
@@ -346,6 +390,7 @@ impl DatabaseTable {
         table_id: &str,
         name: &str,
         description: &str,
+        schema: &Option<TableSchema>,
     ) -> Self {
         DatabaseTable {
             created: created,
@@ -353,6 +398,7 @@ impl DatabaseTable {
             table_id: table_id.to_string(),
             name: name.to_string(),
             description: description.to_string(),
+            schema: schema.clone(),
         }
     }
 
@@ -370,6 +416,9 @@ impl DatabaseTable {
     }
     pub fn description(&self) -> &str {
         &self.description
+    }
+    pub fn schema(&self) -> Option<&TableSchema> {
+        self.schema.as_ref()
     }
 }
 
@@ -440,6 +489,10 @@ impl DatabaseSchemaTable {
             self.table.description()
         )
     }
+
+    pub fn table(&self) -> &DatabaseTable {
+        &self.table
+    }
 }
 
 #[cfg(test)]
@@ -475,6 +528,7 @@ mod tests {
             "table_id",
             "test_dbml",
             "Test records for DBML rendering",
+            &None,
         );
         let table_schema = DatabaseSchemaTable::new(table, schema);
 

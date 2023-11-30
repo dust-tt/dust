@@ -4,6 +4,7 @@ use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
 use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
+use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -1943,7 +1944,7 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // get the data source row id
+        // Get the data source row id.
         let stmt = c
             .prepare(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -1956,7 +1957,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the database row id
+        // Get the database row id.
         let stmt = c
             .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
             .await?;
@@ -2003,7 +2004,64 @@ impl Store for PostgresStore {
             &table_id,
             &table_name,
             &table_description,
+            &None,
         ))
+    }
+
+    async fn update_database_table_schema(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        schema: &TableSchema,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let database_id = database_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Get the database row id.
+        let stmt = c
+            .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
+            .await?;
+        let r = c.query(&stmt, &[&data_source_row_id, &database_id]).await?;
+        let database_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Update the schema.
+        let stmt = c
+            .prepare(
+                "UPDATE databases_tables SET schema = $1 \
+                   WHERE database = $2 AND table_id = $3",
+            )
+            .await?;
+        c.query(
+            &stmt,
+            &[&serde_json::to_string(schema)?, &database_row_id, &table_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     async fn load_database_table(
@@ -2023,7 +2081,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description FROM databases_tables \
+                "SELECT created, table_id, name, description, schema FROM databases_tables \
                 WHERE database IN (
                     SELECT id FROM databases WHERE data_source IN (
                         SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2
@@ -2039,21 +2097,40 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        let d: Option<(i64, String, String, String)> = match r.len() {
+        let d: Option<(i64, String, String, String, Option<String>)> = match r.len() {
             0 => None,
-            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+            )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((created, table_id, name, description)) => Ok(Some(DatabaseTable::new(
-                created as u64,
-                &database_id,
-                &table_id,
-                &name,
-                &description,
-            ))),
+            Some((created, table_id, name, description, schema)) => {
+                let parsed_schema: Option<TableSchema> = match schema {
+                    None => None,
+                    Some(schema) => {
+                        if schema.is_empty() {
+                            None
+                        } else {
+                            Some(serde_json::from_str(&schema)?)
+                        }
+                    }
+                };
+                Ok(Some(DatabaseTable::new(
+                    created as u64,
+                    &database_id,
+                    &table_id,
+                    &name,
+                    &description,
+                    &parsed_schema,
+                )))
+            }
         }
     }
 
@@ -2103,7 +2180,7 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description FROM databases_tables \
+                        "SELECT created, table_id, name, description, schema FROM databases_tables \
                         WHERE database = $1",
                     )
                     .await?;
@@ -2112,7 +2189,7 @@ impl Store for PostgresStore {
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description FROM databases_tables \
+                        "SELECT created, table_id, name, description, schema FROM databases_tables \
                         WHERE database = $1 LIMIT $2 OFFSET $3",
                     )
                     .await?;
@@ -2131,6 +2208,18 @@ impl Store for PostgresStore {
                 let table_id: String = r.get(1);
                 let name: String = r.get(2);
                 let description: String = r.get(3);
+                let schema: Option<String> = r.get(4);
+
+                let parsed_schema: Option<TableSchema> = match schema {
+                    None => None,
+                    Some(schema) => {
+                        if schema.is_empty() {
+                            None
+                        } else {
+                            Some(serde_json::from_str(&schema)?)
+                        }
+                    }
+                };
 
                 Ok(DatabaseTable::new(
                     created as u64,
@@ -2138,6 +2227,7 @@ impl Store for PostgresStore {
                     &table_id,
                     &name,
                     &description,
+                    &parsed_schema,
                 ))
             })
             .collect::<Result<Vec<_>>>()?;

@@ -3,6 +3,7 @@ use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
 use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
+use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
@@ -181,6 +182,14 @@ pub trait Store {
         name: &str,
         description: &str,
     ) -> Result<DatabaseTable>;
+    async fn update_database_table_schema(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+        schema: &TableSchema,
+    ) -> Result<()>;
     async fn load_database_table(
         &self,
         project: &Project,
