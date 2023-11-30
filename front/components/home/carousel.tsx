@@ -8,17 +8,10 @@ import {
   Div3D,
   DriveLogo,
   Hover3D,
-  Icon,
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import React, {
-  Component,
-  ComponentType,
-  createRef,
-  ReactNode,
-  RefObject,
-} from "react";
+import React, { Component, createRef, ReactNode, RefObject } from "react";
 import Slider from "react-slick";
 
 import { classNames } from "@app/lib/utils";
@@ -111,8 +104,8 @@ export default class SimpleSlider extends Component {
     const settings = {
       infinite: true,
       centerMode: true,
-      slidesToShow: 1,
-      slidesToScroll: 1,
+      slidesToShow: 3,
+      slidesToScroll: 3,
       swipe: true,
       draggable: true,
       swipeToSlide: true,
@@ -296,14 +289,6 @@ const DroidItem = ({
 };
 
 const slides = [
-  <SystemItem
-    key="1"
-    name="@notion"
-    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
-    question="Can you find the onboarding checklist for new hires?"
-  >
-    <NotionLogo />
-  </SystemItem>,
   <DroidItem
     key="2"
     background="linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)"
@@ -318,21 +303,28 @@ const slides = [
     name="@onboardingBuddy"
     question="Could you walk me through the typical workflow for a project in my department?"
   />,
+  <SystemItem
+    key="1"
+    name="@notion"
+    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
+    question="Can you find the onboarding checklist for new hires?"
+  >
+    <NotionLogo />
+  </SystemItem>,
   <DroidItem
     key="4"
     visual="./static/landing/droids/Droid_Sky_8.png"
     background="linear-gradient(180deg, rgba(196,208,217,1) 0%, rgba(174,186,194,1) 72%, rgba(89,92,98,1) 73%, rgba(210,202,196,1) 74%, rgba(199,188,180,1) 100%)"
     name="@salesExpert"
-    question="What are our new product features and associated sales script?"
+    question="Which potential customers wanted to wait until we had the Android version live?"
   />,
-  <SystemItem
-    key="5"
-    name="@drive"
-    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
-    question="Can you find the slide deck from last month's marketing presentation for me?"
-  >
-    <DriveLogo />
-  </SystemItem>,
+  <DroidItem
+    key="6"
+    visual="./static/landing/droids/Droid_Orange_6.png"
+    background="linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)"
+    name="@salesWriter"
+    question="Draft an email to the following prospects updating them about our new Android capabilities."
+  />,
   <DroidItem
     key="6"
     visual="./static/landing/droids/Droid_Red_8.png"
@@ -347,6 +339,14 @@ const slides = [
     name="@uxWriterAssistant"
     question="Can you draft 3 proposals for a 140 character version for this text?"
   />,
+  <SystemItem
+    key="5"
+    name="@drive"
+    background="linear-gradient(180deg, rgba(241,245,249,1) 0%, rgba(203,213,225,1) 100%)"
+    question="Can you find the slide deck from last month's marketing presentation for me?"
+  >
+    <DriveLogo />
+  </SystemItem>,
   <DroidItem
     key="8"
     visual="./static/landing/droids/Droid_Pink_6.png"
@@ -361,6 +361,13 @@ const slides = [
     name="@companyGenius"
     question="What was the outcome of the last board meeting regarding our expansion plans?"
   />,
+  <DroidItem
+    key="11"
+    visual="./static/landing/droids/Droid_Sky_4.png"
+    background="linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)"
+    name="@officeManager"
+    question="Where can I find white paper and office supplies?"
+  />,
   <SystemItem
     key="10"
     name="@slack"
@@ -369,13 +376,6 @@ const slides = [
   >
     <SlackLogo />
   </SystemItem>,
-  <DroidItem
-    key="11"
-    visual="./static/landing/droids/Droid_Sky_4.png"
-    background="linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)"
-    name="@officeManager"
-    question="Where can I find white paper and office supplies?"
-  />,
   <DroidItem
     key="12"
     visual="./static/landing/droids/Droid_Red_5.png"

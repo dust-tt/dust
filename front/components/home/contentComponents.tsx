@@ -269,7 +269,7 @@ export const ReactiveIcon = ({ children }: ReactImgProps) => {
       release={1}
       className={classNames(
         "rounded-2xl border p-3 shadow-xl",
-        "bg-gradient-to-b from-zinc-700/60 to-zinc-900/80",
+        "bg-gradient-to-b from-slate-700/60 to-slate-900/80",
         "border-stone-700/40"
       )}
       depth={-10}
