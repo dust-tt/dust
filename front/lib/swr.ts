@@ -555,3 +555,25 @@ export function useDatabaseTables({
     mutateTables: mutate,
   };
 }
+
+export function useApp({
+  workspaceId,
+  appId,
+}: {
+  workspaceId: string;
+  appId: string;
+}) {
+  const appFetcher: Fetcher<{ app: AppType }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/apps/${appId}`,
+    appFetcher
+  );
+
+  return {
+    app: data ? data.app : null,
+    isAppLoading: !error && !data,
+    isAppError: error,
+    mutateApp: mutate,
+  };
+}

@@ -1128,7 +1128,7 @@ export default function AssistantBuilder({
             >
               <div className="text-sm text-element-700">
                 Your assistant can execute a Dust Application of your design
-                before answering. The output of the app (last block) is injeced
+                before answering. The output of the app (last block) is injected
                 in context for the model to generate an answer. The inputs of
                 the app will be automatically generated from the context of the
                 conversation based on the descriptions you provided in the
