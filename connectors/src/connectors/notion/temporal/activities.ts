@@ -1740,7 +1740,11 @@ export async function renderAndUpsertPageFromCache({
         workspaceAPIKey: connector.workspaceAPIKey,
       },
       documentId,
-      documentText: renderedPage,
+      documentContent: {
+        prefix: null,
+        content: renderedPage,
+        sections: [],
+      },
       documentUrl: pageCacheEntry.url,
       timestampMs: updatedTime,
       tags: getTagsForPage({

@@ -157,7 +157,11 @@ export async function githubUpsertIssueActivity(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentText: renderedIssue,
+    documentContent: {
+      prefix: null,
+      content: renderedIssue,
+      sections: [],
+    },
     documentUrl: issue.url,
     timestampMs: lastUpdateTimestamp,
     tags: tags,
@@ -287,7 +291,11 @@ export async function githubUpsertDiscussionActivity(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentText: renderedDiscussion,
+    documentContent: {
+      prefix: null,
+      content: renderedDiscussion,
+      sections: [],
+    },
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,

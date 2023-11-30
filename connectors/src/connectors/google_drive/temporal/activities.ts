@@ -484,7 +484,11 @@ async function syncOneFile(
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      documentText: documentContent,
+      documentContent: {
+        prefix: null,
+        content: documentContent,
+        sections: [],
+      },
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
