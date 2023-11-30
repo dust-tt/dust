@@ -233,6 +233,14 @@ export async function dangerousSuperAdminDeleteWorkspaceData({
     );
   }
 
+  // Blocking deletion of workspaces with Apps until we're able to delete them from Core.
+  const apps = await App.findAll({
+    where: { workspaceId: workspace.id },
+  });
+  if (apps.length > 0) {
+    throw new Error("Workspace has apps, this is not supported yet.");
+  }
+
   // WE DO NOT RELY ON CASCADE DELETION.
   await front_sequelize.transaction(async (t) => {
     await _deleteConversations(workspace, t);
