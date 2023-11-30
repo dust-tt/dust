@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "author": "Dust",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "module": "dist/types.esm.js",
   "typings": "dist/index.d.ts",
   "files": [
