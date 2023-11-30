@@ -256,69 +256,84 @@ const _deleteConversations = async (
       workspaceId: workspace.id,
     },
   });
-  for (const convo of conversations) {
-    const messages = await Message.findAll({
-      where: { conversationId: convo.id },
-      transaction: t,
-    });
-    for (const msg of messages) {
-      if (msg.userMessageId) {
-        await UserMessage.destroy({
-          where: { id: msg.userMessageId },
-          transaction: t,
-        });
-      }
-      if (msg.agentMessageId) {
-        const agentMessage = await AgentMessage.findOne({
-          where: { id: msg.agentMessageId },
-          transaction: t,
-        });
-        if (agentMessage) {
-          if (agentMessage.agentRetrievalActionId) {
-            const retrievalDocuments = await RetrievalDocument.findAll({
-              where: {
-                retrievalActionId: agentMessage.agentRetrievalActionId,
-              },
-              transaction: t,
-            });
-            for (const retrievalDocument of retrievalDocuments) {
-              await RetrievalDocumentChunk.destroy({
-                where: {
-                  retrievalDocumentId: retrievalDocument.id,
-                },
+  const chunkSize = 8;
+  const chunks = [];
+  for (let i = 0; i < conversations.length; i += chunkSize) {
+    chunks.push(conversations.slice(i, i + chunkSize));
+  }
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) {
+      continue;
+    }
+    await Promise.all(
+      chunk.map((c) => {
+        return (async () => {
+          const messages = await Message.findAll({
+            where: { conversationId: c.id },
+            transaction: t,
+          });
+          for (const msg of messages) {
+            if (msg.userMessageId) {
+              await UserMessage.destroy({
+                where: { id: msg.userMessageId },
                 transaction: t,
               });
-              await retrievalDocument.destroy({ transaction: t });
             }
-            await AgentRetrievalAction.destroy({
-              where: { id: agentMessage.agentRetrievalActionId },
+            if (msg.agentMessageId) {
+              const agentMessage = await AgentMessage.findOne({
+                where: { id: msg.agentMessageId },
+                transaction: t,
+              });
+              if (agentMessage) {
+                if (agentMessage.agentRetrievalActionId) {
+                  const retrievalDocuments = await RetrievalDocument.findAll({
+                    where: {
+                      retrievalActionId: agentMessage.agentRetrievalActionId,
+                    },
+                    transaction: t,
+                  });
+                  for (const retrievalDocument of retrievalDocuments) {
+                    await RetrievalDocumentChunk.destroy({
+                      where: {
+                        retrievalDocumentId: retrievalDocument.id,
+                      },
+                      transaction: t,
+                    });
+                    await retrievalDocument.destroy({ transaction: t });
+                  }
+                  await AgentRetrievalAction.destroy({
+                    where: { id: agentMessage.agentRetrievalActionId },
+                    transaction: t,
+                  });
+                }
+                await agentMessage.destroy({ transaction: t });
+              }
+            }
+            if (msg.contentFragmentId) {
+              await ContentFragment.destroy({
+                where: { id: msg.contentFragmentId },
+                transaction: t,
+              });
+            }
+            await MessageReaction.destroy({
+              where: { messageId: msg.id },
               transaction: t,
             });
+            await Mention.destroy({
+              where: { messageId: msg.id },
+              transaction: t,
+            });
+            await msg.destroy({ transaction: t });
           }
-          await agentMessage.destroy({ transaction: t });
-        }
-      }
-      if (msg.contentFragmentId) {
-        await ContentFragment.destroy({
-          where: { id: msg.contentFragmentId },
-          transaction: t,
-        });
-      }
-      await MessageReaction.destroy({
-        where: { messageId: msg.id },
-        transaction: t,
-      });
-      await Mention.destroy({
-        where: { messageId: msg.id },
-        transaction: t,
-      });
-      await msg.destroy({ transaction: t });
-    }
-    await ConversationParticipant.destroy({
-      where: { conversationId: convo.id },
-      transaction: t,
-    });
-    await convo.destroy({ transaction: t });
+          await ConversationParticipant.destroy({
+            where: { conversationId: c.id },
+            transaction: t,
+          });
+          await c.destroy({ transaction: t });
+        })();
+      })
+    );
   }
 };
 
