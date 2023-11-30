@@ -124,6 +124,7 @@ async function handler(
             description: d.description,
             appId: cloned.id,
             workspaceId: targetOwner.id,
+            schema: d.schema,
           });
         })
       );
