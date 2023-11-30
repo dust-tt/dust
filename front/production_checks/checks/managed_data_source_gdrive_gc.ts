@@ -10,6 +10,7 @@ const {
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
+  logger,
   reportSuccess,
   reportFailure
 ) => {
