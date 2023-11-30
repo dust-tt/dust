@@ -100,7 +100,7 @@ async function scrubDocument(
   }
 
   const moreRecentSameHash = await core_sequelize.query(
-    `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created > :deletedAt LIMIT 1`,
+    `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :deletedAt LIMIT 1`,
     {
       replacements: {
         data_source: data_source,
@@ -147,35 +147,9 @@ async function scrubDocument(
     .bucket(DUST_DATA_SOURCES_BUCKET || "")
     .getFiles({ prefix: path });
 
-  logger.info("Scrubbing deleted versions", {
-    documentId: document_id,
-    documentHash: hash,
-    dataSourceProject: dataSource.project,
-    dataSourceInternalId: dataSource.internal_id,
-    dataSourceId: dataSource.id,
-    filesCount: files.length,
-  });
-
-  await core_sequelize.query(
-    `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
-    {
-      replacements: {
-        data_source: data_source,
-        document_id: document_id,
-        hash: hash,
-      },
-    }
-  );
-
-  if (files.length === 0) {
-    return false;
-  }
-
   await Promise.all(
     files.map((f) => {
       if (!seen.has(f.name)) {
-        seen.add(f.name);
-
         logger.info("Scrubbing", {
           path: f.name,
           documentId: document_id,
@@ -190,6 +164,29 @@ async function scrubDocument(
     })
   );
 
+  await core_sequelize.query(
+    `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
+    {
+      replacements: {
+        data_source: data_source,
+        document_id: document_id,
+        hash: hash,
+      },
+    }
+  );
+
+  logger.info("Scrubbed deleted versions", {
+    documentId: document_id,
+    documentHash: hash,
+    dataSourceProject: dataSource.project,
+    dataSourceInternalId: dataSource.internal_id,
+    dataSourceId: dataSource.id,
+    filesCount: files.length,
+  });
+
+  files.forEach((f) => {
+    seen.add(f.name);
+  });
   seen.add(uid);
 
   return true;
