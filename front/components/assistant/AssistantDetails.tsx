@@ -1,4 +1,21 @@
 import {
+  Avatar,
+  Button,
+  CloudArrowDownIcon,
+  CommandLineIcon,
+  DashIcon,
+  Modal,
+  PlusIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import { useContext, useState } from "react";
+import ReactMarkdown from "react-markdown";
+
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { ConnectorProvider } from "@app/lib/connectors_api";
+import { useApp } from "@app/lib/swr";
+import {
   DustAppRunConfigurationType,
   isDustAppRunConfiguration,
 } from "@app/types/assistant/actions/dust_app_run";
@@ -7,23 +24,7 @@ import {
   isRetrievalConfiguration,
 } from "@app/types/assistant/actions/retrieval";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  Modal,
-  Avatar,
-  CloudArrowDownIcon,
-  CommandLineIcon,
-  Button,
-  TrashIcon,
-  PlusIcon,
-  DashIcon,
-} from "@dust-tt/sparkle";
-import ReactMarkdown from "react-markdown";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { ConnectorProvider } from "@app/lib/connectors_api";
-import { useApp } from "@app/lib/swr";
 import { WorkspaceType } from "@app/types/user";
-import { useContext, useState } from "react";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function AssistantDetails({
   owner,
@@ -312,7 +313,7 @@ function DeletionModal({
   );
 }
 
-function inMyList(agentConfiguration: AgentConfigurationType): boolean {
+function inMyList(_agentConfiguration: AgentConfigurationType): boolean {
   // TODO IMPLEMENT
-  return true;
+  return !!_agentConfiguration || true;
 }
