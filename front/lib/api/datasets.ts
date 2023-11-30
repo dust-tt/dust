@@ -19,13 +19,14 @@ export async function getDatasets(
       appId: app.id,
     },
     order: [["updatedAt", "DESC"]],
-    attributes: ["id", "name", "description"],
+    attributes: ["id", "name", "description", "schema"],
   });
 
   return datasets.map((dataset) => ({
     name: dataset.name,
     description: dataset.description,
     data: null,
+    schema: dataset.schema,
   }));
 }
 
@@ -55,6 +56,7 @@ export async function getDataset(
     name: dataset.name,
     description: dataset.description,
     data: null,
+    schema: dataset.schema,
   };
 }
 
@@ -139,5 +141,6 @@ export async function getDatasetHash(
     name: dataset.name,
     description: dataset.description,
     data: apiDataset.value.dataset.data,
+    schema: dataset.schema,
   };
 }

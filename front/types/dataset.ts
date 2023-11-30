@@ -6,6 +6,7 @@ export type DatasetType = {
   name: string;
   description: string | null;
   data: Array<DatasetEntry> | null;
+  schema?: DatasetSchema | null;
 };
 
 export type DatasetSchema = {
