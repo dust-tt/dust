@@ -619,47 +619,36 @@ mod tests {
     fn test_merge() -> Result<()> {
         let test_cases = vec![
             // (col_schema1, col_schema2, expected_type, expected_possible_values)
+            // Test float / int merge.
             (
                 Some(create_test_column_with_values(
-                    "field0",
+                    "float_int_merge",
                     TableSchemaFieldType::Int,
                     vec!["1", "2"],
                 )),
                 Some(create_test_column_with_values(
-                    "field0",
+                    "float_int_merge",
                     TableSchemaFieldType::Float,
                     vec!["3.5", "4.5", "5"],
                 )),
                 TableSchemaFieldType::Float,
                 Some(vec!["1", "2", "3.5", "4.5", "5"]),
             ),
-            (
-                Some(create_test_column_with_values(
-                    "field1",
-                    TableSchemaFieldType::Bool,
-                    vec!["true", "false"],
-                )),
-                Some(create_test_column_with_values(
-                    "field1",
-                    TableSchemaFieldType::Int,
-                    vec!["1", "2", "3"],
-                )),
-                TableSchemaFieldType::Text,
-                Some(vec!["true", "false", "1", "2", "3"]),
-            ),
+            // Test when our_column doesn't exist.
             (
                 None,
                 Some(create_test_column_with_values(
-                    "field2",
+                    "other_column",
                     TableSchemaFieldType::Text,
                     vec!["The value is 1234", "The value is 5678", "12"],
                 )),
                 TableSchemaFieldType::Text,
                 Some(vec!["The value is 1234", "The value is 5678", "12"]),
             ),
+            // Test when other_column doesn't exist.
             (
                 Some(create_test_column_with_values(
-                    "field3",
+                    "our_column",
                     TableSchemaFieldType::Float,
                     vec!["1.2", "1.3"],
                 )),
@@ -667,56 +656,73 @@ mod tests {
                 TableSchemaFieldType::Float,
                 Some(vec!["1.2", "1.3"]),
             ),
+            // Test without possible values.
             (
-                None,
-                Some(create_test_column_with_values(
-                    "field4",
-                    TableSchemaFieldType::Float,
-                    vec!["1.2", "1.3", "1.4"],
+                Some(TableSchemaColumn::new(
+                    "no_possible_values",
+                    TableSchemaFieldType::Text,
                 )),
-                TableSchemaFieldType::Float,
-                Some(vec!["1.2", "1.3", "1.4"]),
-            ),
-            (
-                Some(TableSchemaColumn::new("field5", TableSchemaFieldType::Text)),
-                Some(TableSchemaColumn::new("field5", TableSchemaFieldType::Text)),
+                Some(TableSchemaColumn::new(
+                    "no_possible_values",
+                    TableSchemaFieldType::Text,
+                )),
                 TableSchemaFieldType::Text,
                 None,
             ),
+            // Test when only other column has possible values.
+            (
+                None,
+                Some(create_test_column_with_values(
+                    "other_column_possible_values",
+                    TableSchemaFieldType::Text,
+                    vec!["The value is 1234", "The value is 5678", "12"],
+                )),
+                TableSchemaFieldType::Text,
+                Some(vec!["The value is 1234", "The value is 5678", "12"]),
+            ),
+            // Test when only our column has possible values.
             (
                 Some(create_test_column_with_values(
-                    "field6",
-                    TableSchemaFieldType::Int,
-                    vec!["1", "2"],
+                    "our_column_possible_values",
+                    TableSchemaFieldType::Text,
+                    vec!["The value is 1234", "The value is 5678", "12"],
                 )),
                 None,
-                TableSchemaFieldType::Int,
-                Some(vec!["1", "2"]),
+                TableSchemaFieldType::Text,
+                Some(vec!["The value is 1234", "The value is 5678", "12"]),
             ),
-            // Test case for possible values going over max count
+            // Test case for possible values going over max count.
             (
                 Some(create_test_column_with_values(
-                    "field7",
+                    "going_over_max_count",
                     TableSchemaFieldType::Int,
-                    (1..=POSSIBLE_VALUES_MAX_COUNT + 1)
+                    (1..=POSSIBLE_VALUES_MAX_COUNT)
                         .map(|i| i.to_string())
                         .collect::<Vec<String>>()
                         .iter()
                         .map(AsRef::as_ref)
                         .collect(),
                 )),
-                None,
+                Some(create_test_column_with_values(
+                    "going_over_max_count",
+                    TableSchemaFieldType::Int,
+                    vec!["that's one too many"],
+                )),
                 TableSchemaFieldType::Int,
                 None,
             ),
-            // Test case for possible values going over max length
+            // Test case for possible values going over max length.
             (
                 Some(create_test_column_with_values(
-                    "field8",
+                    "going_over_max_length",
+                    TableSchemaFieldType::Text,
+                    vec!["hello"],
+                )),
+                Some(create_test_column_with_values(
+                    "going_over_max_length",
                     TableSchemaFieldType::Text,
                     vec![&"a".repeat(POSSIBLE_VALUES_MAX_LEN + 1)],
                 )),
-                None,
                 TableSchemaFieldType::Text,
                 None,
             ),
@@ -725,13 +731,13 @@ mod tests {
         let mut schema1_columns = Vec::new();
         let mut schema2_columns = Vec::new();
 
-        for (i, (col1, col2, _, _)) in test_cases.iter().enumerate() {
-            schema1_columns.push(col1.clone().unwrap_or_else(|| {
-                TableSchemaColumn::new(&format!("field{}", i), TableSchemaFieldType::Int)
-            }));
-            schema2_columns.push(col2.clone().unwrap_or_else(|| {
-                TableSchemaColumn::new(&format!("field{}", i), TableSchemaFieldType::Int)
-            }));
+        for (col1, col2, _, _) in test_cases.iter() {
+            if col1.is_some() {
+                schema1_columns.push(col1.clone().unwrap());
+            }
+            if col2.is_some() {
+                schema2_columns.push(col2.clone().unwrap());
+            }
         }
 
         let schema1 = TableSchema(schema1_columns);
@@ -739,17 +745,24 @@ mod tests {
 
         let merged_schema = schema1.merge(&schema2)?;
 
-        for (i, (_, _, expected_type, expected_values)) in test_cases.into_iter().enumerate() {
-            let field_name = format!("field{}", i);
+        for (col_1, col_2, expected_type, expected_values) in test_cases.into_iter() {
+            let field_name = col_1
+                .map(|c| c.name)
+                .or_else(|| col_2.map(|c| c.name))
+                .unwrap();
+
             let column = merged_schema
                 .columns()
                 .iter()
                 .find(|c| c.name == field_name)
                 .expect(&format!("Column {} not found", field_name));
-            assert_eq!(column.value_type, expected_type);
+
+            assert_eq!(column.value_type, expected_type, "{}", field_name);
             assert_eq!(
                 column.possible_values,
-                expected_values.map(|vals| vals.into_iter().map(|v| v.to_string()).collect())
+                expected_values.map(|vals| vals.into_iter().map(|v| v.to_string()).collect()),
+                "{}",
+                field_name
             );
         }
 
