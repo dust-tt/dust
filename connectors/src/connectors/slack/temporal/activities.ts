@@ -568,22 +568,8 @@ export async function syncThread(
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 
-  if (documentId === "slack-C01LV3NED08-thread-1701302546.665219") {
-    console.log(
-      "slack-C01LV3NED08-thread-1701302546.665219 allMessages-unfiltered",
-      allMessages
-    );
-  }
-
   const botUserId = await getBotUserIdMemoized(slackClient);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
-
-  if (documentId === "slack-C01LV3NED08-thread-1701302546.665219") {
-    console.log(
-      "slack-C01LV3NED08-thread-1701302546.665219 allMessages-filtered",
-      allMessages
-    );
-  }
 
   const text = await formatMessagesForUpsert(
     channelId,

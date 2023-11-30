@@ -799,13 +799,6 @@ impl DataSource {
             hash: String,
         }
 
-        if document_id == "slack-C01LV3NED08-thread-1701302546.665219" {
-            utils::info(&format!(
-                "Content slack-C01LV3NED08-thread-1701302546.665219: {:?}",
-                text,
-            ));
-        }
-
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
@@ -816,15 +809,6 @@ impl DataSource {
                 text,
             )
             .await?;
-
-        if document_id == "slack-C01LV3NED08-thread-1701302546.665219" {
-            splits.iter().for_each(|s| {
-                utils::info(&format!(
-                    "Splits slack-C01LV3NED08-thread-1701302546.665219: `{}`",
-                    s
-                ));
-            })
-        }
 
         let splits_with_hash: Vec<ChunkInfo> = splits
             .iter()
