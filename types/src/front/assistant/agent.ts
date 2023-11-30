@@ -1,8 +1,8 @@
-import { ModelId } from "../../../shared/model_id";
+import { ModelId } from "../../shared/model_id";
 
-import { SupportedModel } from "../../lib/supported_models";
-import { DustAppRunConfigurationType } from "./actions/dust_app_run";
-import { RetrievalConfigurationType } from "./actions/retrieval";
+import { SupportedModel } from "../lib/supported_models";
+import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
+import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 
 /**
  * Agent Action configuration
