@@ -63,12 +63,6 @@ async function _upsertToDatasource({
 
   const now = new Date();
 
-  if (documentId === "slack-C01LV3NED08-thread-1701302546.665219") {
-    logger.info("documentId: slack-C01LV3NED08-thread-1701302546.665219", {
-      text: documentText,
-    });
-  }
-
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
   const dustRequestPayload = {
