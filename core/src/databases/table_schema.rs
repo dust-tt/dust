@@ -377,7 +377,7 @@ impl TableSchema {
                         Some(epoch) => epoch,
                         None => return None,
                     };
-                    DateTime::from_timestamp(epoch / 1000, 0)
+                    DateTime::from_timestamp(epoch / 1000, ((epoch % 1000) * 1_000_000) as u32)
                         .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
                 } else {
                     None
