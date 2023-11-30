@@ -1,6 +1,7 @@
 use super::table_schema::TableSchema;
 use crate::{project::Project, stores::store::Store, utils};
 use anyhow::{anyhow, Result};
+use futures::future::try_join_all;
 use itertools::Itertools;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection};
@@ -113,27 +114,24 @@ impl Database {
             }
         };
 
-        let update_table_schema_future = store.update_database_table_schema(
-            &self.project,
-            &self.data_source_id,
-            &self.database_id,
-            table_id,
-            &table_schema,
-        );
-
-        store
-            .batch_upsert_database_rows(
+        try_join_all(vec![
+            store.update_database_table_schema(
+                &self.project,
+                &self.data_source_id,
+                &self.database_id,
+                table_id,
+                &table_schema,
+            ),
+            store.batch_upsert_database_rows(
                 &self.project,
                 &self.data_source_id,
                 &self.database_id,
                 table_id,
                 &rows,
                 truncate,
-            )
-            .await?;
-
-        // Wait for the schema cache to finish updating.
-        update_table_schema_future.await?;
+            ),
+        ])
+        .await?;
 
         Ok(())
     }
