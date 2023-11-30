@@ -1,8 +1,13 @@
 import {
+  AgentActionType,
+  AgentConfigurationType,
+  AgentMessageType,
+  ContentFragmentType,
+  ConversationType,
   DataSourceType,
-  ModelId,
   PublicPostContentFragmentRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
+  UserMessageType,
 } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
@@ -111,186 +116,9 @@ export type GenerationSuccessEvent = {
   messageId: string;
   text: string;
 };
-
-export type ConversationVisibility = "unlisted" | "workspace" | "deleted";
-
-/**
- *  Expresses limits for usage of the product Any positive number enforces the limit, -1 means no
- *  limit. If the limit is undefined we revert to the default limit.
- * */
-
-export type RoleType = "admin" | "builder" | "user" | "none";
-
-export type WorkspaceType = {
-  id: ModelId;
-  sId: string;
-  name: string;
-  allowedDomain: string | null;
-  role: RoleType;
-};
-
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type UserMention = {
-  provider: string;
-  providerId: string;
-};
-
-export type MentionType = AgentMention | UserMention;
-
-export type UserProviderType = "github" | "google";
-
-export type UserType = {
-  id: ModelId;
-  provider: UserProviderType;
-  providerId: string;
-  username: string;
-  email: string;
-  name: string;
-  image: string | null;
-  workspaces: WorkspaceType[];
-  isDustSuperUser: boolean;
-};
-
 /**
  * User messages
  */
-
-export type UserMessageContext = {
-  username: string;
-  timezone: string;
-  fullName: string | null;
-  email: string | null;
-  profilePictureUrl: string | null;
-};
-
-export type MessageVisibility = "visible" | "deleted";
-
-export type UserMessageType = {
-  id: ModelId;
-  type: "user_message";
-  sId: string;
-  visibility: MessageVisibility;
-  version: number;
-  user: UserType | null;
-  mentions: MentionType[];
-  content: string;
-  context: UserMessageContext;
-};
-
-/**
- * Agent messages
- */
-
-export type AgentActionType = RetrievalActionType;
-
-export type RetrievalActionType = {
-  type: "retrieval_action";
-  params: {
-    relativeTimeFrame: TimeFrame | null;
-    query: string | null;
-    topK: number;
-  };
-  documents: RetrievalDocumentType[] | null;
-};
-
-export type RetrievalDocumentType = {
-  dataSourceWorkspaceId: string;
-  dataSourceId: string;
-  sourceUrl: string | null;
-  documentId: string;
-  reference: string; // Short random string so that the model can refer to the document.
-  timestamp: number;
-  tags: string[];
-  score: number | null;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number | null;
-  }[];
-};
-
-export type TimeFrame = {
-  duration: number;
-  unit: TimeframeUnit;
-};
-
-export const TIME_FRAME_UNITS = [
-  "hour",
-  "day",
-  "week",
-  "month",
-  "year",
-] as const;
-
-export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
-
-export type AgentMessageStatus = "created" | "succeeded" | "failed";
-
-export type ContentFragmentContentType = "slack_thread_content";
-
-/**
- * Both `action` and `message` are optional (we could have a no-op agent basically).
- *
- * Since `action` and `message` are bundled together, it means that we will only be able to retry
- * them together in case of error of either. We store an error only here whether it's an error
- * coming from the action or from the message generation.
- */
-export type AgentMessageType = {
-  id: ModelId;
-  type: "agent_message";
-  sId: string;
-  visibility: MessageVisibility;
-  version: number;
-  parentMessageId: string | null;
-  // configuration: AgentConfigurationType;
-  status: AgentMessageStatus;
-  action: AgentActionType | null;
-  content: string | null;
-  error: {
-    code: string;
-    message: string;
-  } | null;
-};
-
-/**
- * Conversation
- */
-
-export type ConversationType = {
-  id: ModelId;
-  created: number;
-  sId: string;
-  owner: WorkspaceType;
-  title: string | null;
-  visibility: ConversationVisibility;
-  content: (UserMessageType[] | AgentMessageType[])[];
-};
-
-export type AgentConfigurationType = {
-  sId: string;
-  name: string;
-  status: "active" | string;
-};
-
-export type ContentFragmentType = {
-  id: ModelId;
-  sId: string;
-  created: number;
-  type: "content_fragment";
-  visibility: MessageVisibility;
-  version: number;
-
-  title: string;
-  content: string;
-  contentType: ContentFragmentContentType;
-};
 
 export class DustAPI {
   _credentials: DustAPICredentials;
