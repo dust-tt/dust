@@ -63,11 +63,13 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
     );
     if (notDeleted.length > 0) {
       reportFailure(
-        { notDeleted },
+        { notDeleted, connectorId: ds.connectorId },
         "Google Drive documents not properly Garbage collected"
       );
     } else {
-      reportSuccess({});
+      reportSuccess({
+        connectorId: ds.connectorId,
+      });
     }
   }
 };

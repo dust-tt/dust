@@ -33,9 +33,12 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     hash: string;
   }[];
 
-  logger.info("Found deleted core documents to scrub", {
-    documentCount: deletedDocuments.length,
-  });
+  logger.info(
+    {
+      documentCount: deletedDocuments.length,
+    },
+    "Found deleted core documents to scrub"
+  );
 
   const chunks = [];
   for (let i = 0; i < deletedDocuments.length; i += 32) {
@@ -46,10 +49,6 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   let deletedCount = 0;
 
   for (let i = 0; i < chunks.length; i++) {
-    logger.info("Processing chunk", {
-      chunkIndex: i,
-      chunksCount: chunks.length,
-    });
     const chunk = chunks[i];
     await Promise.all(
       chunk.map((d) => {
@@ -71,11 +70,16 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     );
   }
 
-  logger.info("Done scrubbing deleted core document versions", {
+  logger.info(
+    {
+      deletedCount,
+    },
+    "Done scrubbing deleted core document versions"
+  );
+
+  reportSuccess({
     deletedCount,
   });
-
-  reportSuccess({});
 };
 
 async function scrubDocument(
@@ -151,14 +155,18 @@ async function scrubDocument(
   await Promise.all(
     files.map((f) => {
       if (!seen.has(f.name)) {
-        logger.info("Scrubbing", {
-          path: f.name,
-          documentId: document_id,
-          documentHash: hash,
-          dataSourceProject: dataSource.project,
-          dataSourceInternalId: dataSource.internal_id,
-          dataSourceId: dataSource.id,
-        });
+        seen.add(f.name);
+        logger.info(
+          {
+            path: f.name,
+            documentId: document_id,
+            documentHash: hash,
+            dataSourceProject: dataSource.project,
+            dataSourceInternalId: dataSource.internal_id,
+            dataSourceId: dataSource.id,
+          },
+          "Scrubbing"
+        );
 
         return f.delete();
       }
@@ -176,18 +184,18 @@ async function scrubDocument(
     }
   );
 
-  logger.info("Scrubbed deleted versions", {
-    documentId: document_id,
-    documentHash: hash,
-    dataSourceProject: dataSource.project,
-    dataSourceInternalId: dataSource.internal_id,
-    dataSourceId: dataSource.id,
-    filesCount: files.length,
-  });
+  logger.info(
+    {
+      documentId: document_id,
+      documentHash: hash,
+      dataSourceProject: dataSource.project,
+      dataSourceInternalId: dataSource.internal_id,
+      dataSourceId: dataSource.id,
+      filesCount: files.length,
+    },
+    "Scrubbed deleted versions"
+  );
 
-  files.forEach((f) => {
-    seen.add(f.name);
-  });
   seen.add(uid);
 
   return true;
