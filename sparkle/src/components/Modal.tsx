@@ -115,7 +115,7 @@ export function Modal({
   } = getModalClasses(type);
 
   return (
-    <Transition.Root show={isOpen} as={Fragment}>
+    <Transition.Root show={isOpen} as={Fragment} appear={true}>
       <Dialog as="div" className="s-relative s-z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}
@@ -125,6 +125,7 @@ export function Modal({
           leave="s-ease-in s-duration-150"
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
+          appear={true}
         >
           <div className="s-fixed s-inset-0 s-bg-white/80 s-backdrop-blur-sm s-transition-opacity" />
         </Transition.Child>
@@ -139,6 +140,7 @@ export function Modal({
               leave="s-ease-in s-duration-200"
               leaveFrom={transitionLeaveFrom}
               leaveTo={transitionLeaveTo}
+              appear={true}
             >
               <Dialog.Panel
                 className={classNames(
