@@ -16,12 +16,6 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   if (!CORE_DATABASE_URI) {
     throw new Error("Env var CORE_DATABASE_URI is not defined");
   }
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("Env var SERVICE_ACCOUNT is not defined");
-  }
-  if (!DUST_DATA_SOURCES_BUCKET) {
-    throw new Error("Env var DUST_DATA_SOURCES_BUCKET is not defined");
-  }
 
   const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
@@ -93,6 +87,13 @@ async function scrubDocument(
   deletedAt: number,
   hash: string
 ) {
+  if (!DUST_DATA_SOURCES_BUCKET) {
+    throw new Error("Env var DUST_DATA_SOURCES_BUCKET is not defined");
+  }
+  if (!SERVICE_ACCOUNT) {
+    throw new Error("Env var SERVICE_ACCOUNT is not defined");
+  }
+
   // Process same version of same document only once.
   const uid = `${data_source}-${document_id}-${hash}`;
   if (seen.has(uid)) {
@@ -144,7 +145,7 @@ async function scrubDocument(
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
   const [files] = await storage
-    .bucket(DUST_DATA_SOURCES_BUCKET || "")
+    .bucket(DUST_DATA_SOURCES_BUCKET)
     .getFiles({ prefix: path });
 
   await Promise.all(
