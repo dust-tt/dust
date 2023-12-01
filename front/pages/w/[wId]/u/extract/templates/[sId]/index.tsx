@@ -12,6 +12,7 @@ import {
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
+import { APIError } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -24,7 +25,6 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 

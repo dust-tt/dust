@@ -1,3 +1,4 @@
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
@@ -11,7 +12,6 @@ import {
   sendOpsEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Membership, Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { generateModelSId } from "@app/lib/utils";

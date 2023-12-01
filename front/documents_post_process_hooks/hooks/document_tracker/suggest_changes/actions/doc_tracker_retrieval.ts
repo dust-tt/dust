@@ -1,11 +1,8 @@
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { getTrackableDataSources } from "@app/documents_post_process_hooks/hooks/document_tracker/lib";
 import { callAction } from "@app/lib/actions/helpers";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
 
 // Part of the new doc tracker pipeline, performs the retrieval (semantic search) step
 // it takes {input_text: string} as input

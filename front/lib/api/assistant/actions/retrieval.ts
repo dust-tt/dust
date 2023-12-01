@@ -1,6 +1,11 @@
-import { ModelId } from "@dust-tt/types";
 import {
-  DataSourceConfiguration,
+  ModelId,
+  ModelMessageType,
+  RetrievalErrorEvent,
+  RetrievalParamsEvent,
+  RetrievalSuccessEvent,
+} from "@dust-tt/types";
+import {
   isRetrievalConfiguration,
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -16,14 +21,11 @@ import {
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
-import { ModelMessageType } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -32,7 +34,6 @@ import {
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models";
-import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 
 /**
@@ -415,35 +416,6 @@ const getRefs = () => {
     REFS.sort(() => Math.random() - 0.5);
   }
   return REFS;
-};
-
-// Event sent during retrieval with the finalized query used to retrieve documents.
-export type RetrievalParamsEvent = {
-  type: "retrieval_params";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  dataSources: "all" | DataSourceConfiguration[];
-  action: RetrievalActionType;
-};
-
-export type RetrievalErrorEvent = {
-  type: "retrieval_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-export type RetrievalSuccessEvent = {
-  type: "retrieval_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: RetrievalActionType;
 };
 
 // This method is in charge of running the retrieval and creating an AgentRetrievalAction object in

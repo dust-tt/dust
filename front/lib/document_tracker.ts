@@ -1,6 +1,6 @@
+import { CoreAPI } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 
-import { CoreAPI } from "@app/lib/core_api";
 import { DataSource, Membership, TrackedDocument, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
@@ -152,15 +152,16 @@ export async function updateTrackedDocuments(
     },
   }));
 
+  const coreAPI = new CoreAPI(logger);
   if (hasExistingTrackedDocs && !hasRemainingTrackedDocs) {
-    await CoreAPI.updateDataSourceDocumentTags({
+    await coreAPI.updateDataSourceDocumentTags({
       projectId: dataSource.dustAPIProjectId,
       dataSourceName: dataSource.name,
       removeTags: ["__DUST_TRACKED"],
       documentId,
     });
   } else if (!hasExistingTrackedDocs && hasRemainingTrackedDocs) {
-    await CoreAPI.updateDataSourceDocumentTags({
+    await coreAPI.updateDataSourceDocumentTags({
       projectId: dataSource.dustAPIProjectId,
       dataSourceName: dataSource.name,
       addTags: ["__DUST_TRACKED"],

@@ -1,3 +1,4 @@
+import { CoreAPI, CoreAPIDatabaseTable } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,7 +6,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabaseTable } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -79,10 +79,11 @@ async function handler(
       },
     });
   }
+  const coreAPI = new CoreAPI(logger);
 
   switch (req.method) {
     case "GET":
-      const tablesRes = await CoreAPI.getDatabaseTables({
+      const tablesRes = await coreAPI.getDatabaseTables({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
@@ -129,8 +130,7 @@ async function handler(
         table_id: maybeTableId,
       } = bodyValidation.right;
       const tableId = maybeTableId || generateModelSId();
-
-      const upsertRes = await CoreAPI.upsertDatabaseTable({
+      const upsertRes = await coreAPI.upsertDatabaseTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,

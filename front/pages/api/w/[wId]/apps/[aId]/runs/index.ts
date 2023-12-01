@@ -1,11 +1,11 @@
 import { RunType } from "@dust-tt/types";
+import { credentialsFromProviders } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
-import { credentialsFromProviders } from "@app/lib/api/credentials";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App, Provider, Run } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
@@ -55,6 +55,8 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
+
   switch (req.method) {
     case "POST":
       // Only the users that are `builders` for the current workspace can create runs.
@@ -95,7 +97,7 @@ async function handler(
             });
           }
 
-          const streamRes = await CoreAPI.createRunStream({
+          const streamRes = await coreAPI.createRunStream({
             projectId: app.dustAPIProjectId,
             runAsWorkspaceId: owner.sId,
             runType: "execute",
@@ -178,7 +180,7 @@ async function handler(
             });
           }
 
-          const datasets = await CoreAPI.getDatasets({
+          const datasets = await coreAPI.getDatasets({
             projectId: app.dustAPIProjectId,
           });
           if (datasets.isErr()) {
@@ -205,7 +207,7 @@ async function handler(
             ? inputConfigEntry.dataset
             : null;
 
-          const dustRun = await CoreAPI.createRun({
+          const dustRun = await coreAPI.createRun({
             projectId: app.dustAPIProjectId,
             runAsWorkspaceId: owner.sId,
             runType: "local",
@@ -340,7 +342,7 @@ async function handler(
       });
       const userDustRunIds = userRuns.map((r) => r.dustRunId);
 
-      const dustRuns = await CoreAPI.getRunsBatch({
+      const dustRuns = await coreAPI.getRunsBatch({
         projectId: app.dustAPIProjectId,
         dustRunIds: userDustRunIds,
       });

@@ -1,10 +1,10 @@
 import { RunType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -53,6 +53,7 @@ async function handler(
       },
     });
   }
+  const coreAPI = new CoreAPI(logger);
 
   switch (req.method) {
     case "GET":
@@ -73,7 +74,7 @@ async function handler(
       // TODO(spolu): This is borderline security-wise as it allows to recover a full run from the
       // runId assuming the app is public. We should use getRun and also enforce in getRun that we
       // retrieve only our own runs. Basically this assumes the `runId` as a secret.
-      const runRes = await CoreAPI.getRun({
+      const runRes = await coreAPI.getRun({
         projectId: app.dustAPIProjectId,
         runId,
       });

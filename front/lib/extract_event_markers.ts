@@ -1,8 +1,7 @@
+import { CoreAPITokenType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { ExtractedEvent } from "@app/lib/models";
-
-import { CoreAPITokenType } from "./core_api";
 
 const EXTRACT_EVENT_PATTERN = /\[\[(.*?)\]\]/; // Ex: [[event]]
 

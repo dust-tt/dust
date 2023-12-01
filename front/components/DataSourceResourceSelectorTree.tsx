@@ -7,13 +7,10 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import { ConnectorPermission, ConnectorResourceType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
-import {
-  ConnectorPermission,
-  ConnectorResourceType,
-} from "@app/lib/connectors_api";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 

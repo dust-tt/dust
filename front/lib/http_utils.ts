@@ -1,6 +1,5 @@
+import { Err, Ok, Result } from "@dust-tt/types";
 import Ajv, { JSONSchemaType } from "ajv";
-
-import { Err, Ok, Result } from "@app/lib/result";
 
 const ajv = new Ajv({
   coerceTypes: true,

@@ -5,6 +5,9 @@ import {
   sectionFullText,
 } from "@dust-tt/types";
 import { DocumentType } from "@dust-tt/types";
+import { dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -17,12 +20,10 @@ import {
   launchRunPostDeleteHooksWorkflow,
   launchRunPostUpsertHooksWorkflow,
 } from "@app/documents_post_process_hooks/temporal/client";
-import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
@@ -89,9 +90,10 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "GET":
-      const docRes = await CoreAPI.getDataSourceDocument({
+      const docRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
@@ -194,7 +196,7 @@ async function handler(
       // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
       // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
       if (plan.limits.dataSources.documents.count != -1) {
-        const documents = await CoreAPI.getDataSourceDocuments({
+        const documents = await coreAPI.getDataSourceDocuments({
           projectId: dataSource.dustAPIProjectId,
           dataSourceName: dataSource.name,
           limit: 1,
@@ -246,7 +248,7 @@ async function handler(
       const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
-      const upsertRes = await CoreAPI.upsertDataSourceDocument({
+      const upsertRes = await coreAPI.upsertDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
@@ -323,7 +325,7 @@ async function handler(
         });
       }
 
-      const delRes = await CoreAPI.deleteDataSourceDocument({
+      const delRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,

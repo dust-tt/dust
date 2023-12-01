@@ -9,7 +9,7 @@ import {
   DocumentsPostProcessHookType,
 } from "@app/documents_post_process_hooks/hooks";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import { CoreAPI } from "@dust-tt/types";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
@@ -122,7 +122,8 @@ async function getDataSourceDocument(
   if (!dataSource) {
     throw new Error(`Could not find data source ${dataSourceName}`);
   }
-  const docText = await CoreAPI.getDataSourceDocument({
+  const coreAPI = new CoreAPI(logger);
+  const docText = await coreAPI.getDataSourceDocument({
     projectId: dataSource?.dustAPIProjectId,
     dataSourceName: dataSourceName,
     documentId,

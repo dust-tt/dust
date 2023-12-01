@@ -1,12 +1,13 @@
 import { Input, Page } from "@dust-tt/sparkle";
 import { CoreAPIDocument } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { classNames } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<{
   document: CoreAPIDocument;
@@ -52,7 +53,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const document = await CoreAPI.getDataSourceDocument({
+  const coreAPI = new CoreAPI(logger);
+  const document = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
     documentId: context.query.documentId as string,

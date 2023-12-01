@@ -2,6 +2,7 @@ import { Tab } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -13,8 +14,8 @@ import {
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { dumpSpecification } from "@app/lib/specification";
+import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -52,7 +53,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const datasets = await CoreAPI.getDatasets({
+  const coreAPI = new CoreAPI(logger);
+  const datasets = await coreAPI.getDatasets({
     projectId: app.dustAPIProjectId,
   });
   if (datasets.isErr()) {

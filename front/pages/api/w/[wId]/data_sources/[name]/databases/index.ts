@@ -1,10 +1,10 @@
+import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -86,7 +86,8 @@ async function handler(
 
       const { offset, limit } = queryValidation.right;
 
-      const getRes = await CoreAPI.getDatabases({
+      const coreAPI = new CoreAPI(logger);
+      const getRes = await coreAPI.getDatabases({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         offset,

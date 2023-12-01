@@ -21,6 +21,12 @@ import {
   WorkspaceType,
 } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
+import {
+  connectorIsUsingNango,
+  ConnectorsAPI,
+  ConnectorType,
+} from "@dust-tt/types";
+import { APIError } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -36,16 +42,11 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@app/lib/connectors_api";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 const {
   GA_TRACKING_ID = "",
@@ -102,7 +103,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
-    const connectorRes = await ConnectorsAPI.getConnector(
+    const connectorsAPI = new ConnectorsAPI(logger);
+    const connectorRes = await connectorsAPI.getConnector(
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {

@@ -8,17 +8,18 @@ import {
   sectionFullText,
   UserMessageType,
 } from "@dust-tt/types";
+import {
+  AgentGenerationSuccessEvent,
+  DustAPI,
+  PublicPostContentFragmentRequestBodySchema,
+} from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import levenshtein from "fast-levenshtein";
+import * as t from "io-ts";
 
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import {
-  AgentGenerationSuccessEvent,
-  DustAPI,
-  PostContentFragmentRequestBody,
-} from "@connectors/lib/dust_api";
 import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -222,10 +223,16 @@ async function botAnswerMessage(
     connector
   );
 
-  const dustAPI = new DustAPI({
-    workspaceId: connector.workspaceId,
-    apiKey: connector.workspaceAPIKey,
-  });
+  const dustAPI = new DustAPI(
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+    },
+    logger,
+    {
+      useLocalInDev: true,
+    }
+  );
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
     text: "_Thinking..._",
@@ -626,7 +633,12 @@ async function makeContentFragment(
   startingAtTs: string | null,
   slackChatBotMessage: SlackChatBotMessage,
   connector: Connector
-): Promise<Result<PostContentFragmentRequestBody | null, Error>> {
+): Promise<
+  Result<
+    t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,
+    Error
+  >
+> {
   let allMessages: MessageElement[] = [];
 
   let next_cursor = undefined;

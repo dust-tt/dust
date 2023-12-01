@@ -1,7 +1,8 @@
+import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { CoreAPI } from "@app/lib/core_api";
 import { DataSource, Workspace } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 const { CORE_DATABASE_URI, LIVE } = process.env;
@@ -47,7 +48,8 @@ async function main() {
         `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name} ${dsData[0].internal_id}`
       );
       if (LIVE) {
-        const coreDeleteRes = await CoreAPI.deleteDataSource({
+        const coreAPI = new CoreAPI(logger);
+        const coreDeleteRes = await coreAPI.deleteDataSource({
           projectId: dustAPIProjectId,
           dataSourceName: ds.name,
         });

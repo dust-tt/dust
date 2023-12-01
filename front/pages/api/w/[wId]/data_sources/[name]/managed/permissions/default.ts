@@ -1,8 +1,9 @@
+import { ConnectorPermission, ConnectorsAPI } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorPermission, ConnectorsAPI } from "@app/lib/connectors_api";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetManagedDataSourceDefaultNewResourcePermissionResponseBody = {
@@ -64,7 +65,8 @@ async function handler(
         });
       }
 
-      const connectorRes = await ConnectorsAPI.getConnector(
+      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorRes = await connectorsAPI.getConnector(
         dataSource.connectorId.toString()
       );
       if (connectorRes.isErr()) {

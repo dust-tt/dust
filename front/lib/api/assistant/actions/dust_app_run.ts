@@ -1,4 +1,11 @@
-import { ModelId } from "@dust-tt/types";
+import {
+  DustAppRunBlockEvent,
+  DustAppRunErrorEvent,
+  DustAppRunParamsEvent,
+  DustAppRunSuccessEvent,
+  ModelId,
+  ModelMessageType,
+} from "@dust-tt/types";
 import {
   DustAppParameters,
   DustAppRunActionType,
@@ -15,18 +22,17 @@ import {
 } from "@dust-tt/types";
 import { AppType, SpecificationType } from "@dust-tt/types";
 import { DatasetSchema } from "@dust-tt/types";
+import { DustAPI } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { DustAPI } from "@app/lib/dust_api";
 import { AgentDustAppRunAction } from "@app/lib/models";
-import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 
 import { getApp } from "../../app";
 import { getDatasetSchema } from "../../datasets";
 import { generateActionInputs } from "../agent";
-import { ModelMessageType } from "../generation";
 
 /**
  * Model rendering of DustAppRuns.
@@ -209,42 +215,6 @@ export async function renderDustAppRunActionByModelId(
  * Action execution.
  */
 
-// Event sent before the execution of a dust app run with the finalized params to be used.
-export type DustAppRunParamsEvent = {
-  type: "dust_app_run_params";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: DustAppRunActionType;
-};
-
-export type DustAppRunErrorEvent = {
-  type: "dust_app_run_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-export type DustAppRunBlockEvent = {
-  type: "dust_app_run_block";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: DustAppRunActionType;
-};
-
-export type DustAppRunSuccessEvent = {
-  type: "dust_app_run_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: DustAppRunActionType;
-};
-
 // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
 // the database. It does not create any generic model related to the conversation. It is possible
 // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run
@@ -397,7 +367,7 @@ export async function* runDustApp(
   const prodCredentials = await prodAPICredentialsForOwner(owner, {
     useLocalInDev: true,
   });
-  const api = new DustAPI(prodCredentials, {
+  const api = new DustAPI(prodCredentials, logger, {
     useLocalInDev: true,
   });
 

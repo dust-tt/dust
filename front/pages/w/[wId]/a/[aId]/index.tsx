@@ -15,6 +15,8 @@ import {
 } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { BlockType } from "@dust-tt/types";
+import { CoreAPIErrorResponse } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -32,8 +34,6 @@ import {
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { CoreAPIErrorResponse } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   addBlock,
   deleteBlock,

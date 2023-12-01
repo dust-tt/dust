@@ -1,8 +1,8 @@
+import { CoreAPI, CoreAPIDatabase } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabase } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -66,7 +66,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const databaseRes = await CoreAPI.getDatabase({
+      const coreAPI = new CoreAPI(logger);
+      const databaseRes = await coreAPI.getDatabase({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,

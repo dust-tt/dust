@@ -1,9 +1,10 @@
+import { ConnectorsAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSlackChannelsLinkedWithAgentResponseBody = {
@@ -85,8 +86,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const connectorsAPI = new ConnectorsAPI(logger);
       const linkedSlackChannelsRes =
-        await ConnectorsAPI.getSlackChannelsLinkedWithAgent({
+        await connectorsAPI.getSlackChannelsLinkedWithAgent({
           connectorId: dataSource.connectorId,
         });
 

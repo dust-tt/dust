@@ -1,7 +1,6 @@
-import { ConnectorProvider } from "@dust-tt/types";
-
-import { Err, Ok, Result } from "@app/lib/result";
-import logger from "@app/logger/logger";
+import { LoggerInterface } from "../../shared/logger";
+import { ConnectorProvider } from "../../front/data_source";
+import { Err, Ok, Result } from "../../front/lib/result";
 
 export type ConnectorsAPIErrorResponse = {
   error: {
@@ -76,7 +75,12 @@ export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
   selected: boolean;
 };
 
-export const ConnectorsAPI = {
+export class ConnectorsAPI {
+  _logger: LoggerInterface;
+  constructor(logger: LoggerInterface) {
+    this._logger = logger;
+  }
+
   async createConnector(
     provider: ConnectorProvider,
     workspaceId: string,
@@ -86,7 +90,7 @@ export const ConnectorsAPI = {
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
-      headers: getDefaultHeaders(),
+      headers: this.getDefaultHeaders(),
       body: JSON.stringify({
         workspaceId,
         workspaceAPIKey,
@@ -95,8 +99,8 @@ export const ConnectorsAPI = {
       }),
     });
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async updateConnector({
     connectorId,
@@ -112,7 +116,7 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/update/${connectorId}`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           connectionId,
           defaultNewResourcePermission,
@@ -120,8 +124,8 @@ export const ConnectorsAPI = {
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async pauseConnector(
     connectorId: string
@@ -130,12 +134,12 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/pause/${connectorId}`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async resumeConnector(
     connectorId: string
@@ -144,12 +148,12 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/resume/${connectorId}`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async syncConnector(
     connectorId: string
@@ -158,12 +162,12 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/sync/${connectorId}`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async deleteConnector(
     connectorId: string,
@@ -175,12 +179,12 @@ export const ConnectorsAPI = {
       }`,
       {
         method: "DELETE",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getConnectorPermissions({
     connectorId,
@@ -201,11 +205,11 @@ export const ConnectorsAPI = {
 
     const res = await fetch(url, {
       method: "GET",
-      headers: getDefaultHeaders(),
+      headers: this.getDefaultHeaders(),
     });
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async setConnectorPermissions({
     connectorId,
@@ -218,7 +222,7 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/permissions`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           resources: resources.map(({ internalId, permission }) => ({
             internal_id: internalId,
@@ -228,19 +232,19 @@ export const ConnectorsAPI = {
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/${connectorId}`, {
       method: "GET",
-      headers: getDefaultHeaders(),
+      headers: this.getDefaultHeaders(),
     });
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getBotEnabled(connectorId: string): Promise<
     ConnectorsAPIResponse<{
@@ -251,12 +255,12 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
       {
         method: "GET",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async setBotEnabled(
     connectorId: string,
@@ -266,7 +270,7 @@ export const ConnectorsAPI = {
       botEnabled: boolean;
     }>
   > {
-    const headers = getDefaultHeaders();
+    const headers = this.getDefaultHeaders();
 
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
@@ -279,8 +283,8 @@ export const ConnectorsAPI = {
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async setConnectorConfig(
     connectorId: string,
@@ -291,15 +295,15 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/config/${configKey}`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           configValue,
         }),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getConnectorConfig(
     connectorId: string,
@@ -315,12 +319,12 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/config/${configKey}`,
       {
         method: "GET",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getResourcesParents({
     connectorId,
@@ -340,15 +344,15 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/resources/parents`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           resourceInternalIds,
         }),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getResourcesTitles({
     connectorId,
@@ -368,15 +372,15 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/connectors/${connectorId}/resources/titles`,
       {
         method: "POST",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           resourceInternalIds,
         }),
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async linkSlackChannelsWithAgent({
     connectorId,
@@ -391,7 +395,7 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/slack/channels/linked_with_agent`,
       {
         method: "PATCH",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           connector_id: connectorId,
           agent_configuration_id: agentConfigurationId,
@@ -400,8 +404,8 @@ export const ConnectorsAPI = {
       }
     );
 
-    return _resultFromResponse(res);
-  },
+    return this._resultFromResponse(res);
+  }
 
   async getSlackChannelsLinkedWithAgent({
     connectorId,
@@ -420,64 +424,70 @@ export const ConnectorsAPI = {
       `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${connectorId}`,
       {
         method: "GET",
-        headers: getDefaultHeaders(),
+        headers: this.getDefaultHeaders(),
       }
     );
 
-    return _resultFromResponse(res);
-  },
-};
+    return this._resultFromResponse(res);
+  }
 
-function getDefaultHeaders() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${DUST_CONNECTORS_SECRET}`,
-  };
-}
-async function _resultFromResponse<T>(
-  response: Response
-): Promise<ConnectorsAPIResponse<T>> {
-  if (!response.ok) {
-    if (response.headers.get("Content-Type") === "application/json") {
-      const jsonError = await response.json();
-      logger.error({ jsonError }, "Unexpected response from ConnectorAPI");
-      return new Err(jsonError);
-    } else {
-      const textError = await response.text();
-      try {
-        const errorResponse = JSON.parse(textError);
-        const errorMessage = errorResponse?.error?.message;
-        const errorType = errorResponse?.error?.type;
-
-        if (typeof errorMessage !== "string" || typeof errorType !== "string") {
-          throw new Error("Unexpected response from ConnectorAPI");
-        }
-
-        return new Err({
-          error: {
-            message: errorMessage,
-            type: errorType,
-          },
-        });
-      } catch (error) {
-        logger.error(
-          {
-            statusCode: response.status,
-            error,
-            textError,
-          },
+  getDefaultHeaders() {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${DUST_CONNECTORS_SECRET}`,
+    };
+  }
+  async _resultFromResponse<T>(
+    response: Response
+  ): Promise<ConnectorsAPIResponse<T>> {
+    if (!response.ok) {
+      if (response.headers.get("Content-Type") === "application/json") {
+        const jsonError = await response.json();
+        this._logger.error(
+          { jsonError },
           "Unexpected response from ConnectorAPI"
         );
-        return new Err({
-          error: {
-            message: `Unexpected response status: ${response.status} ${response.statusText}`,
-            type: "unexpected_response",
-          },
-        });
+        return new Err(jsonError);
+      } else {
+        const textError = await response.text();
+        try {
+          const errorResponse = JSON.parse(textError);
+          const errorMessage = errorResponse?.error?.message;
+          const errorType = errorResponse?.error?.type;
+
+          if (
+            typeof errorMessage !== "string" ||
+            typeof errorType !== "string"
+          ) {
+            throw new Error("Unexpected response from ConnectorAPI");
+          }
+
+          return new Err({
+            error: {
+              message: errorMessage,
+              type: errorType,
+            },
+          });
+        } catch (error) {
+          this._logger.error(
+            {
+              statusCode: response.status,
+              error,
+              textError,
+            },
+            "Unexpected response from ConnectorAPI"
+          );
+          return new Err({
+            error: {
+              message: `Unexpected response status: ${response.status} ${response.statusText}`,
+              type: "unexpected_response",
+            },
+          });
+        }
       }
     }
-  }
-  const jsonResponse = await response.json();
+    const jsonResponse = await response.json();
 
-  return new Ok(jsonResponse);
+    return new Ok(jsonResponse);
+  }
 }

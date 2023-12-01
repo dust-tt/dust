@@ -1,9 +1,10 @@
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostParentsResponseBody = {
@@ -72,8 +73,8 @@ async function handler(
           },
         });
       }
-
-      const updateRes = await CoreAPI.updateDataSourceDocumentParents({
+      const coreAPI = new CoreAPI(logger);
+      const updateRes = await coreAPI.updateDataSourceDocumentParents({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,

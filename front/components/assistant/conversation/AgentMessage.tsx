@@ -9,7 +9,17 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentGenerationSuccessEvent,
+  AgentMessageSuccessEvent,
+  GenerationTokensEvent,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isRetrievalActionType, RetrievalDocumentType } from "@dust-tt/types";
 import { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -24,15 +34,6 @@ import {
 } from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
-import {
-  AgentActionEvent,
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
-  AgentMessageSuccessEvent,
-} from "@app/lib/api/assistant/agent";
-import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {

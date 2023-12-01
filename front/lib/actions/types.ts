@@ -1,3 +1,4 @@
+import { ActionResponseBase } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
@@ -21,7 +22,7 @@ export const ActionResponseBaseSchema = t.type({
   traces: t.UnknownArray,
   specification_hash: t.string,
 });
-export type ActionResponseBase = t.TypeOf<typeof ActionResponseBaseSchema>;
+
 export function isActionResponseBase(
   response: unknown
 ): response is ActionResponseBase {

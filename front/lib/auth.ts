@@ -1,5 +1,8 @@
 import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
+import { DustAPICredentials } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
+import { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -8,7 +11,6 @@ import {
 import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
-import { APIErrorWithStatusCode } from "@app/lib/error";
 import {
   Key,
   Membership,
@@ -18,12 +20,9 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
-import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-
-import { DustAPICredentials } from "./dust_api";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,

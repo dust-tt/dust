@@ -1,15 +1,15 @@
 import { CredentialsType } from "@dust-tt/types";
 import { RunType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
-
-import { getApp } from "@app/lib/api/app";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
-} from "@app/lib/api/credentials";
+} from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { NextApiRequest, NextApiResponse } from "next";
+
+import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -121,6 +121,7 @@ async function handler(
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
   const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
+  const coreAPI = new CoreAPI(logger);
 
   switch (req.method) {
     case "POST":
@@ -172,7 +173,7 @@ async function handler(
 
       // If `stream` is true, run in streaming mode.
       if (req.body.stream) {
-        const runRes = await CoreAPI.createRunStream({
+        const runRes = await coreAPI.createRunStream({
           projectId: app.dustAPIProjectId,
           runAsWorkspaceId: keyWorkspaceId,
           runType: "deploy",
@@ -237,7 +238,7 @@ async function handler(
         return;
       }
 
-      const runRes = await CoreAPI.createRun({
+      const runRes = await coreAPI.createRun({
         projectId: app.dustAPIProjectId,
         runAsWorkspaceId: keyWorkspaceId,
         runType: "deploy",
@@ -275,7 +276,7 @@ async function handler(
         try {
           await poll({
             fn: async () => {
-              const run = await CoreAPI.getRunStatus({
+              const run = await coreAPI.getRunStatus({
                 projectId: app.dustAPIProjectId,
                 runId,
               });
@@ -307,7 +308,7 @@ async function handler(
         }
 
         // Finally refresh the run object.
-        const runRes = await CoreAPI.getRun({
+        const runRes = await coreAPI.getRun({
           projectId: app.dustAPIProjectId,
           runId,
         });

@@ -1,10 +1,11 @@
 import { DocumentType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetDocumentsResponseBody = {
@@ -37,6 +38,7 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "GET":
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -44,7 +46,7 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      const documents = await CoreAPI.getDataSourceDocuments({
+      const documents = await coreAPI.getDataSourceDocuments({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         limit,

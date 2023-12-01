@@ -1,3 +1,8 @@
+import {
+  CoreAPI,
+  CoreAPIDatabaseResult,
+  CoreAPIDatabaseTableSchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,11 +10,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import {
-  CoreAPI,
-  CoreAPIDatabaseResult,
-  CoreAPIDatabaseTableSchema,
-} from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -92,7 +92,8 @@ async function handler(
 
       const { query } = bodyValidation.right;
 
-      const queryRes = await CoreAPI.queryDatabase({
+      const coreAPI = new CoreAPI(logger);
+      const queryRes = await coreAPI.queryDatabase({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,

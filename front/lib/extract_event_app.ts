@@ -1,21 +1,15 @@
-import { EventSchemaType } from "@dust-tt/types";
-
 import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
+  EventSchemaType,
+  ExtractEventAppResponseResults,
+} from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { CoreAPI, CoreAPITokenType } from "@dust-tt/types";
+
 import { runAction } from "@app/lib/actions/server";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI, CoreAPITokenType } from "@app/lib/core_api";
 import { findMarkersIndexes } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";
-
-export type ExtractEventAppResponseResults = {
-  value: {
-    results: { value: string }[][];
-  };
-};
 
 /**
  * Runs the Extract event app and returns just only the results in which extracted events are found
@@ -168,7 +162,8 @@ function extractMaxTokens({
 export async function getTokenizedText(
   text: string
 ): Promise<{ tokens: CoreAPITokenType[] }> {
-  const tokenizeResponse = await CoreAPI.tokenize({
+  const coreAPI = new CoreAPI(logger);
+  const tokenizeResponse = await coreAPI.tokenize({
     text: text,
     providerId: "openai",
     modelId: "gpt-4",

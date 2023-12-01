@@ -1,3 +1,4 @@
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -6,7 +7,6 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(

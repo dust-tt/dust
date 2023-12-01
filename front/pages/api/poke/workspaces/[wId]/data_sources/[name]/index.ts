@@ -1,10 +1,11 @@
+import { ConnectorsAPI } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -67,8 +68,9 @@ async function handler(
 
       const dustAPIProjectId = dataSource.dustAPIProjectId;
 
+      const connectorsAPI = new ConnectorsAPI(logger);
       if (dataSource.connectorId) {
-        const connDeleteRes = await ConnectorsAPI.deleteConnector(
+        const connDeleteRes = await connectorsAPI.deleteConnector(
           dataSource.connectorId.toString(),
           true
         );
@@ -87,7 +89,8 @@ async function handler(
         }
       }
 
-      const coreDeleteRes = await CoreAPI.deleteDataSource({
+      const coreAPI = new CoreAPI(logger);
+      const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: dustAPIProjectId,
         dataSourceName: dataSource.name,
       });

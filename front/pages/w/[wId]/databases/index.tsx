@@ -12,6 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
+import { CoreAPIDatabase } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useContext, useRef } from "react";
@@ -23,7 +24,6 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { CoreAPIDatabase } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { useDatabases, useDatabaseTables } from "@app/lib/swr";
 

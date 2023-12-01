@@ -17,6 +17,11 @@ import {
   WorkspaceType,
 } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
+import {
+  connectorIsUsingNango,
+  ConnectorsAPI,
+  ConnectorType,
+} from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -29,13 +34,9 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 const {
   GA_TRACKING_ID = "",
@@ -124,7 +125,8 @@ export const getServerSideProps: GetServerSideProps<{
         );
       }
       try {
-        const statusRes = await ConnectorsAPI.getConnector(mds.connectorId);
+        const connectorsAPI = new ConnectorsAPI(logger);
+        const statusRes = await connectorsAPI.getConnector(mds.connectorId);
         if (statusRes.isErr()) {
           return {
             dataSourceName: mds.name,
