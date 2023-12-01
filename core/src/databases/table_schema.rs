@@ -171,14 +171,15 @@ impl TableSchema {
                     Value::Object(obj) => match Self::try_parse_date_object(obj) {
                         Some(_) => TableSchemaFieldType::DateTime,
                         None => Err(anyhow!(
-                            "Field {} is an unsupported object type on row {}",
+                            "Field {} is not a primitive or datetime object type on row {} \
+                            (non datetime object and arrays are not supported)",
                             k,
                             row_index,
                         ))?,
                     },
                     Value::Array(_) => Err(anyhow!(
                         "Field {} is not a primitive type on row {} \
-                         (non-datetime object and arrays are not supported)",
+                         (nondatetime object and arrays are not supported)",
                         k,
                         row_index,
                     ))?,
