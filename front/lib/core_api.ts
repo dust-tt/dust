@@ -85,7 +85,7 @@ export type CoreAPIDatabase = {
 
 export type CoreAPIDatabaseTableSchema = Record<
   string,
-  "int" | "float" | "text" | "bool"
+  "int" | "float" | "text" | "bool" | "datetime"
 >;
 
 export type CoreAPIDatabaseTable = {
