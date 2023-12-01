@@ -444,7 +444,11 @@ export async function syncNonThreaded(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentText: text,
+    documentContent: {
+      prefix: null,
+      content: text,
+      sections: [],
+    },
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
@@ -614,7 +618,11 @@ export async function syncThread(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentText: text,
+    documentContent: {
+      prefix: null,
+      content: text,
+      sections: [],
+    },
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
