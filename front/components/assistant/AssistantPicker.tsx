@@ -39,7 +39,11 @@ export function AssistantPicker({
         {pickerButton ? (
           <DropdownMenu.Button>{pickerButton}</DropdownMenu.Button>
         ) : (
-          <DropdownMenu.Button icon={RobotIcon} />
+          <DropdownMenu.Button
+            icon={RobotIcon}
+            tooltip="Pick an assistant"
+            tooltipPosition="above"
+          />
         )}
       </div>
       <DropdownMenu.Items origin="auto" width={240}>

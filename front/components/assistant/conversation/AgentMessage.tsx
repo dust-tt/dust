@@ -511,9 +511,9 @@ function ErrorMessage({
           </div>
         </DropdownMenu>
       </div>
-      <div className="self-center">
+      <div>
         <Button
-          variant="primary"
+          variant="secondary"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"

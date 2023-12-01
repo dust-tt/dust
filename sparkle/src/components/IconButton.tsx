@@ -57,12 +57,12 @@ const iconClasses = {
     },
   },
   tertiary: {
-    base: "s-text-element-600",
+    base: "s-text-element-700",
     hover: "hover:s-text-action-400",
     active: "active:s-text-action-600",
     disabled: "s-text-element-500",
     dark: {
-      base: "dark:s-text-element-600-dark",
+      base: "dark:s-text-element-700-dark",
       hover: "dark:hover:s-text-action-500-dark",
       active: "dark:active:s-text-action-600-dark",
       disabled: "dark:s-text-element-500-dark",
