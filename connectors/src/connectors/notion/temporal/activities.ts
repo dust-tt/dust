@@ -1614,6 +1614,13 @@ export async function renderAndUpsertPageFromCache({
     );
   }
 
+  // If the parent is still a block, it means we couldn't find a valid parent. In that case, we
+  // mark the parent as "unknown" so that the resource shows up in the orphaned resources list.
+  if (parentType === "block") {
+    parentId = "unknown";
+    parentType = "unknown";
+  }
+
   // checks if the parent is accessible. If not, attempts to refetch the page to hopefully get a
   // valid parent. If that fails, returns "unknown" parent (i.e, orphaned node).
   const resolvedParent = await resolveResourceParent({
