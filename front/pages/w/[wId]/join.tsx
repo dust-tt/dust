@@ -149,7 +149,7 @@ export default function Join({
             }}
           />
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 pb-20">
           <P>
             <Strong>Dust</Strong> is a platform giving you access to{" "}
             <Strong>the best AI assistants</Strong>.
