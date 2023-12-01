@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import {
   CodedError,
   ErrorCode,
@@ -405,8 +405,9 @@ export async function syncNonThreaded(
   }
   messages.reverse();
 
-  const text = await formatMessagesForUpsert(
+  const content = await formatMessagesForUpsert(
     channelId,
+    channelName,
     messages,
     connectorId,
     client
@@ -435,20 +436,18 @@ export async function syncNonThreaded(
     : undefined;
 
   const tags = getTagsForPage(documentId, channelId, channelName);
+
   await SlackMessages.upsert({
     connectorId: connectorId,
     channelId: channelId,
     messageTs: undefined,
     documentId: documentId,
   });
+
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentContent: {
-      prefix: null,
-      content: text,
-      sections: [],
-    },
+    documentContent: content,
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
@@ -582,8 +581,9 @@ export async function syncThread(
     return;
   }
 
-  const text = await formatMessagesForUpsert(
+  const content = await formatMessagesForUpsert(
     channelId,
+    channelName,
     allMessages,
     connectorId,
     slackClient
@@ -618,11 +618,7 @@ export async function syncThread(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentContent: {
-      prefix: null,
-      content: text,
-      sections: [],
-    },
+    documentContent: content,
     documentUrl: sourceUrl,
     timestampMs: createdAt,
     tags,
@@ -659,31 +655,53 @@ async function processMessageForMentions(
 
 export async function formatMessagesForUpsert(
   channelId: string,
+  channelName: string,
   messages: MessageElement[],
   connectorId: ModelId,
   slackClient: WebClient
-) {
-  return (
-    await Promise.all(
-      messages.map(async (message) => {
-        const text = await processMessageForMentions(
-          message.text as string,
-          connectorId,
-          slackClient
-        );
+): Promise<CoreAPIDataSourceDocumentSection> {
+  const data = await Promise.all(
+    messages.map(async (message) => {
+      const text = await processMessageForMentions(
+        message.text as string,
+        connectorId,
+        slackClient
+      );
 
-        const userName = await getUserName(
-          message.user as string,
-          connectorId,
-          slackClient
-        );
-        const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
-        const messageDateStr = formatDateForUpsert(messageDate);
+      const userName = await getUserName(
+        message.user as string,
+        connectorId,
+        slackClient
+      );
+      const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
+      const messageDateStr = formatDateForUpsert(messageDate);
 
-        return `>> @${userName} [${messageDateStr}]:\n${text}\n`;
-      })
-    )
-  ).join("\n");
+      return {
+        dateStr: messageDateStr,
+        userName,
+        text: text,
+        content: text + "\n",
+        sections: [],
+      };
+    })
+  );
+
+  const first = data[0];
+  if (!first) {
+    throw new Error("Cannot format empty list of messages");
+  }
+
+  return {
+    prefix: `Thread in #${channelName} [${first.dateStr}]: ${
+      first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+    }\n`,
+    content: null,
+    sections: data.map((d) => ({
+      prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
+      content: d.text + "\n",
+      sections: [],
+    })),
+  };
 }
 
 export async function fetchUsers(connectorId: ModelId) {
