@@ -130,7 +130,7 @@ async fn split_text(
 #[derive(Debug, Clone)]
 pub struct TokenizedSection {
     pub max_chunk_size: usize,
-    pub prefixes: Vec<TokenizedText>,
+    pub prefixes: Vec<(String, TokenizedText)>,
     pub tokens_count: usize,
     pub content: Option<TokenizedText>,
     pub sections: Vec<TokenizedSection>,
@@ -141,9 +141,15 @@ impl TokenizedSection {
     pub async fn from(
         embedder: &Box<dyn Embedder + Sync + Send>,
         max_chunk_size: usize,
-        mut prefixes: Vec<TokenizedText>,
+        mut prefixes: Vec<(String, TokenizedText)>,
         section: &Section,
+        path: Option<String>,
     ) -> Result<Self> {
+        let path = match path.as_ref() {
+            Some(p) => p,
+            None => "",
+        };
+
         let (prefix, mut content) = try_join!(
             TokenizedText::from(embedder, section.prefix.as_ref()),
             TokenizedText::from(embedder, section.content.as_ref())
@@ -152,12 +158,12 @@ impl TokenizedSection {
         // Add the new prefix to the list of prefixes to be passed down children.
         match prefix.as_ref() {
             Some(prefix) => {
-                prefixes.push(prefix.clone());
+                prefixes.push((path.to_string(), prefix.clone()));
             }
             None => (),
         };
 
-        let prefixes_tokens_count = prefixes.iter().map(|p| p.tokens.len()).sum::<usize>();
+        let prefixes_tokens_count = prefixes.iter().map(|(_, p)| p.tokens.len()).sum::<usize>();
         if prefixes_tokens_count >= max_chunk_size / 2 {
             Err(anyhow!(
                 "Could not tokenize the provided document,
@@ -201,12 +207,15 @@ impl TokenizedSection {
         }
 
         sections.extend(
-            futures::future::join_all(
-                section
-                    .sections
-                    .iter()
-                    .map(|s| TokenizedSection::from(embedder, max_chunk_size, prefixes.clone(), s)),
-            )
+            futures::future::join_all(section.sections.iter().enumerate().map(|(i, s)| {
+                TokenizedSection::from(
+                    embedder,
+                    max_chunk_size,
+                    prefixes.clone(),
+                    s,
+                    Some(format!("{}{}", path, i)),
+                )
+            }))
             .await
             .into_iter()
             .collect::<Result<Vec<_>>>()?,
@@ -250,9 +259,9 @@ impl TokenizedSection {
         let mut tokens: Vec<usize> = vec![];
 
         for s in self.dfs() {
-            s.prefixes.iter().for_each(|p| {
-                if !seen_prefixes.contains(&p.text) {
-                    seen_prefixes.insert(p.text.clone());
+            s.prefixes.iter().for_each(|(h, p)| {
+                if !seen_prefixes.contains(h) {
+                    seen_prefixes.insert(h.clone());
                     tokens.extend(p.tokens.clone());
                     text += &p.text;
                 }
@@ -298,8 +307,11 @@ impl TokenizedSection {
                 let prefixes = self.prefixes.clone();
                 assert!(self.content.is_none());
 
-                let prefixes_tokens_count =
-                    self.prefixes.iter().map(|p| p.tokens.len()).sum::<usize>();
+                let prefixes_tokens_count = self
+                    .prefixes
+                    .iter()
+                    .map(|(_, p)| p.tokens.len())
+                    .sum::<usize>();
 
                 let mut selection: Vec<TokenizedSection> = vec![];
                 let mut selection_tokens_count: usize = prefixes_tokens_count;
@@ -432,7 +444,7 @@ impl Splitter for BaseV0Splitter {
         embedder.initialize(credentials).await?;
 
         let tokenized_section =
-            TokenizedSection::from(&embedder, max_chunk_size, vec![], &section).await?;
+            TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
         // We filter out whitespace only or empty strings which is possible to obtain if the section
         // passed have empty or whitespace only content.
@@ -848,6 +860,53 @@ mod tests {
                 "qlkdnaljch\n".to_string(),
             ]
             .join("|")
+        )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_v0_bug_20231201() {
+        let section = Section {
+            prefix: Some(
+                "Thread in #brand [20230908 10:16]: Should we make a poster?...\n".to_string(),
+            ),
+            content: None,
+            sections: vec![
+                Section {
+                    prefix: Some(">> @ed [20230908 10:16]:\n".to_string()),
+                    content: Some("Should we make a poster?\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some(">> @spolu [20230908 10:16]:\n".to_string()),
+                    content: Some(":100:\n".to_string()),
+                    sections: vec![],
+                },
+                Section {
+                    prefix: Some(">> @spolu [20230908 10:16]:\n".to_string()),
+                    content: Some("\"Factory\" :p\n".to_string()),
+                    sections: vec![],
+                },
+            ],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        let splitted = splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 256, section)
+            .await
+            .unwrap();
+
+        // Before the bug the second @spolu prefix would be skipped because we were doing string
+        // matching vs prefix position matching.
+
+        assert_eq!(
+            splitted.join("|"),
+            "Thread in #brand [20230908 10:16]: Should we make a poster?...\n\
+             >> @ed [20230908 10:16]:\nShould we make a poster?\n\
+             >> @spolu [20230908 10:16]:\n:100:\n\
+             >> @spolu [20230908 10:16]:\n\"Factory\" :p\n"
         )
     }
 }
