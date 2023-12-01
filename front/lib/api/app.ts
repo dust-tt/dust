@@ -1,8 +1,8 @@
+import { AppType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models";
-import { AppType } from "@app/types/app";
 
 export async function getApp(
   auth: Authenticator,

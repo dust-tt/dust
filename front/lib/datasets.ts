@@ -1,4 +1,4 @@
-import { DatasetEntry, DatasetSchema } from "@app/types/dataset";
+import { DatasetEntry, DatasetSchema } from "@dust-tt/types";
 
 function areSetsEqual(a: Set<any>, b: Set<any>): boolean {
   if (a.size !== b.size) {

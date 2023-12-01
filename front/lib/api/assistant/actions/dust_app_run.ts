@@ -13,6 +13,8 @@ import {
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
+import { AppType, SpecificationType } from "@dust-tt/types";
+import { DatasetSchema } from "@dust-tt/types";
 
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -20,8 +22,6 @@ import { DustAPI } from "@app/lib/dust_api";
 import { AgentDustAppRunAction } from "@app/lib/models";
 import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { AppType, SpecificationType } from "@app/types/app";
-import { DatasetSchema } from "@app/types/dataset";
 
 import { getApp } from "../../app";
 import { getDatasetSchema } from "../../datasets";

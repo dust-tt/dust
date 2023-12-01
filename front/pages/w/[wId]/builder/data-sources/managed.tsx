@@ -16,6 +16,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -35,7 +36,6 @@ import {
 } from "@app/lib/connectors_api";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 const {
   GA_TRACKING_ID = "",

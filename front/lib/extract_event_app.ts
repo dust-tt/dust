@@ -1,3 +1,5 @@
+import { EventSchemaType } from "@dust-tt/types";
+
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -8,7 +10,6 @@ import { CoreAPI, CoreAPITokenType } from "@app/lib/core_api";
 import { findMarkersIndexes } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";
-import { EventSchemaType } from "@app/types/extract";
 
 export type ExtractEventAppResponseResults = {
   value: {

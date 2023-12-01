@@ -7,6 +7,8 @@ import {
   DocumentTextIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
+import { AppType, SpecificationType } from "@dust-tt/types";
+import { RunConfig, RunType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -14,8 +16,6 @@ import { Fragment, useState } from "react";
 
 import { useKeys } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { AppType, SpecificationType } from "@app/types/app";
-import { RunConfig, RunType } from "@app/types/run";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

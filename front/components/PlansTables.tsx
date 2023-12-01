@@ -1,10 +1,10 @@
 import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
+import { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
-import { PlanType } from "@app/types/plan";
 
 interface PricePlanProps {
   size: "sm" | "xs";

@@ -1,3 +1,4 @@
+import { MembershipInvitationType } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -7,7 +8,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { MembershipInvitationType } from "@app/types/membership_invitation";
 
 const { SENDGRID_API_KEY = "", URL, DUST_INVITE_TOKEN_SECRET } = process.env;
 

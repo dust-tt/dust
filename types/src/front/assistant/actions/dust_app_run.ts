@@ -25,10 +25,6 @@ export function isDustAppRunActionType(
   return arg.type === "dust_app_run_action";
 }
 
-export type DatasetEntry = {
-  [key: string]: any;
-};
-
 export type DustAppParameters = {
   [key: string]: string | number | boolean;
 };

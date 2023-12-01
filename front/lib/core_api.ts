@@ -5,21 +5,21 @@ import {
   CoreAPIDocument,
   CoreAPILightDocument,
 } from "@dust-tt/types";
-import tracer from "dd-trace";
-import { createParser } from "eventsource-parser";
-
-import { dustManagedCredentials } from "@app/lib/api/credentials";
-import { Err, Ok, Result } from "@app/lib/result";
-import logger from "@app/logger/logger";
-import { Project } from "@app/types/project";
-import { CredentialsType } from "@app/types/provider";
+import { Project } from "@dust-tt/types";
+import { CredentialsType } from "@dust-tt/types";
 import {
   BlockType,
   RunConfig,
   RunRunType,
   RunStatus,
   TraceType,
-} from "@app/types/run";
+} from "@dust-tt/types";
+import tracer from "dd-trace";
+import { createParser } from "eventsource-parser";
+
+import { dustManagedCredentials } from "@app/lib/api/credentials";
+import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 

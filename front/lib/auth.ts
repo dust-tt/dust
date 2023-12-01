@@ -1,4 +1,5 @@
 import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -21,7 +22,6 @@ import { Err, Ok, Result } from "@app/lib/result";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 import { DustAPICredentials } from "./dust_api";
 

@@ -3,6 +3,7 @@ import {
   PostDataSourceDocumentRequestBodySchema,
   sectionFullText,
 } from "@dust-tt/types";
+import { DocumentType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -14,7 +15,6 @@ import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { validateUrl } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
 
 export type GetDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;

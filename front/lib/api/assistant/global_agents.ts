@@ -13,6 +13,7 @@ import {
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
+import { PlanType } from "@dust-tt/types";
 
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -20,7 +21,6 @@ import { DustAPI } from "@app/lib/dust_api";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
-import { PlanType } from "@app/types/plan";
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;

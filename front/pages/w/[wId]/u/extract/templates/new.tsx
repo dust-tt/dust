@@ -1,11 +1,11 @@
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{

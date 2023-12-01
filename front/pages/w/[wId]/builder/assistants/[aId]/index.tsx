@@ -2,6 +2,8 @@ import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder, {
@@ -12,8 +14,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { AppType } from "@app/types/app";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

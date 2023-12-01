@@ -1,6 +1,8 @@
 import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
 import { KeyType } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -26,8 +28,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { AppType } from "@app/types/app";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -2,17 +2,17 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { ChevronDownIcon } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
+import {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@dust-tt/types";
+import { BlockType, RunType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@app/types/app";
-import { BlockType, RunType } from "@app/types/run";
 
 import Block from "./Block";
 

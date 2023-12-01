@@ -1,6 +1,6 @@
-import { ModelId } from "@dust-tt/types";
+import { ModelId } from "../shared/model_id";
 
-import { BlockType } from "@app/types/run";
+import { BlockType } from "../front/run";
 export type AppVisibility = "public" | "private" | "unlisted" | "deleted";
 
 export type BlockRunConfig = {

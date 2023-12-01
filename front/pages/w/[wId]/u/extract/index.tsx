@@ -5,6 +5,7 @@ import {
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -14,7 +15,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useEventSchemas } from "@app/lib/swr";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{

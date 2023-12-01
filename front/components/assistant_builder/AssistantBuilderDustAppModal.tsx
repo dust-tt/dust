@@ -5,10 +5,10 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
+import { AppType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 
 import { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
-import { AppType } from "@app/types/app";
 
 export default function AssistantBuilderDustAppModal({
   isOpen,

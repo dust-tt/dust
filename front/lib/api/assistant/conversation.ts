@@ -17,6 +17,7 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@dust-tt/types";
+import { PlanType } from "@dust-tt/types";
 import crypto from "crypto";
 import { Op, Transaction } from "sequelize";
 
@@ -57,7 +58,6 @@ import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/
 import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { PlanType } from "@app/types/plan";
 
 import { renderRetrievalActionByModelId } from "./actions/retrieval";
 /**

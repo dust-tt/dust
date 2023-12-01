@@ -1,3 +1,4 @@
+import { AppType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
@@ -5,7 +6,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { App } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { AppType } from "@app/types/app";
 
 export type GetOrPostAppResponseBody = {
   app: AppType;

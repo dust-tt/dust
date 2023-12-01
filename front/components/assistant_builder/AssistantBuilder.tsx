@@ -26,6 +26,8 @@ import {
   SupportedModel,
 } from "@dust-tt/types";
 import { TimeframeUnit } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { ReactNode, useCallback, useEffect, useState } from "react";
@@ -57,8 +59,6 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import { AppType } from "@app/types/app";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
 import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";

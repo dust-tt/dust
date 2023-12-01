@@ -3,7 +3,7 @@ import {
   eventSchemaPropertyAllTypes,
   EventSchemaPropertyType,
   ExtractedEventPropertyType,
-} from "@app/types/extract";
+} from "@dust-tt/types";
 
 /**
  * We start with: 

@@ -1,3 +1,4 @@
+import { RunType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
@@ -5,7 +6,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { RunType } from "@app/types/run";
 
 export type GetRunStatusResponseBody = {
   run: RunType | null;

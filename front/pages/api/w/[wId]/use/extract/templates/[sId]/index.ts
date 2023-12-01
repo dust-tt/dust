@@ -1,10 +1,10 @@
+import { EventSchemaType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getEventSchema, updateEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { EventSchemaType } from "@app/types/extract";
 
 export type GetEventSchemaResponseBody = {
   schema: EventSchemaType;

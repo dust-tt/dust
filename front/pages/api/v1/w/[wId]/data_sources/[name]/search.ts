@@ -1,3 +1,5 @@
+import { DocumentType } from "@dust-tt/types";
+import { CredentialsType } from "@dust-tt/types";
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -12,8 +14,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
 import { apiError } from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
-import { CredentialsType } from "@app/types/provider";
 
 export type DatasourceSearchQuery = {
   query: string;

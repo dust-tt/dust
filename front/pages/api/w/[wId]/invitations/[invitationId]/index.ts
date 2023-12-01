@@ -1,9 +1,9 @@
+import { MembershipInvitationType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { MembershipInvitationType } from "@app/types/membership_invitation";
 
 export type GetMemberInvitationsResponseBody = {
   invitations: MembershipInvitationType[];

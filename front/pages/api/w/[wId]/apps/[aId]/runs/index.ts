@@ -1,3 +1,4 @@
+import { RunType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
@@ -9,7 +10,6 @@ import { App, Provider, Run } from "@app/lib/models";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { RunType } from "@app/types/run";
 
 export type GetRunsResponseBody = {
   runs: RunType[];

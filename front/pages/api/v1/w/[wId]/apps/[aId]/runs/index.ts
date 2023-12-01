@@ -1,3 +1,5 @@
+import { CredentialsType } from "@dust-tt/types";
+import { RunType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
@@ -11,8 +13,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Provider, Run } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { CredentialsType } from "@app/types/provider";
-import { RunType } from "@app/types/run";
 
 export type PostRunResponseBody = {
   run: RunType;

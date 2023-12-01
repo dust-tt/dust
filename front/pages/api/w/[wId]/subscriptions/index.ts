@@ -1,3 +1,4 @@
+import { PlanType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -8,7 +9,6 @@ import {
 } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PlanType } from "@app/types/plan";
 
 export type PostSubscriptionResponseBody = {
   plan: PlanType;

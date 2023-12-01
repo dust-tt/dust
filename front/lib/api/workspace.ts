@@ -1,4 +1,5 @@
 import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import { MembershipInvitationType } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -7,7 +8,6 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { MembershipInvitationType } from "@app/types/membership_invitation";
 
 export async function getWorkspaceInfos(
   wId: string
