@@ -1,6 +1,6 @@
 import {
   AgentConfigurationType,
-  AgentVisibilityOverrideType,
+  AgentRelationOverrideType,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -9,42 +9,39 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
-  deleteVisibilityOverrideForUser,
-  getVisibilityOverridesForUser,
-  setVisibilityOverrideForUser,
-} from "@app/lib/api/assistant/visibility_override";
+  deleteAgentRelationOverrideForUser,
+  getAgentRelationOverridesForUser,
+  setAgentRelationOverrideForUser,
+} from "@app/lib/api/assistant/relation_override";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Membership } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-export type PostVisibilityOverrideResponseBody = {
+
+export type PostAgentRelationOverrideResponseBody = {
   created: boolean | null;
-  visibility: AgentVisibilityOverrideType;
+  agentRelationOverride: AgentRelationOverrideType;
 };
 
-export type GetVisibilityOverrideResponseBody = {
-  visibilityOverrides: {
+export type GetAgentRelationOverrideResponseBody = {
+  agentRelationOverrides: {
     assistantId: string;
-    visibilityOverride: AgentVisibilityOverrideType;
+    agentRelationOverride: AgentRelationOverrideType;
   }[];
 };
 
-export const PostVisibilityOverrideRequestBodySchema = t.type({
+export const PostAgentRelationOverrideRequestBodySchema = t.type({
   assistantId: t.string,
-  visibility: t.union([
-    t.literal("workspace-unlisted"),
-    t.literal("published-listed"),
-  ]),
+  agentRelation: t.union([t.literal("in-list"), t.literal("not-in-list")]),
 });
 
-export const DeleteVisibilityOverrideBodySchema = t.type({
+export const DeleteAgentRelationOverrideBodySchema = t.type({
   assistantId: t.string,
 });
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | PostVisibilityOverrideResponseBody
-    | GetVisibilityOverrideResponseBody
+    | PostAgentRelationOverrideResponseBody
+    | GetAgentRelationOverrideResponseBody
     | { success: boolean }
   >
 ): Promise<void> {
@@ -72,19 +69,6 @@ async function handler(
       api_error: {
         type: "workspace_user_not_found",
         message: "The user requested was not found.",
-      },
-    });
-  }
-  const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-  const membership = await Membership.findOne({
-    where: { userId, workspaceId },
-  });
-  if (!membership) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "membership_not_found",
-        message: "The membership requested was not found.",
       },
     });
   }
@@ -116,21 +100,25 @@ async function handler(
           });
         }
       }
-      const visibilityOverrides = await getVisibilityOverridesForUser(auth);
-      if (visibilityOverrides.isErr()) {
+      const agentRelationOverrides = await getAgentRelationOverridesForUser(
+        auth
+      );
+      if (agentRelationOverrides.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: visibilityOverrides.error.message,
+            message: agentRelationOverrides.error.message,
           },
         });
       }
 
-      res.status(200).json({ visibilityOverrides: visibilityOverrides.value });
+      res
+        .status(200)
+        .json({ agentRelationOverrides: agentRelationOverrides.value });
       return;
     case "POST":
-      const bodyValidation = PostVisibilityOverrideRequestBodySchema.decode(
+      const bodyValidation = PostAgentRelationOverrideRequestBodySchema.decode(
         req.body
       );
       if (isLeft(bodyValidation)) {
@@ -145,7 +133,7 @@ async function handler(
         });
       }
 
-      const { assistantId, visibility } = bodyValidation.right;
+      const { assistantId, agentRelation } = bodyValidation.right;
       const agentConfiguration = await getAgentConfiguration(auth, assistantId);
       if (!agentConfiguration) {
         return apiError(req, res, {
@@ -156,10 +144,10 @@ async function handler(
           },
         });
       }
-      const result = await setVisibilityOverrideForUser({
+      const result = await setAgentRelationOverrideForUser({
         auth,
         agentId: assistantId,
-        visibility,
+        relation: agentRelation,
       });
       if (result.isErr()) {
         return apiError(req, res, {
@@ -173,7 +161,7 @@ async function handler(
       res.status(200).json(result.value);
       return;
     case "DELETE":
-      const bodyValidationDelete = DeleteVisibilityOverrideBodySchema.decode(
+      const bodyValidationDelete = DeleteAgentRelationOverrideBodySchema.decode(
         req.body
       );
       if (isLeft(bodyValidationDelete)) {
@@ -203,20 +191,8 @@ async function handler(
           },
         });
       }
-      const delMembership = await Membership.findOne({
-        where: { userId: auth.user()?.id, workspaceId: auth.workspace()?.id },
-      });
-      if (!delMembership) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "membership_not_found",
-            message: "The membership requested was not found.",
-          },
-        });
-      }
 
-      const deleteResult = await deleteVisibilityOverrideForUser({
+      const deleteResult = await deleteAgentRelationOverrideForUser({
         auth,
         agentId: assistantIdToDelete,
       });

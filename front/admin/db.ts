@@ -37,8 +37,8 @@ import {
   XP1User,
 } from "@app/lib/models";
 import {
+  AgentUserRelation,
   GlobalAgentSettings,
-  MemberAgentVisibility,
 } from "@app/lib/models/assistant/agent";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { PlanInvitation } from "@app/lib/models/plan";
@@ -72,7 +72,7 @@ async function main() {
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDataSourceConfiguration.sync({ alter: true });
   await AgentConfiguration.sync({ alter: true });
-  await MemberAgentVisibility.sync({ alter: true });
+  await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
 
   await AgentRetrievalAction.sync({ alter: true });
