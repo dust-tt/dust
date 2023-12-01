@@ -20,6 +20,13 @@ const CreateDatabaseFromCsvSchema = t.type({
   csv: t.string,
 });
 
+type RowValue =
+  | number
+  | boolean
+  | string
+  | { type: "datetime"; epoch: number }
+  | null;
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -248,10 +255,7 @@ async function rowsFromCsv(
   }
 
   // Parse values and infer types for each column.
-  const parsedValuesByCol: Record<
-    string,
-    (number | boolean | string | null)[]
-  > = {};
+  const parsedValuesByCol: Record<string, RowValue[]> = {};
   for (const [col, values] of Object.entries(valuesByCol)) {
     if (values.every((v) => v === "")) {
       // All values are empty, we skip this column.
@@ -261,6 +265,17 @@ async function rowsFromCsv(
     // We keep the parsed values from the first parser that succeeds for all non-null values in the column.
     parsedValuesByCol[col] = (() => {
       for (const parser of [
+        // date/datetime
+        (v: string) => {
+          const date = new Date(v);
+          const epoch = date.getTime();
+          return isNaN(epoch)
+            ? undefined
+            : {
+                type: "datetime" as const,
+                epoch,
+              };
+        },
         // number
         (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
         // bool
@@ -324,7 +339,7 @@ async function rowsFromCsv(
 
       acc[h] = value;
       return acc;
-    }, {} as Record<string, number | boolean | string | null>);
+    }, {} as Record<string, RowValue>);
 
     rows.push({ row_id: i.toString(), value: record });
   }
