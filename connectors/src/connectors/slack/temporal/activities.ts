@@ -691,19 +691,10 @@ export async function formatMessagesForUpsert(
     throw new Error("Cannot format empty list of messages");
   }
 
-  const truncate = (text: string) => {
-    const t = text.replace(/\s+/g, " ");
-    if (t.length > 128) {
-      t.substring(0, 128) + "...";
-    } else {
-      t;
-    }
-  };
-
   return {
-    prefix: `Thread in #${channelName} [${first.dateStr}]: ${truncate(
-      first.text
-    )}\n`,
+    prefix: `Thread in #${channelName} [${first.dateStr}]: ${
+      first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+    }\n`,
     content: null,
     sections: data.map((d) => ({
       prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
