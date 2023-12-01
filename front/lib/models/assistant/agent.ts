@@ -299,6 +299,8 @@ export class MemberAgentVisibility extends Model<
 
   declare membershipId: ForeignKey<Membership["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
+  declare agentConfiguration: NonAttribute<AgentConfiguration>;
 }
 
 MemberAgentVisibility.init(
