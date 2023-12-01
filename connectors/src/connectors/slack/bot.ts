@@ -5,7 +5,6 @@ import {
   ConversationType,
   ModelId,
   RetrievalDocumentType,
-  sectionFullText,
   UserMessageType,
 } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
@@ -689,27 +688,12 @@ async function makeContentFragment(
     return new Ok(null);
   }
 
-  const channel = await slackClient.conversations.info({
-    channel: channelId,
-  });
-
-  if (channel.error) {
-    return new Err(
-      new Error(`Could not retrieve channel name: ${channel.error}`)
-    );
-  }
-  if (!channel.channel || !channel.channel.name) {
-    return new Err(new Error("Could not retrieve channel name"));
-  }
-
-  const content = await formatMessagesForUpsert(
+  const text = await formatMessagesForUpsert(
     channelId,
-    channel.channel.name,
     allMessages,
     connector.id,
     slackClient
   );
-
   let url: string | null = null;
   if (allMessages[0]?.ts) {
     const permalinkRes = await slackClient.chat.getPermalink({
@@ -721,9 +705,17 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
+  const channel = await slackClient.conversations.info({
+    channel: channelId,
+  });
+
+  if (channel.error) {
+    return new Err(new Error(channel.error));
+  }
+
   return new Ok({
-    title: `Thread content from #${channel.channel.name}`,
-    content: sectionFullText(content),
+    title: `Thread content from #${channel.channel?.name}`,
+    content: text,
     url: url,
     contentType: "slack_thread_content",
     context: null,
