@@ -1,10 +1,10 @@
 import { Button } from "@dust-tt/sparkle";
+import { SpecificationType } from "@dust-tt/types";
+import { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
 import { classNames } from "@app/lib/utils";
-import { SpecificationType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
 
 export default function NewBlock({
   spec,

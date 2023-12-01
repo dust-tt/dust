@@ -1,9 +1,9 @@
 import { DataSourceType } from "@dust-tt/types";
+import { RunType } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 
 import { Err, Ok } from "@app/lib/result";
 import logger from "@app/logger/logger";
-import { RunType } from "@app/types/run";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
 

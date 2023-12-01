@@ -10,6 +10,8 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -25,8 +27,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { APIError } from "@app/lib/error";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
-import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{

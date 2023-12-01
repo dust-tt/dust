@@ -1,3 +1,4 @@
+import { DatasetType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,7 +12,6 @@ import { checkDatasetData } from "@app/lib/datasets";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DatasetType } from "@app/types/dataset";
 
 export type GetDatasetsResponseBody = {
   datasets: DatasetType[];

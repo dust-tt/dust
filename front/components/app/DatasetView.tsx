@@ -8,6 +8,7 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import { DatasetEntry, DatasetSchema, DatasetType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -16,7 +17,6 @@ import { checkDatasetData } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
-import { DatasetEntry, DatasetSchema, DatasetType } from "@app/types/dataset";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

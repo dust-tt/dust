@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import { ModelId } from "../shared/model_id";
 
 export type MembershipInvitationType = {
   id: ModelId;

@@ -1,5 +1,8 @@
 import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AppType, SpecificationType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
+import { RunType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -14,9 +17,6 @@ import {
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { AppType, SpecificationType } from "@app/types/app";
-import { SubscriptionType } from "@app/types/plan";
-import { RunType } from "@app/types/run";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

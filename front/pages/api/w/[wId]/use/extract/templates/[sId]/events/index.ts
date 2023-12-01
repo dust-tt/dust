@@ -1,3 +1,4 @@
+import { ExtractedEventType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getExtractedEvents } from "@app/lib/api/extract";
@@ -5,7 +6,6 @@ import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { ExtractedEventType } from "@app/types/extract";
 
 export type GetExtractedEventsResponseBody = {
   events: ExtractedEventType[];

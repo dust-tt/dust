@@ -1,3 +1,4 @@
+import { DatasetSchema } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -9,7 +10,6 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
-import { DatasetSchema } from "@app/types/dataset";
 
 export class App extends Model<
   InferAttributes<App>,

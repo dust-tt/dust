@@ -1,4 +1,12 @@
 import {
+  FREE_BILLING_TYPES,
+  FreeBillingType,
+  PAID_BILLING_TYPES,
+  PaidBillingType,
+  SUBSCRIPTION_STATUSES,
+  SubscriptionStatusType,
+} from "@dust-tt/types";
+import {
   CreationOptional,
   DataTypes,
   ForeignKey,
@@ -11,14 +19,6 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  FREE_BILLING_TYPES,
-  FreeBillingType,
-  PAID_BILLING_TYPES,
-  PaidBillingType,
-  SUBSCRIPTION_STATUSES,
-  SubscriptionStatusType,
-} from "@app/types/plan";
 
 export class Plan extends Model<
   InferAttributes<Plan>,

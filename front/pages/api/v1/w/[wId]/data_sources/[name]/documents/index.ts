@@ -1,3 +1,4 @@
+import { DocumentType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -5,7 +6,6 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
 
 export type GetDocumentsResponseBody = {
   documents: Array<DocumentType>;

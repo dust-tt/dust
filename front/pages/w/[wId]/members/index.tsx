@@ -15,6 +15,8 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import { MembershipInvitationType } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -28,8 +30,6 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
-import { MembershipInvitationType } from "@app/types/membership_invitation";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 

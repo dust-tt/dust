@@ -1,4 +1,5 @@
 import { WorkspaceType } from "@dust-tt/types";
+import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { Authenticator } from "@app/lib/auth";
@@ -24,11 +25,6 @@ import {
 import { redisClient } from "@app/lib/redis";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import {
-  PlanInvitationType,
-  PlanType,
-  SubscriptionType,
-} from "@app/types/plan";
 
 /**
  * Internal function to subscribe to the default FREE_TEST_PLAN.

@@ -1,5 +1,5 @@
-import { SpecificationType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
+import { SpecificationType } from "@dust-tt/types";
+import { BlockType } from "@dust-tt/types";
 
 export function recomputeIndents(spec: SpecificationType): SpecificationType {
   let indent = 0;

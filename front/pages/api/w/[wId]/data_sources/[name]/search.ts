@@ -1,3 +1,4 @@
+import { DocumentType } from "@dust-tt/types";
 import { JSONSchemaType } from "ajv";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -7,7 +8,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { parse_payload } from "@app/lib/http_utils";
 import { apiError } from "@app/logger/withlogging";
-import { DocumentType } from "@app/types/document";
 
 export type DatasourceSearchQuery = {
   query: string;

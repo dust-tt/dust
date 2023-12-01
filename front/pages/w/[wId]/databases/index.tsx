@@ -11,6 +11,7 @@ import {
   SectionHeader,
 } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useContext, useRef } from "react";
@@ -25,7 +26,6 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { CoreAPIDatabase } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { useDatabases, useDatabaseTables } from "@app/lib/swr";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

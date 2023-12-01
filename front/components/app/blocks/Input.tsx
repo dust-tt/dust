@@ -1,13 +1,13 @@
 import { WorkspaceType } from "@dust-tt/types";
-
-import DatasetPicker from "@app/components/app/DatasetPicker";
-import { shallowBlockClone } from "@app/lib/utils";
 import {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types/app";
-import { BlockType, RunType } from "@app/types/run";
+} from "@dust-tt/types";
+import { BlockType, RunType } from "@dust-tt/types";
+
+import DatasetPicker from "@app/components/app/DatasetPicker";
+import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
 

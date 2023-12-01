@@ -1,3 +1,4 @@
+import { EventSchemaPropertyType, EventSchemaStatus } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -10,7 +11,6 @@ import {
 import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import { EventSchemaPropertyType, EventSchemaStatus } from "@app/types/extract";
 
 export class EventSchema extends Model<
   InferAttributes<EventSchema>,

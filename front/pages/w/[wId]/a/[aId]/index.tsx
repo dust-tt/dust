@@ -7,6 +7,14 @@ import {
   Tab,
 } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  AppType,
+  BlockRunConfig,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
+import { BlockType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -33,14 +41,6 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr";
-import {
-  AppType,
-  BlockRunConfig,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@app/types/app";
-import { SubscriptionType } from "@app/types/plan";
-import { BlockType } from "@app/types/run";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 

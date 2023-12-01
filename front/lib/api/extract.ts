@@ -1,4 +1,5 @@
 import { ModelId } from "@dust-tt/types";
+import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
@@ -6,7 +7,6 @@ import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { sortedEventProperties } from "@app/lib/extract_events_properties";
 import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
-import { EventSchemaType, ExtractedEventType } from "@app/types/extract";
 
 function _getEventSchemaType(schema: EventSchema): EventSchemaType {
   return {

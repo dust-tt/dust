@@ -1,4 +1,4 @@
-import { CredentialsType, ProviderType } from "@app/types/provider";
+import { CredentialsType, ProviderType } from "@dust-tt/types";
 
 const {
   DUST_MANAGED_OPENAI_API_KEY = "",

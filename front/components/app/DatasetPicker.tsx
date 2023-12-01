@@ -1,11 +1,11 @@
 import { ChevronDownIcon } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 
 import { useDatasets } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { AppType } from "@app/types/app";
 
 export default function DatasetPicker({
   owner,

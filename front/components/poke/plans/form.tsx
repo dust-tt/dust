@@ -8,10 +8,10 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
+import { FreeBillingType, PaidBillingType, PlanType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { assertNever, classNames } from "@app/lib/utils";
-import { FreeBillingType, PaidBillingType, PlanType } from "@app/types/plan";
 
 export type EditingPlanType = {
   name: string;

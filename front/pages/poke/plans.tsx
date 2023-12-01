@@ -7,6 +7,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { PlanType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
@@ -22,7 +23,6 @@ import {
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { usePokePlans } from "@app/lib/swr";
-import { PlanType } from "@app/types/plan";
 
 export const getServerSideProps: GetServerSideProps<object> = async (
   _context

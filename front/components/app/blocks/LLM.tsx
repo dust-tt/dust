@@ -1,6 +1,12 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { WorkspaceType } from "@dust-tt/types";
+import {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@dust-tt/types";
+import { BlockType, RunType } from "@dust-tt/types";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import { useState } from "react";
@@ -8,12 +14,6 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@app/types/app";
-import { BlockType, RunType } from "@app/types/run";
 
 import Block from "./Block";
 

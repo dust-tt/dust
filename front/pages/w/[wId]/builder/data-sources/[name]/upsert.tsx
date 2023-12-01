@@ -21,6 +21,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -30,7 +31,6 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

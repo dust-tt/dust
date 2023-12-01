@@ -20,6 +20,7 @@ import {
   ConversationType,
   MentionType,
 } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -39,7 +40,6 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

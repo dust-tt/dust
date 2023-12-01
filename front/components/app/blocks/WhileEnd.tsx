@@ -1,13 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { WorkspaceType } from "@dust-tt/types";
+import { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
+import { BlockType } from "@dust-tt/types";
+import { RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import { SpecificationBlockType, SpecificationType } from "@app/types/app";
-import { AppType } from "@app/types/app";
-import { BlockType } from "@app/types/run";
-import { RunType } from "@app/types/run";
 
 import Block from "./Block";
 

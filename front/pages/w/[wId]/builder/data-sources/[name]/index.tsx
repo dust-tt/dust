@@ -20,6 +20,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { PlanType, SubscriptionType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -45,7 +46,6 @@ import { APIError } from "@app/lib/error";
 import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import { PlanType, SubscriptionType } from "@app/types/plan";
 
 const {
   GA_TRACKING_ID = "",

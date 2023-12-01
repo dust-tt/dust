@@ -1,3 +1,4 @@
+import { PlanType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,7 +10,6 @@ import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Plan } from "@app/lib/models";
 import { getProduct } from "@app/lib/plans/stripe";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { PlanType } from "@app/types/plan";
 
 export const PlanTypeSchema = t.type({
   code: t.string,

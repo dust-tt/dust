@@ -1,5 +1,7 @@
 import { Tab } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AppType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -13,8 +15,6 @@ import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CoreAPI } from "@app/lib/core_api";
 import { dumpSpecification } from "@app/lib/specification";
-import { AppType } from "@app/types/app";
-import { SubscriptionType } from "@app/types/plan";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
