@@ -219,6 +219,7 @@ export function ConversationMessage({
                 reactions={reactions}
                 handleEmoji={handleEmoji}
                 emojiData={emojiData}
+                disabled={isSubmittingEmoji}
               />
               {slicedReactions.map((reaction) => {
                 const hasReacted = reaction.users.some(
