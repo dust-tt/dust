@@ -265,6 +265,8 @@ async function rowsFromCsv(
     // We keep the parsed values from the first parser that succeeds for all non-null values in the column.
     parsedValuesByCol[col] = (() => {
       for (const parser of [
+        // number
+        (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
         // date/datetime
         (v: string) => {
           const date = new Date(v);
@@ -276,8 +278,6 @@ async function rowsFromCsv(
                 epoch,
               };
         },
-        // number
-        (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
         // bool
         (v: string) => {
           const lowerV = v.toLowerCase();
