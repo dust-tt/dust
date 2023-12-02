@@ -3,6 +3,8 @@ import seedrandom = require("seedrandom");
 
 const { DUST_API_KEY } = process.env;
 
+const SPLIT_SIZE = 256;
+
 const TYPES = [
   "algebra",
   "counting_and_probability",
@@ -19,8 +21,9 @@ const MATH_DIR = "/home/spolu/stash/evals/MATH";
 
 type Problem = {
   problem: string;
-  level: string;
+  level: string | number;
   type: string;
+  name: string;
   solution: string;
   reasoning?: string[];
   answer?: string;
@@ -32,6 +35,7 @@ async function processSplit(split: "train" | "test") {
   const splitDir = MATH_DIR + "/" + split;
   let files: {
     type: string;
+    number: string;
     path: string;
   }[] = [];
   for (const t of TYPES) {
@@ -40,13 +44,14 @@ async function processSplit(split: "train" | "test") {
     for (const file of ff) {
       files.push({
         type: t,
+        number: file.slice(0, file.length - 5),
         path: categoryDir + "/" + file,
       });
     }
   }
 
   files = files.sort(() => rng() - 0.5);
-  files = files.slice(0, 264);
+  files = files.slice(0, SPLIT_SIZE);
 
   let problems: Problem[] = [];
 
@@ -55,6 +60,9 @@ async function processSplit(split: "train" | "test") {
     const data = await f.readFile({ encoding: "utf-8" });
     await f.close();
     const problem: Problem = JSON.parse(data);
+    problem.level = parseInt((problem.level as string).slice(6));
+    problem.name = file.type + "-" + "l" + problem.level + "-" + file.number;
+    problem.type = file.type;
     problems.push(problem);
   }
 
@@ -86,7 +94,7 @@ async function processSplit(split: "train" | "test") {
                 config: {
                   MODEL: {
                     provider_id: "openai",
-                    model_id: "gpt-4",
+                    model_id: "gpt-4-1106-preview",
                     function_call: "submit_reasoning_and_sanitized_answer",
                     use_cache: true,
                   },
@@ -111,9 +119,6 @@ async function processSplit(split: "train" | "test") {
         })();
       })
     );
-    if (i > 2) {
-      break;
-    }
   }
 
   return out;
@@ -121,9 +126,18 @@ async function processSplit(split: "train" | "test") {
 
 const main = async () => {
   const train = await processSplit("train");
-  // const test = await processSplit("train");
-  console.log(train);
-  console.log(train?.length);
+  const fTrain = await fs.promises.open("train.json", "w");
+  for (const p of train) {
+    console.log(p);
+    await fTrain.write(JSON.stringify(p) + "\n");
+  }
+
+  const test = await processSplit("test");
+  const fTest = await fs.promises.open("test.json", "w");
+  for (const p of test) {
+    console.log(p);
+    await fTest.write(JSON.stringify(p) + "\n");
+  }
 };
 
 main();
