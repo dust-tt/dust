@@ -24,7 +24,7 @@ import {
 } from "./api/assistant/agent";
 import { GenerationTokensEvent } from "./api/assistant/generation";
 
-const { DUST_FRONT_API } = process.env;
+const { DUST_FRONT_API = "https://dust.tt" } = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
