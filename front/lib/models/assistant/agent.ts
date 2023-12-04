@@ -103,7 +103,7 @@ export class AgentConfiguration extends Model<
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare authorId: ForeignKey<User["id"]> | null;
+  declare authorId: ForeignKey<User["id"]>;
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
@@ -234,11 +234,11 @@ AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
 
 // Agent config <> Author
 User.hasMany(AgentConfiguration, {
-  foreignKey: { name: "authorId", allowNull: true },
+  foreignKey: { name: "authorId", allowNull: false },
   onDelete: "CASCADE",
 });
 AgentConfiguration.belongsTo(User, {
-  foreignKey: { name: "authorId", allowNull: true },
+  foreignKey: { name: "authorId", allowNull: false },
 });
 
 /**
