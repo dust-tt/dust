@@ -367,7 +367,7 @@ export async function* runDustApp(
   const prodCredentials = await prodAPICredentialsForOwner(owner, {
     useLocalInDev: true,
   });
-  const api = new DustAPI({credentials:prodCredentials, logger});
+  const api = new DustAPI({ credentials: prodCredentials, logger });
 
   // As we run the app (using a system API key here), we do force using the workspace credentials so
   // that the app executes in the exact same conditions in which they were developed.

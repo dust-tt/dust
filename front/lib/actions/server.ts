@@ -6,7 +6,7 @@ import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 
-const {DUST_PROD_API} = process.env;
+const { DUST_PROD_API } = process.env;
 
 // Record an event and a log for the action error.
 const logActionError = (
@@ -86,7 +86,11 @@ export async function runActionStreamed(
     throw new Error("DUST_PROD_API env variable is not set");
   }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI({credentials:prodCredentials, logger, url: DUST_PROD_API});
+  const api = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   const res = await api.runAppStreamed(action.app, config, inputs);
   if (res.isErr()) {
@@ -171,7 +175,11 @@ export async function runAction(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI({credentials:prodCredentials, logger, url: DUST_PROD_API});
+  const api = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   const res = await api.runApp(action.app, config, inputs);
   if (res.isErr()) {

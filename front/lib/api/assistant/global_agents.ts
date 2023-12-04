@@ -287,7 +287,14 @@ async function _getManagedDataSourceAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  if (!DUST_PROD_API) {
+    throw new Error("DUST_PROD_API env variable is not set");
+  }
+  const api = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {

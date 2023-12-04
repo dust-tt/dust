@@ -64,7 +64,11 @@ export async function callAction<V extends t.Mixed>({
   if (!DUST_PROD_API) {
     throw new Error("DUST_PROD_API env variable is not set");
   }
-  const prodAPI = new DustAPI({credentials:prodCredentials, logger, url:DUST_PROD_API});
+  const prodAPI = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   const response = (await prodAPI.runApp(app, config, [input])) as Result<
     unknown,

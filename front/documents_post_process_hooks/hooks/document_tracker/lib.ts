@@ -3,7 +3,7 @@ import { DustAPI } from "@dust-tt/types";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-const {DUST_PROD_API} = process.env;
+const { DUST_PROD_API } = process.env;
 
 export async function getTrackableDataSources(workspaceId: string): Promise<
   {
@@ -24,7 +24,11 @@ export async function getTrackableDataSources(workspaceId: string): Promise<
     throw new Error("DUST_PROD_API env variable is not set");
   }
 
-  const prodAPI = new DustAPI({credentials:prodCredentials, logger, url: DUST_PROD_API});
+  const prodAPI = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   // Fetch data sources
   const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());
