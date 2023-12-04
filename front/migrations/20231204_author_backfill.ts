@@ -4,20 +4,45 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { cons } from "fp-ts/lib/NonEmptyArray";
 
 async function main() {
-  const workspaces = await Workspace.findAll();
+  console.log("Starting author backfill");
+  const workspaceIds = (
+    await AgentConfiguration.findAll({
+      attributes: ["workspaceId"],
+      group: ["workspaceId"],
+    })
+  ).map((a) => a.workspaceId);
 
-  console.log(`Found ${workspaces.length} users to update`);
-  for (const w of workspaces) {
+  console.log(`Found ${workspaceIds.length} workspaces to update`);
+  const chunks = [];
+  for (let i = 0; i < workspaceIds.length; i += 16) {
+    chunks.push(workspaceIds.slice(i, i + 16));
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`Processing workspace chunk ${i}/${chunks.length}...`);
+    const chunk = chunks[i];
+
+    await Promise.all(
+      chunk.map((wid: number) => {
+        return (async () => {
+          await backfillAuthor(wid);
+        })();
+      })
+    );
+  }
+
+  for (const w of workspaceIds) {
     await backfillAuthor(w);
   }
 }
 
-async function backfillAuthor(workspace: Workspace) {
+async function backfillAuthor(workspaceId: number) {
   // get all agent configurations in the workspace
   const agentConfigurations = await AgentConfiguration.findAll({
-    where: { workspaceId: workspace.id },
+    where: { workspaceId },
   });
 
   // set author as the first admin of the workspace
@@ -25,17 +50,16 @@ async function backfillAuthor(workspace: Workspace) {
     include: [
       {
         model: Membership,
-        as: "memberships", // replace with the actual alias if defined
         where: {
           role: "admin",
-          workspaceId: workspace.id, // replace with the actual workspace ID
+          workspaceId,
         },
       },
     ],
     order: [["createdAt", "ASC"]],
   });
   if (!author) {
-    console.log(`No author found for workspace ${workspace.id}`);
+    console.log(`No author found for workspace with id ${workspaceId}`);
     return;
   }
   const chunks = [];
@@ -44,7 +68,9 @@ async function backfillAuthor(workspace: Workspace) {
   }
 
   for (let i = 0; i < chunks.length; i++) {
-    console.log(`Processing chunk ${i}/${chunks.length}...`);
+    console.log(
+      `Workspace ${workspaceId}: Processing agentconfig chunk ${i}/${chunks.length}...`
+    );
     const chunk = chunks[i];
 
     await Promise.all(
