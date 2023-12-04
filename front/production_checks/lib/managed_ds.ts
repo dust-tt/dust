@@ -1,6 +1,6 @@
 import { QueryTypes, Sequelize } from "sequelize";
 
-import { Err, Ok, Result } from "@app/lib/result";
+import { Err, Ok, Result } from "@dust-tt/types";
 const { CORE_DATABASE_READ_REPLICA_URI, FRONT_DATABASE_READ_REPLICA_URI } =
   process.env;
 

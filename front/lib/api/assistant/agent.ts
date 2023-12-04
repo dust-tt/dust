@@ -1,4 +1,11 @@
 import {
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentGenerationSuccessEvent,
+  AgentMessageSuccessEvent,
+  GenerationTokensEvent,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
@@ -9,39 +16,27 @@ import {
   AgentConfigurationType,
 } from "@dust-tt/types";
 import {
-  AgentActionType,
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  RetrievalParamsEvent,
-  runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
+import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
 import {
   constructPrompt,
-  GenerationTokensEvent,
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 
-import {
-  DustAppRunBlockEvent,
-  DustAppRunParamsEvent,
-  runDustApp,
-} from "./actions/dust_app_run";
+import { runDustApp } from "./actions/dust_app_run";
 
 /**
  * Action Inputs generation.
@@ -175,70 +170,6 @@ export async function generateActionInputs(
 /**
  * Agent execution.
  */
-
-// Event sent when an agent error occured before we have a agent message in the database.
-export type AgentMessageErrorEvent = {
-  type: "agent_message_error";
-  created: number;
-  configurationId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-// Generic event sent when an error occured (whether it's during the action or the message generation).
-export type AgentErrorEvent = {
-  type: "agent_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-// Event sent during the execution of an action. These are action specific.
-export type AgentActionEvent =
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent;
-
-// Event sent once the action is completed, we're moving to generating a message if applicable.
-export type AgentActionSuccessEvent = {
-  type: "agent_action_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: AgentActionType;
-};
-
-// Event sent once the generation is completed.
-export type AgentGenerationSuccessEvent = {
-  type: "agent_generation_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  text: string;
-};
-
-// Event sent to stop the generation.
-export type AgentGenerationCancelledEvent = {
-  type: "agent_generation_cancelled";
-  created: number;
-  configurationId: string;
-  messageId: string;
-};
-
-// Event sent once the message is completed and successful.
-export type AgentMessageSuccessEvent = {
-  type: "agent_message_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  message: AgentMessageType;
-};
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).

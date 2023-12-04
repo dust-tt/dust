@@ -1,14 +1,15 @@
 import { DatasetType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { checkDatasetData } from "@app/lib/datasets";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { PostDatasetRequestBodySchema } from "..";
@@ -118,8 +119,9 @@ async function handler(
           }, {});
       });
 
+      const coreAPI = new CoreAPI(logger);
       // Register dataset with the Dust internal API.
-      const d = await CoreAPI.createDataset({
+      const d = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
         datasetId: bodyValidation.right.dataset.name,
         data,

@@ -4,6 +4,7 @@ import { isRetrievalConfiguration } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder, {
@@ -13,7 +14,7 @@ import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
+import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -100,7 +101,8 @@ export const getServerSideProps: GetServerSideProps<{
           isSelectAll: ds.isSelectAll,
         };
       }
-      const response = await ConnectorsAPI.getResourcesTitles({
+      const connectorsAPI = new ConnectorsAPI(logger);
+      const response = await connectorsAPI.getResourcesTitles({
         connectorId: dataSource.connectorId,
         resourceInternalIds: ds.resources,
       });

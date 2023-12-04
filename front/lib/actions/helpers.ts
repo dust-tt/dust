@@ -1,18 +1,19 @@
+import { Action, cloneBaseConfig } from "@dust-tt/types";
+import {
+  DustAPI,
+  DustAPIErrorResponse,
+  DustAppConfigType,
+} from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
-import { Action, cloneBaseConfig } from "@app/lib/actions/registry";
 import {
   ActionResponseBaseSchema,
   isActionResponseBase,
 } from "@app/lib/actions/types";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
-import {
-  DustAPI,
-  DustAPIErrorResponse,
-  DustAppConfigType,
-} from "@app/lib/dust_api";
-import { Err, Ok, Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {
   workspaceId: string;
@@ -59,7 +60,7 @@ export async function callAction<V extends t.Mixed>({
   }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const prodAPI = new DustAPI(prodCredentials);
+  const prodAPI = new DustAPI(prodCredentials, logger);
 
   const response = (await prodAPI.runApp(app, config, [input])) as Result<
     unknown,

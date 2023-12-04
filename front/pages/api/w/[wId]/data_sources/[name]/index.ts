@@ -1,11 +1,12 @@
 import { DataSourceType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {
@@ -197,7 +198,8 @@ async function handler(
         });
       }
 
-      const dustDataSource = await CoreAPI.deleteDataSource({
+      const coreAPI = new CoreAPI(logger);
+      const dustDataSource = await coreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
       });

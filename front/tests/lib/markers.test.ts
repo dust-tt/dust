@@ -1,4 +1,5 @@
-import { CoreAPITokenType } from "@app/lib/core_api";
+import { CoreAPITokenType } from "@dust-tt/types";
+
 import {
   findMarkersIndexes,
   getRawExtractEventMarkersFromText,

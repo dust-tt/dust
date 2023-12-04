@@ -7,6 +7,7 @@ import {
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
+import { APIError } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
@@ -15,7 +16,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { getEventSchema, getExtractedEvent } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { APIError } from "@app/lib/error";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;

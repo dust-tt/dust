@@ -4,22 +4,20 @@ import {
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
   CoreAPILightDocument,
-} from "@dust-tt/types";
-import { Project } from "@dust-tt/types";
-import { CredentialsType } from "@dust-tt/types";
+} from "../../core/data_source";
+import { Project } from "../../front/project";
+import { CredentialsType } from "../../front/provider";
 import {
   BlockType,
   RunConfig,
   RunRunType,
   RunStatus,
   TraceType,
-} from "@dust-tt/types";
-import tracer from "dd-trace";
+} from "../../front/run";
 import { createParser } from "eventsource-parser";
-
-import { dustManagedCredentials } from "@app/lib/api/credentials";
-import { Err, Ok, Result } from "@app/lib/result";
-import logger from "@app/logger/logger";
+import { Err, Ok, Result } from "../../front/lib/result";
+import { LoggerInterface } from "../../shared/logger";
+import { dustManagedCredentials } from "../../front/lib/api/credentials";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
@@ -106,13 +104,17 @@ export type CoreAPIDatabaseResult = {
   value: Record<string, unknown>;
 };
 
-export const CoreAPI = {
+export class CoreAPI {
+  declare _logger: LoggerInterface;
+  constructor(logger: LoggerInterface) {
+    this._logger = logger;
+  }
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await fetch(`${CORE_API}/projects`, {
       method: "POST",
     });
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatasets({
     projectId,
@@ -127,7 +129,7 @@ export const CoreAPI = {
     });
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDataset({
     projectId,
@@ -149,7 +151,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async createDataset({
     projectId,
@@ -172,7 +174,7 @@ export const CoreAPI = {
     });
 
     return _resultFromResponse(response);
-  },
+  }
 
   async cloneProject({
     projectId,
@@ -184,7 +186,7 @@ export const CoreAPI = {
     });
 
     return _resultFromResponse(response);
-  },
+  }
 
   async createRun({
     projectId,
@@ -215,7 +217,7 @@ export const CoreAPI = {
     });
 
     return _resultFromResponse(response);
-  },
+  }
 
   async createRunStream({
     projectId,
@@ -275,13 +277,17 @@ export const CoreAPI = {
               resolveDustRunIdPromise(data.content.run_id);
             }
           } catch (err) {
-            logger.error({ error: err }, "Failed parsing chunk from Core API");
+            this._logger.error(
+              { error: err },
+              "Failed parsing chunk from Core API"
+            );
           }
         }
       }
     });
 
     const reader = response.body.getReader();
+    const logger = this._logger;
 
     const streamChunks = async function* () {
       try {
@@ -296,7 +302,7 @@ export const CoreAPI = {
         if (!hasRunId) {
           // once the stream is entirely consumed, if we haven't received a run id, reject the promise
           setImmediate(() => {
-            logger.error("No run id received");
+            logger.error({}, "No run id received");
             rejectDustRunIdPromise(new Error("No run id received"));
           });
         }
@@ -313,7 +319,7 @@ export const CoreAPI = {
     };
 
     return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
-  },
+  }
 
   async getRunsBatch({
     projectId,
@@ -336,7 +342,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getRun({
     projectId,
@@ -353,7 +359,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getRunStatus({
     projectId,
@@ -370,7 +376,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getSpecification({
     projectId,
@@ -389,7 +395,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getRunBlock({
     projectId,
@@ -410,7 +416,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async createDataSource({
     projectId,
@@ -439,7 +445,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDataSource({
     projectId,
@@ -458,7 +464,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async deleteDataSource({
     projectId,
@@ -475,7 +481,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async searchDataSource(
     projectId: string,
@@ -521,7 +527,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDataSourceDocuments({
     projectId,
@@ -541,26 +547,14 @@ export const CoreAPI = {
       documents: CoreAPIDocument[];
     }>
   > {
-    return await tracer.trace(
-      `CoreAPI`,
-      { resource: "getDataSourceDocuments" },
-      async (span) => {
-        if (span) {
-          span.setTag("projectId", projectId);
-          span.setTag("dataSourceName", dataSourceName);
-          span.setTag("limit", limit);
-          span.setTag("offset", offset);
-        }
-        const response = await fetch(
-          `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
-          {
-            method: "GET",
-          }
-        );
-        return _resultFromResponse(response);
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
+      {
+        method: "GET",
       }
     );
-  },
+    return _resultFromResponse(response);
+  }
 
   async getDataSourceDocument({
     projectId,
@@ -589,7 +583,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDataSourceDocumentVersions({
     projectId,
@@ -632,7 +626,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async upsertDataSourceDocument({
     projectId,
@@ -666,40 +660,28 @@ export const CoreAPI = {
       data_source: CoreAPIDataSource;
     }>
   > {
-    return await tracer.trace(
-      `CoreAPI`,
-      { resource: "upsertDataSourceDocument" },
-      async (span) => {
-        if (span) {
-          span.setTag("projectId", projectId);
-          span.setTag("dataSourceName", dataSourceName);
-          span.setTag("documentId", documentId);
-        }
-
-        const response = await fetch(
-          `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              document_id: documentId,
-              timestamp,
-              section,
-              tags,
-              parents,
-              source_url: sourceUrl,
-              credentials,
-              light_document_output: lightDocumentOutput,
-            }),
-          }
-        );
-
-        return _resultFromResponse(response);
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          document_id: documentId,
+          timestamp,
+          section,
+          tags,
+          parents,
+          source_url: sourceUrl,
+          credentials,
+          light_document_output: lightDocumentOutput,
+        }),
       }
     );
-  },
+
+    return _resultFromResponse(response);
+  }
 
   async updateDataSourceDocumentTags({
     projectId,
@@ -735,7 +717,8 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
+
   async updateDataSourceDocumentParents({
     projectId,
     dataSourceName,
@@ -767,7 +750,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async deleteDataSourceDocument({
     projectId,
@@ -788,7 +771,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async tokenize({
     text,
@@ -814,7 +797,7 @@ export const CoreAPI = {
     });
 
     return _resultFromResponse(response);
-  },
+  }
 
   async createDatabase({
     projectId,
@@ -842,7 +825,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabase({
     projectId,
@@ -861,7 +844,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabases({
     projectId,
@@ -880,7 +863,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async upsertDatabaseTable({
     projectId,
@@ -913,7 +896,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabaseTable({
     projectId,
@@ -934,7 +917,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabaseTables({
     projectId,
@@ -953,7 +936,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async upsertDatabaseRows({
     projectId,
@@ -985,7 +968,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabaseRow({
     projectId,
@@ -1008,7 +991,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async getDatabaseRows({
     projectId,
@@ -1040,7 +1023,7 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
+  }
 
   async queryDatabase({
     projectId,
@@ -1072,8 +1055,8 @@ export const CoreAPI = {
     );
 
     return _resultFromResponse(response);
-  },
-};
+  }
+}
 
 async function _resultFromResponse<T>(
   response: Response

@@ -1,4 +1,6 @@
 import { DatasetType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,10 +9,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { checkDatasetData } from "@app/lib/datasets";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { Dataset } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetDatasetsResponseBody = {
@@ -158,8 +159,8 @@ async function handler(
             return obj;
           }, {});
       });
-
-      const dataset = await CoreAPI.createDataset({
+      const coreAPI = new CoreAPI(logger);
+      const dataset = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
         datasetId: bodyValidation.right.dataset.name,
         data,

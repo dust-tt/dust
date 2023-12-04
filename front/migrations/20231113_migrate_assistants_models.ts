@@ -8,7 +8,7 @@ import {
   AgentGenerationConfiguration,
   Workspace,
 } from "@app/lib/models";
-import { Err } from "@app/lib/result";
+import { Err } from "@dust-tt/types";
 
 const { LIVE, WORKSPACE } = process.env;
 

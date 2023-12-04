@@ -1,11 +1,12 @@
 import { AppType, SpecificationType } from "@dust-tt/types";
 import { RunConfig, RunType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import fs from "fs";
 import path from "path";
 import peg from "pegjs";
 
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
+import logger from "@app/logger/logger";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
@@ -22,7 +23,8 @@ export async function getRun(
   config: RunConfig;
   run: RunType;
 } | null> {
-  const r = await CoreAPI.getRunStatus({
+  const coreAPI = new CoreAPI(logger);
+  const r = await coreAPI.getRunStatus({
     projectId: app.dustAPIProjectId,
     runId: runId as string,
   });
@@ -35,7 +37,7 @@ export async function getRun(
   // Retrieve specification and parse it.
   const specHash = run.app_hash;
 
-  const s = await CoreAPI.getSpecification({
+  const s = await coreAPI.getSpecification({
     projectId: app.dustAPIProjectId,
     specificationHash: specHash as string,
   });

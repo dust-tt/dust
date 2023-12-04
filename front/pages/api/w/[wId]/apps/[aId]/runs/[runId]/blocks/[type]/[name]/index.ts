@@ -1,10 +1,11 @@
 import { BlockType, RunType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
@@ -51,8 +52,8 @@ async function handler(
         res.status(200).json({ run: null });
         return;
       }
-
-      const run = await CoreAPI.getRunBlock({
+      const coreAPI = new CoreAPI(logger);
+      const run = await coreAPI.getRunBlock({
         projectId: app.dustAPIProjectId,
         runId: runId,
         blockType: req.query.type as BlockType,

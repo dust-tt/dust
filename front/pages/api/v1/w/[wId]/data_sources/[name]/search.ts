@@ -1,18 +1,19 @@
 import { DocumentType } from "@dust-tt/types";
 import { CredentialsType } from "@dust-tt/types";
-import { JSONSchemaType } from "ajv";
-import { NextApiRequest, NextApiResponse } from "next";
-
 import {
   credentialsFromProviders,
   dustManagedCredentials,
-} from "@app/lib/api/credentials";
+} from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { JSONSchemaType } from "ajv";
+import { NextApiRequest, NextApiResponse } from "next";
+
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
@@ -109,7 +110,8 @@ export default async function handler(
       }
       const query = queryRes.value;
 
-      const data = await CoreAPI.searchDataSource(
+      const coreAPI = new CoreAPI(logger);
+      const data = await coreAPI.searchDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name,
         {

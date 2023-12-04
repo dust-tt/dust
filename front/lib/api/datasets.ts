@@ -1,9 +1,10 @@
 import { AppType } from "@dust-tt/types";
 import { DatasetSchema, DatasetType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { Dataset } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 export async function getDatasets(
   auth: Authenticator,
@@ -109,9 +110,10 @@ export async function getDatasetHash(
     return null;
   }
 
+  const coreAPI = new CoreAPI(logger);
   // Translate latest if needed.
   if (hash == "latest") {
-    const apiDatasets = await CoreAPI.getDatasets({
+    const apiDatasets = await coreAPI.getDatasets({
       projectId: app.dustAPIProjectId,
     });
 
@@ -128,7 +130,7 @@ export async function getDatasetHash(
     hash = apiDatasets.value.datasets[dataset.name][0].hash;
   }
 
-  const apiDataset = await CoreAPI.getDataset({
+  const apiDataset = await coreAPI.getDataset({
     projectId: app.dustAPIProjectId,
     datasetName: dataset.name,
     datasetHash: hash,

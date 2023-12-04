@@ -1,11 +1,13 @@
 import {
   AgentMessageType,
   ConversationType,
+  GenerationTokensEvent,
   MentionType,
+  PubSubError,
   UserMessageContext,
   UserMessageType,
 } from "@dust-tt/types";
-
+import { Err, Ok, Result } from "@dust-tt/types";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
@@ -13,27 +15,26 @@ import {
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
-} from "@app/lib/api/assistant/agent";
+} from "@dust-tt/types";
 import {
   AgentMessageNewEvent,
   ConversationTitleEvent,
-  editUserMessage,
-  postUserMessage,
-  retryAgentMessage,
   UserMessageErrorEvent,
   UserMessageNewEvent,
-} from "@app/lib/api/assistant/conversation";
-import { GenerationTokensEvent } from "@app/lib/api/assistant/generation";
+} from "@dust-tt/types";
+
 import { Authenticator } from "@app/lib/auth";
-import { APIErrorWithStatusCode } from "@app/lib/error";
 import { AgentMessage, Message } from "@app/lib/models";
 import { rateLimiter } from "@app/lib/rate_limiter";
 import { redisClient } from "@app/lib/redis";
-import { Err, Ok, Result } from "@app/lib/result";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 
-export type PubSubError = APIErrorWithStatusCode;
+import {
+  editUserMessage,
+  postUserMessage,
+  retryAgentMessage,
+} from "./conversation";
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,

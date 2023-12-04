@@ -4,17 +4,17 @@ import {
   isAgentMention,
   isUserMessageType,
 } from "@dust-tt/types";
+import { AgentGenerationCancelledEvent } from "@dust-tt/types";
+import {
+  AgentMessageNewEvent,
+  ConversationTitleEvent,
+  UserMessageNewEvent,
+} from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
-import { AgentGenerationCancelledEvent } from "@app/lib/api/assistant/agent";
-import {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageNewEvent,
-} from "@app/lib/api/assistant/conversation";
 import {
   useConversation,
   useConversationReactions,

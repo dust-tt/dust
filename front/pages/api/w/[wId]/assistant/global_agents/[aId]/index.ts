@@ -1,3 +1,4 @@
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,7 +6,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 type PatchGlobalAgentSettingResponseBody = {

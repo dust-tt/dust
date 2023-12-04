@@ -1,7 +1,13 @@
 import {
+  GenerationCancelEvent,
+  GenerationErrorEvent,
+  GenerationSuccessEvent,
+  GenerationTokensEvent,
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
   isDustAppRunActionType,
+  ModelConversationType,
+  ModelMessageType,
 } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import {
@@ -16,12 +22,11 @@ import {
   isUserMessageType,
   UserMessageType,
 } from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 import moment from "moment-timezone";
 
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
   renderRetrievalActionForModel,
@@ -29,10 +34,8 @@ import {
 } from "@app/lib/api/assistant/actions/retrieval";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
-import { Err, Ok, Result } from "@app/lib/result";
 import logger from "@app/logger/logger";
 
 import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
@@ -42,16 +45,6 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 /**
  * Model rendering of conversations.
  */
-
-export type ModelMessageType = {
-  role: "action" | "agent" | "user" | "content_fragment";
-  name: string;
-  content: string;
-};
-
-export type ModelConversationType = {
-  messages: ModelMessageType[];
-};
 
 // This function transforms a conversation in a simplified format that we feed the model as context.
 // It takes care of truncating the conversation all the way to `allowedTokenCount` tokens.
@@ -135,7 +128,8 @@ export async function renderConversationForModel({
     model: { providerId: string; modelId: string }
   ): Promise<Result<number, Error>> {
     try {
-      const res = await CoreAPI.tokenize({
+      const coreAPI = new CoreAPI(logger);
+      const res = await coreAPI.tokenize({
         text,
         providerId: model.providerId,
         modelId: model.modelId,
@@ -211,41 +205,6 @@ export async function renderConversationForModel({
 /**
  * Generation execution.
  */
-
-// Event sent when tokens are streamed as the the agent is generating a message.
-export type GenerationTokensEvent = {
-  type: "generation_tokens";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  text: string;
-};
-
-export type GenerationErrorEvent = {
-  type: "generation_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-export type GenerationSuccessEvent = {
-  type: "generation_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  text: string;
-};
-
-export type GenerationCancelEvent = {
-  type: "generation_cancel";
-  created: number;
-  configurationId: string;
-  messageId: string;
-};
 
 // Construct the full prompt from the agent configuration.
 // - Meta data about the agent and current time.

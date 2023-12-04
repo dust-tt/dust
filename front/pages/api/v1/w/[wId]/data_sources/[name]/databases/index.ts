@@ -1,3 +1,4 @@
+import { CoreAPI, CoreAPIDatabase } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,7 +7,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabase } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -69,6 +69,7 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "POST":
       const bodyValidation = CreateDatabaseReqBodySchema.decode(req.body);
@@ -86,7 +87,7 @@ async function handler(
       const { name } = bodyValidation.right;
       const id = generateModelSId();
 
-      const createRes = await CoreAPI.createDatabase({
+      const createRes = await coreAPI.createDatabase({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
@@ -131,7 +132,7 @@ async function handler(
 
       const { offset, limit } = queryValidation.right;
 
-      const getRes = await CoreAPI.getDatabases({
+      const getRes = await coreAPI.getDatabases({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         offset,

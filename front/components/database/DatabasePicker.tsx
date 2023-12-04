@@ -1,8 +1,8 @@
 import { WorkspaceType } from "@dust-tt/types";
+import { CoreAPIDatabase } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
-import { CoreAPIDatabase } from "@app/lib/core_api";
 import { useDatabases } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 

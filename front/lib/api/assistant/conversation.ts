@@ -1,4 +1,11 @@
-import { WorkspaceType } from "@dust-tt/types";
+import {
+  AgentMessageNewEvent,
+  ConversationTitleEvent,
+  GenerationTokensEvent,
+  UserMessageErrorEvent,
+  UserMessageNewEvent,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import {
@@ -18,14 +25,8 @@ import {
   UserMessageType,
 } from "@dust-tt/types";
 import { PlanType } from "@dust-tt/types";
-import crypto from "crypto";
-import { Op, Transaction } from "sequelize";
-
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-} from "@app/lib/actions/registry";
-import { runActionStreamed } from "@app/lib/actions/server";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
@@ -34,13 +35,14 @@ import {
   AgentGenerationSuccessEvent,
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
-  runAgent,
-} from "@app/lib/api/assistant/agent";
+} from "@dust-tt/types";
+import crypto from "crypto";
+import { Op, Transaction } from "sequelize";
+
+import { runActionStreamed } from "@app/lib/actions/server";
+import { runAgent } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  GenerationTokensEvent,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -55,7 +57,6 @@ import {
 } from "@app/lib/models";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
-import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -767,40 +768,6 @@ async function getConversationRankVersionLock(
     "[ASSISTANT_TRACE] Advisory lock acquired"
   );
 }
-
-// Event sent when the user message is created.
-export type UserMessageNewEvent = {
-  type: "user_message_new";
-  created: number;
-  messageId: string;
-  message: UserMessageType;
-};
-
-// Event sent when the user message is created.
-export type UserMessageErrorEvent = {
-  type: "user_message_error";
-  created: number;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-// Event sent when a new message is created (empty) and the agent is about to be executed.
-export type AgentMessageNewEvent = {
-  type: "agent_message_new";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  message: AgentMessageType;
-};
-
-// Event sent when the conversation title is updated.
-export type ConversationTitleEvent = {
-  type: "conversation_title";
-  created: number;
-  title: string;
-};
 
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent

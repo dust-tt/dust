@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -19,7 +20,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -27,6 +27,7 @@ import {
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -93,12 +94,13 @@ export const getServerSideProps: GetServerSideProps<{
 
   const synchronizedAgoByDsName: Record<string, string> = {};
 
+  const connectorsAPI = new ConnectorsAPI(logger);
   await Promise.all(
     dataSources.map(async (ds) => {
       if (!ds.connectorId) {
         return;
       }
-      const statusRes = await ConnectorsAPI.getConnector(
+      const statusRes = await connectorsAPI.getConnector(
         ds.connectorId?.toString()
       );
       if (statusRes.isErr()) {
@@ -121,7 +123,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   let slackbotEnabled = false;
   if (slackConnectorId) {
-    const botEnabledRes = await ConnectorsAPI.getBotEnabled(slackConnectorId);
+    const botEnabledRes = await connectorsAPI.getBotEnabled(slackConnectorId);
     if (botEnabledRes.isErr()) {
       throw botEnabledRes.error;
     }
@@ -134,7 +136,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   let gdrivePDFEnabled = false;
   if (gdriveConnectorId) {
-    const gdrivePDFEnabledRes = await ConnectorsAPI.getConnectorConfig(
+    const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
       gdriveConnectorId,
       "pdfEnabled"
     );

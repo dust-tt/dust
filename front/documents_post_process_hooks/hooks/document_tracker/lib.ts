@@ -1,6 +1,8 @@
+import { DustAPI } from "@dust-tt/types";
+
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
-import { DustAPI } from "@app/lib/dust_api";
+import logger from "@app/logger/logger";
 
 export async function getTrackableDataSources(workspaceId: string): Promise<
   {
@@ -18,7 +20,7 @@ export async function getTrackableDataSources(workspaceId: string): Promise<
   }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const prodAPI = new DustAPI(prodCredentials);
+  const prodAPI = new DustAPI(prodCredentials, logger);
 
   // Fetch data sources
   const dsRes = await prodAPI.getDataSources(prodAPI.workspaceId());

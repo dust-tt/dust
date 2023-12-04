@@ -1,3 +1,4 @@
+import { CoreAPI } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 import showdown from "showdown";
@@ -10,7 +11,6 @@ import {
   getDatasource,
   getDocumentDiff,
 } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import { CoreAPI } from "@app/lib/core_api";
 import {
   DataSource,
   DocumentTrackerChangeSuggestion,
@@ -224,7 +224,8 @@ export async function documentTrackerSuggestChangesOnUpsert({
     .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
     .join("\n");
 
-  const tokensInDiff = await CoreAPI.tokenize({
+  const coreAPI = new CoreAPI(logger);
+  const tokensInDiff = await coreAPI.tokenize({
     text: diffText,
     providerId: "openai",
     modelId: "gpt-3.5-turbo",
@@ -394,7 +395,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   });
   const emails = users.map((u) => u.email);
 
-  const incomingDocument = await CoreAPI.getDataSourceDocument({
+  const incomingDocument = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
     documentId,

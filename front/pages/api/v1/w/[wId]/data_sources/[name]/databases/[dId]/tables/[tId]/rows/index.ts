@@ -1,3 +1,4 @@
+import { CoreAPI, CoreAPIDatabaseRow } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,7 +6,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabaseRow } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -104,7 +104,7 @@ async function handler(
       },
     });
   }
-
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "GET":
       const queryValidation = ListDatabaseRowsReqQuerySchema.decode(req.query);
@@ -120,7 +120,7 @@ async function handler(
       }
       const { offset, limit } = queryValidation.right;
 
-      const listRes = await CoreAPI.getDatabaseRows({
+      const listRes = await coreAPI.getDatabaseRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,
@@ -170,7 +170,7 @@ async function handler(
       }
       const { rows: rowsToUpsert, truncate } = bodyValidation.right;
 
-      const upsertRes = await CoreAPI.upsertDatabaseRows({
+      const upsertRes = await coreAPI.upsertDatabaseRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId,

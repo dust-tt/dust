@@ -1,9 +1,29 @@
-import { DataSourceType } from "@dust-tt/types";
-import { RunType } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
-
-import { Err, Ok } from "@app/lib/result";
-import logger from "@app/logger/logger";
+import * as t from "io-ts";
+import { Err, Ok, Result } from "../../front/lib/result";
+import { RunType } from "../../front/run";
+import { DataSourceType } from "../../front/data_source";
+import { LoggerInterface } from "../../shared/logger";
+import { AgentConfigurationType } from "../../front/assistant/agent";
+import {
+  PublicPostContentFragmentRequestBodySchema,
+  PublicPostConversationsRequestBodySchema,
+  PublicPostMessagesRequestBodySchema,
+} from "../../front/api_handlers/public/assistant";
+import {
+  AgentMessageType,
+  ContentFragmentType,
+  ConversationType,
+  UserMessageType,
+} from "../../front/assistant/conversation";
+import { UserMessageErrorEvent } from "./api/assistant/conversation";
+import {
+  AgentActionSuccessEvent,
+  AgentErrorEvent,
+  AgentGenerationSuccessEvent,
+} from "./api/assistant/agent";
+import { GenerationTokensEvent } from "./api/assistant/generation";
+import { DustAppRunErrorEvent } from "./api/assistant/actions/dust_app_run";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
 
@@ -22,7 +42,7 @@ export type DustAppConfigType = {
   [key: string]: unknown;
 };
 
-export type DustAppRunErrorEvent = {
+type DustAppRunErroredEvent = {
   type: "error";
   content: {
     code: string;
@@ -121,13 +141,20 @@ export type DustAPICredentials = {
   workspaceId: string;
 };
 
+type PublicPostContentFragmentRequestBody = t.TypeOf<
+  typeof PublicPostContentFragmentRequestBodySchema
+>;
+
 /**
  * This help functions process a streamed response in the format of the Dust API for running
  * streamed apps.
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-export async function processStreamedRunResponse(res: Response) {
+export async function processStreamedRunResponse(
+  res: Response,
+  logger: LoggerInterface
+) {
   if (!res.ok || !res.body) {
     return new Err({
       type: "dust_api_error",
@@ -144,7 +171,7 @@ export async function processStreamedRunResponse(res: Response) {
   });
 
   let pendingEvents: (
-    | DustAppRunErrorEvent
+    | DustAppRunErroredEvent
     | DustAppRunRunStatusEvent
     | DustAppRunBlockStatusEvent
     | DustAppRunBlockExecutionEvent
@@ -168,7 +195,7 @@ export async function processStreamedRunResponse(res: Response) {
                   code: data.content.code,
                   message: data.content.message,
                 },
-              } as DustAppRunErrorEvent);
+              } as DustAppRunErroredEvent);
               break;
             }
             case "run_status": {
@@ -248,7 +275,7 @@ export async function processStreamedRunResponse(res: Response) {
       if (!hasRunId) {
         // once the stream is entirely consumed, if we haven't received a run id, reject the promise
         setImmediate(() => {
-          logger.error("No run id received.");
+          logger.error({}, "No run id received.");
           rejectDustRunIdPromise(new Error("No run id received"));
         });
       }
@@ -259,7 +286,7 @@ export async function processStreamedRunResponse(res: Response) {
           code: "stream_error",
           message: "Error streaming chunks",
         },
-      } as DustAppRunErrorEvent;
+      } as DustAppRunErroredEvent;
       logger.error(
         {
           error: e,
@@ -277,12 +304,14 @@ export async function processStreamedRunResponse(res: Response) {
 export class DustAPI {
   _credentials: DustAPICredentials;
   _useLocalInDev: boolean;
+  _logger: LoggerInterface;
 
   /**
    * @param credentials DustAPICrededentials
    */
   constructor(
     credentials: DustAPICredentials,
+    logger: LoggerInterface,
     {
       useLocalInDev,
     }: {
@@ -290,6 +319,7 @@ export class DustAPI {
     } = { useLocalInDev: false }
   ) {
     this._credentials = credentials;
+    this._logger = logger;
     this._useLocalInDev = useLocalInDev;
   }
 
@@ -382,7 +412,7 @@ export class DustAPI {
       }),
     });
 
-    return processStreamedRunResponse(res);
+    return processStreamedRunResponse(res, this._logger);
   }
 
   /**
@@ -407,5 +437,257 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.data_sources as DataSourceType[]);
+  }
+
+  async getAgentConfigurations() {
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.agentConfigurations as AgentConfigurationType[]);
+  }
+
+  async postContentFragment({
+    conversationId,
+    contentFragment,
+  }: {
+    conversationId: string;
+    contentFragment: PublicPostContentFragmentRequestBody;
+  }) {
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...contentFragment,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.contentFragment as ContentFragmentType);
+  }
+
+  // When creating a conversation with a user message, the API returns only after the user message
+  // was created (and if applicable the assocaited agent messages).
+  async createConversation({
+    title,
+    visibility,
+    message,
+    contentFragment,
+  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
+    Result<
+      { conversation: ConversationType; message: UserMessageType },
+      DustAPIErrorResponse
+    >
+  > {
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          visibility,
+          message,
+          contentFragment,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+
+    return new Ok(
+      json as { conversation: ConversationType; message: UserMessageType }
+    );
+  }
+
+  async postUserMessage({
+    conversationId,
+    message,
+  }: {
+    conversationId: string;
+    message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
+  }) {
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...message,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+
+    return new Ok(json.message as UserMessageType);
+  }
+
+  async streamAgentMessageEvents({
+    conversation,
+    message,
+  }: {
+    conversation: ConversationType;
+    message: AgentMessageType;
+  }) {
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
+        conversation.sId
+      }/messages/${message.sId}/events`,
+      {
+        method: "GET",
+        headers: headers,
+      }
+    );
+
+    if (!res.ok || !res.body) {
+      return new Err({
+        type: "dust_api_error",
+        message: `Error running streamed app: status_code=${
+          res.status
+        }  - message=${await res.text()}`,
+      });
+    }
+
+    let pendingEvents: (
+      | UserMessageErrorEvent
+      | AgentErrorEvent
+      | AgentActionSuccessEvent
+      | GenerationTokensEvent
+      | AgentGenerationSuccessEvent
+    )[] = [];
+
+    const parser = createParser((event) => {
+      if (event.type === "event") {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data).data;
+            switch (data.type) {
+              case "user_message_error": {
+                pendingEvents.push(data as UserMessageErrorEvent);
+                break;
+              }
+              case "agent_error": {
+                pendingEvents.push(data as AgentErrorEvent);
+                break;
+              }
+              case "agent_action_success": {
+                pendingEvents.push(data as AgentActionSuccessEvent);
+                break;
+              }
+              case "generation_tokens": {
+                pendingEvents.push(data as GenerationTokensEvent);
+                break;
+              }
+              case "agent_generation_success": {
+                pendingEvents.push(data as AgentGenerationSuccessEvent);
+                break;
+              }
+            }
+          } catch (err) {
+            this._logger.error(
+              { error: err },
+              "Failed parsing chunk from Dust API"
+            );
+          }
+        }
+      }
+    });
+
+    const reader = res.body.getReader();
+    const logger = this._logger;
+
+    const streamEvents = async function* () {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          parser.feed(new TextDecoder().decode(value));
+          for (const event of pendingEvents) {
+            yield event;
+          }
+          pendingEvents = [];
+        }
+      } catch (e) {
+        yield {
+          type: "error",
+          content: {
+            code: "stream_error",
+            message: "Error streaming chunks",
+          },
+        } as DustAppRunErroredEvent;
+        logger.error(
+          {
+            error: e,
+          },
+          "Error streaming chunks."
+        );
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    return new Ok({ eventStream: streamEvents() });
+  }
+
+  async getConversation({ conversationId }: { conversationId: string }) {
+    const res = await fetch(
+      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.error) {
+      return new Err(json.error as DustAPIErrorResponse);
+    }
+    return new Ok(json.conversation as ConversationType);
   }
 }

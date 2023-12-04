@@ -7,6 +7,8 @@ import {
 } from "@dust-tt/sparkle";
 import { CoreAPIDataSource, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
+import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -15,11 +17,10 @@ import { useEffect, useState } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
@@ -68,7 +69,8 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const coreDataSourceRes = await CoreAPI.getDataSource({
+  const coreAPI = new CoreAPI(logger);
+  const coreDataSourceRes = await coreAPI.getDataSource({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.name,
   });
@@ -81,7 +83,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
-    const connectorRes = await ConnectorsAPI.getConnector(
+    const connectorsAPI = new ConnectorsAPI(logger);
+    const connectorRes = await connectorsAPI.getConnector(
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {

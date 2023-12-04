@@ -1,15 +1,15 @@
 import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import { dustManagedCredentials } from "@dust-tt/types";
+import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { dustManagedCredentials } from "@app/lib/api/credentials";
 import {
   Authenticator,
   getOrCreateSystemApiKey,
   getSession,
 } from "@app/lib/auth";
-import { ConnectorsAPI, ConnectorType } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -170,8 +170,9 @@ async function handler(
           },
         });
       }
+      const coreAPI = new CoreAPI(logger);
 
-      const dustProject = await CoreAPI.createProject();
+      const dustProject = await coreAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -186,7 +187,7 @@ async function handler(
       // Dust managed credentials: managed data source.
       const credentials = dustManagedCredentials();
 
-      const dustDataSource = await CoreAPI.createDataSource({
+      const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: dataSourceName,
         config: {
@@ -228,7 +229,8 @@ async function handler(
         assistantDefaultSelected: true,
       });
 
-      const connectorsRes = await ConnectorsAPI.createConnector(
+      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsRes = await connectorsAPI.createConnector(
         provider,
         owner.sId,
         systemAPIKeyRes.value.secret,
@@ -243,7 +245,7 @@ async function handler(
           "Failed to create the connector"
         );
         await dataSource.destroy();
-        const deleteRes = await CoreAPI.deleteDataSource({
+        const deleteRes = await coreAPI.deleteDataSource({
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceName: dustDataSource.value.data_source.data_source_id,
         });

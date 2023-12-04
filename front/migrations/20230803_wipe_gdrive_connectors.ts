@@ -1,8 +1,9 @@
+import { dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { dustManagedCredentials } from "@app/lib/api/credentials";
-import { CoreAPI } from "@app/lib/core_api";
 import { DataSource } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 const { CONNECTORS_DB = "" } = process.env;
 
@@ -34,12 +35,13 @@ async function main() {
       `DELETE FROM google_drive_files WHERE "connectorId" = ${connectorId}`
     );
     console.log(`deleting data source ${d.name} from core`);
-    await CoreAPI.deleteDataSource({
+    const coreAPI = new CoreAPI(logger);
+    await coreAPI.deleteDataSource({
       projectId: d.dustAPIProjectId,
       dataSourceName: d.name,
     });
     console.log(`creating data source ${d.name} in core`);
-    await CoreAPI.createDataSource({
+    await coreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
       dataSourceId: d.name,
       config: {

@@ -1,6 +1,8 @@
-import { dustManagedCredentials } from "@app/lib/api/credentials";
-import { CoreAPI } from "@app/lib/core_api";
+import { dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+
 import { DataSource } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 async function main() {
   const dataSources = await DataSource.findAll({
@@ -23,7 +25,8 @@ async function main() {
           throw new Error("No connectorId found");
         }
 
-        const dds = await CoreAPI.deleteDataSource({
+        const coreAPI = new CoreAPI(logger);
+        const dds = await coreAPI.deleteDataSource({
           projectId: ds.dustAPIProjectId,
           dataSourceName: ds.name,
         });
@@ -42,7 +45,7 @@ async function main() {
         const dataSourceModelId = "text-embedding-ada-002";
         const dataSourceMaxChunkSize = 256;
 
-        const dustProject = await CoreAPI.createProject();
+        const dustProject = await coreAPI.createProject();
         if (dustProject.isErr()) {
           throw new Error("Failed to create new Core project.");
         }
@@ -50,7 +53,7 @@ async function main() {
         // Dust managed credentials: managed data source.
         const credentials = dustManagedCredentials();
 
-        const dustDataSource = await CoreAPI.createDataSource({
+        const dustDataSource = await coreAPI.createDataSource({
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceId: dataSourceName,
           config: {

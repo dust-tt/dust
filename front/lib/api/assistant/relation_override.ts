@@ -1,4 +1,5 @@
 import { AgentRelationOverrideType } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
@@ -6,7 +7,6 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
-import { Err, Ok, Result } from "@app/lib/result";
 
 export async function getAgentRelationOverridesForUser(
   auth: Authenticator

@@ -1,10 +1,10 @@
+import { ConnectorsAPI } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
 import { subscriptionForWorkspace } from "@app/lib/auth";
-import { ConnectorsAPI } from "@app/lib/connectors_api";
-import { CoreAPI } from "@app/lib/core_api";
 import {
   DataSource,
   EventSchema,
@@ -17,7 +17,7 @@ import {
   internalSubscribeWorkspaceToFreeUpgradedPlan,
 } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
-import { Result } from "@app/lib/result";
+import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
@@ -402,7 +402,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (dataSource.connectorId) {
         console.log(`Deleting connectorId=${dataSource.connectorId}}`);
-        const connDeleteRes = await ConnectorsAPI.deleteConnector(
+        const connDeleteRes = await new ConnectorsAPI(logger).deleteConnector(
           dataSource.connectorId.toString(),
           true
         );
@@ -410,8 +410,9 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           throw new Error(connDeleteRes.error.error.message);
         }
       }
+      const coreAPI = new CoreAPI(logger);
 
-      const coreDeleteRes = await CoreAPI.deleteDataSource({
+      const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
       });
@@ -501,7 +502,8 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const getRes = await CoreAPI.getDataSourceDocument({
+      const coreAPI = new CoreAPI(logger);
+      const getRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: args.documentId,
@@ -511,7 +513,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           `Error while getting the document: ` + getRes.error.message
         );
       }
-      const delRes = await CoreAPI.deleteDataSourceDocument({
+      const delRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: args.documentId,

@@ -1,6 +1,9 @@
-import { CoreAPI } from "@app/lib/core_api";
-import { Diff, diffStrings } from "@app/lib/diff";
+import { CoreAPI } from "@dust-tt/types";
+import { Diff } from "@dust-tt/types";
+
+import { diffStrings } from "@app/lib/diff";
 import { DataSource, Workspace } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 export async function getPreviousDocumentVersion({
   dataSourceName,
@@ -17,7 +20,8 @@ export async function getPreviousDocumentVersion({
   created: number;
 } | null> {
   const dataSource = await getDatasource(dataSourceName, workspaceId);
-  const versions = await CoreAPI.getDataSourceDocumentVersions({
+  const coreAPI = new CoreAPI(logger);
+  const versions = await coreAPI.getDataSourceDocumentVersions({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
     documentId: documentId,
@@ -52,7 +56,8 @@ export async function getDiffBetweenDocumentVersions({
   const dataSource = await getDatasource(dataSourceName, workspaceId);
 
   async function getDocumentText(hash?: string | null): Promise<string> {
-    const res = await CoreAPI.getDataSourceDocument({
+    const coreAPI = new CoreAPI(logger);
+    const res = await coreAPI.getDataSourceDocument({
       projectId: dataSource.dustAPIProjectId,
       dataSourceName: dataSource.name,
       documentId: documentId,

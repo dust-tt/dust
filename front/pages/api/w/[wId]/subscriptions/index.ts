@@ -1,8 +1,8 @@
 import { PlanType } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   downgradeWorkspaceToFreePlan,
   getCheckoutUrlForUpgrade,

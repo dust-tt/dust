@@ -1,3 +1,9 @@
+import {
+  ConnectorPermission,
+  ConnectorResource,
+  ConnectorsAPI,
+} from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,12 +11,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  ConnectorPermission,
-  ConnectorResource,
-  ConnectorsAPI,
-} from "@app/lib/connectors_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const SetConnectorPermissionsRequestBodySchema = t.type({
@@ -91,6 +92,7 @@ async function handler(
       },
     });
   }
+  const connectorsAPI = new ConnectorsAPI(logger);
 
   switch (req.method) {
     case "GET":
@@ -114,7 +116,7 @@ async function handler(
         }
       }
 
-      const permissionsRes = await ConnectorsAPI.getConnectorPermissions({
+      const permissionsRes = await connectorsAPI.getConnectorPermissions({
         connectorId: dataSource.connectorId,
         parentId,
         filterPermission,
@@ -175,7 +177,7 @@ async function handler(
 
       const { resources } = bodyValidation.right;
 
-      const connectorsRes = await ConnectorsAPI.setConnectorPermissions({
+      const connectorsRes = await connectorsAPI.setConnectorPermissions({
         connectorId: dataSource.connectorId,
         resources: resources.map((r) => ({
           internalId: r.internal_id,

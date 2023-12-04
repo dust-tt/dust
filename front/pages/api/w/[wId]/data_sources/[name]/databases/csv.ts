@@ -1,3 +1,6 @@
+import { CoreAPI, CoreAPIDatabaseRow } from "@dust-tt/types";
+import { Err, Ok, Result } from "@dust-tt/types";
+import { APIError } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -6,10 +9,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI, CoreAPIDatabaseRow } from "@app/lib/core_api";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { APIError } from "@app/lib/error";
-import { Err, Ok, Result } from "@app/lib/result";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -64,7 +64,7 @@ async function handler(
       },
     });
   }
-
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "POST":
       const bodyValidation = CreateDatabaseFromCsvSchema.decode(req.body);
@@ -101,7 +101,7 @@ async function handler(
 
       const id = generateModelSId();
 
-      const dbRes = await CoreAPI.createDatabase({
+      const dbRes = await coreAPI.createDatabase({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
@@ -130,7 +130,7 @@ async function handler(
       const { database } = dbRes.value;
 
       const tableId = generateModelSId();
-      const tableRes = await CoreAPI.upsertDatabaseTable({
+      const tableRes = await coreAPI.upsertDatabaseTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
@@ -162,7 +162,7 @@ async function handler(
         });
       }
 
-      const rowsRes = await CoreAPI.upsertDatabaseRows({
+      const rowsRes = await coreAPI.upsertDatabaseRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,

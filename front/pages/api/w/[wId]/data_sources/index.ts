@@ -1,13 +1,14 @@
 import { DataSourceType } from "@dust-tt/types";
+import { dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { dustManagedCredentials } from "@app/lib/api/credentials";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { CoreAPI } from "@app/lib/core_api";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { DataSource } from "@app/lib/models";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { NODE_ENV } = process.env;
@@ -111,7 +112,9 @@ async function handler(
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 512;
 
-      const dustProject = await CoreAPI.createProject();
+      const coreAPI = new CoreAPI(logger);
+
+      const dustProject = await coreAPI.createProject();
       if (dustProject.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -128,7 +131,7 @@ async function handler(
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 
-      const dustDataSource = await CoreAPI.createDataSource({
+      const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: req.body.name as string,
         config: {

@@ -1,9 +1,9 @@
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
 import { getUserFromSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import {
   Membership,
   MembershipInvitation,

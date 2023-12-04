@@ -1,6 +1,6 @@
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { Err, Ok, Result } from "@app/lib/result";
+import { Err, Ok, Result } from "@dust-tt/types";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
