@@ -13,7 +13,7 @@ import { WorkspaceType } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { AgentMention, MentionType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import {
+import React, {
   createContext,
   ForwardedRef,
   forwardRef,
@@ -205,6 +205,7 @@ export function AssistantInputBar({
   owner,
   onSubmit,
   stickyMentions,
+  stopGenerationButton,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -213,6 +214,7 @@ export function AssistantInputBar({
     contentFragment?: { title: string; content: string }
   ) => void;
   stickyMentions?: AgentMention[];
+  stopGenerationButton?: React.ReactNode;
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = () => {
@@ -432,6 +434,9 @@ export function AssistantInputBar({
               : ""
           )}
         >
+          <div className="absolute -top-[68px] right-0">
+            {stopGenerationButton}
+          </div>
           <div className="flex flex-1 flex-col gap-y-0">
             {contentFragmentFilename && contentFragmentBody && (
               <div className="border-b border-structure-300/50 pb-3 pt-5">
@@ -930,7 +935,16 @@ export function FixedAssistantInputBar({
 
   return (
     <div className="pointer-events-none absolute right-0 top-0 z-20 h-full w-full overflow-hidden lg:left-80 lg:w-auto">
-      <div className="mx-auto flex h-full max-w-4xl">
+      <div className="mx-auto flex h-full max-w-4xl flex-col">
+        <div className="flex w-full justify-center pb-4">
+          <Button
+            className="mt-4"
+            variant="tertiary"
+            label="Stop generation"
+            icon={StopIcon}
+            disabled={isProcessing}
+          />
+        </div>
         {generationContext.generatingMessageIds.length > 0 && (
           <div className="flex justify-center pb-4">
             <Button
@@ -949,6 +963,20 @@ export function FixedAssistantInputBar({
           owner={owner}
           onSubmit={onSubmit}
           stickyMentions={stickyMentions}
+          stopGenerationButton={
+            generationContext.generatingMessageIds.length > 0 && (
+              <Button
+                className="mt-4"
+                variant="tertiary"
+                label={
+                  isProcessing ? "Stopping generation..." : "Stop generation"
+                }
+                icon={StopIcon}
+                onClick={handleStopGeneration}
+                disabled={isProcessing}
+              />
+            )
+          }
         />
       </div>
     </div>
