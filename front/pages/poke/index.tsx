@@ -1,6 +1,5 @@
 import { UserType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import React, { ChangeEvent, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -86,12 +85,12 @@ const Dashboard = (
           {!isSearchResultsLoading && !isSearchResultsError && (
             <ul className="mt-4 space-y-4">
               {searchResults.map((ws) => (
-                <Link href={`/poke/${ws.sId}`} key={ws.id}>
+                <a href={`/poke/${ws.sId}`} key={ws.id}>
                   <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
                     <h2 className="text-xl font-semibold">{ws.name}</h2>
                     <p className="text-sm text-gray-500">sId: {ws.sId}</p>
                   </li>
-                </Link>
+                </a>
               ))}
             </ul>
           )}
@@ -100,12 +99,12 @@ const Dashboard = (
             {!isUpgradedWorkspacesLoading &&
               !isUpgradedWorkspacesError &&
               upgradedWorkspaces.map((ws) => (
-                <Link href={`/poke/${ws.sId}`} key={ws.id}>
+                <a href={`/poke/${ws.sId}`} key={ws.id}>
                   <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
                     <h2 className="text-xl font-semibold">{ws.name}</h2>
                     <p className="text-sm text-gray-500">sId: {ws.sId}</p>
                   </li>
-                </Link>
+                </a>
               ))}
           </ul>
         </>

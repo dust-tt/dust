@@ -1,6 +1,6 @@
 import { ModelId } from "../shared/model_id";
 
-export type WorkspaceSegmentationType = "enterprise";
+export type WorkspaceSegmentationType = "interesting" | null;
 export type RoleType = "admin" | "builder" | "user" | "none";
 
 export type WorkspaceType = {
