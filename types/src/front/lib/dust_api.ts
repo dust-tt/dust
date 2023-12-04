@@ -317,14 +317,10 @@ export class DustAPI {
     logger: LoggerInterface;
     url?: string;
   }) {
-    if (!url && !DUST_FRONT_API) {
-      throw new Error("Missing Dust API URL");
-    }
-
     if (url) {
       this._url = url;
     } else {
-      this._url = DUST_FRONT_API as string;
+      this._url = DUST_FRONT_API;
     }
 
     this._credentials = credentials;
