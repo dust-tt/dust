@@ -40,7 +40,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
+    case "PATCH":
       const bodyValidation = WorkspaceTypeSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

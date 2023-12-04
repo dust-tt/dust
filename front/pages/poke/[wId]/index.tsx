@@ -280,7 +280,7 @@ const WorkspacePage = ({
     async (segmentation: WorkspaceSegmentationType) => {
       try {
         const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
