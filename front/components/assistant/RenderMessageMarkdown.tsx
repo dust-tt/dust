@@ -30,7 +30,9 @@ const SyntaxHighlighter = dynamic(
   { ssr: false }
 );
 
-function useCopyToClipboard(resetInterval = 2000) {
+function useCopyToClipboard(
+  resetInterval = 2000
+): [isCopied: boolean, copy: (text: string) => Promise<boolean>] {
   const [isCopied, setCopied] = useState(false);
 
   const copy = useCallback(
@@ -53,7 +55,7 @@ function useCopyToClipboard(resetInterval = 2000) {
     [resetInterval]
   );
 
-  return [isCopied, copy] as const;
+  return [isCopied, copy];
 }
 
 function mentionDirective() {
