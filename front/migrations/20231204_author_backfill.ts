@@ -58,6 +58,7 @@ async function backfillAuthor(workspaceId: number) {
       authorId: author.id,
     },
     {
+      // @ts-ignore
       where: {
         workspaceId,
         authorId: null,
