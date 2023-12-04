@@ -292,9 +292,7 @@ export class Authenticator {
           name: this._workspace.name,
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
-          segmentation: this.isDustSuperUser()
-            ? this._workspace.segmentation
-            : null,
+          segmentation: this._workspace.segmentation || null,
         }
       : null;
   }
@@ -415,7 +413,7 @@ export async function getUserFromSession(
         name: w.name,
         allowedDomain: w.allowedDomain || null,
         role,
-        segmentation: null,
+        segmentation: w.segmentation || null,
       };
     }),
   };
