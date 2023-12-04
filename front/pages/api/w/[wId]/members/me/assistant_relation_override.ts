@@ -63,12 +63,23 @@ async function handler(
   }
 
   const user = auth.user();
-  if (!user || !auth.isUser()) {
+  if (!user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "workspace_user_not_found",
         message: "The user requested was not found.",
+      },
+    });
+  }
+
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users of the current workspace are authorized to access this endpoint.",
       },
     });
   }
