@@ -1,9 +1,15 @@
-import { Button, Collapsible, SliderToggle } from "@dust-tt/sparkle";
+import {
+  Button,
+  Collapsible,
+  DropdownMenu,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
   DataSourceType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
+  WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
@@ -270,6 +276,29 @@ const WorkspacePage = ({
     }
   );
 
+  const { submit: onWorkspaceUpdate } = useSubmitFunction(
+    async (segmentation: WorkspaceSegmentationType) => {
+      try {
+        const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            segmentation,
+          }),
+        });
+        if (!r.ok) {
+          throw new Error("Failed to update workspace.");
+        }
+        await router.reload();
+      } catch (e) {
+        console.error(e);
+        window.alert("An error occurred while updating the workspace.");
+      }
+    }
+  );
+
   const { submit: onAssistantArchive } = useSubmitFunction(
     async (agentConfiguration: AgentConfigurationType) => {
       if (
@@ -407,7 +436,36 @@ const WorkspacePage = ({
 
         <div className="flex justify-center">
           <div className="mx-2 w-1/3">
-            <h2 className="text-md mb-4 font-bold">Plan:</h2>
+            <h2 className="text-md mb-4 font-bold">Segmentation:</h2>
+            <div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={owner.segmentation ?? "none"}
+                    variant="secondary"
+                    hasMagnifying={false}
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="auto" width={240}>
+                  {[null, "interesting"].map((segment) => (
+                    <DropdownMenu.Item
+                      label={segment ?? "none"}
+                      key={segment ?? "all"}
+                      onClick={() => {
+                        void onWorkspaceUpdate(
+                          segment as WorkspaceSegmentationType
+                        );
+                      }}
+                    ></DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+
+            <h2 className="text-md mb-4 mt-8 font-bold">Plan:</h2>
             <JsonViewer value={subscription} rootName={false} />
             {planInvitation && (
               <div className="mb-4 flex flex-col gap-2 pt-4 text-sm font-bold">

@@ -55,6 +55,7 @@ async function handler(
           name: owner.name,
           allowedDomain: owner.allowedDomain || null,
           role: "admin",
+          segmentation: owner.segmentation || null,
         },
       });
 

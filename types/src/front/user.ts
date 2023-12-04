@@ -1,5 +1,6 @@
 import { ModelId } from "../shared/model_id";
 
+export type WorkspaceSegmentationType = "interesting" | null;
 export type RoleType = "admin" | "builder" | "user" | "none";
 
 export type WorkspaceType = {
@@ -8,6 +9,7 @@ export type WorkspaceType = {
   name: string;
   allowedDomain: string | null;
   role: RoleType;
+  segmentation: WorkspaceSegmentationType;
 };
 
 export type UserProviderType = "github" | "google";

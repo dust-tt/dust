@@ -1,4 +1,9 @@
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  RoleType,
+  UserType,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { MembershipInvitationType } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
@@ -28,6 +33,42 @@ export async function getWorkspaceInfos(
     name: workspace.name,
     allowedDomain: workspace.allowedDomain,
     role: "none",
+    segmentation: workspace.segmentation,
+  };
+}
+
+export async function setInternalWorkspaceSegmentation(
+  auth: Authenticator,
+  segmentation: WorkspaceSegmentationType
+): Promise<WorkspaceType> {
+  const owner = auth.workspace();
+  const user = auth.user();
+
+  if (!owner || !user || !auth.isDustSuperUser()) {
+    throw new Error("Forbidden update to workspace segmentation.");
+  }
+
+  const workspace = await Workspace.findOne({
+    where: {
+      id: owner.id,
+    },
+  });
+
+  if (!workspace) {
+    throw new Error("Could not find workspace.");
+  }
+
+  await workspace.update({
+    segmentation,
+  });
+
+  return {
+    id: workspace.id,
+    sId: workspace.sId,
+    name: workspace.name,
+    allowedDomain: workspace.allowedDomain,
+    role: "none",
+    segmentation: workspace.segmentation,
   };
 }
 

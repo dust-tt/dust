@@ -1,3 +1,4 @@
+import { WorkspaceSegmentationType } from "@dust-tt/types";
 import {
   CreationOptional,
   DataTypes,
@@ -25,6 +26,7 @@ export class Workspace extends Model<
   declare name: string;
   declare description: string | null;
   declare allowedDomain: string | null;
+  declare segmentation: WorkspaceSegmentationType;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
@@ -61,6 +63,10 @@ Workspace.init(
     },
     allowedDomain: {
       type: DataTypes.STRING,
+    },
+    segmentation: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
