@@ -67,6 +67,13 @@ export type GlobalAgentStatus =
 export type AgentStatus = "active" | "archived";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
+/**
+ * Agent configuration scope
+ * - 'global' scope are Dust assistants, not editable, inside-list for all, cannot be overriden
+ * - 'workspace' scope are editable by builders only,  inside-list by default but user can change it
+ * - 'published' scope are editable by everybody, outside-list by default
+ * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no entry in the table
+ */
 export type AgentConfigurationScope =
   | "global"
   | "workspace"
