@@ -483,6 +483,20 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
+        let (openai_user, response_format) = match &extras {
+            None => (None, None),
+            Some(v) => (
+                match v.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                match v.get("response_format") {
+                    Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+            ),
+        };
+
         let c = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
@@ -509,13 +523,8 @@ impl LLM for AzureOpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    response_format,
+                    openai_user,
                     event_sender,
                 )
                 .await?
@@ -545,13 +554,8 @@ impl LLM for AzureOpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    response_format,
+                    openai_user,
                 )
                 .await?
             }

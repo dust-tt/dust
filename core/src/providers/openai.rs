@@ -540,6 +540,7 @@ pub async fn streamed_chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: f32,
     frequency_penalty: f32,
+    response_format: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<ChatCompletion> {
@@ -608,6 +609,11 @@ pub async fn streamed_chat_completion(
     }
     if function_call.is_some() {
         body["function_call"] = function_call.unwrap();
+    }
+    if response_format.is_some() {
+        body["response_format"] = json!({
+            "type": response_format.unwrap(),
+        });
     }
 
     // println!("BODY: {}", body.to_string());
@@ -899,6 +905,7 @@ pub async fn chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: f32,
     frequency_penalty: f32,
+    response_format: Option<String>,
     user: Option<String>,
 ) -> Result<ChatCompletion> {
     let https = HttpsConnector::new();
@@ -935,6 +942,11 @@ pub async fn chat_completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    if response_format.is_some() {
+        body["response_format"] = json!({
+            "type": response_format.unwrap(),
+        });
+    }
     if functions.len() > 0 {
         body["functions"] = json!(functions);
     }
@@ -942,7 +954,6 @@ pub async fn chat_completion(
         body["function_call"] = function_call.unwrap();
     }
 
-    // println!("BODY: {}", body.to_string());
     let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
@@ -1398,18 +1409,30 @@ impl LLM for OpenAILLM {
             }
         }
 
+        let (openai_org_id, openai_user, response_format) = match &extras {
+            None => (None, None, None),
+            Some(v) => (
+                match v.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                match v.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                match v.get("response_format") {
+                    Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+            ),
+        };
+
         let c = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(e) => match e.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    openai_org_id,
                     Some(self.id.clone()),
                     messages,
                     functions,
@@ -1430,13 +1453,8 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    response_format,
+                    openai_user,
                     event_sender,
                 )
                 .await?
@@ -1445,13 +1463,7 @@ impl LLM for OpenAILLM {
                 chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(e) => match e.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    openai_org_id,
                     Some(self.id.clone()),
                     messages,
                     functions,
@@ -1472,13 +1484,8 @@ impl LLM for OpenAILLM {
                         Some(f) => f,
                         None => 0.0,
                     },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
+                    response_format,
+                    openai_user,
                 )
                 .await?
             }

@@ -71,8 +71,8 @@ export async function generateActionInputs(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       };
 
   const contextSize = isFree

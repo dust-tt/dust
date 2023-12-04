@@ -277,15 +277,24 @@ impl Block for Chat {
         } && event_sender.is_some();
 
         let extras = match config {
-            Some(v) => match v.get("openai_user") {
-                Some(v) => match v {
-                    Value::String(s) => Some(json!({
-                        "openai_user": s.clone(),
-                    })),
-                    _ => None,
-                },
-                None => None,
-            },
+            Some(v) => {
+                let mut extras = json!({});
+
+                if let Some(Value::String(s)) = v.get("openai_user") {
+                    extras["openai_user"] = json!(s.clone());
+                }
+                if let Some(Value::String(s)) = v.get("openai_organization_id") {
+                    extras["openai_organization_id"] = json!(s.clone());
+                }
+                if let Some(Value::String(s)) = v.get("response_format") {
+                    extras["response_format"] = json!(s.clone());
+                }
+
+                match extras.as_object().unwrap().keys().len() {
+                    0 => None,
+                    _ => Some(extras),
+                }
+            }
             None => None,
         };
 
