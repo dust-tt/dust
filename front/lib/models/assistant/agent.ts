@@ -243,6 +243,31 @@ AgentConfiguration.belongsTo(User, {
 });
 
 /**
+ * At time of writing, private agents can only be created from scratch.
+ * An existing agent that is not already private cannot become private.
+ * This is a framing decision that is enforced by the following hook.
+ */
+AgentConfiguration.addHook(
+  "beforeCreate",
+  "existing_agent_cannot_go_private",
+  async (agentConfiguration) => {
+    if (agentConfiguration.dataValues.scope === "private") {
+      // get the agent configuration with the same sId and maximum version
+      const existingAgentConfiguration = await AgentConfiguration.findOne({
+        where: {
+          sId: agentConfiguration.dataValues.sId,
+        },
+        order: [["version", "DESC"]],
+      });
+      assert(
+        existingAgentConfiguration?.scope === "private",
+        "Scope cannot be changed to private on a previously non-private agent."
+      );
+    }
+  }
+);
+
+/**
  * Global Agent settings
  */
 export class GlobalAgentSettings extends Model<
