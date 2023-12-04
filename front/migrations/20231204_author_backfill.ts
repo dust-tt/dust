@@ -27,10 +27,6 @@ async function main() {
       })
     );
   }
-
-  for (const w of workspaceIds) {
-    await backfillAuthor(w);
-  }
 }
 
 async function backfillAuthor(workspaceId: number) {

@@ -1,6 +1,7 @@
 import { SupportedModel } from "@dust-tt/types";
 import { DustAppRunConfigurationType } from "@dust-tt/types";
 import {
+  AgentsGetViewType,
   DataSourceConfiguration,
   isTemplatedQuery,
   isTimeFrame,
@@ -209,6 +210,7 @@ export async function getAgentConfiguration(
  */
 export async function getAgentConfigurations(
   auth: Authenticator,
+  getViewType: AgentsGetViewType,
   agentPrefix?: string
 ): Promise<AgentConfigurationType[] | []> {
   const owner = auth.workspace();
@@ -216,21 +218,29 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  // construct the where clause
+  const baseClause = {
+    workspaceId: owner.id,
+    status: "active",
+  };
+  const prefixClause = agentPrefix
+    ? { name: { [Op.iLike]: `${agentPrefix}%` } }
+    : {};
+  // clause matching the scope being published or private
+  const scopeClause =
+    getViewType === "public" || getViewType === "discover"
+      ? { scope: { [Op.not]: "private" } }
+      : {};
+  // clause matching whether the user is author of the agent
+
+  const whereClause = { ...baseClause, ...prefixClause };
   const rawAgents = await AgentConfiguration.findAll({
-    where: {
-      workspaceId: owner.id,
-      status: "active",
-      ...(agentPrefix
-        ? {
-            name: {
-              [Op.iLike]: `${agentPrefix}%`,
-            },
-          }
-        : {}),
-    },
+    where: whereClause,
+    attributes: ["sId"],
     order: [["name", "ASC"]],
   });
 
+  // fetch the visibililty overrides for
   const agents = (
     await Promise.all(
       rawAgents.map(async (a) => {

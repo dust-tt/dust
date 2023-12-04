@@ -84,6 +84,21 @@ export type AgentConfigurationScope =
  * scope 'published' aren't. But a user can override the default behaviour, as per the type below */
 export type AgentRelationOverrideType = "in-list" | "not-in-list";
 
+/**
+ * Agents can be retrieved according to 3 different views:
+ * - list: all agents in the user's list
+ * - conversation: all agents in the user's list + agents in the current
+ *   conversation (requries a conversation sId)
+ * - public: all agents except private ones
+ * - discover: public + in user's list
+ */
+
+export type AgentsGetViewType =
+  | "list"
+  | { conversationId: string }
+  | "discover"
+  | "public";
+
 export type AgentConfigurationType = {
   id: ModelId;
 
