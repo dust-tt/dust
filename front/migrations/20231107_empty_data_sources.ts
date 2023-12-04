@@ -42,7 +42,17 @@ async function main() {
     const is2DayOld =
       ds.createdAt < new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
-    if (docData.length === 0 && !ds.connectorId && is2DayOld) {
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+    const [databaseData, databaseMetaData] = (await coreSequelize.query(`
+      SELECT * FROM databases WHERE data_source = ${dsData[0].id} LIMIT 1;
+    `)) as [any[], { rowCount?: number }];
+
+    if (
+      docData.length === 0 &&
+      databaseData.length === 0 &&
+      !ds.connectorId &&
+      is2DayOld
+    ) {
       countDeleted += 1;
       console.log(
         `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name} ${dsData[0].internal_id}`
