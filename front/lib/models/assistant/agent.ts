@@ -103,7 +103,7 @@ export class AgentConfiguration extends Model<
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare authorId: ForeignKey<User["id"]>;
+  declare authorId: ForeignKey<User["id"]> | null;
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
