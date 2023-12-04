@@ -23,9 +23,8 @@ import {
   AgentGenerationSuccessEvent,
 } from "./api/assistant/agent";
 import { GenerationTokensEvent } from "./api/assistant/generation";
-import { DustAppRunErrorEvent } from "./api/assistant/actions/dust_app_run";
 
-const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
+const { DUST_FRONT_API } = process.env;
 
 export type DustAPIErrorResponse = {
   type: string;
@@ -303,24 +302,33 @@ export async function processStreamedRunResponse(
 
 export class DustAPI {
   _credentials: DustAPICredentials;
-  _useLocalInDev: boolean;
   _logger: LoggerInterface;
+  _url: string;
 
   /**
    * @param credentials DustAPICrededentials
    */
-  constructor(
-    credentials: DustAPICredentials,
-    logger: LoggerInterface,
-    {
-      useLocalInDev,
-    }: {
-      useLocalInDev: boolean;
-    } = { useLocalInDev: false }
-  ) {
+  constructor({
+    credentials,
+    logger,
+    url,
+  }: {
+    credentials: DustAPICredentials;
+    logger: LoggerInterface;
+    url?: string;
+  }) {
+    if (!url && !DUST_FRONT_API) {
+      throw new Error("Missing Dust API URL");
+    }
+
+    if (url) {
+      this._url = url;
+    } else {
+      this._url = DUST_FRONT_API as string;
+    }
+
     this._credentials = credentials;
     this._logger = logger;
-    this._useLocalInDev = useLocalInDev;
   }
 
   workspaceId(): string {
@@ -328,9 +336,7 @@ export class DustAPI {
   }
 
   apiUrl() {
-    return this._useLocalInDev && NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : DUST_PROD_API;
+    return this._url;
   }
 
   /**

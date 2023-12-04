@@ -223,16 +223,13 @@ async function botAnswerMessage(
     connector
   );
 
-  const dustAPI = new DustAPI(
-    {
+  const dustAPI = new DustAPI({
+    credentials: {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
     },
     logger,
-    {
-      useLocalInDev: true,
-    }
-  );
+  });
   const mainMessage = await slackClient.chat.postMessage({
     channel: slackChannel,
     text: "_Thinking..._",

@@ -21,6 +21,7 @@ import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
+const { DUST_PROD_API } = process.env;
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -484,7 +485,14 @@ async function _getDustGlobalAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  if (!DUST_PROD_API) {
+    throw new Error("DUST_PROD_API env variable is not set");
+  }
+  const api = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {

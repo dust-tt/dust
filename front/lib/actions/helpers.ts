@@ -15,6 +15,8 @@ import {
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
+const { DUST_PROD_API } = process.env;
+
 interface CallActionParams<V extends t.Mixed> {
   workspaceId: string;
   input: { [key: string]: unknown };
@@ -59,8 +61,10 @@ export async function callAction<V extends t.Mixed>({
     );
   }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-
-  const prodAPI = new DustAPI(prodCredentials, logger);
+  if (!DUST_PROD_API) {
+    throw new Error("DUST_PROD_API env variable is not set");
+  }
+  const prodAPI = new DustAPI({credentials:prodCredentials, logger, url:DUST_PROD_API});
 
   const response = (await prodAPI.runApp(app, config, [input])) as Result<
     unknown,
