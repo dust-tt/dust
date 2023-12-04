@@ -1,9 +1,4 @@
-import {
-  ArrowDownCircleIcon,
-  Avatar,
-  Button,
-  DropdownMenu,
-} from "@dust-tt/sparkle";
+import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { MessageReactionType } from "@dust-tt/types";
