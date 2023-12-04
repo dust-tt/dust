@@ -1,10 +1,4 @@
-import {
-  AgentConfiguration,
-  Membership,
-  User,
-  Workspace,
-} from "@app/lib/models";
-import { cons } from "fp-ts/lib/NonEmptyArray";
+import { AgentConfiguration, Membership, User } from "@app/lib/models";
 
 async function main() {
   console.log("Starting author backfill");
