@@ -1,4 +1,9 @@
-import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
+import {
+  ArrowDownCircleIcon,
+  Avatar,
+  Button,
+  DropdownMenu,
+} from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { MessageReactionType } from "@dust-tt/types";
@@ -160,9 +165,9 @@ export function ConversationMessage({
 
   return (
     <>
-      <div className="flex w-full gap-4 px-4">
+      <div className="flex w-full flex-col gap-2 px-4 md:flex-row md:gap-4">
         {/* COLUMN 1: AVATAR*/}
-        <div className="hidden xl:block">
+        <div className="order-1 hidden xl:block">
           <Avatar
             visual={pictureUrl}
             name={name || undefined}
@@ -170,7 +175,7 @@ export function ConversationMessage({
             busy={avatarBusy}
           />
         </div>
-        <div className="xl:hidden">
+        <div className="hidden md:block xl:hidden">
           <Avatar
             visual={pictureUrl}
             name={name || undefined}
@@ -183,15 +188,26 @@ export function ConversationMessage({
         {/* COLUMN 2: CONTENT
          * min-w-0 prevents the content from overflowing the container
          */}
-        <div className="flex min-w-0 flex-grow flex-col gap-4">
-          <div className="text-sm font-medium">{name}</div>
-          <div className="min-w-0 break-words text-base font-normal">
+        <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 md:order-2">
+          <div className="flex gap-3">
+            <div className="md:hidden">
+              <Avatar
+                visual={pictureUrl}
+                name={name || undefined}
+                size="xs"
+                busy={avatarBusy}
+                className=""
+              />
+            </div>
+            <div className="text-sm font-medium">{name}</div>
+          </div>
+          <div className="min-w-0 break-words pl-8 text-base font-normal md:p-0">
             {children}
           </div>
         </div>
 
         {/* COLUMN 3: BUTTONS */}
-        <div className="flex w-20 shrink-0 flex-wrap justify-end gap-1.5 self-start xl:w-24">
+        <div className="order-2 flex w-full shrink-0 flex-row-reverse flex-wrap gap-2 self-end md:order-3 md:w-24 md:flex-row md:justify-end md:gap-1.5 md:self-start">
           {/* COPY / RETRY */}
           {buttons && (
             <>
