@@ -1,5 +1,10 @@
 import { Button, Collapsible, SliderToggle } from "@dust-tt/sparkle";
-import { DataSourceType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  DataSourceType,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+} from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
@@ -9,7 +14,9 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
@@ -27,6 +34,7 @@ export const getServerSideProps: GetServerSideProps<{
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
+  agentConfigurations: AgentConfigurationType[];
   slackbotEnabled?: boolean;
   gdrivePDFEnabled?: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
@@ -67,6 +75,10 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const dataSources = await getDataSources(auth);
+  const agentConfigurations = (await getAgentConfigurations(auth)).filter(
+    (a) =>
+      !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
+  );
 
   // sort data source so that managed ones (i.e ones with a connector provider) are first
   dataSources.sort((a, b) => {
@@ -142,6 +154,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
+      agentConfigurations,
       slackbotEnabled,
       gdrivePDFEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
@@ -154,6 +167,7 @@ const WorkspacePage = ({
   subscription,
   planInvitation,
   dataSources,
+  agentConfigurations,
   slackbotEnabled,
   gdrivePDFEnabled,
   dataSourcesSynchronizedAgo,
@@ -206,6 +220,21 @@ const WorkspacePage = ({
 
   const { submit: onDataSourcesDelete } = useSubmitFunction(
     async (dataSourceName: string) => {
+      const retrievalAgents = agentConfigurations.filter((a) => {
+        if (isRetrievalConfiguration(a.action)) {
+          return a.action.dataSources.some(
+            (ds) => ds.dataSourceId === dataSourceName
+          );
+        }
+        return false;
+      });
+      if (retrievalAgents.length > 0) {
+        window.alert(
+          "Please archive agents using this data source first: " +
+            retrievalAgents.map((a) => a.name).join(", ")
+        );
+        return;
+      }
       if (
         !window.confirm(
           `Are you sure you want to delete the ${dataSourceName} data source? There is no going back.`
@@ -235,6 +264,39 @@ const WorkspacePage = ({
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while deleting the data source.");
+      }
+    }
+  );
+
+  const { submit: onAssistantArchive } = useSubmitFunction(
+    async (agentConfiguration: AgentConfigurationType) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`
+        )
+      ) {
+        return;
+      }
+
+      try {
+        const r = await fetch(
+          `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (!r.ok) {
+          throw new Error("Failed to archive agent configuration.");
+        }
+        await router.reload();
+      } catch (e) {
+        console.error(e);
+        window.alert(
+          "An error occurred while archiving the agent configuration."
+        );
       }
     }
   );
@@ -447,6 +509,7 @@ const WorkspacePage = ({
                 </span>
               )}
           </div>
+
           <div className="mx-2 w-1/3">
             <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
             {dataSources.map((ds) => (
@@ -502,6 +565,48 @@ const WorkspacePage = ({
                     />
                   </div>
                 )}
+              </div>
+            ))}
+
+            <h2 className="text-md mb-4 mt-16 font-bold">Assistants:</h2>
+            {agentConfigurations.map((a) => (
+              <div
+                key={a.id}
+                className="border-material-200 my-4 rounded-lg border p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="mb-2 text-lg font-semibold">{a.name}</h3>
+                  <Button
+                    label="Archive"
+                    variant="secondaryWarning"
+                    onClick={() => {
+                      void onAssistantArchive(a);
+                    }}
+                  />
+                </div>
+                <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                  {a.description}
+                </div>
+                {a.action && isRetrievalConfiguration(a.action) && (
+                  <div className="mb-2 flex-col text-sm text-gray-600">
+                    <div className="font-bold">Data Sources:</div>
+                    {a.action.dataSources.map((ds) => (
+                      <div key={ds.dataSourceId}>{ds.dataSourceId}</div>
+                    ))}
+                  </div>
+                )}
+                {a.action && isDustAppRunConfiguration(a.action) && (
+                  <div className="mb-2 flex-col text-sm text-gray-600">
+                    <div className="font-bold">Dust app:</div>
+                    <div>
+                      {a.action.appWorkspaceId}/{a.action.appId}
+                    </div>
+                  </div>
+                )}
+                <div className="mb-2 flex flex-col text-sm text-gray-600">
+                  <div className="font-bold">Instructions</div>
+                  <div>{(a.generation?.prompt || "").substring(0, 100)}...</div>
+                </div>
               </div>
             ))}
           </div>

@@ -1,18 +1,22 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { Membership } from "@app/lib/models";
-import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type RevokeUserResponseBody = {
+export type DeleteAgentConfigurationResponseBody = {
   success: true;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<RevokeUserResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    DeleteAgentConfigurationResponseBody | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -20,9 +24,8 @@ async function handler(
     req.query.wId as string
   );
   const user = auth.user();
-  const owner = auth.workspace();
 
-  if (!user || !owner || !auth.isDustSuperUser()) {
+  if (!user || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -33,41 +36,33 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
-      const { userId } = req.body;
-      if (!userId || typeof userId !== "number") {
+    case "DELETE":
+      const { wId } = req.query;
+      if (!wId || typeof wId !== "string") {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 400,
           api_error: {
-            type: "user_not_found",
-            message: "Could not find the user.",
+            type: "invalid_request_error",
+            message: "The request query is invalid, [wId] must be set.",
           },
         });
       }
 
-      const m = await Membership.findOne({
-        where: {
-          userId,
-          workspaceId: owner.id,
-        },
-      });
-
-      if (!m) {
+      const agentConfiguration = await getAgentConfiguration(
+        auth,
+        req.query.aId as string
+      );
+      if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "workspace_user_not_found",
-            message: "Could not find the membership.",
+            type: "agent_configuration_not_found",
+            message: "Could not find the agent configuration.",
           },
         });
       }
 
-      await m.update({
-        role: "revoked",
-      });
-      await updateWorkspacePerSeatSubscriptionUsage({
-        workspaceId: owner.sId,
-      });
+      await archiveAgentConfiguration(auth, agentConfiguration.sId);
 
       return res.status(200).json({ success: true });
 
@@ -76,7 +71,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, DELETE is expected.",
         },
       });
   }

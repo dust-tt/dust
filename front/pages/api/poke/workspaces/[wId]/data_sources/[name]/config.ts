@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { DataSource, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type SetConfigResponseBody = {
@@ -16,20 +16,14 @@ async function handler(
   res: NextApiResponse<SetConfigResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const auth = await Authenticator.fromSuperUserSession(
+    session,
+    req.query.wId as string
+  );
   const user = auth.user();
+  const owner = auth.workspace();
 
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "Could not find the user.",
-      },
-    });
-  }
-
-  if (!auth.isDustSuperUser()) {
+  if (!user || !owner || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -41,20 +35,6 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const { wId } = req.query;
-      if (!wId || typeof wId !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The request query is invalid, expects { workspaceId: string }.",
-          },
-        });
-      }
-
-      const { name } = req.query;
-
       if (!req.body || typeof req.body.configKey !== "string") {
         return apiError(req, res, {
           status_code: 400,
@@ -77,26 +57,10 @@ async function handler(
       }
       const { configKey, configValue } = req.body;
 
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-      });
-
-      if (!workspace) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "Could not find the workspace.",
-          },
-        });
-      }
-
       const dataSource = await DataSource.findOne({
         where: {
-          workspaceId: workspace.id,
-          name,
+          workspaceId: owner.id,
+          name: req.query.name as string,
         },
       });
 

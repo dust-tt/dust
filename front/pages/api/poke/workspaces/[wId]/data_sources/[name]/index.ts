@@ -4,7 +4,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { ConnectorsAPI } from "@app/lib/connectors_api";
 import { CoreAPI } from "@app/lib/core_api";
 import { ReturnedAPIErrorType } from "@app/lib/error";
-import { DataSource, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -17,10 +17,14 @@ async function handler(
   res: NextApiResponse<DeleteDataSourceResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
   const session = await getSession(req, res);
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const auth = await Authenticator.fromSuperUserSession(
+    session,
+    req.query.wId as string
+  );
   const user = auth.user();
+  const owner = auth.workspace();
 
-  if (!user || !auth.isDustSuperUser()) {
+  if (!user || !owner || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -44,37 +48,10 @@ async function handler(
         });
       }
 
-      const { name } = req.query;
-      if (!name || typeof name !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The request query is invalid, expects { name: string }.",
-          },
-        });
-      }
-
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-      });
-
-      if (!workspace) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "Could not find the workspace.",
-          },
-        });
-      }
-
       const dataSource = await DataSource.findOne({
         where: {
-          workspaceId: workspace.id,
-          name,
+          workspaceId: owner.id,
+          name: req.query.name as string,
         },
       });
 
@@ -127,7 +104,7 @@ async function handler(
       await dataSource.destroy();
 
       await launchScrubDataSourceWorkflow({
-        wId: workspace.sId,
+        wId: owner.sId,
         dustAPIProjectId,
       });
 
