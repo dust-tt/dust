@@ -163,41 +163,26 @@ async function scrubDocument({
     .bucket(DUST_DATA_SOURCES_BUCKET)
     .getFiles({ prefix: path });
 
-  try {
-    await Promise.all(
-      files.map((f) => {
-        if (!seen.has(f.name)) {
-          seen.add(f.name);
-          logger.info(
-            {
-              path: f.name,
-              documentId: document_id,
-              documentHash: hash,
-              dataSourceProject: dataSource.project,
-              dataSourceInternalId: dataSource.internal_id,
-              dataSourceId: dataSource.id,
-            },
-            "Scrubbing"
-          );
+  await Promise.all(
+    files.map((f) => {
+      if (!seen.has(f.name)) {
+        seen.add(f.name);
+        logger.info(
+          {
+            path: f.name,
+            documentId: document_id,
+            documentHash: hash,
+            dataSourceProject: dataSource.project,
+            dataSourceInternalId: dataSource.internal_id,
+            dataSourceId: dataSource.id,
+          },
+          "Scrubbing"
+        );
 
-          return f.delete();
-        }
-      })
-    );
-  } catch (e) {
-    logger.error(
-      {
-        error: e,
-        documentId: document_id,
-        documentHash: hash,
-        dataSourceProject: dataSource.project,
-        dataSourceInternalId: dataSource.internal_id,
-        dataSourceId: dataSource.id,
-      },
-      "Failed to scrub GDrive file. Giving up for this iteration."
-    );
-    return false;
-  }
+        return f.delete();
+      }
+    })
+  );
 
   await core_sequelize.query(
     `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
