@@ -5,8 +5,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const WorkspaceTypeSchema = t.type({
@@ -53,35 +53,14 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-      const workspace = await Workspace.findOne({
-        where: {
-          id: owner.id,
-        },
-      });
 
-      if (!workspace) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "Could not find the workspace.",
-          },
-        });
-      }
-
-      await workspace.update({
-        segmentation: body.segmentation,
-      });
+      const workspace = await setInternalWorkspaceSegmentation(
+        auth,
+        body.segmentation
+      );
 
       return res.status(200).json({
-        workspace: {
-          id: owner.id,
-          sId: owner.sId,
-          name: owner.name,
-          allowedDomain: owner.allowedDomain || null,
-          role: "admin",
-          segmentation: body.segmentation,
-        },
+        workspace,
       });
 
     default:
