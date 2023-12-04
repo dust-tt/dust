@@ -28,18 +28,17 @@ import { Err, Ok, Result } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
-
-import { renderDustAppRunActionForModel } from "./actions/dust_app_run";
-import { getAgentConfigurations } from "./configuration";
 const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
@@ -238,7 +237,12 @@ export async function constructPrompt(
 
   // if meta includes the string "{ASSISTANTS_LIST}"
   if (meta.includes("{ASSISTANTS_LIST}")) {
-    const agents = await getAgentConfigurations(auth);
+    if (!auth.isUser())
+      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
+    const agents = await getAgentConfigurations(
+      auth,
+      auth.user() ? "list" : "all"
+    );
     meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents
