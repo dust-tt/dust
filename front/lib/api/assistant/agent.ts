@@ -76,8 +76,8 @@ export async function generateActionInputs(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
+        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       };
 
   const contextSize = isFree
@@ -115,12 +115,6 @@ export async function generateActionInputs(
   config.MODEL.function_call = specification.name;
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
-
-  // Temporary hack as 1106-preview models JSON mode is broken for non-ASCII characters.
-  if ((config.MODEL.model_id as string).includes?.("1106")) {
-    config.MODEL.extras = config.MODEL.extras ?? {};
-    config.MODEL.extras["response_format"] = "text";
-  }
 
   const res = await runActionStreamed(
     auth,
