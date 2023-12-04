@@ -116,6 +116,12 @@ export async function generateActionInputs(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
 
+  // Temporary hack as 1106-preview models JSON mode is broken for non-ASCII characters.
+  if ((config.MODEL.model_id as string).endsWith?.("1106-preview")) {
+    config.MODEL.extras = config.MODEL.extras ?? {};
+    config.MODEL.extras["response_format"] = "text";
+  }
+
   const res = await runActionStreamed(
     auth,
     "assistant-v2-inputs-generator",
