@@ -1,3 +1,5 @@
+import { AgentRelationOverrideType } from "@dust-tt/types";
+
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -5,7 +7,6 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { Err, Ok, Result } from "@app/lib/result";
-import { AgentRelationOverrideType } from "@dust-tt/types";
 
 export async function getAgentRelationOverridesForUser(
   auth: Authenticator
@@ -19,7 +20,8 @@ export async function getAgentRelationOverridesForUser(
   >
 > {
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-
+  if (!userId || !workspaceId || !auth.isUser())
+    return new Err(new Error("User or workspace not found"));
   const agentRelations = await AgentUserRelation.findAll({
     where: { userId, workspaceId },
     include: [
@@ -47,6 +49,8 @@ export async function getAgentRelationOverrideForUser({
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
+  if (!userId || !workspaceId || !auth.isUser())
+    return new Err(new Error("User or workspace not found"));
   const agentRelation = await AgentUserRelation.findOne({
     where: {
       userId,
@@ -79,7 +83,8 @@ export async function setAgentRelationOverrideForUser({
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-
+  if (!userId || !workspaceId || !auth.isUser())
+    return new Err(new Error("User or workspace not found"));
   const [agentRelation, created] = await AgentUserRelation.upsert({
     userId,
     workspaceId,
@@ -100,6 +105,8 @@ export async function deleteAgentRelationOverrideForUser({
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
+  if (!userId || !workspaceId || !auth.isUser())
+    return new Err(new Error("User or workspace not found"));
   await AgentUserRelation.destroy({
     where: {
       userId,

@@ -63,7 +63,7 @@ async function handler(
   }
 
   const user = auth.user();
-  if (!user) {
+  if (!user || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
