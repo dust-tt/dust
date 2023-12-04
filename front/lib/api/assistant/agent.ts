@@ -117,7 +117,7 @@ export async function generateActionInputs(
   config.MODEL.model_id = model.modelId;
 
   // Temporary hack as 1106-preview models JSON mode is broken for non-ASCII characters.
-  if ((config.MODEL.model_id as string).endsWith?.("1106-preview")) {
+  if ((config.MODEL.model_id as string).includes?.("1106")) {
     config.MODEL.extras = config.MODEL.extras ?? {};
     config.MODEL.extras["response_format"] = "text";
   }

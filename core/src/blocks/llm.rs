@@ -393,35 +393,26 @@ impl Block for LLM {
             None => false,
         } && event_sender.is_some();
 
-        let mut extras_map = HashMap::new();
-        if let Some(v) = config {
-            if let Some(openai_user) = v.get("openai_user") {
-                match openai_user {
-                    Value::String(s) => {
-                        extras_map.insert("openai_user", s);
-                    }
-                    _ => Err(anyhow!(
-                        "Invalid `openai_user` in configuration for llm block `{}`",
-                        name
-                    ))?,
-                }
-            }
-            if let Some(openai_organization_id) = v.get("openai_organization_id") {
-                match openai_organization_id {
-                    Value::String(s) => {
-                        extras_map.insert("openai_organization_id", s);
-                    }
-                    _ => Err(anyhow!(
-                        "Invalid `openai_organization_id` in configuration for llm block `{}`",
-                        name
-                    ))?,
-                }
-            }
-        }
+        let extras = match config {
+            Some(v) => {
+                let mut extras = json!({});
 
-        let extras = match extras_map.len() {
-            0 => None,
-            _ => Some(json!(extras_map)),
+                if let Some(Value::String(s)) = v.get("openai_user") {
+                    extras["openai_user"] = json!(s.clone());
+                }
+                if let Some(Value::String(s)) = v.get("openai_organization_id") {
+                    extras["openai_organization_id"] = json!(s.clone());
+                }
+                if let Some(Value::String(s)) = v.get("response_format") {
+                    extras["response_format"] = json!(s.clone());
+                }
+
+                match extras.as_object().unwrap().keys().len() {
+                    0 => None,
+                    _ => Some(extras),
+                }
+            }
+            None => None,
         };
 
         // if model_id starts with gpt-3.5-turbo or gpt-4 use the chat interface (except for

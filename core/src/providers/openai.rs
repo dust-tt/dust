@@ -942,19 +942,18 @@ pub async fn chat_completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    if response_format.is_some() {
+        body["response_format"] = json!({
+            "type": response_format.unwrap(),
+        });
+    }
     if functions.len() > 0 {
         body["functions"] = json!(functions);
     }
     if function_call.is_some() {
         body["function_call"] = function_call.unwrap();
     }
-    if response_format.is_some() {
-        body["response_format"] = json!({
-            "type": response_format.unwrap(),
-        });
-    }
 
-    // println!("BODY: {}", body.to_string());
     let mut req_builder = Request::builder()
         .method(Method::POST)
         .uri(uri)
