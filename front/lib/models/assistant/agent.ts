@@ -350,6 +350,7 @@ AgentUserRelation.init(
       {
         fields: ["agentConfigurationId", "workspaceId", "userId"],
         unique: true,
+        name: "agent_user_relation_config_workspace_user_idx",
       },
     ],
   }
