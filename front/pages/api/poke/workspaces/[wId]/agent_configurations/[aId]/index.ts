@@ -1,3 +1,4 @@
+import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -5,7 +6,6 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ReturnedAPIErrorType } from "@app/lib/error";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DeleteAgentConfigurationResponseBody = {
