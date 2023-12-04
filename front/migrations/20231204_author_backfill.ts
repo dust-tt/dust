@@ -40,11 +40,6 @@ async function main() {
 }
 
 async function backfillAuthor(workspaceId: number) {
-  // get all agent configurations in the workspace
-  const agentConfigurations = await AgentConfiguration.findAll({
-    where: { workspaceId },
-  });
-
   // set author as the first admin of the workspace
   const author = await User.findOne({
     include: [
@@ -62,29 +57,22 @@ async function backfillAuthor(workspaceId: number) {
     console.log(`No author found for workspace with id ${workspaceId}`);
     return;
   }
-  const chunks = [];
-  for (let i = 0; i < agentConfigurations.length; i += 16) {
-    chunks.push(agentConfigurations.slice(i, i + 16));
-  }
 
-  for (let i = 0; i < chunks.length; i++) {
-    console.log(
-      `Workspace ${workspaceId}: Processing agentconfig chunk ${i}/${chunks.length}...`
-    );
-    const chunk = chunks[i];
-
-    await Promise.all(
-      chunk.map((a: AgentConfiguration) => {
-        return (async () => {
-          if (!a.authorId) {
-            await a.update({
-              authorId: author.id,
-            });
-          }
-        })();
-      })
-    );
-  }
+  // update all agent configurations with null author of this workspace
+  const agentConfigurations = await AgentConfiguration.update(
+    {
+      authorId: author.id,
+    },
+    {
+      where: {
+        workspaceId,
+        authorId: null,
+      },
+    }
+  );
+  console.log(
+    `Updated ${agentConfigurations[0]} agent configurations for workspace ${workspaceId}`
+  );
 }
 
 main()
