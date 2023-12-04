@@ -120,6 +120,7 @@ Workspace.hasMany(Membership, {
   onDelete: "CASCADE",
 });
 Membership.belongsTo(Workspace);
+Membership.belongsTo(User);
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,
