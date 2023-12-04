@@ -34,6 +34,7 @@ export type ButtonProps = {
   className?: string;
   tooltipPosition?: TooltipProps["position"];
   disabledTooltip?: boolean;
+  isSquare?: boolean;
 };
 
 const textClasses = {
@@ -44,10 +45,16 @@ const textClasses = {
 };
 
 const sizeClasses = {
-  xs: "s-gap-x-1 s-px-3 s-py-1.5",
-  sm: "s-gap-x-1 s-px-4 s-py-2",
-  md: "s-gap-x-1.5 s-px-5 s-py-3",
-  lg: "s-gap-x-3 s-px-6 s-py-4",
+  xs: "s-gap-x-1 s-px-3 s-py-1.5 s-rounded-full",
+  sm: "s-gap-x-1 s-px-4 s-py-2 s-rounded-full",
+  md: "s-gap-x-1.5 s-px-5 s-py-3 s-rounded-full",
+  lg: "s-gap-x-3 s-px-6 s-py-4 s-rounded-full",
+};
+const sizeSquareClasses = {
+  xs: "s-gap-x-1 s-p-2.5 s-rounded-2xl",
+  sm: "s-gap-x-1 s-p-3 s-rounded-[20px]",
+  md: "s-gap-x-1.5 s-p-4 s-rounded-3xl",
+  lg: "s-gap-x-3 s-p-5 s-rounded-[30px]",
 };
 
 const sizeAvatarClasses = {
@@ -177,10 +184,18 @@ export function Button({
   hasMagnifying = true,
   disabledTooltip = false,
   avatar,
+  isSquare = false,
 }: ButtonProps) {
+  if (isSquare && labelVisible) {
+    throw new Error("Button: Cannot be square and have label visible");
+  }
   let buttonClasses = classNames(
-    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-rounded-full s-whitespace-nowrap",
-    !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
+    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-whitespace-nowrap",
+    !avatar
+      ? isSquare
+        ? sizeSquareClasses[size]
+        : sizeClasses[size]
+      : sizeAvatarClasses[size],
     textClasses[size],
     className
   );
@@ -195,7 +210,6 @@ export function Button({
     buttonClasses = classNames(
       buttonClasses,
       transitionClasses,
-      !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
       hasMagnifying ? magnifyingClasses : "",
       variantClasses[variant]?.base,
       variantClasses[variant]?.hover,

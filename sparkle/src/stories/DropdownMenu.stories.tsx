@@ -70,6 +70,17 @@ export const DropdownExample = () => {
       </div>
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
+        <div className="s-text-sm">Top right menu</div>
+        <DropdownMenu>
+          <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} size="md" />
+          <DropdownMenu.Items>
+            <DropdownMenu.Item label="item 1" href="#" />
+            <DropdownMenu.Item label="item 2" href="#" />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
         <div className="s-text-sm">Top left menu</div>
         <DropdownMenu>
           <DropdownMenu.Button

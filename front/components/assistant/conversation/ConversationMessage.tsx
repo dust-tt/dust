@@ -49,7 +49,8 @@ export function EmojiSelector({
             size="xs"
             icon={ReactionIcon}
             labelVisible={false}
-            label=" "
+            label="Reaction picker"
+            disabledTooltip
             type="menu"
             disabled={disabled}
           />
@@ -159,173 +160,109 @@ export function ConversationMessage({
 
   return (
     <>
-      {/* SMALL SIZE SCREEN*/}
-      <div className="flex w-full gap-4 xl:hidden">
-        <div className="flex w-full flex-grow flex-col gap-4">
-          <div className="flex items-start gap-2">
-            <div className="flex h-8 flex-grow items-center gap-2">
+      <div className="flex w-full flex-col gap-2 px-4 sm:flex-row sm:gap-4">
+        {/* COLUMN 1: AVATAR*/}
+        <div className="order-1 hidden xl:block">
+          <Avatar
+            visual={pictureUrl}
+            name={name || undefined}
+            size="md"
+            busy={avatarBusy}
+          />
+        </div>
+        <div className="hidden sm:block xl:hidden">
+          <Avatar
+            visual={pictureUrl}
+            name={name || undefined}
+            size="sm"
+            busy={avatarBusy}
+            className=""
+          />
+        </div>
+
+        {/* COLUMN 2: CONTENT
+         * min-w-0 prevents the content from overflowing the container
+         */}
+        <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 sm:order-2">
+          <div className="flex gap-3">
+            <div className="sm:hidden">
               <Avatar
                 visual={pictureUrl}
                 name={name || undefined}
                 size="xs"
                 busy={avatarBusy}
-                // backgroundColor={avatarBackgroundColor}
+                className=""
               />
-              <div className="flex-grow text-sm font-medium">{name}</div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              {/* COPY / RETRY */}
-              <div className="flex gap-1">
-                {buttons && (
-                  <>
-                    {buttons.map((button, i) => (
-                      <Button
-                        key={`message-${messageId}-button-${i}`}
-                        variant="tertiary"
-                        size="xs"
-                        label={button.label}
-                        labelVisible={false}
-                        icon={button.icon}
-                        onClick={button.onClick}
-                      />
-                    ))}
-                  </>
-                )}
-                {/* EMOJIS */}
-                {enableEmojis && (
-                  <EmojiSelector
-                    user={user}
-                    reactions={reactions}
-                    handleEmoji={handleEmoji}
-                    emojiData={emojiData}
-                    disabled={isSubmittingEmoji}
-                  />
-                )}
-              </div>
-              {enableEmojis && (
-                <div className="flex flex-wrap gap-3">
-                  {slicedReactions.map((reaction) => {
-                    const hasReacted = reaction.users.some(
-                      (u) => u.userId === user.id
-                    );
-                    const emoji = emojiData?.emojis[reaction.emoji];
-                    const nativeEmoji = emoji?.skins[0].native;
-                    if (!nativeEmoji) {
-                      return null;
-                    }
-                    return (
-                      <ButtonEmoji
-                        key={reaction.emoji}
-                        variant={hasReacted ? "selected" : "unselected"}
-                        emoji={nativeEmoji}
-                        count={reaction.users.length.toString()}
-                        onClick={async () =>
-                          await handleEmoji({
-                            emoji: reaction.emoji,
-                            isToRemove: hasReacted,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                  {hasMoreReactions && (
-                    <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
-                  )}
-                </div>
-              )}
-            </div>
+            <div className="text-sm font-medium">{name}</div>
           </div>
-          <div className="min-w-0 break-words pl-8 text-base font-normal">
-            {children}
-          </div>
-        </div>
-      </div>
-
-      {/* BIG SIZE SCREEN*/}
-      <div className="flex hidden w-full gap-4 xl:flex">
-        {/* COLUMN 1: AVATAR - in small size if small layout */}
-        <Avatar
-          visual={pictureUrl}
-          name={name || undefined}
-          size="md"
-          busy={avatarBusy}
-        />
-
-        {/* COLUMN 2: CONTENT
-         * min-w-0 prevents the content from overflowing the container
-         */}
-        <div className="flex min-w-0 flex-grow flex-col gap-4">
-          <div className="text-sm font-medium">{name}</div>
-          <div className="min-w-0 break-words text-base font-normal">
+          <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
             {children}
           </div>
         </div>
 
         {/* COLUMN 3: BUTTONS */}
-        <div className="w-16 overflow-visible">
-          <div className="w-32">
-            {/* COPY / RETRY */}
-            {buttons && (
-              <div className="mb-4 flex flex-wrap gap-1">
-                {buttons.map((button, i) => (
-                  <Button
-                    key={`message-${messageId}-button-${i}`}
-                    variant="tertiary"
-                    size="xs"
-                    label={button.label}
-                    labelVisible={false}
-                    icon={button.icon}
-                    onClick={button.onClick}
-                    disabled={button.disabled || false}
-                  />
-                ))}
-              </div>
-            )}
+        <div className="order-2 flex w-full shrink-0 flex-row-reverse flex-wrap gap-2 self-end sm:order-3 sm:w-24 sm:flex-row sm:justify-end sm:gap-1.5 sm:self-start">
+          {/* COPY / RETRY */}
+          {buttons && (
+            <>
+              {buttons.map((button, i) => (
+                <Button
+                  key={`message-${messageId}-button-${i}`}
+                  variant="tertiary"
+                  size="xs"
+                  label={button.label}
+                  labelVisible={false}
+                  icon={button.icon}
+                  onClick={button.onClick}
+                  disabled={button.disabled || false}
+                />
+              ))}
+            </>
+          )}
 
-            {/* EMOJIS */}
+          {/* EMOJIS */}
 
-            {enableEmojis && (
-              <>
-                <div className="mb-4">
-                  <EmojiSelector
-                    user={user}
-                    reactions={reactions}
-                    handleEmoji={handleEmoji}
-                    emojiData={emojiData}
-                  />
-                </div>
-                <div className="ml-2 flex flex-wrap gap-3">
-                  {slicedReactions.map((reaction) => {
-                    const hasReacted = reaction.users.some(
-                      (u) => u.userId === user.id
-                    );
-                    const emoji = emojiData?.emojis[reaction.emoji];
-                    const nativeEmoji = emoji?.skins[0].native;
-                    if (!nativeEmoji) {
-                      return null;
+          {enableEmojis && (
+            <>
+              <EmojiSelector
+                user={user}
+                reactions={reactions}
+                handleEmoji={handleEmoji}
+                emojiData={emojiData}
+                disabled={isSubmittingEmoji}
+              />
+              {slicedReactions.map((reaction) => {
+                const hasReacted = reaction.users.some(
+                  (u) => u.userId === user.id
+                );
+                const emoji = emojiData?.emojis[reaction.emoji];
+                const nativeEmoji = emoji?.skins[0].native;
+                if (!nativeEmoji) {
+                  return null;
+                }
+                return (
+                  <ButtonEmoji
+                    key={reaction.emoji}
+                    variant={hasReacted ? "selected" : "unselected"}
+                    emoji={nativeEmoji}
+                    count={reaction.users.length.toString()}
+                    onClick={async () =>
+                      await handleEmoji({
+                        emoji: reaction.emoji,
+                        isToRemove: hasReacted,
+                      })
                     }
-                    return (
-                      <ButtonEmoji
-                        key={reaction.emoji}
-                        variant={hasReacted ? "selected" : "unselected"}
-                        emoji={nativeEmoji}
-                        count={reaction.users.length.toString()}
-                        onClick={async () =>
-                          await handleEmoji({
-                            emoji: reaction.emoji,
-                            isToRemove: hasReacted,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                  {hasMoreReactions && (
-                    <div className="px-2 pt-2 text-xs">+{hasMoreReactions}</div>
-                  )}
+                  />
+                );
+              })}
+              {hasMoreReactions && (
+                <div className="px-2 pt-1.5 text-xs font-medium">
+                  +{hasMoreReactions}
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </>
@@ -349,7 +286,7 @@ export function ButtonEmoji({
     <div
       className={classNames(
         variant === "selected" ? "text-action-500" : "text-element-800",
-        "flex cursor-pointer items-center gap-1.5 py-1 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
+        "flex cursor-pointer items-center gap-1.5 py-0.5 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
       )}
       onClick={onClick}
     >

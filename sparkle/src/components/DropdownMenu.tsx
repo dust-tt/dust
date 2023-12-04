@@ -32,6 +32,11 @@ const labelClasses = {
   disabled: "s-opacity-50",
 };
 
+const labelSizeClasses = {
+  sm: "s-text-sm",
+  md: "s-text-base",
+};
+
 const iconClasses = {
   base: "s-text-element-700 s-transition-colors s-ease-out s-duration-400",
   hover: "group-hover:s-text-action-500",
@@ -77,6 +82,7 @@ export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
 export interface DropdownButtonProps {
   label?: string;
   type?: "menu" | "select";
+  size?: "sm" | "md";
   tooltip?: string;
   tooltipPosition?: TooltipProps["position"];
   icon?: ComponentType;
@@ -88,6 +94,7 @@ export interface DropdownButtonProps {
 DropdownMenu.Button = function ({
   label,
   type = "menu",
+  size = "sm",
   tooltip,
   icon,
   children,
@@ -97,6 +104,7 @@ DropdownMenu.Button = function ({
 }: DropdownButtonProps) {
   const finalLabelClasses = classNames(
     labelClasses.base,
+    labelSizeClasses[size],
     labelClasses.dark.base,
     !disabled ? labelClasses.active : "",
     !disabled ? labelClasses.dark.active : "",
@@ -158,13 +166,13 @@ DropdownMenu.Button = function ({
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
               "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-              label ? "s-gap-1.5" : "s-gap-0"
+              label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
             )}
           >
-            <Icon visual={icon} size="sm" className={finalIconClasses} />
+            <Icon visual={icon} size={size} className={finalIconClasses} />
             <Icon
               visual={type === "select" ? ChevronUpDown : ChevronDown}
-              size="xs"
+              size={size === "sm" ? "xs" : "sm"}
               className={finalChevronClasses}
             />
           </Menu.Button>
@@ -177,14 +185,14 @@ DropdownMenu.Button = function ({
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
             "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-            label ? "s-gap-1.5" : "s-gap-0"
+            label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
           )}
         >
-          <Icon visual={icon} size="sm" className={finalIconClasses} />
+          <Icon visual={icon} size={size} className={finalIconClasses} />
           <span className={finalLabelClasses}>{label}</span>
           <Icon
             visual={type === "select" ? ChevronUpDown : ChevronDown}
-            size="xs"
+            size={size === "sm" ? "xs" : "sm"}
             className={finalChevronClasses}
           />
         </Menu.Button>

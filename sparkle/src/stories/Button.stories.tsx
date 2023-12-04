@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Button, Cog6ToothIcon } from "../index_with_tw_base";
+import { ArrowUpIcon, Button, Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Button",
@@ -13,6 +13,40 @@ type Story = StoryObj<typeof meta>;
 
 export const ButtonExamples = () => (
   <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-items-center s-gap-4">
+      <Button
+        variant="primary"
+        size="lg"
+        label="Send"
+        labelVisible={false}
+        icon={ArrowUpIcon}
+        isSquare
+      />
+      <Button
+        variant="primary"
+        size="md"
+        label="Send"
+        labelVisible={false}
+        icon={ArrowUpIcon}
+        isSquare
+      />
+      <Button
+        variant="primary"
+        size="sm"
+        label="Send"
+        labelVisible={false}
+        icon={ArrowUpIcon}
+        isSquare
+      />
+      <Button
+        variant="primary"
+        size="xs"
+        label="Send"
+        labelVisible={false}
+        icon={ArrowUpIcon}
+        isSquare
+      />
+    </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button
         variant="primary"
