@@ -30,7 +30,7 @@ export async function runAllChecksActivity() {
 
 async function runAllChecks(checks: Check[]) {
   const allCheckUuid = uuidv4();
-  mainLogger.info({ uuid: allCheckUuid }, "Running all checks");
+  mainLogger.info({ all_check_uuid: allCheckUuid }, "Running all checks");
   for (const check of checks) {
     const uuid = uuidv4();
     const logger = mainLogger.child({

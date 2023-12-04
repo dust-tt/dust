@@ -16,10 +16,15 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   if (!CORE_DATABASE_URI) {
     throw new Error("Env var CORE_DATABASE_URI is not defined");
   }
+  if (!SERVICE_ACCOUNT) {
+    throw new Error("Env var SERVICE_ACCOUNT is not defined");
+  }
 
   const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
   });
+
+  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
   const deletedDocumentsData = await core_sequelize.query(
     `SELECT * FROM data_sources_documents WHERE status = 'deleted'`
@@ -53,15 +58,16 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     await Promise.all(
       chunk.map((d) => {
         return (async () => {
-          const done = await scrubDocument(
+          const done = await scrubDocument({
             logger,
             core_sequelize,
             seen,
-            d.data_source,
-            d.document_id,
-            d.created,
-            d.hash
-          );
+            storage,
+            data_source: d.data_source,
+            document_id: d.document_id,
+            deletedAt: d.created,
+            hash: d.hash,
+          });
           if (done) {
             deletedCount++;
           }
@@ -82,20 +88,27 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   });
 };
 
-async function scrubDocument(
-  logger: pino.Logger<LoggerOptions>,
-  core_sequelize: Sequelize,
-  seen: Set<string>,
-  data_source: number,
-  document_id: string,
-  deletedAt: number,
-  hash: string
-) {
+async function scrubDocument({
+  logger,
+  core_sequelize,
+  storage,
+  seen,
+  data_source,
+  document_id,
+  deletedAt,
+  hash,
+}: {
+  logger: pino.Logger<LoggerOptions>;
+  core_sequelize: Sequelize;
+  storage: Storage;
+  seen: Set<string>;
+  data_source: number;
+  document_id: string;
+  deletedAt: number;
+  hash: string;
+}) {
   if (!DUST_DATA_SOURCES_BUCKET) {
     throw new Error("Env var DUST_DATA_SOURCES_BUCKET is not defined");
-  }
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("Env var SERVICE_ACCOUNT is not defined");
   }
 
   // Process same version of same document only once.
@@ -145,8 +158,6 @@ async function scrubDocument(
   const documentIdHash = hasher.digest("hex");
 
   const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}/${hash}`;
-
-  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
   const [files] = await storage
     .bucket(DUST_DATA_SOURCES_BUCKET)
