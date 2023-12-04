@@ -165,7 +165,7 @@ export function ConversationMessage({
 
   return (
     <>
-      <div className="flex w-full flex-col gap-2 px-4 md:flex-row md:gap-4">
+      <div className="flex w-full flex-col gap-2 px-4 sm:flex-row sm:gap-4">
         {/* COLUMN 1: AVATAR*/}
         <div className="order-1 hidden xl:block">
           <Avatar
@@ -175,7 +175,7 @@ export function ConversationMessage({
             busy={avatarBusy}
           />
         </div>
-        <div className="hidden md:block xl:hidden">
+        <div className="hidden sm:block xl:hidden">
           <Avatar
             visual={pictureUrl}
             name={name || undefined}
@@ -188,9 +188,9 @@ export function ConversationMessage({
         {/* COLUMN 2: CONTENT
          * min-w-0 prevents the content from overflowing the container
          */}
-        <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 md:order-2">
+        <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 sm:order-2">
           <div className="flex gap-3">
-            <div className="md:hidden">
+            <div className="sm:hidden">
               <Avatar
                 visual={pictureUrl}
                 name={name || undefined}
@@ -201,13 +201,13 @@ export function ConversationMessage({
             </div>
             <div className="text-sm font-medium">{name}</div>
           </div>
-          <div className="min-w-0 break-words pl-8 text-base font-normal md:p-0">
+          <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
             {children}
           </div>
         </div>
 
         {/* COLUMN 3: BUTTONS */}
-        <div className="order-2 flex w-full shrink-0 flex-row-reverse flex-wrap gap-2 self-end md:order-3 md:w-24 md:flex-row md:justify-end md:gap-1.5 md:self-start">
+        <div className="order-2 flex w-full shrink-0 flex-row-reverse flex-wrap gap-2 self-end sm:order-3 sm:w-24 sm:flex-row sm:justify-end sm:gap-1.5 sm:self-start">
           {/* COPY / RETRY */}
           {buttons && (
             <>
