@@ -7,7 +7,7 @@ import {
 import { AgentConfigurationType } from "@dust-tt/types";
 import { RetrievalDocumentType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import remarkDirective from "remark-directive";
@@ -29,6 +29,34 @@ const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
+
+function useCopyToClipboard(
+  resetInterval = 2000
+): [isCopied: boolean, copy: (text: string) => Promise<boolean>] {
+  const [isCopied, setCopied] = useState(false);
+
+  const copy = useCallback(
+    async (text: string) => {
+      if (!navigator?.clipboard) {
+        console.warn("Clipboard not supported");
+        return false;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), resetInterval);
+        return true;
+      } catch (error) {
+        console.warn("Copy failed", error);
+        setCopied(false);
+        return false;
+      }
+    },
+    [resetInterval]
+  );
+
+  return [isCopied, copy];
+}
 
 function mentionDirective() {
   return (tree: any) => {
@@ -275,8 +303,40 @@ function CiteBlock(props: ReactMarkdownProps) {
 }
 
 function TableBlock({ children }: { children: React.ReactNode }) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopyTable = () => {
+    const tableText = Array.from(children as React.ReactNode[])
+      .map((node) => {
+        if (node && typeof node === "object" && "props" in node) {
+          const rows = node.props.children.map((tr: any) =>
+            tr.props.children.map((td: any) => td.props.children).join("\t")
+          );
+          return rows.join("\n");
+        }
+        return "";
+      })
+      .join("\n");
+    void copyToClipboard(tableText);
+  };
+
   return (
-    <div className="w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
+    <div className="relative w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
+      <div className="absolute right-2 top-2">
+        <div className="flex gap-2">
+          <div className="text-xs text-slate-300">
+            <a onClick={handleCopyTable} className="cursor-pointer">
+              {isCopied ? "Copied!" : "Copy"}
+            </a>
+          </div>
+          <IconButton
+            variant="tertiary"
+            size="xs"
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+            onClick={handleCopyTable}
+          />
+        </div>
+      </div>
       <table className="w-full table-auto">{children}</table>
     </div>
   );
@@ -330,8 +390,7 @@ function LinkBlock({
 }
 
 function PreBlock({ children }: { children: React.ReactNode }) {
-  const [confirmed, setConfirmed] = useState<boolean>(false);
-
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
   const validChildrenContent =
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
@@ -346,14 +405,9 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         : null;
   }
 
-  const handleClick = async () => {
-    await navigator.clipboard.writeText(
-      validChildrenContent || fallbackData || ""
-    );
-    setConfirmed(true);
-    void setTimeout(() => {
-      setConfirmed(false);
-    }, 1000);
+  const handleCopyPre = async () => {
+    const text = validChildrenContent || fallbackData || "";
+    void copyToClipboard(text);
   };
 
   return (
@@ -363,15 +417,15 @@ function PreBlock({ children }: { children: React.ReactNode }) {
           {(validChildrenContent || fallbackData) && (
             <div className="flex gap-2 align-bottom">
               <div className="text-xs text-slate-300">
-                <a onClick={handleClick} className="cursor-pointer">
-                  {confirmed ? "Copied!" : "Copy"}
+                <a onClick={handleCopyPre} className="cursor-pointer">
+                  {isCopied ? "Copied!" : "Copy"}
                 </a>
               </div>
               <IconButton
                 variant="tertiary"
                 size="xs"
-                icon={confirmed ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={handleClick}
+                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                onClick={handleCopyPre}
               />
             </div>
           )}
