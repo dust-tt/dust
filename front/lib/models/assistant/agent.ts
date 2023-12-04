@@ -103,6 +103,7 @@ export class AgentConfiguration extends Model<
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare authorId: ForeignKey<User["id"]> | null;
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
@@ -113,6 +114,7 @@ export class AgentConfiguration extends Model<
     AgentDustAppRunConfiguration["id"]
   > | null;
 
+  declare author: NonAttribute<User>;
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
@@ -174,6 +176,7 @@ AgentConfiguration.init(
       { fields: ["workspaceId", "name"] },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
+      { fields: ["authorId"] },
     ],
     hooks: {
       beforeValidate: (agentConfiguration: AgentConfiguration) => {
@@ -227,6 +230,15 @@ AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
   as: "dustAppRunConfiguration",
   foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
+});
+
+// Agent config <> Author
+User.hasMany(AgentConfiguration, {
+  foreignKey: { name: "authorId", allowNull: true },
+  onDelete: "CASCADE",
+});
+AgentConfiguration.belongsTo(User, {
+  foreignKey: { name: "authorId", allowNull: true },
 });
 
 /**

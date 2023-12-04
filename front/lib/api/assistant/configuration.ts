@@ -277,6 +277,11 @@ export async function createAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const user = auth.user();
+  if (!user) {
+    throw new Error("Unexpected `auth` without `user`.");
+  }
+
   let version = 0;
 
   const agentConfig = await front_sequelize.transaction(
@@ -321,6 +326,7 @@ export async function createAgentConfiguration(
           pictureUrl: pictureUrl,
           workspaceId: owner.id,
           generationConfigurationId: generation?.id || null,
+          authorId: user.id,
           // We know here that these are one that we created and not a "global virtual" one so we're
           // good to set the foreign key.
           retrievalConfigurationId:
