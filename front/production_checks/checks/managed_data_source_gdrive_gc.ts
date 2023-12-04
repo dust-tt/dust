@@ -12,7 +12,8 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
   logger,
   reportSuccess,
-  reportFailure
+  reportFailure,
+  heartbeat
 ) => {
   const connectorsSequelize = new Sequelize(
     CONNECTORS_DATABASE_READ_REPLICA_URI as string,
@@ -33,6 +34,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
     );
 
   for (const ds of GdriveDataSources) {
+    heartbeat();
     const coreDocumentsRes = await getCoreDocuments(ds.id);
     if (coreDocumentsRes.isErr()) {
       reportFailure(

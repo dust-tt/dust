@@ -11,7 +11,9 @@ const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
 export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   checkName,
   logger,
-  reportSuccess
+  reportSuccess,
+  reportFailure,
+  heartbeat
 ) => {
   if (!CORE_DATABASE_URI) {
     throw new Error("Env var CORE_DATABASE_URI is not defined");
@@ -54,6 +56,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   let deletedCount = 0;
 
   for (let i = 0; i < chunks.length; i++) {
+    heartbeat();
     const chunk = chunks[i];
     await Promise.all(
       chunk.map((d) => {

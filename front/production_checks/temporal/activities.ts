@@ -60,12 +60,25 @@ async function runAllChecks(checks: Check[]) {
             "Production check failed"
           );
         };
+        const heartbeat = async () => {
+          return Context.current().heartbeat({
+            type: "processing",
+            name: check.name,
+            uuid: uuid,
+          });
+        };
         Context.current().heartbeat({
           type: "start",
           name: check.name,
           uuid: uuid,
         });
-        await check.check(check.name, logger, reportSuccess, reportFailure);
+        await check.check(
+          check.name,
+          logger,
+          reportSuccess,
+          reportFailure,
+          heartbeat
+        );
         Context.current().heartbeat({
           type: "finish",
           name: check.name,
