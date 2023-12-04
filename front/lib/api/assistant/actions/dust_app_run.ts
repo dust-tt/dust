@@ -34,6 +34,8 @@ import { getApp } from "../../app";
 import { getDatasetSchema } from "../../datasets";
 import { generateActionInputs } from "../agent";
 
+const { DUST_PROD_API } = process.env;
+
 /**
  * Model rendering of DustAppRuns.
  */
@@ -367,7 +369,14 @@ export async function* runDustApp(
   const prodCredentials = await prodAPICredentialsForOwner(owner, {
     useLocalInDev: true,
   });
-  const api = new DustAPI({ credentials: prodCredentials, logger });
+  if (!DUST_PROD_API) {
+    throw new Error("DUST_PROD_API env variable is not set.");
+  }
+  const api = new DustAPI({
+    credentials: prodCredentials,
+    logger,
+    url: DUST_PROD_API,
+  });
 
   // As we run the app (using a system API key here), we do force using the workspace credentials so
   // that the app executes in the exact same conditions in which they were developed.
