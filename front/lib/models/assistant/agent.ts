@@ -1,8 +1,10 @@
-import { DustAppRunConfigurationType } from "@dust-tt/types";
+import {
+  AgentRelationOverrideType,
+  DustAppRunConfigurationType,
+} from "@dust-tt/types";
 import {
   AgentConfigurationScope,
   AgentStatus,
-  AgentVisibilityOverrideType,
   GlobalAgentStatus,
 } from "@dust-tt/types";
 import assert from "assert";
@@ -18,7 +20,8 @@ import {
 
 import { front_sequelize } from "@app/lib/databases";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { Membership, Workspace } from "@app/lib/models/workspace";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 
 import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
 
@@ -287,21 +290,24 @@ GlobalAgentSettings.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-export class MemberAgentVisibility extends Model<
-  InferAttributes<MemberAgentVisibility>,
-  InferCreationAttributes<MemberAgentVisibility>
+export class AgentUserRelation extends Model<
+  InferAttributes<AgentUserRelation>,
+  InferCreationAttributes<AgentUserRelation>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare visibility: AgentVisibilityOverrideType;
+  declare relation: AgentRelationOverrideType;
 
-  declare membershipId: ForeignKey<Membership["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
+  declare agentConfiguration: NonAttribute<AgentConfiguration>;
 }
 
-MemberAgentVisibility.init(
+AgentUserRelation.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -319,48 +325,51 @@ MemberAgentVisibility.init(
       defaultValue: DataTypes.NOW,
     },
 
-    visibility: {
+    relation: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
   {
-    modelName: "member_agent_visibility",
+    modelName: "agent_user_relation",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["membershipId"] },
-      { fields: ["agentConfigurationId", "membershipId"], unique: true },
+      { fields: ["workspaceId", "userId"] },
+      {
+        fields: ["agentConfigurationId", "workspaceId", "userId"],
+        unique: true,
+      },
     ],
   }
 );
 
-Membership.hasMany(MemberAgentVisibility, {
+User.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-AgentConfiguration.hasMany(MemberAgentVisibility, {
+Workspace.hasMany(AgentUserRelation, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+AgentConfiguration.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
 
-MemberAgentVisibility.addHook(
+AgentUserRelation.addHook(
   "beforeCreate",
-  "only_one_listing_for_private_agent",
-  async (memberAgentList) => {
+  "no_listing_for_private_agent",
+  async (agentUserStatus) => {
     const agentConfiguration = await AgentConfiguration.findOne({
       where: {
-        id: memberAgentList.dataValues.agentConfigurationId,
+        id: agentUserStatus.dataValues.agentConfigurationId,
       },
     });
     if (!agentConfiguration)
       throw new Error("Unexpected: Agent configuration not found");
-    if (agentConfiguration.scope === "private") {
-      const existingMemberAgentList = await MemberAgentVisibility.findOne({
-        where: {
-          agentConfigurationId: memberAgentList.dataValues.agentConfigurationId,
-        },
-      });
-      assert(!existingMemberAgentList);
-    }
+    assert(
+      agentConfiguration.scope !== "private",
+      "Private agent should not have an entry in agent_user_status"
+    );
   }
 );
