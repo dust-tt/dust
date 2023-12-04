@@ -13,7 +13,8 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   checkName,
   logger,
   reportSuccess,
-  reportFailure
+  reportFailure,
+  heartbeat
 ) => {
   if (!NANGO_SECRET_KEY) {
     throw new Error("Env var NANGO_SECRET_KEY is not defined");
@@ -61,6 +62,7 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   // Check that all the Slack connections in Nango have a corresponding Slack configuration in the database
   const unknownNangoSlackConnections = [];
   for (const conn of nangoSlackConnections) {
+    heartbeat();
     const connectionDetail = await nango.getConnection(
       conn.provider,
       conn.connection_id
