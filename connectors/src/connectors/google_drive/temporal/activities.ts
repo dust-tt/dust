@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 import { GaxiosError, GaxiosResponse } from "googleapis-common";
 import StatsD from "hot-shots";
-import memoize from "lodash.memoize";
 import os from "os";
 import PQueue from "p-queue";
 
@@ -15,7 +14,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
-import { ModelId } from "@dust-tt/types";
+import { memoize, ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
@@ -576,7 +575,8 @@ memoize(
     const cacheKey = `${connectorId}-${startSyncTs}-${driveFile.id}`;
 
     return cacheKey;
-  }
+  },
+  60 * 10 * 1000
 );
 
 async function objectIsInFolders(

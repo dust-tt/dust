@@ -1,3 +1,4 @@
+import { memoize } from "@dust-tt/types";
 import {
   APIResponseError,
   Client,
@@ -16,7 +17,6 @@ import {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import memoize from "lodash.memoize";
 import { Logger } from "pino";
 
 import {
@@ -453,7 +453,8 @@ export const getBlockParentMemoized = memoize(
   getBlockParent,
   (notionAccessToken: string, blockId: string) => {
     return blockId;
-  }
+  },
+  60 * 10 * 1000
 );
 
 export async function getParsedDatabase(
