@@ -1,4 +1,8 @@
-import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import {
+  CoreAPIDataSourceDocumentSection,
+  memoize,
+  ModelId,
+} from "@dust-tt/types";
 import {
   CodedError,
   ErrorCode,
@@ -14,7 +18,6 @@ import {
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
-import memoize from "lodash.memoize";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -573,7 +576,7 @@ export async function syncThread(
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 
-  const botUserId = await getBotUserIdMemoized(slackClient);
+  const botUserId = await getBotUserIdMemoized(connectorId);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
   if (allMessages.length === 0) {
@@ -727,17 +730,10 @@ export async function fetchUsers(connectorId: ModelId) {
   } while (cursor);
 }
 
-export async function getBotUserId(slackClient: WebClient): Promise<string>;
-export async function getBotUserId(connectorId: ModelId): Promise<string>;
-export async function getBotUserId(
-  connectorIdOrSlackClient: ModelId | WebClient
-): Promise<string> {
+export async function getBotUserId(connectorId: ModelId): Promise<string> {
   let client: WebClient | undefined = undefined;
-  if (connectorIdOrSlackClient instanceof WebClient) {
-    client = connectorIdOrSlackClient;
-  } else {
-    client = await getSlackClient(connectorIdOrSlackClient);
-  }
+
+  client = await getSlackClient(connectorId);
 
   const authRes = await client.auth.test({});
   if (authRes.error) {
@@ -750,7 +746,11 @@ export async function getBotUserId(
   return authRes.user_id;
 }
 
-export const getBotUserIdMemoized = memoize(getBotUserId);
+export const getBotUserIdMemoized = memoize(
+  getBotUserId,
+  (id) => id.toString(),
+  60 * 10 * 1000
+);
 
 export async function saveSuccessSyncActivity(connectorId: ModelId) {
   logger.info(

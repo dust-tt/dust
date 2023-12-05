@@ -700,7 +700,7 @@ async function makeContentFragment(
     next_cursor = replies.response_metadata?.next_cursor;
   } while (next_cursor);
 
-  const botUserId = await getBotUserIdMemoized(slackClient);
+  const botUserId = await getBotUserIdMemoized(connector.id);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
   if (allMessages.length === 0) {
     return new Ok(null);

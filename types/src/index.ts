@@ -1,5 +1,5 @@
 export * from "./shared/model_id";
-
+export * from "./shared/memoize";
 export * from "./core/data_source";
 
 export * from "./front/key";

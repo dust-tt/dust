@@ -1,5 +1,4 @@
-import { ModelId } from "@dust-tt/types";
-import memoize from "lodash.memoize";
+import { memoize, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
@@ -84,5 +83,6 @@ export const getLocalParents = memoize(
   _getLocalParents,
   (connectorId, driveObjectId, memoizationKey) => {
     return `${connectorId}:${driveObjectId}:${memoizationKey}`;
-  }
+  },
+  60 * 10 * 1000
 );

@@ -1,5 +1,4 @@
-import { ModelId } from "@dust-tt/types";
-import memoize from "lodash.memoize";
+import { memoize, ModelId } from "@dust-tt/types";
 import PQueue from "p-queue";
 
 import {
@@ -73,7 +72,8 @@ export const getParents = memoize(
   _getParents,
   (connectorId, pageOrDbId, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
-  }
+  },
+  60 * 10 * 1000
 );
 
 export async function updateAllParentsFields(
