@@ -174,6 +174,7 @@ AgentConfiguration.init(
     indexes: [
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "name"] },
+      { fields: ["workspaceId", "status", "name"] },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["authorId"] },

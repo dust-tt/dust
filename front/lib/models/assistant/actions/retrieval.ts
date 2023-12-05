@@ -185,6 +185,11 @@ AgentDataSourceConfiguration.init(
   },
   {
     modelName: "agent_data_source_configuration",
+    indexes: [
+      {
+        fields: ["retrievalConfigurationId"],
+      },
+    ],
     sequelize: front_sequelize,
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
