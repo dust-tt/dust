@@ -90,7 +90,7 @@ export type AgentRelationOverrideType = "in-list" | "not-in-list";
  * - conversation: all agents in the user's list + agents in the current
  *   conversation (requries a conversation sId)
  * - public: all agents except private ones
- * - discover: public + in user's list
+ * - discover: public + private to the user
  */
 
 export type AgentsGetViewType =

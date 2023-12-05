@@ -32,7 +32,10 @@ import {
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
+  Conversation,
   DataSource,
+  Mention,
+  Message,
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
@@ -210,7 +213,7 @@ export async function getAgentConfiguration(
  */
 export async function getAgentConfigurations(
   auth: Authenticator,
-  getViewType: AgentsGetViewType,
+  agentsGetView: AgentsGetViewType,
   agentPrefix?: string
 ): Promise<AgentConfigurationType[] | []> {
   const owner = auth.workspace();
@@ -226,25 +229,65 @@ export async function getAgentConfigurations(
   const prefixClause = agentPrefix
     ? { name: { [Op.iLike]: `${agentPrefix}%` } }
     : {};
-  // clause matching the scope being published or private
-  const scopeClause =
-    getViewType === "public" || getViewType === "discover"
-      ? { scope: { [Op.not]: "private" } }
-      : {};
-  // clause matching whether the user is author of the agent
 
-  const whereClause = { ...baseClause, ...prefixClause };
-  const rawAgents = await AgentConfiguration.findAll({
+  // clause matching the scope being 'published' or 'workspace', or 'private' if the user is author of the agent
+  const scopeClause =
+    agentsGetView === "public"
+      ? { scope: { [Op.in]: ["published", "workspace"] } }
+      : {
+          [Op.or]: [
+            { scope: { [Op.in]: ["published", "workspace"] } },
+            { authorId: auth.user()?.id },
+          ],
+        };
+
+  const whereClause = { ...baseClause, ...prefixClause, ...scopeClause };
+  const rawAgentsIds = await AgentConfiguration.findAll({
     where: whereClause,
     attributes: ["sId"],
     order: [["name", "ASC"]],
   });
 
-  // fetch the visibililty overrides for
+  const agentIdsSet = new Set<string>(rawAgentsIds.map((a) => a.sId));
+
+  // for conversation view, find all agents mentioned in the conversation
+  if (typeof agentsGetView === "object") {
+    const mentionsFromConversation = await Mention.findAll({
+      attributes: ["agentConfigurationId"],
+      where: {
+        agentConfigurationId: {
+          [Op.ne]: null, // Using the Op.ne (not equal) operator to filter out null values
+        },
+      },
+      include: [
+        {
+          model: Message,
+          attributes: [],
+          include: [
+            {
+              model: Conversation,
+              attributes: [],
+              where: { sId: agentsGetView.conversationId },
+            },
+          ],
+        },
+      ],
+    });
+    for (const mention of mentionsFromConversation) {
+      if (!mention.agentConfigurationId)
+        throw new Error(`Unexpected null agentConfigurationId`);
+      agentIdsSet.add(mention.agentConfigurationId);
+    }
+  }
+
+  // for discover and list view, filter using agentRelationOverride
+  if (agentsGetView === "discover" || agentsGetView === "list") {
+  }
+
   const agents = (
     await Promise.all(
-      rawAgents.map(async (a) => {
-        return await getAgentConfiguration(auth, a.sId);
+      [...agentIdsSet].map(async (a) => {
+        return await getAgentConfiguration(auth, a);
       })
     )
   ).filter((a) => a !== null) as AgentConfigurationType[];
