@@ -18,6 +18,7 @@ use std::collections::HashMap;
 pub trait Store {
     // Projects
     async fn create_project(&self) -> Result<Project>;
+    async fn delete_project(&self, project: &Project) -> Result<()>;
 
     // Datasets
     async fn latest_dataset_hash(

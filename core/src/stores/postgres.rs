@@ -71,6 +71,78 @@ impl Store for PostgresStore {
         Ok(Project::new_from_id(row_id))
     }
 
+    async fn delete_project(&self, project: &Project) -> Result<()> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
+
+        // Cache
+        let stmt = tx.prepare("DELETE FROM cache WHERE project = $1").await?;
+        let _ = tx.query(&stmt, &[&project_id]).await?;
+
+        // Runs & Runs joins
+        let runs = tx
+            .query("SELECT id FROM runs WHERE project = $1", &[&project_id])
+            .await?;
+        let stmt = tx.prepare("DELETE FROM runs_joins WHERE run = $1").await?;
+        for r in runs {
+            let run_id: String = r.get(0);
+            let _ = tx.query(&stmt, &[&run_id]).await?;
+        }
+        let stmt = tx.prepare("DELETE FROM runs WHERE project = $1").await?;
+        let _ = tx.query(&stmt, &[&project_id]).await?;
+
+        // Datasets joins & Datasets points & Datasets
+        let datasets = tx
+            .query("SELECT id FROM datasets WHERE project = $1", &[&project_id])
+            .await?;
+
+        let mut points_to_delete: Vec<i64> = Vec::new();
+        for d in datasets {
+            let dataset_id: i64 = d.get(0);
+            let points: Vec<i64> = tx
+                .query(
+                    "SELECT point FROM datasets_joins WHERE dataset = $1",
+                    &[&dataset_id],
+                )
+                .await?
+                .iter()
+                .map(|row| row.get(0))
+                .collect();
+
+            points_to_delete.extend(points);
+
+            tx.execute(
+                "DELETE FROM datasets_joins WHERE dataset = $1",
+                &[&dataset_id],
+            )
+            .await?;
+        }
+        for point_id in points_to_delete {
+            tx.execute("DELETE FROM datasets_points WHERE id = $1", &[&point_id])
+                .await?;
+        }
+        let stmt = tx
+            .prepare("DELETE FROM datasets WHERE project = $1")
+            .await?;
+        let _ = tx.query(&stmt, &[&project_id]).await?;
+
+        // Specifications
+        let stmt = tx
+            .prepare("DELETE FROM specifications WHERE project = $1")
+            .await?;
+        let _ = tx.query(&stmt, &[&project_id]).await?;
+
+        // Project
+        let stmt = tx.prepare("DELETE FROM projects WHERE id = $1").await?;
+        let _ = tx.query(&stmt, &[&project_id]).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn latest_dataset_hash(
         &self,
         project: &Project,
