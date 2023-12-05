@@ -39,6 +39,7 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
+
 import { getAgentRelationOverridesForUser } from "./relation_override";
 
 /**
@@ -249,75 +250,36 @@ export async function getAgentConfigurations(
             { authorId: user && user.id },
           ],
         };
-
   const whereClause = {
     ...baseClause,
     ...prefixClause,
-    ...(agentsGetView === "all" ? {} : scopeClause),
+    ...(agentsGetView === "all" ? {} : scopeClause), // no scope clause for 'all' view
   };
+
   const rawAgents = await AgentConfiguration.findAll({
     where: whereClause,
     attributes: ["sId", "scope", "name"],
     order: [["name", "ASC"]],
   });
 
-  let filteredAgents = [...rawAgents];
   // for list and conversation view, filter agents according to the user's agent
   // relations overrides
-  if (
+  const filteredAgents =
     agentsGetView === "list" ||
     (typeof agentsGetView === "object" && agentsGetView.conversationId)
-  ) {
-    const agentRelationOverrides = await getAgentRelationOverridesForUser(auth);
-    if (!agentRelationOverrides.isOk()) {
-      throw agentRelationOverrides.error;
-    }
-    const agentRelationOverrideMap = agentRelationOverrides.value;
-    filteredAgents = rawAgents.filter((a) => {
-      const override = agentRelationOverrideMap[a.sId];
-      if (override === "in-list" && a.scope === "published") {
-        return true;
-      } else if (override === "not-in-list" && a.scope === "workspace") {
-        return false;
-      } else {
-        return a.scope === "workspace";
-      }
-    });
-  }
+      ? await filterByOverrides(auth, rawAgents)
+      : rawAgents;
 
   const agentIdsSet = new Set<string>(filteredAgents.map((a) => a.sId));
 
-  // for conversation view, find all agents mentioned in the conversation
-  if (typeof agentsGetView === "object") {
-    const mentionsFromConversation = await Mention.findAll({
-      attributes: ["agentConfigurationId"],
-      where: {
-        agentConfigurationId: {
-          [Op.ne]: null, // Using the Op.ne (not equal) operator to filter out null values
-        },
-      },
-      include: [
-        {
-          model: Message,
-          attributes: [],
-          include: [
-            {
-              model: Conversation,
-              as: "conversation",
-              attributes: [],
-              where: { sId: agentsGetView.conversationId },
-            },
-          ],
-        },
-      ],
-    });
-    for (const mention of mentionsFromConversation) {
-      if (!mention.agentConfigurationId)
-        throw new Error(`Unexpected null agentConfigurationId`);
-      agentIdsSet.add(mention.agentConfigurationId);
-    }
+  // for conversation view, add all agents mentioned in the conversation
+  if (typeof agentsGetView === "object" && agentsGetView.conversationId) {
+    (await getMentionsWithAgentId(agentsGetView.conversationId)).forEach(
+      (m: Mention) => agentIdsSet.add(m.agentConfigurationId as string)
+    );
   }
 
+  // Retrieve all local agents & add global agents
   const agents = (
     await Promise.all(
       [...agentIdsSet].map(async (a) => {
@@ -325,13 +287,61 @@ export async function getAgentConfigurations(
       })
     )
   ).filter((a) => a !== null) as AgentConfigurationType[];
-
   const globalAgents = (await getGlobalAgents(auth)).filter(
     (a) =>
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
   return [...globalAgents, ...agents];
+}
+
+async function filterByOverrides(
+  auth: Authenticator,
+  rawAgents: AgentConfiguration[]
+) {
+  const agentRelationOverrides = await getAgentRelationOverridesForUser(auth);
+  if (!agentRelationOverrides.isOk()) {
+    throw agentRelationOverrides.error;
+  }
+  const agentRelationOverrideMap = agentRelationOverrides.value;
+  return rawAgents.filter((a) => {
+    const override = agentRelationOverrideMap[a.sId];
+    if (override === "in-list" && a.scope === "published") {
+      return true;
+    } else if (override === "not-in-list" && a.scope === "workspace") {
+      return false;
+    } else {
+      return a.scope === "workspace";
+    }
+  });
+}
+
+async function getMentionsWithAgentId(
+  conversationId: string
+): Promise<Mention[]> {
+  const mentionsFromConversation = await Mention.findAll({
+    attributes: ["agentConfigurationId"],
+    where: {
+      agentConfigurationId: {
+        [Op.ne]: null,
+      },
+    },
+    include: [
+      {
+        model: Message,
+        attributes: [],
+        include: [
+          {
+            model: Conversation,
+            as: "conversation",
+            attributes: [],
+            where: { sId: conversationId },
+          },
+        ],
+      },
+    ],
+  });
+  return mentionsFromConversation;
 }
 
 /**

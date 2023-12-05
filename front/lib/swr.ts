@@ -28,7 +28,6 @@ import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
-import { Agent } from "http";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
