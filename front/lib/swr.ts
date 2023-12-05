@@ -467,9 +467,12 @@ export function useAgentConfigurations({
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
-
+  const viewQueryString =
+    typeof agentsGetViewType === "string"
+      ? `view=${agentsGetViewType}`
+      : `conversationId=${agentsGetViewType.conversationId}`;
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations?view=${agentsGetViewType}`,
+    `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}`,
     agentConfigurationsFetcher
   );
 

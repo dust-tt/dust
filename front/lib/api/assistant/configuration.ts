@@ -303,6 +303,7 @@ export async function getAgentConfigurations(
           include: [
             {
               model: Conversation,
+              as: "conversation",
               attributes: [],
               where: { sId: agentsGetView.conversationId },
             },

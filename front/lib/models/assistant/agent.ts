@@ -394,6 +394,15 @@ AgentConfiguration.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+AgentUserRelation.belongsTo(User, {
+  foreignKey: { allowNull: false },
+});
+AgentUserRelation.belongsTo(Workspace, {
+  foreignKey: { allowNull: false },
+});
+AgentUserRelation.belongsTo(AgentConfiguration, {
+  foreignKey: { allowNull: false },
+});
 
 AgentUserRelation.addHook(
   "beforeCreate",

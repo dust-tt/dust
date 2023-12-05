@@ -85,15 +85,15 @@ export type AgentConfigurationScope =
 export type AgentRelationOverrideType = "in-list" | "not-in-list";
 
 /**
- * Agents can be retrieved according to 3 different views:
+ * Agents can be retrieved according to different 'views':
  * - list: all agents in the user's list
  * - conversation: all agents in the user's list + agents in the current
  *   conversation (requries a conversation sId)
  * - public: all agents except private ones
  * - discover: public + private to the user
- * - all: all agents, including private ones. This view hides agent details. It
- *   is currently used by the agent builder to check the number of agents, and
- *   if a name is already taken
+ * - all: all agents, including private ones. It is currently used by the agent
+ *   builder to check the number of agents, and if a name is already taken, and
+ *   internally  by poke
  */
 
 export type AgentsGetViewType =

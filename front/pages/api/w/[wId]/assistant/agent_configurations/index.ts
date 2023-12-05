@@ -111,10 +111,9 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("discover"),
     t.literal("public"),
     t.literal("all"),
-    t.type({
-      conversationId: t.string,
-    }),
+    t.undefined,
   ]),
+  conversationId: t.union([t.string, t.undefined]),
 });
 
 async function handler(
@@ -153,7 +152,6 @@ async function handler(
           },
         });
       }
-
       // extract the view from the query parameters
       const queryValidation = GetAgentConfigurationsQuerySchema.decode(
         req.query
@@ -169,8 +167,23 @@ async function handler(
         });
       }
 
-      const view = queryValidation.right.view;
-      const agentConfigurations = await getAgentConfigurations(auth, view);
+      const { view, conversationId } = queryValidation.right;
+      const viewParam = view
+        ? view
+        : conversationId
+        ? { conversationId }
+        : undefined;
+      if (!viewParam) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The view query parameter is required if no conversationId is provided.",
+          },
+        });
+      }
+      const agentConfigurations = await getAgentConfigurations(auth, viewParam);
       return res.status(200).json({
         agentConfigurations,
       });
