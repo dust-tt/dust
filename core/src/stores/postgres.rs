@@ -77,69 +77,83 @@ impl Store for PostgresStore {
         let mut c = pool.get().await?;
         let tx = c.transaction().await?;
 
-        // Cache
-        let stmt = tx.prepare("DELETE FROM cache WHERE project = $1").await?;
-        let _ = tx.query(&stmt, &[&project_id]).await?;
+        // Block executions, Runs & Runs joins
+        let create_proc = r#"
+            CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
+            RETURNS void AS $$
+            DECLARE
+                run_ids BIGINT[];
+                block_exec_ids BIGINT[];
+            BEGIN
+                -- Store run IDs in an array for the specified project
+                SELECT array_agg(id) INTO run_ids FROM runs WHERE project = v_project_id;
 
-        // Runs & Runs joins
-        let runs = tx
-            .query("SELECT id FROM runs WHERE project = $1", &[&project_id])
+                -- Store block_execution IDs in an array
+                SELECT array_agg(block_execution) INTO block_exec_ids
+                FROM runs_joins 
+                WHERE run = ANY(run_ids);
+
+                -- Delete from runs_joins where run IDs match those in the project
+                DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
+
+                -- Now delete from block_executions using the stored IDs
+                DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
+
+                -- Finally, delete from runs where run IDs match those in the project
+                DELETE FROM runs WHERE id = ANY(run_ids);
+            END;
+            $$ LANGUAGE plpgsql;
+        "#;
+
+        tx.execute(create_proc, &[]).await?;
+        tx.execute("SELECT delete_project_runs($1)", &[&project_id])
             .await?;
-        let stmt = tx.prepare("DELETE FROM runs_joins WHERE run = $1").await?;
-        for r in runs {
-            let run_id: String = r.get(0);
-            let _ = tx.query(&stmt, &[&run_id]).await?;
-        }
-        let stmt = tx.prepare("DELETE FROM runs WHERE project = $1").await?;
-        let _ = tx.query(&stmt, &[&project_id]).await?;
 
         // Datasets joins & Datasets points & Datasets
-        let datasets = tx
-            .query("SELECT id FROM datasets WHERE project = $1", &[&project_id])
+        let create_proc = r#"
+            CREATE OR REPLACE FUNCTION delete_project_datasets(v_project_id BIGINT)
+            RETURNS void AS $$
+            DECLARE
+                datasets_ids BIGINT[];
+                datasets_points_ids BIGINT[];
+            BEGIN
+                -- Store datasets_ids IDs in an array for the specified project
+                SELECT array_agg(id) INTO datasets_ids FROM datasets WHERE project = v_project_id;
+
+                -- Store datasets_points IDs in an array
+                SELECT array_agg(point) INTO datasets_points_ids
+                FROM datasets_joins
+                WHERE dataset = ANY(datasets_ids);
+
+                -- Delete from datasets_joins where point IDs match those in datasets_points
+                DELETE FROM datasets_joins WHERE point = ANY(datasets_points_ids);
+
+                -- Now delete from datasets_points using the stored IDs
+                DELETE FROM datasets_points WHERE id = ANY(datasets_points_ids);
+
+                -- Finally, delete from datasets where datasets IDs match those in the project
+                DELETE FROM datasets WHERE id = ANY(datasets_ids);
+            END;
+            $$ LANGUAGE plpgsql;
+        "#;
+
+        tx.execute(create_proc, &[]).await?;
+        tx.execute("SELECT delete_project_datasets($1)", &[&project_id])
             .await?;
 
-        let mut points_to_delete: Vec<i64> = Vec::new();
-        for d in datasets {
-            let dataset_id: i64 = d.get(0);
-            let points: Vec<i64> = tx
-                .query(
-                    "SELECT point FROM datasets_joins WHERE dataset = $1",
-                    &[&dataset_id],
-                )
-                .await?
-                .iter()
-                .map(|row| row.get(0))
-                .collect();
-
-            points_to_delete.extend(points);
-
-            tx.execute(
-                "DELETE FROM datasets_joins WHERE dataset = $1",
-                &[&dataset_id],
-            )
+        // Cache, Specifications & Project
+        tx.execute("DELETE FROM cache WHERE project = $1", &[&project_id])
             .await?;
-        }
-        for point_id in points_to_delete {
-            tx.execute("DELETE FROM datasets_points WHERE id = $1", &[&point_id])
-                .await?;
-        }
-        let stmt = tx
-            .prepare("DELETE FROM datasets WHERE project = $1")
+        tx.execute(
+            "DELETE FROM specifications WHERE project = $1",
+            &[&project_id],
+        )
+        .await?;
+        tx.execute("DELETE FROM projects WHERE id = $1", &[&project_id])
             .await?;
-        let _ = tx.query(&stmt, &[&project_id]).await?;
 
-        // Specifications
-        let stmt = tx
-            .prepare("DELETE FROM specifications WHERE project = $1")
-            .await?;
-        let _ = tx.query(&stmt, &[&project_id]).await?;
-
-        // Project
-        let stmt = tx.prepare("DELETE FROM projects WHERE id = $1").await?;
-        let _ = tx.query(&stmt, &[&project_id]).await?;
-
+        // Execute transaction.
         tx.commit().await?;
-
         Ok(())
     }
 
