@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ArrowUpIcon, Button, Cog6ToothIcon } from "../index_with_tw_base";
+import { Button, Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Button",
