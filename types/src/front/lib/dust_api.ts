@@ -23,7 +23,6 @@ import {
   AgentGenerationSuccessEvent,
 } from "./api/assistant/agent";
 import { GenerationTokensEvent } from "./api/assistant/generation";
-import { DustAppRunErrorEvent } from "./api/assistant/actions/dust_app_run";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
 
@@ -305,6 +304,7 @@ export class DustAPI {
   _credentials: DustAPICredentials;
   _useLocalInDev: boolean;
   _logger: LoggerInterface;
+  _urlOverride?: string;
 
   /**
    * @param credentials DustAPICrededentials
@@ -314,13 +314,16 @@ export class DustAPI {
     logger: LoggerInterface,
     {
       useLocalInDev,
+      urlOverride,
     }: {
       useLocalInDev: boolean;
+      urlOverride?: string;
     } = { useLocalInDev: false }
   ) {
     this._credentials = credentials;
     this._logger = logger;
     this._useLocalInDev = useLocalInDev;
+    this._urlOverride = urlOverride;
   }
 
   workspaceId(): string {
@@ -328,6 +331,9 @@ export class DustAPI {
   }
 
   apiUrl() {
+    if (this._urlOverride) {
+      return this._urlOverride;
+    }
     return this._useLocalInDev && NODE_ENV === "development"
       ? "http://localhost:3000"
       : DUST_PROD_API;

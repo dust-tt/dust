@@ -35,7 +35,7 @@ import {
   getUserName,
 } from "./temporal/activities";
 
-const { DUST_CLIENT_FACING_URL } = process.env;
+const { DUST_CLIENT_FACING_URL, DUST_FRONT_API } = process.env;
 
 class SlackExternalUserError extends Error {}
 
@@ -223,6 +223,10 @@ async function botAnswerMessage(
     connector
   );
 
+  if (!DUST_FRONT_API) {
+    throw new Error("DUST_FRONT_API environment variable is not defined");
+  }
+
   const dustAPI = new DustAPI(
     {
       workspaceId: connector.workspaceId,
@@ -230,7 +234,8 @@ async function botAnswerMessage(
     },
     logger,
     {
-      useLocalInDev: true,
+      useLocalInDev: false,
+      urlOverride: DUST_FRONT_API,
     }
   );
   const mainMessage = await slackClient.chat.postMessage({
