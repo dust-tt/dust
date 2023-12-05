@@ -264,7 +264,7 @@ export function renderGfmMarkdownSection(
   ];
 
   for (const child of tree.children) {
-    if (child.type === "heading") {
+    if (child.type === "heading" && child.depth <= 2) {
       path = path.filter((p) => p.depth < child.depth);
 
       const last = path[path.length - 1];
