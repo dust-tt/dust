@@ -211,45 +211,30 @@ export default withLogging(handler);
 async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
-  // Detect the delimiter.
-  const firstTwoLines = csv.split("\n").slice(0, 2);
-  if (firstTwoLines.length < 2) {
-    return new Err({
-      type: "invalid_request_error",
-      message: `CSV is empty.`,
-    });
-  }
-  const delimiters = {
-    ",": [],
-    ";": [],
-    "\t": [],
-  } as Record<string, number[]>;
-
-  for (const [i, l] of firstTwoLines.entries()) {
-    for (const c of l) {
-      if (Array.isArray(delimiters[c])) {
-        delimiters[c][i] = (delimiters[c][i] || 0) + 1;
-      }
-    }
-  }
-
-  const delimiterCandidates = Object.entries(delimiters).filter(
-    ([, [count_1, count_2]]) => count_1 === count_2 && count_1 > 0
-  );
-
-  if (!delimiterCandidates.length) {
-    return new Err({
-      type: "invalid_request_error",
-      message: `Could not detect delimiter.`,
-    });
-  }
-
+  // Detect the delimiter: try to parse the first 2 lines with different delimiters,
+  // keep the one that works for both lines and has the most columns.
+  const firstTwoLines = csv.split("\n").slice(0, 2).join("\n");
   let delimiter: string | undefined = undefined;
-  let delimiterOccurences = 0;
-  for (const [d, [count]] of delimiterCandidates) {
-    if (count > delimiterOccurences) {
-      delimiter = d;
-      delimiterOccurences = count;
+  let delimiterColsCount = 0;
+  for (const d of [",", ";", "\t"]) {
+    const records: unknown[][] = [];
+
+    try {
+      const parser = parse(firstTwoLines, { delimiter: d });
+      for await (const record of parser) {
+        records.push(record);
+      }
+    } catch (e) {
+      // Ignore error.
+      continue;
+    }
+
+    const [firstRecord, secondRecord] = records;
+    if (!!firstRecord.length && firstRecord.length === secondRecord.length) {
+      if (firstRecord.length > delimiterColsCount) {
+        delimiterColsCount = firstRecord.length;
+        delimiter = d;
+      }
     }
   }
 
