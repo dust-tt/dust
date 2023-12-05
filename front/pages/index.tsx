@@ -376,13 +376,30 @@ export default function Home({
 
           {/* Get state of the art: Content*/}
           <Grid>
-            <div
+            <P
+              dotCSS="text-sky-400"
+              shape="square"
               className={classNames(
-                "col-span-12 px-4",
-                "sm:col-span-6 sm:p-0",
-                "lg:col-span-5 lg:col-start-2",
+                "order-2 col-span-12",
+                "sm:col-span-6 sm:self-center",
+                "lg:order-1 lg:col-span-5 lg:col-start-2",
                 "xl:col-span-4 xl:col-start-3",
                 "2xl:col-span-3 2xl:col-start-4"
+              )}
+            >
+              Your own knowledge base continuously in&nbsp;sync: <br />
+              <Strong>
+                Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
+              </Strong>
+              .
+            </P>
+            <div
+              className={classNames(
+                "order-1 col-span-12 px-4",
+                "sm:col-span-6 sm:p-0 ",
+                "lg:order-2 lg:col-span-5",
+                "xl:col-span-4 ",
+                "2xl:col-span-3"
               )}
             >
               <Hover3D
@@ -399,32 +416,14 @@ export default function Home({
               </Hover3D>
             </div>
 
-            <P
-              dotCSS="text-sky-400"
-              shape="square"
-              className={classNames(
-                "order-2 col-span-12",
-                "sm:col-span-6 sm:self-center",
-                "lg:col-span-5",
-                "xl:col-span-4",
-                "2xl:col-span-3"
-              )}
-            >
-              Your own knowledge base continuously in&nbsp;sync: <br />
-              <Strong>
-                Notion, Slack, GitHub, Google&nbsp;Drive, and&nbsp;more
-              </Strong>
-              .
-            </P>
-
             <div
               className={classNames(
                 "flex w-full flex-wrap justify-center gap-4",
                 "order-3 col-span-12",
                 "sm:col-span-5 sm:justify-end",
-                "lg:col-span-4 lg:col-start-2",
-                "xl:col-span-3 xl:col-start-3 xl:pl-0",
-                "2xl:pl-6"
+                "lg:col-span-4 lg:col-start-1",
+                "xl:col-span-3 xl:col-start-2 xl:pl-0",
+                "2xl:col-start-3 2xl:pl-6"
               )}
             >
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Google Workspace">
@@ -471,9 +470,9 @@ export default function Home({
                 "flex w-full flex-wrap justify-center gap-4",
                 "order-5 col-span-12",
                 "sm:col-span-5 sm:col-start-2 sm:justify-end",
-                "lg:col-span-4 lg:col-start-3",
+                "lg:col-span-4 lg:col-start-4",
                 "xl:col-span-3 xl:col-start-4 xl:pl-0",
-                "2xl:pl-6"
+                "2xl:col-start-5 2xl:pl-6"
               )}
             >
               <ReactiveIcon
@@ -570,7 +569,7 @@ export default function Home({
               depth={-20}
               perspective={1000}
               className={classNames(
-                "relative m-2 rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
+                "relative rounded-2xl border border-slate-700/40 bg-gradient-to-b from-slate-800/70 to-gray-900/80 shadow-xl",
                 "order-2",
                 "col-span-6 row-span-3 hidden sm:block",
                 "md:col-span-6",
