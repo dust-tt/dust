@@ -24,6 +24,7 @@ import Script from "next/script";
 import { signIn } from "next-auth/react";
 import { ParsedUrlQuery } from "querystring";
 import React, { useEffect, useRef, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import {
   A,
@@ -97,6 +98,17 @@ export default function Home({
 
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+
+  const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
+    "dust-cookies-accepted",
+  ]);
+
+  useEffect(() => {
+    if (acceptedCookie["dust-cookies-accepted"]) {
+      setHasAcceptedCookies(true);
+      setShowCookieBanner(false);
+    }
+  }, [acceptedCookie]);
 
   useEffect(() => {
     if (logoRef.current) {
@@ -774,10 +786,12 @@ export default function Home({
           className="fixed bottom-4 right-4"
           show={showCookieBanner}
           onClickAccept={() => {
+            setAcceptedCookie("dust-cookies-accepted", "true");
             setHasAcceptedCookies(true);
             setShowCookieBanner(false);
           }}
           onClickRefuse={() => {
+            removeAcceptedCookie("dust-cookies-accepted");
             setShowCookieBanner(false);
           }}
         />
