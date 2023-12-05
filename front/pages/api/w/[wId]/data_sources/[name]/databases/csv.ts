@@ -213,16 +213,17 @@ async function rowsFromCsv(
 ): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
   // keep the one that works for both lines and has the most columns.
-  const firstTwoLines = csv.split("\n").slice(0, 2).join("\n");
   let delimiter: string | undefined = undefined;
   let delimiterColsCount = 0;
   for (const d of [",", ";", "\t"]) {
     const records: unknown[][] = [];
-
     try {
-      const parser = parse(firstTwoLines, { delimiter: d });
+      const parser = parse(csv, { delimiter: d });
       for await (const record of parser) {
         records.push(record);
+        if (records.length == 2) {
+          break;
+        }
       }
     } catch (e) {
       // Ignore error.
