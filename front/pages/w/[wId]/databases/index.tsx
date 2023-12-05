@@ -273,11 +273,19 @@ function DatabaseModal({
             });
             return;
           }
-          if (file.type !== "text/csv") {
+
+          if (
+            ![
+              "text/csv",
+              "text/tsv",
+              "text/comma-separated-values",
+              "text/tab-separated-values",
+            ].includes(file.type)
+          ) {
             sendNotification({
               type: "error",
               title: "Invalid file type",
-              description: "Please upload a CSV file.",
+              description: "Please upload a CSV or TSV file.",
             });
             return;
           }
