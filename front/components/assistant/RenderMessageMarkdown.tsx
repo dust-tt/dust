@@ -7,7 +7,7 @@ import {
 import { AgentConfigurationType } from "@dust-tt/types";
 import { RetrievalDocumentType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import remarkDirective from "remark-directive";
@@ -32,17 +32,17 @@ const SyntaxHighlighter = dynamic(
 
 function useCopyToClipboard(
   resetInterval = 2000
-): [isCopied: boolean, copy: (text: string) => Promise<boolean>] {
+): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
   const [isCopied, setCopied] = useState(false);
 
   const copy = useCallback(
-    async (text: string) => {
+    async (d: ClipboardItem) => {
       if (!navigator?.clipboard) {
         console.warn("Clipboard not supported");
         return false;
       }
       try {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.write([d]);
         setCopied(true);
         setTimeout(() => setCopied(false), resetInterval);
         return true;
@@ -306,18 +306,56 @@ function TableBlock({ children }: { children: React.ReactNode }) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopyTable = () => {
-    const tableText = Array.from(children as React.ReactNode[])
-      .map((node) => {
-        if (node && typeof node === "object" && "props" in node) {
-          const rows = node.props.children.map((tr: any) =>
-            tr.props.children.map((td: any) => td.props.children).join("\t")
-          );
-          return rows.join("\n");
-        }
-        return "";
+    const getNodeText = (node: ReactNode): string => {
+      if (["string", "number"].includes(typeof node)) return node as string;
+      if (node instanceof Array) return node.map(getNodeText).join("");
+      if (node && typeof node === "object" && "props" in node) {
+        return getNodeText(node.props.children);
+      }
+
+      throw new Error(`Unexpected node type: ${typeof node}`);
+    };
+
+    const [headNode, bodyNode] = Array.from(children as [any, any]);
+    if (
+      !headNode ||
+      !bodyNode ||
+      !("props" in headNode) ||
+      !("props" in bodyNode)
+    ) {
+      return;
+    }
+
+    const headCells = headNode.props.children[0].props.children.map((c: any) =>
+      getNodeText(c.props.children)
+    );
+
+    const headHtml = `<thead><tr>${headCells
+      .map((c: any) => `<th><b>${c}</b></th>`)
+      .join("")}</tr></thead>`;
+    const headPlain = headCells.join("\t");
+
+    const bodyRows = bodyNode.props.children.map((r: any) =>
+      r.props.children.map((c: any) => getNodeText(c))
+    );
+    const bodyHtml = `<tbody>${bodyRows
+      .map((row: any) => {
+        return `<tr>${row
+          .map((cell: any) => `<td>${cell}</td>`)
+          .join("")}</tr>`;
       })
-      .join("\n");
-    void copyToClipboard(tableText);
+      .join("")}</tbody>`;
+    const bodyPlain = bodyRows.map((row: any) => row.join("\t")).join("\n");
+
+    const data = new ClipboardItem({
+      "text/html": new Blob([`<table>${headHtml}${bodyHtml}</table>`], {
+        type: "text/html",
+      }),
+      "text/plain": new Blob([headPlain + "\n" + bodyPlain], {
+        type: "text/plain",
+      }),
+    });
+    void copyToClipboard(data);
   };
 
   return (
@@ -407,7 +445,13 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 
   const handleCopyPre = async () => {
     const text = validChildrenContent || fallbackData || "";
-    void copyToClipboard(text);
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([text], {
+          type: "text/plain",
+        }),
+      })
+    );
   };
 
   return (
