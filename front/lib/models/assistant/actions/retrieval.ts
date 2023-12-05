@@ -187,8 +187,7 @@ AgentDataSourceConfiguration.init(
     modelName: "agent_data_source_configuration",
     indexes: [
       {
-        name: "agent_ds_config_ds_retrieval_idx",
-        fields: ["dataSourceId", "retrievalConfigurationId"],
+        fields: ["retrievalConfigurationId"],
       },
     ],
     sequelize: front_sequelize,
