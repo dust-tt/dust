@@ -1066,6 +1066,20 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn has_data_sources(&self, project: &Project) -> Result<bool> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("SELECT id FROM data_sources WHERE project = $1 LIMIT 1")
+            .await?;
+        let r = c.query(&stmt, &[&project_id]).await?;
+
+        Ok(r.len() > 0)
+    }
+
     async fn load_data_source(
         &self,
         project: &Project,

@@ -85,6 +85,7 @@ pub trait Store {
     ) -> Result<Option<Run>>;
 
     // DataSources
+    async fn has_data_sources(&self, project: &Project) -> Result<bool>;
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;
     async fn load_data_source(
         &self,

@@ -189,6 +189,29 @@ async fn projects_delete(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
+    // Check if the project has data sources and raise if it does.
+    match state.store.has_data_sources(&project).await {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to check project has data sources before deletion",
+                Some(e),
+            )
+        }
+        Ok(has_data_sources) => {
+            if has_data_sources {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "bad_request",
+                    "Cannot delete a project with data sources",
+                    None,
+                );
+            }
+        }
+    }
+
+    // Delete the project
     match state.store.delete_project(&project).await {
         Err(e) => {
             return error_response(
