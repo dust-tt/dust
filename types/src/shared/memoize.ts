@@ -8,11 +8,21 @@ export function memoize<T extends (...args: any[]) => any>(
   ttlMs: number
 ): T {
   const cache = new Map<string, ReturnType<T>>();
+  let ttlTimeout: NodeJS.Timeout | undefined = undefined;
 
-  setTimeout(() => {
-    cache.clear();
-  }, ttlMs);
+  const extendTTL = () => {
+    clearTimeout(ttlTimeout);
+    ttlTimeout = setTimeout(() => {
+      cache.clear();
+      ttlTimeout = undefined;
+    }, ttlMs);
+  };
+  extendTTL();
   return function (...args: Parameters<T>): ReturnType<T> {
+    if (ttlTimeout === undefined) {
+      extendTTL();
+    }
+
     const key = resolver(...args);
     if (cache.has(key)) {
       const cacheHit = cache.get(key);
