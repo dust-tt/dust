@@ -211,13 +211,31 @@ export default withLogging(handler);
 async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
-  // Detect the delimiter.
-  const delimiters = [",", ";", "\t"];
+  // Detect the delimiter: try to parse the first 2 lines with different delimiters,
+  // keep the one that works for both lines and has the most columns.
   let delimiter: string | undefined = undefined;
-  for (const c of csv) {
-    if (delimiters.includes(c)) {
-      delimiter = c;
-      break;
+  let delimiterColsCount = 0;
+  for (const d of [",", ";", "\t"]) {
+    const records: unknown[][] = [];
+    try {
+      const parser = parse(csv, { delimiter: d });
+      for await (const record of parser) {
+        records.push(record);
+        if (records.length == 2) {
+          break;
+        }
+      }
+    } catch (e) {
+      // Ignore error.
+      continue;
+    }
+
+    const [firstRecord, secondRecord] = records;
+    if (!!firstRecord.length && firstRecord.length === secondRecord.length) {
+      if (firstRecord.length > delimiterColsCount) {
+        delimiterColsCount = firstRecord.length;
+        delimiter = d;
+      }
     }
   }
 
