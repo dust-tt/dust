@@ -136,6 +136,19 @@ impl Database {
         Ok(())
     }
 
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        match self.db_type {
+            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
+            DatabaseType::LOCAL => {
+                store
+                    .delete_database(&self.project, &self.data_source_id, &self.database_id)
+                    .await?;
+
+                Ok(())
+            }
+        }
+    }
+
     pub async fn create_in_memory_sqlite_conn(
         &self,
         store: Box<dyn Store + Sync + Send>,

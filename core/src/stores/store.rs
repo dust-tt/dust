@@ -229,7 +229,12 @@ pub trait Store {
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)>;
-
+    async fn delete_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+    ) -> Result<()>;
     // LLM Cache
     async fn llm_cache_get(
         &self,
