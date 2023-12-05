@@ -2493,6 +2493,65 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn delete_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let database_id = database_id.to_string();
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let r = c
+            .query(
+                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
+                &[&data_source_row_id, &database_id],
+            )
+            .await?;
+
+        let database_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        let stmt = tx
+            .prepare("DELETE FROM databases_rows WHERE database_table IN (SELECT id FROM databases_tables WHERE database = $1)")
+            .await?;
+        let _ = tx.query(&stmt, &[&database_row_id]).await?;
+
+        let stmt = tx
+            .prepare("DELETE FROM databases_tables WHERE database = $1")
+            .await?;
+        let _ = tx.query(&stmt, &[&database_row_id]).await?;
+
+        let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
+        let _ = tx.query(&stmt, &[&database_row_id]).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn llm_cache_get(
         &self,
         project: &Project,

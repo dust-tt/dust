@@ -9,6 +9,7 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
+use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
@@ -1826,7 +1827,19 @@ impl DataSource {
             self.data_source_id,
         ));
 
-        // Delete data source and documents (SQL)
+        // Delete databases (concurrently).
+        let databases = store
+            .list_databases(&self.project, &self.data_source_id, None)
+            .await?;
+        try_join_all(databases.iter().map(|db| db.delete(store.clone()))).await?;
+
+        utils::done(&format!(
+            "Deleted databases: data_source_id={} database_count={}",
+            self.data_source_id,
+            databases.len(),
+        ));
+
+        // Delete data source and documents (SQL).
         store
             .delete_data_source(&self.project, &self.data_source_id)
             .await?;
