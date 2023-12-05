@@ -217,6 +217,7 @@ export function AssistantInputBar({
   stopGenerationButton?: React.ReactNode;
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExitingFullscreen, setIsExitingFullscreen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState({});
 
@@ -228,14 +229,16 @@ export function AssistantInputBar({
         setStyle({ height: currentHeight });
         setTimeout(() => {
           setIsFullscreen(true);
-          setStyle({ height: "80vh" });
+          setStyle({ height: "84vh" });
         }, 10); // Timeout to allow the style change to take effect
       } else {
         // Exiting fullscreen mode
+        setIsExitingFullscreen(true);
         setTimeout(() => {
           setStyle({ height: "16rem" });
           setTimeout(() => {
             setIsFullscreen(false); // Update isFullscreen after the transition
+            setIsExitingFullscreen(false);
             setStyle({}); // Remove the inline style after the transition
           }, 300); // This timeout should match the CSS transition duration
         }, 10);
@@ -432,7 +435,13 @@ export function AssistantInputBar({
     "whitespace-pre-wrap font-normal"
   );
   return (
-    <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-20 h-full w-full overflow-hidden lg:left-80 lg:w-auto">
+    <div
+      className={classNames(
+        "pointer-events-none absolute bottom-0 right-0 top-0 z-20 h-full w-full overflow-hidden lg:left-80 lg:w-auto",
+        "transition-all duration-300",
+        isExitingFullscreen ? "" : isFullscreen ? "bg-white/80" : ""
+      )}
+    >
       <div className="pointer-events-none mx-auto flex h-full max-w-4xl">
         <AgentList
           owner={owner}
@@ -452,9 +461,17 @@ export function AssistantInputBar({
             style={style}
             className={classNames(
               "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14",
-              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
-              "rounded-3xl shadow-lg transition-all duration-300",
-              isFullscreen ? "" : "max-h-64 min-h-24",
+              "s-backdrop-blur border-element-500 bg-white/80",
+              "rounded-3xl transition-all duration-300",
+
+              isExitingFullscreen
+                ? "border-2 shadow-lg"
+                : isFullscreen
+                ? "border drop-shadow-[0_24px_48px_rgba(2,6,23,0.15)]"
+                : "border-2 shadow-lg",
+              isFullscreen
+                ? "focus-within:border-element-500"
+                : "max-h-64 min-h-24 focus-within:border-element-600",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
