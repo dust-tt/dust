@@ -212,12 +212,44 @@ async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
   // Detect the delimiter.
-  const delimiters = [",", ";", "\t"];
+  const firstTwoLines = csv.split("\n").slice(0, 2);
+  if (firstTwoLines.length < 2) {
+    return new Err({
+      type: "invalid_request_error",
+      message: `CSV is empty.`,
+    });
+  }
+  const delimiters = {
+    ",": [],
+    ";": [],
+    "\t": [],
+  } as Record<string, number[]>;
+
+  for (const [i, l] of firstTwoLines.entries()) {
+    for (const c of l) {
+      if (Array.isArray(delimiters[c])) {
+        delimiters[c][i] = (delimiters[c][i] || 0) + 1;
+      }
+    }
+  }
+
+  const delimiterCandidates = Object.entries(delimiters).filter(
+    ([, [count_1, count_2]]) => count_1 === count_2 && count_1 > 0
+  );
+
+  if (!delimiterCandidates.length) {
+    return new Err({
+      type: "invalid_request_error",
+      message: `Could not detect delimiter.`,
+    });
+  }
+
   let delimiter: string | undefined = undefined;
-  for (const c of csv) {
-    if (delimiters.includes(c)) {
-      delimiter = c;
-      break;
+  let delimiterOccurences = 0;
+  for (const [d, [count]] of delimiterCandidates) {
+    if (count > delimiterOccurences) {
+      delimiter = d;
+      delimiterOccurences = count;
     }
   }
 
