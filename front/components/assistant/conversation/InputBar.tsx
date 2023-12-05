@@ -217,9 +217,32 @@ export function AssistantInputBar({
   stopGenerationButton?: React.ReactNode;
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState({});
+
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    if (ref.current) {
+      const currentHeight = `${ref.current.offsetHeight}px`;
+      if (!isFullscreen) {
+        // Going to fullscreen mode
+        setStyle({ height: currentHeight });
+        setTimeout(() => {
+          setIsFullscreen(true);
+          setStyle({ height: "80vh" });
+        }, 10); // Timeout to allow the style change to take effect
+      } else {
+        // Exiting fullscreen mode
+        setTimeout(() => {
+          setStyle({ height: "16rem" });
+          setTimeout(() => {
+            setIsFullscreen(false); // Update isFullscreen after the transition
+            setStyle({}); // Remove the inline style after the transition
+          }, 300); // This timeout should match the CSS transition duration
+        }, 10);
+      }
+    }
   };
+
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
@@ -409,10 +432,7 @@ export function AssistantInputBar({
     "whitespace-pre-wrap font-normal"
   );
   return (
-    <div
-      id="InputBar_Overlay"
-      className="overflow-hidde pointer-events-none absolute bottom-0 right-0 top-0 z-20 h-full w-full lg:left-80 lg:w-auto"
-    >
+    <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-20 h-full w-full overflow-hidden lg:left-80 lg:w-auto">
       <div className="pointer-events-none mx-auto flex h-full max-w-4xl">
         <AgentList
           owner={owner}
@@ -422,19 +442,19 @@ export function AssistantInputBar({
           position={agentListPosition}
         />
         <div
-          id="InputBar_Ctnr"
           className={classNames(
-            "mb-4 flex w-full flex-1 flex-row items-end px-4 md:mb-8",
+            "pointer-events-auto mb-4 flex w-full flex-1 flex-row items-end px-4 md:mb-8",
             isFullscreen ? "mt-24" : "self-end"
           )}
         >
           <div
+            ref={ref}
+            style={style}
             className={classNames(
-              "pointer-events-auto",
-              "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14 transition-all",
+              "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14",
               "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-action-400",
               "rounded-3xl transition-all duration-300 box-shadow-lg",
-              isFullscreen ? "h-[80vh]" : "max-h-64 min-h-28",
+              isFullscreen ? "" : "max-h-64 min-h-28",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
@@ -772,7 +792,7 @@ export function AssistantInputBar({
                   className={classNames(
                     // This div is placeholder text for the contenteditable
                     contentEditableClasses,
-                    "absolute -z-10 truncate text-element-600 dark:text-element-600-dark",
+                    "absolute -z-10 overflow-hidden truncate pr-12 text-element-600 dark:text-element-600-dark",
                     empty && !isInputFocused ? "" : "hidden" // Only show when empty and not focused
                   )}
                 >
@@ -792,7 +812,7 @@ export function AssistantInputBar({
               />
             </div>
             <div className="absolute bottom-0 right-0 z-10 flex flex-row items-end gap-2 p-2">
-              <div className="flex gap-4 rounded-full bg-white/80 px-2 py-1 backdrop-blur">
+              <div className="flex gap-4 rounded-full border border-structure-100 bg-white/80 px-2.5 py-2 backdrop-blur">
                 <input
                   type="file"
                   ref={fileInputRef}

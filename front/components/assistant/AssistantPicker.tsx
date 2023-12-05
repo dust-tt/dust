@@ -37,7 +37,7 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
-      <div onClick={() => setSearchText("")}>
+      <div onClick={() => setSearchText("")} className="flex">
         {pickerButton ? (
           <DropdownMenu.Button size={size}>{pickerButton}</DropdownMenu.Button>
         ) : (

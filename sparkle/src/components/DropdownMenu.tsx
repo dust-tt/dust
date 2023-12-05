@@ -89,6 +89,7 @@ export interface DropdownButtonProps {
   className?: string;
   disabled?: boolean;
   children?: React.ReactNode;
+  onClick?: () => void;
 }
 
 DropdownMenu.Button = function ({
@@ -101,6 +102,7 @@ DropdownMenu.Button = function ({
   tooltipPosition = "above",
   className = "",
   disabled = false,
+  onClick,
 }: DropdownButtonProps) {
   const finalLabelClasses = classNames(
     labelClasses.base,
@@ -143,6 +145,7 @@ DropdownMenu.Button = function ({
           "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
           label ? "s-gap-1.5" : "s-gap-0"
         )}
+        onClick={onClick}
       >
         {tooltip ? (
           <Tooltip position={tooltipPosition} label={tooltip}>
