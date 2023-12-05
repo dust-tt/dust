@@ -452,9 +452,9 @@ export function AssistantInputBar({
             style={style}
             className={classNames(
               "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14",
-              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-action-400",
-              "rounded-3xl transition-all duration-300 box-shadow-lg",
-              isFullscreen ? "" : "max-h-64 min-h-28",
+              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
+              "rounded-3xl shadow-lg transition-all duration-300",
+              isFullscreen ? "" : "max-h-64 min-h-[108px]",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
