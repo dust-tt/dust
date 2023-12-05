@@ -454,7 +454,7 @@ export function AssistantInputBar({
               "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14",
               "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
               "rounded-3xl shadow-lg transition-all duration-300",
-              isFullscreen ? "" : "max-h-64 min-h-[108px]",
+              isFullscreen ? "" : "max-h-64 min-h-24",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
@@ -890,7 +890,6 @@ export function AssistantInputBar({
                 />
               </div>
               <Button
-                isSquare
                 size="sm"
                 icon={ArrowUpIcon}
                 label="Send"
