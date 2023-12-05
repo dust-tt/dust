@@ -17,40 +17,6 @@ export const ButtonExamples = () => (
       <Button
         variant="primary"
         size="lg"
-        label="Send"
-        labelVisible={false}
-        icon={ArrowUpIcon}
-        isSquare
-      />
-      <Button
-        variant="primary"
-        size="md"
-        label="Send"
-        labelVisible={false}
-        icon={ArrowUpIcon}
-        isSquare
-      />
-      <Button
-        variant="primary"
-        size="sm"
-        label="Send"
-        labelVisible={false}
-        icon={ArrowUpIcon}
-        isSquare
-      />
-      <Button
-        variant="primary"
-        size="xs"
-        label="Send"
-        labelVisible={false}
-        icon={ArrowUpIcon}
-        isSquare
-      />
-    </div>
-    <div className="s-flex s-items-center s-gap-4">
-      <Button
-        variant="primary"
-        size="lg"
         label="Settings"
         icon={Cog6ToothIcon}
       />
