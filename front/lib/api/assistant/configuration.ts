@@ -23,6 +23,7 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
+import { getAgentRelationOverridesForUser } from "@app/lib/api/assistant/relation_override";
 import { isSupportedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -39,8 +40,6 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
-
-import { getAgentRelationOverridesForUser } from "./relation_override";
 
 /**
  * Get an agent configuration
@@ -226,7 +225,7 @@ export async function getAgentConfigurations(
 
   const user = auth.user();
   // non-public views are specific to a user
-  if (agentsGetView !== "public" && !user) {
+  if (agentsGetView !== "workspace-public" && !user) {
     throw new Error("Unexpected `auth` without `user`.");
   }
 
@@ -242,7 +241,7 @@ export async function getAgentConfigurations(
   // clause matching the scope being 'published' or 'workspace' for the 'public' view
   // for other views, 'private' agents of which the user is author are also included
   const scopeClause =
-    agentsGetView === "public"
+    agentsGetView === "workspace-public"
       ? { scope: { [Op.in]: ["published", "workspace"] } }
       : {
           [Op.or]: [

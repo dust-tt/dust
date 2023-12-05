@@ -238,10 +238,9 @@ export async function constructPrompt(
 
   // if meta includes the string "{ASSISTANTS_LIST}"
   if (meta.includes("{ASSISTANTS_LIST}")) {
-    const agents = await getAgentConfigurations(
-      auth,
-      auth.user() ? "list" : "public"
-    );
+    if (!auth.user())
+      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
+    const agents = await getAgentConfigurations(auth, "list");
     meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents

@@ -100,7 +100,7 @@ export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "discover"
-  | "public"
+  | "workspace-public"
   | "all";
 
 export type AgentConfigurationType = {

@@ -34,7 +34,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const agentConfigurations = await getAgentConfigurations(auth, "public");
+      const agentConfigurations = await getAgentConfigurations(
+        auth,
+        "workspace-public"
+      );
       return res.status(200).json({
         agentConfigurations,
       });

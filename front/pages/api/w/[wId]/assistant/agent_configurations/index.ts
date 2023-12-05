@@ -109,7 +109,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
     t.literal("list"),
     t.literal("discover"),
-    t.literal("public"),
+    t.literal("workspace-public"),
     t.literal("all"),
     t.undefined,
   ]),
