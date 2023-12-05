@@ -67,7 +67,14 @@ export async function handleFileUploadToText(
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
       } else if (
-        ["text/plain", "text/csv", "text/markdown"].includes(file.type)
+        [
+          "text/plain",
+          "text/csv",
+          "text/markdown",
+          "text/tsv",
+          "text/comma-separated-values",
+          "text/tab-separated-values",
+        ].includes(file.type)
       ) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
@@ -76,7 +83,7 @@ export async function handleFileUploadToText(
         return resolve(
           new Err(
             new Error(
-              "File type not supported. Supported file types: .txt, .pdf, .md"
+              "File type not supported. Supported file types: .txt, .pdf, .md, .csv, .tsv"
             )
           )
         );

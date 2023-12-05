@@ -211,7 +211,24 @@ export default withLogging(handler);
 async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
-  const parser = parse(csv);
+  // Detect the delimiter.
+  const delimiters = [",", ";", "\t"];
+  let delimiter: string | undefined = undefined;
+  for (const c of csv) {
+    if (delimiters.includes(c)) {
+      delimiter = c;
+      break;
+    }
+  }
+
+  if (!delimiter) {
+    return new Err({
+      type: "invalid_request_error",
+      message: `Could not detect delimiter.`,
+    });
+  }
+
+  const parser = parse(csv, { delimiter });
   let header: string[] | undefined = undefined;
   const valuesByCol: Record<string, string[]> = {};
 
