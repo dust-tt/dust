@@ -19,12 +19,14 @@ export function AssistantPicker({
   onItemClick,
   pickerButton,
   showBuilderButtons,
+  size = "md",
 }: {
   owner: WorkspaceType;
   assistants: AgentConfigurationType[];
   onItemClick: (assistant: AgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
   showBuilderButtons?: boolean;
+  size?: "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
@@ -35,12 +37,13 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
-      <div onClick={() => setSearchText("")}>
+      <div onClick={() => setSearchText("")} className="flex">
         {pickerButton ? (
-          <DropdownMenu.Button>{pickerButton}</DropdownMenu.Button>
+          <DropdownMenu.Button size={size}>{pickerButton}</DropdownMenu.Button>
         ) : (
           <DropdownMenu.Button
             icon={RobotIcon}
+            size={size}
             tooltip="Pick an assistant"
             tooltipPosition="above"
           />
