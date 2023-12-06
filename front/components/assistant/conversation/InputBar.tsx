@@ -339,7 +339,7 @@ export function AssistantInputBar({
           contentType: "file_attachment",
         };
       }
-
+      setIsExpanded(false);
       onSubmit(content, mentions, contentFragment);
       contentEditable.innerHTML = "";
       setContentFragmentFilename(undefined);
@@ -492,9 +492,9 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-end">
           <div
             className={classNames(
-              "relative flex flex-1 flex-row items-stretch gap-3 px-4",
+              "relative flex flex-1 flex-row items-stretch gap-0 pl-4",
               "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
-              "rounded-3xl transition-all duration-300 box-shadow-2xl",
+              "rounded-3xl shadow-[0_12px_36px_-15px_rgba(0,0,0,0.3)] transition-all duration-300",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
@@ -847,20 +847,8 @@ export function AssistantInputBar({
               </div>
             </div>
 
-            <div className="absolute right-4 top-4 z-10 flex">
-              <IconButton
-                variant={"tertiary"}
-                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="xs"
-                className="flex"
-                onClick={() => {
-                  setIsExpanded((e) => !e);
-                }}
-              />
-            </div>
-
-            <div className="absolute bottom-0 right-0 z-10 flex flex-row items-end gap-2 p-2">
-              <div className="flex gap-4 rounded-full border border-structure-100 bg-white/80 px-2.5 py-2 backdrop-blur">
+            <div className="flex flex-col items-end justify-between gap-2 self-stretch py-2 pr-2">
+              <div className="flex gap-3 rounded-full border border-structure-100 px-2 py-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -936,6 +924,15 @@ export function AssistantInputBar({
                   assistants={activeAgents}
                   showBuilderButtons={true}
                 />
+                <IconButton
+                  variant={"tertiary"}
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  size="sm"
+                  className="flex"
+                  onClick={() => {
+                    setIsExpanded((e) => !e);
+                  }}
+                />
               </div>
               <Button
                 size="sm"
@@ -947,10 +944,6 @@ export function AssistantInputBar({
                   void handleSubmit();
                 }}
               />
-            </div>
-
-            <div className="h-24 w-8">
-              {/* This div serve as vertical spacer for the right of the input bar and min-height as well */}
             </div>
           </div>
         </div>
