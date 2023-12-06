@@ -83,7 +83,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const dataSources = await getDataSources(auth);
   const agentConfigurations = (
-    await getAgentConfigurations(auth, "all")
+    await getAgentConfigurations(auth, "superuser")
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)

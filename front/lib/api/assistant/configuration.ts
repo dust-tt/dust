@@ -222,16 +222,19 @@ export async function getAgentConfigurations(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
+  if (!auth.isUser()) {
+    throw new Error("Unexpected `auth` from outside workspace.");
+  }
 
+  if (agentsGetView === "superuser") {
+    auth.requireSuperuser();
+  }
   const user = auth.user();
   // non-public views are specific to a user
   if (agentsGetView !== "workspace-public" && !user) {
     throw new Error("Unexpected `auth` without `user`.");
   }
 
-  if (!auth.isUser()) {
-    throw new Error("Unexpected `auth` from outside workspace.");
-  }
   // construct the where clause
   const baseClause = {
     workspaceId: owner.id,

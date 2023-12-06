@@ -89,19 +89,16 @@ export type AgentRelationOverrideType = "in-list" | "not-in-list";
  * - list: all agents in the user's list
  * - conversation: all agents in the user's list + agents in the current
  *   conversation (requries a conversation sId)
- * - public: all agents except private ones
- * - discover: public + private to the user
- * - all: all agents, including private ones. It is currently used by the agent
- *   builder to check the number of agents, and if a name is already taken, and
- *   internally  by poke
+ * - all: workspace + published agents (not private ones), eg. for agent gallery
+ * - superuser: all agents, including private ones => CAREFUL. Currently used by
+ *   poke only
  */
 
 export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
-  | "discover"
-  | "workspace-public"
-  | "all";
+  | "all"
+  | "superuser";
 
 export type AgentConfigurationType = {
   id: ModelId;
@@ -110,6 +107,7 @@ export type AgentConfigurationType = {
   version: number;
 
   scope: AgentConfigurationScope;
+  relationOverride: AgentRelationOverrideType | null;
   status: AgentConfigurationStatus;
 
   name: string;
