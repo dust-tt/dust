@@ -217,13 +217,11 @@ function getAgentMentionNode(
 
 export function AssistantInputBar({
   owner,
-  conversationId,
   onSubmit,
   conversationId,
   stickyMentions,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
   onSubmit: (
     input: string,
     mentions: MentionType[],
@@ -479,7 +477,7 @@ export function AssistantInputBar({
         filter={agentListFilter}
         ref={agentListRef}
         position={agentListPosition}
-	conversationId={conversationId}
+        conversationId={conversationId}
       />
 
       {generationContext.generatingMessageIds.length > 0 && (
