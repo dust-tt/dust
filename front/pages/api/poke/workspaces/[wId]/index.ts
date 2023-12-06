@@ -6,9 +6,9 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
-import { dangerousSuperAdminDeleteWorkspaceData } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export const WorkspaceTypeSchema = t.type({
   segmentation: t.union([t.literal("interesting"), t.null]),
@@ -72,17 +72,7 @@ async function handler(
         workspace,
       });
     case "DELETE":
-      try {
-        await dangerousSuperAdminDeleteWorkspaceData({ auth });
-      } catch (e) {
-        return apiError(req, res, {
-          status_code: 405,
-          api_error: {
-            type: "internal_server_error",
-            message: "An error occured while deleting the workspace data.",
-          },
-        });
-      }
+      await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
       return res.status(200).json({ success: true });
 
     default:
