@@ -433,40 +433,6 @@ impl Store for PostgresStore {
         Ok(runs_map)
     }
 
-    async fn delete_run(&self, project: &Project, run_id: &str) -> Result<()> {
-        let project_id = project.project_id();
-        let run_id = run_id.to_string();
-        let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-        let tx = c.transaction().await?;
-
-        let create_proc = r#"
-            CREATE OR REPLACE FUNCTION delete_run(v_project_id BIGINT, v_run_run_id TEXT)
-            RETURNS void AS $$
-            DECLARE
-                block_exec_ids BIGINT[];
-            BEGIN
-                -- Store block_execution IDs in an array
-                SELECT array_agg(rj.block_execution) INTO block_exec_ids
-                FROM runs_joins rj
-                JOIN runs r ON rj.run = r.id WHERE r.project = v_project_id AND r.run_id = v_run_run_id;
-                -- Delete from runs_joins where run IDs match those in the project
-                DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
-                -- Now delete from block_executions using the stored IDs
-                DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
-                -- Finally, delete from runs where run IDs match those in the project
-                DELETE FROM runs WHERE run_id = v_run_run_id;
-            END;
-            $$ LANGUAGE plpgsql;
-        "#;
-
-        tx.execute(create_proc, &[]).await?;
-        tx.execute("SELECT delete_run($1, $2)", &[&project_id, &run_id])
-            .await?;
-        tx.commit().await?;
-        Ok(())
-    }
-
     async fn list_runs(
         &self,
         project: &Project,
