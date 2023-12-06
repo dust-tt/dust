@@ -3,6 +3,7 @@ import {
   Collapsible,
   DropdownMenu,
   SliderToggle,
+  Spinner,
 } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,

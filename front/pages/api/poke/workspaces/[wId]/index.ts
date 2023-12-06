@@ -6,6 +6,7 @@ import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
+import { dangerousSuperAdminDeleteWorkspaceData } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -15,8 +16,7 @@ export const WorkspaceTypeSchema = t.type({
 
 export type SegmentWorkspaceResponseBody = {
   workspace: WorkspaceType;
-
-import { dangerousSuperAdminDeleteWorkspaceData } from "@app/lib/api/workspace";
+};
 
 export type DeleteWorkspaceResponseBody = {
   success: true;
@@ -24,7 +24,11 @@ export type DeleteWorkspaceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SegmentWorkspaceResponseBody | DeleteWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    | SegmentWorkspaceResponseBody
+    | DeleteWorkspaceResponseBody
+    | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -86,7 +90,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH OR DELETE is expected.",
+          message:
+            "The method passed is not supported, PATCH OR DELETE is expected.",
         },
       });
   }
