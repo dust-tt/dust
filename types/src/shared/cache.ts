@@ -17,6 +17,10 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
     redisUri = REDIS_CACHE_URI;
   }
 
+  if (ttlMs > 60 * 60 * 24 * 1000) {
+    throw new Error("ttlMs should be less than 24 hours");
+  }
+
   return async function (...args: Parameters<T>) {
     if (!redisUri) {
       throw new Error("redisUrl is not set");

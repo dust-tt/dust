@@ -563,8 +563,7 @@ async function getFileParents(
   return parents.reverse();
 }
 
-export const getFileParentsMemoized = getFileParents;
-cacheWithRedis(
+export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,
   (
     connectorId: ModelId,
