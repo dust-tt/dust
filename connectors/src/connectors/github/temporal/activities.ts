@@ -1,3 +1,4 @@
+import { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import PQueue from "p-queue";
 
 import {
@@ -9,10 +10,12 @@ import {
   getRepoDiscussionsPage,
   getRepoIssuesPage,
   getReposPage,
+  GithubIssue as GithubIssueType,
   GithubUser,
 } from "@connectors/connectors/github/lib/github_api";
 import {
   deleteFromDataSource,
+  renderGfmMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -75,34 +78,39 @@ export async function githubGetRepoIssuesResultPageActivity(
   return page.map((issue) => issue.number);
 }
 
-export async function githubUpsertIssueActivity(
+async function renderIssue(
   installationId: string,
   repoName: string,
   repoId: number,
   login: string,
   issueNumber: number,
-  dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>,
-  isBatchSync = false
-) {
+  loggerArgs: Record<string, string | number>
+): Promise<{
+  issue: GithubIssueType;
+  lastUpdateTimestamp: number;
+  content: CoreAPIDataSourceDocumentSection;
+}> {
   const localLogger = logger.child({
     ...loggerArgs,
     issueNumber,
   });
 
-  localLogger.info("Upserting GitHub issue.");
   const issue = await getIssue(installationId, repoName, login, issueNumber);
-  let renderedIssue = `# ${issue.title}||\n`;
-  if (issue.body) {
-    renderedIssue += `${issue.body}||\n`;
-  }
+
+  const content = renderGfmMarkdownSection(
+    `Issue #${issue.number} [${repoName}]: ${issue.title}\n`,
+    issue.body || ""
+  );
+
   let resultPage = 1;
   let lastCommentUpdateTime: Date | null = null;
+
   for (;;) {
     const resultPageLogger = localLogger.child({
       page: resultPage,
     });
     resultPageLogger.info("Fetching GitHub issue comments result page.");
+
     let comments = undefined;
     try {
       comments = await getIssueCommentsPage(
@@ -120,13 +128,19 @@ export async function githubUpsertIssueActivity(
         throw e;
       }
     }
+
     if (!comments.length) {
       break;
     }
+
     for (const comment of comments) {
-      renderedIssue += `${renderGithubUser(comment.creator)}: ${
-        comment.body
-      }||\n`;
+      if (comment.body) {
+        const c = renderGfmMarkdownSection(
+          `>> ${renderGithubUser(comment.creator)}:\n`,
+          comment.body
+        );
+        content.sections.push(c);
+      }
       if (
         !lastCommentUpdateTime ||
         comment.updatedAt.getTime() > lastCommentUpdateTime.getTime()
@@ -134,8 +148,51 @@ export async function githubUpsertIssueActivity(
         lastCommentUpdateTime = comment.updatedAt;
       }
     }
+
     resultPage += 1;
   }
+
+  const lastUpdateTimestamp = Math.max(
+    issue.updatedAt.getTime(),
+    lastCommentUpdateTime ? lastCommentUpdateTime.getTime() : 0
+  );
+
+  return {
+    issue,
+    lastUpdateTimestamp,
+    content,
+  };
+}
+
+export async function githubUpsertIssueActivity(
+  installationId: string,
+  repoName: string,
+  repoId: number,
+  login: string,
+  issueNumber: number,
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number>,
+  isBatchSync = false
+) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    issueNumber,
+  });
+
+  localLogger.info("Upserting GitHub issue.");
+
+  const {
+    issue,
+    lastUpdateTimestamp,
+    content: renderedIssue,
+  } = await renderIssue(
+    installationId,
+    repoName,
+    repoId,
+    login,
+    issueNumber,
+    loggerArgs
+  );
 
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
@@ -148,20 +205,11 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
 
-  const lastUpdateTimestamp = Math.max(
-    issue.updatedAt.getTime(),
-    lastCommentUpdateTime ? lastCommentUpdateTime.getTime() : 0
-  );
-
   // TODO: last commentor, last comment date, issue labels (as tags)
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentContent: {
-      prefix: null,
-      content: renderedIssue,
-      sections: [],
-    },
+    documentContent: renderedIssue,
     documentUrl: issue.url,
     timestampMs: lastUpdateTimestamp,
     tags: tags,
@@ -202,22 +250,18 @@ export async function githubUpsertIssueActivity(
   });
 }
 
-export async function githubUpsertDiscussionActivity(
+async function renderDiscussion(
   installationId: string,
   repoName: string,
   repoId: number,
   login: string,
   discussionNumber: number,
-  dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>,
-  isBatchSync: boolean
+  loggerArgs: Record<string, string | number>
 ) {
   const localLogger = logger.child({
     ...loggerArgs,
     discussionNumber,
   });
-
-  localLogger.info("Upserting GitHub discussion.");
 
   const discussion = await getDiscussion(
     installationId,
@@ -226,11 +270,19 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber
   );
 
-  let renderedDiscussion = `# ${discussion.title}||\n${discussion.bodyText}||\n`;
+  const content = renderGfmMarkdownSection(
+    `Discussion #${discussion.number} [${repoName}]: ${discussion.title}\n`,
+    discussion.bodyText
+  );
 
   let nextCursor: string | null = null;
 
   for (;;) {
+    const cursorLogger = localLogger.child({
+      nextCursor,
+    });
+    cursorLogger.info("Fetching GitHub discussion comments page.");
+
     const { cursor, comments } = await getDiscussionCommentsPage(
       installationId,
       repoName,
@@ -243,24 +295,36 @@ export async function githubUpsertDiscussionActivity(
     // that are processed when doing the full repo sync, so it's easier to assume
     // a single job isn't doing more than 1 concurrent request.
     for (const comment of comments) {
+      let prefix = "> ";
       if (comment.isAnswer) {
-        renderedDiscussion += "[ACCEPTED ANSWER] ";
+        prefix += "[ACCEPTED ANSWER] ";
       }
-      renderedDiscussion += `${comment.author?.login || "Unknown author"}: ${
-        comment.bodyText
-      }||`;
+      prefix += `${comment.author?.login || "Unknown author"}:\n`;
+      const c = renderGfmMarkdownSection(prefix, comment.bodyText);
+      content.sections.push(c);
+
       let nextChildCursor: string | null = null;
+
       for (;;) {
+        const cursorLogger = localLogger.child({
+          nextCursor,
+          nextChildCursor,
+        });
+        cursorLogger.info("Fetching GitHub discussion comments replies page.");
+
         const { cursor: childCursor, comments: childComments } =
           await getDiscussionCommentRepliesPage(
             installationId,
             comment.id,
             nextChildCursor
           );
+
         for (const childComment of childComments) {
-          renderedDiscussion += `----${
-            childComment.author?.login || "Unknown author"
-          }: ${childComment.bodyText}||`;
+          const cc = renderGfmMarkdownSection(
+            `>> ${childComment.author?.login || "Unknown author"}:\n`,
+            childComment.bodyText
+          );
+          c.sections.push(cc);
         }
 
         if (!childCursor) {
@@ -278,6 +342,38 @@ export async function githubUpsertDiscussionActivity(
     nextCursor = cursor;
   }
 
+  return {
+    discussion,
+    content,
+  };
+}
+
+export async function githubUpsertDiscussionActivity(
+  installationId: string,
+  repoName: string,
+  repoId: number,
+  login: string,
+  discussionNumber: number,
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number>,
+  isBatchSync: boolean
+) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    discussionNumber,
+  });
+
+  localLogger.info("Upserting GitHub discussion.");
+
+  const { discussion, content: renderedDiscussion } = await renderDiscussion(
+    installationId,
+    repoName,
+    repoId,
+    login,
+    discussionNumber,
+    loggerArgs
+  );
+
   const documentId = getDiscussionDocumentId(
     repoId.toString(),
     discussionNumber
@@ -291,11 +387,7 @@ export async function githubUpsertDiscussionActivity(
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
-    documentContent: {
-      prefix: null,
-      content: renderedDiscussion,
-      sections: [],
-    },
+    documentContent: renderedDiscussion,
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,

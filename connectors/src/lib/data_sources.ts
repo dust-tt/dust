@@ -4,6 +4,10 @@ import {
   sectionFullText,
 } from "@dust-tt/types";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
+import { toMarkdown } from "mdast-util-to-markdown";
+import { gfm } from "micromark-extension-gfm";
 
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -213,4 +217,82 @@ export async function updateDocumentParentsField(
       `Error updating document parents field: ${dustRequestResult}`
     );
   }
+}
+
+const MAX_SECTION_PREFIX_LENGTH = 128;
+
+export function renderPrefixSection(
+  prefix: string | null
+): CoreAPIDataSourceDocumentSection {
+  if (!prefix || !prefix.trim()) {
+    return {
+      prefix: null,
+      content: null,
+      sections: [],
+    };
+  }
+  if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
+    return {
+      prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
+      content: "..." + prefix.substring(MAX_SECTION_PREFIX_LENGTH),
+      sections: [],
+    };
+  }
+  return {
+    prefix,
+    content: null,
+    sections: [],
+  };
+}
+
+/// This function is used to render markdown from the GFM markdown format to our Section format.
+/// The top-level node is always with prefix and content null and can be edited to add a prefix or
+/// content.
+export function renderGfmMarkdownSection(
+  prefix: string | null,
+  markdown: string
+): CoreAPIDataSourceDocumentSection {
+  const tree = fromMarkdown(markdown, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  });
+
+  const top = renderPrefixSection(prefix);
+
+  let path: { depth: number; content: CoreAPIDataSourceDocumentSection }[] = [
+    { depth: 0, content: top },
+  ];
+
+  for (const child of tree.children) {
+    if (child.type === "heading" && child.depth <= 2) {
+      path = path.filter((p) => p.depth < child.depth);
+
+      const last = path[path.length - 1];
+      if (!last) {
+        throw new Error("Unreachable");
+      }
+
+      const c = renderPrefixSection(
+        toMarkdown(child, { extensions: [gfmToMarkdown()] })
+      );
+      last.content.sections.push(c);
+      path.push({
+        depth: child.depth,
+        content: c,
+      });
+    } else {
+      const last = path[path.length - 1];
+      if (!last) {
+        throw new Error("Unreachable");
+      }
+
+      last.content.sections.push({
+        prefix: null,
+        content: toMarkdown(child, { extensions: [gfmToMarkdown()] }),
+        sections: [],
+      });
+    }
+  }
+
+  return top;
 }
