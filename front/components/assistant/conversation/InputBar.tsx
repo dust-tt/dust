@@ -201,9 +201,21 @@ function moveCursorToEnd(el: HTMLElement) {
   }
 }
 
+function getAgentMentionNode(
+  agentConfiguration: AgentConfigurationType
+): ChildNode | null {
+  const htmlString = ReactDOMServer.renderToStaticMarkup(
+    <AgentMention agentConfiguration={agentConfiguration} />
+  );
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = htmlString.trim();
+  return wrapper.firstChild;
+}
+
 export function AssistantInputBar({
   owner,
   onSubmit,
+  conversationId,
   stickyMentions,
 }: {
   owner: WorkspaceType;
@@ -212,6 +224,7 @@ export function AssistantInputBar({
     mentions: MentionType[],
     contentFragment?: { title: string; content: string }
   ) => void;
+  conversationId: string | null;
   stickyMentions?: AgentMention[];
 }) {
   const [agentListVisible, setAgentListVisible] = useState(false);
@@ -345,6 +358,45 @@ export function AssistantInputBar({
 
   const stickyMentionsTextContent = useRef<string | null>(null);
 
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "FixedAssistantInputBar must be used within a GenerationContextProvider"
+    );
+  }
+
+  const handleStopGeneration = async () => {
+    if (!conversationId) {
+      return;
+    }
+    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "cancel",
+          messageIds: generationContext.generatingMessageIds,
+        }),
+      }
+    );
+    await mutate(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
+    );
+  };
+
+  useEffect(() => {
+    if (isProcessing && generationContext.generatingMessageIds.length === 0) {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, generationContext.generatingMessageIds.length]);
+
   useEffect(() => {
     if (!stickyMentions) {
       return;
@@ -412,6 +464,20 @@ export function AssistantInputBar({
         ref={agentListRef}
         position={agentListPosition}
       />
+
+      {generationContext.generatingMessageIds.length > 0 && (
+        <div className="flex justify-center pb-4">
+          <Button
+            className="mt-4"
+            variant="tertiary"
+            label={isProcessing ? "Stopping generation..." : "Stop generation"}
+            icon={StopIcon}
+            onClick={handleStopGeneration}
+            disabled={isProcessing}
+          />
+        </div>
+      )}
+
       <div className="flex flex-1 px-4">
         <div className="flex flex-1 flex-row items-end">
           <div
@@ -898,64 +964,13 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
 }) {
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
-  if (!generationContext) {
-    throw new Error(
-      "FixedAssistantInputBar must be used within a GenerationContextProvider"
-    );
-  }
-
-  const handleStopGeneration = async () => {
-    if (!conversationId) {
-      return;
-    }
-    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-          messageIds: generationContext.generatingMessageIds,
-        }),
-      }
-    );
-    await mutate(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-    );
-  };
-
-  useEffect(() => {
-    if (isProcessing && generationContext.generatingMessageIds.length === 0) {
-      setIsProcessing(false);
-    }
-  }, [isProcessing, generationContext.generatingMessageIds.length]);
-
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
-      {generationContext.generatingMessageIds.length > 0 && (
-        <div className="flex justify-center pb-4">
-          <Button
-            className="mt-4"
-            variant="tertiary"
-            label={isProcessing ? "Stopping generation..." : "Stop generation"}
-            icon={StopIcon}
-            onClick={handleStopGeneration}
-            disabled={isProcessing}
-          />
-        </div>
-      )}
-
       <div className="mx-auto max-h-screen max-w-4xl pb-8 pt-16">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
+          conversationId={conversationId}
           stickyMentions={stickyMentions}
         />
       </div>
@@ -964,14 +979,3 @@ export function FixedAssistantInputBar({
 }
 
 export const InputBarContext = createContext({ animate: false });
-
-function getAgentMentionNode(
-  agentConfiguration: AgentConfigurationType
-): ChildNode | null {
-  const htmlString = ReactDOMServer.renderToStaticMarkup(
-    <AgentMention agentConfiguration={agentConfiguration} />
-  );
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = htmlString.trim();
-  return wrapper.firstChild;
-}
