@@ -396,8 +396,26 @@ export async function createAgentConfiguration(
 
         if (latestVersion !== null) {
           version = latestVersion + 1;
+          // At time of writing, private agents can only be created from
+          // scratch. An existing agent that is not already private cannot be
+          // updated back to private.
+          const formerAgent = await AgentConfiguration.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+              version: latestVersion,
+            },
+            attributes: ["scope"],
+            transaction: t,
+          });
+          if (
+            formerAgent &&
+            scope === "private" &&
+            formerAgent.scope !== "private"
+          ) {
+            throw new Error("Published agents cannot go back to private.");
+          }
         }
-
         await AgentConfiguration.update(
           { status: "archived" },
           {
