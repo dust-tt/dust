@@ -229,6 +229,9 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` without `user`.");
   }
 
+  if (!auth.isUser()) {
+    throw new Error("Unexpected `auth` from outside workspace.");
+  }
   // construct the where clause
   const baseClause = {
     workspaceId: owner.id,
