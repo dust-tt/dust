@@ -246,7 +246,6 @@ export function AssistantInputBar({
     }
   };
 
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
   const [agentListPosition, setAgentListPosition] = useState<{
@@ -503,8 +502,6 @@ export function AssistantInputBar({
                 contentEditable={true}
                 ref={inputRef}
                 id={"dust-input-bar"}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setIsInputFocused(false)}
                 suppressContentEditableWarning={true}
                 onPaste={(e) => {
                   e.preventDefault();
@@ -807,10 +804,10 @@ export function AssistantInputBar({
               >
                 <div
                   className={classNames(
-                    // This div is placeholder text for the contenteditable
                     contentEditableClasses,
                     "absolute -z-10 overflow-hidden truncate pr-12 text-element-600 dark:text-element-600-dark",
-                    empty && !isInputFocused ? "" : "hidden" // Only show when empty and not focused
+                    empty ? "" : "hidden"
+                    // empty && !isInputFocused ? "" : "hidden"
                   )}
                 >
                   Ask a question or get some @help
