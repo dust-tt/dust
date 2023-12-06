@@ -405,7 +405,7 @@ export function AssistantInputBar({
 
     const mentionsToInject = stickyMentions?.length
       ? stickyMentions
-      : [selectedAssistant];
+      : ([selectedAssistant] as [AgentMention]);
 
     const mentionedAgentConfigurationIds = new Set(
       mentionsToInject?.map((m) => m.configurationId)
