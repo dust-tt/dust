@@ -161,7 +161,7 @@ export default function Conversation({
   }
 
   return (
-    <div className="pb-32">
+    <div className="pb-44">
       {conversation.content.map((versionedMessages) => {
         const m = versionedMessages[versionedMessages.length - 1];
         const convoReactions = reactions.find((r) => r.messageId === m.sId);

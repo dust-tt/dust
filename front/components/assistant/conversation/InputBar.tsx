@@ -476,7 +476,7 @@ export function AssistantInputBar({
       />
 
       {generationContext.generatingMessageIds.length > 0 && (
-        <div className="flex justify-center pb-4">
+        <div className="flex justify-center pb-4 px-4">
           <Button
             className="mt-4"
             variant="tertiary"
