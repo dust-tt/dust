@@ -1,19 +1,17 @@
 import {
-  ArrowUpIcon,
-  AttachmentIcon,
+  AttachmentStrokeIcon,
   Avatar,
   Button,
   Citation,
-  FullscreenExitIcon,
-  FullscreenIcon,
   IconButton,
+  PaperAirplaneIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { AgentMention, MentionType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import React, {
+import {
   createContext,
   ForwardedRef,
   forwardRef,
@@ -205,7 +203,6 @@ export function AssistantInputBar({
   owner,
   onSubmit,
   stickyMentions,
-  stopGenerationButton,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -214,39 +211,7 @@ export function AssistantInputBar({
     contentFragment?: { title: string; content: string }
   ) => void;
   stickyMentions?: AgentMention[];
-  stopGenerationButton?: React.ReactNode;
 }) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isExitingFullscreen, setIsExitingFullscreen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState({});
-
-  const toggleFullscreen = () => {
-    if (ref.current) {
-      const currentHeight = `${ref.current.offsetHeight}px`;
-      if (!isFullscreen) {
-        // Going to fullscreen mode
-        setStyle({ height: currentHeight });
-        setTimeout(() => {
-          setIsFullscreen(true);
-          setStyle({ height: "84vh" });
-        }, 10); // Timeout to allow the style change to take effect
-      } else {
-        // Exiting fullscreen mode
-        setIsExitingFullscreen(true);
-        setTimeout(() => {
-          setStyle({ height: "16rem" });
-          setTimeout(() => {
-            setIsFullscreen(false); // Update isFullscreen after the transition
-            setIsExitingFullscreen(false);
-            setStyle({}); // Remove the inline style after the transition
-          }, 300); // This timeout should match the CSS transition duration
-        }, 10);
-      }
-    }
-  };
-
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [agentListVisible, setAgentListVisible] = useState(false);
   const [agentListFilter, setAgentListFilter] = useState("");
   const [agentListPosition, setAgentListPosition] = useState<{
@@ -435,76 +400,59 @@ export function AssistantInputBar({
     "whitespace-pre-wrap font-normal"
   );
   return (
-    <div
-      className={classNames(
-        "pointer-events-none absolute bottom-0 right-0 top-0 z-20 h-full w-full overflow-hidden lg:left-80 lg:w-auto",
-        "transition-all duration-300",
-        isExitingFullscreen ? "" : isFullscreen ? "bg-white/80" : ""
-      )}
-    >
-      <div className="pointer-events-none mx-auto flex h-full max-w-4xl">
-        <AgentList
-          owner={owner}
-          visible={agentListVisible}
-          filter={agentListFilter}
-          ref={agentListRef}
-          position={agentListPosition}
-        />
-        <div
-          className={classNames(
-            "pointer-events-auto mb-4 flex w-full flex-1 flex-row items-end px-4 md:mb-8",
-            isFullscreen ? "mt-24" : "self-end"
-          )}
-        >
+    <>
+      <AgentList
+        owner={owner}
+        visible={agentListVisible}
+        filter={agentListFilter}
+        ref={agentListRef}
+        position={agentListPosition}
+      />
+      <div className="flex flex-1 px-4">
+        <div className="flex flex-1 flex-row items-end">
           <div
-            ref={ref}
-            style={style}
             className={classNames(
-              "flex flex-1 flex-row items-stretch gap-3 pl-5 pr-14",
-              "s-backdrop-blur border-element-500 bg-white/80",
-              "rounded-3xl transition-all duration-300",
-
-              isExitingFullscreen
-                ? "border-2 shadow-lg"
-                : isFullscreen
-                ? "border drop-shadow-[0_24px_48px_rgba(2,6,23,0.15)]"
-                : "border-2 shadow-lg",
-              isFullscreen
-                ? "focus-within:border-element-500"
-                : "max-h-64 min-h-24 focus-within:border-element-600",
+              "relative flex flex-1 flex-row items-stretch gap-3 p-4",
+              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-action-400",
+              "rounded-xl transition-all duration-300 box-shadow-2xl",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
             )}
           >
-            <div className="absolute -top-[68px] right-0">
-              {stopGenerationButton}
-            </div>
-            <div className="flex flex-1 flex-col gap-y-0">
+            <div className="flex flex-1 flex-col gap-y-2">
+              <div
+                className={classNames(
+                  // This div is placeholder text for the contenteditable
+                  contentEditableClasses,
+                  "absolute -z-10 text-element-600 dark:text-element-600-dark",
+                  empty ? "" : "hidden"
+                )}
+              >
+                Ask a question or get some @help
+              </div>
+
               {contentFragmentFilename && contentFragmentBody && (
-                <div className="border-b border-structure-300/50 pb-3 pt-5">
-                  <Citation
-                    title={contentFragmentFilename}
-                    description={contentFragmentBody?.substring(0, 100)}
-                    onClose={() => {
-                      setContentFragmentBody(undefined);
-                      setContentFragmentFilename(undefined);
-                    }}
-                  />
-                </div>
+                <Citation
+                  title={contentFragmentFilename}
+                  description={contentFragmentBody?.substring(0, 100)}
+                  onClose={() => {
+                    setContentFragmentBody(undefined);
+                    setContentFragmentFilename(undefined);
+                  }}
+                />
               )}
+
               <div
                 className={classNames(
                   contentEditableClasses,
                   "scrollbar-hide",
                   "overflow-y-auto",
-                  "h-[100%] w-[100%] pb-6 pt-3.5"
+                  "max-h-64"
                 )}
                 contentEditable={true}
                 ref={inputRef}
                 id={"dust-input-bar"}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setIsInputFocused(false)}
                 suppressContentEditableWarning={true}
                 onPaste={(e) => {
                   e.preventDefault();
@@ -804,123 +752,101 @@ export function AssistantInputBar({
                     }
                   }
                 }}
-              >
-                <div
-                  className={classNames(
-                    // This div is placeholder text for the contenteditable
-                    contentEditableClasses,
-                    "absolute -z-10 overflow-hidden truncate pr-12 text-element-600 dark:text-element-600-dark",
-                    empty && !isInputFocused ? "" : "hidden" // Only show when empty and not focused
-                  )}
-                >
-                  Ask a question or get some @help
-                </div>
-              </div>
+              ></div>
             </div>
 
-            <div className="absolute right-4 top-4 z-10 flex">
-              <IconButton
-                variant={"tertiary"}
-                icon={isFullscreen ? FullscreenExitIcon : FullscreenIcon}
-                size="xs"
-                disabled={!!contentFragmentFilename}
-                className="flex"
-                onClick={toggleFullscreen}
-              />
-            </div>
-            <div className="absolute bottom-0 right-0 z-10 flex flex-row items-end gap-2 p-2">
-              <div className="flex gap-4 rounded-full border border-structure-100 bg-white/80 px-2.5 py-2 backdrop-blur">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    // focus on the input text after the file selection interaction is over
-                    inputRef.current?.focus();
-                    const file = e?.target?.files?.[0];
-                    if (!file) return;
-                    if (file.size > 5_000_000) {
-                      sendNotification({
-                        type: "error",
-                        title: "File too large.",
-                        description:
-                          "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
-                      });
-                      return;
-                    }
-                    const res = await handleFileUploadToText(file);
+            <div className="z-10 flex flex-row items-end gap-4">
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={async (e) => {
+                  // focus on the input text after the file selection interaction is over
+                  inputRef.current?.focus();
+                  const file = e?.target?.files?.[0];
+                  if (!file) return;
+                  if (file.size > 5_000_000) {
+                    sendNotification({
+                      type: "error",
+                      title: "File too large.",
+                      description:
+                        "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
+                    });
+                    return;
+                  }
+                  const res = await handleFileUploadToText(file);
 
-                    if (res.isErr()) {
-                      sendNotification({
-                        type: "error",
-                        title: "Error uploading file.",
-                        description: res.error.message,
-                      });
-                      return;
-                    }
-                    if (res.value.content.length > 1_000_000) {
-                      // This error should pretty much never be triggered but it is a possible case, so here it is.
-                      sendNotification({
-                        type: "error",
-                        title: "File too large.",
-                        description:
-                          "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-                      });
-                      return;
-                    }
-                    setContentFragmentFilename(res.value.title);
-                    setContentFragmentBody(res.value.content);
-                  }}
-                />
-                <IconButton
-                  variant={"tertiary"}
-                  icon={AttachmentIcon}
-                  size="sm"
-                  disabled={!!contentFragmentFilename}
-                  tooltip="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
-                  tooltipPosition="above"
-                  className="flex"
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                  }}
-                />
-                <AssistantPicker
-                  owner={owner}
-                  size="sm"
-                  onItemClick={(c) => {
-                    // We construct the HTML for an AgentMention and inject it in the content
-                    // editable with an extra space after it.
-                    const mentionNode = getAgentMentionNode(c);
-                    const contentEditable =
-                      document.getElementById("dust-input-bar");
-                    if (contentEditable && mentionNode) {
-                      // Add mentionNode as last childe of contentEditable.
-                      contentEditable.appendChild(mentionNode);
-                      const afterTextNode = document.createTextNode(" ");
-                      contentEditable.appendChild(afterTextNode);
-                      contentEditable.focus();
-                      moveCursorToEnd(contentEditable);
-                    }
-                  }}
-                  assistants={activeAgents}
-                  showBuilderButtons={true}
-                />
-              </div>
-              <Button
-                size="sm"
-                icon={ArrowUpIcon}
-                label="Send"
-                labelVisible={false}
-                disabledTooltip
-                onClick={() => {
-                  void handleSubmit();
+                  if (res.isErr()) {
+                    sendNotification({
+                      type: "error",
+                      title: "Error uploading file.",
+                      description: res.error.message,
+                    });
+                    return;
+                  }
+                  if (res.value.content.length > 1_000_000) {
+                    // This error should pretty much never be triggered but it is a possible case, so here it is.
+                    sendNotification({
+                      type: "error",
+                      title: "File too large.",
+                      description:
+                        "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+                    });
+                    return;
+                  }
+                  setContentFragmentFilename(res.value.title);
+                  setContentFragmentBody(res.value.content);
                 }}
               />
+
+              <IconButton
+                className="block"
+                variant={"tertiary"}
+                tooltip="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
+                tooltipPosition="above"
+                icon={AttachmentStrokeIcon}
+                size="md"
+                disabled={!!contentFragmentFilename}
+                onClick={() => {
+                  fileInputRef.current?.click();
+                }}
+              />
+              <AssistantPicker
+                owner={owner}
+                onItemClick={(c) => {
+                  // We construct the HTML for an AgentMention and inject it in the content
+                  // editable with an extra space after it.
+                  const mentionNode = getAgentMentionNode(c);
+                  const contentEditable =
+                    document.getElementById("dust-input-bar");
+                  if (contentEditable && mentionNode) {
+                    // Add mentionNode as last childe of contentEditable.
+                    contentEditable.appendChild(mentionNode);
+                    const afterTextNode = document.createTextNode(" ");
+                    contentEditable.appendChild(afterTextNode);
+                    contentEditable.focus();
+                    moveCursorToEnd(contentEditable);
+                  }
+                }}
+                assistants={activeAgents}
+                showBuilderButtons={true}
+              />
+              <div className="mx-2 flex">
+                <IconButton
+                  variant="primary"
+                  icon={PaperAirplaneIcon}
+                  size="md"
+                  disabled={empty}
+                  onClick={() => {
+                    void handleSubmit();
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -979,12 +905,9 @@ export function FixedAssistantInputBar({
   }, [isProcessing, generationContext.generatingMessageIds.length]);
 
   return (
-    <AssistantInputBar
-      owner={owner}
-      onSubmit={onSubmit}
-      stickyMentions={stickyMentions}
-      stopGenerationButton={
-        generationContext.generatingMessageIds.length > 0 && (
+    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
+      {generationContext.generatingMessageIds.length > 0 && (
+        <div className="flex justify-center pb-4">
           <Button
             className="mt-4"
             variant="tertiary"
@@ -993,9 +916,17 @@ export function FixedAssistantInputBar({
             onClick={handleStopGeneration}
             disabled={isProcessing}
           />
-        )
-      }
-    />
+        </div>
+      )}
+
+      <div className="mx-auto max-w-4xl pb-8">
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={onSubmit}
+          stickyMentions={stickyMentions}
+        />
+      </div>
+    </div>
   );
 }
 
