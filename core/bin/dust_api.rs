@@ -814,30 +814,6 @@ async fn runs_create_stream(
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
-async fn runs_delete(
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
-) -> (StatusCode, Json<APIResponse>) {
-    let project = project::Project::new_from_id(project_id);
-    match state.store.delete_run(&project, &run_id).await {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to delete run",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
-}
-
 #[derive(serde::Deserialize)]
 struct RunsListQuery {
     offset: usize,
@@ -2259,10 +2235,6 @@ fn main() {
             post(runs_retrieve_batch),
         )
         .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
-        .route(
-            "/projects/:project_id/runs/:run_id",
-            delete(runs_delete),
-        )
         .route(
             "/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
             get(runs_retrieve_block),

@@ -82,7 +82,6 @@ pub trait Store {
         // None return all, Some(None), return none, Some(Some(_)) return that block.
         block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>>;
-    async fn delete_run(&self, project: &Project, run_id: &str) -> Result<()>;
 
     // DataSources
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;

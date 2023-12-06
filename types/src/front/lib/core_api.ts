@@ -321,23 +321,6 @@ export class CoreAPI {
     return new Ok({ chunkStream: streamChunks(), dustRunId: dustRunIdPromise });
   }
 
-  async deleteRun({
-    projectId,
-    runId,
-  }: {
-    projectId: string;
-    runId: string;
-  }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    return _resultFromResponse(response);
-  }
-
   async getRunsBatch({
     projectId,
     dustRunIds,
