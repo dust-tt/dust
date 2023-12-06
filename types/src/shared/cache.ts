@@ -25,7 +25,6 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
     if (!redisUri) {
       throw new Error("redisUrl is not set");
     }
-    const a: ReturnType<T> | undefined = undefined;
     let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
       undefined;
 
