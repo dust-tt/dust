@@ -470,6 +470,19 @@ impl Store for PostgresStore {
         Ok(runs_map)
     }
 
+    async fn delete_run(&self, project: &Project, run_id: &str) -> Result<()> {
+        let project_id = project.project_id();
+        let run_id = run_id.to_string();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
+
+        tx.execute("SELECT delete_run($1, $2)", &[&project_id, &run_id])
+            .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
     async fn list_runs(
         &self,
         project: &Project,

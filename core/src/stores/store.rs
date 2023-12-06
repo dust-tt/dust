@@ -83,6 +83,7 @@ pub trait Store {
         // None return all, Some(None), return none, Some(Some(_)) return that block.
         block: Option<Option<(BlockType, String)>>,
     ) -> Result<Option<Run>>;
+    async fn delete_run(&self, project: &Project, run_id: &str) -> Result<()>;
 
     // DataSources
     async fn has_data_sources(&self, project: &Project) -> Result<bool>;
@@ -490,7 +491,7 @@ pub const SQL_INDEXES: [&'static str; 23] = [
         idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
 ];
 
-pub const SQL_FUNCTIONS: [&'static str; 2] = [
+pub const SQL_FUNCTIONS: [&'static str; 3] = [
     // SQL function to delete the project runs / runs_joins / block_executions
     r#"
         CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
@@ -542,6 +543,26 @@ pub const SQL_FUNCTIONS: [&'static str; 2] = [
 
             -- Finally, delete from datasets where datasets IDs match those in the project
             DELETE FROM datasets WHERE id = ANY(datasets_ids);
+        END;
+        $$ LANGUAGE plpgsql;
+    "#,
+    // SQL function to delete a given run + its block_executions / runs_joins
+    r#"
+        CREATE OR REPLACE FUNCTION delete_run(v_project_id BIGINT, v_run_run_id TEXT)
+        RETURNS void AS $$
+        DECLARE
+            block_exec_ids BIGINT[];
+        BEGIN
+            -- Store block_execution IDs in an array
+            SELECT array_agg(rj.block_execution) INTO block_exec_ids
+            FROM runs_joins rj
+            JOIN runs r ON rj.run = r.id WHERE r.project = v_project_id AND r.run_id = v_run_run_id;
+            -- Delete from runs_joins where run IDs match those in the project
+            DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
+            -- Now delete from block_executions using the stored IDs
+            DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
+            -- Finally, delete from runs where run IDs match those in the project
+            DELETE FROM runs WHERE run_id = v_run_run_id;
         END;
         $$ LANGUAGE plpgsql;
     "#,
