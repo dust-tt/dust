@@ -11,7 +11,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
+use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -53,6 +53,13 @@ impl PostgresStore {
             }
         }
 
+        for f in SQL_FUNCTIONS {
+            match c.execute(f, &[]).await {
+                Err(e) => Err(e)?,
+                Ok(_) => {}
+            }
+        }
+
         Ok(())
     }
 }
@@ -77,67 +84,11 @@ impl Store for PostgresStore {
         let mut c = pool.get().await?;
         let tx = c.transaction().await?;
 
-        // Block executions, Runs & Runs joins
-        let create_proc = r#"
-            CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
-            RETURNS void AS $$
-            DECLARE
-                run_ids BIGINT[];
-                block_exec_ids BIGINT[];
-            BEGIN
-                -- Store run IDs in an array for the specified project
-                SELECT array_agg(id) INTO run_ids FROM runs WHERE project = v_project_id;
-
-                -- Store block_execution IDs in an array
-                SELECT array_agg(block_execution) INTO block_exec_ids
-                FROM runs_joins 
-                WHERE run = ANY(run_ids);
-
-                -- Delete from runs_joins where run IDs match those in the project
-                DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
-
-                -- Now delete from block_executions using the stored IDs
-                DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
-
-                -- Finally, delete from runs where run IDs match those in the project
-                DELETE FROM runs WHERE id = ANY(run_ids);
-            END;
-            $$ LANGUAGE plpgsql;
-        "#;
-
-        tx.execute(create_proc, &[]).await?;
+        // Block executions, Runs & Runs joins: we execute a SQL function
         tx.execute("SELECT delete_project_runs($1)", &[&project_id])
             .await?;
 
-        // Datasets joins & Datasets points & Datasets
-        let create_proc = r#"
-            CREATE OR REPLACE FUNCTION delete_project_datasets(v_project_id BIGINT)
-            RETURNS void AS $$
-            DECLARE
-                datasets_ids BIGINT[];
-                datasets_points_ids BIGINT[];
-            BEGIN
-                -- Store datasets_ids IDs in an array for the specified project
-                SELECT array_agg(id) INTO datasets_ids FROM datasets WHERE project = v_project_id;
-
-                -- Store datasets_points IDs in an array
-                SELECT array_agg(point) INTO datasets_points_ids
-                FROM datasets_joins
-                WHERE dataset = ANY(datasets_ids);
-
-                -- Delete from datasets_joins where point IDs match those in datasets_points
-                DELETE FROM datasets_joins WHERE point = ANY(datasets_points_ids);
-
-                -- Now delete from datasets_points using the stored IDs
-                DELETE FROM datasets_points WHERE id = ANY(datasets_points_ids);
-
-                -- Finally, delete from datasets where datasets IDs match those in the project
-                DELETE FROM datasets WHERE id = ANY(datasets_ids);
-            END;
-            $$ LANGUAGE plpgsql;
-        "#;
-
-        tx.execute(create_proc, &[]).await?;
+        // Datasets joins & Datasets points & Datasets: we execute a SQL function
         tx.execute("SELECT delete_project_datasets($1)", &[&project_id])
             .await?;
 
