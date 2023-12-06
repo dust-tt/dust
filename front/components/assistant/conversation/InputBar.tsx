@@ -476,7 +476,7 @@ export function AssistantInputBar({
       />
 
       {generationContext.generatingMessageIds.length > 0 && (
-        <div className="flex justify-center pb-4 px-4">
+        <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
             variant="tertiary"
@@ -501,6 +501,7 @@ export function AssistantInputBar({
             )}
           >
             <div className="flex flex-1 flex-col">
+              {/* Placeholder */}
               <div
                 className={classNames(
                   // This div is placeholder text for the contenteditable
@@ -511,7 +512,10 @@ export function AssistantInputBar({
                     : "hidden"
                 )}
               >
-                Ask a question or get some @help
+                <div className="hidden lg:block">
+                  Ask a question or get some @help
+                </div>
+                <div className="block lg:hidden">Ask a question</div>
               </div>
 
               {contentFragmentFilename && contentFragmentBody && (
