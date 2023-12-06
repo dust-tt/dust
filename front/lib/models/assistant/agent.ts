@@ -118,6 +118,7 @@ export class AgentConfiguration extends Model<
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
+  declare relationOverrides: NonAttribute<AgentUserRelation[]>;
 }
 AgentConfiguration.init(
   {

@@ -1,4 +1,8 @@
-import { SupportedModel } from "@dust-tt/types";
+import {
+  AgentMention,
+  AgentRelationOverrideType,
+  SupportedModel,
+} from "@dust-tt/types";
 import { DustAppRunConfigurationType } from "@dust-tt/types";
 import {
   AgentsGetViewType,
@@ -24,7 +28,6 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
-import { getAgentRelationOverridesForUser } from "@app/lib/api/assistant/relation_override";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -39,6 +42,7 @@ import {
   Message,
   Workspace,
 } from "@app/lib/models";
+import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
 /**
@@ -79,6 +83,13 @@ export async function getAgentConfiguration(
       {
         model: AgentDustAppRunConfiguration,
         as: "dustAppRunConfiguration",
+      },
+      {
+        model: AgentUserRelation,
+        where: {
+          userId: auth.user()?.id,
+        },
+        attributes: ["relation"],
       },
     ],
     limit: 1,
@@ -199,6 +210,7 @@ export async function getAgentConfiguration(
     sId: agent.sId,
     version: agent.version,
     scope: agent.scope,
+    relationOverride: agent.relationOverrides[0].relation,
     name: agent.name,
     pictureUrl: agent.pictureUrl,
     description: agent.description,
@@ -226,105 +238,123 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` from outside workspace.");
   }
 
-  if (agentsGetView === "superuser") {
-    auth.requireSuperuser();
-  }
-  const user = auth.user();
-  // non-public views are specific to a user
-  if (agentsGetView !== "workspace-public" && !user) {
-    throw new Error("Unexpected `auth` without `user`.");
-  }
-
-  // construct the where clause
-  const baseClause = {
+  const where = {
     workspaceId: owner.id,
     status: "active",
-  };
-  const prefixClause = agentPrefix
-    ? { name: { [Op.iLike]: `${agentPrefix}%` } }
-    : {};
-
-  // clause matching the scope being 'published' or 'workspace' for the 'public' view
-  // for other views, 'private' agents of which the user is author are also included
-  const scopeClause =
-    agentsGetView === "workspace-public"
-      ? { scope: { [Op.in]: ["published", "workspace"] } }
-      : {
-          [Op.or]: [
-            { scope: { [Op.in]: ["published", "workspace"] } },
-            { authorId: user && user.id },
-          ],
-        };
-  const whereClause = {
-    ...baseClause,
-    ...prefixClause,
-    ...(agentsGetView === "all" ? {} : scopeClause), // no scope clause for 'all' view
+    ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  const rawAgents = await AgentConfiguration.findAll({
-    where: whereClause,
-    attributes: ["sId", "scope", "name"],
-    order: [["name", "ASC"]],
-  });
-
-  // for list and conversation view, filter agents according to the user's agent
-  // relations overrides
-  const filteredAgents =
-    agentsGetView === "list" ||
-    (typeof agentsGetView === "object" && agentsGetView.conversationId)
-      ? await filterByOverrides(auth, rawAgents)
-      : rawAgents;
-
-  const agentIdsSet = new Set<string>(filteredAgents.map((a) => a.sId));
-
-  // for conversation view, add all agents mentioned in the conversation
-  if (typeof agentsGetView === "object" && agentsGetView.conversationId) {
-    (await getMentionsWithAgentId(agentsGetView.conversationId)).forEach(
-      (m: Mention) => agentIdsSet.add(m.agentConfigurationId as string)
-    );
-  }
-
-  // Retrieve all local agents & add global agents
-  const agents = (
-    await Promise.all(
-      [...agentIdsSet].map(async (a) => {
-        return await getAgentConfiguration(auth, a);
-      })
-    )
-  ).filter((a) => a !== null) as AgentConfigurationType[];
   const globalAgents = (await getGlobalAgents(auth)).filter(
     (a) =>
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
-  return [...globalAgents, ...agents];
-}
+  const getLocalAgentsFromIds = async (agentIds: string[]) => {
+    return (
+      await Promise.all(
+        agentIds.map(async (a) => {
+          return await getAgentConfiguration(auth, a);
+        })
+      )
+    ).filter((a) => a !== null) as AgentConfigurationType[];
+  };
 
-async function filterByOverrides(
-  auth: Authenticator,
-  rawAgents: AgentConfiguration[]
-) {
-  const agentRelationOverrides = await getAgentRelationOverridesForUser(auth);
-  if (!agentRelationOverrides.isOk()) {
-    throw agentRelationOverrides.error;
-  }
-  const agentRelationOverrideMap = agentRelationOverrides.value;
-  return rawAgents.filter((a) => {
-    const override = agentRelationOverrideMap[a.sId];
-    if (override === "in-list" && a.scope === "published") {
-      return true;
-    } else if (override === "not-in-list" && a.scope === "workspace") {
-      return false;
-    } else {
-      return a.scope === "workspace";
+  if (agentsGetView === "superuser") {
+    if (!auth.isDustSuperUser()) {
+      throw new Error("superuser view is for dust superusers only.");
     }
-  });
+    const agentIds = (
+      await AgentConfiguration.findAll({
+        where,
+        attributes: ["sId"],
+      })
+    ).map((a) => a.sId);
+    return [...(await getLocalAgentsFromIds(agentIds)), ...globalAgents];
+  }
+
+  if (agentsGetView === "all") {
+    const agentIds = (
+      await AgentConfiguration.findAll({
+        where: {
+          ...where,
+          scope: { [Op.in]: ["published", "workspace"] },
+        },
+        attributes: ["sId"],
+      })
+    ).map((a) => a.sId);
+    return [...(await getLocalAgentsFromIds(agentIds)), ...globalAgents];
+  }
+
+  if (agentsGetView === "list") {
+    const user = auth.user();
+    if (!user) {
+      throw new Error("List view is specific to a user.");
+    }
+    const agentIds = (
+      await AgentConfiguration.findAll({
+        where: {
+          ...where,
+          [Op.or]: [
+            { scope: { [Op.in]: ["published", "workspace"] } },
+            { authorId: user.id },
+          ],
+        },
+        attributes: ["sId", "scope", "name"],
+      })
+    ).map((a) => a.sId);
+    const localAgents = (await getLocalAgentsFromIds(agentIds)).filter((a) => {
+      if (a.scope === "workspace") {
+        return a.relationOverride !== "not-in-list";
+      }
+      if (a.scope === "published") {
+        return a.relationOverride === "in-list";
+      }
+      return true; // user's private agents should be returned
+    }) as AgentConfigurationType[];
+    return [...localAgents, ...globalAgents];
+  }
+
+  // conversation view
+  if (typeof agentsGetView === "object" && agentsGetView.conversationId) {
+    const user = auth.user();
+    if (!user) {
+      throw new Error("Conversation view is specific to a user.");
+    }
+    const [agents, mentions] = await Promise.all([
+      AgentConfiguration.findAll({
+        where: {
+          ...where,
+          [Op.or]: [
+            { scope: { [Op.in]: ["published", "workspace"] } },
+            { authorId: user && user.id },
+          ],
+        },
+        attributes: ["sId", "scope", "name"],
+      }),
+      getMentions(agentsGetView.conversationId),
+    ]);
+    const agentIds = agents.map((a) => a.sId);
+    const mentionedAgentIds = mentions.map((m) => m.configurationId);
+    const localAgents = (await getLocalAgentsFromIds(agentIds)).filter((a) => {
+      if (mentionedAgentIds.includes(a.sId)) {
+        return true;
+      }
+      if (a.scope === "workspace") {
+        return a.relationOverride !== "not-in-list";
+      }
+      if (a.scope === "published") {
+        return a.relationOverride === "in-list";
+      }
+      return true; // user's private agents should be returned
+    }) as AgentConfigurationType[];
+    return [...localAgents, ...globalAgents];
+  }
+
+  throw new Error(`Unknown agentsGetView ${agentsGetView}`);
 }
 
-async function getMentionsWithAgentId(
-  conversationId: string
-): Promise<Mention[]> {
-  const mentionsFromConversation = await Mention.findAll({
+async function getMentions(conversationId: string): Promise<AgentMention[]> {
+  const mentions = await Mention.findAll({
     attributes: ["agentConfigurationId"],
     where: {
       agentConfigurationId: {
@@ -346,7 +376,9 @@ async function getMentionsWithAgentId(
       },
     ],
   });
-  return mentionsFromConversation;
+  return mentions.map((m) => ({
+    configurationId: m.agentConfigurationId as string,
+  }));
 }
 
 /**
@@ -385,6 +417,7 @@ export async function createAgentConfiguration(
   }
 
   let version = 0;
+  let formerAgentRelationOverride: AgentRelationOverrideType | null = null;
 
   const agentConfig = await front_sequelize.transaction(
     async (t): Promise<AgentConfiguration> => {
@@ -402,9 +435,6 @@ export async function createAgentConfiguration(
 
         if (latestVersion !== null) {
           version = latestVersion + 1;
-          // At time of writing, private agents can only be created from
-          // scratch. An existing agent that is not already private cannot be
-          // updated back to private.
           const formerAgent = await AgentConfiguration.findOne({
             where: {
               sId: agentConfigurationId,
@@ -412,8 +442,28 @@ export async function createAgentConfiguration(
               version: latestVersion,
             },
             attributes: ["scope"],
+            include: [
+              {
+                model: AgentUserRelation,
+                where: {
+                  userId: user.id,
+                },
+                attributes: ["relation"],
+              },
+            ],
             transaction: t,
           });
+          if (
+            formerAgent?.relationOverrides &&
+            formerAgent.relationOverrides.length > 0
+          ) {
+            formerAgentRelationOverride =
+              formerAgent.relationOverrides[0].relation;
+          }
+          // At time of writing, private agents can only be created from
+          // scratch. An existing agent that is not already private cannot be
+          // updated back to private.
+
           if (
             formerAgent &&
             scope === "private" &&
@@ -466,6 +516,7 @@ export async function createAgentConfiguration(
     sId: agentConfig.sId,
     version: agentConfig.version,
     scope: agentConfig.scope,
+    relationOverride: formerAgentRelationOverride,
     name: agentConfig.name,
     description: agentConfig.description,
     pictureUrl: agentConfig.pictureUrl,

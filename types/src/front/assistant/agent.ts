@@ -92,6 +92,7 @@ export type AgentRelationOverrideType = "in-list" | "not-in-list";
  * - all: workspace + published agents (not private ones), eg. for agent gallery
  * - superuser: all agents, including private ones => CAREFUL. Currently used by
  *   poke only
+ * Global agents enabled for the workspace are always returned with all the views.
  */
 
 export type AgentsGetViewType =
