@@ -4,6 +4,8 @@ import {
   Avatar,
   Button,
   Citation,
+  FullscreenExitIcon,
+  FullscreenIcon,
   IconButton,
   StopIcon,
 } from "@dust-tt/sparkle";
@@ -274,6 +276,8 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const handleSubmit = async () => {
     if (empty) {
       return;
@@ -413,8 +417,8 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex flex-1 flex-row items-stretch gap-3 px-4",
-              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-action-400",
-              "rounded-xl transition-all duration-300 box-shadow-2xl",
+              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
+              "rounded-3xl transition-all duration-300 box-shadow-2xl",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
@@ -435,7 +439,7 @@ export function AssistantInputBar({
               </div>
 
               {contentFragmentFilename && contentFragmentBody && (
-                <div className="border-b border-structure-300/50 pb-5 pt-5">
+                <div className="border-b border-structure-300/50 pb-3 pt-5">
                   <Citation
                     title={contentFragmentFilename}
                     description={contentFragmentBody?.substring(0, 100)}
@@ -452,7 +456,10 @@ export function AssistantInputBar({
                   contentEditableClasses,
                   "scrollbar-hide",
                   "overflow-y-auto",
-                  "max-h-64 py-4"
+                  "py-3",
+                  isExpanded
+                    ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
+                    : "max-h-[60vh] lg:max-h-[80vh]"
                 )}
                 contentEditable={true}
                 ref={inputRef}
@@ -765,7 +772,15 @@ export function AssistantInputBar({
             </div>
 
             <div className="absolute right-4 top-4 z-10 flex">
-              {/* full screen button */}
+              <IconButton
+                variant={"tertiary"}
+                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                size="xs"
+                className="flex"
+                onClick={() => {
+                  setIsExpanded((e) => !e);
+                }}
+              />
             </div>
 
             <div className="absolute bottom-0 right-0 z-10 flex flex-row items-end gap-2 p-2">
@@ -937,7 +952,7 @@ export function FixedAssistantInputBar({
         </div>
       )}
 
-      <div className="mx-auto max-w-4xl pb-8">
+      <div className="mx-auto max-h-screen max-w-4xl pb-8 pt-16">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
