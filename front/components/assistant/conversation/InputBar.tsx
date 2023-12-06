@@ -348,7 +348,8 @@ export function AssistantInputBar({
   };
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate } = useContext(InputBarContext);
+  const { animate, selectedAssistant } = useContext(InputBarContext);
+
   useEffect(() => {
     if (animate && !isAnimating) {
       setIsAnimating(true);
@@ -398,12 +399,16 @@ export function AssistantInputBar({
   }, [isProcessing, generationContext.generatingMessageIds.length]);
 
   useEffect(() => {
-    if (!stickyMentions) {
+    if (!stickyMentions?.length && !selectedAssistant) {
       return;
     }
 
+    const mentionsToInject = stickyMentions?.length
+      ? stickyMentions
+      : ([selectedAssistant] as [AgentMention]);
+
     const mentionedAgentConfigurationIds = new Set(
-      stickyMentions?.map((m) => m.configurationId)
+      mentionsToInject?.map((m) => m.configurationId)
     );
 
     const contentEditable = document.getElementById("dust-input-bar");
@@ -449,7 +454,12 @@ export function AssistantInputBar({
         moveCursorToEnd(contentEditable);
       }
     }
-  }, [stickyMentions, agentConfigurations, stickyMentionsTextContent]);
+  }, [
+    stickyMentions,
+    agentConfigurations,
+    stickyMentionsTextContent,
+    selectedAssistant,
+  ]);
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 pr-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
@@ -978,4 +988,10 @@ export function FixedAssistantInputBar({
   );
 }
 
-export const InputBarContext = createContext({ animate: false });
+export const InputBarContext = createContext<{
+  animate: boolean;
+  selectedAssistant: AgentMention | null;
+}>({
+  animate: false,
+  selectedAssistant: null,
+});
