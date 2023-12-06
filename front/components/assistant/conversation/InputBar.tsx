@@ -969,7 +969,7 @@ export function FixedAssistantInputBar({
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
-      <div className="mx-auto max-h-screen max-w-4xl pb-8 pt-16">
+      <div className="mx-auto max-h-screen max-w-4xl pb-8">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
