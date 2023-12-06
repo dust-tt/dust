@@ -16,6 +16,7 @@ import {
   AgentGenerationConfigurationType,
   AgentStatus,
 } from "@dust-tt/types";
+import { isSupportedModel } from "@dust-tt/types";
 import { Op, Transaction } from "sequelize";
 
 import {
@@ -24,7 +25,6 @@ import {
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
 import { getAgentRelationOverridesForUser } from "@app/lib/api/assistant/relation_override";
-import { isSupportedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
