@@ -1,6 +1,6 @@
 import {
+  cacheWithRedis,
   CoreAPIDataSourceDocumentSection,
-  memoize,
   ModelId,
 } from "@dust-tt/types";
 import {
@@ -746,7 +746,7 @@ export async function getBotUserId(connectorId: ModelId): Promise<string> {
   return authRes.user_id;
 }
 
-export const getBotUserIdMemoized = memoize(
+export const getBotUserIdMemoized = cacheWithRedis(
   getBotUserId,
   (id) => id.toString(),
   60 * 10 * 1000

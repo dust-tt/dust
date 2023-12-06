@@ -1,4 +1,4 @@
-import { memoize, ModelId } from "@dust-tt/types";
+import { cacheWithRedis, ModelId } from "@dust-tt/types";
 import PQueue from "p-queue";
 
 import {
@@ -68,7 +68,7 @@ async function _getParents(
   }
 }
 
-export const getParents = memoize(
+export const getParents = cacheWithRedis(
   _getParents,
   (connectorId, pageOrDbId, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
