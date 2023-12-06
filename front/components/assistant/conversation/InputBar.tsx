@@ -201,6 +201,17 @@ function moveCursorToEnd(el: HTMLElement) {
   }
 }
 
+function getAgentMentionNode(
+  agentConfiguration: AgentConfigurationType
+): ChildNode | null {
+  const htmlString = ReactDOMServer.renderToStaticMarkup(
+    <AgentMention agentConfiguration={agentConfiguration} />
+  );
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = htmlString.trim();
+  return wrapper.firstChild;
+}
+
 export function AssistantInputBar({
   owner,
   onSubmit,
@@ -968,14 +979,3 @@ export function FixedAssistantInputBar({
 }
 
 export const InputBarContext = createContext({ animate: false });
-
-function getAgentMentionNode(
-  agentConfiguration: AgentConfigurationType
-): ChildNode | null {
-  const htmlString = ReactDOMServer.renderToStaticMarkup(
-    <AgentMention agentConfiguration={agentConfiguration} />
-  );
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = htmlString.trim();
-  return wrapper.firstChild;
-}
