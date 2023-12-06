@@ -339,7 +339,7 @@ export function AssistantInputBar({
           contentType: "file_attachment",
         };
       }
-
+      setIsExpanded(false);
       onSubmit(content, mentions, contentFragment);
       contentEditable.innerHTML = "";
       setContentFragmentFilename(undefined);
