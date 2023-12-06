@@ -429,7 +429,7 @@ export function AssistantInputBar({
                 className={classNames(
                   // This div is placeholder text for the contenteditable
                   contentEditableClasses,
-                  "absolute -z-10 my-4 text-element-600 dark:text-element-600-dark",
+                  "absolute -z-10 py-3 text-element-600 dark:text-element-600-dark",
                   empty && !(contentFragmentFilename && contentFragmentBody)
                     ? ""
                     : "hidden"
@@ -459,7 +459,7 @@ export function AssistantInputBar({
                   "py-3",
                   isExpanded
                     ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-                    : "max-h-[60vh] lg:max-h-[80vh]"
+                    : "max-h-64"
                 )}
                 contentEditable={true}
                 ref={inputRef}
