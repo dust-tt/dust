@@ -11,6 +11,7 @@ import {
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import {
+  AgentMention,
   InternalPostConversationsRequestBodySchema,
   UserType,
   WorkspaceType,
@@ -177,6 +178,8 @@ export default function AssistantNew({
   );
 
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
+  const [selectedAssistant, setSelectedAssistant] =
+    useState<AgentMention | null>(null);
 
   const triggerInputAnimation = () => {
     setShouldAnimateInput(true);
@@ -189,7 +192,9 @@ export default function AssistantNew({
   }, [shouldAnimateInput]);
 
   return (
-    <InputBarContext.Provider value={{ animate: shouldAnimateInput }}>
+    <InputBarContext.Provider
+      value={{ animate: shouldAnimateInput, selectedAssistant }}
+    >
       <GenerationContextProvider>
         <AppLayout
           subscription={subscription}
@@ -248,14 +253,10 @@ export default function AssistantNew({
                           key={agent.sId}
                           className="cursor-pointer"
                           onClick={() => {
-                            void handleSubmit(
-                              `Hi :mention[${agent.name}]{sId=${agent.sId}}, what can you help me with?`,
-                              [
-                                {
-                                  configurationId: agent.sId,
-                                },
-                              ]
-                            );
+                            setSelectedAssistant({
+                              configurationId: agent.sId,
+                            });
+                            setShouldAnimateInput(true);
                           }}
                         >
                           <AvatarListItem agent={agent} />
