@@ -1,4 +1,4 @@
-import { DataSourceType } from "@dust-tt/types";
+import { AgentsGetViewType, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
@@ -28,6 +28,7 @@ import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
+import { Agent } from "http";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
@@ -459,14 +460,16 @@ export function useConversationReactions({
 
 export function useAgentConfigurations({
   workspaceId,
+  agentsGetViewType,
 }: {
   workspaceId: string;
+  agentsGetViewType: AgentsGetViewType;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations`,
+    `/api/w/${workspaceId}/assistant/agent_configurations?view=${agentsGetViewType}`,
     agentConfigurationsFetcher
   );
 

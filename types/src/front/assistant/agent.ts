@@ -91,13 +91,17 @@ export type AgentRelationOverrideType = "in-list" | "not-in-list";
  *   conversation (requries a conversation sId)
  * - public: all agents except private ones
  * - discover: public + private to the user
+ * - all: all agents, including private ones. This view hides agent details. It
+ *   is currently used by the agent builder to check the number of agents, and
+ *   if a name is already taken
  */
 
 export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "discover"
-  | "public";
+  | "public"
+  | "all";
 
 export type AgentConfigurationType = {
   id: ModelId;

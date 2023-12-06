@@ -62,6 +62,7 @@ function AgentListImpl(
     visible,
     filter,
     position,
+    conversationId,
   }: {
     owner: WorkspaceType;
     visible: boolean;
@@ -70,6 +71,7 @@ function AgentListImpl(
       bottom: number;
       left: number;
     };
+    conversationId: string | null;
   },
   ref: ForwardedRef<{
     prev: () => void;
@@ -86,6 +88,7 @@ function AgentListImpl(
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: conversationId ? { conversationId } : "list",
   });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -214,11 +217,13 @@ function getAgentMentionNode(
 
 export function AssistantInputBar({
   owner,
+  conversationId,
   onSubmit,
   conversationId,
   stickyMentions,
 }: {
   owner: WorkspaceType;
+  conversationId: string | null;
   onSubmit: (
     input: string,
     mentions: MentionType[],
@@ -283,6 +288,7 @@ export function AssistantInputBar({
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: conversationId ? { conversationId } : "list",
   });
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -473,6 +479,7 @@ export function AssistantInputBar({
         filter={agentListFilter}
         ref={agentListRef}
         position={agentListPosition}
+	conversationId={conversationId}
       />
 
       {generationContext.generatingMessageIds.length > 0 && (

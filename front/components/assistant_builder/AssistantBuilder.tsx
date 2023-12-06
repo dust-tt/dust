@@ -250,6 +250,7 @@ export default function AssistantBuilder({
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: "all",
   });
 
   const [avatarUrls, setAvatarUrls] = useState<

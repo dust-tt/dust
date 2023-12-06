@@ -238,7 +238,10 @@ export async function constructPrompt(
 
   // if meta includes the string "{ASSISTANTS_LIST}"
   if (meta.includes("{ASSISTANTS_LIST}")) {
-    const agents = await getAgentConfigurations(auth);
+    const agents = await getAgentConfigurations(
+      auth,
+      auth.user() ? "list" : "public"
+    );
     meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents

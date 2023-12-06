@@ -26,6 +26,7 @@ export function UserMessage({
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: { conversationId: conversation.sId },
   });
 
   return (

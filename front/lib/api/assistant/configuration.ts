@@ -39,6 +39,7 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
+import { getAgentRelationOverridesForUser } from "./relation_override";
 
 /**
  * Get an agent configuration
@@ -208,8 +209,9 @@ export async function getAgentConfiguration(
 }
 
 /**
- * Get the list agent configuration for the workspace, optionally whose names
+ * Get agent configurations for the workspace, optionally whose names
  * match a prefix
+ * @param agentsGetView the kind of list of agents we want to get, see AgentsGetViewType
  */
 export async function getAgentConfigurations(
   auth: Authenticator,
@@ -221,6 +223,12 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const user = auth.user();
+  // non-public views are specific to a user
+  if (agentsGetView !== "public" && !user) {
+    throw new Error("Unexpected `auth` without `user`.");
+  }
+
   // construct the where clause
   const baseClause = {
     workspaceId: owner.id,
@@ -230,25 +238,54 @@ export async function getAgentConfigurations(
     ? { name: { [Op.iLike]: `${agentPrefix}%` } }
     : {};
 
-  // clause matching the scope being 'published' or 'workspace', or 'private' if the user is author of the agent
+  // clause matching the scope being 'published' or 'workspace' for the 'public' view
+  // for other views, 'private' agents of which the user is author are also included
   const scopeClause =
     agentsGetView === "public"
       ? { scope: { [Op.in]: ["published", "workspace"] } }
       : {
           [Op.or]: [
             { scope: { [Op.in]: ["published", "workspace"] } },
-            { authorId: auth.user()?.id },
+            { authorId: user && user.id },
           ],
         };
 
-  const whereClause = { ...baseClause, ...prefixClause, ...scopeClause };
-  const rawAgentsIds = await AgentConfiguration.findAll({
+  const whereClause = {
+    ...baseClause,
+    ...prefixClause,
+    ...(agentsGetView === "all" ? {} : scopeClause),
+  };
+  const rawAgents = await AgentConfiguration.findAll({
     where: whereClause,
-    attributes: ["sId"],
+    attributes: ["sId", "scope", "name"],
     order: [["name", "ASC"]],
   });
 
-  const agentIdsSet = new Set<string>(rawAgentsIds.map((a) => a.sId));
+  let filteredAgents = [...rawAgents];
+  // for list and conversation view, filter agents according to the user's agent
+  // relations overrides
+  if (
+    agentsGetView === "list" ||
+    (typeof agentsGetView === "object" && agentsGetView.conversationId)
+  ) {
+    const agentRelationOverrides = await getAgentRelationOverridesForUser(auth);
+    if (!agentRelationOverrides.isOk()) {
+      throw agentRelationOverrides.error;
+    }
+    const agentRelationOverrideMap = agentRelationOverrides.value;
+    filteredAgents = rawAgents.filter((a) => {
+      const override = agentRelationOverrideMap[a.sId];
+      if (override === "in-list" && a.scope === "published") {
+        return true;
+      } else if (override === "not-in-list" && a.scope === "workspace") {
+        return false;
+      } else {
+        return a.scope === "workspace";
+      }
+    });
+  }
+
+  const agentIdsSet = new Set<string>(filteredAgents.map((a) => a.sId));
 
   // for conversation view, find all agents mentioned in the conversation
   if (typeof agentsGetView === "object") {
@@ -278,10 +315,6 @@ export async function getAgentConfigurations(
         throw new Error(`Unexpected null agentConfigurationId`);
       agentIdsSet.add(mention.agentConfigurationId);
     }
-  }
-
-  // for discover and list view, filter using agentRelationOverride
-  if (agentsGetView === "discover" || agentsGetView === "list") {
   }
 
   const agents = (

@@ -103,6 +103,20 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   }),
 });
 
+// Get schema for the url query parameters: a view parameter with all the types
+// of AgentGetViewType
+export const GetAgentConfigurationsQuerySchema = t.type({
+  view: t.union([
+    t.literal("list"),
+    t.literal("discover"),
+    t.literal("public"),
+    t.literal("all"),
+    t.type({
+      conversationId: t.string,
+    }),
+  ]),
+});
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -140,7 +154,23 @@ async function handler(
         });
       }
 
-      const agentConfigurations = await getAgentConfigurations(auth);
+      // extract the view from the query parameters
+      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
+        req.query
+      );
+      if (isLeft(queryValidation)) {
+        const pathError = reporter.formatValidationErrors(queryValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid query parameters: ${pathError}`,
+          },
+        });
+      }
+
+      const view = queryValidation.right.view;
+      const agentConfigurations = await getAgentConfigurations(auth, view);
       return res.status(200).json({
         agentConfigurations,
       });
