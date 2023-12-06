@@ -90,6 +90,7 @@ export async function getAgentConfiguration(
           userId: auth.user()?.id,
         },
         attributes: ["relation"],
+        required: false,
       },
     ],
     limit: 1,
@@ -205,12 +206,16 @@ export async function getAgentConfiguration(
     };
   }
 
+  const relationOverride =
+    agent.relationOverrides?.length > 0
+      ? agent.relationOverrides[0].relation
+      : null;
   return {
     id: agent.id,
     sId: agent.sId,
     version: agent.version,
     scope: agent.scope,
-    relationOverride: agent.relationOverrides[0].relation,
+    relationOverride,
     name: agent.name,
     pictureUrl: agent.pictureUrl,
     description: agent.description,
@@ -251,11 +256,7 @@ export async function getAgentConfigurations(
 
   const getLocalAgentsFromIds = async (agentIds: string[]) => {
     return (
-      await Promise.all(
-        agentIds.map(async (a) => {
-          return await getAgentConfiguration(auth, a);
-        })
-      )
+      await Promise.all(agentIds.map((a) => getAgentConfiguration(auth, a)))
     ).filter((a) => a !== null) as AgentConfigurationType[];
   };
 
