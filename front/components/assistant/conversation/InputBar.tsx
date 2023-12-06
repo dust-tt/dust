@@ -1,10 +1,10 @@
 import {
-  AttachmentStrokeIcon,
+  ArrowUpIcon,
+  AttachmentIcon,
   Avatar,
   Button,
   Citation,
   IconButton,
-  PaperAirplaneIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
@@ -412,7 +412,7 @@ export function AssistantInputBar({
         <div className="flex flex-1 flex-row items-end">
           <div
             className={classNames(
-              "relative flex flex-1 flex-row items-stretch gap-3 p-4",
+              "relative flex flex-1 flex-row items-stretch gap-3 px-4",
               "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-action-400",
               "rounded-xl transition-all duration-300 box-shadow-2xl",
               isAnimating
@@ -420,27 +420,31 @@ export function AssistantInputBar({
                 : ""
             )}
           >
-            <div className="flex flex-1 flex-col gap-y-2">
+            <div className="flex flex-1 flex-col">
               <div
                 className={classNames(
                   // This div is placeholder text for the contenteditable
                   contentEditableClasses,
-                  "absolute -z-10 text-element-600 dark:text-element-600-dark",
-                  empty ? "" : "hidden"
+                  "absolute -z-10 my-4 text-element-600 dark:text-element-600-dark",
+                  empty && !(contentFragmentFilename && contentFragmentBody)
+                    ? ""
+                    : "hidden"
                 )}
               >
                 Ask a question or get some @help
               </div>
 
               {contentFragmentFilename && contentFragmentBody && (
-                <Citation
-                  title={contentFragmentFilename}
-                  description={contentFragmentBody?.substring(0, 100)}
-                  onClose={() => {
-                    setContentFragmentBody(undefined);
-                    setContentFragmentFilename(undefined);
-                  }}
-                />
+                <div className="border-b border-structure-300/50 pb-5 pt-5">
+                  <Citation
+                    title={contentFragmentFilename}
+                    description={contentFragmentBody?.substring(0, 100)}
+                    onClose={() => {
+                      setContentFragmentBody(undefined);
+                      setContentFragmentFilename(undefined);
+                    }}
+                  />
+                </div>
               )}
 
               <div
@@ -448,7 +452,7 @@ export function AssistantInputBar({
                   contentEditableClasses,
                   "scrollbar-hide",
                   "overflow-y-auto",
-                  "max-h-64"
+                  "max-h-64 py-4"
                 )}
                 contentEditable={true}
                 ref={inputRef}
@@ -752,96 +756,110 @@ export function AssistantInputBar({
                     }
                   }
                 }}
+                // We aboslutely don't want any content in that div just below here. Do not add
+                // anyting to it.
               ></div>
+              <div className="h-0 w-full">
+                {/* This div is a spacer to avoid having the text clash with the buttons */}
+              </div>
             </div>
 
-            <div className="z-10 flex flex-row items-end gap-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={async (e) => {
-                  // focus on the input text after the file selection interaction is over
-                  inputRef.current?.focus();
-                  const file = e?.target?.files?.[0];
-                  if (!file) return;
-                  if (file.size > 5_000_000) {
-                    sendNotification({
-                      type: "error",
-                      title: "File too large.",
-                      description:
-                        "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
-                    });
-                    return;
-                  }
-                  const res = await handleFileUploadToText(file);
+            <div className="absolute right-4 top-4 z-10 flex">
+              {/* full screen button */}
+            </div>
 
-                  if (res.isErr()) {
-                    sendNotification({
-                      type: "error",
-                      title: "Error uploading file.",
-                      description: res.error.message,
-                    });
-                    return;
-                  }
-                  if (res.value.content.length > 1_000_000) {
-                    // This error should pretty much never be triggered but it is a possible case, so here it is.
-                    sendNotification({
-                      type: "error",
-                      title: "File too large.",
-                      description:
-                        "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-                    });
-                    return;
-                  }
-                  setContentFragmentFilename(res.value.title);
-                  setContentFragmentBody(res.value.content);
-                }}
-              />
+            <div className="absolute bottom-0 right-0 z-10 flex flex-row items-end gap-2 p-2">
+              <div className="flex gap-4 rounded-full border border-structure-100 bg-white/80 px-2.5 py-2 backdrop-blur">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    // focus on the input text after the file selection interaction is over
+                    inputRef.current?.focus();
+                    const file = e?.target?.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5_000_000) {
+                      sendNotification({
+                        type: "error",
+                        title: "File too large.",
+                        description:
+                          "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
+                      });
+                      return;
+                    }
+                    const res = await handleFileUploadToText(file);
 
-              <IconButton
-                className="block"
-                variant={"tertiary"}
-                tooltip="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
-                tooltipPosition="above"
-                icon={AttachmentStrokeIcon}
-                size="md"
-                disabled={!!contentFragmentFilename}
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              />
-              <AssistantPicker
-                owner={owner}
-                onItemClick={(c) => {
-                  // We construct the HTML for an AgentMention and inject it in the content
-                  // editable with an extra space after it.
-                  const mentionNode = getAgentMentionNode(c);
-                  const contentEditable =
-                    document.getElementById("dust-input-bar");
-                  if (contentEditable && mentionNode) {
-                    // Add mentionNode as last childe of contentEditable.
-                    contentEditable.appendChild(mentionNode);
-                    const afterTextNode = document.createTextNode(" ");
-                    contentEditable.appendChild(afterTextNode);
-                    contentEditable.focus();
-                    moveCursorToEnd(contentEditable);
-                  }
-                }}
-                assistants={activeAgents}
-                showBuilderButtons={true}
-              />
-              <div className="mx-2 flex">
-                <IconButton
-                  variant="primary"
-                  icon={PaperAirplaneIcon}
-                  size="md"
-                  disabled={empty}
-                  onClick={() => {
-                    void handleSubmit();
+                    if (res.isErr()) {
+                      sendNotification({
+                        type: "error",
+                        title: "Error uploading file.",
+                        description: res.error.message,
+                      });
+                      return;
+                    }
+                    if (res.value.content.length > 1_000_000) {
+                      // This error should pretty much never be triggered but it is a possible case, so here it is.
+                      sendNotification({
+                        type: "error",
+                        title: "File too large.",
+                        description:
+                          "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+                      });
+                      return;
+                    }
+                    setContentFragmentFilename(res.value.title);
+                    setContentFragmentBody(res.value.content);
                   }}
                 />
+                <IconButton
+                  variant={"tertiary"}
+                  icon={AttachmentIcon}
+                  size="sm"
+                  disabled={!!contentFragmentFilename}
+                  tooltip="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
+                  tooltipPosition="above"
+                  className="flex"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+                <AssistantPicker
+                  owner={owner}
+                  size="sm"
+                  onItemClick={(c) => {
+                    // We construct the HTML for an AgentMention and inject it in the content
+                    // editable with an extra space after it.
+                    const mentionNode = getAgentMentionNode(c);
+                    const contentEditable =
+                      document.getElementById("dust-input-bar");
+                    if (contentEditable && mentionNode) {
+                      // Add mentionNode as last childe of contentEditable.
+                      contentEditable.appendChild(mentionNode);
+                      const afterTextNode = document.createTextNode(" ");
+                      contentEditable.appendChild(afterTextNode);
+                      contentEditable.focus();
+                      moveCursorToEnd(contentEditable);
+                    }
+                  }}
+                  assistants={activeAgents}
+                  showBuilderButtons={true}
+                />
               </div>
+              <Button
+                size="sm"
+                icon={ArrowUpIcon}
+                label="Send"
+                labelVisible={false}
+                disabledTooltip
+                onClick={() => {
+                  void handleSubmit();
+                }}
+              />
+            </div>
+
+            <div className="h-24 w-8">
+              {/* This div serve as vertical spacer for the right of the input bar and min-height as well */}
             </div>
           </div>
         </div>
