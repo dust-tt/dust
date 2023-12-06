@@ -1,4 +1,4 @@
-import { memoize, ModelId } from "@dust-tt/types";
+import { cacheWithRedis, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
@@ -79,7 +79,7 @@ async function _getLocalParents(
   );
 }
 
-export const getLocalParents = memoize(
+export const getLocalParents = cacheWithRedis(
   _getLocalParents,
   (connectorId, driveObjectId, memoizationKey) => {
     return `${connectorId}:${driveObjectId}:${memoizationKey}`;

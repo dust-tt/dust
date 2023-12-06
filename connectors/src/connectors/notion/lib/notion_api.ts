@@ -1,4 +1,4 @@
-import { memoize } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import {
   APIResponseError,
   Client,
@@ -449,7 +449,7 @@ async function getBlockParent(
   }
 }
 
-export const getBlockParentMemoized = memoize(
+export const getBlockParentMemoized = cacheWithRedis(
   getBlockParent,
   (notionAccessToken: string, blockId: string) => {
     return blockId;

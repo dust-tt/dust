@@ -14,7 +14,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
-import { memoize, ModelId } from "@dust-tt/types";
+import { cacheWithRedis, ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import { google } from "googleapis";
 import { drive_v3 } from "googleapis";
@@ -563,8 +563,7 @@ async function getFileParents(
   return parents.reverse();
 }
 
-export const getFileParentsMemoized = getFileParents;
-memoize(
+export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,
   (
     connectorId: ModelId,
