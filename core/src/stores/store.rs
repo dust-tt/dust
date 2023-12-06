@@ -18,6 +18,7 @@ use std::collections::HashMap;
 pub trait Store {
     // Projects
     async fn create_project(&self) -> Result<Project>;
+    async fn delete_project(&self, project: &Project) -> Result<()>;
 
     // Datasets
     async fn latest_dataset_hash(
@@ -84,6 +85,7 @@ pub trait Store {
     ) -> Result<Option<Run>>;
 
     // DataSources
+    async fn has_data_sources(&self, project: &Project) -> Result<bool>;
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()>;
     async fn load_data_source(
         &self,
@@ -486,4 +488,61 @@ pub const SQL_INDEXES: [&'static str; 23] = [
         idx_databases_tables_database_table_name ON databases_tables (database, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
+];
+
+pub const SQL_FUNCTIONS: [&'static str; 2] = [
+    // SQL function to delete the project runs / runs_joins / block_executions
+    r#"
+        CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
+        RETURNS void AS $$
+        DECLARE
+            run_ids BIGINT[];
+            block_exec_ids BIGINT[];
+        BEGIN
+            -- Store run IDs in an array for the specified project
+            SELECT array_agg(id) INTO run_ids FROM runs WHERE project = v_project_id;
+
+            -- Store block_execution IDs in an array
+            SELECT array_agg(block_execution) INTO block_exec_ids
+            FROM runs_joins
+            WHERE run = ANY(run_ids);
+
+            -- Delete from runs_joins where run IDs match those in the project
+            DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
+
+            -- Now delete from block_executions using the stored IDs
+            DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
+
+            -- Finally, delete from runs where run IDs match those in the project
+            DELETE FROM runs WHERE id = ANY(run_ids);
+        END;
+        $$ LANGUAGE plpgsql;
+    "#,
+    // SQL function to delete the project datasets / datasets_joins / datasets_points
+    r#"
+        CREATE OR REPLACE FUNCTION delete_project_datasets(v_project_id BIGINT)
+        RETURNS void AS $$
+        DECLARE
+            datasets_ids BIGINT[];
+            datasets_points_ids BIGINT[];
+        BEGIN
+            -- Store datasets_ids IDs in an array for the specified project
+            SELECT array_agg(id) INTO datasets_ids FROM datasets WHERE project = v_project_id;
+
+            -- Store datasets_points IDs in an array
+            SELECT array_agg(point) INTO datasets_points_ids
+            FROM datasets_joins
+            WHERE dataset = ANY(datasets_ids);
+
+            -- Delete from datasets_joins where point IDs match those in datasets_points
+            DELETE FROM datasets_joins WHERE point = ANY(datasets_points_ids);
+
+            -- Now delete from datasets_points using the stored IDs
+            DELETE FROM datasets_points WHERE id = ANY(datasets_points_ids);
+
+            -- Finally, delete from datasets where datasets IDs match those in the project
+            DELETE FROM datasets WHERE id = ANY(datasets_ids);
+        END;
+        $$ LANGUAGE plpgsql;
+    "#,
 ];

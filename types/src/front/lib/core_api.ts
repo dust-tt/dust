@@ -116,6 +116,18 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
+  async deleteProject({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await fetch(`${CORE_API}/projects/${projectId}`, {
+      method: "DELETE",
+    });
+
+    return _resultFromResponse(response);
+  }
+
   async getDatasets({
     projectId,
   }: {

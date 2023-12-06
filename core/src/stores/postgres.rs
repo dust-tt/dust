@@ -11,7 +11,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::stores::store::{Store, POSTGRES_TABLES, SQL_INDEXES};
+use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -53,6 +53,13 @@ impl PostgresStore {
             }
         }
 
+        for f in SQL_FUNCTIONS {
+            match c.execute(f, &[]).await {
+                Err(e) => Err(e)?,
+                Ok(_) => {}
+            }
+        }
+
         Ok(())
     }
 }
@@ -69,6 +76,36 @@ impl Store for PostgresStore {
         let row_id: i64 = c.query_one(&stmt, &[]).await?.get(0);
 
         Ok(Project::new_from_id(row_id))
+    }
+
+    async fn delete_project(&self, project: &Project) -> Result<()> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
+
+        // Block executions, Runs & Runs joins: we execute a SQL function
+        tx.execute("SELECT delete_project_runs($1)", &[&project_id])
+            .await?;
+
+        // Datasets joins & Datasets points & Datasets: we execute a SQL function
+        tx.execute("SELECT delete_project_datasets($1)", &[&project_id])
+            .await?;
+
+        // Cache, Specifications & Project
+        tx.execute("DELETE FROM cache WHERE project = $1", &[&project_id])
+            .await?;
+        tx.execute(
+            "DELETE FROM specifications WHERE project = $1",
+            &[&project_id],
+        )
+        .await?;
+        tx.execute("DELETE FROM projects WHERE id = $1", &[&project_id])
+            .await?;
+
+        // Execute transaction.
+        tx.commit().await?;
+        Ok(())
     }
 
     async fn latest_dataset_hash(
@@ -992,6 +1029,20 @@ impl Store for PostgresStore {
         .await?;
 
         Ok(())
+    }
+
+    async fn has_data_sources(&self, project: &Project) -> Result<bool> {
+        let project_id = project.project_id();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("SELECT id FROM data_sources WHERE project = $1 LIMIT 1")
+            .await?;
+        let r = c.query(&stmt, &[&project_id]).await?;
+
+        Ok(r.len() > 0)
     }
 
     async fn load_data_source(
