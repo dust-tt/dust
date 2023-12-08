@@ -3,8 +3,6 @@ import seedrandom = require("seedrandom");
 
 const { DUST_API_KEY } = process.env;
 
-const SPLIT_SIZE = 8;
-
 const TYPES = [
   "algebra",
   "counting_and_probability",
@@ -31,7 +29,7 @@ type Problem = {
   answer?: string;
 };
 
-async function processSplit(split: "train" | "test") {
+async function processSplit(split: "train" | "test", size_per_level: number) {
   let rng = seedrandom("MATH_DATASET");
 
   const splitDir = MATH_DIR + "/" + split;
@@ -85,7 +83,7 @@ async function processSplit(split: "train" | "test") {
 
   for (const t of TYPES) {
     for (const l of LEVELS) {
-      problems[t][l] = problems[t][l].slice(0, SPLIT_SIZE);
+      problems[t][l] = problems[t][l].slice(0, size_per_level);
     }
   }
 
@@ -158,14 +156,14 @@ async function processSplit(split: "train" | "test") {
 }
 
 const main = async () => {
-  const train = await processSplit("train");
-  const fTrain = await fs.promises.open("train.jsonl", "w");
-  for (const p of train) {
-    console.log(p);
-    await fTrain.write(JSON.stringify(p) + "\n");
-  }
+  // const train = await processSplit("train", 8);
+  // const fTrain = await fs.promises.open("train.jsonl", "w");
+  // for (const p of train) {
+  //   console.log(p);
+  //   await fTrain.write(JSON.stringify(p) + "\n");
+  // }
 
-  const test = await processSplit("test");
+  const test = await processSplit("test", 8);
   const fTest = await fs.promises.open("test.jsonl", "w");
   for (const p of test) {
     console.log(p);
