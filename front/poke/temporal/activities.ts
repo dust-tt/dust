@@ -140,12 +140,13 @@ export async function deleteConversationsActivity({
       workspaceId: workspace.id,
     },
   });
+  const chunkSize = 8;
+  const chunks: Conversation[][] = [];
+  for (let i = 0; i < conversations.length; i += chunkSize) {
+    chunks.push(conversations.slice(i, i + chunkSize));
+  }
+
   await front_sequelize.transaction(async (t) => {
-    const chunkSize = 8;
-    const chunks = [];
-    for (let i = 0; i < conversations.length; i += chunkSize) {
-      chunks.push(conversations.slice(i, i + chunkSize));
-    }
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk) {
@@ -312,7 +313,14 @@ export async function deleteAppsActivity({
 
   await front_sequelize.transaction(async (t) => {
     for (const app of apps) {
-      await coreAPI.deleteProject({ projectId: app.dustAPIProjectId });
+      const res = await coreAPI.deleteProject({
+        projectId: app.dustAPIProjectId,
+      });
+      if (res.isErr()) {
+        throw new Error(
+          `Error deleting Project from Core: ${res.error.message}`
+        );
+      }
       await Run.destroy({
         where: {
           appId: app.id,
@@ -361,31 +369,47 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  await front_sequelize.transaction(async (t) => {
-    const runs = await Run.findAll({
-      where: {
-        workspaceId: workspace.id,
+  const runs = await Run.findAll({
+    where: {
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: App,
+        as: "app",
+        required: true,
       },
-      include: [
-        {
-          model: App,
-          as: "app",
-          required: true,
-        },
-      ],
-    });
+    ],
+  });
 
-    for (const run of runs) {
-      await coreAPI.deleteRun({
-        projectId: run.app.dustAPIProjectId,
-        runId: run.dustRunId,
-      });
-      await Run.destroy({
-        where: {
-          id: run.id,
-        },
-        transaction: t,
-      });
+  const chunkSize = 8;
+  const chunks: Run[][] = [];
+  for (let i = 0; i < runs.length; i += chunkSize) {
+    chunks.push(runs.slice(i, i + chunkSize));
+  }
+
+  await front_sequelize.transaction(async (t) => {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      if (!chunk) {
+        continue;
+      }
+      await Promise.all(
+        chunk.map((run) => {
+          return (async () => {
+            const res = await coreAPI.deleteRun({
+              projectId: run.app.dustAPIProjectId,
+              runId: run.dustRunId,
+            });
+            if (res.isErr()) {
+              throw new Error(
+                `Error deleting Run from Core: ${res.error.message}`
+              );
+            }
+            await run.destroy({ transaction: t });
+          })();
+        })
+      );
     }
   });
 }
