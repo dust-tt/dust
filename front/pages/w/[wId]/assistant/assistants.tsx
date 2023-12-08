@@ -4,6 +4,7 @@ import {
   Button,
   ContextItem,
   Page,
+  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
   Searchbar,
@@ -155,16 +156,16 @@ export default function PersonalAssistants({
                   label="Add from gallery"
                 />
               </Link>
-              <Tooltip label="Coming soon">
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  disabled={true}
-                  label="New"
-                />
+              <Tooltip label="Create your own assistant">
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=my_assistants`}
+                >
+                  <Button variant="primary" icon={PlusIcon} label="New" />
+                </Link>
               </Tooltip>
             </Button.List>
           </div>
+
           <ContextItem.List className="text-element-900">
             {filtered.map((agent) => (
               <ContextItem
@@ -175,16 +176,31 @@ export default function PersonalAssistants({
                 }
                 action={
                   agent.scope !== "global" && (
-                    <Button
-                      variant="tertiary"
-                      icon={XMarkIcon}
-                      label="Remove from my list"
-                      labelVisible={false}
-                      onClick={() => {
-                        setShowRemovalModal(agent);
-                      }}
-                      size="xs"
-                    />
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=my_assistants`}
+                      >
+                        <Button
+                          variant="secondary"
+                          icon={PencilSquareIcon}
+                          label="Edit"
+                          labelVisible={false}
+                          size="xs"
+                          disabled={agent.scope === "workspace"}
+                        />
+                      </Link>
+
+                      <Button
+                        variant="tertiary"
+                        icon={XMarkIcon}
+                        label="Remove from my list"
+                        labelVisible={false}
+                        onClick={() => {
+                          setShowRemovalModal(agent);
+                        }}
+                        size="xs"
+                      />
+                    </div>
                   )
                 }
               >

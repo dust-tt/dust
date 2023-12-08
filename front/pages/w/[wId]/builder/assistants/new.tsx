@@ -4,7 +4,10 @@ import { AppType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
+import AssistantBuilder, {
+  BUILDER_FLOWS,
+  BuilderFlow,
+} from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -19,6 +22,7 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
+  flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -30,7 +34,7 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !user || !auth.isBuilder() || !subscription) {
+  if (!owner || !plan || !user || !auth.isUser() || !subscription) {
     return {
       notFound: true,
     };
@@ -38,6 +42,12 @@ export const getServerSideProps: GetServerSideProps<{
 
   const allDataSources = await getDataSources(auth);
   const allDustApps = await getApps(auth);
+
+  const flow: BuilderFlow = BUILDER_FLOWS.includes(
+    context.query.flow as BuilderFlow
+  )
+    ? (context.query.flow as BuilderFlow)
+    : "my_assistants";
 
   return {
     props: {
@@ -48,6 +58,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
       dustApps: allDustApps,
+      flow,
     },
   };
 };
@@ -60,6 +71,7 @@ export default function CreateAssistant({
   gaTrackingId,
   dataSources,
   dustApps,
+  flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <AssistantBuilder
@@ -71,6 +83,7 @@ export default function CreateAssistant({
       dataSources={dataSources}
       dustApps={dustApps}
       initialBuilderState={null}
+      flow={flow}
       agentConfigurationId={null}
     />
   );
