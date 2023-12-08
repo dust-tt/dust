@@ -3,6 +3,7 @@ export type QdrantCluster = "main-0" | "dedicated-0";
 export type CoreAPIDataSourceConfig = {
   provider_id: string;
   model_id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extras?: any | null;
   splitter_id: string;
   max_chunk_size: number;

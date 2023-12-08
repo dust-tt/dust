@@ -3,6 +3,7 @@ import { redisClient } from "../shared/redis_client";
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   resolver: (...args: Parameters<T>) => string,

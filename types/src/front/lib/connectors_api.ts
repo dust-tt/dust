@@ -1,6 +1,6 @@
-import { LoggerInterface } from "../../shared/logger";
 import { ConnectorProvider } from "../../front/data_source";
 import { Err, Ok, Result } from "../../front/lib/result";
+import { LoggerInterface } from "../../shared/logger";
 
 export type ConnectorsAPIErrorResponse = {
   error: {
@@ -30,6 +30,7 @@ type ConnectorProviderUsingNango =
 export function connectorIsUsingNango(
   provider: string
 ): provider is ConnectorProviderUsingNango {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return CONNECTOR_PROVIDERS_USING_NANGO.includes(provider as any);
 }
 

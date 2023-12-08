@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/recommended/tsconfig.json",
-  "include": ["src", "types"],
+  "include": ["src", "types", "./.eslintrc.js"],
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "node",

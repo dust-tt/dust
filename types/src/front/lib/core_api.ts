@@ -1,3 +1,5 @@
+import { createParser } from "eventsource-parser";
+
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -5,6 +7,8 @@ import {
   CoreAPIDocument,
   CoreAPILightDocument,
 } from "../../core/data_source";
+import { dustManagedCredentials } from "../../front/lib/api/credentials";
+import { Err, Ok, Result } from "../../front/lib/result";
 import { Project } from "../../front/project";
 import { CredentialsType } from "../../front/provider";
 import {
@@ -14,10 +18,7 @@ import {
   RunStatus,
   TraceType,
 } from "../../front/run";
-import { createParser } from "eventsource-parser";
-import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
-import { dustManagedCredentials } from "../../front/lib/api/credentials";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
@@ -38,6 +39,7 @@ export type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
 };
 
 export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: { [key: string]: any }[];
 };
 
@@ -61,6 +63,7 @@ type CoreAPICreateRunParams = {
   specification?: string | null;
   specificationHash?: string | null;
   datasetId?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inputs?: any[] | null;
   config: RunConfig;
   credentials: CredentialsType;
@@ -172,6 +175,7 @@ export class CoreAPI {
   }: {
     projectId: string;
     datasetId: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
     const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {

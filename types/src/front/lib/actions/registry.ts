@@ -137,6 +137,7 @@ export const DustProdActionRegistry = createActionRegistry({
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function cloneBaseConfig(config: { [model: string]: any }) {
   return JSON.parse(JSON.stringify(config));
 }

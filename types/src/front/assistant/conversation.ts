@@ -1,9 +1,8 @@
-import { UserType, WorkspaceType } from "../../front/user";
-import { ModelId } from "../../shared/model_id";
-
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
 import { AgentConfigurationType } from "../../front/assistant/agent";
+import { UserType, WorkspaceType } from "../../front/user";
+import { ModelId } from "../../shared/model_id";
 
 /**
  * Mentions

@@ -1,7 +1,6 @@
-import { ModelId } from "../../../shared/model_id";
-
 import { AgentActionConfigurationType } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { ModelId } from "../../../shared/model_id";
 
 export type DustAppRunConfigurationType = {
   id: ModelId;

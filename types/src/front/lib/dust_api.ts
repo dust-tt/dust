@@ -1,27 +1,28 @@
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
-import { Err, Ok, Result } from "../../front/lib/result";
-import { RunType } from "../../front/run";
-import { DataSourceType } from "../../front/data_source";
-import { LoggerInterface } from "../../shared/logger";
-import { AgentConfigurationType } from "../../front/assistant/agent";
+
 import {
   PublicPostContentFragmentRequestBodySchema,
   PublicPostConversationsRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
 } from "../../front/api_handlers/public/assistant";
+import { AgentConfigurationType } from "../../front/assistant/agent";
 import {
   AgentMessageType,
   ContentFragmentType,
   ConversationType,
   UserMessageType,
 } from "../../front/assistant/conversation";
-import { UserMessageErrorEvent } from "./api/assistant/conversation";
+import { DataSourceType } from "../../front/data_source";
+import { Err, Ok, Result } from "../../front/lib/result";
+import { RunType } from "../../front/run";
+import { LoggerInterface } from "../../shared/logger";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
 } from "./api/assistant/agent";
+import { UserMessageErrorEvent } from "./api/assistant/conversation";
 import { GenerationTokensEvent } from "./api/assistant/generation";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
@@ -392,6 +393,7 @@ export class DustAPI {
   async runAppStreamed(
     app: DustAppType,
     config: DustAppConfigType,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputs: any[],
     { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
       useWorkspaceCredentials: false,
