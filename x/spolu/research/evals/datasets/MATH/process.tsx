@@ -3,7 +3,7 @@ import seedrandom = require("seedrandom");
 
 const { DUST_API_KEY } = process.env;
 
-const SPLIT_SIZE = 256;
+const SPLIT_SIZE = 8;
 
 const TYPES = [
   "algebra",
@@ -14,6 +14,8 @@ const TYPES = [
   "prealgebra",
   "precalculus",
 ];
+
+const LEVELS = [1, 2, 3, 4, 5];
 
 const MATH_DIR = "/home/spolu/stash/evals/MATH";
 
@@ -30,19 +32,24 @@ type Problem = {
 };
 
 async function processSplit(split: "train" | "test") {
-  let rng = seedrandom("MATH");
+  let rng = seedrandom("MATH_DATASET");
 
   const splitDir = MATH_DIR + "/" + split;
   let files: {
-    type: string;
-    number: string;
-    path: string;
-  }[] = [];
+    [type: string]: {
+      type: string;
+      number: string;
+      path: string;
+    }[];
+  } = {};
   for (const t of TYPES) {
     const categoryDir = splitDir + "/" + t;
     const ff = await fs.promises.readdir(categoryDir);
     for (const file of ff) {
-      files.push({
+      if (!files[t]) {
+        files[t] = [];
+      }
+      files[t].push({
         type: t,
         number: file.slice(0, file.length - 5),
         path: categoryDir + "/" + file,
@@ -50,26 +57,50 @@ async function processSplit(split: "train" | "test") {
     }
   }
 
-  files = files.sort(() => rng() - 0.5);
-  files = files.slice(0, SPLIT_SIZE);
+  for (const t of TYPES) {
+    files[t] = files[t].sort(() => rng() - 0.5);
+  }
 
-  let problems: Problem[] = [];
+  let problems: { [type: string]: { [level: number]: Problem[] } } = {};
 
-  for (const file of files) {
-    const f = await fs.promises.open(file.path, "r");
-    const data = await f.readFile({ encoding: "utf-8" });
-    await f.close();
-    const problem: Problem = JSON.parse(data);
-    problem.level = parseInt((problem.level as string).slice(6));
-    problem.name = file.type + "-" + "l" + problem.level + "-" + file.number;
-    problem.type = file.type;
-    problems.push(problem);
+  for (const t of TYPES) {
+    problems[t] = [];
+    for (const file of files[t]) {
+      const f = await fs.promises.open(file.path, "r");
+      const data = await f.readFile({ encoding: "utf-8" });
+      await f.close();
+      const problem: Problem = JSON.parse(data);
+      problem.level = parseInt((problem.level as string).slice(6));
+      problem.name = file.type + "-" + "l" + problem.level + "-" + file.number;
+      problem.type = file.type;
+      if (!problems[problem.type]) {
+        problems[problem.type] = [];
+      }
+      if (!problems[problem.type][problem.level]) {
+        problems[problem.type][problem.level] = [];
+      }
+      problems[problem.type][problem.level].push(problem);
+    }
+  }
+
+  for (const t of TYPES) {
+    for (const l of LEVELS) {
+      problems[t][l] = problems[t][l].slice(0, SPLIT_SIZE);
+    }
+  }
+
+  // flatten problems
+  let flat: Problem[] = [];
+  for (const t of TYPES) {
+    for (const l of LEVELS) {
+      flat = flat.concat(problems[t][l]);
+    }
   }
 
   const chunkSize = 8;
   const chunks = [];
-  for (let i = 0; i < problems.length; i += chunkSize) {
-    chunks.push(problems.slice(i, i + chunkSize));
+  for (let i = 0; i < flat.length; i += chunkSize) {
+    chunks.push(flat.slice(i, i + chunkSize));
   }
 
   let out: Problem[] = [];
@@ -93,6 +124,7 @@ async function processSplit(split: "train" | "test") {
                   "9d8f9de03357b19187610d3c3c90b96a9db5dd5f4fd264015a9f2e3e5632a753",
                 config: {
                   MODEL: {
+                    // openai_organization_id: "org-8qQhvDGNheVbbZ4iNRQLfu11",
                     provider_id: "openai",
                     model_id: "gpt-4-1106-preview",
                     function_call: "submit_reasoning_and_sanitized_answer",
@@ -110,6 +142,7 @@ async function processSplit(split: "train" | "test") {
           );
 
           const data = await res.json();
+          console.log(data);
           const v = data.run.traces[2][1][0][0].value;
           if (v) {
             p.answer = v["answer"];
@@ -126,14 +159,14 @@ async function processSplit(split: "train" | "test") {
 
 const main = async () => {
   const train = await processSplit("train");
-  const fTrain = await fs.promises.open("train.json", "w");
+  const fTrain = await fs.promises.open("train.jsonl", "w");
   for (const p of train) {
     console.log(p);
     await fTrain.write(JSON.stringify(p) + "\n");
   }
 
   const test = await processSplit("test");
-  const fTest = await fs.promises.open("test.json", "w");
+  const fTest = await fs.promises.open("test.jsonl", "w");
   for (const p of test) {
     console.log(p);
     await fTest.write(JSON.stringify(p) + "\n");
