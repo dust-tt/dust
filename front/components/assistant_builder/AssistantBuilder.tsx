@@ -38,12 +38,15 @@ import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -59,10 +62,6 @@ import {
   useSlackChannelsLinkedWithAgent,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-
-import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
-import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
-import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,

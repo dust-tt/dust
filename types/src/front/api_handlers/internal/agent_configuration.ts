@@ -7,7 +7,7 @@ import * as t from "io-ts";
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
     t.literal("list"),
-    t.literal("superuser"),
+    t.literal("super_user"),
     t.literal("all"),
     t.undefined,
   ]),

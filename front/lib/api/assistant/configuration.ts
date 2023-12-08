@@ -260,7 +260,7 @@ export async function getAgentConfigurations(
     ).filter((a) => a !== null) as AgentConfigurationType[];
   };
 
-  if (agentsGetView === "superuser") {
+  if (agentsGetView === "super_user") {
     if (!auth.isDustSuperUser()) {
       throw new Error("superuser view is for dust superusers only.");
     }

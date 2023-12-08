@@ -99,7 +99,7 @@ export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "all"
-  | "superuser";
+  | "super_user";
 
 export type AgentConfigurationType = {
   id: ModelId;

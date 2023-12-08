@@ -19,11 +19,10 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-
-import { AgentDustAppRunConfiguration } from "./actions/dust_app_run";
 
 /**
  * Configuration of Agent generation.

@@ -5,11 +5,10 @@ import {
   UserMessageType,
 } from "@dust-tt/types";
 
+import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
-
-import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 
 export function UserMessage({
   message,

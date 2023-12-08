@@ -24,7 +24,7 @@ export * from "./front/api_handlers/public/assistant";
 export * from "./front/api_handlers/public/data_sources";
 export * from "./front/api_handlers/internal/assistant";
 export * from "./front/api_handlers/internal/agent_configuration";
-
+export * from "./front/key";
 export * from "./front/lib/actions/registry";
 export * from "./front/lib/actions/types";
 export * from "./front/lib/api/assistant/actions/dust_app_run";
