@@ -7,7 +7,7 @@ export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
     // default is 5
     max: 10,
   },
-  logging: console.log,
+  logging: false,
 });
 export const xp1_sequelize = new Sequelize(XP1_DATABASE_URI as string, {
   logging: false,
