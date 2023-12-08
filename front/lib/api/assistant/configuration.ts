@@ -417,8 +417,10 @@ async function getConversationMentions(
             as: "conversation",
             attributes: [],
             where: { sId: conversationId },
+            required: true,
           },
         ],
+        required: true,
       },
     ],
   });
