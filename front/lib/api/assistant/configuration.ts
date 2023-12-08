@@ -54,7 +54,7 @@ export async function getAgentConfiguration(
   }
 
   if (isGlobalAgentId(agentId)) {
-    return await getGlobalAgent(auth, agentId);
+    return await getGlobalAgent(auth, agentId, null);
   }
 
   const agent =
@@ -219,47 +219,53 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const rawAgents = await AgentConfiguration.findAll({
-    where: {
-      workspaceId: owner.id,
-      status: "active",
-      ...(agentPrefix
-        ? {
-            name: {
-              [Op.iLike]: `${agentPrefix}%`,
-            },
-          }
-        : {}),
-    },
-    order: [["name", "ASC"]],
-    include: [
-      {
-        model: AgentGenerationConfiguration,
-        as: "generationConfiguration",
-      },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "retrievalConfiguration",
-      },
-      {
-        model: AgentDustAppRunConfiguration,
-        as: "dustAppRunConfiguration",
-      },
-    ],
-  });
+  const [agents, globalAgents] = await Promise.all([
+    (async () => {
+      const rawAgents = await AgentConfiguration.findAll({
+        where: {
+          workspaceId: owner.id,
+          status: "active",
+          ...(agentPrefix
+            ? {
+                name: {
+                  [Op.iLike]: `${agentPrefix}%`,
+                },
+              }
+            : {}),
+        },
+        order: [["name", "ASC"]],
+        include: [
+          {
+            model: AgentGenerationConfiguration,
+            as: "generationConfiguration",
+          },
+          {
+            model: AgentRetrievalConfiguration,
+            as: "retrievalConfiguration",
+          },
+          {
+            model: AgentDustAppRunConfiguration,
+            as: "dustAppRunConfiguration",
+          },
+        ],
+      });
 
-  const agents = (
-    await Promise.all(
-      rawAgents.map(async (a) => {
-        return await getAgentConfiguration(auth, a.sId, a);
-      })
-    )
-  ).filter((a) => a !== null) as AgentConfigurationType[];
-
-  const globalAgents = (await getGlobalAgents(auth)).filter(
-    (a) =>
-      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-  );
+      return (
+        await Promise.all(
+          rawAgents.map(async (a) => {
+            return await getAgentConfiguration(auth, a.sId, a);
+          })
+        )
+      ).filter((a) => a !== null) as AgentConfigurationType[];
+    })(),
+    (async () => {
+      return (await getGlobalAgents(auth)).filter(
+        (a) =>
+          !agentPrefix ||
+          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+      );
+    })(),
+  ]);
 
   return [...globalAgents, ...agents];
 }

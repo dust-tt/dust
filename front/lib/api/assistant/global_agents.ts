@@ -4,7 +4,7 @@ import { promisify } from "util";
 
 const readFileAsync = promisify(fs.readFile);
 
-import { ConnectorProvider } from "@dust-tt/types";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -265,6 +265,7 @@ async function _getManagedDataSourceAgent(
     description,
     pictureUrl,
     prompt,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
     connectorProvider: ConnectorProvider;
@@ -273,6 +274,7 @@ async function _getManagedDataSourceAgent(
     description: string;
     pictureUrl: string;
     prompt: string;
+    dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
@@ -286,12 +288,6 @@ async function _getManagedDataSourceAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
 
   // Check if deactivated by an admin
   if (settings && settings.status === "disabled_by_admin") {
@@ -310,10 +306,10 @@ async function _getManagedDataSourceAgent(
   }
 
   // Check if there's a data source for this agent
-  const dataSources = dsRes.value.filter(
+  const filteredDataSources = dataSources.filter(
     (d) => d.connectorProvider === connectorProvider
   );
-  if (dataSources.length === 0) {
+  if (filteredDataSources.length === 0) {
     return {
       id: -1,
       sId: agentId,
@@ -359,8 +355,10 @@ async function _getManagedDataSourceAgent(
       query: "auto",
       relativeTimeFrame: "auto",
       topK: "auto",
-      dataSources: dataSources.map((ds) => ({
+      dataSources: filteredDataSources.map((ds) => ({
         dataSourceId: ds.name,
+        // We use prodCredentials to make sure we are using the right workspaceId. In development
+        // this is the production Dust use case, in production this is the auth's workspace.
         workspaceId: prodCredentials.workspaceId,
         filter: { tags: null, parents: null },
       })),
@@ -372,8 +370,10 @@ async function _getGoogleDriveGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
   return await _getManagedDataSourceAgent(auth, {
@@ -385,6 +385,7 @@ async function _getGoogleDriveGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Google Drives.",
+    dataSources,
   });
 }
 
@@ -392,8 +393,10 @@ async function _getSlackGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
   }
 ) {
   return await _getManagedDataSourceAgent(auth, {
@@ -405,6 +408,7 @@ async function _getSlackGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Slack channels.",
+    dataSources,
   });
 }
 
@@ -412,8 +416,10 @@ async function _getGithubGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
   }
 ) {
   return await _getManagedDataSourceAgent(auth, {
@@ -426,6 +432,7 @@ async function _getGithubGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Github Issues and Discussions.",
+    dataSources,
   });
 }
 
@@ -433,8 +440,10 @@ async function _getNotionGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
   return await _getManagedDataSourceAgent(auth, {
@@ -446,6 +455,7 @@ async function _getNotionGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Notion Spaces.",
+    dataSources,
   });
 }
 
@@ -561,15 +571,28 @@ export function isGlobalAgentId(sId: string): boolean {
 
 export async function getGlobalAgent(
   auth: Authenticator,
-  sId: string | number
+  sId: string | number,
+  preFetchedDataSources: DataSourceType[] | null
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
+
   const plan = auth.plan();
   if (!plan) {
     throw new Error("Unexpected `auth` without `plan`.");
+  }
+
+  if (preFetchedDataSources === null) {
+    const prodCredentials = await prodAPICredentialsForOwner(owner);
+    const api = new DustAPI(prodCredentials, logger);
+
+    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+    if (dsRes.isErr()) {
+      return null;
+    }
+    preFetchedDataSources = dsRes.value;
   }
 
   const settings = await GlobalAgentSettings.findOne({
@@ -596,16 +619,28 @@ export async function getGlobalAgent(
       agentConfiguration = await _getMistralGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
-      agentConfiguration = await _getSlackGlobalAgent(auth, { settings });
+      agentConfiguration = await _getSlackGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
-      agentConfiguration = await _getGoogleDriveGlobalAgent(auth, { settings });
+      agentConfiguration = await _getGoogleDriveGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
-      agentConfiguration = await _getNotionGlobalAgent(auth, { settings });
+      agentConfiguration = await _getNotionGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
-      agentConfiguration = await _getGithubGlobalAgent(auth, { settings });
+      agentConfiguration = await _getGithubGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = await _getDustGlobalAgent(auth, { plan, settings });
@@ -625,10 +660,27 @@ export async function getGlobalAgents(
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
 
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const api = new DustAPI(prodCredentials, logger);
+
+  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+  if (dsRes.isErr()) {
+    throw new Error("Failed to retrieve data sources.");
+  }
+
+  const preFetchedDataSources = dsRes.value;
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = await Promise.all(
-    Object.values(GLOBAL_AGENTS_SID).map((sId) => getGlobalAgent(auth, sId))
+    Object.values(GLOBAL_AGENTS_SID).map((sId) =>
+      getGlobalAgent(auth, sId, preFetchedDataSources)
+    )
   );
 
   const globalAgents: AgentConfigurationType[] = [];
