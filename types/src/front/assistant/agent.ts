@@ -67,13 +67,6 @@ export type GlobalAgentStatus =
 export type AgentStatus = "active" | "archived";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
-/**
- * Agent configuration scope
- * - 'global' scope are Dust assistants, not editable, inside-list for all, cannot be overriden
- * - 'workspace' scope are editable by builders only,  inside-list by default but user can change it
- * - 'published' scope are editable by everybody, outside-list by default
- * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no entry in the table
- */
 export type AgentConfigurationScope =
   | "global"
   | "workspace"
@@ -84,23 +77,6 @@ export type AgentConfigurationScope =
  * scope 'published' aren't. But a user can override the default behaviour, as per the type below */
 export type AgentRelationOverrideType = "in-list" | "not-in-list";
 
-/**
- * Agents can be retrieved according to different 'views':
- * - list: all agents in the user's list
- * - conversation: all agents in the user's list + agents in the current
- *   conversation (requries a conversation sId)
- * - all: workspace + published agents (not private ones), eg. for agent gallery
- * - superuser: all agents, including private ones => CAREFUL. Currently used by
- *   poke only
- * Global agents enabled for the workspace are always returned with all the views.
- */
-
-export type AgentsGetViewType =
-  | "list"
-  | { conversationId: string }
-  | "all"
-  | "super_user";
-
 export type AgentConfigurationType = {
   id: ModelId;
 
@@ -108,7 +84,6 @@ export type AgentConfigurationType = {
   version: number;
 
   scope: AgentConfigurationScope;
-  relationOverride: AgentRelationOverrideType | null;
   status: AgentConfigurationStatus;
 
   name: string;
