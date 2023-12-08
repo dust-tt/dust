@@ -1,9 +1,8 @@
+import { SupportedModel, TimeframeUnitCodec } from "@dust-tt/types";
 import {
   AgentActionConfigurationType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
-  GetAgentConfigurationsQuerySchema,
-  PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -17,6 +16,7 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { isSupportedModel } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -26,6 +26,82 @@ export type GetAgentConfigurationsResponseBody = {
 export type PostAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
+
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
+  assistant: t.type({
+    name: t.string,
+    description: t.string,
+    pictureUrl: t.string,
+    status: t.union([t.literal("active"), t.literal("archived")]),
+    scope: t.union([
+      t.literal("workspace"),
+      t.literal("published"),
+      t.literal("private"),
+    ]),
+    action: t.union([
+      t.null,
+      t.type({
+        type: t.literal("retrieval_configuration"),
+        query: t.union([
+          t.type({
+            template: t.string,
+          }),
+          t.literal("auto"),
+          t.literal("none"),
+        ]),
+        timeframe: t.union([
+          t.literal("auto"),
+          t.literal("none"),
+          t.type({
+            duration: t.number,
+            unit: TimeframeUnitCodec,
+          }),
+        ]),
+        topK: t.union([t.number, t.literal("auto")]),
+        dataSources: t.array(
+          t.type({
+            dataSourceId: t.string,
+            workspaceId: t.string,
+            filter: t.type({
+              tags: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+              parents: t.union([
+                t.type({
+                  in: t.array(t.string),
+                  not: t.array(t.string),
+                }),
+                t.null,
+              ]),
+            }),
+          })
+        ),
+      }),
+      t.type({
+        type: t.literal("dust_app_run_configuration"),
+        appWorkspaceId: t.string,
+        appId: t.string,
+      }),
+    ]),
+    generation: t.type({
+      prompt: t.string,
+      // enforce that the model is a supported model
+      // the modelId and providerId are checked together, so
+      // (gpt-4, anthropic) won't pass
+      model: new t.Type<SupportedModel>(
+        "SupportedModel",
+        isSupportedModel,
+        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+        t.identity
+      ),
+      temperature: t.number,
+    }),
+  }),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -63,38 +139,8 @@ async function handler(
           },
         });
       }
-      // extract the view from the query parameters
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
-        req.query
-      );
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
-          },
-        });
-      }
 
-      const { view, conversationId } = queryValidation.right;
-      const viewParam = view
-        ? view
-        : conversationId
-        ? { conversationId }
-        : undefined;
-      if (!viewParam) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The view query parameter is required if no conversationId is provided.",
-          },
-        });
-      }
-      const agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      const agentConfigurations = await getAgentConfigurations(auth);
       return res.status(200).json({
         agentConfigurations,
       });
