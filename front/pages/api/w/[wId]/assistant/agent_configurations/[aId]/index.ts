@@ -13,8 +13,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-import { createOrUpgradeAgentConfiguration } from "..";
+import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
