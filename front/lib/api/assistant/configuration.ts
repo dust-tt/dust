@@ -470,37 +470,28 @@ export async function createAgentConfiguration(
   const agentConfig = await front_sequelize.transaction(
     async (t): Promise<AgentConfiguration> => {
       if (agentConfigurationId) {
-        const latestVersion = await AgentConfiguration.max<
-          number | null,
-          AgentConfiguration
-        >("version", {
+        const [formerAgent] = await AgentConfiguration.findAll({
           where: {
-            workspaceId: owner.id,
             sId: agentConfigurationId,
+            workspaceId: owner.id,
           },
-          transaction: t,
-        });
-
-        if (latestVersion !== null) {
-          version = latestVersion + 1;
-          const formerAgent = await AgentConfiguration.findOne({
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-              version: latestVersion,
-            },
-            attributes: ["scope"],
-            include: [
-              {
-                model: AgentUserRelation,
-                where: {
-                  userId: user.id,
-                },
-                attributes: ["relation"],
+          attributes: ["scope", "version"],
+          include: [
+            {
+              model: AgentUserRelation,
+              where: {
+                userId: user.id,
               },
-            ],
-            transaction: t,
-          });
+              attributes: ["relation"],
+              required: false,
+            },
+          ],
+          order: [["version", "DESC"]],
+          transaction: t,
+          limit: 1,
+        });
+        if (formerAgent) {
+          version = formerAgent.version + 1;
           if (
             formerAgent?.relationOverrides &&
             formerAgent.relationOverrides.length > 0
@@ -537,11 +528,11 @@ export async function createAgentConfiguration(
         {
           sId: agentConfigurationId || generateModelSId(),
           version,
-          status: status,
-          scope: scope,
-          name: name,
-          description: description,
-          pictureUrl: pictureUrl,
+          status,
+          scope,
+          name,
+          description,
+          pictureUrl,
           workspaceId: owner.id,
           generationConfigurationId: generation?.id || null,
           authorId: user.id,
