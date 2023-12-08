@@ -10,6 +10,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
+use crate::sqlite_workers::SqliteWorker;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -290,6 +291,11 @@ pub trait Store {
         response: &HttpResponse,
     ) -> Result<()>;
 
+    // SQLite Workers
+    async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>>;
+    async fn sqlite_workers_upsert(&self, pod_name: &str) -> Result<SqliteWorker>;
+    async fn sqlite_workers_delete(&self, pod_name: &str) -> Result<()>;
+
     // Cloning
     fn clone_box(&self) -> Box<dyn Store + Sync + Send>;
 }
@@ -300,7 +306,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 14] = [
+pub const POSTGRES_TABLES: [&'static str; 15] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -434,9 +440,16 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        row_id               TEXT NOT NULL, -- unique within table
        FOREIGN KEY(database_table) REFERENCES databases_tables(id)
     );",
+    "-- SQLite workers
+    CREATE TABLE IF NOT EXISTS sqlite_workers (
+       id                   BIGSERIAL PRIMARY KEY,
+       created              BIGINT NOT NULL,
+       pod_name             TEXT NOT NULL,
+       last_heartbeat       BIGINT NOT NULL
+    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 23] = [
+pub const SQL_INDEXES: [&'static str; 24] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -489,6 +502,8 @@ pub const SQL_INDEXES: [&'static str; 23] = [
         idx_databases_tables_database_table_name ON databases_tables (database, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_sqlite_workers_pod_name ON sqlite_workers (pod_name);",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 3] = [

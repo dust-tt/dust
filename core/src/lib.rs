@@ -60,6 +60,8 @@ pub mod blocks {
     pub mod r#while;
 }
 
+pub mod sqlite_workers;
+
 pub mod deno {
     pub mod script;
 }
