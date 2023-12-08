@@ -60,9 +60,9 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
-import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
-import DustAppSelectionSection from "./DustAppSelectionSection";
+import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
+import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,

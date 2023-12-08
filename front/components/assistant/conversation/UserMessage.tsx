@@ -9,7 +9,7 @@ import { ConversationMessage } from "@app/components/assistant/conversation/Conv
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
 
-import { AgentSuggestion } from "./AgentSuggestion";
+import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 
 export function UserMessage({
   message,

@@ -332,7 +332,7 @@ export async function getAgentConfigurations(
         },
         attributes: ["sId", "scope", "name"],
       }),
-      getMentions(agentsGetView.conversationId),
+      getConversationMentions(agentsGetView.conversationId),
     ]);
     const agentIds = agents.map((a) => a.sId);
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
@@ -354,7 +354,9 @@ export async function getAgentConfigurations(
   throw new Error(`Unknown agentsGetView ${agentsGetView}`);
 }
 
-async function getMentions(conversationId: string): Promise<AgentMention[]> {
+async function getConversationMentions(
+  conversationId: string
+): Promise<AgentMention[]> {
   const mentions = await Mention.findAll({
     attributes: ["agentConfigurationId"],
     where: {
