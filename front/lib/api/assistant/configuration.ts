@@ -1,4 +1,4 @@
-import { ModelId, SupportedModel } from "@dust-tt/types";
+import { SupportedModel } from "@dust-tt/types";
 import { DustAppRunConfigurationType } from "@dust-tt/types";
 import {
   DataSourceConfiguration,
