@@ -253,7 +253,7 @@ export async function syncFiles(
     supportsAllDrives: true,
     fields:
       "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
-    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString})`,
+    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
