@@ -247,21 +247,11 @@ export async function getAgentConfigurations(
       },
     ],
   });
-  const agentsById = rawAgents.reduce((acc, curr) => {
-    const previousValue = acc.get(curr.id);
-    if (previousValue === undefined) {
-      acc.set(curr.id, curr);
-    } else if (previousValue.version < curr.version) {
-      acc.set(curr.id, curr);
-    }
-
-    return acc;
-  }, new Map<ModelId, AgentConfiguration>());
 
   const agents = (
     await Promise.all(
       rawAgents.map(async (a) => {
-        return await getAgentConfiguration(auth, a.sId, agentsById.get(a.id));
+        return await getAgentConfiguration(auth, a.sId, a);
       })
     )
   ).filter((a) => a !== null) as AgentConfigurationType[];
