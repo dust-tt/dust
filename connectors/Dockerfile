@@ -18,6 +18,7 @@ WORKDIR /types
 COPY /types/package*.json ./
 COPY /types/ .
 RUN npm ci
+RUN npm run build
 
 WORKDIR /app
 
