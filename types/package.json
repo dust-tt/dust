@@ -14,7 +14,6 @@
     "build": "dts build",
     "lint": "dts lint",
     "format": "dts lint --fix",
-    "prepare": "dts build",
     "start": "dts watch"
   },
   "engines": {
@@ -28,6 +27,7 @@
   },
   "dependencies": {
     "dts-cli": "^2.0.3",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
     "eventsource-parser": "^1.1.1",
     "io-ts": "^2.2.20",
     "redis": "^4.6.8",

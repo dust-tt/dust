@@ -2,11 +2,10 @@
  * Data Source configuration
  */
 
-import { ModelId } from "../../../shared/model_id";
-
-import { ioTsEnum } from "../../../shared/utils/iots_utils";
 import { AgentActionConfigurationType } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { ModelId } from "../../../shared/model_id";
+import { ioTsEnum } from "../../../shared/utils/iots_utils";
 
 export const TIME_FRAME_UNITS = [
   "hour",
