@@ -1,4 +1,4 @@
-import { SupportedModel } from "@dust-tt/types";
+import { ModelId, SupportedModel } from "@dust-tt/types";
 import { DustAppRunConfigurationType } from "@dust-tt/types";
 import {
   DataSourceConfiguration,
@@ -41,7 +41,8 @@ import { generateModelSId } from "@app/lib/utils";
  */
 export async function getAgentConfiguration(
   auth: Authenticator,
-  agentId: string
+  agentId: string,
+  agentConfiguration?: AgentConfiguration
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -56,28 +57,30 @@ export async function getAgentConfiguration(
     return await getGlobalAgent(auth, agentId);
   }
 
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-    },
-    order: [["version", "DESC"]],
-    include: [
-      {
-        model: AgentGenerationConfiguration,
-        as: "generationConfiguration",
+  const agent =
+    agentConfiguration ??
+    (await AgentConfiguration.findOne({
+      where: {
+        sId: agentId,
+        workspaceId: owner.id,
       },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "retrievalConfiguration",
-      },
-      {
-        model: AgentDustAppRunConfiguration,
-        as: "dustAppRunConfiguration",
-      },
-    ],
-    limit: 1,
-  });
+      order: [["version", "DESC"]],
+      include: [
+        {
+          model: AgentGenerationConfiguration,
+          as: "generationConfiguration",
+        },
+        {
+          model: AgentRetrievalConfiguration,
+          as: "retrievalConfiguration",
+        },
+        {
+          model: AgentDustAppRunConfiguration,
+          as: "dustAppRunConfiguration",
+        },
+      ],
+      limit: 1,
+    }));
 
   if (!agent) {
     return null;
@@ -229,12 +232,36 @@ export async function getAgentConfigurations(
         : {}),
     },
     order: [["name", "ASC"]],
+    include: [
+      {
+        model: AgentGenerationConfiguration,
+        as: "generationConfiguration",
+      },
+      {
+        model: AgentRetrievalConfiguration,
+        as: "retrievalConfiguration",
+      },
+      {
+        model: AgentDustAppRunConfiguration,
+        as: "dustAppRunConfiguration",
+      },
+    ],
   });
+  const agentsById = rawAgents.reduce((acc, curr) => {
+    const previousValue = acc.get(curr.id);
+    if (previousValue === undefined) {
+      acc.set(curr.id, curr);
+    } else if (previousValue.version < curr.version) {
+      acc.set(curr.id, curr);
+    }
+
+    return acc;
+  }, new Map<ModelId, AgentConfiguration>());
 
   const agents = (
     await Promise.all(
       rawAgents.map(async (a) => {
-        return await getAgentConfiguration(auth, a.sId);
+        return await getAgentConfiguration(auth, a.sId, agentsById.get(a.id));
       })
     )
   ).filter((a) => a !== null) as AgentConfigurationType[];
