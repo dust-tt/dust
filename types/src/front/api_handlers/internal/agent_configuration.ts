@@ -1,6 +1,7 @@
-import { TimeframeUnitCodec } from "../../assistant/actions/retrieval";
-import { SupportedModel, isSupportedModel } from "../../lib/assistant";
 import * as t from "io-ts";
+
+import { TimeframeUnitCodec } from "../../assistant/actions/retrieval";
+import { isSupportedModel, SupportedModel } from "../../lib/assistant";
 
 // Get schema for the url query parameters: a view parameter with all the types
 // of AgentGetViewType
