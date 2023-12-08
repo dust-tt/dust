@@ -670,7 +670,7 @@ export async function getGlobalAgents(
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {
-    return [];
+    throw new Error("Failed to retrieve data sources.");
   }
 
   const preFetchedDataSources = dsRes.value;
