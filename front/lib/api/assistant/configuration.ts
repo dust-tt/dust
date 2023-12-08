@@ -21,7 +21,7 @@ import {
   AgentStatus,
 } from "@dust-tt/types";
 import { isSupportedModel } from "@dust-tt/types";
-import { Op, Transaction } from "sequelize";
+import { FindOptions, Op, Transaction } from "sequelize";
 
 import {
   getGlobalAgent,
@@ -247,7 +247,7 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` from outside workspace.");
   }
 
-  const agentsSequelizeQuery = {
+  const baseAgentsSequelizeQuery = {
     where: {
       workspaceId: owner.id,
       status: "active",
@@ -277,12 +277,17 @@ export async function getAgentConfigurations(
     ],
   };
 
-  const globalAgents = (await getGlobalAgents(auth)).filter(
-    (a) =>
-      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-  );
+  const getGlobalAgentConfigurations = async () =>
+    (await getGlobalAgents(auth)).filter(
+      (a) =>
+        !agentPrefix ||
+        a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+    );
 
-  const getLocalAgentConfigurations = async (agents: AgentConfiguration[]) => {
+  const getAgentConfigurationsForQuery = async (
+    agentsSequelizeQuery: FindOptions
+  ) => {
+    const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
     return (
       await Promise.all(
         agents.map((a) => getAgentConfiguration(auth, a.sId, a))
@@ -294,19 +299,28 @@ export async function getAgentConfigurations(
     if (!auth.isDustSuperUser()) {
       throw new Error("superuser view is for dust superusers only.");
     }
-    const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
-    return [...(await getLocalAgentConfigurations(agents)), ...globalAgents];
+    return (
+      await Promise.all([
+        getAgentConfigurationsForQuery(baseAgentsSequelizeQuery),
+        getGlobalAgentConfigurations(),
+      ])
+    ).flat();
   }
 
   if (agentsGetView === "all") {
-    const agents = await AgentConfiguration.findAll({
-      ...agentsSequelizeQuery,
+    const allAgentsSequelizeQuery = {
+      ...baseAgentsSequelizeQuery,
       where: {
-        ...agentsSequelizeQuery.where,
+        ...baseAgentsSequelizeQuery.where,
         scope: { [Op.in]: ["published", "workspace"] },
       },
-    });
-    return [...(await getLocalAgentConfigurations(agents)), ...globalAgents];
+    };
+    return (
+      await Promise.all([
+        getAgentConfigurationsForQuery(allAgentsSequelizeQuery),
+        getGlobalAgentConfigurations(),
+      ])
+    ).flat();
   }
 
   if (agentsGetView === "list") {
@@ -314,28 +328,33 @@ export async function getAgentConfigurations(
     if (!user) {
       throw new Error("List view is specific to a user.");
     }
-    const agents = await AgentConfiguration.findAll({
-      ...agentsSequelizeQuery,
+    const listAgentsSequelizeQuery = {
+      ...baseAgentsSequelizeQuery,
       where: {
-        ...agentsSequelizeQuery.where,
+        ...baseAgentsSequelizeQuery.where,
         [Op.or]: [
           { scope: { [Op.in]: ["published", "workspace"] } },
           { authorId: user.id },
         ],
       },
-    });
-    const localAgents = (await getLocalAgentConfigurations(agents)).filter(
-      (a) => {
-        if (a.scope === "workspace") {
-          return a.relationOverride !== "not-in-list";
-        }
-        if (a.scope === "published") {
-          return a.relationOverride === "in-list";
-        }
-        return true; // user's private agents should be returned
-      }
-    ) as AgentConfigurationType[];
-    return [...localAgents, ...globalAgents];
+    };
+    const listAgentsPromise = getAgentConfigurationsForQuery(
+      listAgentsSequelizeQuery
+    ).then(
+      (agents) =>
+        agents.filter((a) => {
+          if (a.scope === "workspace") {
+            return a.relationOverride !== "not-in-list";
+          }
+          if (a.scope === "published") {
+            return a.relationOverride === "in-list";
+          }
+          return true; // user's private agents should be returned
+        }) as AgentConfigurationType[]
+    );
+    return (
+      await Promise.all([listAgentsPromise, getGlobalAgentConfigurations()])
+    ).flat();
   }
 
   // conversation view
@@ -344,34 +363,34 @@ export async function getAgentConfigurations(
     if (!user) {
       throw new Error("Conversation view is specific to a user.");
     }
-    const [agents, mentions] = await Promise.all([
-      AgentConfiguration.findAll({
-        ...agentsSequelizeQuery,
-        where: {
-          ...agentsSequelizeQuery.where,
-          [Op.or]: [
-            { scope: { [Op.in]: ["published", "workspace"] } },
-            { authorId: user && user.id },
-          ],
-        },
-      }),
+    const conversationAgentsSequelizeQuery = {
+      ...baseAgentsSequelizeQuery,
+      where: {
+        ...baseAgentsSequelizeQuery.where,
+        [Op.or]: [
+          { scope: { [Op.in]: ["published", "workspace"] } },
+          { authorId: user.id },
+        ],
+      },
+    };
+    const [agents, mentions, globalAgents] = await Promise.all([
+      getAgentConfigurationsForQuery(conversationAgentsSequelizeQuery),
       getConversationMentions(agentsGetView.conversationId),
+      getGlobalAgentConfigurations(),
     ]);
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
-    const localAgents = (await getLocalAgentConfigurations(agents)).filter(
-      (a) => {
-        if (mentionedAgentIds.includes(a.sId)) {
-          return true;
-        }
-        if (a.scope === "workspace") {
-          return a.relationOverride !== "not-in-list";
-        }
-        if (a.scope === "published") {
-          return a.relationOverride === "in-list";
-        }
-        return true; // user's private agents should be returned
+    const localAgents = agents.filter((a) => {
+      if (mentionedAgentIds.includes(a.sId)) {
+        return true;
       }
-    ) as AgentConfigurationType[];
+      if (a.scope === "workspace") {
+        return a.relationOverride !== "not-in-list";
+      }
+      if (a.scope === "published") {
+        return a.relationOverride === "in-list";
+      }
+      return true; // user's private agents should be returned
+    }) as AgentConfigurationType[];
     return [...localAgents, ...globalAgents];
   }
 
