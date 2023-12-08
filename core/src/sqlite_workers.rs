@@ -27,12 +27,12 @@ impl SqliteWorker {
     pub fn url(&self) -> Result<String> {
         let cluster_namespace = match std::env::var("CLUSTER_NAMESPACE") {
             Ok(n) => n,
-            Err(_) => return Err(anyhow!("CLUSTER_NAMESPACE env var not set")),
+            Err(_) => Err(anyhow!("CLUSTER_NAMESPACE env var not set"))?,
         };
         let core_sqlite_headless_service_name =
             match std::env::var("CORE_SQLITE_HEADLESS_SERVICE_NAME") {
                 Ok(s) => s,
-                Err(_) => return Err(anyhow!("CORE_SQLITE_HEADLESS_SERVICE_NAME env var not set")),
+                Err(_) => Err(anyhow!("CORE_SQLITE_HEADLESS_SERVICE_NAME env var not set"))?,
             };
 
         Ok(format!(
