@@ -28,6 +28,7 @@ import {
 import { TimeframeUnit } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import * as t from "io-ts";
 import { useRouter } from "next/router";
 import { ReactNode, useCallback, useEffect, useState } from "react";
@@ -37,12 +38,15 @@ import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -58,11 +62,6 @@ import {
   useSlackChannelsLinkedWithAgent,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-
-import DataSourceResourceSelectorTree from "../DataSourceResourceSelectorTree";
-import AssistantBuilderDustAppModal from "./AssistantBuilderDustAppModal";
-import DustAppSelectionSection from "./DustAppSelectionSection";
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,
@@ -250,6 +249,7 @@ export default function AssistantBuilder({
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: "all",
   });
 
   const [avatarUrls, setAvatarUrls] = useState<
