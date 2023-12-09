@@ -83,17 +83,7 @@ async function handler(
         ? view
         : conversationId
         ? { conversationId }
-        : undefined;
-      if (!viewParam) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The view query parameter is required if no conversationId is provided.",
-          },
-        });
-      }
+        : "all";
       const agentConfigurations = await getAgentConfigurations(auth, viewParam);
       return res.status(200).json({
         agentConfigurations,
