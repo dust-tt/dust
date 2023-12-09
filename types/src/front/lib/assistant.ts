@@ -94,12 +94,3 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-
-export function isSupportedModel(model: unknown): model is SupportedModel {
-  const maybeSupportedModel = model as SupportedModel;
-  return SUPPORTED_MODEL_CONFIGS.some(
-    (m) =>
-      m.modelId === maybeSupportedModel.modelId &&
-      m.providerId === maybeSupportedModel.providerId
-  );
-}

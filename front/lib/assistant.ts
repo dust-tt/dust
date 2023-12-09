@@ -1,6 +1,15 @@
 import { AgentConfigurationType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS, SupportedModel } from "@dust-tt/types";
 
+export function isSupportedModel(model: unknown): model is SupportedModel {
+  const maybeSupportedModel = model as SupportedModel;
+  return SUPPORTED_MODEL_CONFIGS.some(
+    (m) =>
+      m.modelId === maybeSupportedModel.modelId &&
+      m.providerId === maybeSupportedModel.providerId
+  );
+}
+
 export function isLargeModel(model: unknown): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;
   const m = SUPPORTED_MODEL_CONFIGS.find(
