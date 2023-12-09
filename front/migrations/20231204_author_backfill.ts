@@ -27,10 +27,6 @@ async function main() {
       })
     );
   }
-
-  for (const w of workspaceIds) {
-    await backfillAuthor(w);
-  }
 }
 
 async function backfillAuthor(workspaceId: number) {
@@ -58,7 +54,7 @@ async function backfillAuthor(workspaceId: number) {
       authorId: author.id,
     },
     {
-      // @ts-ignore
+      // @ts-expect-error null is not tolerated by sequelize after migration
       where: {
         workspaceId,
         authorId: null,

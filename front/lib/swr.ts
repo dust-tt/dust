@@ -1,4 +1,4 @@
-import { DataSourceType } from "@dust-tt/types";
+import { AgentsGetViewType, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
@@ -459,14 +459,19 @@ export function useConversationReactions({
 
 export function useAgentConfigurations({
   workspaceId,
+  agentsGetViewType,
 }: {
   workspaceId: string;
+  agentsGetViewType: AgentsGetViewType;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
-
+  const viewQueryString =
+    typeof agentsGetViewType === "string"
+      ? `view=${agentsGetViewType}`
+      : `conversationId=${agentsGetViewType.conversationId}`;
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations`,
+    `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}`,
     agentConfigurationsFetcher
   );
 

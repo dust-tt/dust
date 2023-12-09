@@ -69,6 +69,7 @@ export default function EditDustAssistant({
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
+      agentsGetViewType: "all",
     });
   const { dataSources, mutateDataSources } = useDataSources(owner);
 

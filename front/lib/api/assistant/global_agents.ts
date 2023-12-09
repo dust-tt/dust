@@ -100,6 +100,7 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: "active",
+    relationOverride: null,
     scope: "global",
     generation: {
       id: -1,
@@ -126,6 +127,7 @@ async function _getGPT35TurboGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt: "",
@@ -155,6 +157,7 @@ async function _getGPT4GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt: "",
@@ -184,6 +187,7 @@ async function _getClaudeInstantGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : "active",
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt: "",
@@ -215,6 +219,7 @@ async function _getClaudeGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : status,
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt: "",
@@ -242,6 +247,7 @@ async function _getMistralGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status: settings ? settings.status : "disabled_by_admin",
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt: "",
@@ -300,6 +306,7 @@ async function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
+      relationOverride: null,
       generation: null,
       action: null,
     };
@@ -319,6 +326,7 @@ async function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
+      relationOverride: null,
       generation: null,
       action: null,
     };
@@ -333,6 +341,7 @@ async function _getManagedDataSourceAgent(
     pictureUrl,
     status: "active",
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt,
@@ -488,6 +497,7 @@ async function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
+      relationOverride: null,
       generation: null,
       action: null,
     };
@@ -515,6 +525,7 @@ async function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
+      relationOverride: null,
       generation: null,
       action: null,
     };
@@ -529,6 +540,7 @@ async function _getDustGlobalAgent(
     pictureUrl,
     status: "active",
     scope: "global",
+    relationOverride: null,
     generation: {
       id: -1,
       prompt:

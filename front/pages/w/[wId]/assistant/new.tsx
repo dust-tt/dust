@@ -97,6 +97,7 @@ export default function AssistantNew({
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
+    agentsGetViewType: "list",
   });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
