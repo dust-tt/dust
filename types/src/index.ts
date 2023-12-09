@@ -1,5 +1,4 @@
 export * from "./core/data_source";
-export * from "./front/api_handlers/internal/agent_configuration";
 export * from "./front/api_handlers/internal/assistant";
 export * from "./front/api_handlers/public/assistant";
 export * from "./front/api_handlers/public/data_sources";

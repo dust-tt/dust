@@ -5,10 +5,11 @@ import {
   UserMessageType,
 } from "@dust-tt/types";
 
-import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
+
+import { AgentSuggestion } from "./AgentSuggestion";
 
 export function UserMessage({
   message,
@@ -25,7 +26,6 @@ export function UserMessage({
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetViewType: { conversationId: conversation.sId },
   });
 
   return (

@@ -23,8 +23,9 @@ export type PostAgentRelationOverrideResponseBody = {
 
 export type GetAgentRelationOverrideResponseBody = {
   agentRelationOverrides: {
-    [assistantId: string]: AgentRelationOverrideType;
-  };
+    assistantId: string;
+    agentRelationOverride: AgentRelationOverrideType;
+  }[];
 };
 
 export const PostAgentRelationOverrideRequestBodySchema = t.type({
