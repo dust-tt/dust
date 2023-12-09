@@ -165,6 +165,7 @@ export class NotionDatabase extends Model<
 
   declare notionDatabaseId: string;
   declare lastSeenTs: Date;
+  declare firstSeenTs?: Date;
   declare lastCreatedOrMovedRunTs: CreationOptional<Date | null>;
 
   declare skipReason?: string | null;
@@ -201,6 +202,10 @@ NotionDatabase.init(
     lastSeenTs: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    firstSeenTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     lastCreatedOrMovedRunTs: {
       type: DataTypes.DATE,

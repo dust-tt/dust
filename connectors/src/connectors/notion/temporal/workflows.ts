@@ -451,12 +451,10 @@ export async function syncResultPageDatabaseWorkflow({
           ...loggerArgs,
           pageIndex,
         },
-        // Note: we don't want to optimize this step due to Notion not always returning all the
-        // dbs (so if we miss it at initial sync and it gets touched we will miss all its old
-        // pages here again. It's a lot of additional work but it helps catching as much as we
-        // can from Notion). The caller of this function filters the edited page based on our
-        // knowledge of it in DB so this won't create extraneous upserts.
-        excludeUpToDatePages: false,
+        // This will prevent syncing pages that are already up to date, unless
+        // this is the first run for this database or a garbage collection run.
+        excludeUpToDatePages: !isGarbageCollectionRun,
+        runTimestamp,
       });
       cursor = nextCursor;
       pageIndex += 1;

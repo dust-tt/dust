@@ -66,12 +66,14 @@ export async function fetchDatabaseChildPages({
   cursor,
   loggerArgs,
   excludeUpToDatePages,
+  runTimestamp,
 }: {
   connectorId: ModelId;
   databaseId: string;
   cursor: string | null;
   loggerArgs: Record<string, string | number>;
   excludeUpToDatePages: boolean;
+  runTimestamp: number;
 }): Promise<{
   pageIds: string[];
   nextCursor: string | null;
@@ -85,6 +87,18 @@ export async function fetchDatabaseChildPages({
   if (!connector) {
     throw new Error("Could not find connector");
   }
+
+  const notionDbModel = await NotionDatabase.findOne({
+    where: {
+      connectorId: connector.id,
+      notionDatabaseId: databaseId,
+    },
+  });
+  const isDbFirstSync =
+    !notionDbModel ||
+    !notionDbModel.firstSeenTs ||
+    notionDbModel.firstSeenTs.getTime() === runTimestamp;
+
   const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const localLoggerArgs = {
@@ -136,7 +150,7 @@ export async function fetchDatabaseChildPages({
 
   const { pages, nextCursor } = res;
 
-  if (!excludeUpToDatePages) {
+  if (!excludeUpToDatePages || isDbFirstSync) {
     return {
       pageIds: pages.map((p) => p.id),
       nextCursor,
@@ -410,7 +424,7 @@ export async function upsertDatabase(
   await upsertNotionDatabaseInConnectorsDb({
     connectorId,
     notionDatabaseId: databaseId,
-    lastSeenTs: runTimestamp,
+    runTimestamp,
     parentType: parsedDb ? parsedDb.parentType : null,
     parentId: parsedDb ? parsedDb.parentId : null,
     title: parsedDb ? parsedDb.title : null,
