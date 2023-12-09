@@ -55,7 +55,7 @@ export async function getAgentConfiguration(
   agentConfiguration?: AgentConfiguration
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
   const plan = auth.plan();
@@ -66,7 +66,7 @@ export async function getAgentConfiguration(
   if (isGlobalAgentId(agentId)) {
     return await getGlobalAgent(auth, agentId, null);
   }
-
+  const user = auth.user();
   const agent =
     agentConfiguration ??
     (await AgentConfiguration.findOne({
@@ -88,14 +88,16 @@ export async function getAgentConfiguration(
           model: AgentDustAppRunConfiguration,
           as: "dustAppRunConfiguration",
         },
-        {
-          model: AgentUserRelation,
-          where: {
-            userId: auth.user()?.id,
-          },
-          attributes: ["relation"],
-          required: false,
-        },
+        ...(user
+          ? [
+              {
+                model: AgentUserRelation,
+                where: { userId: user.id },
+                attributes: ["relation"],
+                required: false,
+              },
+            ]
+          : []),
       ],
       limit: 1,
     }));
@@ -247,6 +249,7 @@ export async function getAgentConfigurations(
     throw new Error("Unexpected `auth` from outside workspace.");
   }
 
+  const user = auth.user();
   const baseAgentsSequelizeQuery = {
     where: {
       workspaceId: owner.id,
@@ -266,14 +269,16 @@ export async function getAgentConfigurations(
         model: AgentDustAppRunConfiguration,
         as: "dustAppRunConfiguration",
       },
-      {
-        model: AgentUserRelation,
-        where: {
-          userId: auth.user()?.id,
-        },
-        attributes: ["relation"],
-        required: false,
-      },
+      ...(user
+        ? [
+            {
+              model: AgentUserRelation,
+              where: { userId: user.id },
+              attributes: ["relation"],
+              required: false,
+            },
+          ]
+        : []),
     ],
   };
 
