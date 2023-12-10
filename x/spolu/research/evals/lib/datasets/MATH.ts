@@ -1,5 +1,5 @@
-import { Dataset, Example, ProblemId, Test } from "../datasets";
 import * as fs from "fs";
+import { Dataset, Example, ProblemId, Test } from "../datasets";
 
 type ExampleMATH = {
   problem: string;
@@ -12,47 +12,37 @@ type ExampleMATH = {
 
 class MATH extends Dataset {
   readonly name = "MATH";
-  private train: ExampleMATH[] = [];
-  private test: ExampleMATH[] = [];
+  private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
+  private test: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
 
   constructor() {
     super();
   }
 
-  async loadFile(path: string): Promise<ExampleMATH[]> {
+  async loadFile(path: string) {
     const data = await fs.promises.readFile(path, "utf8");
     const lines = data.split("\n");
-    return lines
+    const examples = lines
       .slice(0, lines.length - 1)
       .map((line) => JSON.parse(line) as ExampleMATH);
+    let d: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
+    for (let e of examples) {
+      if (!d[e.type]) {
+        d[e.type] = {};
+      }
+      if (!d[e.type][e.level]) {
+        d[e.type][e.level] = [];
+      }
+      console.log(e.name);
+      d[e.type][e.level].push(e);
+    }
+
+    return d;
   }
 
   async load() {
     this.test = await this.loadFile("datasets/MATH/test.jsonl");
     this.train = await this.loadFile("datasets/MATH/train.jsonl");
-
-    let counts = {
-      train: {},
-      test: {},
-    } as any;
-
-    this.train.forEach((e) => {
-      if (!counts.train[e.type]) {
-        counts.train[e.type] = 0;
-      }
-      counts.train[e.type]++;
-      console.log(`${e.type} ${e.level} ${e.name} ${e.answer}`);
-    });
-    console.log("-----------------------");
-    this.test.forEach((e) => {
-      if (!counts.test[e.type]) {
-        counts.test[e.type] = 0;
-      }
-      counts.test[e.type]++;
-      console.log(`${e.type} ${e.level} ${e.name} ${e.answer}`);
-    });
-
-    console.log(counts);
 
     // const shuffled = examples.sort(() => Math.random() - 0.5);
     // this.train = shuffled.slice(0, 128);
