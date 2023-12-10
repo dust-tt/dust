@@ -6,3 +6,4 @@ test.sh
 test.ts
 .env.local
 qdrant_storage
+.*.swp
