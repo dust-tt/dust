@@ -260,17 +260,17 @@ export function AssistantInputBar({
   // Empty bar detection logic
   const [empty, setEmpty] = useState<boolean>(
     !inputRef.current?.textContent ||
-    inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+      inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
   );
   // MutationObserver is only defined after window is defined so observer cannot
   // be defined in the useRef below
   const observer = useRef<MutationObserver | null>(null);
   useEffect(() => {
     if (!observer.current && inputRef.current) {
-      observer.current = new MutationObserver(function() {
+      observer.current = new MutationObserver(function () {
         setEmpty(
           !inputRef.current?.textContent ||
-          inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
+            inputRef.current.textContent.replace(/[\u200B\n]/g, "").length === 0
         );
       });
       observer.current.observe(inputRef.current, {
@@ -325,11 +325,11 @@ export function AssistantInputBar({
       content = content.replace(/\u200B/g, "");
       let contentFragment:
         | {
-          title: string;
-          content: string;
-          url: string | null;
-          contentType: string;
-        }
+            title: string;
+            content: string;
+            url: string | null;
+            contentType: string;
+          }
         | undefined = undefined;
       if (contentFragmentBody && contentFragmentFilename) {
         contentFragment = {
@@ -765,9 +765,9 @@ export function AssistantInputBar({
                           ) {
                             const newTextNode = document.createTextNode(
                               (mentionSelectNode.textContent || "") +
-                              (inputNode.getAttribute("ignore") === "space"
-                                ? " "
-                                : "")
+                                (inputNode.getAttribute("ignore") === "space"
+                                  ? " "
+                                  : "")
                             );
                             beforeTextNode.parentNode?.insertBefore(
                               newTextNode,
@@ -837,8 +837,8 @@ export function AssistantInputBar({
                     }
                   }
                 }}
-              // We aboslutely don't want any content in that div just below here. Do not add
-              // anyting to it.
+                // We aboslutely don't want any content in that div just below here. Do not add
+                // anyting to it.
               ></div>
               <div className="h-0 w-full">
                 {/* This div is a spacer to avoid having the text clash with the buttons */}
