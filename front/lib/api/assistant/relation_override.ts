@@ -8,14 +8,17 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 
+/**
+ *
+ * @returns Map of agentId to relation override
+ */
 export async function getAgentRelationOverridesForUser(
   auth: Authenticator
 ): Promise<
   Result<
     {
-      assistantId: string;
-      agentRelationOverride: AgentRelationOverrideType;
-    }[],
+      [assistantId: string]: AgentRelationOverrideType;
+    },
     Error
   >
 > {
@@ -31,10 +34,15 @@ export async function getAgentRelationOverridesForUser(
       },
     ],
   });
-  const agentRelationOverrides = agentRelations.map((mav) => ({
-    assistantId: mav.agentConfiguration.sId,
-    agentRelationOverride: mav.relation,
-  }));
+  const agentRelationOverrides = agentRelations.reduce(
+    (acc, agentRelation) => {
+      acc[agentRelation.agentConfiguration.sId] = agentRelation.relation;
+      return acc;
+    },
+    {} as {
+      [assistantId: string]: AgentRelationOverrideType;
+    }
+  );
   return new Ok(agentRelationOverrides);
 }
 

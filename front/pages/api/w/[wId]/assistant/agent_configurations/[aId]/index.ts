@@ -1,4 +1,7 @@
-import { AgentConfigurationType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -10,11 +13,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-import {
-  createOrUpgradeAgentConfiguration,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-} from "..";
+import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
