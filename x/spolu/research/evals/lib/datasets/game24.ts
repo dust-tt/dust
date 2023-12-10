@@ -1,6 +1,7 @@
 import { Dataset, Example, ProblemId, Test } from "../datasets";
 import * as fs from "fs";
 import { ConstantNode, OperatorNode, evaluate, parse } from "mathjs";
+import seedrandom from "seedrandom";
 
 type Example24 = {
   problem: string;
@@ -28,7 +29,7 @@ class Game24 extends Dataset {
     const solution = problem.solutions[0];
     const node = parse(solution);
     let formula: (string | number)[] = [];
-    node.traverse(function (node, path, parent) {
+    node.traverse(function (node, _path, _parent) {
       switch (node.type) {
         case "OperatorNode":
           formula.push((node as OperatorNode).op);
@@ -132,11 +133,25 @@ class Game24 extends Dataset {
   examples({
     problem,
     count,
+    iteration,
   }: {
     problem: ProblemId;
     count: number;
+    iteration: number;
   }): Example[] {
-    return this.train.slice(0, count).map((e) => ({
+    // Shuffle differently for each call to examples.
+    let rng = seedrandom(`GAME-24_DATASET-${problem}-${iteration}`);
+    let examples = [...this.train];
+    examples = examples.sort(() => rng() - 0.5);
+
+    if (count > examples.length) {
+      throw new Error(
+        `Not enough examples in dataset: dataset=Game24 problem=${problem} ` +
+          `count=${count} example_count=${examples.length}`
+      );
+    }
+
+    return examples.slice(0, count).map((e) => ({
       id: e.problem,
       question: e.problem,
       reasoning: e.reasoning || [],
@@ -144,7 +159,7 @@ class Game24 extends Dataset {
     }));
   }
 
-  async check({ test, answer }: { test: Test; answer: string }) {
+  async check({ test: _test, answer }: { test: Test; answer: string }) {
     const result = evaluate(answer);
     if (result === 24) {
       return true;
@@ -156,12 +171,12 @@ class Game24 extends Dataset {
 (async () => {
   const d = new Game24();
   await d.load();
-  const train = d.examples({ problem: "", count: 8 });
+  const train = d.examples({ problem: "", count: 8, iteration: 0 });
 
   console.log(train[0]);
 
   console.log(
-    d.check({
+    await d.check({
       test: { id: train[0].id, question: train[0].question },
       answer: train[0].answer,
     })

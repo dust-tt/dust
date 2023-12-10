@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import seedrandom = require("seedrandom");
+import seedrandom from "seedrandom";
 
 const { DUST_API_KEY } = process.env;
 

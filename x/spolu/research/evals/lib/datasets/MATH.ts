@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import seedrandom from "seedrandom";
 import { Dataset, Example, ProblemId, Test } from "../datasets";
 
 type ExampleMATH = {
@@ -13,7 +14,7 @@ type ExampleMATH = {
 class MATH extends Dataset {
   readonly name = "MATH";
   private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
-  private test: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
+  private test: ExampleMATH[] = [];
 
   constructor() {
     super();
@@ -33,7 +34,6 @@ class MATH extends Dataset {
       if (!d[e.type][e.level]) {
         d[e.type][e.level] = [];
       }
-      console.log(e.name);
       d[e.type][e.level].push(e);
     }
 
@@ -41,15 +41,29 @@ class MATH extends Dataset {
   }
 
   async load() {
-    this.test = await this.loadFile("datasets/MATH/test.jsonl");
-    this.train = await this.loadFile("datasets/MATH/train.jsonl");
+    const train = await this.loadFile("datasets/MATH/train.jsonl");
+    const test = await this.loadFile("datasets/MATH/test.jsonl");
 
-    // const shuffled = examples.sort(() => Math.random() - 0.5);
-    // this.train = shuffled.slice(0, 128);
-    // this.test = shuffled.slice(128, 256);
+    this.test = [];
+    for (let type in test) {
+      for (let level in test[type]) {
+        this.test = this.test.concat(test[type][level]);
+      }
+    }
+
+    let rng = seedrandom("MATH_DATASET");
+    this.test = this.test.sort(() => rng() - 0.5);
+
+    let train_count = 0;
+    for (let type in train) {
+      for (let level in train[type]) {
+        train_count += train[type][level].length;
+      }
+    }
+    this.train = train;
 
     console.log(
-      `Loaded dataset: dataset=MATH train_count=${this.train.length} test_count=${this.test.length}`
+      `Loaded dataset: dataset=MATH train_count=${train_count} test_count=${this.test.length}`
     );
   }
 
@@ -65,8 +79,13 @@ class MATH extends Dataset {
   }
 
   tests({ count }: { count: number }): Test[] {
+    if (count > this.test.length) {
+      throw new Error(
+        `Not enough tests in dataset: dataset=MATH count=${count} test_count=${this.test.length}`
+      );
+    }
     return this.test.slice(0, count).map((e) => ({
-      id: e.problem,
+      id: e.name,
       question: e.problem,
     }));
   }
@@ -74,12 +93,34 @@ class MATH extends Dataset {
   examples({
     problem,
     count,
+    iteration,
   }: {
     problem: ProblemId;
     count: number;
+    iteration: number;
   }): Example[] {
-    return this.train.slice(0, count).map((e) => ({
-      id: e.problem,
+    let t = this.test.find((e) => e.name === problem);
+    if (!t) {
+      throw new Error(`Unknown problem [examples]: dataset=MATH id=${problem}`);
+    }
+    let examples: ExampleMATH[] = [];
+    for (let level in this.train[t.type]) {
+      examples = examples.concat(this.train[t.type][level]);
+    }
+
+    // Shuffle differently for each call to examples.
+    let rng = seedrandom(`MATH_DATASET-${problem}-${iteration}`);
+    examples = examples.sort(() => rng() - 0.5);
+
+    if (count > examples.length) {
+      throw new Error(
+        `Not enough examples in dataset: dataset=MATH problem=${problem} ` +
+          `count=${count} example_count=${examples.length}`
+      );
+    }
+
+    return examples.slice(0, count).map((e) => ({
+      id: e.name,
       question: e.problem,
       reasoning: e.reasoning || [],
       answer: e.answer,
@@ -87,25 +128,26 @@ class MATH extends Dataset {
   }
 
   async check({ test, answer }: { test: Test; answer: string }) {
-    // const result = evaluate(answer);
-    // if (result === 24) {
-    //   return true;
-    // }
-    return false;
+    let t = this.test.find((e) => e.name === test.id);
+    if (!t) {
+      throw new Error(`Unknown problem [check]: dataset=MATH id=${test.id}`);
+    }
+
+    return t.answer === answer;
   }
 }
 
 (async () => {
   const d = new MATH();
   await d.load();
-  // const train = d.examples({ problem: "", count: 8 });
+  const test = d.tests({ count: 1 });
 
-  // console.log(train[0]);
+  console.log(test[0]);
 
-  // console.log(
-  //   d.check({
-  //     test: { id: train[0].id, question: train[0].question },
-  //     answer: train[0].answer,
-  //   })
-  // );
+  console.log(
+    await d.check({
+      test: { id: test[0].id, question: test[0].question },
+      answer: "\\boxed{x \\in [-2,7]}",
+    })
+  );
 })();

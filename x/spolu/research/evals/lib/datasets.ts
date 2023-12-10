@@ -26,9 +26,11 @@ export abstract class Dataset {
   abstract examples({
     problem,
     count,
+    iteration,
   }: {
     problem: ProblemId;
     count: number;
+    iteration: number;
   }): Example[];
 
   abstract check({
