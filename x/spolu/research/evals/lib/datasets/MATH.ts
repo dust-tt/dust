@@ -141,8 +141,9 @@ class MATH extends Dataset {
   const d = new MATH();
   await d.load();
   const test = d.tests({ count: 1 });
+  const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
 
-  console.log(test[0]);
+  console.log(train[0]);
 
   console.log(
     await d.check({
