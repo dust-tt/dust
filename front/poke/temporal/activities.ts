@@ -216,6 +216,7 @@ export async function deleteConversationsActivity({
               where: { conversationId: c.id },
               transaction: t,
             });
+            logger.info(`[Workspace delete] Deleting conversation ${c.sId}`);
             await c.destroy({ transaction: t });
           })();
         })
@@ -289,6 +290,7 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
+      logger.info(`[Workspace delete] Deleting agent ${agent.sId}`);
       await agent.destroy({ transaction: t });
     }
   });
@@ -339,6 +341,7 @@ export async function deleteAppsActivity({
         },
         transaction: t,
       });
+      logger.info(`[Workspace delete] Deleting app ${app.sId}`);
       await app.destroy({ transaction: t });
     }
     await Key.destroy({
@@ -468,6 +471,7 @@ export async function deleteMembersActivity({
     }
 
     for (const membership of memberships) {
+      logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
       await membership.destroy({ transaction: t });
     }
   });
@@ -498,6 +502,7 @@ export async function deleteWorkspaceActivity({
       },
       transaction: t,
     });
+    logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
       where: {
         id: workspace.id,
