@@ -119,15 +119,15 @@ export async function updateAllParentsFields(
           },
           "Updating parents field for page"
         );
-        await updateDocumentParentsField(
-          {
+        await updateDocumentParentsField({
+          dataSourceConfig: {
             dataSourceName: connector.dataSourceName,
             workspaceId: connector.workspaceId,
             workspaceAPIKey: connector.workspaceAPIKey,
           },
-          `notion-${pageId}`,
-          parents
-        );
+          documentId: `notion-${pageId}`,
+          parents,
+        });
       })
     );
   }

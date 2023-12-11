@@ -79,10 +79,14 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
           document.repoId,
           document.discussionNumber
         );
-        await updateDocumentParentsField(connector, docId, [
-          getDiscussionDocumentId(document.repoId, document.discussionNumber),
-          document.repoId,
-        ]);
+        await updateDocumentParentsField({
+          dataSourceConfig: connector,
+          documentId: docId,
+          parents: [
+            getDiscussionDocumentId(document.repoId, document.discussionNumber),
+            document.repoId,
+          ],
+        });
       })
     );
     process.stdout.write(".");
@@ -105,10 +109,14 @@ async function updateIssuesParentsFieldForConnector(connector: Connector) {
     await Promise.all(
       chunk.map(async (document) => {
         const docId = getIssueDocumentId(document.repoId, document.issueNumber);
-        await updateDocumentParentsField(connector, docId, [
-          getIssueDocumentId(document.repoId, document.issueNumber),
-          document.repoId,
-        ]);
+        await updateDocumentParentsField({
+          dataSourceConfig: connector,
+          documentId: docId,
+          parents: [
+            getIssueDocumentId(document.repoId, document.issueNumber),
+            document.repoId,
+          ],
+        });
       })
     );
     process.stdout.write(".");

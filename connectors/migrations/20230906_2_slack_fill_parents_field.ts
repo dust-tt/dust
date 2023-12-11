@@ -73,11 +73,11 @@ async function updateParentsFieldForConnector(connector: Connector) {
     await Promise.all(
       chunk.map(
         async (documentIdAndChannel) =>
-          await updateDocumentParentsField(
-            connector,
-            documentIdAndChannel.documentId,
-            [documentIdAndChannel.channelId]
-          )
+          await updateDocumentParentsField({
+            dataSourceConfig: connector,
+            documentId: documentIdAndChannel.documentId,
+            parents: [documentIdAndChannel.channelId],
+          })
       )
     );
   }

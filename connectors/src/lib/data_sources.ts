@@ -174,12 +174,21 @@ export async function deleteFromDataSource(
   }
 }
 
-export async function updateDocumentParentsField(
-  dataSourceConfig: DataSourceConfig,
-  documentId: string,
-  parents: string[],
-  loggerArgs: Record<string, string | number> = {}
-) {
+export const updateDocumentParentsField = withRetries(
+  _updateDocumentParentsField
+);
+
+async function _updateDocumentParentsField({
+  dataSourceConfig,
+  documentId,
+  parents,
+  loggerArgs = {},
+}: {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+  parents: string[];
+  loggerArgs?: Record<string, string | number>;
+}) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
