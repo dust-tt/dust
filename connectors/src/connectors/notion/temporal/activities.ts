@@ -1,4 +1,4 @@
-import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -40,7 +40,6 @@ import {
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  MAX_SECTION_PREFIX_LENGTH,
   renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
