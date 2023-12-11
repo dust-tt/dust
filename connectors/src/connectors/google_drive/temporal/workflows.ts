@@ -156,6 +156,13 @@ export async function googleDriveIncrementalSync(
     await syncSucceeded(connectorId);
     console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 
+    if (workflowInfo().historyLength > 4000) {
+      // If we have been deboucing and doing second passes for more than 4000 events,
+      // it means that this workflow is pretty busy and being signaled a lot, so we can safely exit and rely on the next signal to
+      // start a new workflow.
+      return;
+    }
+
     if (passCount < maxPassCount) {
       let secondPassSleptTimeMs = 0;
 
