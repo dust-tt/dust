@@ -296,6 +296,7 @@ pub trait Store {
     async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>>;
     async fn sqlite_workers_upsert(&self, pod_name: &str) -> Result<SqliteWorker>;
     async fn sqlite_workers_delete(&self, pod_name: &str) -> Result<()>;
+    async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()>;
 
     // Cloning
     fn clone_box(&self) -> Box<dyn Store + Sync + Send>;

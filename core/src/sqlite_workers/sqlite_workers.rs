@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 
 use crate::utils;
 
-const HEARTBEAT_INTERVAL_MS: u64 = 3_000;
+pub const HEARTBEAT_INTERVAL_MS: u64 = 3_000;
 
 pub struct SqliteWorker {
     last_heartbeat: u64,
