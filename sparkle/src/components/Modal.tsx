@@ -27,13 +27,13 @@ const variantSize = {
 
 const modalStyles = {
   [ModalType.Side]: {
-    containerClasses: "s-flex s-h-full s-p-0 s-justify-end sm:s-p-2",
+    containerClasses: "s-flex s-h-full s-p-0 s-justify-end",
     panelClasses:
-      "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0 sm:s-rounded-xl s-box-shadow-xl s-border s-border-structure-100",
-    transitionEnterFrom: "s-opacity-0 -s-translate-x-20 s-scale-99",
+      "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0 s-box-shadow-xl s-border s-border-structure-100",
+    transitionEnterFrom: "s-opacity-0 s-translate-x-0 s-scale-100",
     transitionEnterTo: "s-opacity-100 s-translate-x-0 s-scale-100",
     transitionLeaveFrom: "s-opacity-100 s-translate-x-0 s-scale-100",
-    transitionLeaveTo: "s-opacity-0 s-translate-x-20 s-scale-99",
+    transitionLeaveTo: "s-opacity-0 s-translate-x-0 s-scale-100",
     innerContainerClasses: "s-h-full s-overflow-y-auto",
   },
   [ModalType.FullScreen]: {
