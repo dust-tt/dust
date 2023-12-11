@@ -13,9 +13,8 @@ use axum::{
     Extension, Json, Router,
 };
 use dust::{
-    http_utils::{error_response, APIResponse},
-    sqlite_database::SqliteDatabase,
-    utils,
+    sqlite_workers::sqlite_database::SqliteDatabase,
+    utils::{self, error_response, APIResponse},
 };
 use hyper::{Body, Client, Request, StatusCode};
 use serde::Deserialize;

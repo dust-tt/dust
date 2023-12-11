@@ -10,7 +10,8 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
-use crate::sqlite_workers::SqliteWorker;
+use crate::sqlite_workers::sqlite_workers::SqliteWorker;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;

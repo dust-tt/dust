@@ -11,7 +11,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::sqlite_workers::SqliteWorker;
+use crate::sqlite_workers::sqlite_workers::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
