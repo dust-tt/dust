@@ -26,7 +26,7 @@ export function withRetries<T, U>(
             retries: retries,
             sleepTime: sleepTime,
           },
-          "Error upserting to data source. Retrying..."
+          "Error while executing retriable function. Retrying..."
         );
         await new Promise((resolve) => setTimeout(resolve, sleepTime));
         errors.push(e);

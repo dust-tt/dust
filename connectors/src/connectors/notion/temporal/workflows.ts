@@ -19,14 +19,15 @@ const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
 });
 
-const { upsertDatabase } = proxyActivities<typeof activities>({
+const { upsertDatabase, updateParentsFields } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "60 minute",
 });
 
 const {
   getPagesAndDatabasesToSync,
   garbageCollectorMarkAsSeen,
-  updateParentsFields,
   fetchDatabaseChildPages,
   cachePage,
   cacheBlockChildren,
