@@ -8,6 +8,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export const WorkspaceTypeSchema = t.type({
   segmentation: t.union([t.literal("interesting"), t.null]),
@@ -17,9 +18,17 @@ export type SegmentWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
 
+export type DeleteWorkspaceResponseBody = {
+  success: true;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SegmentWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    | SegmentWorkspaceResponseBody
+    | DeleteWorkspaceResponseBody
+    | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -62,13 +71,17 @@ async function handler(
       return res.status(200).json({
         workspace,
       });
+    case "DELETE":
+      await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, PATCH OR DELETE is expected.",
         },
       });
   }

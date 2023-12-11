@@ -1,6 +1,6 @@
 import { getTemporalClient } from "@app/lib/temporal";
 
-import { scrubDataSourceWorkflow } from "./workflows";
+import { deleteWorkspaceWorkflow, scrubDataSourceWorkflow } from "./workflows";
 
 export async function launchScrubDataSourceWorkflow({
   wId,
@@ -19,5 +19,23 @@ export async function launchScrubDataSourceWorkflow({
     ],
     taskQueue: "poke-queue",
     workflowId: `poke-${wId}-scrub-data-source-${dustAPIProjectId}`,
+  });
+}
+
+export async function launchDeleteWorkspaceWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const client = await getTemporalClient();
+
+  await client.workflow.start(deleteWorkspaceWorkflow, {
+    args: [
+      {
+        workspaceId,
+      },
+    ],
+    taskQueue: "poke-queue",
+    workflowId: `poke-${workspaceId}-delete-workspace`,
   });
 }

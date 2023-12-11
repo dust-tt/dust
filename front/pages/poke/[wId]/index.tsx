@@ -3,6 +3,7 @@ import {
   Collapsible,
   DropdownMenu,
   SliderToggle,
+  Spinner,
 } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
@@ -18,9 +19,10 @@ import { JsonViewer } from "@textea/json-viewer";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useContext } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -183,6 +185,8 @@ const WorkspacePage = ({
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const { plans } = usePokePlans();
 
@@ -333,6 +337,38 @@ const WorkspacePage = ({
       }
     }
   );
+  const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this workspace? Data will be deleted and THERE IS NO GOING BACK."
+      )
+    ) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!r.ok) {
+        const res: { error: { message: string } } = await r.json();
+        throw new Error(res.error.message);
+      }
+      await router.push("/poke?success=workspace-deleted");
+      sendNotification({
+        title: "Succes!",
+        description: "Workspace data deleted.",
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e);
+      window.alert(`We could not delete the workspace:\n${e}`);
+    }
+    setIsLoading(false);
+  });
 
   const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
     try {
@@ -556,6 +592,44 @@ const WorkspacePage = ({
                             subscription.plan.code !== FREE_TEST_PLAN_CODE
                           }
                         />
+                      </div>
+                    </div>
+                  </Collapsible.Panel>
+                </Collapsible>
+              </div>
+              <div>
+                <Collapsible>
+                  <Collapsible.Button label="Delete workspace data (GDPR)" />
+                  <Collapsible.Panel>
+                    <div className="flex flex-col gap-2 pt-4">
+                      <div>
+                        {dataSources.length > 0 && (
+                          <p className="text-warning mb-4 text-sm ">
+                            Delete data sources before deleting the workspace.
+                          </p>
+                        )}
+                        {subscription.plan.code !== FREE_TEST_PLAN_CODE && (
+                          <p className="text-warning mb-4 text-sm ">
+                            Downgrade to free test plan before deleting the
+                            workspace.
+                          </p>
+                        )}
+                        {isLoading ? (
+                          <p className="text-warning mb-4 text-sm ">
+                            Deleting workspace data...
+                            <Spinner />
+                          </p>
+                        ) : (
+                          <Button
+                            label="Delete the workspace"
+                            variant="secondaryWarning"
+                            onClick={onDeleteWorkspace}
+                            disabled={
+                              subscription.plan.code !== FREE_TEST_PLAN_CODE ||
+                              workspaceHasManagedDataSources
+                            }
+                          />
+                        )}
                       </div>
                     </div>
                   </Collapsible.Panel>

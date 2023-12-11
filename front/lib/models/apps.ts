@@ -6,6 +6,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
@@ -272,6 +273,8 @@ export class Run extends Model<
 
   declare appId: ForeignKey<App["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare app: NonAttribute<App>;
 }
 
 Run.init(
@@ -312,6 +315,10 @@ Run.init(
 App.hasMany(Run, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
+});
+Run.belongsTo(App, {
+  as: "app",
+  foreignKey: { name: "appId", allowNull: false },
 });
 Workspace.hasMany(Run, {
   foreignKey: { allowNull: false },
