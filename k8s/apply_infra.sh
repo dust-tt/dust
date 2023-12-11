@@ -57,6 +57,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/blog-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
@@ -101,6 +102,7 @@ apply_deployment docs-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
+apply_deployment core-sqlite-worker
 
 
 echo "-----------------------------------"
@@ -116,6 +118,7 @@ kubectl apply -f "$(dirname "$0")/services/blog-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/docs-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
 
 
 echo "-----------------------------------"

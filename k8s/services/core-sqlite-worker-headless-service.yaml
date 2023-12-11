@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-sqlite-worker-headless-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "core-backendconfig"}'
+spec:
+  # This makes the service headless.
+  clusterIP: None
+  selector:
+    app: core-sqlite-worker
+    name: core-sqlite-worker-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3005
