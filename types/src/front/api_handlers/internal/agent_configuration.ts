@@ -8,6 +8,9 @@ import { isSupportedModel, SupportedModel } from "../../lib/assistant";
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
     t.literal("list"),
+    t.literal("workspace"),
+    t.literal("published"),
+    t.literal("dust"),
     t.literal("super_user"),
     t.literal("all"),
     t.undefined,

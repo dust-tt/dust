@@ -459,17 +459,17 @@ export function useConversationReactions({
 
 export function useAgentConfigurations({
   workspaceId,
-  agentsGetViewType,
+  agentsGetView,
 }: {
   workspaceId: string;
-  agentsGetViewType: AgentsGetViewType;
+  agentsGetView: AgentsGetViewType;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
   const viewQueryString =
-    typeof agentsGetViewType === "string"
-      ? `view=${agentsGetViewType}`
-      : `conversationId=${agentsGetViewType.conversationId}`;
+    typeof agentsGetView === "string"
+      ? `view=${agentsGetView}`
+      : `conversationId=${agentsGetView.conversationId}`;
   const { data, error, mutate } = useSWR(
     `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}`,
     agentConfigurationsFetcher

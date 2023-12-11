@@ -2,6 +2,7 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { assertNever } from "../../shared/utils/assert_never";
 
 /**
  * Agent Action configuration
@@ -99,6 +100,9 @@ export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "all"
+  | "workspace"
+  | "published"
+  | "dust"
   | "super_user";
 
 export type AgentConfigurationType = {
@@ -122,3 +126,46 @@ export type AgentConfigurationType = {
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 };
+
+export function isAgentConfigurationInList(
+  agent: AgentConfigurationType
+): boolean {
+  if (agent.status !== "active") {
+    return false;
+  }
+  switch (agent.scope) {
+    case "global":
+      return true;
+
+    case "workspace": {
+      switch (agent.relationOverride) {
+        case "in-list":
+          return true;
+        case "not-in-list":
+          return false;
+        case null:
+          return true;
+        default:
+          assertNever(agent.relationOverride);
+      }
+      return true;
+    }
+    case "published": {
+      switch (agent.relationOverride) {
+        case "in-list":
+          return true;
+        case "not-in-list":
+          return false;
+        case null:
+          return false;
+        default:
+          assertNever(agent.relationOverride);
+      }
+      return false;
+    }
+    case "private":
+      return false;
+    default:
+      assertNever(agent.scope);
+  }
+}
