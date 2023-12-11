@@ -52,7 +52,8 @@ import { generateModelSId } from "@app/lib/utils";
 export async function getAgentConfiguration(
   auth: Authenticator,
   agentId: string,
-  agentConfiguration?: AgentConfiguration
+  preFetchedAgentConfiguration?: AgentConfiguration,
+  preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -68,7 +69,7 @@ export async function getAgentConfiguration(
   }
   const user = auth.user();
   const agent =
-    agentConfiguration ??
+    preFetchedAgentConfiguration ??
     (await AgentConfiguration.findOne({
       where: {
         sId: agentId,
@@ -112,23 +113,26 @@ export async function getAgentConfiguration(
     | null = null;
 
   if (agent.retrievalConfigurationId) {
-    const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
-      where: {
-        retrievalConfigurationId: agent.retrievalConfiguration?.id,
-      },
-      include: [
-        {
-          model: DataSource,
-          as: "dataSource",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
+    const dataSourcesConfig =
+      preFetchedDataSourceConfigurations !== undefined
+        ? preFetchedDataSourceConfigurations
+        : await AgentDataSourceConfiguration.findAll({
+            where: {
+              retrievalConfigurationId: agent.retrievalConfiguration?.id,
             },
-          ],
-        },
-      ],
-    });
+            include: [
+              {
+                model: DataSource,
+                as: "dataSource",
+                include: [
+                  {
+                    model: Workspace,
+                    as: "workspace",
+                  },
+                ],
+              },
+            ],
+          });
     const retrievalConfig = agent.retrievalConfiguration;
 
     if (!retrievalConfig) {
@@ -293,9 +297,40 @@ export async function getAgentConfigurations(
     agentsSequelizeQuery: FindOptions
   ) => {
     const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
+    const retrievalConfigurationIds = agents
+      .map((a) => a.retrievalConfigurationId)
+      .flatMap((id) => (id ? [id] : []));
+    const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
+      where: {
+        retrievalConfigurationId: { [Op.in]: retrievalConfigurationIds },
+      },
+      include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
+        },
+      ],
+    });
+
     return (
       await Promise.all(
-        agents.map((a) => getAgentConfiguration(auth, a.sId, a))
+        agents.map((a) =>
+          getAgentConfiguration(
+            auth,
+            a.sId,
+            a,
+            dataSourcesConfig.filter(
+              (dsc) =>
+                dsc.retrievalConfigurationId === a.retrievalConfigurationId
+            )
+          )
+        )
       )
     ).filter((a) => a !== null) as AgentConfigurationType[];
   };
