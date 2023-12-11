@@ -13,7 +13,7 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
   if (!redisUri) {
     const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
     if (!REDIS_CACHE_URI) {
-      throw new Error("REDIS_CACHE_URL is not set");
+      throw new Error("REDIS_CACHE_URI is not set");
     }
     redisUri = REDIS_CACHE_URI;
   }
