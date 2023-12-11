@@ -38,3 +38,4 @@ export * from "./front/run";
 export * from "./front/user";
 export * from "./shared/cache";
 export * from "./shared/model_id";
+export * from "./shared/utils/assert_never";

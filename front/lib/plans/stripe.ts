@@ -1,11 +1,10 @@
-import { WorkspaceType } from "@dust-tt/types";
+import { assertNever, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import Stripe from "stripe";
 
 import { Authenticator } from "@app/lib/auth";
 import { Plan } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
-import { assertNever } from "@app/lib/utils";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 

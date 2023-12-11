@@ -1,3 +1,4 @@
+import { assertNever } from "@dust-tt/types";
 import { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -20,7 +21,6 @@ import {
   launchGithubRepoGarbageCollectWorkflow,
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { assertNever } from "@connectors/lib/assert_never";
 import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";

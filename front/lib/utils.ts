@@ -115,10 +115,6 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
   return markdown;
 };
 
-export function assertNever(x: never): never {
-  throw new Error(`${x} is not of type never. This should never happen.`);
-}
-
 // Returns true if a is a subsequence of b.
 export function subFilter(a: string, b: string) {
   let i = 0;
