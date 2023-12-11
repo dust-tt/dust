@@ -40,6 +40,7 @@ import {
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
+  renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -1541,6 +1542,8 @@ export async function renderAndUpsertPageFromCache({
   );
   for (const p of parsedProperties) {
     if (!p.text) continue;
+    // We skip the title as it is added separately as prefix to the top-level document section.
+    if (p.key === "title") continue;
     renderedPage += `$${p.key}: ${p.text}\n`;
   }
   renderedPage += "\n";
@@ -1730,6 +1733,11 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
+    const content = renderSectionForTitleAndContent(
+      title || null,
+      renderedPage
+    );
+
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
@@ -1740,11 +1748,7 @@ export async function renderAndUpsertPageFromCache({
         workspaceAPIKey: connector.workspaceAPIKey,
       },
       documentId,
-      documentContent: {
-        prefix: null,
-        content: renderedPage,
-        sections: [],
-      },
+      documentContent: content,
       documentUrl: pageCacheEntry.url,
       timestampMs: updatedTime,
       tags: getTagsForPage({

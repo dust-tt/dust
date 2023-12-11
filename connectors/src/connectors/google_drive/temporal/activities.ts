@@ -7,6 +7,7 @@ import PQueue from "p-queue";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
+  renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -453,8 +454,12 @@ async function syncOneFile(
     // We do not support this file type
     return false;
   }
-  //Adding the title of the file to the beginning of the document
-  documentContent = `$title:${file.name}\n\n${documentContent}`;
+
+  // Add the title of the file to the beginning of the document.
+  const content = renderSectionForTitleAndContent(
+    file.name,
+    documentContent || null
+  );
 
   if (documentContent === undefined) {
     throw new Error("documentContent is undefined");
@@ -483,11 +488,7 @@ async function syncOneFile(
     await upsertToDatasource({
       dataSourceConfig,
       documentId,
-      documentContent: {
-        prefix: null,
-        content: documentContent,
-        sections: [],
-      },
+      documentContent: content,
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
