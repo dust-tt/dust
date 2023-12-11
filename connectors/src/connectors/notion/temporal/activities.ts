@@ -41,6 +41,7 @@ import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   MAX_SECTION_PREFIX_LENGTH,
+  renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -1733,29 +1734,10 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
-    const content: CoreAPIDataSourceDocumentSection = {
-      prefix: null,
-      content: null,
-      sections: [
-        {
-          prefix: null,
-          content: renderedPage,
-          sections: [],
-        },
-      ],
-    };
-
-    if (title) {
-      if (title.length > MAX_SECTION_PREFIX_LENGTH) {
-        content.prefix = `$title: ${title.slice(
-          0,
-          MAX_SECTION_PREFIX_LENGTH
-        )}...\n`;
-        content.content = `... ${title.slice(MAX_SECTION_PREFIX_LENGTH)}\n`;
-      } else {
-        content.prefix = `$title: ${title}\n`;
-      }
-    }
+    const content = renderSectionForTitleAndContent(
+      title || null,
+      renderedPage
+    );
 
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."

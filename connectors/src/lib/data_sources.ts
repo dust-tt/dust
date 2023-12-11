@@ -219,7 +219,45 @@ export async function updateDocumentParentsField(
   }
 }
 
-export const MAX_SECTION_PREFIX_LENGTH = 128;
+const MAX_SECTION_PREFIX_LENGTH = 128;
+
+export function renderSectionForTitleAndContent(
+  title: string | null,
+  content: string | null
+): CoreAPIDataSourceDocumentSection {
+  if (!title || !title.trim()) {
+    return {
+      prefix: null,
+      content,
+      sections: [],
+    };
+  }
+
+  if (title.length > MAX_SECTION_PREFIX_LENGTH) {
+    return {
+      prefix: `$title: ${title.substring(0, MAX_SECTION_PREFIX_LENGTH)}...\n\n`,
+      content: `... ${title.substring(MAX_SECTION_PREFIX_LENGTH)}\n\n`,
+      sections: [
+        {
+          prefix: null,
+          content,
+          sections: [],
+        },
+      ],
+    };
+  }
+  return {
+    prefix: `$title: ${title}\n\n`,
+    content,
+    sections: [
+      {
+        prefix: null,
+        content,
+        sections: [],
+      },
+    ],
+  };
+}
 
 export function renderPrefixSection(
   prefix: string | null
@@ -234,7 +272,7 @@ export function renderPrefixSection(
   if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
     return {
       prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
-      content: "..." + prefix.substring(MAX_SECTION_PREFIX_LENGTH),
+      content: `... ${prefix.substring(MAX_SECTION_PREFIX_LENGTH)}\n`,
       sections: [],
     };
   }
