@@ -2937,6 +2937,20 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("DELETE FROM sqlite_workers WHERE last_heartbeat < $1")
+            .await?;
+
+        c.execute(&stmt, &[&(utils::now() as i64 - ttl as i64)])
+            .await?;
+
+        Ok(())
+    }
+
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {
         Box::new(self.clone())
     }

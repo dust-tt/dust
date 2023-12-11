@@ -22,6 +22,7 @@ use dust::{
     project::{self},
     providers::provider::{provider, ProviderID},
     run,
+    sqlite_workers::sqlite_workers,
     stores::postgres,
     stores::store,
     utils::{self, error_response, APIError, APIResponse},
@@ -135,6 +136,21 @@ impl APIState {
             if loop_count % 1024 == 0 {
                 let manager = self.run_manager.lock();
                 utils::info(&format!("{} pending runs", manager.pending_runs.len()));
+            }
+            // Roughly every 4 minutes, cleanup dead SQLite workers if any.
+            if loop_count % 65536 == 0 {
+                let store = self.store.clone();
+                tokio::task::spawn(async move {
+                    match store
+                        .sqlite_workers_cleanup(sqlite_workers::HEARTBEAT_INTERVAL_MS)
+                        .await
+                    {
+                        Err(e) => {
+                            utils::error(&format!("Failed to cleanup SQLite workers: {}", e));
+                        }
+                        Ok(_) => (),
+                    }
+                });
             }
         }
     }
