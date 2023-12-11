@@ -24,11 +24,10 @@ use dust::{
     run,
     stores::postgres,
     stores::store,
-    utils,
+    utils::{self, error_response, APIError, APIResponse},
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -40,18 +39,6 @@ use tokio::{
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
-
-#[derive(Serialize)]
-struct APIError {
-    code: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct APIResponse {
-    error: Option<APIError>,
-    response: Option<Value>,
-}
 
 /// API State
 
@@ -1376,28 +1363,6 @@ async fn data_sources_documents_update_parents(
     }
 }
 
-fn error_response(
-    status: StatusCode,
-    code: &str,
-    message: &str,
-    error: Option<anyhow::Error>,
-) -> (StatusCode, Json<APIResponse>) {
-    utils::error(&format!("{}: {}\nError: {:?}", code, message, error));
-    (
-        status,
-        Json(APIResponse {
-            error: Some(APIError {
-                code: code.to_string(),
-                message: match error {
-                    Some(err) => format!("{} (error: {:?})", message, err),
-                    None => message.to_string(),
-                },
-            }),
-            response: None,
-        }),
-    )
-}
-
 // List versions of a document in a data source.
 
 #[derive(serde::Deserialize)]
@@ -2196,6 +2161,50 @@ async fn databases_query_run(
     }
 }
 
+// SQLite Workers
+
+async fn sqlite_workers_hearbeat(
+    extract::Path(pod_name): extract::Path<String>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.sqlite_workers_upsert(&pod_name).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert SQLite worker",
+            Some(e),
+        ),
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({"success": true})),
+            }),
+        ),
+    }
+}
+
+async fn sqlite_workers_delete(
+    extract::Path(pod_name): extract::Path<String>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.sqlite_workers_delete(&pod_name).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete SQLite worker",
+            Some(e),
+        ),
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({"success": true})),
+            }),
+        ),
+    }
+}
+
 // Misc
 
 #[derive(serde::Deserialize)]
@@ -2409,6 +2418,8 @@ fn main() {
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/query",
             post(databases_query_run),
         )
+        .route("/sqlite_workers/:pod_name", post(sqlite_workers_hearbeat))
+        .route("/sqlite_workers/:pod_name", delete(sqlite_workers_delete))
         // Misc
         .route("/tokenize", post(tokenize))
 

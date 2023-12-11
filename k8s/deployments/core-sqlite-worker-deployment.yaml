@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-sqlite-worker-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: core-sqlite-worker
+  template:
+    metadata:
+      labels:
+        app: core-sqlite-worker
+        name: core-sqlite-worker-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "core-sqlite-worker","service": "core-sqlite-worker","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/core-image:latest
+          command: ["cargo", "run", "--release", "--bin", "sqlite-worker"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3005
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3005
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          envFrom:
+            - configMapRef:
+                name: core-sqlite-worker-config
+            # TODO: Uncomment this when we have secrets
+            # - secretRef:
+            #     name: core-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          # TODO: Uncomment this when we have service accounts
+          # volumeMounts:
+          #   - name: service-account-volume
+          #     mountPath: /etc/service-accounts
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 250Mi
+            limits:
+              cpu: 500m
+              memory: 250Mi
+
+      # TODO: Uncomment this when we have service accounts
+      # volumes:
+      #   - name: service-account-volume
+      #     secret:
+      #       secretName: gcp-service-account-secret

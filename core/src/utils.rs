@@ -1,5 +1,9 @@
 use anyhow::Result;
 use async_std::path::PathBuf;
+use axum::Json;
+use hyper::StatusCode;
+use serde::Serialize;
+use serde_json::Value;
 use std::io::Write;
 use uuid::Uuid;
 
@@ -97,4 +101,38 @@ pub fn confirm(msg: &str) -> Result<bool> {
     } else {
         Ok(true)
     }
+}
+
+#[derive(Serialize)]
+pub struct APIError {
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Serialize)]
+pub struct APIResponse {
+    pub error: Option<APIError>,
+    pub response: Option<Value>,
+}
+
+pub fn error_response(
+    status: StatusCode,
+    code: &str,
+    message: &str,
+    e: Option<anyhow::Error>,
+) -> (StatusCode, Json<APIResponse>) {
+    error(&format!("{}: {}\nError: {:?}", code, message, e));
+    (
+        status,
+        Json(APIResponse {
+            error: Some(APIError {
+                code: code.to_string(),
+                message: match e {
+                    Some(err) => format!("{} (error: {:?})", message, err),
+                    None => message.to_string(),
+                },
+            }),
+            response: None,
+        }),
+    )
 }

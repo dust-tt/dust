@@ -11,6 +11,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
+use crate::sqlite_workers::sqlite_workers::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -2873,6 +2874,66 @@ impl Store for PostgresStore {
             ],
         )
         .await?;
+        Ok(())
+    }
+
+    // SQLite Workers
+    async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("SELECT pod_name, last_heartbeat FROM sqlite_workers")
+            .await?;
+        let rows = c.query(&stmt, &[]).await?;
+
+        rows.iter()
+            .map(|row| {
+                let pod_name: String = row.get(0);
+                let last_heartbeat: i64 = row.get(1);
+                Ok(SqliteWorker::new(pod_name, last_heartbeat as u64))
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
+    async fn sqlite_workers_upsert(&self, pod_name: &str) -> Result<SqliteWorker> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let last_heartbeat = utils::now();
+
+        let stmt = c
+            .prepare(
+                "INSERT INTO sqlite_workers (id, created, pod_name, last_heartbeat) \
+                VALUES (DEFAULT, $1, $2, $3) \
+                ON CONFLICT (pod_name) DO UPDATE \
+                SET last_heartbeat = EXCLUDED.last_heartbeat RETURNING id",
+            )
+            .await?;
+
+        c.query_one(
+            &stmt,
+            &[
+                &(utils::now() as i64),
+                &pod_name.to_string(),
+                &(last_heartbeat as i64),
+            ],
+        )
+        .await?;
+
+        Ok(SqliteWorker::new(pod_name.to_string(), last_heartbeat))
+    }
+
+    async fn sqlite_workers_delete(&self, pod_name: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("DELETE FROM sqlite_workers WHERE pod_name = $1")
+            .await?;
+
+        c.execute(&stmt, &[&pod_name.to_string()]).await?;
+
         Ok(())
     }
 
