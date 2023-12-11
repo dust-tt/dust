@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -40,6 +40,7 @@ import {
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
+  MAX_SECTION_PREFIX_LENGTH,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -1541,6 +1542,8 @@ export async function renderAndUpsertPageFromCache({
   );
   for (const p of parsedProperties) {
     if (!p.text) continue;
+    // We skip the title as it is added separately as prefix to the section.
+    if (p.key === "title") continue;
     renderedPage += `$${p.key}: ${p.text}\n`;
   }
   renderedPage += "\n";
@@ -1730,6 +1733,30 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
+    const content: CoreAPIDataSourceDocumentSection = {
+      prefix: null,
+      content: null,
+      sections: [
+        {
+          prefix: null,
+          content: renderedPage,
+          sections: [],
+        },
+      ],
+    };
+
+    if (title) {
+      if (title.length > MAX_SECTION_PREFIX_LENGTH) {
+        content.prefix = `$title: ${title.slice(
+          0,
+          MAX_SECTION_PREFIX_LENGTH
+        )}...\n`;
+        content.content = `... ${title.slice(MAX_SECTION_PREFIX_LENGTH)}\n`;
+      } else {
+        content.prefix = `$title: ${title}\n`;
+      }
+    }
+
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
@@ -1740,11 +1767,7 @@ export async function renderAndUpsertPageFromCache({
         workspaceAPIKey: connector.workspaceAPIKey,
       },
       documentId,
-      documentContent: {
-        prefix: null,
-        content: renderedPage,
-        sections: [],
-      },
+      documentContent: content,
       documentUrl: pageCacheEntry.url,
       timestampMs: updatedTime,
       tags: getTagsForPage({

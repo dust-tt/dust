@@ -219,7 +219,7 @@ export async function updateDocumentParentsField(
   }
 }
 
-const MAX_SECTION_PREFIX_LENGTH = 128;
+export const MAX_SECTION_PREFIX_LENGTH = 128;
 
 export function renderPrefixSection(
   prefix: string | null
