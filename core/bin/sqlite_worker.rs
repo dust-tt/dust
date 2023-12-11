@@ -1,4 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use anyhow::{anyhow, Result};
 use axum::{
@@ -7,12 +13,11 @@ use axum::{
     Extension, Json, Router,
 };
 use dust::{
-    http::request::HttpRequest,
     http_utils::{error_response, APIResponse},
     sqlite_database::SqliteDatabase,
     utils,
 };
-use hyper::StatusCode;
+use hyper::{Body, Client, Request, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
 use tokio::{
@@ -24,6 +29,7 @@ use tracing::Level;
 
 struct WorkerState {
     registry: Arc<Mutex<HashMap<String, SqliteDatabase>>>,
+    is_shutting_down: Arc<AtomicBool>,
 }
 
 impl WorkerState {
@@ -31,11 +37,16 @@ impl WorkerState {
         Self {
             // TODO: store an instant of the last access for each DB.
             registry: Arc::new(Mutex::new(HashMap::new())),
+            is_shutting_down: Arc::new(AtomicBool::new(false)),
         }
     }
 
     async fn run_loop(&self) {
         loop {
+            if self.is_shutting_down.load(Ordering::SeqCst) {
+                break;
+            }
+
             match self.heartbeat().await {
                 Ok(_) => utils::info("Heartbeat sent."),
                 Err(e) => utils::error(&format!("Failed to send heartbeat: {:?}", e)),
@@ -59,6 +70,7 @@ impl WorkerState {
     }
 
     async fn shutdown(&self) -> Result<()> {
+        self.is_shutting_down.store(true, Ordering::SeqCst);
         self._core_request("DELETE").await
     }
 
@@ -68,26 +80,21 @@ impl WorkerState {
             Err(_) => Err(anyhow!("HOSTNAME not set."))?,
         };
 
-        let core_url = match std::env::var("CORE_URL") {
+        let core_api = match std::env::var("CORE_API") {
             Ok(core_url) => core_url,
-            Err(_) => Err(anyhow!("CORE_URL not set."))?,
+            Err(_) => Err(anyhow!("CORE_API not set."))?,
         };
 
-        let request = HttpRequest::new(
-            method,
-            format!("{}/sqlite_workers/{}", core_url, hostname).as_str(),
-            json!({}),
-            json!({}),
-        )?;
+        let req = Request::builder()
+            .method(method)
+            .uri(format!("{}/sqlite_workers/{}", core_api, hostname))
+            .body(Body::empty())?;
 
-        let response = request.execute().await?;
+        let res = Client::new().request(req).await?;
 
-        match response.status {
+        match res.status().as_u16() {
             200 => Ok(()),
-            _ => Err(anyhow!(
-                "Failed to send heartbeat to core. Status: {}",
-                response.status
-            )),
+            s => Err(anyhow!("Failed to send heartbeat to core. Status: {}", s)),
         }
     }
 }

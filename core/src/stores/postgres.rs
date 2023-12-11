@@ -2904,15 +2904,22 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "INSERT INTO sqlite_workers (id, pod_name, last_heartbeat) \
-                VALUES (DEFAULT, $1, $2) \
+                "INSERT INTO sqlite_workers (id, created, pod_name, last_heartbeat) \
+                VALUES (DEFAULT, $1, $2, $3) \
                 ON CONFLICT (pod_name) DO UPDATE \
-                SET last_heartbeat = EXCLUDED.last_heartbeat",
+                SET last_heartbeat = EXCLUDED.last_heartbeat RETURNING id",
             )
             .await?;
 
-        c.query_one(&stmt, &[&pod_name.to_string(), &(last_heartbeat as i64)])
-            .await?;
+        c.query_one(
+            &stmt,
+            &[
+                &(utils::now() as i64),
+                &pod_name.to_string(),
+                &(last_heartbeat as i64),
+            ],
+        )
+        .await?;
 
         Ok(SqliteWorker::new(pod_name.to_string(), last_heartbeat))
     }
@@ -2925,7 +2932,7 @@ impl Store for PostgresStore {
             .prepare("DELETE FROM sqlite_workers WHERE pod_name = $1")
             .await?;
 
-        c.query_one(&stmt, &[&pod_name.to_string()]).await?;
+        c.execute(&stmt, &[&pod_name.to_string()]).await?;
 
         Ok(())
     }

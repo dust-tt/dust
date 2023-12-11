@@ -502,7 +502,7 @@ pub const SQL_INDEXES: [&'static str; 24] = [
         idx_databases_tables_database_table_name ON databases_tables (database, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
-    "CREATE INDEX IF NOT EXISTS
+    "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_pod_name ON sqlite_workers (pod_name);",
 ];
 
