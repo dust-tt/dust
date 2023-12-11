@@ -19,6 +19,7 @@ use dust::{
     },
     databases::database::DatabaseRow,
     dataset,
+    http_utils::{error_response, APIError, APIResponse},
     project::{self},
     providers::provider::{provider, ProviderID},
     run,
@@ -28,7 +29,6 @@ use dust::{
 };
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -40,18 +40,6 @@ use tokio::{
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
-
-#[derive(Serialize)]
-struct APIError {
-    code: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct APIResponse {
-    error: Option<APIError>,
-    response: Option<Value>,
-}
 
 /// API State
 
@@ -1374,28 +1362,6 @@ async fn data_sources_documents_update_parents(
             },
         },
     }
-}
-
-fn error_response(
-    status: StatusCode,
-    code: &str,
-    message: &str,
-    error: Option<anyhow::Error>,
-) -> (StatusCode, Json<APIResponse>) {
-    utils::error(&format!("{}: {}\nError: {:?}", code, message, error));
-    (
-        status,
-        Json(APIResponse {
-            error: Some(APIError {
-                code: code.to_string(),
-                message: match error {
-                    Some(err) => format!("{} (error: {:?})", message, err),
-                    None => message.to_string(),
-                },
-            }),
-            response: None,
-        }),
-    )
 }
 
 // List versions of a document in a data source.

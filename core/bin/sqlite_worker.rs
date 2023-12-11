@@ -5,27 +5,29 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
-use dust::utils;
-use rusqlite::Connection;
+use dust::{
+    http_utils::{error_response, APIResponse},
+    sqlite_database::SqliteDatabase,
+    utils,
+};
+use hyper::StatusCode;
 use serde::Deserialize;
+use serde_json::json;
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::{mpsc, Mutex},
+    sync::Mutex,
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
-enum DbMessage {
-    Execute(String),
-}
-
 struct WorkerState {
-    registry: Arc<Mutex<HashMap<String, mpsc::Sender<DbMessage>>>>,
+    registry: Arc<Mutex<HashMap<String, SqliteDatabase>>>,
 }
 
 impl WorkerState {
     fn new() -> Self {
         Self {
+            // TODO: store an instant of the last access for each DB.
             registry: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -33,6 +35,7 @@ impl WorkerState {
     async fn run_loop(&self) {
         loop {
             // TODO: heartbeat to `core`.
+            // TODO: check for inactive DBs to kill.
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
     }
@@ -53,8 +56,14 @@ impl WorkerState {
 
 /// Index
 
-async fn index() -> &'static str {
-    "Welcome to Sqlite Workers!"
+async fn index() -> (StatusCode, Json<APIResponse>) {
+    (
+        axum::http::StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({"message": "Welcome to SQLite worker."})),
+        }),
+    )
 }
 
 // Databases
@@ -68,46 +77,33 @@ async fn db_query(
     Path(db_id): Path<String>,
     Json(payload): Json<DbQueryBody>,
     Extension(state): Extension<Arc<WorkerState>>,
-) -> impl axum::response::IntoResponse {
+) -> (StatusCode, Json<APIResponse>) {
     let mut registry = state.registry.lock().await;
 
-    let sender = match registry.get(&db_id) {
-        Some(sender) => sender.clone(),
+    let db = match registry.get(&db_id) {
+        Some(db) => db,
         None => {
-            // If the database thread does not exist, create it.
-            let (tx, mut rx) = mpsc::channel(32);
-
-            let db_id_clone = db_id.clone();
-            tokio::spawn(async move {
-                // TODO: database init logic.
-                let conn = Connection::open_in_memory().unwrap();
-                //TODO: handle incoming message.
-                while let Some(message) = rx.recv().await {
-                    match message {
-                        DbMessage::Execute(query) => {
-                            println!("Executing query: {} on db: {}", query, db_id_clone);
-                            let _ = conn.execute(&query, []);
-                        }
-                    }
-                }
-            });
-
-            registry.insert(db_id.clone(), tx.clone());
-            tx
+            let db = SqliteDatabase::new(&db_id);
+            registry.insert(db_id.clone(), db);
+            registry.get(&db_id).unwrap()
         }
     };
 
-    if let Err(_) = sender.send(DbMessage::Execute(payload.query)).await {
-        return (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to execute database query",
-        );
+    match db.query(payload.query).await {
+        Ok(results) => (
+            axum::http::StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!(results)),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to query database",
+            Some(e),
+        ),
     }
-
-    (
-        axum::http::StatusCode::OK,
-        "Database query executed successfully",
-    )
 }
 
 fn main() {
