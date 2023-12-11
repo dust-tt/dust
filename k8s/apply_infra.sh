@@ -102,7 +102,7 @@ apply_deployment docs-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
-apply_deployment core-sqlite-worker
+apply_deployment core-sqlite-worker-deployment
 
 
 echo "-----------------------------------"
