@@ -1,2 +1,2 @@
 #!/bin/sh
-env $(cat .env.local) npx tsx src/admin/cli.ts "$@"
+npx tsx src/admin/cli.ts "$@"

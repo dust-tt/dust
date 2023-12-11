@@ -1,2 +1,2 @@
 #!/bin/sh
-env $(cat .env.local) npx tsx src/admin/db.ts
+npx tsx src/admin/db.ts
