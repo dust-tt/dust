@@ -6,11 +6,11 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "build": "tsc",
-    "start": "env $(cat .env.local) tsx ./src/start.ts -p 3002",
+    "start": "tsx ./src/start.ts -p 3002",
     "start:web": "tsx ./src/start_server.ts -p 3002",
     "start:worker": "tsx ./src/start_worker.ts",
-    "cli": "env $(cat .env.local) npx tsx src/admin/cli.ts",
-    "initdb": "env $(cat .env.local) npx tsx src/admin/db.ts"
+    "cli": "npx tsx src/admin/cli.ts",
+    "initdb": "npx tsx src/admin/db.ts"
   },
   "dependencies": {
     "@dust-tt/types": "file:../types",
