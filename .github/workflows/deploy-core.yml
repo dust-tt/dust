@@ -47,8 +47,11 @@ jobs:
         run: |
           chmod +x ./k8s/deploy-image.sh
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/core-image:${{ steps.short_sha.outputs.short_sha }} core-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/core-image:${{ steps.short_sha.outputs.short_sha }} core-sqlite-worker-deployment
 
       - name: Wait for rollout to complete
         run: |
           echo "Waiting for rollout to complete (web)"
           kubectl rollout status deployment/core-deployment --timeout=10m
+          echo "Waiting for rollout to complete (sqlite worker)"
+          kubectl rollout status deployment/core-sqlite-worker-deployment --timeout=10m
