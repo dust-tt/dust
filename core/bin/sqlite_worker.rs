@@ -100,14 +100,8 @@ impl WorkerState {
 
 /// Index
 
-async fn index() -> (StatusCode, Json<APIResponse>) {
-    (
-        axum::http::StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({"message": "Welcome to SQLite worker."})),
-        }),
-    )
+async fn index() -> &'static str {
+    "Welcome to SQLite worker."
 }
 
 // Databases
