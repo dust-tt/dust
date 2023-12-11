@@ -36,7 +36,10 @@ import {
   getGoogleCredentials,
   getGoogleDriveObject,
 } from "./temporal/activities";
-import { launchGoogleDriveFullSyncWorkflow } from "./temporal/client";
+import {
+  launchGoogleDriveFullSyncWorkflow,
+  launchGoogleGarbageCollector,
+} from "./temporal/client";
 export type NangoConnectionId = string;
 import { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
@@ -707,4 +710,15 @@ export async function setGoogleDriveConfig(
       return new Err(new Error(`Invalid config key ${configKey}`));
     }
   }
+}
+
+export async function googleDriveGarbageCollect(connectorId: ModelId) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  return await launchGoogleGarbageCollector(connectorId);
 }
