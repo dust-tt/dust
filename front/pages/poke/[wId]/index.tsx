@@ -483,7 +483,7 @@ const WorkspacePage = ({
                     variant="secondary"
                     onClick={async () => {
                       await navigator.clipboard.writeText(
-                        `${window.location.origin}/upgrade-enterprise/${planInvitation.secret}`
+                        `${window.location.origin}/w/${owner.sId}/subscription/upgrade-enterprise/${planInvitation.secret}`
                       );
                       setHasCopiedInviteLink(true);
                       setTimeout(() => {
