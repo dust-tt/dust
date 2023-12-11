@@ -21,7 +21,7 @@ import {
   AgentStatus,
 } from "@dust-tt/types";
 import { isSupportedModel } from "@dust-tt/types";
-import { DatabaseConfigurationType } from "@dust-tt/types";
+import { DatabaseQueryConfigurationType } from "@dust-tt/types";
 import { FindOptions, Op, Transaction } from "sequelize";
 
 import {
@@ -33,7 +33,7 @@ import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
-  AgentDatabaseConfiguration,
+  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
@@ -92,8 +92,8 @@ export async function getAgentConfiguration(
           as: "dustAppRunConfiguration",
         },
         {
-          model: AgentDatabaseConfiguration,
-          as: "databaseConfiguration",
+          model: AgentDatabaseQueryConfiguration,
+          as: "databaseQueryConfiguration",
         },
         ...(user
           ? [
@@ -116,7 +116,7 @@ export async function getAgentConfiguration(
   let actionConfig:
     | RetrievalConfigurationType
     | DustAppRunConfigurationType
-    | DatabaseConfigurationType
+    | DatabaseQueryConfigurationType
     | null = null;
 
   if (agent.retrievalConfigurationId) {
@@ -204,20 +204,21 @@ export async function getAgentConfiguration(
     };
   }
 
-  if (agent.databaseConfigurationId) {
-    const databaseConfig = agent.databaseConfiguration;
-    if (!databaseConfig) {
+  if (agent.databaseQueryConfigurationId) {
+    const databaseQueryConfig = agent.databaseQueryConfiguration;
+    if (!databaseQueryConfig) {
       throw new Error(
-        `Couldn't find action configuration for Database configuration ${agent.databaseConfigurationId}}`
+        `Couldn't find action configuration for Database configuration ${agent.databaseQueryConfigurationId}}`
       );
     }
 
     actionConfig = {
-      id: databaseConfig.id,
-      sId: databaseConfig.sId,
-      type: "database_configuration",
-      dataSourceId: databaseConfig.dataSourceId,
-      databaseId: databaseConfig.databaseId,
+      id: databaseQueryConfig.id,
+      sId: databaseQueryConfig.sId,
+      type: "database_query_configuration",
+      dataSourceId: databaseQueryConfig.dataSourceId,
+      databaseId: databaseQueryConfig.databaseId,
+      appWorkspaceId: databaseQueryConfig.appWorkspaceId,
     };
   }
 
@@ -298,8 +299,8 @@ export async function getAgentConfigurations(
         as: "dustAppRunConfiguration",
       },
       {
-        model: AgentDatabaseConfiguration,
-        as: "databaseConfiguration",
+        model: AgentDatabaseQueryConfiguration,
+        as: "databaseQueryConfiguration",
       },
       ...(user
         ? [
@@ -610,8 +611,8 @@ export async function createAgentConfiguration(
             action?.type === "retrieval_configuration" ? action?.id : null,
           dustAppRunConfigurationId:
             action?.type === "dust_app_run_configuration" ? action?.id : null,
-          databaseConfigurationId:
-            action?.type === "database_configuration" ? action?.id : null,
+          databaseQueryConfigurationId:
+            action?.type === "database_query_configuration" ? action?.id : null,
         },
         {
           transaction: t,
@@ -722,9 +723,10 @@ export async function createAgentActionConfiguration(
         appId: string;
       }
     | {
-        type: "database_configuration";
+        type: "database_query_configuration";
         dataSourceId: string;
         databaseId: string;
+        appWorkspaceId: string;
       }
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
@@ -785,18 +787,20 @@ export async function createAgentActionConfiguration(
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
     };
-  } else if (action.type === "database_configuration") {
-    const databaseConfig = await AgentDatabaseConfiguration.create({
+  } else if (action.type === "database_query_configuration") {
+    const databaseQueryConfig = await AgentDatabaseQueryConfiguration.create({
       sId: generateModelSId(),
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
+      appWorkspaceId: owner.sId,
     });
     return {
-      id: databaseConfig.id,
-      sId: databaseConfig.sId,
-      type: "database_configuration",
+      id: databaseQueryConfig.id,
+      sId: databaseQueryConfig.sId,
+      type: "database_query_configuration",
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
+      appWorkspaceId: owner.sId,
     };
   } else {
     throw new Error("Cannot create AgentActionConfiguration: unknow type");

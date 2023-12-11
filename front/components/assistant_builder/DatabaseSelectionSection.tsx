@@ -7,18 +7,18 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
-import { AssistantBuilderDatabaseConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import { AssistantBuilderDatabaseQueryConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { classNames } from "@app/lib/utils";
 
 export default function DatabaseSelectionSection({
   show,
-  databaseConfiguration,
+  databaseQueryConfiguration: databaseQueryConfiguration,
   openDatabaseModal,
   onDelete,
   canSelecDatabase,
 }: {
   show: boolean;
-  databaseConfiguration: AssistantBuilderDatabaseConfiguration | null;
+  databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
   openDatabaseModal: () => void;
   onDelete?: (sId: string) => void;
   canSelecDatabase: boolean;
@@ -47,7 +47,7 @@ export default function DatabaseSelectionSection({
             Select a Database:
           </div>
         </div>
-        {!databaseConfiguration ? (
+        {!databaseQueryConfiguration ? (
           <div
             className={classNames(
               "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
@@ -66,8 +66,8 @@ export default function DatabaseSelectionSection({
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">
             <ContextItem
-              key={databaseConfiguration.databaseId}
-              title={databaseConfiguration.databaseName}
+              key={databaseQueryConfiguration.databaseId}
+              title={databaseQueryConfiguration.databaseName}
               visual={<ContextItem.Visual visual={ServerIcon} />}
               action={
                 <Button.List>
@@ -77,7 +77,7 @@ export default function DatabaseSelectionSection({
                     label="Remove"
                     labelVisible={false}
                     onClick={() => {
-                      onDelete?.(databaseConfiguration.dataSourceId);
+                      onDelete?.(databaseQueryConfiguration.dataSourceId);
                     }}
                   />
                 </Button.List>

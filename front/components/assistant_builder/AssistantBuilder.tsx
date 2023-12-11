@@ -120,12 +120,13 @@ export type AssistantBuilderDustAppConfiguration = {
   app: AppType;
 };
 
-// Database Action
+// Database Query Action
 
-export type AssistantBuilderDatabaseConfiguration = {
+export type AssistantBuilderDatabaseQueryConfiguration = {
   dataSourceId: string;
   databaseId: string;
   databaseName: string;
+  appWorkspaceId: string;
 };
 
 // Builder State
@@ -141,7 +142,7 @@ type AssistantBuilderState = {
     unit: TimeframeUnit;
   };
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
-  databaseConfiguration: AssistantBuilderDatabaseConfiguration | null;
+  databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
   handle: string | null;
   description: string | null;
   instructions: string | null;
@@ -163,7 +164,7 @@ export type AssistantBuilderInitialState = {
     | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
-  databaseConfiguration: AssistantBuilderState["databaseConfiguration"];
+  databaseQueryConfiguration: AssistantBuilderState["databaseQueryConfiguration"];
   handle: string;
   description: string;
   instructions: string;
@@ -194,7 +195,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     unit: "month",
   },
   dustAppConfiguration: null,
-  databaseConfiguration: null,
+  databaseQueryConfiguration: null,
   handle: null,
   description: null,
   instructions: null,
@@ -326,7 +327,8 @@ export default function AssistantBuilder({
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
         dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-        databaseConfiguration: initialBuilderState.databaseConfiguration,
+        databaseQueryConfiguration:
+          initialBuilderState.databaseQueryConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
@@ -457,7 +459,7 @@ export default function AssistantBuilder({
     }
 
     if (builderState.actionMode === "DATABASE_QUERY") {
-      if (!builderState.databaseConfiguration) {
+      if (!builderState.databaseQueryConfiguration) {
         valid = false;
       }
     }
@@ -471,7 +473,7 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
-    builderState.databaseConfiguration,
+    builderState.databaseQueryConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -561,11 +563,13 @@ export default function AssistantBuilder({
         break;
 
       case "DATABASE_QUERY":
-        if (builderState.databaseConfiguration) {
+        if (builderState.databaseQueryConfiguration) {
           actionParam = {
-            type: "database_configuration",
-            dataSourceId: builderState.databaseConfiguration.dataSourceId,
-            databaseId: builderState.databaseConfiguration.databaseId,
+            type: "database_query_configuration",
+            dataSourceId: builderState.databaseQueryConfiguration.dataSourceId,
+            databaseId: builderState.databaseQueryConfiguration.databaseId,
+            appWorkspaceId:
+              builderState.databaseQueryConfiguration.appWorkspaceId,
           };
         }
         break;
@@ -742,10 +746,10 @@ export default function AssistantBuilder({
           setEdited(true);
           setBuilderState((state) => ({
             ...state,
-            databaseConfiguration: database,
+            databaseQueryConfiguration: database,
           }));
         }}
-        currentDatabase={builderState.databaseConfiguration}
+        currentDatabase={builderState.databaseQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}
@@ -1214,14 +1218,16 @@ export default function AssistantBuilder({
               </div>
               <DatabaseSelectionSection
                 show={builderState.actionMode === "DATABASE_QUERY"}
-                databaseConfiguration={builderState.databaseConfiguration}
+                databaseQueryConfiguration={
+                  builderState.databaseQueryConfiguration
+                }
                 openDatabaseModal={() => {
                   setShowDatabaseModal(true);
                 }}
                 onDelete={() => {
                   setEdited(true);
                   setBuilderState((state) => {
-                    return { ...state, databaseConfiguration: null };
+                    return { ...state, databaseQueryConfiguration: null };
                   });
                 }}
                 canSelecDatabase={dataSources.length !== 0}

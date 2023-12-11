@@ -11,9 +11,9 @@ import { front_sequelize } from "@app/lib/databases";
 /**
  * Action Database Configuration
  */
-export class AgentDatabaseConfiguration extends Model<
-  InferAttributes<AgentDatabaseConfiguration>,
-  InferCreationAttributes<AgentDatabaseConfiguration>
+export class AgentDatabaseQueryConfiguration extends Model<
+  InferAttributes<AgentDatabaseQueryConfiguration>,
+  InferCreationAttributes<AgentDatabaseQueryConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -23,9 +23,10 @@ export class AgentDatabaseConfiguration extends Model<
 
   declare dataSourceId: string;
   declare databaseId: string;
+  declare appWorkspaceId: string;
 }
 
-AgentDatabaseConfiguration.init(
+AgentDatabaseQueryConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -54,9 +55,13 @@ AgentDatabaseConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    appWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
-    modelName: "agent_database_configuration",
+    modelName: "agent_database_query_configuration",
     indexes: [
       {
         unique: true,

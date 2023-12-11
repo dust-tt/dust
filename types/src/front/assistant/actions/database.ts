@@ -3,28 +3,31 @@ import { ModelId } from "shared/model_id";
 import { AgentActionConfigurationType } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
 
-export type DatabaseConfigurationType = {
+export type DatabaseQueryConfigurationType = {
   id: ModelId;
   sId: string;
-  type: "database_configuration";
+  type: "database_query_configuration";
   dataSourceId: string;
   databaseId: string;
+  appWorkspaceId: string;
 };
 
-export function isDatabaseConfiguration(
+export function isDatabaseQueryConfiguration(
   arg: AgentActionConfigurationType | null
-): arg is DatabaseConfigurationType {
-  return arg !== null && arg.type && arg.type === "database_configuration";
+): arg is DatabaseQueryConfigurationType {
+  return (
+    arg !== null && arg.type && arg.type === "database_query_configuration"
+  );
 }
 
-export function isDatabaseActionType(
+export function isDatabaseQueryActionType(
   arg: AgentActionType
-): arg is DatabaseActionType {
+): arg is DatabaseQueryActionType {
   return arg.type === "database_query_action";
 }
 
 // TODO DAPH DATABASE ACTION
-export type DatabaseActionType = {
+export type DatabaseQueryActionType = {
   id: ModelId;
   type: "database_query_action";
 };
