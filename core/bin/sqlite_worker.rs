@@ -1,11 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
+use anyhow::{anyhow, Result};
 use axum::{
     extract::{self, Path},
     routing::{get, post},
     Extension, Json, Router,
 };
 use dust::{
+    http::request::HttpRequest,
     http_utils::{error_response, APIResponse},
     sqlite_database::SqliteDatabase,
     utils,
@@ -34,14 +36,13 @@ impl WorkerState {
 
     async fn run_loop(&self) {
         loop {
-            // TODO: heartbeat to `core`.
+            match self.heartbeat().await {
+                Ok(_) => utils::info("Heartbeat sent."),
+                Err(e) => utils::error(&format!("Failed to send heartbeat: {:?}", e)),
+            }
             // TODO: check for inactive DBs to kill.
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
-    }
-
-    async fn shutdown_signal(&self) {
-        // TODO: send shutdown signal to `core`.
     }
 
     async fn await_pending_queries(&self) {
@@ -50,6 +51,43 @@ impl WorkerState {
             // if no pending query...
             break;
             // tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
+        }
+    }
+
+    async fn heartbeat(&self) -> Result<()> {
+        self._core_request("POST").await
+    }
+
+    async fn shutdown(&self) -> Result<()> {
+        self._core_request("DELETE").await
+    }
+
+    async fn _core_request(&self, method: &str) -> Result<()> {
+        let hostname = match std::env::var("HOSTNAME") {
+            Ok(hostname) => hostname,
+            Err(_) => Err(anyhow!("HOSTNAME not set."))?,
+        };
+
+        let core_url = match std::env::var("CORE_URL") {
+            Ok(core_url) => core_url,
+            Err(_) => Err(anyhow!("CORE_URL not set."))?,
+        };
+
+        let request = HttpRequest::new(
+            method,
+            format!("{}/sqlite_workers/{}", core_url, hostname).as_str(),
+            json!({}),
+            json!({}),
+        )?;
+
+        let response = request.execute().await?;
+
+        match response.status {
+            200 => Ok(()),
+            _ => Err(anyhow!(
+                "Failed to send heartbeat to core. Status: {}",
+                response.status
+            )),
         }
     }
 }
@@ -163,8 +201,11 @@ fn main() {
         utils::info("[GRACEFUL] SIGTERM received.");
 
         // Tell core to stop sending requests.
-        utils::info("[GRACEFUL] Sending shutdown signal to core...");
-        state.shutdown_signal().await;
+        utils::info("[GRACEFUL] Sending shutdown request to core...");
+        match state.shutdown().await {
+            Ok(_) => utils::info("[GRACEFUL] Shutdown request sent."),
+            Err(e) => utils::error(&format!("Failed to send shutdown request: {:?}", e)),
+        }
 
         utils::info("[GRACEFUL] Shutting down server...");
         tx1.send(()).ok();
