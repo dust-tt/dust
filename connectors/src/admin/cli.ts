@@ -4,6 +4,7 @@ import readline from "readline";
 
 import {
   DELETE_CONNECTOR_BY_TYPE,
+  GARBAGE_COLLECT_BY_TYPE,
   RESUME_CONNECTOR_BY_TYPE,
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
@@ -263,6 +264,19 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const google = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
+    case "garbage-collect-all": {
+      const connectors = await Connector.findAll({
+        where: {
+          type: "google_drive",
+        },
+      });
+      for (const connector of connectors) {
+        await throwOnError(
+          GARBAGE_COLLECT_BY_TYPE[connector.type](connector.id)
+        );
+      }
+      return;
+    }
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
       return;

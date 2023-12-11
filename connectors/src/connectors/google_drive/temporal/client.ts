@@ -12,6 +12,8 @@ import { newWebhookSignal } from "./signals";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
+  googleDriveGarbageCollectorWorkflow,
+  googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
   googleDriveIncrementalSyncWorkflowId,
   googleDriveRenewWebhooks,
@@ -145,6 +147,54 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "0 * * * *", // every hour, on the hour
+    });
+    logger.info(
+      {
+        workflowId,
+      },
+      `Started workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      `Failed starting workflow.`
+    );
+    return new Err(e as Error);
+  }
+}
+
+export async function launchGoogleGarbageCollector(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = googleDriveGarbageCollectorWorkflowId(connectorId);
+  try {
+    const handle: WorkflowHandle<typeof googleDriveGarbageCollectorWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    await client.workflow.start(googleDriveGarbageCollectorWorkflow, {
+      args: [connector.id, new Date().getTime()],
+      taskQueue: QUEUE_NAME,
+      workflowId: workflowId,
+
+      memo: {
+        connectorId: connectorId,
+      },
     });
     logger.info(
       {

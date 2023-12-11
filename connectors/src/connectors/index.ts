@@ -14,6 +14,7 @@ import {
   cleanupGoogleDriveConnector,
   createGoogleDriveConnector,
   getGoogleDriveConfig,
+  googleDriveGarbageCollect,
   retrieveGoogleDriveConnectorPermissions,
   retrieveGoogleDriveObjectsParents,
   retrieveGoogleDriveObjectsTitles,
@@ -40,6 +41,7 @@ import {
   ConnectorConfigGetter,
   ConnectorConfigSetter,
   ConnectorCreator,
+  ConnectorGarbageCollector,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
   ConnectorResourceParentsRetriever,
@@ -278,6 +280,25 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   google_drive: getGoogleDriveConfig,
+  intercom: async () => {
+    throw new Error("Not implemented");
+  },
+};
+
+export const GARBAGE_COLLECT_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorGarbageCollector
+> = {
+  slack: () => {
+    throw new Error("Not implemented");
+  },
+  notion: async () => {
+    throw new Error("Not implemented");
+  },
+  github: async () => {
+    throw new Error("Not implemented");
+  },
+  google_drive: googleDriveGarbageCollect,
   intercom: async () => {
     throw new Error("Not implemented");
   },

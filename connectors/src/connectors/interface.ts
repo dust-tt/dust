@@ -82,3 +82,7 @@ export type ConnectorConfigGetter = (
   connectorId: ModelId,
   configKey: string
 ) => Promise<Result<string, Error>>;
+
+export type ConnectorGarbageCollector = (
+  connectorId: ModelId
+) => Promise<Result<string, Error>>;
