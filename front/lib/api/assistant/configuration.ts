@@ -53,7 +53,7 @@ export async function getAgentConfiguration(
   auth: Authenticator,
   agentId: string,
   preFetchedAgentConfiguration?: AgentConfiguration,
-  preFetchedDataSourcesConfig?: AgentDataSourceConfiguration[]
+  preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -114,8 +114,8 @@ export async function getAgentConfiguration(
 
   if (agent.retrievalConfigurationId) {
     const dataSourcesConfig =
-      preFetchedDataSourcesConfig !== undefined
-        ? preFetchedDataSourcesConfig
+      preFetchedDataSourceConfigurations !== undefined
+        ? preFetchedDataSourceConfigurations
         : await AgentDataSourceConfiguration.findAll({
             where: {
               retrievalConfigurationId: agent.retrievalConfiguration?.id,
