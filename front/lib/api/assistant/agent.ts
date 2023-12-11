@@ -10,6 +10,7 @@ import {
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  isDatabaseConfiguration,
 } from "@dust-tt/types";
 import {
   AgentActionSpecification,
@@ -288,6 +289,8 @@ export async function* runAgent(
             return;
         }
       }
+    } else if (isDatabaseConfiguration(configuration.action)) {
+      // TODO DAPH DATABASE ACTION
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
