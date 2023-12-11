@@ -1542,7 +1542,7 @@ export async function renderAndUpsertPageFromCache({
   );
   for (const p of parsedProperties) {
     if (!p.text) continue;
-    // We skip the title as it is added separately as prefix to the section.
+    // We skip the title as it is added separately as prefix to the top-level document section.
     if (p.key === "title") continue;
     renderedPage += `$${p.key}: ${p.text}\n`;
   }
