@@ -1,13 +1,24 @@
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { GetServerSideProps } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { getCheckoutUrlForUpgrade } from "@app/lib/plans/subscription";
 
-export const getServerSideProps: GetServerSideProps<object> = async (
-  context
-) => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  const owner = auth.workspace();
+  if (!owner) {
+    return {
+      notFound: true,
+    };
+  }
+
   const token = context.params?.secret as string;
   if (!token) {
     return {
@@ -32,17 +43,7 @@ export const getServerSideProps: GetServerSideProps<object> = async (
       id: invitation.workspaceId,
     },
   });
-  if (!targetWorkspace) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSession(session, targetWorkspace?.sId);
-  const owner = auth.workspace();
-
-  if (!owner) {
+  if (!targetWorkspace || targetWorkspace.sId !== owner.sId) {
     return {
       notFound: true,
     };
@@ -63,9 +64,6 @@ export const getServerSideProps: GetServerSideProps<object> = async (
   };
 };
 
-export default function Welcome(
-  _props: InferGetServerSidePropsType<typeof getServerSideProps>
-) {
-  void _props;
-  return null;
+export default function Redirect() {
+  return <></>;
 }
