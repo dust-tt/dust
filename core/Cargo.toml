@@ -12,7 +12,7 @@ name = "qdrant_migrator"
 path = "bin/qdrant_migrator.rs"
 
 [[bin]]
-name = "sqlite_worker"
+name = "sqlite-worker"
 path = "bin/sqlite_worker.rs"
 
 [dependencies]
