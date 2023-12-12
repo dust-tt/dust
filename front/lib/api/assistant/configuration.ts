@@ -117,7 +117,7 @@ export async function getAgentConfiguration(
       return AgentUserRelation.findOne({
         where: {
           workspaceId: owner.id,
-          agentConfigurationId: agentId,
+          agentConfiguration: agentId,
           userId: user.id,
         },
       });
@@ -382,7 +382,7 @@ export async function getAgentConfigurations(
           where: {
             workspaceId: owner.id,
             userId: user?.id,
-            agentConfigurationId: { [Op.in]: agents.map((a) => a.sId) },
+            agentConfiguration: { [Op.in]: agents.map((a) => a.sId) },
           },
         });
       })(),
@@ -396,7 +396,7 @@ export async function getAgentConfigurations(
             a.sId,
             a,
             // Make sure to pass null so that it is not fetched again.
-            userRelations.find((r) => r.agentConfigurationId === a.sId) || null,
+            userRelations.find((r) => r.agentConfiguration === a.sId) || null,
             dataSourcesConfigurations.filter(
               (dsc) =>
                 dsc.retrievalConfigurationId === a.retrievalConfigurationId
@@ -628,7 +628,7 @@ export async function createAgentConfiguration(
           AgentUserRelation.findOne({
             where: {
               workspaceId: owner.id,
-              agentConfigurationId: agentConfigurationId,
+              agentConfiguration: agentConfigurationId,
               userId: user.id,
             },
             transaction: t,

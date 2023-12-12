@@ -330,7 +330,7 @@ export class AgentUserRelation extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: string;
+  declare agentConfiguration: string;
 
   declare listStatusOverride: AgentUserListStatus | null;
 
@@ -356,7 +356,7 @@ AgentUserRelation.init(
       defaultValue: DataTypes.NOW,
     },
     // This is the agentConfiguration.sId as this relation is preserved across version changes.
-    agentConfigurationId: {
+    agentConfiguration: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -371,7 +371,7 @@ AgentUserRelation.init(
     indexes: [
       { fields: ["workspaceId", "userId"] },
       {
-        fields: ["workspaceId", "agentConfigurationId", "userId"],
+        fields: ["workspaceId", "agentConfiguration", "userId"],
         unique: true,
         name: "agent_user_relation_config_workspace_user_idx",
       },
