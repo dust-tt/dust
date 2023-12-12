@@ -70,7 +70,7 @@ export default function AssistantsBuilder({
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetViewType: "all",
+      agentsGetView: "all",
     });
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =

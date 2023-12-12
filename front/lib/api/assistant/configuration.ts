@@ -364,6 +364,7 @@ export async function getAgentConfigurations(
     ).filter((a) => a !== null) as AgentConfigurationType[];
   };
 
+  // Superuser view (all agents, to be used internally from poke).
   if (agentsGetView === "super_user") {
     if (!auth.isDustSuperUser()) {
       throw new Error("superuser view is for dust superusers only.");
@@ -376,6 +377,7 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
+  // All view (published + workspace agents).
   if (agentsGetView === "all") {
     const allAgentsSequelizeQuery = {
       ...baseAgentsSequelizeQuery,
@@ -392,6 +394,45 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
+  // Workspace view (only workspace agents).
+  if (agentsGetView === "workspace") {
+    const workspaceAgentsSequelizeQuery = {
+      ...baseAgentsSequelizeQuery,
+      where: {
+        ...baseAgentsSequelizeQuery.where,
+        scope: { [Op.in]: ["workspace"] },
+      },
+    };
+    return (
+      await Promise.all([
+        getAgentConfigurationsForQuery(workspaceAgentsSequelizeQuery),
+        [],
+      ])
+    ).flat();
+  }
+
+  // Published view (only published agents).
+  if (agentsGetView === "published") {
+    const publishedAgentsSequelizeQuery = {
+      ...baseAgentsSequelizeQuery,
+      where: {
+        ...baseAgentsSequelizeQuery.where,
+        scope: { [Op.in]: ["published"] },
+      },
+    };
+    return (
+      await Promise.all([
+        getAgentConfigurationsForQuery(publishedAgentsSequelizeQuery),
+        [],
+      ])
+    ).flat();
+  }
+
+  if (agentsGetView === "dust") {
+    return (await Promise.all([[], getGlobalAgentConfigurations()])).flat();
+  }
+
+  // List view (user agents list).
   if (agentsGetView === "list") {
     const user = auth.user();
     if (!user) {
@@ -426,7 +467,7 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
-  // conversation view
+  // Conversation view (user agents list + agents mentioned in the conversation).
   if (typeof agentsGetView === "object" && agentsGetView.conversationId) {
     const user = auth.user();
     if (!user) {

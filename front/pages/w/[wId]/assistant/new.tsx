@@ -12,16 +12,14 @@ import {
 } from "@dust-tt/sparkle";
 import {
   AgentMention,
+  ContentFragmentContentType,
+  ConversationType,
   InternalPostConversationsRequestBodySchema,
+  MentionType,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  ContentFragmentContentType,
-  ConversationType,
-  MentionType,
-} from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -97,7 +95,7 @@ export default function AssistantNew({
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetViewType: "list",
+    agentsGetView: "list",
   });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");

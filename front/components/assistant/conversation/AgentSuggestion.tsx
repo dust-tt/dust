@@ -26,7 +26,7 @@ export function AgentSuggestion({
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetViewType: { conversationId: conversation.sId },
+    agentsGetView: { conversationId: conversation.sId },
   });
   const sendNotification = useContext(SendNotificationsContext);
 

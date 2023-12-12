@@ -8,7 +8,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider } from "@dust-tt/types";
+import { ConnectorProvider, isAgentConfigurationInList } from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
   isDustAppRunConfiguration,
@@ -25,17 +25,20 @@ import ReactMarkdown from "react-markdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useApp } from "@app/lib/swr";
+import { PostAgentRelationOverrideRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_relation_override";
 
 export function AssistantDetails({
   owner,
   assistant,
   show,
   onClose,
+  onUpdate,
 }: {
   owner: WorkspaceType;
   assistant: AgentConfigurationType;
   show: boolean;
   onClose: () => void;
+  onUpdate: () => void;
 }) {
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
@@ -51,9 +54,7 @@ export function AssistantDetails({
     assistant.generation?.prompt ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown className="max-h-64 overflow-y-auto">
-          {assistant.generation.prompt}
-        </ReactMarkdown>
+        <ReactMarkdown>{assistant.generation.prompt}</ReactMarkdown>
       </div>
     ) : (
       "This assistant has no instructions."
@@ -91,6 +92,7 @@ export function AssistantDetails({
           owner={owner}
           agentConfiguration={assistant}
           detailsModalClose={onClose}
+          onUpdate={onUpdate}
         />
         <DescriptionSection />
         <InstructionsSection />
@@ -140,7 +142,7 @@ function DataSourcesSection({
         } element(s))`;
         return (
           <div className="flex flex-col gap-2" key={ds.dataSourceId}>
-            <div className="flex items-center gap-2 capitalize">
+            <div className="flex items-center gap-2">
               <div>
                 <DsLogo />
               </div>
@@ -180,31 +182,78 @@ function ButtonsSection({
   owner,
   agentConfiguration,
   detailsModalClose,
+  onUpdate,
 }: {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   detailsModalClose: () => void;
+  onUpdate: () => void;
 }) {
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
   const canDelete =
     (agentConfiguration.scope === "workspace" &&
       ["builder", "admin"].includes(owner.role)) ||
     (["published", "private"].includes(agentConfiguration.scope) &&
-      inMyList(agentConfiguration));
+      isAgentConfigurationInList(agentConfiguration));
   const canAddRemoveList = ["published", "workspace"].includes(
     agentConfiguration.scope
   );
+
+  const [isRemoving, setIsRemoving] = useState<boolean>(false);
+  const sendNotification = useContext(SendNotificationsContext);
+
+  console.log(agentConfiguration);
+
   return (
     <Button.List className="flex items-center justify-end gap-1">
       {canAddRemoveList &&
-        (inMyList(agentConfiguration) ? (
+        (isAgentConfigurationInList(agentConfiguration) ? (
           <Button
-            label="Remove from my list"
+            label={isRemoving ? "Removing..." : "Remove from my list"}
+            disabled={isRemoving}
             variant="tertiary"
             icon={DashIcon}
             size="xs"
-            onClick={() => {
-              // TODO IMPLEMENT
+            onClick={async () => {
+              setIsRemoving(true);
+              const body: PostAgentRelationOverrideRequestBody = {
+                agentId: agentConfiguration.sId,
+                agentRelation: "not-in-list",
+              };
+              try {
+                const res = await fetch(
+                  `/api/w/${owner.sId}/members/me/agent_relation_override`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(body),
+                  }
+                );
+                if (!res.ok) {
+                  const data = await res.json();
+                  sendNotification({
+                    title: "Error removing Assistant",
+                    description: data.error.message,
+                    type: "error",
+                  });
+                } else {
+                  sendNotification({
+                    title: "Assistant removed",
+                    type: "success",
+                  });
+                  onUpdate();
+                }
+              } catch (e) {
+                sendNotification({
+                  title: "Error removing Assistant",
+                  description: (e as Error).message,
+                  type: "error",
+                });
+              }
+
+              setIsRemoving(false);
             }}
           />
         ) : (
@@ -225,6 +274,7 @@ function ButtonsSection({
             agentConfiguration={agentConfiguration}
             show={showDeletionModal}
             onClose={() => setShowDeletionModal(false)}
+            onDelete={onUpdate}
             detailsModalClose={detailsModalClose}
           />
           <Button
@@ -246,17 +296,20 @@ function DeletionModal({
   agentConfiguration,
   show,
   onClose,
+  onDelete,
   detailsModalClose,
 }: {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   show: boolean;
   onClose: () => void;
+  onDelete: () => void;
   detailsModalClose: () => void;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
 
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   return (
     <Modal
       isOpen={show}
@@ -278,42 +331,45 @@ function DeletionModal({
         <Button label="Cancel" variant="tertiary" onClick={onClose} />
         <Button
           label={isDeleting ? "Deleting..." : "Yes, Delete"}
+          disabled={isDeleting}
           variant="primaryWarning"
           onClick={async () => {
             setIsDeleting(true);
-            const res = await fetch(
-              `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
-              {
-                method: "DELETE",
+            try {
+              const res = await fetch(
+                `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+                {
+                  method: "DELETE",
+                }
+              );
+              if (!res.ok) {
+                const data = await res.json();
+                sendNotification({
+                  title: "Error deleting Assistant",
+                  description: data.error.message,
+                  type: "error",
+                });
+              } else {
+                sendNotification({
+                  title: "Assistant deleted",
+                  type: "success",
+                });
+                onDelete();
               }
-            );
-            onClose();
-            detailsModalClose();
-            if (!res.ok) {
-              const data = await res.json();
+            } catch (e) {
               sendNotification({
                 title: "Error deleting Assistant",
-                description: data.error.message,
+                description: (e as Error).message,
                 type: "error",
-              });
-              return;
-            } else {
-              sendNotification({
-                title: "Assistant deleted",
-                type: "success",
               });
             }
 
+            onClose();
+            detailsModalClose();
             setIsDeleting(false);
           }}
-          disabled={isDeleting}
         />
       </div>
     </Modal>
   );
-}
-
-function inMyList(_agentConfiguration: AgentConfigurationType): boolean {
-  // TODO IMPLEMENT
-  return !!_agentConfiguration || true;
 }

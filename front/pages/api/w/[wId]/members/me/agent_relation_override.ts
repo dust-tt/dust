@@ -23,18 +23,22 @@ export type PostAgentRelationOverrideResponseBody = {
 
 export type GetAgentRelationOverrideResponseBody = {
   agentRelationOverrides: {
-    [assistantId: string]: AgentRelationOverrideType;
+    [agentId: string]: AgentRelationOverrideType;
   };
 };
 
 export const PostAgentRelationOverrideRequestBodySchema = t.type({
-  assistantId: t.string,
+  agentId: t.string,
   agentRelation: t.union([t.literal("in-list"), t.literal("not-in-list")]),
 });
 
 export const DeleteAgentRelationOverrideBodySchema = t.type({
-  assistantId: t.string,
+  agentId: t.string,
 });
+
+export type PostAgentRelationOverrideRequestBody = t.TypeOf<
+  typeof PostAgentRelationOverrideRequestBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -86,8 +90,8 @@ async function handler(
   switch (req.method) {
     case "GET":
       let singleAgentConfiguration: AgentConfigurationType | null = null;
-      if (req.query.assistantId) {
-        if (typeof req.query.assistantId !== "string") {
+      if (req.query.agentId) {
+        if (typeof req.query.agentId !== "string") {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -98,7 +102,7 @@ async function handler(
         }
         singleAgentConfiguration = await getAgentConfiguration(
           auth,
-          req.query.assistantId as string
+          req.query.agentId as string
         );
         if (!singleAgentConfiguration) {
           return apiError(req, res, {
@@ -127,6 +131,7 @@ async function handler(
         .status(200)
         .json({ agentRelationOverrides: agentRelationOverrides.value });
       return;
+
     case "POST":
       const bodyValidation = PostAgentRelationOverrideRequestBodySchema.decode(
         req.body
@@ -143,8 +148,8 @@ async function handler(
         });
       }
 
-      const { assistantId, agentRelation } = bodyValidation.right;
-      const agentConfiguration = await getAgentConfiguration(auth, assistantId);
+      const { agentId, agentRelation } = bodyValidation.right;
+      const agentConfiguration = await getAgentConfiguration(auth, agentId);
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
@@ -156,7 +161,7 @@ async function handler(
       }
       const result = await setAgentRelationOverrideForUser({
         auth,
-        agentId: assistantId,
+        agentId: agentId,
         relation: agentRelation,
       });
       if (result.isErr()) {
@@ -170,6 +175,7 @@ async function handler(
       }
       res.status(200).json(result.value);
       return;
+
     case "DELETE":
       const bodyValidationDelete = DeleteAgentRelationOverrideBodySchema.decode(
         req.body
@@ -187,10 +193,10 @@ async function handler(
           },
         });
       }
-      const { assistantId: assistantIdToDelete } = bodyValidationDelete.right;
+      const { agentId: agentIdToDelete } = bodyValidationDelete.right;
       const deleteAgentConfiguration = await getAgentConfiguration(
         auth,
-        assistantIdToDelete
+        agentIdToDelete
       );
       if (!deleteAgentConfiguration) {
         return apiError(req, res, {
@@ -204,7 +210,7 @@ async function handler(
 
       const deleteResult = await deleteAgentRelationOverrideForUser({
         auth,
-        agentId: assistantIdToDelete,
+        agentId: agentIdToDelete,
       });
       if (deleteResult.isErr()) {
         return apiError(req, res, {
@@ -217,6 +223,7 @@ async function handler(
       }
       res.status(200).json(deleteResult.value);
       return;
+
     default:
       return apiError(req, res, {
         status_code: 405,

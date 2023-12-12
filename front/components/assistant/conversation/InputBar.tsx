@@ -88,7 +88,7 @@ function AgentListImpl(
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetViewType: conversationId ? { conversationId } : "list",
+    agentsGetView: conversationId ? { conversationId } : "list",
   });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -286,7 +286,7 @@ export function AssistantInputBar({
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetViewType: conversationId ? { conversationId } : "list",
+    agentsGetView: conversationId ? { conversationId } : "list",
   });
   const sendNotification = useContext(SendNotificationsContext);
 
