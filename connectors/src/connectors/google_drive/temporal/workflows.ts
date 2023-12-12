@@ -12,6 +12,7 @@ import type * as activities from "@connectors/connectors/google_drive/temporal/a
 import type * as sync_status from "@connectors/lib/sync_status";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";
 
 const {
@@ -110,7 +111,7 @@ export async function googleDriveIncrementalSync(
 ) {
   const maxPassCount = 2;
   const debounceMaxCount = 10;
-  const debounceSleepTimeMs = 10 * 1000;
+  const debounceSleepTimeMs = GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC * 1000;
   const secondPassSleepStepMs = 5 * 1000;
   const secondPassSleepTimeMs = 5 * 60 * 1000;
 

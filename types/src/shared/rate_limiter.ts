@@ -1,20 +1,37 @@
-import StatsD from "hot-shots";
 import { v4 as uuidv4 } from "uuid";
 
-import { redisClient } from "@app/lib/redis";
-import logger from "@app/logger/logger";
+import { LoggerInterface } from "../shared/logger";
+import { redisClient } from "../shared/redis_client";
+import { getStatsDClient } from "./statsd";
 
-export const statsDClient = new StatsD();
-export async function rateLimiter(
-  key: string,
-  maxPerTimeframe: number,
-  timeframeSeconds: number
-): Promise<number> {
+export class RateLimitError extends Error {}
+
+export async function rateLimiter({
+  key,
+  maxPerTimeframe,
+  timeframeSeconds,
+  logger,
+  redisUri,
+}: {
+  key: string;
+  maxPerTimeframe: number;
+  timeframeSeconds: number;
+  logger: LoggerInterface;
+  redisUri?: string;
+}): Promise<number> {
+  const statsDClient = getStatsDClient();
+  if (!redisUri) {
+    const REDIS_URI = process.env.REDIS_URI;
+    if (!REDIS_URI) {
+      throw new Error("REDIS_CACHE_URI is not set");
+    }
+    redisUri = REDIS_URI;
+  }
   let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   const now = new Date();
   const tags = [`rate_limiter:${key}`];
   try {
-    redis = await redisClient();
+    redis = await redisClient(redisUri);
     const redisKey = `rate_limiter:${key}`;
 
     const zcountRes = await redis.zCount(
@@ -40,7 +57,7 @@ export async function rateLimiter(
       tags
     );
 
-    return remaining;
+    return remaining > 0 ? remaining : 0;
   } catch (e) {
     statsDClient.increment("ratelimiter.error.count", 1, tags);
     logger.error(

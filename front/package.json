@@ -120,6 +120,8 @@
   },
   "browser": {
     "net": false,
-    "tls": false
+    "tls": false,
+    "fs": false,
+    "dgram": false
   }
 }
