@@ -3,7 +3,6 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
-import { assertNever } from "../../shared/utils/assert_never";
 
 /**
  * Agent Action configuration
