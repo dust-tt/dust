@@ -493,13 +493,13 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div className="flex flex-1 px-4">
-        <div className="flex flex-1 flex-row items-end">
+      <div className="flex flex-1 px-0 sm:px-4">
+        <div className="flex flex-1 flex-col items-end self-stretch sm:flex-row">
           <div
             className={classNames(
-              "relative flex flex-1 flex-row items-stretch gap-0 pl-4",
-              "s-backdrop-blur border-2  border-element-500 bg-white/80 focus-within:border-element-600",
-              "rounded-3xl shadow-[0_12px_36px_-15px_rgba(0,0,0,0.3)] transition-all duration-300",
+              "relative flex flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
+              "border-struture-200 border-t bg-white/80 shadow-[0_0_36px_-15px_rgba(0,0,0,0.3)] backdrop-blur focus-within:border-structure-300 sm:rounded-3xl sm:border-2 sm:border-element-500 sm:shadow-[0_12px_36px_-15px_rgba(0,0,0,0.3)] sm:focus-within:border-element-600",
+              "transition-all duration-300",
               isAnimating
                 ? "animate-shake border-action-500 focus-within:border-action-800"
                 : ""
@@ -511,7 +511,7 @@ export function AssistantInputBar({
                 className={classNames(
                   // This div is placeholder text for the contenteditable
                   contentEditableClasses,
-                  "absolute -z-10 py-3 text-element-600 dark:text-element-600-dark",
+                  "sm: absolute -z-10 py-4 pl-2 text-element-600 dark:text-element-600-dark sm:py-3 sm:pl-0",
                   empty && !(contentFragmentFilename && contentFragmentBody)
                     ? ""
                     : "hidden"
@@ -541,7 +541,7 @@ export function AssistantInputBar({
                   contentEditableClasses,
                   "scrollbar-hide",
                   "overflow-y-auto",
-                  "py-3",
+                  "py-4 pl-2 sm:py-3 sm:pl-0",
                   isExpanded
                     ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
                     : "max-h-64"
@@ -850,8 +850,8 @@ export function AssistantInputBar({
               </div>
             </div>
 
-            <div className="flex flex-col items-end justify-between gap-2 self-stretch py-2 pr-2">
-              <div className="flex gap-3 rounded-full border border-structure-100 px-2 py-2">
+            <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 py-2 pr-2 sm:flex-col sm:border-0">
+              <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -927,15 +927,17 @@ export function AssistantInputBar({
                   assistants={activeAgents}
                   showBuilderButtons={true}
                 />
-                <IconButton
-                  variant={"tertiary"}
-                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                  size="sm"
-                  className="flex"
-                  onClick={() => {
-                    setIsExpanded((e) => !e);
-                  }}
-                />
+                <div className="hidden sm:flex">
+                  <IconButton
+                    variant={"tertiary"}
+                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    size="sm"
+                    className="flex"
+                    onClick={() => {
+                      setIsExpanded((e) => !e);
+                    }}
+                  />
+                </div>
               </div>
               <Button
                 size="sm"
@@ -971,8 +973,8 @@ export function FixedAssistantInputBar({
   conversationId: string | null;
 }) {
   return (
-    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial px-2 lg:left-80">
-      <div className="mx-auto max-h-screen max-w-4xl pb-8">
+    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
+      <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
