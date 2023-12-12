@@ -93,6 +93,7 @@ export function AssistantDetails({
           agentConfiguration={assistant}
           detailsModalClose={onClose}
           onUpdate={onUpdate}
+          onClose={onClose}
         />
         <DescriptionSection />
         <InstructionsSection />
@@ -183,11 +184,13 @@ function ButtonsSection({
   agentConfiguration,
   detailsModalClose,
   onUpdate,
+  onClose,
 }: {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
+  onClose: () => void;
 }) {
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
 
@@ -239,6 +242,7 @@ function ButtonsSection({
     }
 
     setIsAddingOrRemoving(false);
+    onClose();
   };
 
   return (
