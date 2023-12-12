@@ -413,6 +413,21 @@ async function syncOneFile(
 
     if (file.mimeType === "text/plain") {
       if (res.data instanceof ArrayBuffer) {
+        // If data is > 4 times the limit, we skip the file since even if
+        // converted to utf-8 it will overcome the limit enforced below. This
+        // avoids operations on very long text files, that can cause
+        // Buffer.toString to crash if the file is > 500MB
+        if (res.data.byteLength > 4 * MAX_DOCUMENT_TXT_LEN) {
+          logger.info(
+            {
+              file_id: file.id,
+              mimeType: file.mimeType,
+              title: file.name,
+            },
+            `File too big to be chunked. Skipping`
+          );
+          return false;
+        }
         documentContent = Buffer.from(res.data).toString("utf-8");
       }
     } else if (file.mimeType === "application/pdf") {
