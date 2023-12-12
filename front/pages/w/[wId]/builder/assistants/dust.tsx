@@ -159,7 +159,10 @@ export default function EditDustAssistant({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAssistants({ owner, current: "workspace_assistants" })}
+      subNavigation={subNavigationAssistants({
+        owner,
+        current: "workspace_assistants",
+      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Manage Dust Assistant"
