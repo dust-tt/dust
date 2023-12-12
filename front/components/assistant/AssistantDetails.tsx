@@ -8,11 +8,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import {
-  AgentUserListStatus,
-  ConnectorProvider,
-  isAgentConfigurationInList,
-} from "@dust-tt/types";
+import { AgentUserListStatus, ConnectorProvider } from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
   isDustAppRunConfiguration,
@@ -29,7 +25,6 @@ import ReactMarkdown from "react-markdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useApp } from "@app/lib/swr";
-import { PostAgentRelationOverrideRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_relation_override";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function AssistantDetails({
@@ -195,11 +190,12 @@ function ButtonsSection({
   onUpdate: () => void;
 }) {
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
+
   const canDelete =
     (agentConfiguration.scope === "workspace" &&
       ["builder", "admin"].includes(owner.role)) ||
-    (["published", "private"].includes(agentConfiguration.scope) &&
-      isAgentConfigurationInList(agentConfiguration));
+    ["published", "private"].includes(agentConfiguration.scope);
+
   const canAddRemoveList = ["published", "workspace"].includes(
     agentConfiguration.scope
   );
@@ -248,7 +244,7 @@ function ButtonsSection({
   return (
     <Button.List className="flex items-center justify-end gap-1">
       {canAddRemoveList &&
-        (isAgentConfigurationInList(agentConfiguration) ? (
+        (agentConfiguration.userListStatus === "in-list" ? (
           <Button
             label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
             disabled={isAddingOrRemoving}
@@ -271,6 +267,7 @@ function ButtonsSection({
             }}
           />
         ))}
+
       {canDelete && (
         <>
           <DeletionModal

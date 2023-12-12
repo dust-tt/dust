@@ -12,7 +12,6 @@ import {
 import {
   AgentConfigurationType,
   AgentsGetViewType,
-  isAgentConfigurationInList,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -91,11 +90,11 @@ const GalleryItem = function ({
           @{agentConfiguration.name}
         </div>
         <div className="flex flex-row gap-2">
-          {isAgentConfigurationInList(agentConfiguration) && (
+          {agentConfiguration.userListStatus === "in-list" && (
             <Chip color="emerald" size="xs" label="Added" />
           )}
           <Button.List>
-            {!isAgentConfigurationInList(agentConfiguration) && (
+            {agentConfiguration.userListStatus !== "in-list" && (
               <>
                 <Button
                   variant="tertiary"
