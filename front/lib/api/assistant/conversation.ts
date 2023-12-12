@@ -1874,6 +1874,8 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,
           });
+        } else if (event.action.type === "database_query_action") {
+          // TODO DAPH DATABASE ACTION
         } else {
           ((action: never) => {
             throw new Error(

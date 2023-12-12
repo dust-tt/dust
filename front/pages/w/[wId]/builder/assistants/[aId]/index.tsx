@@ -1,4 +1,10 @@
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  CoreAPI,
+  DataSourceType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { isDatabaseQueryConfiguration } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
@@ -32,6 +38,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSourceConfigurations: Record<string, DataSourceConfig>;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
+  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -147,6 +154,30 @@ export const getServerSideProps: GetServerSideProps<{
     }
   }
 
+  let databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"] =
+    null;
+
+  if (isDatabaseQueryConfiguration(config.action)) {
+    const dataSource = dataSourceByName[config.action.dataSourceId];
+
+    const coreAPI = new CoreAPI(logger);
+    const databaseRes = await coreAPI.getDatabase({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceName: config.action.dataSourceId,
+      databaseId: config.action.databaseId,
+    });
+
+    if (databaseRes.isOk()) {
+      const { database } = databaseRes.value;
+      databaseQueryConfiguration = {
+        dataSourceWorkspaceId: config.action.dataSourceWorkspaceId,
+        dataSourceId: config.action.dataSourceId,
+        databaseId: config.action.databaseId,
+        databaseName: database.name,
+      };
+    }
+  }
+
   return {
     props: {
       user,
@@ -158,6 +189,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
+      databaseQueryConfiguration: databaseQueryConfiguration,
       agentConfiguration: config,
     },
   };
@@ -173,6 +205,7 @@ export default function EditAssistant({
   dataSourceConfigurations,
   dustApps,
   dustAppConfiguration,
+  databaseQueryConfiguration,
   agentConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
@@ -205,6 +238,10 @@ export default function EditAssistant({
     actionMode = "DUST_APP_RUN";
   }
 
+  if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
+    actionMode = "DATABASE_QUERY";
+  }
+
   return (
     <AssistantBuilder
       user={user}
@@ -219,6 +256,7 @@ export default function EditAssistant({
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
+        databaseQueryConfiguration,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

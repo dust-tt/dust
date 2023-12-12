@@ -37,8 +37,10 @@ import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
+import AssistantBuilderDatabaseModal from "@app/components/assistant_builder/AssistantBuilderDatabaseModal";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
+import DatabaseSelectionSection from "@app/components/assistant_builder/DatabaseSelectionSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import {
@@ -56,6 +58,7 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   useAgentConfigurations,
@@ -78,6 +81,7 @@ const ACTION_MODES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
+  "DATABASE_QUERY",
 ] as const;
 type ActionMode = (typeof ACTION_MODES)[number];
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
@@ -85,6 +89,7 @@ const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   RETRIEVAL_SEARCH: "Search Data Sources",
   RETRIEVAL_EXHAUSTIVE: "Process Data Sources",
   DUST_APP_RUN: "Run Dust App",
+  DATABASE_QUERY: "Query Database",
 };
 
 // Retrieval Action
@@ -115,6 +120,15 @@ export type AssistantBuilderDustAppConfiguration = {
   app: AppType;
 };
 
+// Database Query Action
+
+export type AssistantBuilderDatabaseQueryConfiguration = {
+  dataSourceId: string;
+  dataSourceWorkspaceId: string;
+  databaseId: string;
+  databaseName: string;
+};
+
 // Builder State
 
 type AssistantBuilderState = {
@@ -128,6 +142,7 @@ type AssistantBuilderState = {
     unit: TimeframeUnit;
   };
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
+  databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
   handle: string | null;
   description: string | null;
   instructions: string | null;
@@ -149,6 +164,7 @@ export type AssistantBuilderInitialState = {
     | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
+  databaseQueryConfiguration: AssistantBuilderState["databaseQueryConfiguration"];
   handle: string;
   description: string;
   instructions: string;
@@ -179,6 +195,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     unit: "month",
   },
   dustAppConfiguration: null,
+  databaseQueryConfiguration: null,
   handle: null,
   description: null,
   instructions: null,
@@ -238,6 +255,8 @@ export default function AssistantBuilder({
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
 
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
+
+  const [showDatabaseModal, setShowDatabaseModal] = useState(false);
 
   const [edited, setEdited] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
@@ -308,6 +327,8 @@ export default function AssistantBuilder({
           ...DEFAULT_ASSISTANT_STATE.timeFrame,
         },
         dustAppConfiguration: initialBuilderState.dustAppConfiguration,
+        databaseQueryConfiguration:
+          initialBuilderState.databaseQueryConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
         instructions: initialBuilderState.instructions,
@@ -437,6 +458,12 @@ export default function AssistantBuilder({
       }
     }
 
+    if (builderState.actionMode === "DATABASE_QUERY") {
+      if (!builderState.databaseQueryConfiguration) {
+        valid = false;
+      }
+    }
+
     setSubmitEnabled(valid);
   }, [
     builderState.actionMode,
@@ -446,6 +473,7 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
+    builderState.databaseQueryConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -530,6 +558,18 @@ export default function AssistantBuilder({
             type: "dust_app_run_configuration",
             appWorkspaceId: owner.sId,
             appId: builderState.dustAppConfiguration.app.sId,
+          };
+        }
+        break;
+
+      case "DATABASE_QUERY":
+        if (builderState.databaseQueryConfiguration) {
+          const config = builderState.databaseQueryConfiguration;
+          actionParam = {
+            type: "database_query_configuration",
+            dataSourceWorkspaceId: config.dataSourceWorkspaceId,
+            dataSourceId: config.dataSourceId,
+            databaseId: config.databaseId,
           };
         }
         break;
@@ -639,6 +679,15 @@ export default function AssistantBuilder({
     setIsSavingOrDeleting(false);
   };
 
+  // Hack to keep DATABASE_QUERY disabled if not Dust workspace
+  const actions = isDevelopmentOrDustWorkspace(owner)
+    ? ACTION_MODE_TO_LABEL
+    : Object.fromEntries(
+        Object.entries(ACTION_MODE_TO_LABEL).filter(
+          ([key]) => key !== "DATABASE_QUERY"
+        )
+      );
+
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -685,6 +734,22 @@ export default function AssistantBuilder({
             },
           }));
         }}
+      />
+      <AssistantBuilderDatabaseModal
+        isOpen={showDatabaseModal}
+        setOpen={(isOpen) => {
+          setShowDatabaseModal(isOpen);
+        }}
+        owner={owner}
+        dataSources={configurableDataSources}
+        onSave={(database) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            databaseQueryConfiguration: database,
+          }));
+        }}
+        currentDatabase={builderState.databaseQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}
@@ -959,7 +1024,7 @@ export default function AssistantBuilder({
                   />
                 </DropdownMenu.Button>
                 <DropdownMenu.Items origin="bottomRight" width={260}>
-                  {Object.entries(ACTION_MODE_TO_LABEL).map(([key, value]) => (
+                  {Object.entries(actions).map(([key, value]) => (
                     <DropdownMenu.Item
                       key={key}
                       label={value}
@@ -1142,6 +1207,30 @@ export default function AssistantBuilder({
                 }}
                 onDelete={deleteDustApp}
                 canSelectDustApp={dustApps.length !== 0}
+              />
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "DATABASE_QUERY"}
+            >
+              <div className="text-sm text-element-700">
+                Your assistant can search directly from a database built from
+                one of your files.
+              </div>
+              <DatabaseSelectionSection
+                show={builderState.actionMode === "DATABASE_QUERY"}
+                databaseQueryConfiguration={
+                  builderState.databaseQueryConfiguration
+                }
+                openDatabaseModal={() => {
+                  setShowDatabaseModal(true);
+                }}
+                onDelete={() => {
+                  setEdited(true);
+                  setBuilderState((state) => {
+                    return { ...state, databaseQueryConfiguration: null };
+                  });
+                }}
+                canSelecDatabase={dataSources.length !== 0}
               />
             </ActionModeSection>
           </div>

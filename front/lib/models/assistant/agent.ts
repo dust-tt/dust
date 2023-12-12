@@ -19,6 +19,7 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
@@ -113,10 +114,15 @@ export class AgentConfiguration extends Model<
     AgentDustAppRunConfiguration["id"]
   > | null;
 
+  declare databaseQueryConfigurationId: ForeignKey<
+    AgentDatabaseQueryConfiguration["id"]
+  > | null;
+
   declare author: NonAttribute<User>;
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
+  declare databaseQueryConfiguration: NonAttribute<AgentDatabaseQueryConfiguration>;
   declare relationOverrides: NonAttribute<AgentUserRelation[]>;
 }
 AgentConfiguration.init(
@@ -181,12 +187,17 @@ AgentConfiguration.init(
     ],
     hooks: {
       beforeValidate: (agentConfiguration: AgentConfiguration) => {
-        if (
-          agentConfiguration.retrievalConfigurationId &&
-          agentConfiguration.dustAppRunConfigurationId
-        ) {
+        const actionsTypes: (keyof AgentConfiguration)[] = [
+          "retrievalConfigurationId",
+          "dustAppRunConfigurationId",
+          "databaseQueryConfigurationId",
+        ];
+        const nonNullActionTypes = actionsTypes.filter(
+          (field) => agentConfiguration[field] != null
+        );
+        if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "retrievalConfigurationId and dutappRunConfigurationId must be exclusive"
+            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, or databaseQueryConfigurationId can be set"
           );
         }
       },
@@ -231,6 +242,16 @@ AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
   as: "dustAppRunConfiguration",
   foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
+});
+
+// Agent config <> Database config
+AgentDatabaseQueryConfiguration.hasOne(AgentConfiguration, {
+  as: "databaseQueryConfiguration",
+  foreignKey: { name: "databaseQueryConfigurationId", allowNull: true }, // null = no Database action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentDatabaseQueryConfiguration, {
+  as: "databaseQueryConfiguration",
+  foreignKey: { name: "databaseQueryConfigurationId", allowNull: true }, // null = no Database action set for this Agent
 });
 
 // Agent config <> Author

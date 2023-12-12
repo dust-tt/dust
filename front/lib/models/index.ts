@@ -1,4 +1,5 @@
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
@@ -42,6 +43,7 @@ import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
   AgentConfiguration,
+  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
