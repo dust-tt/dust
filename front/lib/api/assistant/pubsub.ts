@@ -66,8 +66,8 @@ export async function postUserMessageWithPubSub(
   if (
     (await rateLimiter({
       key: rateLimitKey,
-      maxPerTimeframe:1,
-      timeframeSeconds:120,
+      maxPerTimeframe,
+      timeframeSeconds,
       logger,
     })) === 0
   ) {
