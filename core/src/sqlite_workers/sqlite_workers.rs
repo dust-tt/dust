@@ -25,6 +25,10 @@ impl SqliteWorker {
     }
 
     pub fn url(&self) -> Result<String> {
+        match std::env::var("IS_LOCAL_DEV") {
+            Ok(_) => return Ok("http://localhost:3005".to_string()),
+            Err(_) => (),
+        }
         let cluster_namespace = match std::env::var("CLUSTER_NAMESPACE") {
             Ok(n) => n,
             Err(_) => Err(anyhow!("CLUSTER_NAMESPACE env var not set"))?,

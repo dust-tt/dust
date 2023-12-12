@@ -1,12 +1,18 @@
 use super::table_schema::TableSchema;
-use crate::{project::Project, stores::store::Store, utils};
+use crate::{
+    project::Project,
+    sqlite_workers::sqlite_workers::{SqliteWorker, HEARTBEAT_INTERVAL_MS},
+    stores::store::Store,
+    utils,
+};
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
+use hyper::{Body, Client, Request};
 use itertools::Itertools;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -114,26 +120,47 @@ impl Database {
             }
         };
 
-        try_join_all(vec![
-            store.update_database_table_schema(
+        store
+            .update_database_table_schema(
                 &self.project,
                 &self.data_source_id,
                 &self.database_id,
                 table_id,
                 &table_schema,
-            ),
-            store.batch_upsert_database_rows(
-                &self.project,
-                &self.data_source_id,
-                &self.database_id,
-                table_id,
-                &rows,
-                truncate,
-            ),
-        ])
-        .await?;
+            )
+            .await?;
 
-        Ok(())
+        // Call the SqliteWorker to update the rows contents.
+        // Note: if this fails, the DB will still contain the new schema, but the rows will not be updated.
+        // This is actually OK, because the new schema is necessarily backward-compatible with the old one.
+        // The other way around would not be true -- old schema doesn't necessarily work with the old rows.
+        // This is why we cannot `try_join_all`.
+        let sqlite_worker = self.sqlite_worker(store.clone()).await?;
+        let sqlite_worker_url = sqlite_worker.url()?;
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!(
+                "{}/databases/{}/tables/{}/rows",
+                sqlite_worker_url, self.database_id, table_id
+            ))
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "rows": rows,
+                    "truncate": truncate,
+                })
+                .to_string(),
+            ))?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to send rows to sqlite worker. Status: {}",
+                s
+            )),
+        }
     }
 
     pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
@@ -345,32 +372,49 @@ impl Database {
             .list_databases_tables(&self.project, &self.data_source_id, &self.database_id, None)
             .await?;
 
-        // Concurrently retrieve table rows.
-        Ok(futures::future::try_join_all(
-            tables
-                .into_iter()
-                .map(|table| {
-                    let store = store.clone();
+        // Get the SQLite worker for this database.
+        let sqlite_worker = self.sqlite_worker(store.clone()).await?;
+        let sqlite_worker_url = sqlite_worker.url()?;
 
-                    async move {
-                        let (rows, _) = store
-                            .list_database_rows(
-                                &self.project,
-                                self.data_source_id.as_str(),
-                                self.database_id.as_str(),
-                                table.table_id(),
-                                None,
-                            )
-                            .await?;
+        async fn fetch_rows(
+            worker_url: &str,
+            database_id: &str,
+            table_id: &str,
+        ) -> Result<Vec<DatabaseRow>> {
+            let req = Request::builder()
+                .method("GET")
+                .uri(format!(
+                    "{}/databases/{}/tables/{}/rows",
+                    worker_url, database_id, table_id
+                ))
+                .body(Body::empty())?;
 
-                        Ok::<_, anyhow::Error>((table, rows))
-                    }
-                })
-                .collect::<Vec<_>>(),
-        )
-        .await?
-        .into_iter()
-        .collect::<Vec<_>>())
+            let res = Client::new().request(req).await?;
+
+            match res.status().as_u16() {
+                200 => {
+                    let body = hyper::body::to_bytes(res.into_body()).await?;
+                    let rows: Vec<DatabaseRow> = serde_json::from_slice(&body)?;
+                    Ok(rows)
+                }
+                s => Err(anyhow!(
+                    "Failed to retrieve rows from sqlite worker. Status: {}",
+                    s
+                )),
+            }
+        }
+
+        Ok(try_join_all(tables.into_iter().map(|table| {
+            let database_id = self.database_id.clone();
+            let table_id = table.table_id().to_string();
+            let sqlite_worker_url = sqlite_worker_url.clone();
+
+            async move {
+                let rows = fetch_rows(&sqlite_worker_url, &database_id, &table_id).await?;
+                Ok::<_, anyhow::Error>((table, rows))
+            }
+        }))
+        .await?)
     }
 
     // Getters
@@ -385,6 +429,25 @@ impl Database {
     }
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub async fn sqlite_worker(&self, store: Box<dyn Store + Sync + Send>) -> Result<SqliteWorker> {
+        let worker = store
+            .assign_live_sqlite_worker_to_database(
+                &self.project,
+                &self.data_source_id,
+                &self.database_id,
+                HEARTBEAT_INTERVAL_MS,
+            )
+            .await?;
+
+        match worker.is_alive() {
+            true => Ok(worker),
+            false => Err(anyhow!(
+                "No live SQLite worker found for database {}",
+                self.database_id
+            )),
+        }
     }
 }
 

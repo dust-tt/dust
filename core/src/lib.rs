@@ -61,6 +61,7 @@ pub mod blocks {
 }
 
 pub mod sqlite_workers {
+    pub mod databases_store;
     pub mod sqlite_database;
     pub mod sqlite_workers;
 }

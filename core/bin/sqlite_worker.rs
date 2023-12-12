@@ -12,8 +12,10 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
+use dust::sqlite_workers::databases_store::DatabasesStore;
 use dust::{
-    sqlite_workers::sqlite_database::SqliteDatabase,
+    databases::database::DatabaseRow,
+    sqlite_workers::{databases_store, sqlite_database::SqliteDatabase},
     utils::{self, error_response, APIResponse},
 };
 use hyper::{Body, Client, Request, StatusCode};
@@ -27,13 +29,17 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
 struct WorkerState {
+    databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+
     registry: Arc<Mutex<HashMap<String, SqliteDatabase>>>,
     is_shutting_down: Arc<AtomicBool>,
 }
 
 impl WorkerState {
-    fn new() -> Self {
+    fn new(databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>) -> Self {
         Self {
+            databases_store: databases_store,
+
             // TODO: store an instant of the last access for each DB.
             registry: Arc::new(Mutex::new(HashMap::new())),
             is_shutting_down: Arc::new(AtomicBool::new(false)),
@@ -47,7 +53,7 @@ impl WorkerState {
             }
 
             match self.heartbeat().await {
-                Ok(_) => utils::info("Heartbeat sent."),
+                Ok(_) => (),
                 Err(e) => utils::error(&format!("Failed to send heartbeat: {:?}", e)),
             }
             // TODO: check for inactive DBs to kill.
@@ -144,6 +150,90 @@ async fn db_query(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct DatabasesRowsUpsertPayload {
+    rows: Vec<DatabaseRow>,
+    truncate: Option<bool>,
+}
+
+async fn databases_rows_upsert(
+    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
+    extract::Json(payload): extract::Json<DatabasesRowsUpsertPayload>,
+    Extension(state): Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Kill the running DB if it exists.
+    let mut registry = state.registry.lock().await;
+    match registry.get(&database_id) {
+        Some(_) => {
+            // Removing the DB from the registry will kill it, since it's the last reference.
+            registry.remove(&database_id);
+        }
+        None => (),
+    }
+
+    let truncate = match payload.truncate {
+        Some(v) => v,
+        None => false,
+    };
+
+    match state
+        .databases_store
+        .batch_upsert_database_rows(&database_id, &table_id, &payload.rows, truncate)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert database rows",
+            Some(e),
+        ),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesRowsListQuery {
+    offset: usize,
+    limit: usize,
+}
+
+async fn databases_rows_list(
+    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
+    extract::Query(query): extract::Query<DatabasesRowsListQuery>,
+    Extension(state): Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .databases_store
+        .list_database_rows(&database_id, &table_id, Some((query.limit, query.offset)))
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list database rows",
+            Some(e),
+        ),
+        Ok((rows, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "rows": rows,
+                    "total": total,
+                })),
+            }),
+        ),
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -158,10 +248,29 @@ fn main() {
             .with_ansi(false)
             .init();
 
-        let state = Arc::new(WorkerState::new());
+        let databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send> =
+            match std::env::var("DATABASES_STORE_DATABASE_URI") {
+                Ok(db_uri) => {
+                    let s = databases_store::PostgresDatabasesStore::new(&db_uri).await?;
+                    s.init().await?;
+                    Box::new(s)
+                }
+                Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+            };
+
+        let state = Arc::new(WorkerState::new(databases_store));
+
         let app = Router::new()
             .route("/", get(index))
-            .route("/db/:db_id", post(db_query))
+            .route("/databases/:database_id", post(db_query))
+            .route(
+                "/databases/:database_id/tables/:table_id/rows",
+                post(databases_rows_upsert),
+            )
+            .route(
+                "/databases/:database_id/tables/:table_id/rows",
+                get(databases_rows_list),
+            )
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
