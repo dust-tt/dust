@@ -323,7 +323,7 @@ function DeletionModal({
       hasChanged={false}
       variant="dialogue"
     >
-      <div className="flex flex-col gap-2 p-6 text-sm text-element-700">
+      <div className="flex flex-col gap-2 p-6">
         <div className="grow text-sm font-medium text-element-900">
           Are you sure you want to delete?
         </div>
