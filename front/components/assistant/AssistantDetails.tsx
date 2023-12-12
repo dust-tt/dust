@@ -263,7 +263,7 @@ function ButtonsSection({
             icon={PlusIcon}
             size="xs"
             onClick={async () => {
-              await updateAgentUserListStatus("not-in-list");
+              await updateAgentUserListStatus("in-list");
             }}
           />
         ))}

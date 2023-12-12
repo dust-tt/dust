@@ -18,7 +18,7 @@ import {
 } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -27,6 +27,8 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -73,12 +75,19 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 const GalleryItem = function ({
+  owner,
   agentConfiguration,
   onShowDetails,
+  onUpdate,
 }: {
+  owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   onShowDetails: () => void;
+  onUpdate: () => void;
 }) {
+  const [isAdding, setIsAdding] = useState<boolean>(false);
+  const sendNotification = useContext(SendNotificationsContext);
+
   return (
     <div className="flex flex-row gap-2">
       <Avatar
@@ -93,16 +102,49 @@ const GalleryItem = function ({
           {agentConfiguration.userListStatus === "in-list" && (
             <Chip color="emerald" size="xs" label="Added" />
           )}
-          <Button.List>
+          <Button.List isWrapping={true}>
             {agentConfiguration.userListStatus !== "in-list" && (
               <>
                 <Button
                   variant="tertiary"
                   icon={PlusIcon}
+                  disabled={isAdding}
                   size="xs"
                   label={"Add"}
-                  onClick={() => {
-                    // setShowAllAgents(!showAllAgents);
+                  onClick={async () => {
+                    setIsAdding(true);
+
+                    const body: PostAgentListStatusRequestBody = {
+                      agentId: agentConfiguration.sId,
+                      listStatus: "in-list",
+                    };
+
+                    const res = await fetch(
+                      `/api/w/${owner.sId}/members/me/agent_list_status`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(body),
+                      }
+                    );
+                    if (!res.ok) {
+                      const data = await res.json();
+                      sendNotification({
+                        title: `Error adding Assistant`,
+                        description: data.error.message,
+                        type: "error",
+                      });
+                    } else {
+                      sendNotification({
+                        title: `Assistant added`,
+                        type: "success",
+                      });
+                      onUpdate();
+                    }
+
+                    setIsAdding(false);
                   }}
                 />
                 <Button
@@ -111,7 +153,7 @@ const GalleryItem = function ({
                   size="xs"
                   label={"Test"}
                   onClick={() => {
-                    // setShowAllAgents(!showAllAgents);
+                    // TODO: test
                   }}
                 />
               </>
@@ -248,9 +290,13 @@ export default function AssistantsGallery({
             {filtered.map((a) => (
               <GalleryItem
                 key={a.sId}
+                owner={owner}
                 agentConfiguration={a}
                 onShowDetails={() => {
                   setShowDetails(a);
+                }}
+                onUpdate={() => {
+                  void mutateAgentConfigurations();
                 }}
               />
             ))}
