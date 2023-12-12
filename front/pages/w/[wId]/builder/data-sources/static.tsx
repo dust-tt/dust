@@ -118,7 +118,7 @@ export default function DataSourcesView({
         <Page.Header
           title="Folders"
           icon={DocumentPileIcon}
-          description="Make more documents accessible to this workspace. Manage folder data sources manually or via API."
+          description="Make more documents accessible to this workspace. Manage folders manually or via API."
         />
 
         {dataSources.length > 0 ? (

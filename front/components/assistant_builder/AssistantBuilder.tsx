@@ -1143,8 +1143,8 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "RETRIEVAL_SEARCH"}
             >
               <div>
-                The assistant will perform a search on the selected data source,
-                run the instructions on the results.{" "}
+                The assistant will perform a search on the selected data
+                sources, and run the instructions on the results.{" "}
                 <span className="font-semibold">
                   It’s the best approach with large quantities of data.
                 </span>
