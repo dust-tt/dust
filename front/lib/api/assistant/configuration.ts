@@ -56,6 +56,7 @@ export async function getAgentConfiguration(
   auth: Authenticator,
   agentId: string,
   preFetchedAgentConfiguration?: AgentConfiguration,
+  preFetchedUserRelation?: AgentUserRelation | null,
   preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
@@ -70,45 +71,58 @@ export async function getAgentConfiguration(
   if (isGlobalAgentId(agentId)) {
     return await getGlobalAgent(auth, agentId, null);
   }
+
   const user = auth.user();
-  const agent =
-    preFetchedAgentConfiguration ??
-    (await AgentConfiguration.findOne({
-      where: {
-        sId: agentId,
-        workspaceId: owner.id,
-      },
-      order: [["version", "DESC"]],
-      include: [
-        {
-          model: AgentGenerationConfiguration,
-          as: "generationConfiguration",
+
+  const [agent, userRelation] = await Promise.all([
+    (async () => {
+      const agent =
+        preFetchedAgentConfiguration ??
+        (await AgentConfiguration.findOne({
+          where: {
+            sId: agentId,
+            workspaceId: owner.id,
+          },
+          order: [["version", "DESC"]],
+          include: [
+            {
+              model: AgentGenerationConfiguration,
+              as: "generationConfiguration",
+            },
+            {
+              model: AgentRetrievalConfiguration,
+              as: "retrievalConfiguration",
+            },
+            {
+              model: AgentDustAppRunConfiguration,
+              as: "dustAppRunConfiguration",
+            },
+            {
+              model: AgentDatabaseQueryConfiguration,
+              as: "databaseQueryConfiguration",
+            },
+          ],
+          limit: 1,
+        }));
+
+      return agent;
+    })(),
+    (async () => {
+      if (!user) {
+        return null;
+      }
+      if (preFetchedUserRelation !== undefined) {
+        return preFetchedUserRelation;
+      }
+      return AgentUserRelation.findOne({
+        where: {
+          workspaceId: owner.id,
+          agentConfigurationId: agentId,
+          userId: user.id,
         },
-        {
-          model: AgentRetrievalConfiguration,
-          as: "retrievalConfiguration",
-        },
-        {
-          model: AgentDustAppRunConfiguration,
-          as: "dustAppRunConfiguration",
-        },
-        {
-          model: AgentDatabaseQueryConfiguration,
-          as: "databaseQueryConfiguration",
-        },
-        ...(user
-          ? [
-              {
-                model: AgentUserRelation,
-                where: { userId: user.id },
-                attributes: ["listStatusOverride"],
-                required: false,
-              },
-            ]
-          : []),
-      ],
-      limit: 1,
-    }));
+      });
+    })(),
+  ]);
 
   if (!agent) {
     return null;
@@ -256,14 +270,6 @@ export async function getAgentConfiguration(
   }
 
   /*
-   * Relation override.
-   */
-  const listStatusOverride =
-    agent.userRelations?.length > 0
-      ? agent.userRelations[0].listStatusOverride
-      : null;
-
-  /*
    * Final rendering.
    */
   const agentConfiguration: AgentConfigurationType = {
@@ -282,7 +288,7 @@ export async function getAgentConfiguration(
 
   agentConfiguration.userListStatus = agentUserListStatus({
     agentConfiguration,
-    listStatusOverride,
+    listStatusOverride: userRelation?.listStatusOverride || null,
   });
 
   return agentConfiguration;
@@ -307,6 +313,7 @@ export async function getAgentConfigurations(
   }
 
   const user = auth.user();
+
   const baseAgentsSequelizeQuery = {
     where: {
       workspaceId: owner.id,
@@ -330,16 +337,6 @@ export async function getAgentConfigurations(
         model: AgentDatabaseQueryConfiguration,
         as: "databaseQueryConfiguration",
       },
-      ...(user
-        ? [
-            {
-              model: AgentUserRelation,
-              where: { userId: user.id },
-              attributes: ["listStatusOverride"],
-              required: false,
-            },
-          ]
-        : []),
     ],
   };
 
@@ -354,26 +351,42 @@ export async function getAgentConfigurations(
     agentsSequelizeQuery: FindOptions
   ) => {
     const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
+
     const retrievalConfigurationIds = agents
       .map((a) => a.retrievalConfigurationId)
       .flatMap((id) => (id ? [id] : []));
-    const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
-      where: {
-        retrievalConfigurationId: { [Op.in]: retrievalConfigurationIds },
-      },
-      include: [
-        {
-          model: DataSource,
-          as: "dataSource",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
+
+    const [dataSourcesConfigurations, userRelations] = await Promise.all([
+      AgentDataSourceConfiguration.findAll({
+        where: {
+          retrievalConfigurationId: { [Op.in]: retrievalConfigurationIds },
         },
-      ],
-    });
+        include: [
+          {
+            model: DataSource,
+            as: "dataSource",
+            include: [
+              {
+                model: Workspace,
+                as: "workspace",
+              },
+            ],
+          },
+        ],
+      }),
+      (async () => {
+        if (!user) {
+          return [];
+        }
+        return await AgentUserRelation.findAll({
+          where: {
+            workspaceId: owner.id,
+            userId: user?.id,
+            agentConfigurationId: { [Op.in]: agents.map((a) => a.sId) },
+          },
+        });
+      })(),
+    ]);
 
     return (
       await Promise.all(
@@ -382,7 +395,9 @@ export async function getAgentConfigurations(
             auth,
             a.sId,
             a,
-            dataSourcesConfig.filter(
+            // Make sure to pass null so that it is not fetched again.
+            userRelations.find((r) => r.agentConfigurationId === a.sId) || null,
+            dataSourcesConfigurations.filter(
               (dsc) =>
                 dsc.retrievalConfigurationId === a.retrievalConfigurationId
             )
@@ -599,26 +614,26 @@ export async function createAgentConfiguration(
   const agent = await front_sequelize.transaction(
     async (t): Promise<AgentConfiguration> => {
       if (agentConfigurationId) {
-        const existing = await AgentConfiguration.findOne({
-          where: {
-            sId: agentConfigurationId,
-            workspaceId: owner.id,
-          },
-          attributes: ["scope", "version"],
-          include: [
-            {
-              model: AgentUserRelation,
-              where: {
-                userId: user.id,
-              },
-              attributes: ["listStatusOverride"],
-              required: false,
+        const [existing, userRelation] = await Promise.all([
+          AgentConfiguration.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
             },
-          ],
-          order: [["version", "DESC"]],
-          transaction: t,
-          limit: 1,
-        });
+            attributes: ["scope", "version"],
+            order: [["version", "DESC"]],
+            transaction: t,
+            limit: 1,
+          }),
+          AgentUserRelation.findOne({
+            where: {
+              workspaceId: owner.id,
+              agentConfigurationId: agentConfigurationId,
+              userId: user.id,
+            },
+            transaction: t,
+          }),
+        ]);
 
         if (existing) {
           // Bump the version of the agent.
@@ -626,8 +641,8 @@ export async function createAgentConfiguration(
 
           // If the agent already exists, record the listStatusOverride to properly render the new
           // AgentConfigurationType.
-          if (existing.userRelations && existing.userRelations.length > 0) {
-            listStatusOverride = existing.userRelations[0].listStatusOverride;
+          if (userRelation) {
+            listStatusOverride = userRelation.listStatusOverride;
           }
 
           // At time of writing, private agents can only be created from scratch. An existing agent

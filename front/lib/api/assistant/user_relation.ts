@@ -63,7 +63,7 @@ export async function getAgentUserListStatus({
     where: {
       userId,
       workspaceId,
-      agentConfigurationId: agentConfiguration.id,
+      agentConfigurationId: agentConfiguration.sId,
     },
   });
 
@@ -110,7 +110,7 @@ export async function setAgentUserListstatus({
   await AgentUserRelation.upsert({
     userId,
     workspaceId,
-    agentConfigurationId: agentConfiguration.id,
+    agentConfigurationId: agentConfiguration.sId,
     listStatusOverride: listStatus,
   });
 
