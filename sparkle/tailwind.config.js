@@ -31,8 +31,17 @@ module.exports = {
         99: ".99",
       },
       dropShadow: {
+        DEFAULT: "0 1px 2px rgba(0, 0, 0, 0.1)",
+        sm: "0 1px 2px rgba(0, 0, 0, 0.08)",
         md: "0 4px 3px rgba(0, 0, 0, 0.12)",
         lg: "0 10px 15px rgba(0, 0, 0, 0.12)",
+        xl: "0 20px 20px rgba(0, 0, 0, 0.12)",
+        "2xl": "0 25px 40px rgba(0, 0, 0, 0.12)",
+      },
+      boxShadow: {
+        DEFAULT: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+        md: "0 4px 6px rgba(0, 0, 0, 0.12)",
+        lg: "0 10px 20px rgba(0, 0, 0, 0.12)",
         xl: "0 20px 25px rgba(0, 0, 0, 0.12)",
         "2xl": "0 25px 50px rgba(0, 0, 0, 0.12)",
       },

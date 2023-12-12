@@ -73,6 +73,9 @@ export { Spinner };
 import { Modal } from "./components/Modal";
 export { Modal };
 
+import { Dialog } from "./components/Dialog";
+export { Dialog };
+
 import { Input } from "./components/Input";
 export { Input };
 

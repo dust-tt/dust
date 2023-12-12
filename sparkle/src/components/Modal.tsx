@@ -90,6 +90,13 @@ export function Modal({
   variant = "side-sm",
 }: ModalProps) {
   const type = variantToType[variant];
+
+  if (variant === "dialogue") {
+    console.warn(
+      "Dialogue variant of Modal is deprecated. Please use either another variant of Modal or the Dialog component."
+    );
+  }
+
   const buttonBarProps: BarHeaderButtonBarProps = hasChanged
     ? {
         variant: "validate",
