@@ -1,4 +1,4 @@
-import { Button, ChatBubbleBottomCenterPlusIcon, ChatBubbleBottomCenterTextIcon, Item } from "@dust-tt/sparkle";
+import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationWithoutContentType } from "@dust-tt/types";
 import moment from "moment";

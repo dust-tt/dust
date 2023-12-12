@@ -8,7 +8,6 @@ import {
   FolderOpenIcon,
   PaperAirplaneIcon,
   PlanetIcon,
-  RobotIcon,
   RobotSharedIcon,
   ServerIcon,
   ShapesIcon,
