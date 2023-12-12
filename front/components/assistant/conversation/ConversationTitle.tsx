@@ -201,12 +201,23 @@ export function ConversationTitle({
           </div>
           <DropdownMenu>
             <DropdownMenu.Button>
-              <Button
-                size="sm"
-                label="Share"
-                icon={ArrowUpOnSquareIcon}
-                variant="secondary"
-              />
+              <div className="hidden sm:flex">
+                <Button
+                  size="sm"
+                  label="Share"
+                  icon={ArrowUpOnSquareIcon}
+                  variant="secondary"
+                />
+              </div>
+              <div className="flex sm:hidden">
+                <Button
+                  size="sm"
+                  label="Share"
+                  labelVisible={false}
+                  icon={ArrowUpOnSquareIcon}
+                  variant="secondary"
+                />
+              </div>
             </DropdownMenu.Button>
             <DropdownMenu.Items width={280}>
               <div className="flex flex-col gap-y-4 p-4">
