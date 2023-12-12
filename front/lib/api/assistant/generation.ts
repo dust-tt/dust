@@ -5,6 +5,7 @@ import {
   GenerationTokensEvent,
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
+  isDatabaseQueryActionType,
   isDustAppRunActionType,
   ModelConversationType,
   ModelMessageType,
@@ -28,6 +29,7 @@ import { Err, Ok, Result } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { renderDatabaseQueryActionForModel } from "@app/lib/api/assistant/actions/database_query";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderRetrievalActionForModel,
@@ -81,6 +83,8 @@ export async function renderConversationForModel({
           }
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
+        } else if (isDatabaseQueryActionType(m.action)) {
+          messages.unshift(renderDatabaseQueryActionForModel(m.action));
         } else {
           return new Err(
             new Error(

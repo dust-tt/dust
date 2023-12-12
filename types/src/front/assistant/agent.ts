@@ -1,4 +1,4 @@
-import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database";
+import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database_query";
 import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";

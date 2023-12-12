@@ -27,6 +27,8 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok, Result } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { runDatabaseQueryApp } from "@app/lib/api/assistant/actions/database_query";
+import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
 import {
   constructPrompt,
@@ -36,8 +38,6 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
-
-import { runDustApp } from "./actions/dust_app_run";
 
 /**
  * Action Inputs generation.
@@ -290,7 +290,46 @@ export async function* runAgent(
         }
       }
     } else if (isDatabaseQueryConfiguration(configuration.action)) {
-      // TODO DAPH DATABASE ACTION
+      const eventStream = runDatabaseQueryApp({
+        auth,
+        configuration,
+        userMessage,
+        agentMessage,
+      });
+      for await (const event of eventStream) {
+        switch (event.type) {
+          case "database_query_run_error":
+            yield {
+              type: "agent_error",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: event.error.code,
+                message: event.error.message,
+              },
+            };
+            return;
+          case "database_query_run_success":
+            yield {
+              type: "agent_action_success",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              action: event.action,
+            };
+
+            // We stitch the action into the agent message. The conversation is expected to include
+            // the agentMessage object, updating this object will update the conversation as well.
+            agentMessage.action = event.action;
+            break;
+          default:
+            ((event: never) => {
+              logger.error("Unknown `runAgent` event type", event);
+            })(event);
+            return;
+        }
+      }
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);

@@ -133,6 +133,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-query-database": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "e0c5993d65",
+      appHash:
+        "1e5c38e3d74577a7535f01d775d8e04130776bb07de8d24f6e411a01682292bd",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        use_cache: false,
+        function_call: "return_sql_query",
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;

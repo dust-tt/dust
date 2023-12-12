@@ -1,4 +1,4 @@
-import { DatabaseQueryActionType } from "../../front/assistant/actions/database";
+import { DatabaseQueryActionType } from "../../front/assistant/actions/database_query";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
 import { AgentConfigurationType } from "../../front/assistant/agent";
