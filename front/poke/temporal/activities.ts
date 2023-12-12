@@ -286,7 +286,7 @@ export async function deleteAgentsActivity({
       }
       await AgentUserRelation.destroy({
         where: {
-          agentConfigurationId: agent.id,
+          agentConfiguration: agent.sId,
         },
         transaction: t,
       });
