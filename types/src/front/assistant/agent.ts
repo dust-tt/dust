@@ -3,7 +3,6 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
-import { assertNever } from "../../shared/utils/assert_never";
 
 /**
  * Agent Action configuration
@@ -84,8 +83,9 @@ export type AgentConfigurationScope =
   | "private";
 
 /* By default, agents with scope 'workspace' are in users' assistants list, whereeas agents with
- * scope 'published' aren't. But a user can override the default behaviour, as per the type below */
-export type AgentRelationOverrideType = "in-list" | "not-in-list";
+ * scope 'published' aren't. A user can override the default behaviour by adding / removing from
+ * their list. List status is enforced by the type below. */
+export type AgentUserListStatus = "in-list" | "not-in-list";
 
 /**
  * Agents can be retrieved according to different 'views':
@@ -114,7 +114,9 @@ export type AgentConfigurationType = {
   version: number;
 
   scope: AgentConfigurationScope;
-  relationOverride: AgentRelationOverrideType | null;
+  // Set to null if not in the context of a user (API query). Otherwise, set to the list status for
+  // the current user.
+  userListStatus: AgentUserListStatus | null;
   status: AgentConfigurationStatus;
 
   name: string;
@@ -128,46 +130,3 @@ export type AgentConfigurationType = {
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 };
-
-export function isAgentConfigurationInList(
-  agent: AgentConfigurationType
-): boolean {
-  if (agent.status !== "active") {
-    return false;
-  }
-  switch (agent.scope) {
-    case "global":
-      return true;
-
-    case "workspace": {
-      switch (agent.relationOverride) {
-        case "in-list":
-          return true;
-        case "not-in-list":
-          return false;
-        case null:
-          return true;
-        default:
-          assertNever(agent.relationOverride);
-      }
-      return true;
-    }
-    case "published": {
-      switch (agent.relationOverride) {
-        case "in-list":
-          return true;
-        case "not-in-list":
-          return false;
-        case null:
-          return false;
-        default:
-          assertNever(agent.relationOverride);
-      }
-      return false;
-    }
-    case "private":
-      return false;
-    default:
-      assertNever(agent.scope);
-  }
-}

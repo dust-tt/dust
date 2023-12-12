@@ -1,5 +1,5 @@
 import {
-  AgentRelationOverrideType,
+  AgentUserListStatus,
   DustAppRunConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -7,7 +7,6 @@ import {
   AgentStatus,
   GlobalAgentStatus,
 } from "@dust-tt/types";
-import assert from "assert";
 import {
   CreationOptional,
   DataTypes,
@@ -123,7 +122,6 @@ export class AgentConfiguration extends Model<
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
   declare databaseQueryConfiguration: NonAttribute<AgentDatabaseQueryConfiguration>;
-  declare relationOverrides: NonAttribute<AgentUserRelation[]>;
 }
 AgentConfiguration.init(
   {
@@ -332,13 +330,12 @@ export class AgentUserRelation extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare relation: AgentRelationOverrideType;
+  declare agentConfiguration: string;
+
+  declare listStatusOverride: AgentUserListStatus | null;
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
-
-  declare agentConfiguration: NonAttribute<AgentConfiguration>;
 }
 
 AgentUserRelation.init(
@@ -358,10 +355,14 @@ AgentUserRelation.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-
-    relation: {
+    // This is the agentConfiguration.sId as this relation is preserved across version changes.
+    agentConfiguration: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    listStatusOverride: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -370,7 +371,7 @@ AgentUserRelation.init(
     indexes: [
       { fields: ["workspaceId", "userId"] },
       {
-        fields: ["agentConfigurationId", "workspaceId", "userId"],
+        fields: ["workspaceId", "agentConfiguration", "userId"],
         unique: true,
         name: "agent_user_relation_config_workspace_user_idx",
       },
@@ -386,34 +387,9 @@ Workspace.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-AgentConfiguration.hasMany(AgentUserRelation, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
 AgentUserRelation.belongsTo(User, {
   foreignKey: { allowNull: false },
 });
 AgentUserRelation.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
 });
-AgentUserRelation.belongsTo(AgentConfiguration, {
-  foreignKey: { allowNull: false },
-});
-
-AgentUserRelation.addHook(
-  "beforeCreate",
-  "no_listing_for_private_agent",
-  async (agentUserStatus) => {
-    const agentConfiguration = await AgentConfiguration.findOne({
-      where: {
-        id: agentUserStatus.dataValues.agentConfigurationId,
-      },
-    });
-    if (!agentConfiguration)
-      throw new Error("Unexpected: Agent configuration not found");
-    assert(
-      agentConfiguration.scope !== "private",
-      "Private agent should not have an entry in agent_user_status"
-    );
-  }
-);

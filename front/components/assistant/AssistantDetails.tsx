@@ -8,7 +8,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider, isAgentConfigurationInList } from "@dust-tt/types";
+import { AgentUserListStatus, ConnectorProvider } from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
   isDustAppRunConfiguration,
@@ -25,7 +25,7 @@ import ReactMarkdown from "react-markdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useApp } from "@app/lib/swr";
-import { PostAgentRelationOverrideRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_relation_override";
+import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function AssistantDetails({
   owner,
@@ -93,6 +93,7 @@ export function AssistantDetails({
           agentConfiguration={assistant}
           detailsModalClose={onClose}
           onUpdate={onUpdate}
+          onClose={onClose}
         />
         <DescriptionSection />
         <InstructionsSection />
@@ -183,90 +184,94 @@ function ButtonsSection({
   agentConfiguration,
   detailsModalClose,
   onUpdate,
+  onClose,
 }: {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
+  onClose: () => void;
 }) {
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
+
   const canDelete =
     (agentConfiguration.scope === "workspace" &&
       ["builder", "admin"].includes(owner.role)) ||
-    (["published", "private"].includes(agentConfiguration.scope) &&
-      isAgentConfigurationInList(agentConfiguration));
+    ["published", "private"].includes(agentConfiguration.scope);
+
   const canAddRemoveList = ["published", "workspace"].includes(
     agentConfiguration.scope
   );
 
-  const [isRemoving, setIsRemoving] = useState<boolean>(false);
+  const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
-  console.log(agentConfiguration);
+  const updateAgentUserListStatus = async (listStatus: AgentUserListStatus) => {
+    setIsAddingOrRemoving(true);
+
+    const body: PostAgentListStatusRequestBody = {
+      agentId: agentConfiguration.sId,
+      listStatus,
+    };
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/members/me/agent_list_status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!res.ok) {
+      const data = await res.json();
+      sendNotification({
+        title: `Error ${
+          listStatus === "in-list" ? "adding" : "removing"
+        } Assistant`,
+        description: data.error.message,
+        type: "error",
+      });
+    } else {
+      sendNotification({
+        title: `Assistant ${listStatus === "in-list" ? "added" : "removed"}`,
+        type: "success",
+      });
+      onUpdate();
+    }
+
+    setIsAddingOrRemoving(false);
+    onClose();
+  };
 
   return (
     <Button.List className="flex items-center justify-end gap-1">
       {canAddRemoveList &&
-        (isAgentConfigurationInList(agentConfiguration) ? (
+        (agentConfiguration.userListStatus === "in-list" ? (
           <Button
-            label={isRemoving ? "Removing..." : "Remove from my list"}
-            disabled={isRemoving}
+            label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
+            disabled={isAddingOrRemoving}
             variant="tertiary"
             icon={DashIcon}
             size="xs"
             onClick={async () => {
-              setIsRemoving(true);
-              const body: PostAgentRelationOverrideRequestBody = {
-                agentId: agentConfiguration.sId,
-                agentRelation: "not-in-list",
-              };
-              try {
-                const res = await fetch(
-                  `/api/w/${owner.sId}/members/me/agent_relation_override`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(body),
-                  }
-                );
-                if (!res.ok) {
-                  const data = await res.json();
-                  sendNotification({
-                    title: "Error removing Assistant",
-                    description: data.error.message,
-                    type: "error",
-                  });
-                } else {
-                  sendNotification({
-                    title: "Assistant removed",
-                    type: "success",
-                  });
-                  onUpdate();
-                }
-              } catch (e) {
-                sendNotification({
-                  title: "Error removing Assistant",
-                  description: (e as Error).message,
-                  type: "error",
-                });
-              }
-
-              setIsRemoving(false);
+              await updateAgentUserListStatus("not-in-list");
             }}
           />
         ) : (
           <Button
-            label="Add to my list"
+            label={isAddingOrRemoving ? "Adding..." : "Add to my list"}
+            disabled={isAddingOrRemoving}
             variant="tertiary"
             icon={PlusIcon}
             size="xs"
-            onClick={() => {
-              // TODO IMPLEMENT
+            onClick={async () => {
+              await updateAgentUserListStatus("in-list");
             }}
           />
         ))}
+
       {canDelete && (
         <>
           <DeletionModal
