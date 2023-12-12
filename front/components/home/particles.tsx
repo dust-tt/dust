@@ -419,7 +419,6 @@ export default function Particules({
           if (currentShape !== i) {
             currentShape = i;
             speed = shapes[currentShape].speed;
-            console.log(speed);
             calculateTargetPositions();
           }
           break;

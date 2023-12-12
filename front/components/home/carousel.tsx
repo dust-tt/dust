@@ -70,18 +70,45 @@ export default class SimpleSlider extends Component {
 
     this.setState({ slidesToShow });
   };
-
   componentDidMount() {
     this.updateSlidesToShow();
-    this.updateSliderHeight();
+
+    // Set up the ResizeObserver
+    this.resizeObserver = new ResizeObserver((entries) => {
+      // We're only observing one element, so we can directly access the first entry
+      const entry = entries[0];
+
+      // Get the new height from the content rectangle
+      const newHeight = entry.contentRect.height;
+
+      // Update the state with the new height
+      this.setState({ sliderHeight: newHeight });
+    });
+
+    // Observe the slider container
+    if (this.sliderContainerRef.current) {
+      this.resizeObserver.observe(this.sliderContainerRef.current);
+    }
+
+    // Ensure the DOM has been painted before calculating height
+    window.requestAnimationFrame(() => {
+      this.updateSliderHeight();
+    });
+
     window.addEventListener("resize", this.updateSlidesToShow);
-    window.addEventListener("resize", this.updateSliderHeight);
   }
 
   componentWillUnmount() {
+    // Clean up the ResizeObserver
+    if (this.resizeObserver && this.sliderContainerRef.current) {
+      this.resizeObserver.unobserve(this.sliderContainerRef.current);
+    }
+
     window.removeEventListener("resize", this.updateSlidesToShow);
-    window.removeEventListener("resize", this.updateSliderHeight);
   }
+
+  // Make sure to declare the resizeObserver in your class
+  resizeObserver: ResizeObserver | null = null;
 
   goToNext = () => {
     const { currentSlide, slidesToShow, totalSlides } = this.state;
@@ -105,7 +132,7 @@ export default class SimpleSlider extends Component {
       infinite: true,
       centerMode: true,
       slidesToShow: 3,
-      slidesToScroll: 3,
+      slidesToScroll: 1,
       swipe: true,
       draggable: true,
       swipeToSlide: true,
@@ -211,10 +238,7 @@ const SystemItem = ({
   const modifiedChild = React.cloneElement(
     singleChild as React.ReactElement<any, any>,
     {
-      className: classNames(
-        singleChild.props.className,
-        "h-8 w-8 md:h-12 md:w-12"
-      ),
+      className: classNames(singleChild.props.className, "h-12 w-12"),
     }
   );
   return (
