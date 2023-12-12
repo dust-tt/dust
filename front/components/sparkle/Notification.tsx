@@ -64,7 +64,7 @@ export function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="fixed bottom-0 right-0 z-60 w-96">
+    <div className="pointer-events-none fixed bottom-0 right-0 z-60 w-96">
       <div className="flex flex-col items-center justify-center gap-4 p-4">
         {notifications.map((n) => {
           return (
@@ -99,7 +99,7 @@ export function Notification({ title, description, type }: NotificationType) {
       leaveFrom="translate-y-0 opacity-100"
       leaveTo="translate-y-16 opacity-0"
     >
-      <div className="flex rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
+      <div className="pointer-events-auto flex rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
         <div className="pr-2 pt-0.5">
           {type === "success" ? (
             <Icon

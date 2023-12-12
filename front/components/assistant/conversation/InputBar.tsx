@@ -927,15 +927,17 @@ export function AssistantInputBar({
                   assistants={activeAgents}
                   showBuilderButtons={true}
                 />
-                <IconButton
-                  variant={"tertiary"}
-                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                  size="sm"
-                  className="flex"
-                  onClick={() => {
-                    setIsExpanded((e) => !e);
-                  }}
-                />
+                <div className="hidden sm:flex">
+                  <IconButton
+                    variant={"tertiary"}
+                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    size="sm"
+                    className="flex"
+                    onClick={() => {
+                      setIsExpanded((e) => !e);
+                    }}
+                  />
+                </div>
               </div>
               <Button
                 size="sm"
