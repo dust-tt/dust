@@ -216,9 +216,9 @@ export async function getAgentConfiguration(
       id: databaseQueryConfig.id,
       sId: databaseQueryConfig.sId,
       type: "database_query_configuration",
+      dataSourceWorkspaceId: databaseQueryConfig.dataSourceWorkspaceId,
       dataSourceId: databaseQueryConfig.dataSourceId,
       databaseId: databaseQueryConfig.databaseId,
-      appWorkspaceId: databaseQueryConfig.appWorkspaceId,
     };
   }
 
@@ -724,9 +724,9 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "database_query_configuration";
+        dataSourceWorkspaceId: string;
         dataSourceId: string;
         databaseId: string;
-        appWorkspaceId: string;
       }
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
@@ -790,17 +790,17 @@ export async function createAgentActionConfiguration(
   } else if (action.type === "database_query_configuration") {
     const databaseQueryConfig = await AgentDatabaseQueryConfiguration.create({
       sId: generateModelSId(),
+      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
-      appWorkspaceId: owner.sId,
     });
     return {
       id: databaseQueryConfig.id,
       sId: databaseQueryConfig.sId,
       type: "database_query_configuration",
+      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
-      appWorkspaceId: owner.sId,
     };
   } else {
     throw new Error("Cannot create AgentActionConfiguration: unknow type");

@@ -76,9 +76,9 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       }),
       t.type({
         type: t.literal("database_query_configuration"),
+        dataSourceWorkspaceId: t.string,
         dataSourceId: t.string,
         databaseId: t.string,
-        appWorkspaceId: t.string,
       }),
     ]),
     generation: t.type({

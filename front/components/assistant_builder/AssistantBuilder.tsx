@@ -124,9 +124,9 @@ export type AssistantBuilderDustAppConfiguration = {
 
 export type AssistantBuilderDatabaseQueryConfiguration = {
   dataSourceId: string;
+  dataSourceWorkspaceId: string;
   databaseId: string;
   databaseName: string;
-  appWorkspaceId: string;
 };
 
 // Builder State
@@ -564,12 +564,12 @@ export default function AssistantBuilder({
 
       case "DATABASE_QUERY":
         if (builderState.databaseQueryConfiguration) {
+          const config = builderState.databaseQueryConfiguration;
           actionParam = {
             type: "database_query_configuration",
-            dataSourceId: builderState.databaseQueryConfiguration.dataSourceId,
-            databaseId: builderState.databaseQueryConfiguration.databaseId,
-            appWorkspaceId:
-              builderState.databaseQueryConfiguration.appWorkspaceId,
+            dataSourceWorkspaceId: config.dataSourceWorkspaceId,
+            dataSourceId: config.dataSourceId,
+            databaseId: config.databaseId,
           };
         }
         break;

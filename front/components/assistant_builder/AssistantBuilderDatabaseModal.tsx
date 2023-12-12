@@ -76,16 +76,16 @@ export default function AssistantBuilderDataBaseModal({
             show={!currentDatabase}
             onPick={(database: CoreAPIDatabase) => {
               setSelectedDatabase({
+                dataSourceWorkspaceId: owner.sId,
                 dataSourceId: database.data_source_id,
                 databaseId: database.database_id,
                 databaseName: database.name,
-                appWorkspaceId: owner.sId,
               });
               onSave({
+                dataSourceWorkspaceId: owner.sId,
                 dataSourceId: database.data_source_id,
                 databaseId: database.database_id,
                 databaseName: database.name,
-                appWorkspaceId: owner.sId,
               });
               onClose();
             }}

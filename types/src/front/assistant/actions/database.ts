@@ -7,9 +7,9 @@ export type DatabaseQueryConfigurationType = {
   id: ModelId;
   sId: string;
   type: "database_query_configuration";
+  dataSourceWorkspaceId: string;
   dataSourceId: string;
   databaseId: string;
-  appWorkspaceId: string;
 };
 
 export function isDatabaseQueryConfiguration(

@@ -21,9 +21,9 @@ export class AgentDatabaseQueryConfiguration extends Model<
 
   declare sId: string;
 
+  declare dataSourceWorkspaceId: string;
   declare dataSourceId: string;
   declare databaseId: string;
-  declare appWorkspaceId: string;
 }
 
 AgentDatabaseQueryConfiguration.init(
@@ -47,15 +47,15 @@ AgentDatabaseQueryConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    dataSourceWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     databaseId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    appWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },

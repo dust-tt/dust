@@ -170,10 +170,10 @@ export const getServerSideProps: GetServerSideProps<{
     if (databaseRes.isOk()) {
       const { database } = databaseRes.value;
       databaseQueryConfiguration = {
+        dataSourceWorkspaceId: config.action.dataSourceWorkspaceId,
         dataSourceId: config.action.dataSourceId,
         databaseId: config.action.databaseId,
         databaseName: database.name,
-        appWorkspaceId: config.action.appWorkspaceId,
       };
     }
   }
