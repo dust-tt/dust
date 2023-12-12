@@ -99,22 +99,20 @@ export function Notification({ title, description, type }: NotificationType) {
       leaveFrom="translate-y-0 opacity-100"
       leaveTo="translate-y-16 opacity-0"
     >
-      <div className="pointer-events-auto flex rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
-        <div className="pr-2 pt-0.5">
-          {type === "success" ? (
-            <Icon
-              size="sm"
-              visual={CheckCircleStrokeIcon}
-              className="text-success-500"
-            />
-          ) : (
-            <Icon
-              size="sm"
-              visual={XCircleStrokeIcon}
-              className="text-warning-500"
-            />
-          )}
-        </div>
+      <div className="pointer-events-auto flex items-start gap-3 rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
+        {type === "success" ? (
+          <Icon
+            size="sm"
+            visual={CheckCircleStrokeIcon}
+            className="pt-0.5 text-success-500"
+          />
+        ) : (
+          <Icon
+            size="sm"
+            visual={XCircleStrokeIcon}
+            className="pt-0.5 text-warning-500"
+          />
+        )}
         <div className="flex flex-col">
           <div
             className={classNames(
@@ -128,14 +126,13 @@ export function Notification({ title, description, type }: NotificationType) {
             {description}
           </div>
         </div>
-        <div>
-          <IconButton
-            icon={XMarkIcon}
-            size="xs"
-            variant="secondary"
-            onClick={() => setShowNotification(false)}
-          />
-        </div>
+        <IconButton
+          className="pt-0.5"
+          icon={XMarkIcon}
+          size="sm"
+          variant="secondary"
+          onClick={() => setShowNotification(false)}
+        />
       </div>
     </Transition>
   );

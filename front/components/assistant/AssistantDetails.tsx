@@ -323,19 +323,19 @@ function DeletionModal({
       hasChanged={false}
       variant="dialogue"
     >
-      <div className="flex flex-col gap-2 p-6 text-sm text-element-700">
-        <div>
-          Are you sure you want to delete this assistant? It will be removed for
-          all users and the action cannot be undone.
-          <br />
-          Consider just removing it from your list if you are not sure others
-          won't be affected.
+      <div className="flex flex-col gap-2 p-6">
+        <div className="grow text-sm font-medium text-element-900">
+          Are you sure you want to delete?
+        </div>
+
+        <div className="text-sm font-normal text-element-800">
+          This will be permanent and delete the&nbsp;assistant
+          for&nbsp;everyone.
         </div>
       </div>
       <div className="flex flex-row justify-end gap-1">
-        <Button label="Cancel" variant="tertiary" onClick={onClose} />
         <Button
-          label={isDeleting ? "Deleting..." : "Yes, Delete"}
+          label={isDeleting ? "Deleting..." : "Delete for Everyone"}
           disabled={isDeleting}
           variant="primaryWarning"
           onClick={async () => {
