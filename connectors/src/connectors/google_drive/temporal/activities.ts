@@ -413,6 +413,17 @@ async function syncOneFile(
 
     if (file.mimeType === "text/plain") {
       if (res.data instanceof ArrayBuffer) {
+        if (res.data.byteLength > 4 * MAX_DOCUMENT_TXT_LEN) {
+          logger.info(
+            {
+              file_id: file.id,
+              mimeType: file.mimeType,
+              title: file.name,
+            },
+            `File too big to be chunked. Skipping`
+          );
+          return false;
+        }
         documentContent = Buffer.from(res.data).toString("utf-8");
       }
     } else if (file.mimeType === "application/pdf") {
