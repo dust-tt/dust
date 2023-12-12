@@ -39,6 +39,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import {subNavigationConversations} from "@app/components/sparkle/navigation";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -202,7 +203,11 @@ export default function AssistantNew({
           isWideMode={conversation ? true : false}
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
-          topNavigationCurrent="assistant"
+          topNavigationCurrent="conversations"
+          subNavigation={subNavigationConversations({
+            owner,
+            current: "data_sources_managed",
+          })}
           navChildren={
             <AssistantSidebarMenu
               owner={owner}

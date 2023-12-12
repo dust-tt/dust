@@ -245,7 +245,7 @@ export default function AssistantsGallery({
       owner={owner}
       hideSidebar
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
       titleChildren={
         <AppLayoutSimpleCloseTitle

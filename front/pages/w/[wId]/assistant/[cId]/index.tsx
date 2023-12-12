@@ -195,7 +195,7 @@ export default function AssistantConversation({
             : `Dust - New Conversation`
         }
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistant"
+        topNavigationCurrent="conversations"
         titleChildren={
           conversation && (
             <ConversationTitle

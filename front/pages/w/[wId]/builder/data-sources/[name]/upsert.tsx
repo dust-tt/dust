@@ -235,7 +235,7 @@ export default function DataSourceUpsert({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({
         owner,
         current: "data_sources_static",

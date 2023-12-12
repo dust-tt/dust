@@ -193,7 +193,7 @@ function StandardDataSourceView({
     <div className="pt-6">
       <Page.Vertical align="stretch">
         <Page.SectionHeader
-          title={`Data Source ${dataSource.name}`}
+          title={`Folder ${dataSource.name}`}
           description="Use this page to view and upload documents to your data source."
           action={
             readOnly
@@ -760,7 +760,7 @@ export default function DataSourceView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationAdmin({
         owner,
         current: dataSource.connectorId
@@ -769,7 +769,7 @@ export default function DataSourceView({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title={`Manage Data Source`}
+          title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
               void router.push(`/w/${owner.sId}/builder/data-sources/managed`);

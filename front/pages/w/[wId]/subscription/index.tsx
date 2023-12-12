@@ -184,7 +184,7 @@ export default function Subscription({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
       <Page.Vertical gap="xl" align="stretch">

@@ -158,7 +158,7 @@ export default function EditDustAssistant({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
       titleChildren={
         <AppLayoutSimpleCloseTitle

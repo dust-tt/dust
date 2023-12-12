@@ -140,7 +140,7 @@ export default function CloneView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({
         owner,
         current: "developers",
