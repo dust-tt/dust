@@ -4,7 +4,6 @@ import {
   Chip,
   MoreIcon,
   Page,
-  PlayIcon,
   PlusIcon,
   Searchbar,
   Tab,
@@ -147,6 +146,7 @@ const GalleryItem = function ({
                     setIsAdding(false);
                   }}
                 />
+                {/*
                 <Button
                   variant="tertiary"
                   icon={PlayIcon}
@@ -156,13 +156,14 @@ const GalleryItem = function ({
                     // TODO: test
                   }}
                 />
+                */}
               </>
             )}
             <Button
               variant="tertiary"
               icon={MoreIcon}
               size="xs"
-              label={"Test"}
+              label={"Show Assistant"}
               labelVisible={false}
               onClick={() => {
                 onShowDetails();

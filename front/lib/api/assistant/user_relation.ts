@@ -18,20 +18,14 @@ export function agentUserListStatus({
   agentConfiguration: AgentConfigurationType;
   listStatusOverride: AgentUserListStatus | null;
 }): AgentUserListStatus {
-  console.log("agentUserListStatus", {
-    scope: agentConfiguration.scope,
-    listStatusOverride,
-  });
   if (listStatusOverride === null) {
     switch (agentConfiguration.scope) {
       case "global":
-        return "in-list";
       case "workspace":
+      case "private":
         return "in-list";
       case "published":
         return "not-in-list";
-      case "private":
-        return "in-list";
       default:
         assertNever(agentConfiguration.scope);
     }
