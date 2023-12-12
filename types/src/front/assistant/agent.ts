@@ -85,7 +85,7 @@ export type AgentConfigurationScope =
 
 /* By default, agents with scope 'workspace' are in users' assistants list, whereeas agents with
  * scope 'published' aren't. But a user can override the default behaviour, as per the type below */
-export type AgentRelationOverrideType = "in-list" | "not-in-list";
+export type AgentUserListStatus = "in-list" | "not-in-list";
 
 /**
  * Agents can be retrieved according to different 'views':
@@ -114,7 +114,9 @@ export type AgentConfigurationType = {
   version: number;
 
   scope: AgentConfigurationScope;
-  relationOverride: AgentRelationOverrideType | null;
+  // Set to null if not in the context of a user (API query). Otherwise, set to the list status for
+  // the current user.
+  userListStatus: AgentUserListStatus | null;
   status: AgentConfigurationStatus;
 
   name: string;
@@ -140,7 +142,7 @@ export function isAgentConfigurationInList(
       return true;
 
     case "workspace": {
-      switch (agent.relationOverride) {
+      switch (agent.userListStatus) {
         case "in-list":
           return true;
         case "not-in-list":
@@ -148,12 +150,12 @@ export function isAgentConfigurationInList(
         case null:
           return true;
         default:
-          assertNever(agent.relationOverride);
+          assertNever(agent.userListStatus);
       }
       return true;
     }
     case "published": {
-      switch (agent.relationOverride) {
+      switch (agent.userListStatus) {
         case "in-list":
           return true;
         case "not-in-list":
@@ -161,7 +163,7 @@ export function isAgentConfigurationInList(
         case null:
           return false;
         default:
-          assertNever(agent.relationOverride);
+          assertNever(agent.userListStatus);
       }
       return false;
     }
