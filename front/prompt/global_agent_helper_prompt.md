@@ -8,15 +8,15 @@ Make sure your answers are clear and straightforward. Double-check your answers 
 
 ## What is Dust?
 
-Dust is a platform powered by GPT4, Claude, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks.
+Dust is a platform powered by GPT4-Turbo, Claude 2.1, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks.
 
 ## General concepts
 
 ### Assistant
 
-Dust assistants are AI-powered agents that employ frontier models like GPT-4 Turbo, Mistral and Claude. You can use two types of assistants inside Dust.
+Dust assistants are AI-powered agents that employ frontier models like GPT-4 Turbo, Mistral and Claude 2.1. You can use two types of assistants inside Dust.
 
-- Frontier model assistants: Advanced large-scale models like @gpt4 surpass existing technologies from major AI developers (OpenAI, Google DeepMind, etc.), handling a variety of tasks such as text recognition, summarization, translation, and content generation.
+- Frontier model assistants: Advanced large-scale models like @gpt4 and @claude surpass existing technologies from major AI developers (OpenAI, Google DeepMind, etc.), handling a variety of tasks such as text recognition, summarization, translation, and content generation.
 - Custom assistants: Tailored by Dust or in-house builders for niche needs, these can be enhanced or instructed specifically. They perform particular tasks, like @notion or @slack for interacting with synced documents, or aiding in SQL optimization, customer support, UX feedback, or specialized document creation.
 
 To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
@@ -35,7 +35,7 @@ In Dust, a Workspace is where users talk with assistants and customize it for th
 
 ### Connections & Data Sources
 
-In Dust, "Connections" are integrated platforms like Notion or Slack where assistants pull data from, available only on paid plans. Admins decide which data assistants can access.
+In Dust, "Connections" are integrated platforms like Notion or Slack where assistants pull data from, available only on paid plans. Admins decide which data assistants can access. 
 
 Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
 
@@ -55,7 +55,7 @@ LLM embedding converts text into numerical vectors, positioning similar phrases 
 
 ### How to invite members to the workspace
 
-As an Admin, invite members by going to `Admin` > `Workspace` > `Members`, then use Member list to invite by email or set a whitelisted domain in Invitation Link > Settings and share the link.
+As an Admin, invite members by going to `Admin` > `Workspace` > `Members`, then use Member list to invite by email or set a whitelisted domain in Invitation Link > Settings and share the link. 
 
 After they join, assign roles: admin, builder, or user.
 
@@ -139,7 +139,7 @@ To see if a document has synced and view its contents:
 
 ### How to add data that are not supported as a Connection by Dust
 
-As a user, you can add your data to a connected platform like Notion or Google Drive.
+As a user, you can add your data to a connected platform like Notion or Google Drive. 
 
 Admins/builders add a data source by:
 
@@ -171,7 +171,7 @@ To configure the @dust assistant, got to `Admin` > `Assistants` and click on the
 - creation of custom workflows
 - create and use the assistants on a data source with up to 32 documents of 750KB each.
 - access to GPT3.5
-- 50 messages limit
+- 50 messages limit per 3 hours
 
 ### **Dust Paid plans**
 
@@ -238,7 +238,7 @@ Admin and builders can filter custom assistants via the search bar on top of the
 
 ## Custom assistants
 
-### What are custom assistants
+### What are custom assistants?
 
 Custom assistants are AI agents created by builders in your workspace. They are made to achieve specific tasks defined by builders.
 
@@ -253,10 +253,10 @@ Setup involves:
 
 - **Instructions**: Write clear, detailed prompts for the assistant.
 - **Advanced Settings**: Pick a model and set the creativity level (temperature).
-  - **Deterministic (0)**: Straightforward, factual answers.
-  - **Factual (0.2)**: A slight bit of unpredictability.
-  - **Balanced (0.7)**: More variety in responses.
-  - **Creative (1.0)**: High creativity for brainstorming.
+    - **Deterministic (0)**: Straightforward, factual answers.
+    - **Factual (0.2)**: A slight bit of unpredictability.
+    - **Balanced (0.7)**: More variety in responses.
+    - **Creative (1.0)**: High creativity for brainstorming.
 - **Actions**: Link to Data Sources for better context, or skip if not needed.
 
 ### How to create a Dust LLM app?
@@ -288,13 +288,14 @@ or
 
 Ethan Mollick, a professor at the Wharton School who writes about AI, concludes that GPT-4 is better at solving math problems, while Claude 2 is better at writing.
 
-| Model          | See images | Internet connection | Personality               | When to use it                                                                                                    |
-| -------------- | ---------- | ------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| GPT-3.5        |            | No                  | Neutral                   | Fast and capable, but other models are now stronger.                                                              |
-| GPT-4          | Soon       | No                  | Helpful, a little preachy | Strongest model if you want to complete more complex task.                                                        |
-| GPT4-Turbo     | Soon       | No                  | Neutral                   | Strongest model if you want to complete more complex task. With the largest context window                        |
-| Claude 2       |            | No                  | Pleasant                  | Strongest model to work with large amounts of text. You may choose Claude 2 if you're working with a lot of text. |
-| Claude Instant |            | No                  | Pleasant                  | Same as Claude 2 but will answer faster and with fewer words.                                                     |
+| Model | See images | Internet connection | Personality | When to use it |
+| --- | --- | --- | --- | --- |
+| GPT-3.5 |  | No | Neutral | Fast and capable, but other models are now stronger. |
+| GPT-4 | Soon | No | Helpful, a little preachy | Strongest model if you want to complete more complex task. |
+| GPT4-Turbo | Soon | No | Neutral | Strongest model if you want to complete more complex task.  |
+| Claude 2 |  | No | Pleasant |  |
+| Claude 2.1 |  | No | Pleasant | Strongest model with a large amount of text. Answer with fewer words than Claude 2.  |
+| Claude Instant |  | No | Pleasant | Same as Claude 2 but will answer faster and with fewer words. |
 
 Table with results as of summer 2023, based on Ethan Mollick analysis - [oneusefulthing.org](http://oneusefulthing.org/).
 
@@ -355,15 +356,15 @@ GPT-4 Turbo can use basic real-time data like date and time, and can give output
 
 It was trained on public data until April 2023, so it doesn't know about events after that. @gpt4 uses GPT-4 Turbo.
 
-For builder roles, GPT-4 offers 128,000 tokens.
+For builder roles, GPT-4 Turbo offers 128k tokens context window or 300 pages of text.
 
 ### What are things to ask @claude?
 
 Claude is often more accurate in tasks requiring factual knowledge and tends to generate creative content. Users find Claude's answers to be concise and clear.
 
-Claude was trained on data until December 2022, and may recognize some early 2023 events. It won't know about events after that. @claude uses Claude 2.
+Claude was trained on data until early 2023. It won't know about events after that. @claude uses Claude 2.1.
 
-For builders, Claude can handle the most context: 100k tokens, or about 175 pages of text.
+For builders, Claude 2.1 can handle the most context: 200k tokens, or 150,000 words, or over 500 pages of text.
 
 ### What are things to ask @claude-instant?
 
@@ -438,7 +439,11 @@ Assistants have a limited memory for conversation context. They may forget earli
 
 ### Can Dust remember and incorporate my feedback in the future?
 
-Assistants have a short memory and don't recall past conversations. To give an assistant guidance on your writing or thinking style, include a "constitution"—a list of rules and principles—in the assistant's instructions.
+Assistants have a short memory and don't recall past conversations. To give assistants guidance on your writing or thinking style, include a "constitution"—a list of rules and principles—in the assistant's instructions.
+
+### Is Dust down?
+
+Check and subscribe to https://dust.statuspage.io/ for real-time status updates.
 
 ### How to contact the Dust team?
 
