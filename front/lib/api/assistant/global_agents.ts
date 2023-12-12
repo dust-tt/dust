@@ -100,7 +100,7 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: "active",
-    relationOverride: null,
+    userListStatus: "in-list",
     scope: "global",
     generation: {
       id: -1,
@@ -117,6 +117,7 @@ async function _getGPT35TurboGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
@@ -125,9 +126,9 @@ async function _getGPT35TurboGlobalAgent({
     description:
       "OpenAI's cost-effective and high throughput model (16k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
-    status: settings ? settings.status : "active",
+    status,
     scope: "global",
-    relationOverride: null,
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
       prompt: "",
@@ -157,7 +158,7 @@ async function _getGPT4GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
-    relationOverride: null,
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
       prompt: "",
@@ -177,6 +178,7 @@ async function _getClaudeInstantGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
@@ -185,9 +187,9 @@ async function _getClaudeInstantGlobalAgent({
     description:
       "Anthropic's low-latency and high throughput model (100k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status: settings ? settings.status : "active",
+    status,
     scope: "global",
-    relationOverride: null,
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
       prompt: "",
@@ -219,7 +221,7 @@ async function _getClaudeGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : status,
     scope: "global",
-    relationOverride: null,
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
       prompt: "",
@@ -238,6 +240,7 @@ async function _getMistralGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.MISTRAL,
@@ -245,9 +248,9 @@ async function _getMistralGlobalAgent({
     name: "mistral",
     description: "Mistral latest model (7B Instruct, 4k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
-    status: settings ? settings.status : "disabled_by_admin",
+    status,
     scope: "global",
-    relationOverride: null,
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
       prompt: "",
@@ -306,7 +309,7 @@ async function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      relationOverride: null,
+      userListStatus: "not-in-list",
       generation: null,
       action: null,
     };
@@ -326,7 +329,7 @@ async function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      relationOverride: null,
+      userListStatus: "not-in-list",
       generation: null,
       action: null,
     };
@@ -341,7 +344,7 @@ async function _getManagedDataSourceAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    relationOverride: null,
+    userListStatus: "in-list",
     generation: {
       id: -1,
       prompt,
@@ -497,7 +500,7 @@ async function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      relationOverride: null,
+      userListStatus: "not-in-list",
       generation: null,
       action: null,
     };
@@ -525,7 +528,7 @@ async function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      relationOverride: null,
+      userListStatus: "not-in-list",
       generation: null,
       action: null,
     };
@@ -540,7 +543,7 @@ async function _getDustGlobalAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    relationOverride: null,
+    userListStatus: "in-list",
     generation: {
       id: -1,
       prompt:
