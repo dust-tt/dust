@@ -215,41 +215,31 @@ function ButtonsSection({
       listStatus,
     };
 
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/members/me/agent_list_status`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        sendNotification({
-          title: `Error ${
-            listStatus === "in-list" ? "adding" : "removing"
-          } Assistant`,
-          description: data.error.message,
-          type: "error",
-        });
-      } else {
-        sendNotification({
-          title: `Assistant ${listStatus === "in-list" ? "added" : "removed"}`,
-          type: "success",
-        });
-        onUpdate();
+    const res = await fetch(
+      `/api/w/${owner.sId}/members/me/agent_list_status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       }
-    } catch (e) {
+    );
+    if (!res.ok) {
+      const data = await res.json();
       sendNotification({
         title: `Error ${
           listStatus === "in-list" ? "adding" : "removing"
         } Assistant`,
-        description: (e as Error).message,
+        description: data.error.message,
         type: "error",
       });
+    } else {
+      sendNotification({
+        title: `Assistant ${listStatus === "in-list" ? "added" : "removed"}`,
+        type: "success",
+      });
+      onUpdate();
     }
 
     setIsAddingOrRemoving(false);
