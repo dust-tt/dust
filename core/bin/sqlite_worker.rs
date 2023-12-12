@@ -201,8 +201,8 @@ async fn databases_rows_upsert(
 
 #[derive(serde::Deserialize)]
 struct DatabasesRowsListQuery {
-    offset: usize,
-    limit: usize,
+    offset: Option<usize>,
+    limit: Option<usize>,
 }
 
 async fn databases_rows_list(
@@ -210,9 +210,13 @@ async fn databases_rows_list(
     extract::Query(query): extract::Query<DatabasesRowsListQuery>,
     Extension(state): Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let offset_limit = match (query.offset, query.limit) {
+        (Some(offset), Some(limit)) => Some((offset, limit)),
+        _ => None,
+    };
     match state
         .databases_store
-        .list_database_rows(&database_id, &table_id, Some((query.limit, query.offset)))
+        .list_database_rows(&database_id, &table_id, offset_limit)
         .await
     {
         Err(e) => error_response(
