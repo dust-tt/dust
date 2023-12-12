@@ -116,9 +116,13 @@ export const topNavigation = ({
 };
 
 export const subNavigationConversations = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   owner,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   current,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   subMenuLabel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   subMenu,
 }: {
   owner: WorkspaceType;
@@ -128,23 +132,25 @@ export const subNavigationConversations = ({
 }) => {
   const nav: SidebarNavigation[] = [];
 
-  nav.push({
-    id: "assistants",
-    label: null,
-    variant: "secondary",
-    menus: [
-      {
-        id: "personal_assistants",
-        label: "My Assistants",
-        icon: RobotIcon,
-        href: `/w/${owner.sId}/builder/assistants`,
-        current: current === "personal_assistants",
-        subMenuLabel:
-          current === "personal_assistants" ? subMenuLabel : undefined,
-        subMenu: current === "personal_assistants" ? subMenu : undefined,
-      },
-    ],
-  });
+  // To be added for personal assistants view.
+
+  // nav.push({
+  //   id: "assistants",
+  //   label: null,
+  //   variant: "secondary",
+  //   menus: [
+  //     {
+  //       id: "personal_assistants",
+  //       label: "My Assistants",
+  //       icon: RobotIcon,
+  //       href: `/w/${owner.sId}/builder/assistants`,
+  //       current: current === "personal_assistants",
+  //       subMenuLabel:
+  //         current === "personal_assistants" ? subMenuLabel : undefined,
+  //       subMenu: current === "personal_assistants" ? subMenu : undefined,
+  //     },
+  //   ],
+  // });
 
   return nav;
 };

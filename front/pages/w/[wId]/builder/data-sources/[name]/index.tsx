@@ -36,7 +36,7 @@ import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -761,7 +761,7 @@ export default function DataSourceView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAdmin({
+      subNavigation={subNavigationAssistants({
         owner,
         current: dataSource.connectorId
           ? "data_sources_managed"

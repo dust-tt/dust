@@ -22,7 +22,7 @@ import { useContext, useState } from "react";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAdmin, subNavigationAssistants, subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -246,7 +246,7 @@ export default function AssistantsGallery({
       hideSidebar
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
+      subNavigation={subNavigationConversations({ owner, current: "personal_assistants" })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Assistant Gallery"
