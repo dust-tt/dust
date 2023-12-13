@@ -314,8 +314,7 @@ fn main() {
 
         let state = Arc::new(WorkerState::new(databases_store));
 
-        let app = Router::new()
-            .route("/", get(index))
+        let router = Router::new()
             .route("/databases/:database_id", post(db_query))
             .route(
                 "/databases/:database_id/tables/:table_id/rows",
@@ -335,6 +334,10 @@ fn main() {
                     .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             )
             .layer(extract::Extension(state.clone()));
+
+        let health_check_router = Router::new().route("/", get(index));
+
+        let app = Router::new().merge(router).merge(health_check_router);
 
         // Start the heartbeat loop.
         let state_clone = state.clone();
