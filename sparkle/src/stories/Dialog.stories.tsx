@@ -11,23 +11,39 @@ const meta = {
 export default meta;
 
 export const DialogExample = () => {
-  const [isOpenNoActionNoChange, setIsOpenNoActionNoChange] = useState(false);
+  const [isOpen1, setisOpen1] = useState(false);
+  const [isOpen2, setisOpen2] = useState(false);
   return (
-    <div>
-      <Dialog
-        isOpen={isOpenNoActionNoChange}
-        onClose={() => setIsOpenNoActionNoChange(false)}
-        title="Modal title"
-        onValidate={() => setIsOpenNoActionNoChange(false)}
-        onCancel={() => setIsOpenNoActionNoChange(false)}
-      >
-        <div>I'm the modal content</div>
-      </Dialog>
-      <div className="s-flex s-flex-col s-items-start s-gap-3">
-        <div className="s-text-lg s-font-bold">Centered</div>
+    <div className="items-start s-flex s-flex-col s-gap-10">
+      <div>
+        <Dialog
+          isOpen={isOpen1}
+          onClose={() => setisOpen1(false)}
+          title="Modal title"
+          onValidate={() => setisOpen1(false)}
+          onCancel={() => setisOpen1(false)}
+        >
+          <div>I'm the modal content</div>
+        </Dialog>
         <Button
-          label="Modal without action and without changes"
-          onClick={() => setIsOpenNoActionNoChange(true)}
+          label="Modal with primary validate"
+          onClick={() => setisOpen1(true)}
+        />
+      </div>
+      <div>
+        <Dialog
+          isOpen={isOpen2}
+          onClose={() => setisOpen2(false)}
+          title="Modal title"
+          onValidate={() => setisOpen2(false)}
+          onCancel={() => setisOpen2(false)}
+          validateVariant="primaryWarning"
+        >
+          <div>I'm the modal content</div>
+        </Dialog>
+        <Button
+          label="Modal with warning validate"
+          onClick={() => setisOpen2(true)}
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ type ModalProps = {
   onValidate: () => void;
   cancelLabel?: string;
   validateLabel?: string;
+  validateVariant?: "primary" | "primaryWarning";
   isSaving?: boolean;
 };
 
@@ -23,9 +24,9 @@ export function Dialog({
   onCancel,
   onClose,
   onValidate,
-  isSaving,
   cancelLabel = "Cancel",
   validateLabel = "Ok",
+  validateVariant = "primary",
   title,
 }: ModalProps) {
   return (
@@ -69,12 +70,12 @@ export function Dialog({
                   <Button.List>
                     <Button
                       label={cancelLabel}
-                      variant="secondary"
+                      variant="tertiary"
                       onClick={onCancel}
                     />
                     <Button
                       label={validateLabel}
-                      variant="primary"
+                      variant={validateVariant}
                       onClick={onValidate}
                     />
                   </Button.List>
