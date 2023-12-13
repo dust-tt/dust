@@ -29,6 +29,14 @@ pub trait DatabasesStore {
         rows: &Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()>;
+
+    fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send>;
+}
+
+impl Clone for Box<dyn DatabasesStore + Sync + Send> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 #[derive(Clone)]
@@ -199,6 +207,10 @@ impl DatabasesStore for PostgresDatabasesStore {
         c.commit().await?;
 
         Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send> {
+        Box::new(self.clone())
     }
 }
 

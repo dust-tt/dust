@@ -4,6 +4,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
+    time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, Result};
@@ -12,12 +13,12 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
-use dust::sqlite_workers::databases_store::DatabasesStore;
 use dust::{
     databases::database::DatabaseRow,
     sqlite_workers::{databases_store, sqlite_database::SqliteDatabase},
     utils::{self, error_response, APIResponse},
 };
+use dust::{databases::database::DatabaseTable, sqlite_workers::databases_store::DatabasesStore};
 use hyper::{Body, Client, Request, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
@@ -28,10 +29,18 @@ use tokio::{
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
+// Duration after which a database is considered inactive and can be removed from the registry.
+const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 60); // 5 minutes
+
+struct DatabaseEntry {
+    database: SqliteDatabase,
+    last_accessed: Instant,
+}
+
 struct WorkerState {
     databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
 
-    registry: Arc<Mutex<HashMap<String, SqliteDatabase>>>,
+    registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
 }
 
@@ -56,7 +65,9 @@ impl WorkerState {
                 Ok(_) => (),
                 Err(e) => utils::error(&format!("Failed to send heartbeat: {:?}", e)),
             }
-            // TODO: check for inactive DBs to kill.
+
+            self.cleanup_inactive_databases().await;
+
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
     }
@@ -77,6 +88,11 @@ impl WorkerState {
     async fn shutdown(&self) -> Result<()> {
         self.is_shutting_down.store(true, Ordering::SeqCst);
         self._core_request("DELETE").await
+    }
+
+    async fn cleanup_inactive_databases(&self) {
+        let mut registry = self.registry.lock().await;
+        registry.retain(|_, entry| entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION);
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
@@ -115,6 +131,7 @@ async fn index() -> &'static str {
 #[derive(Deserialize)]
 struct DbQueryBody {
     query: String,
+    tables: Vec<DatabaseTable>,
 }
 
 async fn db_query(
@@ -124,16 +141,20 @@ async fn db_query(
 ) -> (StatusCode, Json<APIResponse>) {
     let mut registry = state.registry.lock().await;
 
-    let db = match registry.get(&db_id) {
-        Some(db) => db,
-        None => {
-            let db = SqliteDatabase::new(&db_id);
-            registry.insert(db_id.clone(), db);
-            registry.get(&db_id).unwrap()
-        }
-    };
+    let entry = registry
+        .entry(db_id.clone())
+        .or_insert_with(|| DatabaseEntry {
+            database: SqliteDatabase::new(
+                db_id.clone(),
+                payload.tables,
+                state.databases_store.clone(),
+            ),
+            last_accessed: Instant::now(),
+        });
 
-    match db.query(payload.query).await {
+    entry.last_accessed = Instant::now();
+
+    match entry.database.query(payload.query).await {
         Ok(results) => (
             axum::http::StatusCode::OK,
             Json(APIResponse {
@@ -161,11 +182,12 @@ async fn databases_rows_upsert(
     extract::Json(payload): extract::Json<DatabasesRowsUpsertPayload>,
     Extension(state): Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    // Kill the running DB if it exists.
+    // Terminate the running DB thread if it exists.
     let mut registry = state.registry.lock().await;
     match registry.get(&database_id) {
         Some(_) => {
-            // Removing the DB from the registry will kill it, since it's the last reference.
+            // Removing the DB from the registry will terminate the thread once pending queries are
+            // finished.
             registry.remove(&database_id);
         }
         None => (),

@@ -3,7 +3,10 @@ use hyper::{Body, Client, Request};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{databases::database::DatabaseRow, utils};
+use crate::{
+    databases::database::{DatabaseResult, DatabaseRow, DatabaseTable},
+    utils,
+};
 
 pub const HEARTBEAT_INTERVAL_MS: u64 = 3_000;
 
@@ -113,6 +116,53 @@ impl SqliteWorker {
             }
             s => Err(anyhow!(
                 "Failed to retrieve rows from sqlite worker. Status: {}",
+                s
+            ))?,
+        }
+    }
+
+    pub async fn execute_query(
+        &self,
+        database_unique_id: &str,
+        tables: Vec<DatabaseTable>,
+        query: &str,
+    ) -> Result<Vec<DatabaseResult>> {
+        let worker_url = self.url()?;
+
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("{}/databases/{}", worker_url, database_unique_id))
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "tables": tables,
+                    "query": query,
+                })
+                .to_string(),
+            ))?;
+
+        let res = Client::new().request(req).await?;
+
+        #[derive(Deserialize)]
+        struct ExecuteQueryResponseBody {
+            error: Option<String>,
+            response: Option<Vec<DatabaseResult>>,
+        }
+
+        match res.status().as_u16() {
+            200 => {
+                let body = hyper::body::to_bytes(res.into_body()).await?;
+                let res: ExecuteQueryResponseBody = serde_json::from_slice(&body)?;
+                match res.error {
+                    Some(e) => Err(anyhow!("Error executing query: {}", e))?,
+                    None => match res.response {
+                        Some(r) => Ok(r),
+                        None => Err(anyhow!("No response found"))?,
+                    },
+                }
+            }
+            s => Err(anyhow!(
+                "Failed to execute query on sqlite worker. Status: {}",
                 s
             ))?,
         }
