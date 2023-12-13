@@ -260,6 +260,34 @@ async fn databases_rows_list(
     }
 }
 
+async fn databases_row_retrieve(
+    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
+    extract::Path(row_id): extract::Path<String>,
+    Extension(state): Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .databases_store
+        .load_database_row(&database_id, &table_id, &row_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database row",
+            Some(e),
+        ),
+        Ok(row) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "row": row,
+                })),
+            }),
+        ),
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -296,6 +324,10 @@ fn main() {
             .route(
                 "/databases/:database_id/tables/:table_id/rows",
                 get(databases_rows_list),
+            )
+            .route(
+                "/databases/:database_id/tables/:table_id/rows/:row_id",
+                get(databases_row_retrieve),
             )
             .layer(
                 TraceLayer::new_for_http()

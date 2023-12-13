@@ -85,7 +85,7 @@ impl SqliteWorker {
             .method("GET")
             .uri(uri)
             .header("Content-Type", "application/json")
-            .body(Body::from(""))?;
+            .body(Body::empty())?;
 
         let res = Client::new().request(req).await?;
 
@@ -116,6 +116,52 @@ impl SqliteWorker {
             }
             s => Err(anyhow!(
                 "Failed to retrieve rows from sqlite worker. Status: {}",
+                s
+            ))?,
+        }
+    }
+
+    pub async fn get_row(
+        &self,
+        database_unique_id: &str,
+        table_id: &str,
+        row_id: &str,
+    ) -> Result<Option<DatabaseRow>> {
+        let worker_url = self.url()?;
+
+        let uri = format!(
+            "{}/databases/{}/tables/{}/rows/{}",
+            worker_url, database_unique_id, table_id, row_id
+        );
+
+        let req = Request::builder()
+            .method("GET")
+            .uri(uri)
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
+
+        let res = Client::new().request(req).await?;
+
+        #[derive(Deserialize)]
+        struct GetRowResponseBody {
+            error: Option<String>,
+            response: Option<DatabaseRow>,
+        }
+
+        match res.status().as_u16() {
+            200 => {
+                let body = hyper::body::to_bytes(res.into_body()).await?;
+                let res: GetRowResponseBody = serde_json::from_slice(&body)?;
+                match res.error {
+                    Some(e) => Err(anyhow!("Error retrieving row: {}", e))?,
+                    None => match res.response {
+                        Some(r) => Ok(Some(r)),
+                        None => Ok(None),
+                    },
+                }
+            }
+            s => Err(anyhow!(
+                "Failed to retrieve row from sqlite worker. Status: {}",
                 s
             ))?,
         }
