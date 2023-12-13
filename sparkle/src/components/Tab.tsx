@@ -80,9 +80,8 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-px-4 s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-3 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
-        tab.icon ? " s-pr-5 s-pl-4" : " s-px-5",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-2.5 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
+        tab.icon ? (tab.hideLabel ? "s-px-3" : "s-pr-3.5 s-pl-2.5") : "s-px-3",
         tabStateClasses.base,
         tabStateClasses.hover,
         tabStateClasses.dark.base,
