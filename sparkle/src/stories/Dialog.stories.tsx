@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Button, Dialog, Input, Page } from "../index_with_tw_base";
+import { Button, Dialog } from "../index_with_tw_base";
 
 const meta = {
   title: "Molecule/Dialog",
@@ -13,11 +13,13 @@ export default meta;
 export const DialogExample = () => {
   const [isOpenNoActionNoChange, setIsOpenNoActionNoChange] = useState(false);
   return (
-    <Page.Layout gap="md">
+    <div>
       <Dialog
         isOpen={isOpenNoActionNoChange}
         onClose={() => setIsOpenNoActionNoChange(false)}
         title="Modal title"
+        onValidate={() => setIsOpenNoActionNoChange(false)}
+        onCancel={() => setIsOpenNoActionNoChange(false)}
       >
         <div>I'm the modal content</div>
       </Dialog>
@@ -28,6 +30,6 @@ export const DialogExample = () => {
           onClick={() => setIsOpenNoActionNoChange(true)}
         />
       </div>
-    </Page.Layout>
+    </div>
   );
 };
