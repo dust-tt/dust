@@ -1,4 +1,4 @@
-import { Button, SectionHeader } from "@dust-tt/sparkle";
+import { Button, Page } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
@@ -116,7 +116,7 @@ export default function NewApp({
       subNavigation={subNavigationAdmin({ owner, current: "developers" })}
     >
       <div className="flex flex-col">
-        <SectionHeader
+        <Page.SectionHeader
           title="Create a new App"
           description="An app consists of its specification (defining chained interactions with models and external services), datasets to run the app or few-shot prompt models. Everything is automatically versioned and stored."
         />

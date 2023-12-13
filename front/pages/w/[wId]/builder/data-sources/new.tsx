@@ -1,4 +1,4 @@
-import { Checkbox, SectionHeader } from "@dust-tt/sparkle";
+import { Checkbox, Page } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { APIError } from "@dust-tt/types";
@@ -182,7 +182,7 @@ export default function DataSourceNew({
       hideSidebar={true}
     >
       <div className="flex flex-1 flex-col space-y-4">
-        <SectionHeader
+        <Page.SectionHeader
           title="Create a new Folder"
           description="A Folder allows you to upload text documents (via API or manually) to make them available to your assistants."
         />

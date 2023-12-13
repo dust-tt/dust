@@ -1,9 +1,4 @@
-import {
-  ArrowUpOnSquareIcon,
-  Button,
-  Page,
-  SectionHeader,
-} from "@dust-tt/sparkle";
+import { ArrowUpOnSquareIcon, Button, Page } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
@@ -100,7 +95,7 @@ export default function AppExtractEventsCreate({
         effortlessly within your notes. Use Extract markers to specify sections in your notes that you want to revisit or analyze. No more scrolling and searching!"
       />
       <div>
-        <SectionHeader
+        <Page.SectionHeader
           title="Edit extract data"
           description="Edit the extracted data to correct any missing or wrong information. Apologies for the raw JSON, tool is still beta!"
         />

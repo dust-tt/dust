@@ -10,7 +10,6 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
-  SectionHeader,
   SlackLogo,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -719,7 +718,7 @@ function ManagedDataSourceView({
         </div>
 
         <div className="flex flex-col gap-y-8">
-          <SectionHeader
+          <Page.SectionHeader
             title="Synchronized data"
             description={CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
           />

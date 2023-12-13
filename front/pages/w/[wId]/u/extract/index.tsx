@@ -1,9 +1,4 @@
-import {
-  ArrowUpOnSquareIcon,
-  Button,
-  Page,
-  SectionHeader,
-} from "@dust-tt/sparkle";
+import { ArrowUpOnSquareIcon, Button, Page } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -75,7 +70,7 @@ export default function AppExtractEvents({
       />
 
       <div>
-        <SectionHeader
+        <Page.SectionHeader
           title="Your worskpace's markers"
           description="Below are the markers defined for the workspace. You can edit them to add or remove properties, and manage the extracted data."
         />

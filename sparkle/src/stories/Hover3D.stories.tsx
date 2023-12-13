@@ -6,7 +6,7 @@ import { LogoSquareColor } from "@sparkle/logo/dust";
 import { Div3D, GithubLogo, Hover3D, Icon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Test/Hover3D",
+  title: "Molecule/Hover3D",
   component: Hover3D,
 } satisfies Meta<typeof Hover3D>;
 

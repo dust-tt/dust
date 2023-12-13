@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
-const plugin = require("tailwindcss/plugin"); // eslint-disable-line @typescript-eslint/no-var-requires
 
 module.exports = {
   theme: {
@@ -13,10 +12,19 @@ module.exports = {
         99: ".99",
       },
       dropShadow: {
-        md: "0 4px 3px rgba(0, 0, 0, 0.12)",
-        lg: "0 10px 15px rgba(0, 0, 0, 0.12)",
-        xl: "0 20px 25px rgba(0, 0, 0, 0.12)",
-        "2xl": "0 25px 50px rgba(0, 0, 0, 0.12)",
+        DEFAULT: "0 2px 4px rgba(15, 23, 42, 0.1)",
+        sm: "0 1px 2px rgba(15, 23, 42, 0.08)",
+        md: "0 4px 6px rgba(15, 23, 42, 0.12)",
+        lg: "0 10px 15px rgba(15, 23, 42, 0.12)",
+        xl: "0 20px 20px rgba(15, 23, 42, 0.12)",
+        "2xl": "0 25px 35px rgba(15, 23, 42, 0.12)",
+      },
+      boxShadow: {
+        DEFAULT: "0 2px 6px 0 rgba(15, 23, 42, 0.1)",
+        md: "0 4px 12px rgba(15, 23, 42, 0.12)",
+        lg: "0 10px 20px rgba(15, 23, 42, 0.12)",
+        xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
+        "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
       },
       zIndex: {
         60: "60",
@@ -174,35 +182,7 @@ module.exports = {
       backgroundColor: ["dark"],
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("tailwind-scrollbar-hide"),
-    plugin(function ({ addUtilities }) {
-      const newUtilities = {
-        ".box-shadow": {
-          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-        },
-        ".box-shadow-md": {
-          boxShadow:
-            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-        },
-        ".box-shadow-lg": {
-          boxShadow:
-            "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-        },
-        ".box-shadow-xl": {
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        },
-        ".box-shadow-2xl": {
-          boxShadow: "0 50px 100px -20px rgba(0, 0, 0, 0.25)",
-        },
-        ".box-shadow-none": {
-          boxShadow: "none",
-        },
-      };
-      addUtilities(newUtilities);
-    }),
-  ],
+  plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
