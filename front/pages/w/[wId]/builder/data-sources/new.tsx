@@ -86,7 +86,7 @@ export default function DataSourceNew({
       }
     });
     if (exists) {
-      setDataSourceNameError("A DataSource with the same name already exists");
+      setDataSourceNameError("A Folder with the same name already exists");
       valid = false;
     } else if (dataSourceName.length == 0) {
       valid = false;
@@ -166,7 +166,7 @@ export default function DataSourceNew({
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
-          title="Create a Data Source"
+          title="Create a Folder"
           onSave={
             isValid && isEdited && !isSaving
               ? async () => {
@@ -183,8 +183,8 @@ export default function DataSourceNew({
     >
       <div className="flex flex-1 flex-col space-y-4">
         <SectionHeader
-          title="Create a new Data Source"
-          description="A Data Source allows you to upload text documents (via API or manually) to make them available to your assistants."
+          title="Create a new Folder"
+          description="A Folder allows you to upload text documents (via API or manually) to make them available to your assistants."
         />
         <div>
           <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -246,7 +246,7 @@ export default function DataSourceNew({
               </div>
               <p className="mt-2 text-sm text-gray-500">
                 A good description will help users discover and understand the
-                purpose of your Data Source.
+                purpose of your Folder.
               </p>
             </div>
 
@@ -265,7 +265,7 @@ export default function DataSourceNew({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Make this Data Source available to the{" "}
+                  Make this Folder available to the{" "}
                   <span className="font-semibold">@dust</span> assistant.
                 </p>
               </div>

@@ -194,7 +194,7 @@ function StandardDataSourceView({
       <Page.Vertical align="stretch">
         <Page.SectionHeader
           title={`Folder ${dataSource.name}`}
-          description="Use this page to view and upload documents to your data source."
+          description="Use this page to view and upload documents to your Folder."
           action={
             readOnly
               ? undefined

@@ -1003,7 +1003,7 @@ export default function AssistantBuilder({
               You can ask the assistant to perform actions before answering,
               like{" "}
               <span className="font-bold text-element-800">
-                searching in your Data Sources
+                searching in your data sources
               </span>
               , or use a Dust Application you have built for your specific
               needs.
@@ -1045,7 +1045,7 @@ export default function AssistantBuilder({
             >
               <div>
                 The assistant will include as many documents as possible from
-                the Data Sources, using reverse chronological order.
+                the data sources, using reverse chronological order.
               </div>
               <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-1">
@@ -1054,7 +1054,7 @@ export default function AssistantBuilder({
                     Assistants are limited in the amount of data they can
                     process.
                   </strong>{" "}
-                  Select Data Sources with care, and limit processing to the
+                  Select data sources with care, and limit processing to the
                   shortest relevant time frame.
                 </div>
                 <div className="col-span-1">
