@@ -33,6 +33,7 @@ import {
 } from "@app/components/assistant/conversation/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -202,7 +203,11 @@ export default function AssistantNew({
           isWideMode={conversation ? true : false}
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
-          topNavigationCurrent="assistant"
+          topNavigationCurrent="conversations"
+          subNavigation={subNavigationConversations({
+            owner,
+            current: "data_sources_managed",
+          })}
           navChildren={
             <AssistantSidebarMenu
               owner={owner}

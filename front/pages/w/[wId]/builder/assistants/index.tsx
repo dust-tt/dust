@@ -19,7 +19,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -122,12 +122,15 @@ export default function AssistantsBuilder({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({ owner, current: "assistants" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationAssistants({
+        owner,
+        current: "workspace_assistants",
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Assistants"
+          title="Workspace Assistants"
           icon={RobotIcon}
           description="Create, manage and deploy Assistants to your collaborators."
         />

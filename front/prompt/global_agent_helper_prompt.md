@@ -35,7 +35,7 @@ In Dust, a Workspace is where users talk with assistants and customize it for th
 
 ### Connections & Data Sources
 
-In Dust, "Connections" are integrated platforms like Notion or Slack where assistants pull data from, available only on paid plans. Admins decide which data assistants can access. 
+In Dust, "Connections" are integrated platforms like Notion or Slack where assistants pull data from, available only on paid plans. Admins decide which data assistants can access.
 
 Data Sources are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Data Sources are available to all plans.
 
@@ -55,7 +55,7 @@ LLM embedding converts text into numerical vectors, positioning similar phrases 
 
 ### How to invite members to the workspace
 
-As an Admin, invite members by going to `Admin` > `Workspace` > `Members`, then use Member list to invite by email or set a whitelisted domain in Invitation Link > Settings and share the link. 
+As an Admin, invite members by going to `Admin` > `Workspace` > `Members`, then use Member list to invite by email or set a whitelisted domain in Invitation Link > Settings and share the link.
 
 After they join, assign roles: admin, builder, or user.
 
@@ -139,7 +139,7 @@ To see if a document has synced and view its contents:
 
 ### How to add data that are not supported as a Connection by Dust
 
-As a user, you can add your data to a connected platform like Notion or Google Drive. 
+As a user, you can add your data to a connected platform like Notion or Google Drive.
 
 Admins/builders add a data source by:
 
@@ -253,10 +253,10 @@ Setup involves:
 
 - **Instructions**: Write clear, detailed prompts for the assistant.
 - **Advanced Settings**: Pick a model and set the creativity level (temperature).
-    - **Deterministic (0)**: Straightforward, factual answers.
-    - **Factual (0.2)**: A slight bit of unpredictability.
-    - **Balanced (0.7)**: More variety in responses.
-    - **Creative (1.0)**: High creativity for brainstorming.
+  - **Deterministic (0)**: Straightforward, factual answers.
+  - **Factual (0.2)**: A slight bit of unpredictability.
+  - **Balanced (0.7)**: More variety in responses.
+  - **Creative (1.0)**: High creativity for brainstorming.
 - **Actions**: Link to Data Sources for better context, or skip if not needed.
 
 ### How to create a Dust LLM app?
@@ -288,14 +288,14 @@ or
 
 Ethan Mollick, a professor at the Wharton School who writes about AI, concludes that GPT-4 is better at solving math problems, while Claude 2 is better at writing.
 
-| Model | See images | Internet connection | Personality | When to use it |
-| --- | --- | --- | --- | --- |
-| GPT-3.5 |  | No | Neutral | Fast and capable, but other models are now stronger. |
-| GPT-4 | Soon | No | Helpful, a little preachy | Strongest model if you want to complete more complex task. |
-| GPT4-Turbo | Soon | No | Neutral | Strongest model if you want to complete more complex task.  |
-| Claude 2 |  | No | Pleasant |  |
-| Claude 2.1 |  | No | Pleasant | Strongest model with a large amount of text. Answer with fewer words than Claude 2.  |
-| Claude Instant |  | No | Pleasant | Same as Claude 2 but will answer faster and with fewer words. |
+| Model          | See images | Internet connection | Personality               | When to use it                                                                      |
+| -------------- | ---------- | ------------------- | ------------------------- | ----------------------------------------------------------------------------------- |
+| GPT-3.5        |            | No                  | Neutral                   | Fast and capable, but other models are now stronger.                                |
+| GPT-4          | Soon       | No                  | Helpful, a little preachy | Strongest model if you want to complete more complex task.                          |
+| GPT4-Turbo     | Soon       | No                  | Neutral                   | Strongest model if you want to complete more complex task.                          |
+| Claude 2       |            | No                  | Pleasant                  |                                                                                     |
+| Claude 2.1     |            | No                  | Pleasant                  | Strongest model with a large amount of text. Answer with fewer words than Claude 2. |
+| Claude Instant |            | No                  | Pleasant                  | Same as Claude 2 but will answer faster and with fewer words.                       |
 
 Table with results as of summer 2023, based on Ethan Mollick analysis - [oneusefulthing.org](http://oneusefulthing.org/).
 

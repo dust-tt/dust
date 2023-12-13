@@ -22,10 +22,10 @@ import {
   UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@dust-tt/types";
+import { rateLimiter } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models";
-import { rateLimiter } from "@app/lib/rate_limiter";
 import { redisClient } from "@app/lib/redis";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
@@ -64,7 +64,12 @@ export async function postUserMessageWithPubSub(
   }
 
   if (
-    (await rateLimiter(rateLimitKey, maxPerTimeframe, timeframeSeconds)) === 0
+    (await rateLimiter({
+      key: rateLimitKey,
+      maxPerTimeframe,
+      timeframeSeconds,
+      logger,
+    })) === 0
   ) {
     return new Err({
       status_code: 429,

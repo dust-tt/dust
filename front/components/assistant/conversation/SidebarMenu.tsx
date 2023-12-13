@@ -1,4 +1,4 @@
-import { Button, ChatBubbleBottomCenterTextIcon, Item } from "@dust-tt/sparkle";
+import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationWithoutContentType } from "@dust-tt/types";
 import moment from "moment";
@@ -69,7 +69,7 @@ export function AssistantSidebarMenu({
     <div className="flex grow flex-col">
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
-          <div className="py-4 pr-2 text-right">
+          <div className="pb-4 pr-2 text-right">
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {
@@ -85,8 +85,8 @@ export function AssistantSidebarMenu({
             >
               <Button
                 labelVisible={true}
-                label="New Conversation"
-                icon={ChatBubbleBottomCenterTextIcon}
+                label="New"
+                icon={ChatBubbleBottomCenterPlusIcon}
                 className="flex-none shrink"
               />
             </Link>

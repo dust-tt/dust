@@ -1,8 +1,10 @@
+import { RateLimitError } from "@dust-tt/types";
 import { Request, Response } from "express";
 
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { GoogleDriveWebhook } from "@connectors/lib/models/google_drive";
+import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 type GoogleDriveWebhookResBody = null | APIErrorWithStatusCode;
@@ -39,7 +41,18 @@ const _webhookGoogleDriveAPIHandler = async (
   const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
     webhook.connectorId.toString()
   );
+
   if (workflowRes.isErr()) {
+    if (workflowRes.error instanceof RateLimitError) {
+      logger.info(
+        {
+          connectorId: webhook.connectorId,
+          webhookId: webhook.webhookId,
+        },
+        "Did not signal a Gdrive webhook to the incremenal sync workflow because of rate limit"
+      );
+      return res.status(200).end();
+    }
     return apiError(req, res, {
       status_code: 500,
       api_error: {

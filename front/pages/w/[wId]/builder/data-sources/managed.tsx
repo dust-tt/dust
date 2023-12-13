@@ -29,7 +29,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -357,8 +357,8 @@ export default function DataSourcesView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationAssistants({
         owner,
         current: "data_sources_managed",
       })}

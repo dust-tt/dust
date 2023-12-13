@@ -59,7 +59,7 @@ export default function AppExtractEvents({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "extract" })}
     >
       <Page.Header

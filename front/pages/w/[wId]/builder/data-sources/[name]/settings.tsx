@@ -15,7 +15,7 @@ import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
@@ -180,7 +180,7 @@ function StandardDataSourceSettings({
       setIsSavingOrDeleting(false);
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to delete the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to delete the Folder (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
     return true;
@@ -192,14 +192,14 @@ function StandardDataSourceSettings({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationAssistants({
         owner,
         current: "data_sources_static",
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
-          title="Data Source Settings"
+          title="Folder Settings"
           onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
@@ -231,7 +231,7 @@ function StandardDataSourceSettings({
               htmlFor="dataSourceName"
               className="block text-sm font-medium text-gray-700"
             >
-              Data Source Name
+              Folder Name
             </label>
             <div className="mt-1 flex rounded-md shadow-sm">
               <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
@@ -283,7 +283,7 @@ function StandardDataSourceSettings({
             </div>
             <p className="mt-2 text-sm text-gray-500">
               A good description will help users discover and understand the
-              purpose of your Data Source.
+              purpose of your Folder.
             </p>
           </div>
 
@@ -294,7 +294,7 @@ function StandardDataSourceSettings({
                   <Button
                     variant="secondaryWarning"
                     icon={TrashIcon}
-                    label={"Delete this Data Source"}
+                    label={"Delete this Folder"}
                   />
                 </DropdownMenu.Button>
                 <DropdownMenu.Items width={280}>
