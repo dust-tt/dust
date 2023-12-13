@@ -10,7 +10,11 @@ import {
   Tooltip,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -79,7 +83,8 @@ export default function PersonalAssistants({
   const filtered = agentConfigurations.filter((a) => {
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
-  const [showRemovalModal, setShowRemovalModal] = useState<boolean>(false);
+  const [showRemovalModal, setShowRemovalModal] =
+    useState<AgentConfigurationType | null>(null);
 
   // const isBuilder = owner.role === "builder" || owner.role === "admin";
 
@@ -163,8 +168,8 @@ export default function PersonalAssistants({
                     <RemoveAssistantFromListDialog
                       owner={owner}
                       agentConfiguration={agent}
-                      show={showRemovalModal}
-                      onClose={() => setShowRemovalModal(false)}
+                      show={showRemovalModal === agent}
+                      onClose={() => setShowRemovalModal(null)}
                       onRemove={() => {
                         void mutateAgentConfigurations();
                       }}
@@ -175,7 +180,7 @@ export default function PersonalAssistants({
                       label="Remove from my list"
                       labelVisible={false}
                       onClick={() => {
-                        setShowRemovalModal(true);
+                        setShowRemovalModal(agent);
                       }}
                       size="xs"
                     />
