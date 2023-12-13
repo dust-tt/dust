@@ -28,16 +28,20 @@ export function AvatarPicker({
   isOpen,
   setOpen,
   onPick,
-  avatarUrls,
+  droidAvatarUrls,
+  spiritAvatarUrls,
 }: {
   owner: WorkspaceType;
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   onPick: (avatar: string) => void;
-  avatarUrls: { available: boolean; url: string }[];
+  droidAvatarUrls: { available: boolean; url: string }[];
+  spiritAvatarUrls: { available: boolean; url: string }[];
 }) {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [currentTab, setCurrentTab] = useState<"pick" | "upload">("pick");
+  const [currentTab, setCurrentTab] = useState<"droids" | "spirits" | "upload">(
+    "droids"
+  );
   const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
   const [src, setSrc] = useState<string | null>(null);
 
@@ -47,7 +51,7 @@ export function AvatarPicker({
     // wait for modal close animation to finish before resetting state
     setTimeout(() => {
       setCrop(DEFAULT_CROP);
-      setCurrentTab("pick");
+      setCurrentTab("droids");
       setSrc(null);
     }, 300);
   };
@@ -159,8 +163,13 @@ export function AvatarPicker({
           <Tab
             tabs={[
               {
-                label: "Gallery",
-                current: currentTab === "pick",
+                label: "Droids",
+                current: currentTab === "droids",
+                icon: ImageIcon,
+              },
+              {
+                label: "Spirits",
+                current: currentTab === "spirits",
                 icon: ImageIcon,
               },
               {
@@ -170,18 +179,44 @@ export function AvatarPicker({
               },
             ]}
             onTabClick={(tab) => {
-              const isUploadTab = tab.startsWith("Upload");
-              if (isUploadTab) {
-                setCurrentTab("upload");
+              if (tab === currentTab) return;
+              if (tab === "Droids") {
+                setCurrentTab("droids");
+              } else if (tab === "Spirits") {
+                setCurrentTab("spirits");
               } else {
-                setCurrentTab("pick");
+                setCurrentTab("upload");
               }
             }}
           />
         </div>
-        {currentTab === "pick" && (
+        {currentTab === "droids" && (
           <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
-            {avatarUrls.map(({ available, url }) => (
+            {droidAvatarUrls.map(({ available, url }) => (
+              <div
+                key={url}
+                className={classNames(
+                  available ? "cursor-pointer" : "opacity-30"
+                )}
+                onClick={() => {
+                  if (available) {
+                    onPick(url);
+                    onClose();
+                  }
+                }}
+              >
+                <Avatar
+                  size="auto"
+                  visual={<img src={url} />}
+                  clickable={available}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {currentTab === "spirits" && (
+          <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
+            {spiritAvatarUrls.map(({ available, url }) => (
               <div
                 key={url}
                 className={classNames(
