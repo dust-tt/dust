@@ -130,7 +130,7 @@ export default function WorkspaceAssistants({
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Workspace Assistants"
+          title="Manage workspace assistants"
           icon={RobotIcon}
           description="Create, manage and deploy Assistants to your collaborators."
         />
