@@ -2091,7 +2091,7 @@ async fn databases_rows_list(
             &format!("No database found for id `{}`", database_id),
             None,
         ),
-        Ok(Some(db)) => match db.sqlite_worker(state.store).await {
+        Ok(Some(db)) => match db.sqlite_worker(state.store.clone()).await {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
