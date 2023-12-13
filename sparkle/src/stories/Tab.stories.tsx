@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
-import { Tab } from "../index_with_tw_base";
+import { RobotIcon, Tab } from "../index_with_tw_base";
 import {
   ChatBubbleBottomCenterTextIcon,
   Cog6ToothIcon,
-  TestTubeIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -15,19 +15,52 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const ButtonExamples = () => (
+  <div className="s-w-[320px]">
+    <Tab
+      tabs={[
+        {
+          label: "Conversations",
+          current: true,
+          icon: ChatBubbleBottomCenterTextIcon,
+          sizing: "hug",
+        },
+        {
+          label: "Assistants",
+          current: false,
+          icon: RobotIcon,
+          sizing: "hug",
+          hasSeparator: true,
+        },
+        {
+          label: "Settings",
+          hideLabel: true,
+          current: false,
+          icon: Cog6ToothIcon,
+        },
+      ]}
+      onTabClick={(tabName, event) => {
+        // add logic here
+        event.preventDefault();
+        console.log(tabName);
+      }}
+    />
+  </div>
+);
+
 export const TabNavigation: Story = {
   args: {
     tabs: [
       {
-        label: "Assistant",
+        label: "Conversations",
         current: true,
         icon: ChatBubbleBottomCenterTextIcon,
         sizing: "hug",
       },
       {
-        label: "Lab",
+        label: "Assistants",
         current: false,
-        icon: TestTubeIcon,
+        icon: RobotIcon,
         sizing: "hug",
         hasSeparator: true,
       },
