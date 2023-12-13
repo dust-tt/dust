@@ -45,7 +45,10 @@ const _webhookGoogleDriveAPIHandler = async (
   if (workflowRes.isErr()) {
     if (workflowRes.error instanceof RateLimitError) {
       logger.info(
-        {},
+        {
+          connectorId: webhook.connectorId,
+          webhookId: webhook.webhookId,
+        },
         "Did not signal a Gdrive webhook to the incremenal sync workflow because of rate limit"
       );
       return res.status(200).end();
