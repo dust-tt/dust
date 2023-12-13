@@ -2,7 +2,7 @@ import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
   AgentDatabaseQueryAction,
   AgentDatabaseQueryConfiguration,
-} from "@app/lib/models/assistant/actions/database";
+} from "@app/lib/models/assistant/actions/database_query";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,

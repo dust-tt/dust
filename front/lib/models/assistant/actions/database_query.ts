@@ -83,13 +83,13 @@ export class AgentDatabaseQueryAction extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
+  declare databaseQueryConfigurationId: string;
 
   declare dataSourceWorkspaceId: string;
   declare dataSourceId: string;
   declare databaseId: string;
 
-  declare databaseQueryConfigurationId: string;
+  declare params: unknown | null;
   declare output: unknown | null;
 }
 
@@ -110,7 +110,7 @@ AgentDatabaseQueryAction.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    sId: {
+    databaseQueryConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -126,9 +126,9 @@ AgentDatabaseQueryAction.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    databaseQueryConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    params: {
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
     output: {
       type: DataTypes.JSONB,
@@ -137,12 +137,6 @@ AgentDatabaseQueryAction.init(
   },
   {
     modelName: "agent_database_query_action",
-    indexes: [
-      {
-        unique: true,
-        fields: ["sId"],
-      },
-    ],
     sequelize: front_sequelize,
   }
 );

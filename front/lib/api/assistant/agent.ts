@@ -293,6 +293,7 @@ export async function* runAgent(
       const eventStream = runDatabaseQueryApp({
         auth,
         configuration,
+        conversation,
         userMessage,
         agentMessage,
       });
