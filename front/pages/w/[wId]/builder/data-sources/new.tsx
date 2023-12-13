@@ -193,7 +193,7 @@ export default function DataSourceNew({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Data Source Name
+                Folder Name
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
