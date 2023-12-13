@@ -2803,6 +2803,20 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        // Remove the worker from the databases.
+        let stmt = c
+            .prepare(
+                "UPDATE databases SET sqlite_worker = NULL \
+                WHERE sqlite_worker IN (
+                    SELECT id 
+                    FROM sqlite_workers 
+                    WHERE pod_name = $1
+                )",
+            )
+            .await?;
+        c.execute(&stmt, &[&pod_name.to_string()]).await?;
+
+        // Delete the worker.
         let stmt = c
             .prepare("DELETE FROM sqlite_workers WHERE pod_name = $1")
             .await?;
