@@ -43,6 +43,7 @@ function NavigationBar({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const nav = topNavigation({ owner, current: topNavigationCurrent });
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
@@ -111,9 +112,11 @@ function NavigationBar({
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
-        <div>
-          <Tab tabs={topNavigation({ owner, current: topNavigationCurrent })} />
-        </div>
+        {nav.length > 1 && (
+          <div>
+            <Tab tabs={nav} />
+          </div>
+        )}
         {subNavigation && (
           <div className="py-2">
             {subNavigation.map((nav) => {

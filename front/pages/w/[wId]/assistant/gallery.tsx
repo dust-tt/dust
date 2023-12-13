@@ -11,6 +11,7 @@ import {
 import {
   AgentConfigurationType,
   AgentsGetViewType,
+  assertNever,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -31,12 +32,19 @@ import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/m
 
 const { GA_TRACKING_ID = "" } = process.env;
 
+const GALLERY_FLOWS = [
+  "workspace_add",
+  "conversation_add",
+  "personal_add",
+] as const;
+export type GalleryFlow = (typeof GALLERY_FLOWS)[number];
+
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   agentsGetView: AgentsGetViewType;
-  returnTo: "conversation_new" | "assistants";
+  flow: GalleryFlow;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -57,9 +65,14 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const agentsGetView = (context.query.view || "all") as AgentsGetViewType;
-  const returnTo: "conversation_new" | "assistants" =
-    (context.query.returnTo as "conversation_new" | "assistants") ||
-    `conversation_new`;
+
+  let flow: GalleryFlow = "conversation_add";
+  if (
+    context.query.flow &&
+    GALLERY_FLOWS.includes(context.query.flow as GalleryFlow)
+  ) {
+    flow = context.query.flow as GalleryFlow;
+  }
 
   return {
     props: {
@@ -67,7 +80,7 @@ export const getServerSideProps: GetServerSideProps<{
       owner,
       subscription,
       agentsGetView,
-      returnTo,
+      flow,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -184,7 +197,7 @@ export default function AssistantsGallery({
   owner,
   subscription,
   agentsGetView,
-  returnTo,
+  flow,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -210,30 +223,22 @@ export default function AssistantsGallery({
   const tabs = [
     {
       label: "All",
-      href:
-        `/w/${owner.sId}/builder/assistants/gallery?view=all&returnTo=` +
-        returnTo,
+      href: `/w/${owner.sId}/assistant/gallery?view=all&flow=` + flow,
       current: agentsGetView === "all",
     },
     {
       label: "From Workspace",
-      href:
-        `/w/${owner.sId}/builder/assistants/gallery?view=workspace&returnTo=` +
-        returnTo,
+      href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
       current: agentsGetView === "workspace",
     },
-    // {
-    //   label: "From Team Mates",
-    //   href:
-    //     `/w/${owner.sId}/builder/assistants/gallery?view=published&returnTo=` +
-    //     returnTo,
-    //   current: agentsGetView === "published",
-    // },
+    {
+      label: "From Teammates",
+      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
+      current: agentsGetView === "published",
+    },
     {
       label: "From Dust",
-      href:
-        `/w/${owner.sId}/builder/assistants/gallery?view=dust&returnTo=` +
-        returnTo,
+      href: `/w/${owner.sId}/assistant/gallery?view=dust&flow=` + flow,
       current: agentsGetView === "dust",
     },
   ];
@@ -245,7 +250,7 @@ export default function AssistantsGallery({
       owner={owner}
       hideSidebar
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="conversations"
       subNavigation={subNavigationConversations({
         owner,
         current: "personal_assistants",
@@ -254,13 +259,18 @@ export default function AssistantsGallery({
         <AppLayoutSimpleCloseTitle
           title="Assistant Gallery"
           onClose={async () => {
-            switch (returnTo) {
-              case "conversation_new":
+            switch (flow) {
+              case "conversation_add":
                 await router.push(`/w/${owner.sId}/assistant/new`);
                 break;
-              case "assistants":
+              case "personal_add":
+                await router.push(`/w/${owner.sId}/assistant/assistants`);
+                break;
+              case "workspace_add":
                 await router.push(`/w/${owner.sId}/builder/assistants`);
                 break;
+              default:
+                assertNever(flow);
             }
           }}
         />
