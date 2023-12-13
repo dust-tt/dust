@@ -39,6 +39,14 @@ const { DUST_CLIENT_FACING_URL, DUST_FRONT_API } = process.env;
 
 class SlackExternalUserError extends Error {}
 
+/* After this length we start risking that the chat.update Slack API returns
+ * "msg_too_long" error. This length is experimentally tested and was not found
+ * in the slack documentation. Therefore, it is conservative and the actual
+ * threshold might is more likely around 3800 characters. Since avoiding too
+ * long messages in slack is a good thing nonetheless, we keep this lower threshold.
+ */
+const MAX_SLACK_MESSAGE_LENGTH = 3000;
+
 const WHITELISTED_BOT_NAME = ["Beaver"];
 
 export async function botAnswerMessageWithErrorHandling(
@@ -480,6 +488,12 @@ async function botAnswerMessage(
         let finalAnswer = normalizeContentForSlack(
           _processCiteMention(fullAnswer, action)
         );
+
+        // if the message is too long, we avoid the update entirely (to reduce
+        // rate limiting) the previous update will have shown the "..." and the
+        // link to continue the conversation so this is fine
+        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) break;
+
         finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
@@ -500,6 +514,14 @@ async function botAnswerMessage(
         let finalAnswer = normalizeContentForSlack(
           _processCiteMention(fullAnswer, action)
         );
+
+        // if the message is too long, when generation is finished we show it
+        // is truncated
+        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH)
+          finalAnswer =
+            finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
+            "... (message truncated)";
+
         finalAnswer += `\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
         await slackClient.chat.update({
