@@ -2228,11 +2228,16 @@ async fn databases_query_run(
 
 // SQLite Workers
 
+#[derive(serde::Deserialize)]
+struct SQLiteWorkersUpsertOrDeletePayload {
+    url: String,
+}
+
 async fn sqlite_workers_heartbeat(
-    extract::Path(pod_name): extract::Path<String>,
+    extract::Json(payload): extract::Json<SQLiteWorkersUpsertOrDeletePayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match state.store.sqlite_workers_upsert(&pod_name).await {
+    match state.store.sqlite_workers_upsert(&payload.url).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -2250,10 +2255,10 @@ async fn sqlite_workers_heartbeat(
 }
 
 async fn sqlite_workers_delete(
-    extract::Path(pod_name): extract::Path<String>,
+    extract::Json(payload): extract::Json<SQLiteWorkersUpsertOrDeletePayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match state.store.sqlite_workers_delete(&pod_name).await {
+    match state.store.sqlite_workers_delete(&payload.url).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -2483,7 +2488,7 @@ fn main() {
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/query",
             post(databases_query_run),
         )
-        .route("/sqlite_workers/:pod_name", delete(sqlite_workers_delete))
+        .route("/sqlite_workers", delete(sqlite_workers_delete))
         // Misc
         .route("/tokenize", post(tokenize))
 
@@ -2498,7 +2503,7 @@ fn main() {
 
         // In a separate router, to avoid noisy tracing.
         let sqlite_heartbeat_router = Router::new()
-            .route("/sqlite_workers/:pod_name", post(sqlite_workers_heartbeat))
+            .route("/sqlite_workers", post(sqlite_workers_heartbeat))
             .layer(extract::Extension(state.clone()));
 
         let app = Router::new().merge(router).merge(sqlite_heartbeat_router);

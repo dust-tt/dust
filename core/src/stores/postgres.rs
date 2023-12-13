@@ -2037,7 +2037,7 @@ impl Store for PostgresStore {
         // Check if there is already an assigned live worker.
         let stmt = tx
             .prepare(
-                "SELECT pod_name, last_heartbeat 
+                "SELECT url, last_heartbeat 
                 FROM sqlite_workers
                 WHERE id IN (
                     SELECT sqlite_worker 
@@ -2060,8 +2060,8 @@ impl Store for PostgresStore {
         let worker: Option<SqliteWorker> = match r.len() {
             0 => None,
             1 => {
-                let (pod_name, last_heartbeat): (String, i64) = (r[0].get(0), r[0].get(1));
-                Some(SqliteWorker::new(pod_name, last_heartbeat as u64))
+                let (url, last_heartbeat): (String, i64) = (r[0].get(0), r[0].get(1));
+                Some(SqliteWorker::new(url, last_heartbeat as u64))
             }
             _ => unreachable!(),
         };
@@ -2076,7 +2076,7 @@ impl Store for PostgresStore {
         // Pick a random live worker.
         let stmt = tx
             .prepare(
-                "SELECT id, pod_name, last_heartbeat 
+                "SELECT id, url, last_heartbeat 
                 FROM sqlite_workers 
                 WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
             )
@@ -2086,7 +2086,7 @@ impl Store for PostgresStore {
         match r.len() {
             0 => Err(anyhow!("No live workers found"))?,
             1 => {
-                let (sqlite_worker_row_id, pod_name, last_heartbeat): (i64, String, i64) =
+                let (sqlite_worker_row_id, url, last_heartbeat): (i64, String, i64) =
                     (r[0].get(0), r[0].get(1), r[0].get(2));
 
                 // Update the database row to assign the worker.
@@ -2109,7 +2109,7 @@ impl Store for PostgresStore {
                 // Release the lock.
                 tx.commit().await?;
 
-                Ok(SqliteWorker::new(pod_name, last_heartbeat as u64))
+                Ok(SqliteWorker::new(url, last_heartbeat as u64))
             }
             _ => unreachable!(),
         }
@@ -2758,20 +2758,20 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
 
         let stmt = c
-            .prepare("SELECT pod_name, last_heartbeat FROM sqlite_workers")
+            .prepare("SELECT url, last_heartbeat FROM sqlite_workers")
             .await?;
         let rows = c.query(&stmt, &[]).await?;
 
         rows.iter()
             .map(|row| {
-                let pod_name: String = row.get(0);
+                let url: String = row.get(0);
                 let last_heartbeat: i64 = row.get(1);
-                Ok(SqliteWorker::new(pod_name, last_heartbeat as u64))
+                Ok(SqliteWorker::new(url, last_heartbeat as u64))
             })
             .collect::<Result<Vec<_>>>()
     }
 
-    async fn sqlite_workers_upsert(&self, pod_name: &str) -> Result<SqliteWorker> {
+    async fn sqlite_workers_upsert(&self, url: &str) -> Result<SqliteWorker> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -2779,9 +2779,9 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "INSERT INTO sqlite_workers (id, created, pod_name, last_heartbeat) \
+                "INSERT INTO sqlite_workers (id, created, url, last_heartbeat) \
                 VALUES (DEFAULT, $1, $2, $3) \
-                ON CONFLICT (pod_name) DO UPDATE \
+                ON CONFLICT (url) DO UPDATE \
                 SET last_heartbeat = EXCLUDED.last_heartbeat RETURNING id",
             )
             .await?;
@@ -2790,16 +2790,16 @@ impl Store for PostgresStore {
             &stmt,
             &[
                 &(utils::now() as i64),
-                &pod_name.to_string(),
+                &url.to_string(),
                 &(last_heartbeat as i64),
             ],
         )
         .await?;
 
-        Ok(SqliteWorker::new(pod_name.to_string(), last_heartbeat))
+        Ok(SqliteWorker::new(url.to_string(), last_heartbeat))
     }
 
-    async fn sqlite_workers_delete(&self, pod_name: &str) -> Result<()> {
+    async fn sqlite_workers_delete(&self, url: &str) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -2810,18 +2810,18 @@ impl Store for PostgresStore {
                 WHERE sqlite_worker IN (
                     SELECT id 
                     FROM sqlite_workers 
-                    WHERE pod_name = $1
+                    WHERE url = $1
                 )",
             )
             .await?;
-        c.execute(&stmt, &[&pod_name.to_string()]).await?;
+        c.execute(&stmt, &[&url.to_string()]).await?;
 
         // Delete the worker.
         let stmt = c
-            .prepare("DELETE FROM sqlite_workers WHERE pod_name = $1")
+            .prepare("DELETE FROM sqlite_workers WHERE url = $1")
             .await?;
 
-        c.execute(&stmt, &[&pod_name.to_string()]).await?;
+        c.execute(&stmt, &[&url.to_string()]).await?;
 
         Ok(())
     }

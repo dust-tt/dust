@@ -24,12 +24,6 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3005
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 3005
-            initialDelaySeconds: 5
-            periodSeconds: 5
 
           envFrom:
             - configMapRef:
@@ -42,10 +36,13 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 
-          # TODO: Uncomment this when we have service accounts
-          # volumeMounts:
-          #   - name: service-account-volume
-          #     mountPath: /etc/service-accounts
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+            - name: POD_PORT
+              value: "3005"
 
           resources:
             requests:
@@ -54,9 +51,3 @@ spec:
             limits:
               cpu: 500m
               memory: 250Mi
-
-      # TODO: Uncomment this when we have service accounts
-      # volumes:
-      #   - name: service-account-volume
-      #     secret:
-      #       secretName: gcp-service-account-secret
