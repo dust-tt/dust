@@ -96,11 +96,11 @@ export const topNavigation = ({
     nav.push({
       id: "assistants",
       label: "Assistants",
-      hideLabel: true,
-      icon: RobotSharedIcon,
+      icon: RobotIcon,
       href: `/w/${owner.sId}/builder/assistants`,
       current: current === "assistants",
       sizing: "hug",
+      hasSeparator: true,
     });
     nav.push({
       id: "settings",
