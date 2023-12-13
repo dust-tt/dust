@@ -96,9 +96,20 @@ impl WorkerState {
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
-        let hostname = match std::env::var("HOSTNAME") {
-            Ok(hostname) => hostname,
-            Err(_) => Err(anyhow!("HOSTNAME not set."))?,
+        let worker_url = match std::env::var("IS_LOCAL_DEV") {
+            Ok(_) => "http://localhost:3005".to_string(),
+            _ => {
+                let port = match std::env::var("POD_PORT") {
+                    Ok(port) => port,
+                    Err(_) => Err(anyhow!("PORT not set."))?,
+                };
+                let ip = match std::env::var("POD_IP") {
+                    Ok(ip) => ip,
+                    Err(_) => Err(anyhow!("IP not set."))?,
+                };
+
+                format!("http://{}:{}", ip, port)
+            }
         };
 
         let core_api = match std::env::var("CORE_API") {
@@ -108,8 +119,14 @@ impl WorkerState {
 
         let req = Request::builder()
             .method(method)
-            .uri(format!("{}/sqlite_workers/{}", core_api, hostname))
-            .body(Body::empty())?;
+            .uri(format!("{}/sqlite_workers", core_api))
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "url": worker_url,
+                })
+                .to_string(),
+            ))?;
 
         let res = Client::new().request(req).await?;
 

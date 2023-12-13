@@ -12,14 +12,14 @@ pub const HEARTBEAT_INTERVAL_MS: u64 = 3_000;
 
 pub struct SqliteWorker {
     last_heartbeat: u64,
-    pod_name: String,
+    url: String,
 }
 
 impl SqliteWorker {
-    pub fn new(pod_name: String, last_heartbeat: u64) -> Self {
+    pub fn new(url: String, last_heartbeat: u64) -> Self {
         Self {
             last_heartbeat: last_heartbeat,
-            pod_name,
+            url,
         }
     }
 
@@ -37,7 +37,7 @@ impl SqliteWorker {
         rows: Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()> {
-        let url = self.url()?;
+        let url = self.url();
         let req = Request::builder()
             .method("POST")
             .uri(format!(
@@ -70,7 +70,7 @@ impl SqliteWorker {
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)> {
-        let worker_url = self.url()?;
+        let worker_url = self.url();
 
         let mut uri = format!(
             "{}/databases/{}/tables/{}/rows",
@@ -127,7 +127,7 @@ impl SqliteWorker {
         table_id: &str,
         row_id: &str,
     ) -> Result<Option<DatabaseRow>> {
-        let worker_url = self.url()?;
+        let worker_url = self.url();
 
         let uri = format!(
             "{}/databases/{}/tables/{}/rows/{}",
@@ -173,7 +173,7 @@ impl SqliteWorker {
         tables: Vec<DatabaseTable>,
         query: &str,
     ) -> Result<Vec<DatabaseResult>> {
-        let worker_url = self.url()?;
+        let worker_url = self.url();
 
         let req = Request::builder()
             .method("POST")
@@ -214,24 +214,7 @@ impl SqliteWorker {
         }
     }
 
-    pub fn url(&self) -> Result<String> {
-        match std::env::var("IS_LOCAL_DEV") {
-            Ok(_) => return Ok("http://localhost:3005".to_string()),
-            Err(_) => (),
-        }
-        let cluster_namespace = match std::env::var("CLUSTER_NAMESPACE") {
-            Ok(n) => n,
-            Err(_) => Err(anyhow!("CLUSTER_NAMESPACE env var not set"))?,
-        };
-        let core_sqlite_headless_service_name =
-            match std::env::var("CORE_SQLITE_HEADLESS_SERVICE_NAME") {
-                Ok(s) => s,
-                Err(_) => Err(anyhow!("CORE_SQLITE_HEADLESS_SERVICE_NAME env var not set"))?,
-            };
-
-        Ok(format!(
-            "http://{}.{}.{}.svc.cluster.local",
-            self.pod_name, core_sqlite_headless_service_name, cluster_namespace
-        ))
+    pub fn url(&self) -> &str {
+        &self.url
     }
 }

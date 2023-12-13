@@ -276,8 +276,8 @@ pub trait Store {
 
     // SQLite Workers
     async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>>;
-    async fn sqlite_workers_upsert(&self, pod_name: &str) -> Result<SqliteWorker>;
-    async fn sqlite_workers_delete(&self, pod_name: &str) -> Result<()>;
+    async fn sqlite_workers_upsert(&self, url: &str) -> Result<SqliteWorker>;
+    async fn sqlite_workers_delete(&self, url: &str) -> Result<()>;
     async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()>;
 
     // Cloning
@@ -399,7 +399,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     CREATE TABLE IF NOT EXISTS sqlite_workers (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
-       pod_name             TEXT NOT NULL,
+       url                  TEXT NOT NULL,
        last_heartbeat       BIGINT NOT NULL
     );",
     "-- database
@@ -478,7 +478,7 @@ pub const SQL_INDEXES: [&'static str; 23] = [
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_tables_database_table_name ON databases_tables (database, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_sqlite_workers_pod_name ON sqlite_workers (pod_name);",
+        idx_sqlite_workers_url ON sqlite_workers (url);",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 3] = [

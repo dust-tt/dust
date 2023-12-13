@@ -7,5 +7,3 @@ data:
   DD_SERVICE: "core"
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"
-  CORE_SQLITE_HEADLESS_SERVICE_NAME: "core-sqlite-worker-headless-service"
-  CLUSTER_NAMESPACE: "default"
