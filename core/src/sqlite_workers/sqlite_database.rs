@@ -15,7 +15,7 @@ use tokio::{
     },
 };
 
-use super::databases_store::DatabasesStore;
+use super::store::DatabasesStore;
 
 pub enum DbMessage {
     Execute {

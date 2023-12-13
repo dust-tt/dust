@@ -1,7 +1,7 @@
 use super::table_schema::TableSchema;
 use crate::{
     project::Project,
-    sqlite_workers::sqlite_workers::{SqliteWorker, HEARTBEAT_INTERVAL_MS},
+    sqlite_workers::client::{SqliteWorker, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
     utils,
 };

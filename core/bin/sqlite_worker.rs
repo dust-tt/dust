@@ -15,10 +15,10 @@ use axum::{
 };
 use dust::{
     databases::database::DatabaseRow,
-    sqlite_workers::{databases_store, sqlite_database::SqliteDatabase},
+    sqlite_workers::{sqlite_database::SqliteDatabase, store},
     utils::{self, error_response, APIResponse},
 };
-use dust::{databases::database::DatabaseTable, sqlite_workers::databases_store::DatabasesStore};
+use dust::{databases::database::DatabaseTable, sqlite_workers::store::DatabasesStore};
 use hyper::{Body, Client, Request, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
@@ -38,14 +38,14 @@ struct DatabaseEntry {
 }
 
 struct WorkerState {
-    databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+    databases_store: Box<dyn store::DatabasesStore + Sync + Send>,
 
     registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
 }
 
 impl WorkerState {
-    fn new(databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>) -> Self {
+    fn new(databases_store: Box<dyn store::DatabasesStore + Sync + Send>) -> Self {
         Self {
             databases_store: databases_store,
 
@@ -302,10 +302,10 @@ fn main() {
             .with_ansi(false)
             .init();
 
-        let databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send> =
+        let databases_store: Box<dyn store::DatabasesStore + Sync + Send> =
             match std::env::var("DATABASES_STORE_DATABASE_URI") {
                 Ok(db_uri) => {
-                    let s = databases_store::PostgresDatabasesStore::new(&db_uri).await?;
+                    let s = store::PostgresDatabasesStore::new(&db_uri).await?;
                     s.init().await?;
                     Box::new(s)
                 }

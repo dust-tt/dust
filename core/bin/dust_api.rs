@@ -22,7 +22,7 @@ use dust::{
     project::{self},
     providers::provider::{provider, ProviderID},
     run,
-    sqlite_workers::sqlite_workers,
+    sqlite_workers::client,
     stores::postgres,
     stores::store,
     utils::{self, error_response, APIError, APIResponse},
@@ -142,7 +142,7 @@ impl APIState {
                 let store = self.store.clone();
                 tokio::task::spawn(async move {
                     match store
-                        .sqlite_workers_cleanup(sqlite_workers::HEARTBEAT_INTERVAL_MS)
+                        .sqlite_workers_cleanup(client::HEARTBEAT_INTERVAL_MS)
                         .await
                     {
                         Err(e) => {
