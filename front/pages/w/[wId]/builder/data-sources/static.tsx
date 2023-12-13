@@ -162,7 +162,7 @@ export default function DataSourcesView({
             <Button
               disabled={readOnly}
               size="sm"
-              label="Add a new data source"
+              label="Create a new Folder"
               variant="primary"
               icon={PlusIcon}
               onClick={async () => {

@@ -336,7 +336,7 @@ function StandardDataSourceView({
           </ContextItem.List>
           {documents.length == 0 ? (
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>No documents found for this Data Source.</p>
+              <p>No documents found for this Folder.</p>
               <p className="mt-2">You can add documents manually or by API.</p>
             </div>
           ) : null}

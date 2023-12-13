@@ -104,7 +104,7 @@ export default function DataSourceSettings({
     } else {
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to update the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to update the Folder (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
   };
@@ -305,8 +305,8 @@ function StandardDataSourceSettings({
                       </div>
 
                       <div className="text-sm font-normal text-element-700">
-                        This will delete the Data Source and all associated
-                        Documents for everyone.
+                        This will delete the Folder and all associated Documents
+                        for everyone.
                       </div>
                     </div>
                     <div className="flex justify-center">
