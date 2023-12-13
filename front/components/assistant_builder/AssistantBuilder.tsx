@@ -46,6 +46,8 @@ import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSe
 import {
   DROID_AVATAR_FILES,
   DROID_AVATARS_BASE_PATH,
+  SPIRIT_AVATAR_FILES,
+  SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
@@ -271,7 +273,10 @@ export default function AssistantBuilder({
     agentsGetView: "all",
   });
 
-  const [avatarUrls, setAvatarUrls] = useState<
+  const [droidAvatarUrls, setDroidAvatarUrls] = useState<
+    { available: boolean; url: string }[]
+  >([]);
+  const [spiritAvatarUrls, setSpiritAvatarUrls] = useState<
     { available: boolean; url: string }[]
   >([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -294,9 +299,15 @@ export default function AssistantBuilder({
         );
       }
 
-      setAvatarUrls(
+      setDroidAvatarUrls(
         DROID_AVATAR_FILES.map((f) => ({
           url: `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`,
+          available: !usedAvatarFiles.has(f),
+        }))
+      );
+      setSpiritAvatarUrls(
+        SPIRIT_AVATAR_FILES.map((f) => ({
+          url: `https://dust.tt/${SPIRIT_AVATARS_BASE_PATH}${f}`,
           available: !usedAvatarFiles.has(f),
         }))
       );
@@ -762,7 +773,8 @@ export default function AssistantBuilder({
             avatarUrl,
           }));
         }}
-        avatarUrls={avatarUrls}
+        droidAvatarUrls={droidAvatarUrls}
+        spiritAvatarUrls={spiritAvatarUrls}
       />
       <AppLayout
         subscription={subscription}
