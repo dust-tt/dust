@@ -34,9 +34,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: core-sqlite-worker-config
-            # TODO: Uncomment this when we have secrets
-            # - secretRef:
-            #     name: core-secrets
+            - secretRef:
+                name: core-sqlite-worker-secrets
           env:
             - name: DD_AGENT_HOST
               valueFrom:

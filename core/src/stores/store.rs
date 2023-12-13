@@ -2,7 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
+use crate::databases::database::{Database, DatabaseTable};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -10,7 +10,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
-use crate::sqlite_workers::sqlite_workers::SqliteWorker;
+use crate::sqlite_workers::client::SqliteWorker;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -178,6 +178,13 @@ pub trait Store {
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<Vec<Database>>;
+    async fn assign_live_sqlite_worker_to_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        ttl: u64,
+    ) -> Result<SqliteWorker>;
     async fn upsert_database_table(
         &self,
         project: &Project,
@@ -209,31 +216,6 @@ pub trait Store {
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseTable>, usize)>;
-    async fn batch_upsert_database_rows(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        rows: &Vec<DatabaseRow>,
-        truncate: bool,
-    ) -> Result<()>;
-    async fn load_database_row(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<Option<DatabaseRow>>;
-    async fn list_database_rows(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseRow>, usize)>;
     async fn delete_database(
         &self,
         project: &Project,
@@ -308,7 +290,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 15] = [
+pub const POSTGRES_TABLES: [&'static str; 14] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -413,14 +395,23 @@ pub const POSTGRES_TABLES: [&'static str; 15] = [
        status                   TEXT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
-    "-- database
-    CREATE TABLE IF NOT EXISTS databases (
+    "-- SQLite workers
+    CREATE TABLE IF NOT EXISTS sqlite_workers (
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
-       data_source          BIGINT NOT NULL,
-       database_id          TEXT NOT NULL, -- unique within data source. Used as the external id.
-       name                 TEXT NOT NULL, -- unique within data source
-       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+       pod_name             TEXT NOT NULL,
+       last_heartbeat       BIGINT NOT NULL
+    );",
+    "-- database
+    CREATE TABLE IF NOT EXISTS databases (
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       data_source                  BIGINT NOT NULL,
+       database_id                  TEXT NOT NULL, -- unique within data source. Used as the external id.
+       name                         TEXT NOT NULL, -- unique within data source
+       sqlite_worker                BIGINT,
+       FOREIGN KEY(data_source)     REFERENCES data_sources(id),
+       FOREIGN KEY(sqlite_worker)   REFERENCES sqlite_workers(id)
     );",
     "-- databases tables
     CREATE TABLE IF NOT EXISTS databases_tables (
@@ -433,25 +424,9 @@ pub const POSTGRES_TABLES: [&'static str; 15] = [
        schema               TEXT, -- json, kept up-to-date automatically with the last insert
        FOREIGN KEY(database) REFERENCES databases(id)
     );",
-    "-- databases row
-    CREATE TABLE IF NOT EXISTS databases_rows (
-       id                   BIGSERIAL PRIMARY KEY,
-       created              BIGINT NOT NULL,
-       database_table       BIGINT NOT NULL,
-       content              TEXT NOT NULL, -- json
-       row_id               TEXT NOT NULL, -- unique within table
-       FOREIGN KEY(database_table) REFERENCES databases_tables(id)
-    );",
-    "-- SQLite workers
-    CREATE TABLE IF NOT EXISTS sqlite_workers (
-       id                   BIGSERIAL PRIMARY KEY,
-       created              BIGINT NOT NULL,
-       pod_name             TEXT NOT NULL,
-       last_heartbeat       BIGINT NOT NULL
-    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 24] = [
+pub const SQL_INDEXES: [&'static str; 23] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -502,8 +477,6 @@ pub const SQL_INDEXES: [&'static str; 24] = [
         idx_databases_tables_table_id_database ON databases_tables (table_id, database);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_databases_tables_database_table_name ON databases_tables (database, name);",
-    "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_rows_row_id_database_table ON databases_rows (row_id, database_table);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_pod_name ON sqlite_workers (pod_name);",
 ];

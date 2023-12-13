@@ -3,7 +3,7 @@ use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{Database, DatabaseRow, DatabaseTable};
+use crate::databases::database::{Database, DatabaseTable};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -11,7 +11,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::sqlite_workers::sqlite_workers::SqliteWorker;
+use crate::sqlite_workers::client::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -19,7 +19,10 @@ use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::NoTls;
@@ -1993,6 +1996,125 @@ impl Store for PostgresStore {
         Ok(databases)
     }
 
+    async fn assign_live_sqlite_worker_to_database(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        ttl: u64,
+    ) -> Result<SqliteWorker> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let mut hasher = DefaultHasher::new();
+        format!(
+            "databases-{}-{}-{}",
+            project_id, data_source_id, database_id
+        )
+        .hash(&mut hasher);
+        let lock_key = hasher.finish() as i64;
+
+        let tx = c.transaction().await?;
+
+        // Acquire a transaction-level advisory lock on the database.
+        tx.execute("SELECT pg_advisory_xact_lock($1)", &[&(lock_key as i64)])
+            .await?;
+
+        // Get the data source row id.
+        let stmt = tx
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = tx.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Check if there is already an assigned live worker.
+        let stmt = tx
+            .prepare(
+                "SELECT pod_name, last_heartbeat 
+                FROM sqlite_workers
+                WHERE id IN (
+                    SELECT sqlite_worker 
+                    FROM databases
+                    WHERE data_source = $1 AND database_id = $2
+                 ) AND last_heartbeat > $3 LIMIT 1",
+            )
+            .await?;
+        let r = tx
+            .query(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &database_id,
+                    &((utils::now() - ttl) as i64),
+                ],
+            )
+            .await?;
+
+        let worker: Option<SqliteWorker> = match r.len() {
+            0 => None,
+            1 => {
+                let (pod_name, last_heartbeat): (String, i64) = (r[0].get(0), r[0].get(1));
+                Some(SqliteWorker::new(pod_name, last_heartbeat as u64))
+            }
+            _ => unreachable!(),
+        };
+
+        if worker.is_some() {
+            // There is already an assigned worker.
+            // We can release the lock and return the worker.
+            tx.commit().await?;
+            return Ok(worker.unwrap());
+        }
+
+        // Pick a random live worker.
+        let stmt = tx
+            .prepare(
+                "SELECT id, pod_name, last_heartbeat 
+                FROM sqlite_workers 
+                WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
+            )
+            .await?;
+        let r = tx.query(&stmt, &[&((utils::now() - ttl) as i64)]).await?;
+
+        match r.len() {
+            0 => Err(anyhow!("No live workers found"))?,
+            1 => {
+                let (sqlite_worker_row_id, pod_name, last_heartbeat): (i64, String, i64) =
+                    (r[0].get(0), r[0].get(1), r[0].get(2));
+
+                // Update the database row to assign the worker.
+                let stmt = tx
+                    .prepare(
+                        "UPDATE databases SET sqlite_worker = $1 \
+                        WHERE data_source = $2 AND database_id = $3",
+                    )
+                    .await?;
+                tx.execute(
+                    &stmt,
+                    &[
+                        &sqlite_worker_row_id,
+                        &data_source_row_id,
+                        &database_id.to_string(),
+                    ],
+                )
+                .await?;
+
+                // Release the lock.
+                tx.commit().await?;
+
+                Ok(SqliteWorker::new(pod_name, last_heartbeat as u64))
+            }
+            _ => unreachable!(),
+        }
+    }
+
     async fn upsert_database_table(
         &self,
         project: &Project,
@@ -2309,253 +2431,6 @@ impl Store for PostgresStore {
         };
 
         Ok((tables, total))
-    }
-
-    async fn load_database_row(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<Option<DatabaseRow>> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-        let table_id = table_id.to_string();
-        let row_id = row_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let stmt = c
-            .prepare(
-                "SELECT created, row_id, content FROM databases_rows \
-            WHERE database_table IN (
-                SELECT id FROM databases_tables WHERE database IN (
-                    SELECT id FROM databases WHERE data_source IN (
-                        SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2
-                    ) AND database_id = $3
-                ) AND table_id = $4
-            ) \
-            AND row_id = $5 LIMIT 1",
-            )
-            .await?;
-        let r = c
-            .query(
-                &stmt,
-                &[
-                    &project_id,
-                    &data_source_id,
-                    &database_id,
-                    &table_id,
-                    &row_id,
-                ],
-            )
-            .await?;
-
-        let d: Option<(i64, String, String)> = match r.len() {
-            0 => None,
-            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2))),
-            _ => unreachable!(),
-        };
-
-        match d {
-            None => Ok(None),
-            Some((_, row_id, data)) => Ok(Some(DatabaseRow::new(row_id, Value::from_str(&data)?))),
-        }
-    }
-
-    async fn list_database_rows(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseRow>, usize)> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let r = c
-            .query(
-                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
-                &[&data_source_row_id, &database_id],
-            )
-            .await?;
-
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let r = c
-            .query(
-                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
-                &[&database_row_id, &table_id],
-            )
-            .await?;
-
-        let table_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Table: {}", table_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&table_row_id];
-        let mut query = "SELECT created, row_id, content FROM databases_rows \
-                         WHERE database_table = $1 ORDER BY created DESC"
-            .to_string();
-
-        let limit_i64: i64;
-        let offset_i64: i64;
-        if let Some((limit, offset)) = limit_offset {
-            query.push_str(" LIMIT $2 OFFSET $3");
-            limit_i64 = limit as i64;
-            offset_i64 = offset as i64;
-            params.push(&limit_i64);
-            params.push(&(offset_i64));
-        }
-
-        let rows = c.query(&query, &params).await?;
-
-        let rows: Vec<DatabaseRow> = rows
-            .iter()
-            .map(|row| {
-                let row_id: String = row.get(1);
-                let data: String = row.get(2);
-                let content: Value = serde_json::from_str(&data)?;
-                Ok(DatabaseRow::new(row_id, content))
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        let total = match limit_offset {
-            None => rows.len(),
-            Some(_) => {
-                let t: i64 = c
-                    .query_one(
-                        "SELECT COUNT(*) FROM databases_rows WHERE database_table = $1",
-                        &[&table_row_id],
-                    )
-                    .await?
-                    .get(0);
-                t as usize
-            }
-        };
-
-        Ok((rows, total))
-    }
-
-    async fn batch_upsert_database_rows(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        table_id: &str,
-        rows: &Vec<DatabaseRow>,
-        truncate: bool,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-        let table_id = table_id.to_string();
-
-        let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-
-        // Get the data source row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Get the database row id.
-        let stmt = c
-            .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
-            .await?;
-        let r = c.query(&stmt, &[&data_source_row_id, &database_id]).await?;
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Get the table row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM databases_tables WHERE database = $1 AND table_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&database_row_id, &table_id]).await?;
-        let table_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Table: {}", table_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Start transaction.
-        let c = c.transaction().await?;
-
-        // Truncate table if required.
-        if truncate {
-            let stmt = c
-                .prepare("DELETE FROM databases_rows WHERE database_table = $1")
-                .await?;
-            c.execute(&stmt, &[&table_row_id]).await?;
-        }
-
-        // Prepare insertion/updation statement.
-        let stmt = c
-            .prepare(
-                "INSERT INTO databases_rows \
-                    (id, database_table, created, row_id, content) \
-                    VALUES (DEFAULT, $1, $2, $3, $4) \
-                    ON CONFLICT (row_id, database_table) DO UPDATE \
-                    SET content = EXCLUDED.content",
-            )
-            .await?;
-
-        for row in rows {
-            c.execute(
-                &stmt,
-                &[
-                    &table_row_id,
-                    &(utils::now() as i64),
-                    &row.row_id().to_string(),
-                    &row.content().to_string(),
-                ],
-            )
-            .await?;
-        }
-
-        c.commit().await?;
-
-        Ok(())
     }
 
     async fn delete_database(
@@ -2928,6 +2803,20 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        // Remove the worker from the databases.
+        let stmt = c
+            .prepare(
+                "UPDATE databases SET sqlite_worker = NULL \
+                WHERE sqlite_worker IN (
+                    SELECT id 
+                    FROM sqlite_workers 
+                    WHERE pod_name = $1
+                )",
+            )
+            .await?;
+        c.execute(&stmt, &[&pod_name.to_string()]).await?;
+
+        // Delete the worker.
         let stmt = c
             .prepare("DELETE FROM sqlite_workers WHERE pod_name = $1")
             .await?;
@@ -2940,6 +2829,20 @@ impl Store for PostgresStore {
     async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
+
+        // Remove the dead workers from the databases.
+        let stmt = c
+            .prepare(
+                "UPDATE databases SET sqlite_worker = NULL \
+                WHERE sqlite_worker IN (
+                    SELECT id 
+                    FROM sqlite_workers 
+                    WHERE last_heartbeat < $1
+                )",
+            )
+            .await?;
+        c.execute(&stmt, &[&(utils::now() as i64 - ttl as i64)])
+            .await?;
 
         let stmt = c
             .prepare("DELETE FROM sqlite_workers WHERE last_heartbeat < $1")
