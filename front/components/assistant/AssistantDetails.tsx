@@ -27,6 +27,8 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useApp } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
+import { DeleteAssistantDialog } from "./AssistantActions";
+
 export function AssistantDetails({
   owner,
   assistant,
@@ -274,13 +276,15 @@ function ButtonsSection({
 
       {canDelete && (
         <>
-          <DeletionModal
+          <DeleteAssistantDialog
             owner={owner}
-            agentConfiguration={agentConfiguration}
+            agentConfigurationId={agentConfiguration.sId}
             show={showDeletionModal}
             onClose={() => setShowDeletionModal(false)}
-            onDelete={onUpdate}
-            detailsModalClose={detailsModalClose}
+            onDelete={() => {
+              detailsModalClose();
+              onUpdate();
+            }}
           />
           <Button
             label={"Delete"}
@@ -293,88 +297,5 @@ function ButtonsSection({
         </>
       )}
     </Button.List>
-  );
-}
-
-function DeletionModal({
-  owner,
-  agentConfiguration,
-  show,
-  onClose,
-  onDelete,
-  detailsModalClose,
-}: {
-  owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType;
-  show: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  detailsModalClose: () => void;
-}) {
-  const sendNotification = useContext(SendNotificationsContext);
-
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
-  return (
-    <Modal
-      isOpen={show}
-      title={`Delete @${agentConfiguration.name}`}
-      onClose={onClose}
-      hasChanged={false}
-      variant="dialogue"
-    >
-      <div className="flex flex-col gap-2 p-6">
-        <div className="grow text-sm font-medium text-element-900">
-          Are you sure you want to delete?
-        </div>
-
-        <div className="text-sm font-normal text-element-800">
-          This will be permanent and delete the&nbsp;assistant
-          for&nbsp;everyone.
-        </div>
-      </div>
-      <div className="flex flex-row justify-end gap-1">
-        <Button
-          label={isDeleting ? "Deleting..." : "Delete for Everyone"}
-          disabled={isDeleting}
-          variant="primaryWarning"
-          onClick={async () => {
-            setIsDeleting(true);
-            try {
-              const res = await fetch(
-                `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
-                {
-                  method: "DELETE",
-                }
-              );
-              if (!res.ok) {
-                const data = await res.json();
-                sendNotification({
-                  title: "Error deleting Assistant",
-                  description: data.error.message,
-                  type: "error",
-                });
-              } else {
-                sendNotification({
-                  title: "Assistant deleted",
-                  type: "success",
-                });
-                onDelete();
-              }
-            } catch (e) {
-              sendNotification({
-                title: "Error deleting Assistant",
-                description: (e as Error).message,
-                type: "error",
-              });
-            }
-
-            onClose();
-            detailsModalClose();
-            setIsDeleting(false);
-          }}
-        />
-      </div>
-    </Modal>
   );
 }

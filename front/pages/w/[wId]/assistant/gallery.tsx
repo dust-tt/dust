@@ -69,7 +69,7 @@ export const getServerSideProps: GetServerSideProps<{
   let flow: GalleryFlow = "conversation_add";
   if (
     context.query.flow &&
-    !GALLERY_FLOWS.includes(context.query.flow as GalleryFlow)
+    GALLERY_FLOWS.includes(context.query.flow as GalleryFlow)
   ) {
     flow = context.query.flow as GalleryFlow;
   }
@@ -223,26 +223,22 @@ export default function AssistantsGallery({
   const tabs = [
     {
       label: "All",
-      href: `/w/${owner.sId}/builder/assistants/gallery?view=all&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=all&flow=` + flow,
       current: agentsGetView === "all",
     },
     {
       label: "From Workspace",
-      href:
-        `/w/${owner.sId}/builder/assistants/gallery?view=workspace&flow=` +
-        flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
       current: agentsGetView === "workspace",
     },
-    // {
-    //   label: "From Team Mates",
-    //   href:
-    //     `/w/${owner.sId}/builder/assistants/gallery?view=published&flow=` +
-    //     flow,
-    //   current: agentsGetView === "published",
-    // },
+    {
+      label: "From Team Mates",
+      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
+      current: agentsGetView === "published",
+    },
     {
       label: "From Dust",
-      href: `/w/${owner.sId}/builder/assistants/gallery?view=dust&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=dust&flow=` + flow,
       current: agentsGetView === "dust",
     },
   ];
@@ -254,7 +250,7 @@ export default function AssistantsGallery({
       owner={owner}
       hideSidebar
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="conversations"
       subNavigation={subNavigationConversations({
         owner,
         current: "personal_assistants",

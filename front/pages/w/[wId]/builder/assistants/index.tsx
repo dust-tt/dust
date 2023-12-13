@@ -59,7 +59,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-export default function AssistantsBuilder({
+export default function WorkspaceAssistants({
   user,
   owner,
   subscription,
@@ -150,7 +150,7 @@ export default function AssistantsBuilder({
         />
         <Searchbar
           name="search"
-          placeholder="AssistantName"
+          placeholder="Assistant Name"
           value={assistantSearch}
           onChange={(s) => {
             setAssistantSearch(s);

@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useConversations } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 export function AssistantSidebarMenu({
   owner,
@@ -66,10 +67,20 @@ export function AssistantSidebarMenu({
       : {};
 
   return (
-    <div className="flex grow flex-col">
+    <div
+      className={classNames(
+        "flex grow flex-col",
+        owner.role === "user" ? "border-t border-structure-200" : ""
+      )}
+    >
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col pl-4 pr-2">
-          <div className="pb-4 pr-2 text-right">
+          <div
+            className={classNames(
+              "pb-4 pr-2 text-right",
+              owner.role === "user" ? "pt-6" : ""
+            )}
+          >
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {

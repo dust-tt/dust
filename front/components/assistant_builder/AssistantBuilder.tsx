@@ -36,6 +36,7 @@ import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
 
+import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDatabaseModal from "@app/components/assistant_builder/AssistantBuilderDatabaseModal";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -260,6 +261,7 @@ export default function AssistantBuilder({
 
   const [edited, setEdited] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -654,29 +656,6 @@ export default function AssistantBuilder({
     }
 
     return newAgentConfiguration;
-  };
-
-  const handleDeleteAgent = async () => {
-    setIsSavingOrDeleting(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!res.ok) {
-      const data = await res.json();
-      sendNotification({
-        title: "Error deleting Assistant",
-        description: data.error.message,
-        type: "error",
-      });
-      setIsSavingOrDeleting(false);
-      return;
-    }
-    await router.push(`/w/${owner.sId}/builder/assistants`);
-    setIsSavingOrDeleting(false);
   };
 
   // Hack to keep DATABASE_QUERY disabled if not Dust workspace
@@ -1254,39 +1233,25 @@ export default function AssistantBuilder({
 
           {agentConfigurationId && (
             <div className="flex w-full justify-center pt-8">
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    size="md"
-                    variant="primaryWarning"
-                    label="Delete this Assistant"
-                    icon={TrashIcon}
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomLeft" width={280}>
-                  <div className="flex flex-col gap-y-4 px-4 py-4">
-                    <div className="flex flex-col gap-y-2">
-                      <div className="grow text-sm font-medium text-element-900">
-                        Are you sure you want to delete?
-                      </div>
-
-                      <div className="text-sm font-normal text-element-800">
-                        This will be permanent and delete the&nbsp;assistant
-                        for&nbsp;everyone.
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        variant="primaryWarning"
-                        size="sm"
-                        label="Delete for Everyone"
-                        icon={TrashIcon}
-                        onClick={handleDeleteAgent}
-                      />
-                    </div>
-                  </div>
-                </DropdownMenu.Items>
-              </DropdownMenu>
+              <DeleteAssistantDialog
+                owner={owner}
+                agentConfigurationId={agentConfigurationId}
+                show={showDeletionModal}
+                onClose={() => setShowDeletionModal(false)}
+                onDelete={async () => {
+                  setShowDeletionModal(false);
+                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                }}
+              />
+              <Button
+                size="md"
+                variant="primaryWarning"
+                label="Delete this Assistant"
+                icon={TrashIcon}
+                onClick={() => {
+                  setShowDeletionModal(true);
+                }}
+              />
             </div>
           )}
         </div>

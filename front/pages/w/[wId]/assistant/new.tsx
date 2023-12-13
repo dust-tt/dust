@@ -206,7 +206,7 @@ export default function AssistantNew({
           topNavigationCurrent="conversations"
           subNavigation={subNavigationConversations({
             owner,
-            current: "data_sources_managed",
+            current: "conversation",
           })}
           navChildren={
             <AssistantSidebarMenu

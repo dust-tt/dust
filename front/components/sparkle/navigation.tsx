@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   PaperAirplaneIcon,
   PlanetIcon,
+  RobotIcon,
   RobotSharedIcon,
   ServerIcon,
   ShapesIcon,
@@ -25,18 +26,21 @@ import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
  */
 export type TopNavigationId = "conversations" | "assistants" | "admin";
 
-export type SubNavigationAdminId =
+export type SubNavigationConversationsId =
+  | "conversation"
+  | "personal_assistants";
+export type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
+  | "workspace_assistants"
+  | "personal_assistants";
+export type SubNavigationAdminId =
   | "subscription"
   | "workspace"
   | "members"
   | "developers"
-  | "workspace_assistants"
-  | "personal_assistants"
   | "extract"
   | "databases";
-export type SubNavigationDataSourceId = "documents" | "search" | "settings";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
@@ -48,8 +52,9 @@ export type SubNavigationLabId = "extract" | "databases";
 export type SparkleAppLayoutNavigation = {
   id:
     | TopNavigationId
+    | SubNavigationConversationsId
+    | SubNavigationAssistantsId
     | SubNavigationAdminId
-    | SubNavigationDataSourceId
     | SubNavigationAppId;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -115,17 +120,13 @@ export const topNavigation = ({
 };
 
 export const subNavigationConversations = ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   owner,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   current,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   subMenuLabel,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   subMenu,
 }: {
   owner: WorkspaceType;
-  current: SubNavigationAdminId;
+  current: SubNavigationConversationsId;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
 }) => {
@@ -133,23 +134,25 @@ export const subNavigationConversations = ({
 
   // To be added for personal assistants view.
 
-  // nav.push({
-  //   id: "assistants",
-  //   label: null,
-  //   variant: "secondary",
-  //   menus: [
-  //     {
-  //       id: "personal_assistants",
-  //       label: "My Assistants",
-  //       icon: RobotIcon,
-  //       href: `/w/${owner.sId}/builder/assistants`,
-  //       current: current === "personal_assistants",
-  //       subMenuLabel:
-  //         current === "personal_assistants" ? subMenuLabel : undefined,
-  //       subMenu: current === "personal_assistants" ? subMenu : undefined,
-  //     },
-  //   ],
-  // });
+  if (owner.role === "user") {
+    nav.push({
+      id: "assistants",
+      label: null,
+      variant: "secondary",
+      menus: [
+        {
+          id: "personal_assistants",
+          label: "My Assistants",
+          icon: RobotIcon,
+          href: `/w/${owner.sId}/assistant/assistants`,
+          current: current === "personal_assistants",
+          subMenuLabel:
+            current === "personal_assistants" ? subMenuLabel : undefined,
+          subMenu: current === "personal_assistants" ? subMenu : undefined,
+        },
+      ],
+    });
+  }
 
   return nav;
 };
@@ -161,28 +164,43 @@ export const subNavigationAssistants = ({
   subMenu,
 }: {
   owner: WorkspaceType;
-  current: SubNavigationAdminId;
+  current: SubNavigationAssistantsId;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
 }) => {
   const nav: SidebarNavigation[] = [];
 
+  const assistantMenus: SparkleAppLayoutNavigation[] = [
+    {
+      id: "workspace_assistants",
+      label: "Workspace Assistants",
+      icon: RobotSharedIcon,
+      href: `/w/${owner.sId}/builder/assistants`,
+      current: current === "workspace_assistants",
+      subMenuLabel:
+        current === "workspace_assistants" ? subMenuLabel : undefined,
+      subMenu: current === "workspace_assistants" ? subMenu : undefined,
+    },
+  ];
+
+  if (owner.role === "builder" || owner.role === "admin") {
+    assistantMenus.push({
+      id: "personal_assistants",
+      label: "My Assistants",
+      icon: RobotIcon,
+      href: `/w/${owner.sId}/assistant/assistants`,
+      current: current === "personal_assistants",
+      subMenuLabel:
+        current === "personal_assistants" ? subMenuLabel : undefined,
+      subMenu: current === "personal_assistants" ? subMenu : undefined,
+    });
+  }
+
   nav.push({
     id: "assistants",
     label: null,
     variant: "secondary",
-    menus: [
-      {
-        id: "workspace_assistants",
-        label: "Workspace Assistants",
-        icon: RobotSharedIcon,
-        href: `/w/${owner.sId}/builder/assistants`,
-        current: current === "workspace_assistants",
-        subMenuLabel:
-          current === "workspace_assistants" ? subMenuLabel : undefined,
-        subMenu: current === "workspace_assistants" ? subMenu : undefined,
-      },
-    ],
+    menus: assistantMenus,
   });
 
   nav.push({
