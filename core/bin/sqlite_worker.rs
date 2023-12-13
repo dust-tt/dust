@@ -210,13 +210,13 @@ async fn databases_rows_list(
     extract::Query(query): extract::Query<DatabasesRowsListQuery>,
     Extension(state): Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let offset_limit = match (query.offset, query.limit) {
-        (Some(offset), Some(limit)) => Some((offset, limit)),
+    let limit_offset = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
         _ => None,
     };
     match state
         .databases_store
-        .list_database_rows(&database_id, &table_id, offset_limit)
+        .list_database_rows(&database_id, &table_id, limit_offset)
         .await
     {
         Err(e) => error_response(
