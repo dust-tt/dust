@@ -478,7 +478,7 @@ async function botAnswerMessage(
           )
         );
       }
-      case "generation_tokens":
+      case "generation_tokens": {
         fullAnswer += event.text;
         if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
           continue;
@@ -503,7 +503,7 @@ async function botAnswerMessage(
           thread_ts: slackMessageTs,
         });
         break;
-
+      }
       case "agent_action_success": {
         action = event.action;
         break;
