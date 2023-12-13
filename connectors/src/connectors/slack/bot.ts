@@ -479,31 +479,29 @@ async function botAnswerMessage(
         );
       }
       case "generation_tokens":
-        {
-          fullAnswer += event.text;
-          if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
-            continue;
-          }
-          lastSentDate = new Date();
-
-          let finalAnswer = normalizeContentForSlack(
-            _processCiteMention(fullAnswer, action)
-          );
-
-          // if the message is too long, we avoid the update entirely (to reduce
-          // rate limiting) the previous update will have shown the "..." and the
-          // link to continue the conversation so this is fine
-          if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) break;
-
-          finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
-
-          await slackClient.chat.update({
-            channel: slackChannel,
-            text: finalAnswer,
-            ts: mainMessage.ts as string,
-            thread_ts: slackMessageTs,
-          });
+        fullAnswer += event.text;
+        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
+          continue;
         }
+        lastSentDate = new Date();
+
+        let finalAnswer = normalizeContentForSlack(
+          _processCiteMention(fullAnswer, action)
+        );
+
+        // if the message is too long, we avoid the update entirely (to reduce
+        // rate limiting) the previous update will have shown the "..." and the
+        // link to continue the conversation so this is fine
+        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) break;
+
+        finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
+
+        await slackClient.chat.update({
+          channel: slackChannel,
+          text: finalAnswer,
+          ts: mainMessage.ts as string,
+          thread_ts: slackMessageTs,
+        });
         break;
 
       case "agent_action_success": {
@@ -520,10 +518,9 @@ async function botAnswerMessage(
         // if the message is too long, when generation is finished we show it
         // is truncated
         if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH)
-          finalAnswer = `${finalAnswer.slice(
-            0,
-            MAX_SLACK_MESSAGE_LENGTH
-          )}... (message truncated)`;
+          finalAnswer =
+            finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
+            "... (message truncated)";
 
         finalAnswer += `\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
