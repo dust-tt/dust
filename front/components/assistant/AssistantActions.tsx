@@ -1,7 +1,7 @@
-import { Button, Dialog, Modal } from "@dust-tt/sparkle";
+import { Dialog } from "@dust-tt/sparkle";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
