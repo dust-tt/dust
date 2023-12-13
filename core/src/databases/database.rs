@@ -391,11 +391,28 @@ impl Database {
 
             let res = Client::new().request(req).await?;
 
+            #[derive(Deserialize)]
+            struct GetRowsResponse {
+                rows: Vec<DatabaseRow>,
+            }
+            #[derive(Deserialize)]
+            struct GetRowsResponseBody {
+                error: Option<String>,
+                response: Option<GetRowsResponse>,
+            }
             match res.status().as_u16() {
                 200 => {
                     let body = hyper::body::to_bytes(res.into_body()).await?;
-                    let rows: Vec<DatabaseRow> = serde_json::from_slice(&body)?;
-                    Ok(rows)
+                    let res: GetRowsResponseBody = serde_json::from_slice(&body)?;
+                    let rows = match res.error {
+                        Some(e) => Err(anyhow!("Error retrieving rows: {}", e))?,
+                        None => match res.response {
+                            Some(r) => r.rows,
+                            None => Err(anyhow!("No rows found in response"))?,
+                        },
+                    };
+
+                    return Ok(rows);
                 }
                 s => Err(anyhow!(
                     "Failed to retrieve rows from sqlite worker. Status: {}",
