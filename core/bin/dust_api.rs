@@ -2133,7 +2133,7 @@ async fn databases_query_run(
 
 // SQLite Workers
 
-async fn sqlite_workers_hearbeat(
+async fn sqlite_workers_heartbeat(
     extract::Path(pod_name): extract::Path<String>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -2253,7 +2253,7 @@ fn main() {
         };
 
         let state = Arc::new(APIState::new(store, QdrantClients::build().await?));
-        let app = Router::new()
+        let router = Router::new()
 
         // Index
         .route("/", get(index))
@@ -2388,7 +2388,6 @@ fn main() {
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/query",
             post(databases_query_run),
         )
-        .route("/sqlite_workers/:pod_name", post(sqlite_workers_hearbeat))
         .route("/sqlite_workers/:pod_name", delete(sqlite_workers_delete))
         // Misc
         .route("/tokenize", post(tokenize))
@@ -2401,6 +2400,13 @@ fn main() {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(extract::Extension(state.clone()));
+
+        // In a separate router, to avoid noisy tracing.
+        let sqlite_heartbeat_router = Router::new()
+            .route("/sqlite_workers/:pod_name", post(sqlite_workers_heartbeat))
+            .layer(extract::Extension(state.clone()));
+
+        let app = Router::new().merge(router).merge(sqlite_heartbeat_router);
 
         // Start the APIState run loop.
         let runloop_state = state.clone();
