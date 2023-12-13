@@ -18,21 +18,21 @@ export const DialogExample = () => {
       <div>
         <Dialog
           isOpen={isOpen1}
-          title="Modal title"
+          title="Dialog title"
           onValidate={() => setisOpen1(false)}
           onCancel={() => setisOpen1(false)}
         >
           <div>I'm the modal content</div>
         </Dialog>
         <Button
-          label="Modal with primary validate"
+          label="Dialog with primary validate"
           onClick={() => setisOpen1(true)}
         />
       </div>
       <div>
         <Dialog
           isOpen={isOpen2}
-          title="Modal title"
+          title="Dialog title"
           onValidate={() => setisOpen2(false)}
           onCancel={() => setisOpen2(false)}
           validateVariant="primaryWarning"
@@ -40,7 +40,7 @@ export const DialogExample = () => {
           <div>I'm the modal content</div>
         </Dialog>
         <Button
-          label="Modal with warning validate"
+          label="Dialog with warning validate"
           onClick={() => setisOpen2(true)}
         />
       </div>
