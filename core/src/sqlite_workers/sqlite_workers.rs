@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
+use hyper::{Body, Client, Request};
+use serde::Deserialize;
+use serde_json::json;
 
-use crate::utils;
+use crate::{databases::database::DatabaseRow, utils};
 
 pub const HEARTBEAT_INTERVAL_MS: u64 = 3_000;
 
@@ -22,6 +25,88 @@ impl SqliteWorker {
         let elapsed = now - self.last_heartbeat;
 
         elapsed < HEARTBEAT_INTERVAL_MS
+    }
+
+    pub async fn upsert_rows(
+        &self,
+        database_unique_id: &str,
+        table_id: &str,
+        rows: Vec<DatabaseRow>,
+        truncate: bool,
+    ) -> Result<()> {
+        let url = self.url()?;
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!(
+                "{}/databases/{}/tables/{}/rows",
+                url, database_unique_id, table_id
+            ))
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "rows": rows,
+                    "truncate": truncate,
+                })
+                .to_string(),
+            ))?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to send rows to sqlite worker. Status: {}",
+                s
+            )),
+        }
+    }
+
+    pub async fn get_rows(
+        &self,
+        database_unique_id: &str,
+        table_id: &str,
+    ) -> Result<Vec<DatabaseRow>> {
+        let url = self.url()?;
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!(
+                "{}/databases/{}/tables/{}/rows",
+                url, database_unique_id, table_id
+            ))
+            .header("Content-Type", "application/json")
+            .body(Body::from(""))?;
+
+        let res = Client::new().request(req).await?;
+
+        #[derive(Deserialize)]
+        struct GetRowsResponse {
+            rows: Vec<DatabaseRow>,
+        }
+        #[derive(Deserialize)]
+        struct GetRowsResponseBody {
+            error: Option<String>,
+            response: Option<GetRowsResponse>,
+        }
+
+        match res.status().as_u16() {
+            200 => {
+                let body = hyper::body::to_bytes(res.into_body()).await?;
+                let res: GetRowsResponseBody = serde_json::from_slice(&body)?;
+                let rows = match res.error {
+                    Some(e) => Err(anyhow!("Error retrieving rows: {}", e))?,
+                    None => match res.response {
+                        Some(r) => r.rows,
+                        None => Err(anyhow!("No rows found in response"))?,
+                    },
+                };
+
+                return Ok(rows);
+            }
+            s => Err(anyhow!(
+                "Failed to retrieve rows from sqlite worker. Status: {}",
+                s
+            )),
+        }
     }
 
     pub fn url(&self) -> Result<String> {

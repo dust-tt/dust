@@ -7,12 +7,11 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
-use hyper::{Body, Client, Request};
 use itertools::Itertools;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -132,35 +131,13 @@ impl Database {
 
         // Call the SqliteWorker to update the rows contents.
         // Note: if this fails, the DB will still contain the new schema, but the rows will not be updated.
-        // This is actually OK, because the new schema is necessarily backward-compatible with the old one.
-        // The other way around would not be true -- old schema doesn't necessarily work with the old rows.
+        // This isn't too bad, because the merged schema is necessarily backward-compatible with the previous one.
+        // The other way around would not be true -- old schema doesn't necessarily work with the new rows.
         // This is why we cannot `try_join_all`.
         let sqlite_worker = self.sqlite_worker(store.clone()).await?;
-        let sqlite_worker_url = sqlite_worker.url()?;
-        let req = Request::builder()
-            .method("POST")
-            .uri(format!(
-                "{}/databases/{}/tables/{}/rows",
-                sqlite_worker_url, self.database_id, table_id
-            ))
-            .header("Content-Type", "application/json")
-            .body(Body::from(
-                json!({
-                    "rows": rows,
-                    "truncate": truncate,
-                })
-                .to_string(),
-            ))?;
-
-        let res = Client::new().request(req).await?;
-
-        match res.status().as_u16() {
-            200 => Ok(()),
-            s => Err(anyhow!(
-                "Failed to send rows to sqlite worker. Status: {}",
-                s
-            )),
-        }
+        sqlite_worker
+            .upsert_rows(&self.unique_id(), table_id, rows, truncate)
+            .await
     }
 
     pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
@@ -373,61 +350,14 @@ impl Database {
             .await?;
 
         // Get the SQLite worker for this database.
-        let sqlite_worker = self.sqlite_worker(store.clone()).await?;
-        let sqlite_worker_url = sqlite_worker.url()?;
-
-        async fn fetch_rows(
-            worker_url: &str,
-            database_id: &str,
-            table_id: &str,
-        ) -> Result<Vec<DatabaseRow>> {
-            let req = Request::builder()
-                .method("GET")
-                .uri(format!(
-                    "{}/databases/{}/tables/{}/rows",
-                    worker_url, database_id, table_id
-                ))
-                .body(Body::empty())?;
-
-            let res = Client::new().request(req).await?;
-
-            #[derive(Deserialize)]
-            struct GetRowsResponse {
-                rows: Vec<DatabaseRow>,
-            }
-            #[derive(Deserialize)]
-            struct GetRowsResponseBody {
-                error: Option<String>,
-                response: Option<GetRowsResponse>,
-            }
-            match res.status().as_u16() {
-                200 => {
-                    let body = hyper::body::to_bytes(res.into_body()).await?;
-                    let res: GetRowsResponseBody = serde_json::from_slice(&body)?;
-                    let rows = match res.error {
-                        Some(e) => Err(anyhow!("Error retrieving rows: {}", e))?,
-                        None => match res.response {
-                            Some(r) => r.rows,
-                            None => Err(anyhow!("No rows found in response"))?,
-                        },
-                    };
-
-                    return Ok(rows);
-                }
-                s => Err(anyhow!(
-                    "Failed to retrieve rows from sqlite worker. Status: {}",
-                    s
-                )),
-            }
-        }
+        let sqlite_worker = &self.sqlite_worker(store.clone()).await?;
 
         Ok(try_join_all(tables.into_iter().map(|table| {
-            let database_id = self.database_id.clone();
+            let database_id = self.unique_id();
             let table_id = table.table_id().to_string();
-            let sqlite_worker_url = sqlite_worker_url.clone();
 
             async move {
-                let rows = fetch_rows(&sqlite_worker_url, &database_id, &table_id).await?;
+                let rows = sqlite_worker.get_rows(&database_id, &table_id).await?;
                 Ok::<_, anyhow::Error>((table, rows))
             }
         }))
@@ -446,6 +376,14 @@ impl Database {
     }
     pub fn name(&self) -> &str {
         &self.name
+    }
+    pub fn unique_id(&self) -> String {
+        format!(
+            "{}__{}__{}",
+            self.project.project_id(),
+            self.data_source_id,
+            self.database_id
+        )
     }
 
     pub async fn sqlite_worker(&self, store: Box<dyn Store + Sync + Send>) -> Result<SqliteWorker> {
