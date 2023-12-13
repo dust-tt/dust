@@ -115,7 +115,7 @@ export async function getNotionPageFromConnectorsDb(
 export async function upsertNotionDatabaseInConnectorsDb({
   connectorId,
   notionDatabaseId,
-  lastSeenTs,
+  runTimestamp,
   parentType,
   parentId,
   title,
@@ -125,7 +125,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
 }: {
   connectorId: ModelId;
   notionDatabaseId: string;
-  lastSeenTs: number;
+  runTimestamp: number;
   parentType?: string | null;
   parentId?: string | null;
   title?: string | null;
@@ -157,8 +157,9 @@ export async function upsertNotionDatabaseInConnectorsDb({
     notionUrl?: string;
     skipReason?: string;
     lastCreatedOrMovedRunTs?: Date;
+    firstSeenTs?: Date;
   } = {
-    lastSeenTs: new Date(lastSeenTs),
+    lastSeenTs: new Date(runTimestamp),
   };
   if (skipReason) {
     updateParams.skipReason = skipReason;
@@ -179,12 +180,19 @@ export async function upsertNotionDatabaseInConnectorsDb({
     updateParams.lastCreatedOrMovedRunTs = new Date(lastCreatedOrMovedRunTs);
   }
 
+  // Needed for backwards compatibility with databases that were created before
+  // firstSeenTs was added.
+  if (!database?.firstSeenTs) {
+    updateParams.firstSeenTs = new Date(runTimestamp);
+  }
+
   if (database) {
     return database.update(updateParams);
   } else {
     return NotionDatabase.create({
       notionDatabaseId,
       connectorId: connector.id,
+      firstSeenTs: new Date(runTimestamp),
       ...updateParams,
     });
   }
