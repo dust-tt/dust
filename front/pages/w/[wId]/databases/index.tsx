@@ -120,7 +120,7 @@ export default function AppDatabases({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
+      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "databases" })}
     >
       <DatabaseModal

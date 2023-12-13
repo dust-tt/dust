@@ -54,7 +54,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -770,10 +770,10 @@ export default function AssistantBuilder({
         user={user}
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="settings"
-        subNavigation={subNavigationAdmin({
+        topNavigationCurrent="assistants"
+        subNavigation={subNavigationAssistants({
           owner,
-          current: "assistants",
+          current: "workspace_assistants",
         })}
         titleChildren={
           !edited ? (
@@ -1143,8 +1143,8 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "RETRIEVAL_SEARCH"}
             >
               <div>
-                The assistant will perform a search on the selected data source,
-                run the instructions on the results.{" "}
+                The assistant will perform a search on the selected data
+                sources, and run the instructions on the results.{" "}
                 <span className="font-semibold">
                   It’s the best approach with large quantities of data.
                 </span>

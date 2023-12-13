@@ -36,7 +36,7 @@ import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -193,7 +193,7 @@ function StandardDataSourceView({
     <div className="pt-6">
       <Page.Vertical align="stretch">
         <Page.SectionHeader
-          title={`Data Source ${dataSource.name}`}
+          title={`Folder ${dataSource.name}`}
           description="Use this page to view and upload documents to your data source."
           action={
             readOnly
@@ -760,8 +760,8 @@ export default function DataSourceView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationAssistants({
         owner,
         current: dataSource.connectorId
           ? "data_sources_managed"
@@ -769,7 +769,7 @@ export default function DataSourceView({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title={`Manage Data Source`}
+          title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
               void router.push(`/w/${owner.sId}/builder/data-sources/managed`);

@@ -16,7 +16,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -108,17 +108,17 @@ export default function DataSourcesView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="settings"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationAssistants({
         owner,
         current: "data_sources_static",
       })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Data Sources"
+          title="Folders"
           icon={DocumentPileIcon}
-          description="Make more documents accessible to this workspace. Manage data sources manually or via API."
+          description="Make more documents accessible to this workspace. Manage folders manually or via API."
         />
 
         {dataSources.length > 0 ? (
@@ -129,7 +129,7 @@ export default function DataSourcesView({
               action={
                 !readOnly
                   ? {
-                      label: "Add a new data source",
+                      label: "Add a new Folder",
                       variant: "primary",
                       icon: PlusIcon,
                       onClick: async () => {

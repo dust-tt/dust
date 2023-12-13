@@ -4,12 +4,11 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
-  DocumentPileIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   PaperAirplaneIcon,
   PlanetIcon,
-  RobotIcon,
+  RobotSharedIcon,
   ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
@@ -24,7 +23,7 @@ import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "assistant" | "settings";
+export type TopNavigationId = "conversations" | "assistants" | "admin";
 
 export type SubNavigationAdminId =
   | "data_sources_managed"
@@ -33,7 +32,8 @@ export type SubNavigationAdminId =
   | "workspace"
   | "members"
   | "developers"
-  | "assistants"
+  | "workspace_assistants"
+  | "personal_assistants"
   | "extract"
   | "databases";
 export type SubNavigationDataSourceId = "documents" | "search" | "settings";
@@ -44,6 +44,7 @@ export type SubNavigationAppId =
   | "runs"
   | "settings";
 export type SubNavigationLabId = "extract" | "databases";
+
 export type SparkleAppLayoutNavigation = {
   id:
     | TopNavigationId
@@ -62,7 +63,7 @@ export type SparkleAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "conversation" | "workspace" | "developers" | "lab";
+  id: "assistants" | "data_sources" | "workspace" | "developers" | "lab";
   label: string | null;
   variant: "primary" | "secondary";
   menus: SparkleAppLayoutNavigation[];
@@ -78,23 +79,139 @@ export const topNavigation = ({
   const nav: SparkleAppLayoutNavigation[] = [];
 
   nav.push({
-    id: "assistant",
+    id: "conversations",
     label: "Conversations",
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
-    sizing: "hug",
-    current: current === "assistant",
+    sizing: "expand",
+    current: current === "conversations",
   });
 
   if (owner.role === "admin" || owner.role === "builder") {
     nav.push({
+      id: "assistants",
+      label: "Assistants",
+      hideLabel: true,
+      icon: RobotSharedIcon,
+      href: `/w/${owner.sId}/builder/assistants`,
+      current: current === "assistants",
+      sizing: "hug",
+    });
+    nav.push({
       id: "settings",
       label: "Admin",
+      hideLabel: true,
       icon: Cog6ToothIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
-      current: current === "settings",
+      href:
+        owner.role === "admin"
+          ? `/w/${owner.sId}/workspace`
+          : `/w/${owner.sId}/a`,
+      current: current === "admin",
+      sizing: "hug",
     });
   }
+
+  return nav;
+};
+
+export const subNavigationConversations = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  owner,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  current,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  subMenuLabel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  subMenu,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationAdminId;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
+}) => {
+  const nav: SidebarNavigation[] = [];
+
+  // To be added for personal assistants view.
+
+  // nav.push({
+  //   id: "assistants",
+  //   label: null,
+  //   variant: "secondary",
+  //   menus: [
+  //     {
+  //       id: "personal_assistants",
+  //       label: "My Assistants",
+  //       icon: RobotIcon,
+  //       href: `/w/${owner.sId}/builder/assistants`,
+  //       current: current === "personal_assistants",
+  //       subMenuLabel:
+  //         current === "personal_assistants" ? subMenuLabel : undefined,
+  //       subMenu: current === "personal_assistants" ? subMenu : undefined,
+  //     },
+  //   ],
+  // });
+
+  return nav;
+};
+
+export const subNavigationAssistants = ({
+  owner,
+  current,
+  subMenuLabel,
+  subMenu,
+}: {
+  owner: WorkspaceType;
+  current: SubNavigationAdminId;
+  subMenuLabel?: string;
+  subMenu?: SparkleAppLayoutNavigation[];
+}) => {
+  const nav: SidebarNavigation[] = [];
+
+  nav.push({
+    id: "assistants",
+    label: null,
+    variant: "secondary",
+    menus: [
+      {
+        id: "workspace_assistants",
+        label: "Workspace Assistants",
+        icon: RobotSharedIcon,
+        href: `/w/${owner.sId}/builder/assistants`,
+        current: current === "workspace_assistants",
+        subMenuLabel:
+          current === "workspace_assistants" ? subMenuLabel : undefined,
+        subMenu: current === "workspace_assistants" ? subMenu : undefined,
+      },
+    ],
+  });
+
+  nav.push({
+    id: "data_sources",
+    label: "Data Sources",
+    variant: "secondary",
+    menus: [
+      {
+        id: "data_sources_managed",
+        label: "Connections",
+        icon: CloudArrowLeftRightIcon,
+        href: `/w/${owner.sId}/builder/data-sources/managed`,
+        current: current === "data_sources_managed",
+        subMenuLabel:
+          current === "data_sources_managed" ? subMenuLabel : undefined,
+        subMenu: current === "data_sources_managed" ? subMenu : undefined,
+      },
+      {
+        id: "data_sources_static",
+        label: "Folders",
+        icon: FolderOpenIcon,
+        href: `/w/${owner.sId}/builder/data-sources/static`,
+        current: current === "data_sources_static",
+        subMenuLabel:
+          current === "data_sources_static" ? subMenuLabel : undefined,
+        subMenu: current === "data_sources_static" ? subMenu : undefined,
+      },
+    ],
+  });
 
   return nav;
 };
@@ -116,58 +233,12 @@ export const subNavigationAdmin = ({
     return nav;
   }
 
-  nav.push({
-    id: "conversation",
-    label: null,
-    variant: "secondary",
-    menus: [
-      {
-        id: "assistants",
-        label: "Assistants",
-        icon: RobotIcon,
-        href: `/w/${owner.sId}/builder/assistants`,
-        current: current === "assistants",
-        subMenuLabel: current === "assistants" ? subMenuLabel : undefined,
-        subMenu: current === "assistants" ? subMenu : undefined,
-      },
-      {
-        id: "data_sources_managed",
-        label: "Connections",
-        icon: CloudArrowLeftRightIcon,
-        href: `/w/${owner.sId}/builder/data-sources/managed`,
-        current: current === "data_sources_managed",
-        subMenuLabel:
-          current === "data_sources_managed" ? subMenuLabel : undefined,
-        subMenu: current === "data_sources_managed" ? subMenu : undefined,
-      },
-      {
-        id: "data_sources_static",
-        label: "Data Sources",
-        icon: DocumentPileIcon,
-        href: `/w/${owner.sId}/builder/data-sources/static`,
-        current: current === "data_sources_static",
-        subMenuLabel:
-          current === "data_sources_static" ? subMenuLabel : undefined,
-        subMenu: current === "data_sources_static" ? subMenu : undefined,
-      },
-    ],
-  });
-
   if (owner.role === "admin") {
     nav.push({
       id: "workspace",
-      label: "Settings",
+      label: null,
       variant: "secondary",
       menus: [
-        {
-          id: "subscription",
-          label: "Subscription",
-          icon: ShapesIcon,
-          href: `/w/${owner.sId}/subscription`,
-          current: current === "subscription",
-          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
-          subMenu: current === "subscription" ? subMenu : undefined,
-        },
         {
           id: "workspace",
           label: "Workspace",
@@ -176,6 +247,15 @@ export const subNavigationAdmin = ({
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
           subMenu: current === "workspace" ? subMenu : undefined,
+        },
+        {
+          id: "subscription",
+          label: "Subscription",
+          icon: ShapesIcon,
+          href: `/w/${owner.sId}/subscription`,
+          current: current === "subscription",
+          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
+          subMenu: current === "subscription" ? subMenu : undefined,
         },
         {
           id: "members",
@@ -192,12 +272,12 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "developers",
-    label: "Developers",
+    label: owner.role === "admin" ? "Developers" : null,
     variant: "secondary",
     menus: [
       {
         id: "developers",
-        label: "Tools",
+        label: "Developer Tools",
         icon: CommandLineIcon,
         href: `/w/${owner.sId}/a`,
         current: current === "developers",
