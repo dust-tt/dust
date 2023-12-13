@@ -18,7 +18,6 @@ export const DialogExample = () => {
       <div>
         <Dialog
           isOpen={isOpen1}
-          onClose={() => setisOpen1(false)}
           title="Modal title"
           onValidate={() => setisOpen1(false)}
           onCancel={() => setisOpen1(false)}
@@ -33,7 +32,6 @@ export const DialogExample = () => {
       <div>
         <Dialog
           isOpen={isOpen2}
-          onClose={() => setisOpen2(false)}
           title="Modal title"
           onValidate={() => setisOpen2(false)}
           onCancel={() => setisOpen2(false)}

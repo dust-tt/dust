@@ -10,7 +10,6 @@ type ModalProps = {
   children: React.ReactNode;
   isOpen: boolean;
   onCancel: () => void;
-  onClose: () => void;
   onValidate: () => void;
   cancelLabel?: string;
   validateLabel?: string;
@@ -22,7 +21,6 @@ export function Dialog({
   isOpen,
   children,
   onCancel,
-  onClose,
   onValidate,
   cancelLabel = "Cancel",
   validateLabel = "Ok",
@@ -31,7 +29,7 @@ export function Dialog({
 }: ModalProps) {
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
-      <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onClose}>
+      <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onCancel}>
         <Transition.Child
           as={Fragment}
           enter="s-ease-out s-duration-150"
