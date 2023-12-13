@@ -232,7 +232,7 @@ export default function AssistantsGallery({
       current: agentsGetView === "workspace",
     },
     {
-      label: "From Team Mates",
+      label: "From Teammates",
       href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
       current: agentsGetView === "published",
     },
