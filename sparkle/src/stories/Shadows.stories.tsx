@@ -1,16 +1,10 @@
-import type { Meta } from "@storybook/react";
-import React, { useState } from "react";
+import React from "react";
 
-import { Button, Dialog, Input, Page } from "../index_with_tw_base";
-
-const meta = {
+export default {
   title: "Style/Shadows",
-  component: Dialog,
-} satisfies Meta<typeof Dialog>;
+};
 
-export default meta;
-
-export const DialogExample = () => {
+export const ShadowExamples = () => {
   return (
     <div className="s-flex s-flex-col s-gap-12">
       box shadow
