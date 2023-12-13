@@ -357,7 +357,9 @@ impl Database {
             let table_id = table.table_id().to_string();
 
             async move {
-                let rows = sqlite_worker.get_rows(&database_id, &table_id).await?;
+                let (rows, _) = sqlite_worker
+                    .get_rows(&database_id, &table_id, None)
+                    .await?;
                 Ok::<_, anyhow::Error>((table, rows))
             }
         }))

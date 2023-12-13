@@ -65,14 +65,22 @@ impl SqliteWorker {
         &self,
         database_unique_id: &str,
         table_id: &str,
-    ) -> Result<Vec<DatabaseRow>> {
-        let url = self.url()?;
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DatabaseRow>, usize)> {
+        let worker_url = self.url()?;
+
+        let mut uri = format!(
+            "{}/databases/{}/tables/{}/rows",
+            worker_url, database_unique_id, table_id
+        );
+
+        if let Some((limit, offset)) = limit_offset {
+            uri = format!("{}?limit={}&offset={}", uri, limit, offset);
+        }
+
         let req = Request::builder()
             .method("GET")
-            .uri(format!(
-                "{}/databases/{}/tables/{}/rows",
-                url, database_unique_id, table_id
-            ))
+            .uri(uri)
             .header("Content-Type", "application/json")
             .body(Body::from(""))?;
 
@@ -81,6 +89,7 @@ impl SqliteWorker {
         #[derive(Deserialize)]
         struct GetRowsResponse {
             rows: Vec<DatabaseRow>,
+            total: usize,
         }
         #[derive(Deserialize)]
         struct GetRowsResponseBody {
@@ -92,20 +101,20 @@ impl SqliteWorker {
             200 => {
                 let body = hyper::body::to_bytes(res.into_body()).await?;
                 let res: GetRowsResponseBody = serde_json::from_slice(&body)?;
-                let rows = match res.error {
+                let (rows, total) = match res.error {
                     Some(e) => Err(anyhow!("Error retrieving rows: {}", e))?,
                     None => match res.response {
-                        Some(r) => r.rows,
+                        Some(r) => (r.rows, r.total),
                         None => Err(anyhow!("No rows found in response"))?,
                     },
                 };
 
-                return Ok(rows);
+                Ok((rows, total))
             }
             s => Err(anyhow!(
                 "Failed to retrieve rows from sqlite worker. Status: {}",
                 s
-            )),
+            ))?,
         }
     }
 

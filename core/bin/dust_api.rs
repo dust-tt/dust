@@ -2058,27 +2058,75 @@ async fn databases_rows_retrieve(
 
 #[derive(serde::Deserialize)]
 struct DatabasesRowsListQuery {
-    _offset: usize,
-    _limit: usize,
+    offset: usize,
+    limit: usize,
 }
 
 async fn databases_rows_list(
-    extract::Path((_project_id, _data_source_id, _database_id, _table_id)): extract::Path<(
+    extract::Path((project_id, data_source_id, database_id, table_id)): extract::Path<(
         i64,
         String,
         String,
         String,
     )>,
-    extract::Query(_query): extract::Query<DatabasesRowsListQuery>,
-    extract::Extension(_state): extract::Extension<Arc<APIState>>,
+    extract::Query(query): extract::Query<DatabasesRowsListQuery>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    // TODO: re-implement using worker.
-    error_response(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "not_implemented",
-        "Not implemented",
-        None,
-    )
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "database_not_found",
+            &format!("No database found for id `{}`", database_id),
+            None,
+        ),
+        Ok(Some(db)) => match db.sqlite_worker(state.store).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                &format!("Failed to retrieve SQLite worker: {}", e),
+                Some(e),
+            ),
+            Ok(worker) => match worker
+                .get_rows(
+                    db.unique_id().as_str(),
+                    &table_id,
+                    Some((query.limit, query.offset)),
+                )
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    &format!("Failed to list rows: {}", e),
+                    Some(e),
+                ),
+                Ok((rows, total)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "offset": query.offset,
+                            "limit": query.limit,
+                            "total": total,
+                            "rows": rows,
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
 }
 
 #[derive(serde::Deserialize)]
