@@ -284,6 +284,7 @@ export async function getAgentConfiguration(
     status: agent.status,
     action: action,
     generation,
+    versionAuthorId: agent.authorId,
   };
 
   agentConfiguration.userListStatus = agentUserListStatus({
@@ -700,6 +701,7 @@ export async function createAgentConfiguration(
     id: agent.id,
     sId: agent.sId,
     version: agent.version,
+    versionAuthorId: agent.authorId,
     scope: agent.scope,
     userListStatus: null,
     name: agent.name,
