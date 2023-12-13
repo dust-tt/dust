@@ -2830,6 +2830,20 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        // Remove the dead workers from the databases.
+        let stmt = c
+            .prepare(
+                "UPDATE databases SET sqlite_worker = NULL \
+                WHERE sqlite_worker IN (
+                    SELECT id 
+                    FROM sqlite_workers 
+                    WHERE last_heartbeat < $1
+                )",
+            )
+            .await?;
+        c.execute(&stmt, &[&(utils::now() as i64 - ttl as i64)])
+            .await?;
+
         let stmt = c
             .prepare("DELETE FROM sqlite_workers WHERE last_heartbeat < $1")
             .await?;
