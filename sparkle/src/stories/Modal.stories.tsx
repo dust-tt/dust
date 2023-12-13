@@ -122,15 +122,6 @@ export const ModalExample = () => {
         </div>
       </Modal>
       <div className="s-flex s-flex-col s-items-start s-gap-3">
-        <div className="s-text-lg s-font-bold">Centered</div>
-        <Button
-          label="Modal without action and without changes"
-          onClick={() => setIsOpenNoActionNoChange(true)}
-        />
-        <Button
-          label="Modal with action and changes"
-          onClick={() => setIsOpenWithActionAndChange(true)}
-        />
         <div className="s-text-lg s-font-bold">Fullscreen</div>
         <Button
           label="Modal full screen"

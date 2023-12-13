@@ -27,18 +27,18 @@ const variantSize = {
 
 const modalStyles = {
   [ModalType.Side]: {
-    containerClasses: "s-flex s-h-full s-p-0 s-justify-end",
+    containerClasses: "s-h-full s-ml-auto",
     panelClasses:
-      "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0 s-box-shadow-xl s-border s-border-structure-100",
-    transitionEnterFrom: "s-opacity-0 s-translate-x-0 s-scale-100",
-    transitionEnterTo: "s-opacity-100 s-translate-x-0 s-scale-100",
-    transitionLeaveFrom: "s-opacity-100 s-translate-x-0 s-scale-100",
-    transitionLeaveTo: "s-opacity-0 s-translate-x-0 s-scale-100",
+      "s-h-full s-max-h-full s-shadow-xl s-border s-border-structure-100",
+    transitionEnterFrom: "s-opacity-0 s-translate-x-16",
+    transitionEnterTo: "s-opacity-100 s-translate-x-0",
+    transitionLeaveFrom: "s-opacity-100 s-translate-x-0",
+    transitionLeaveTo: "s-opacity-0 s-translate-x-16",
     innerContainerClasses: "s-h-full s-overflow-y-auto",
   },
   [ModalType.FullScreen]: {
     containerClasses:
-      "s-flex s-items-center s-justify-center s-h-full s-p-0 s-box-shadow-xl",
+      "s-flex s-items-center s-justify-center s-h-full s-p-0 s-shadow-xl",
     panelClasses: "s-m-0 s-h-full s-max-h-full s-w-full s-max-w-full s-r-0",
     transitionEnterFrom: "s-opacity-0 s-translate-y-4 s-scale-95 s-rounded-xl",
     transitionEnterTo: "s-opacity-100 s-translate-y-0 s-scale-100 s-rounded-0",
@@ -51,7 +51,7 @@ const modalStyles = {
     containerClasses:
       "s-flex s-items-center s-justify-center s-min-h-full s-p-4",
     panelClasses:
-      "s-w-full sm:s-w-[448px] overflow-hidden s-box-shadow-2xl s-rounded-xl s-border s-border-structure-100",
+      "s-w-full sm:s-w-[448px] overflow-hidden s-shadow-2xl s-rounded-xl s-border s-border-structure-100",
     transitionEnterFrom: "s-opacity-0 s-translate-y-4 s-scale-95",
     transitionEnterTo: "s-opacity-100 s-translate-y-0 s-scale-100",
     transitionLeaveFrom: "s-opacity-100 s-translate-y-0 s-scale-100",
@@ -123,7 +123,13 @@ export function Modal({
 
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
-      <Dialog as="div" className="s-relative s-z-50" onClose={onClose}>
+      <Dialog
+        id="dialog"
+        as="div"
+        className="s-fixed s-absolute s-inset-0 s-z-50 s-overflow-hidden"
+        onClose={onClose}
+      >
+        {/* Smoke screen and transition */}
         <Transition.Child
           as={Fragment}
           enter="s-ease-out s-duration-150"
@@ -133,43 +139,43 @@ export function Modal({
           leaveFrom="s-opacity-100"
           leaveTo="s-opacity-0"
         >
-          <div className="s-fixed s-inset-0 s-bg-white/80 s-backdrop-blur-sm s-transition-opacity" />
+          <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
         </Transition.Child>
 
-        <div className="s-fixed s-inset-0 s-z-50 s-overflow-y-auto">
-          <div className={containerClasses}>
-            <Transition.Child
-              as={Fragment}
-              enter="s-ease-out s-duration-300"
-              enterFrom={transitionEnterFrom}
-              enterTo={transitionEnterTo}
-              leave="s-ease-in s-duration-200"
-              leaveFrom={transitionLeaveFrom}
-              leaveTo={transitionLeaveTo}
+        {/* Panel and transition */}
+        <div
+          id="Container"
+          className={classNames(containerClasses, variantSize[variant])}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="s-ease-out s-duration-300"
+            enterFrom={transitionEnterFrom}
+            enterTo={transitionEnterTo}
+            leave="s-ease-in s-duration-200"
+            leaveFrom={transitionLeaveFrom}
+            leaveTo={transitionLeaveTo}
+          >
+            <Dialog.Panel
+              id="Panel"
+              className={classNames(
+                "s-absolute s-transform s-bg-structure-0 s-px-3 s-transition-all sm:s-px-4",
+                panelClasses,
+                variantSize[variant]
+              )}
             >
-              <Dialog.Panel
-                className={classNames(
-                  "s-relative s-transform s-overflow-hidden s-bg-structure-0 s-px-3 s-transition-all sm:s-px-4",
-                  panelClasses,
-                  variantSize[variant]
-                )}
+              <BarHeader
+                title={title || ""}
+                leftActions={action ? <Button {...action} /> : undefined}
+                rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
+              />
+              <div
+                className={classNames("s-pb-6 s-pt-14", innerContainerClasses)}
               >
-                <BarHeader
-                  title={title || ""}
-                  leftActions={action ? <Button {...action} /> : undefined}
-                  rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
-                />
-                <div
-                  className={classNames(
-                    "s-pb-6 s-pt-14",
-                    innerContainerClasses
-                  )}
-                >
-                  {children}
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+                {children}
+              </div>
+            </Dialog.Panel>
+          </Transition.Child>
         </div>
       </Dialog>
     </Transition>
