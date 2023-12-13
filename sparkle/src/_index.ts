@@ -88,13 +88,6 @@ export { RadioButton };
 import { Popup } from "./components/Popup";
 export { Popup };
 
-//TO BE REMOVED SOON
-import { SectionHeader } from "./components/SectionHeader";
-export { SectionHeader };
-
-import { PageHeader } from "./components/PageHeader";
-export { PageHeader };
-
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,

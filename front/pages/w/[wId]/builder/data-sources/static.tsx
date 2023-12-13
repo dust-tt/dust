@@ -7,7 +7,6 @@ import {
   Page,
   PlusIcon,
   Popup,
-  SectionHeader,
 } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -123,7 +122,7 @@ export default function DataSourcesView({
 
         {dataSources.length > 0 ? (
           <div className="relative">
-            <SectionHeader
+            <Page.SectionHeader
               title=""
               description=""
               action={

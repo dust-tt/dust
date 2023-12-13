@@ -8,7 +8,6 @@ import {
   Item,
   Modal,
   Page,
-  SectionHeader,
 } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
@@ -137,7 +136,7 @@ export default function AppDatabases({
       />
 
       <div>
-        <SectionHeader
+        <Page.SectionHeader
           title="Your worskpace's databases"
           description="Below are the databases that are available in your workspace in each datasource."
         />
