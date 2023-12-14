@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    databases::database::{DatabaseResult, DatabaseTable},
+    databases::database::{DatabaseResult, DatabaseRow, DatabaseTable},
     utils,
 };
 use anyhow::{anyhow, Result};
@@ -58,16 +58,17 @@ async fn create_in_memory_sqlite_db(
 ) -> Result<Arc<Mutex<Connection>>> {
     let time_get_rows_start = utils::now();
 
-    let rows = try_join_all(tables.iter().map(|table| {
-        let databases_store = databases_store.clone();
-        async move {
-            let (rows, _) = databases_store
-                .list_database_rows(&database_id, table.table_id(), None)
-                .await?;
-            Ok::<_, anyhow::Error>((table.clone(), rows))
-        }
-    }))
-    .await?;
+    let tables_with_rows: Vec<(DatabaseTable, Vec<DatabaseRow>)> =
+        try_join_all(tables.iter().map(|table| {
+            let databases_store = databases_store.clone();
+            async move {
+                let (rows, _) = databases_store
+                    .list_database_rows(&database_id, table.table_id(), None)
+                    .await?;
+                Ok::<_, anyhow::Error>((table.clone(), rows))
+            }
+        }))
+        .await?;
 
     utils::done(&format!(
         "DSSTRUCTSTAT - WORKER Finished retrieving rows: duration={}ms",
@@ -107,7 +108,8 @@ async fn create_in_memory_sqlite_db(
         ));
 
         let insert_execute_start = utils::now();
-        rows.iter()
+        tables_with_rows
+            .iter()
             .filter(|(_, rows)| !rows.is_empty())
             .map(|(table, rows)| {
                 if table.schema().is_none() {
