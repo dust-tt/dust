@@ -1,8 +1,4 @@
-import {
-  Page,
-  Searchbar,
-  Tab,
-} from "@dust-tt/sparkle";
+import { Page, Searchbar, Tab } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
   AgentsGetViewType,
@@ -201,6 +197,7 @@ export default function AssistantsGallery({
                 onUpdate={() => {
                   void mutateAgentConfigurations();
                 }}
+                variant="gallery"
               />
             ))}
           </div>
