@@ -466,7 +466,7 @@ export function AssistantInputBar({
   ]);
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 pr-3 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 pr-1 py-3.5 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal"
   );
   return (
@@ -505,13 +505,13 @@ export function AssistantInputBar({
                 : ""
             )}
           >
-            <div className="flex flex-1 flex-col">
+            <div className="relative flex flex-1 flex-col">
               {/* Placeholder */}
               <div
                 className={classNames(
                   // This div is placeholder text for the contenteditable
                   contentEditableClasses,
-                  "sm: absolute -z-10 py-4 pl-2 text-element-600 dark:text-element-600-dark sm:py-3 sm:pl-0",
+                  "absolute -z-10 text-element-600 dark:text-element-600-dark",
                   empty && !(contentFragmentFilename && contentFragmentBody)
                     ? ""
                     : "hidden"
@@ -541,7 +541,6 @@ export function AssistantInputBar({
                   contentEditableClasses,
                   "scrollbar-hide",
                   "overflow-y-auto",
-                  "py-4 pl-2 sm:py-3 sm:pl-0",
                   isExpanded
                     ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
                     : "max-h-64"

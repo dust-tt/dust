@@ -77,7 +77,7 @@ export function AssistantSidebarMenu({
         <div className="flex w-full flex-col pl-4 pr-2">
           <div
             className={classNames(
-              "pb-4 pr-2 text-right",
+              "pb-1 pr-1 pt-3 text-right",
               owner.role === "user" ? "pt-6" : ""
             )}
           >
