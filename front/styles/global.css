@@ -72,27 +72,27 @@ main {
   @apply text-base font-normal leading-7 text-element-800;
 
   h1 {
-    @apply text-element-950 text-5xl font-semibold;
+    @apply text-5xl font-semibold text-element-900;
     @apply pb-2 pt-3;
   }
   h2 {
-    @apply text-element-950 text-4xl font-semibold;
+    @apply text-4xl font-semibold text-element-900;
     @apply pb-2 pt-3;
   }
   h3 {
-    @apply text-element-950 text-2xl font-semibold;
+    @apply text-2xl font-semibold text-element-900;
     @apply pb-2 pt-3;
   }
   h4 {
-    @apply text-element-950 text-lg font-bold;
+    @apply text-lg font-bold text-element-900;
     @apply pb-2 pt-2.5;
   }
   h5 {
-    @apply text-element-950 text-lg font-medium;
+    @apply text-lg font-medium text-element-900;
     @apply pb-1.5 pt-2;
   }
   h6 {
-    @apply text-element-950 text-base font-bold;
+    @apply text-base font-bold text-element-900;
     @apply pb-1.5 pt-2;
   }
   strong {
