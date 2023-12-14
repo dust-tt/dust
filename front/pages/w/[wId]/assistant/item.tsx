@@ -15,6 +15,24 @@ interface GalleryItemProps {
   variant: GalleryItemVariant;
 }
 
+function getDescriptionClassName(variant: GalleryItemVariant): string {
+  switch (variant) {
+    case "home":
+      return "text-xs text-element-700";
+    default:
+      return "text-sm text-element-800";
+  }
+}
+
+function getNameClassName(variant: GalleryItemVariant): string {
+  switch (variant) {
+    case "home":
+      return "text-sm font-medium text-element-900";
+    default:
+      return "text-md font-medium text-element-900";
+  }
+}
+
 export default function GalleryItem({
   owner,
   agentConfiguration,
@@ -120,7 +138,7 @@ export default function GalleryItem({
         size="md"
       />
       <div className="flex flex-col gap-2">
-        <div className="text-md font-medium text-element-900">
+        <div className={getNameClassName(variant)}>
           @{agentConfiguration.name}
         </div>
         <div className="flex flex-row gap-2">
@@ -130,7 +148,7 @@ export default function GalleryItem({
             )}
           <Button.List isWrapping={true}>{buttonsToRender}</Button.List>
         </div>
-        <div className="text-sm text-element-800">
+        <div className={getDescriptionClassName(variant)}>
           {agentConfiguration.description}
         </div>
       </div>
