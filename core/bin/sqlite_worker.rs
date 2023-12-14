@@ -161,15 +161,26 @@ async fn db_query(
     let entry = registry
         .entry(db_id.clone())
         .or_insert_with(|| DatabaseEntry {
-            database: SqliteDatabase::new(
-                db_id.clone(),
-                payload.tables,
-                state.databases_store.clone(),
-            ),
+            database: SqliteDatabase::new(db_id),
             last_accessed: Instant::now(),
         });
 
     entry.last_accessed = Instant::now();
+    match entry
+        .database
+        .init(payload.tables, state.databases_store.clone())
+        .await
+    {
+        Ok(_) => (),
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to initialize database",
+                Some(e),
+            )
+        }
+    }
 
     match entry.database.query(payload.query).await {
         Ok(results) => (
