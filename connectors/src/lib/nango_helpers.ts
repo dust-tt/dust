@@ -20,13 +20,32 @@ async function _getAccessTokenFromNango({
   return accessToken;
 }
 
-export const getAccessTokenFromNango = cacheWithRedis(
+const _cachedGetAccessTokenFromNango = cacheWithRedis(
   _getAccessTokenFromNango,
   ({ connectionId, integrationId }) => {
     return `${integrationId}-${connectionId}`;
   },
   NANGO_ACCESS_TOKEN_TTL_SECONDS * 1000
 );
+
+export async function getAccessTokenFromNango({
+  connectionId,
+  integrationId,
+  useCache = false,
+}: {
+  connectionId: NangoConnectionId;
+  integrationId: string;
+  useCache?: boolean;
+}) {
+  if (useCache) {
+    return await _cachedGetAccessTokenFromNango({
+      connectionId,
+      integrationId,
+    });
+  } else {
+    return await _getAccessTokenFromNango({ connectionId, integrationId });
+  }
+}
 
 async function _getConnectionFromNango({
   connectionId,
@@ -45,10 +64,36 @@ async function _getConnectionFromNango({
   return accessToken;
 }
 
-export const getConnectionFromNango = cacheWithRedis(
+const _getCachedConnectionFromNango = cacheWithRedis(
   _getConnectionFromNango,
   ({ connectionId, integrationId, refreshToken }) => {
     return `${integrationId}-${connectionId}-${refreshToken}`;
   },
   NANGO_ACCESS_TOKEN_TTL_SECONDS * 1000
 );
+
+export async function getConnectionFromNango({
+  connectionId,
+  integrationId,
+  refreshToken = false,
+  useCache = false,
+}: {
+  connectionId: NangoConnectionId;
+  integrationId: string;
+  refreshToken?: boolean;
+  useCache?: boolean;
+}) {
+  if (useCache) {
+    return await _getCachedConnectionFromNango({
+      connectionId,
+      integrationId,
+      refreshToken,
+    });
+  } else {
+    return await _getConnectionFromNango({
+      connectionId,
+      integrationId,
+      refreshToken,
+    });
+  }
+}
