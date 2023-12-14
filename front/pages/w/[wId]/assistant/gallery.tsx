@@ -12,7 +12,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import AssistantPreview from "@app/components/assistant/AssistantPreview";
+import { AssistantPreview } from "@app/components/assistant/AssistantPreview";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";

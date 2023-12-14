@@ -24,7 +24,7 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import AssistantPreview from "@app/components/assistant/AssistantPreview";
+import { AssistantPreview } from "@app/components/assistant/AssistantPreview";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {

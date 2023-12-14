@@ -5,7 +5,7 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
-type AssistantPreviewVariant = "home" | "gallery";
+type AssistantPreviewVariant = "gallery" | "home";
 
 interface AssistantPreviewProps {
   owner: WorkspaceType;
@@ -33,7 +33,7 @@ function getNameClassName(variant: AssistantPreviewVariant): string {
   }
 }
 
-export default function AssistantPreview({
+export function AssistantPreview({
   owner,
   agentConfiguration,
   onShowDetails,
@@ -41,7 +41,7 @@ export default function AssistantPreview({
   variant,
 }: AssistantPreviewProps) {
   const [isAdding, setIsAdding] = useState<boolean>(false);
-  // TODO(flav) Shift notification logic to the caller. This maintains the purity of the component by decoupling it from side-effect operations.
+  // TODO(flav) Move notification logic to the caller. This maintains the purity of the component by decoupling it from side-effect operations.
   const sendNotification = useContext(SendNotificationsContext);
 
   const addToAgentList = async () => {
