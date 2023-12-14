@@ -1,12 +1,8 @@
 import {
-  Avatar,
   BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  MoreIcon,
+  CloudArrowLeftRightIcon,
   Page,
   PlusIcon,
   Popup,
@@ -98,8 +94,6 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
-  const [showAllAgents, setShowAllAgents] = useState<boolean>(false);
-
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -109,9 +103,7 @@ export default function AssistantNew({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const displayedAgents = showAllAgents
-    ? activeAgents
-    : activeAgents.slice(0, 4);
+  const displayedAgents = activeAgents.slice(0, isBuilder ? 2 : 4);
 
   const { submit: handleSubmit } = useSubmitFunction(
     async (
@@ -244,99 +236,101 @@ export default function AssistantNew({
                 <Page.Vertical gap="md" align="left">
                   {/* FEATURED AGENTS */}
                   <Page.Vertical gap="lg" align="left">
-                    <Page.Vertical gap="xs" align="left">
-                      <Page.SectionHeader title="How can I help you today?" />
-                      {isBuilder && (
-                        <>
-                          <Page.P variant="secondary">
-                            Dust comes with multiple assistants, each with a
-                            specific set of skills.
-                            <br />
-                            Create assistants tailored for your needs.
-                          </Page.P>
-                        </>
-                      )}
-                    </Page.Vertical>
-                    <div className="flex flex-col gap-2">
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                        {displayedAgents.map((agent) => (
-                          <a
-                            key={agent.sId}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              setSelectedAssistant({
-                                configurationId: agent.sId,
-                              });
-                              setShouldAnimateInput(true);
-                            }}
-                          >
-                            <GalleryItem
-                              agentConfiguration={agent}
+                    <Page.SectionHeader title="How can I help you today?" />
+                    <div className="flex flex-row gap-2">
+                      <div className="flex w-full flex-col gap-2">
+                        {isBuilder && (
+                          <div className="text-base font-bold text-element-800">
+                            Your assistant team
+                          </div>
+                        )}
+                        <div
+                          className={`grid grid-cols-2 gap-4 py-2 ${
+                            isBuilder ? "" : "sm:grid-cols-4"
+                          }`}
+                        >
+                          {displayedAgents.map((agent) => (
+                            <a
                               key={agent.sId}
-                              owner={owner}
-                              onShowDetails={() => {
-                                setShowDetails(agent);
+                              className="cursor-pointer"
+                              onClick={() => {
+                                setSelectedAssistant({
+                                  configurationId: agent.sId,
+                                });
+                                setShouldAnimateInput(true);
                               }}
-                              onUpdate={async () => {
-                                await mutateAgentConfigurations();
+                            >
+                              <GalleryItem
+                                agentConfiguration={agent}
+                                key={agent.sId}
+                                owner={owner}
+                                onShowDetails={() => {
+                                  setShowDetails(agent);
+                                }}
+                                onUpdate={async () => {
+                                  await mutateAgentConfigurations();
+                                }}
+                                variant="home"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                        <Button.List isWrapping={true}>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="primary"
+                              icon={BookOpenIcon}
+                              size="xs"
+                              label={"Discover more in the Assistant Gallery"}
+                              onClick={async () => {
+                                await router.push(
+                                  `/w/${owner.sId}/assistant/gallery?flow=personal_add`
+                                );
                               }}
-                              variant="home"
                             />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                    <Button.List isWrapping={true}>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="primary"
-                          icon={BookOpenIcon}
-                          size="xs"
-                          label={"Discover more in the Assistant Gallery"}
-                          onClick={async () => {
-                            await router.push(
-                              `/w/${owner.sId}/assistant/gallery?flow=personal_add`
-                            );
-                          }}
-                        />
-                        <StartHelperConversationButton
-                          content="@help, what can I use the assistants for?"
-                          handleSubmit={handleSubmit}
-                        />
-                        <StartHelperConversationButton
-                          content="@help, what are the limitations of assistants?"
-                          handleSubmit={handleSubmit}
-                        />
+                            <StartHelperConversationButton
+                              content="@help, what can I use the assistants for?"
+                              handleSubmit={handleSubmit}
+                            />
+                            <StartHelperConversationButton
+                              content="@help, what are the limitations of assistants?"
+                              handleSubmit={handleSubmit}
+                            />
+                          </div>
+                        </Button.List>
                       </div>
                       {isBuilder && (
-                        <>
-                          <Button
-                            variant="primary"
-                            icon={PlusIcon}
-                            label="Create an assistant"
-                            hasMagnifying={false}
-                            size="xs"
-                            onClick={() => {
-                              void router.push(
-                                `/w/${owner.sId}/builder/assistants/new`
-                              );
-                            }}
-                          />
-                          <Button
-                            variant="secondary"
-                            icon={WrenchIcon}
-                            label="Manage assistants"
-                            hasMagnifying={false}
-                            size="xs"
-                            onClick={() => {
-                              void router.push(
-                                `/w/${owner.sId}/builder/assistants`
-                              );
-                            }}
-                          />
-                        </>
+                        <div className="flex w-full flex-col gap-2">
+                          <div className="text-base font-bold text-element-800">
+                            Data Sources
+                          </div>
+                          <div className="text-xs font-normal text-element-700">
+                            Make assistants smarter by giving them access to
+                            your company’s knowledge and data.
+                          </div>
+                          <Button.List isWrapping={true}>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="secondary"
+                                icon={CloudArrowLeftRightIcon}
+                                size="xs"
+                                label={"Manage Data Sources"}
+                                onClick={async () => {
+                                  await router.push(
+                                    `/w/${owner.sId}/builder/data-sources/managed`
+                                  );
+                                }}
+                              />
+                              <StartHelperConversationButton
+                                content="@help, tell me about Data Sources"
+                                variant="tertiary"
+                                handleSubmit={handleSubmit}
+                              />
+                            </div>
+                          </Button.List>
+                        </div>
                       )}
-                    </Button.List>
+                    </div>
                   </Page.Vertical>
                 </Page.Vertical>
               </div>
@@ -380,7 +374,7 @@ function StartHelperConversationButton({
       contentType: ContentFragmentContentType;
     }
   ) => Promise<void>;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "tertiary";
   size?: "sm" | "xs";
 }) {
   const contentWithMarkdownMention = content.replace(
