@@ -594,7 +594,7 @@ export const getFileParentsMemoized = cacheWithRedis(
   60 * 10 * 1000
 );
 
-async function objectIsInFolders(
+export async function objectIsInFolders(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
