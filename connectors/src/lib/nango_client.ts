@@ -11,7 +11,6 @@ class CustomNango extends Nango {
   async getConnection(
     providerConfigKey: string,
     connectionId: string,
-    forceRefresh?: boolean,
     refreshToken?: boolean
   ) {
     try {
