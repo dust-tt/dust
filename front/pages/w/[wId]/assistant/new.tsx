@@ -20,6 +20,7 @@ import {
 } from "@dust-tt/types";
 import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
@@ -275,17 +276,16 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <Button
-                              variant="primary"
-                              icon={BookOpenIcon}
-                              size="xs"
-                              label={"Discover more in the Assistant Gallery"}
-                              onClick={async () => {
-                                await router.push(
-                                  `/w/${owner.sId}/assistant/gallery?flow=personal_add`
-                                );
-                              }}
-                            />
+                            <Link
+                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                            >
+                              <Button
+                                variant="primary"
+                                icon={BookOpenIcon}
+                                size="xs"
+                                label="Discover more in the Assistant Gallery"
+                              />
+                            </Link>
                             <StartHelperConversationButton
                               content="@help, what can I use the assistants for?"
                               handleSubmit={handleSubmit}
@@ -308,28 +308,27 @@ export default function AssistantNew({
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="secondary"
-                                icon={CloudArrowLeftRightIcon}
-                                size="xs"
-                                label={"Manage Connections"}
-                                onClick={async () => {
-                                  await router.push(
-                                    `/w/${owner.sId}/builder/data-sources/managed`
-                                  );
-                                }}
-                              />
-                              <Button
-                                variant="secondary"
-                                icon={FolderOpenIcon}
-                                size="xs"
-                                label={"Manage Folders"}
-                                onClick={async () => {
-                                  await router.push(
-                                    `/w/${owner.sId}/builder/data-sources/static`
-                                  );
-                                }}
-                              />
+                              <Link
+                                href={`/w/${owner.sId}/builder/data-sources/managed`}
+                              >
+                                <Button
+                                  variant="secondary"
+                                  icon={CloudArrowLeftRightIcon}
+                                  size="xs"
+                                  label="Manage Connections"
+                                />
+                              </Link>
+                              <Link
+                                href={`/w/${owner.sId}/builder/data-sources/static`}
+                              >
+                                <Button
+                                  variant="secondary"
+                                  icon={FolderOpenIcon}
+                                  size="xs"
+                                  label={"Manage Folders"}
+                                />
+                              </Link>
+
                               <StartHelperConversationButton
                                 content="@help, tell me about Data Sources"
                                 variant="tertiary"
