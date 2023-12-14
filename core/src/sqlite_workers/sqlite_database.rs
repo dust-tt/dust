@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
+use super::store::DatabasesStore;
 use crate::{
     databases::database::{DatabaseResult, DatabaseRow, DatabaseTable},
     utils,
 };
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
+use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection};
+use tokio::task;
 
-use tokio::{sync::Mutex, task};
-
-use super::store::DatabasesStore;
-
+#[derive(Clone)]
 pub struct SqliteDatabase {
     database_id: String,
     conn: Option<Arc<Mutex<Connection>>>,
@@ -21,7 +21,7 @@ pub struct SqliteDatabase {
 impl SqliteDatabase {
     pub fn new(database_id: String) -> Self {
         Self {
-            database_id: database_id,
+            database_id,
             conn: None,
         }
     }
@@ -34,28 +34,103 @@ impl SqliteDatabase {
         match &self.conn {
             Some(_) => Ok(()),
             None => {
-                self.conn = Some(
-                    create_in_memory_sqlite_db(databases_store, &self.database_id, &tables).await?,
-                );
+                self.conn = Some(Arc::new(Mutex::new(
+                    create_in_memory_sqlite_db(databases_store, &self.database_id, tables).await?,
+                )));
 
                 Ok(())
             }
         }
     }
 
-    pub async fn query(&self, query: String) -> Result<Vec<DatabaseResult>> {
-        match &self.conn {
-            Some(conn) => execute_query_on_conn(conn.clone(), query).await,
-            None => Err(anyhow!("Database not initialized")),
-        }
+    pub async fn query(&self, query: &str) -> Result<Vec<DatabaseResult>> {
+        let query = query.to_string();
+        let conn = self.conn.clone();
+
+        task::spawn_blocking(move || {
+            let conn = match conn {
+                Some(conn) => conn.clone(),
+                None => Err(anyhow!("Database not initialized"))?,
+            };
+
+            // This lock is a parking_lot so it's blocking but we're in a spawn_blocking, so OK.
+            let conn = conn.lock();
+            let time_query_start = utils::now();
+
+            // Execute the query and collect results
+            let mut stmt = conn.prepare(&query).unwrap();
+            let column_names = stmt
+                .column_names()
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>();
+            let result_rows = stmt
+                .query_and_then([], |row| {
+                    column_names
+                        .iter()
+                        .enumerate()
+                        .map(|(i, column_name)| {
+                            Ok((
+                                column_name.clone(),
+                                match row.get(i) {
+                                    Err(e) => Err(anyhow!(
+                                        "Failed to retrieve value for column {}: {}",
+                                        column_name,
+                                        e
+                                    )),
+                                    Ok(v) => match v {
+                                        rusqlite::types::Value::Integer(i) => {
+                                            Ok(serde_json::Value::Number(i.into()))
+                                        }
+                                        rusqlite::types::Value::Real(f) => {
+                                            match serde_json::Number::from_f64(f) {
+                                                Some(n) => Ok(serde_json::Value::Number(n)),
+                                                None => Err(anyhow!(
+                                                    "Invalid float value for column {}",
+                                                    column_name
+                                                )),
+                                            }
+                                        }
+                                        rusqlite::types::Value::Text(t) => {
+                                            Ok(serde_json::Value::String(t.clone()))
+                                        }
+                                        rusqlite::types::Value::Blob(b) => {
+                                            match String::from_utf8(b.clone()) {
+                                                Err(_) => Err(anyhow!(
+                                                    "Invalid UTF-8 sequence for column {}",
+                                                    column_name
+                                                )),
+                                                Ok(s) => Ok(serde_json::Value::String(s)),
+                                            }
+                                        }
+                                        rusqlite::types::Value::Null => Ok(serde_json::Value::Null),
+                                    },
+                                }?,
+                            ))
+                        })
+                        .collect::<Result<serde_json::Value>>()
+                })?
+                .collect::<Result<Vec<_>>>()?
+                .into_par_iter()
+                .map(|value| DatabaseResult { value })
+                .collect::<Vec<_>>();
+
+            utils::done(&format!(
+                "DSSTRUCTSTAT - WORKER Finished executing user query: duration={}ms",
+                utils::now() - time_query_start
+            ));
+
+            Ok(result_rows)
+        })
+        .await?
     }
 }
 
 async fn create_in_memory_sqlite_db(
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
     database_id: &str,
-    tables: &Vec<DatabaseTable>,
-) -> Result<Arc<Mutex<Connection>>> {
+    tables: Vec<DatabaseTable>,
+) -> Result<Connection> {
     let time_get_rows_start = utils::now();
 
     let tables_with_rows: Vec<(DatabaseTable, Vec<DatabaseRow>)> =
@@ -75,11 +150,10 @@ async fn create_in_memory_sqlite_db(
         utils::now() - time_get_rows_start
     ));
 
-    // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU)
-    let tables_clone = tables.clone();
-    let conn = task::spawn_blocking(move || {
+    // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
+    task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
-        let create_tables_sql: String = tables_clone
+        let create_tables_sql: String = tables
             .into_iter()
             .filter_map(|t| match t.schema() {
                 Some(s) => {
@@ -98,7 +172,7 @@ async fn create_in_memory_sqlite_db(
             utils::now() - generate_create_table_sql_start
         ));
 
-        let conn = Connection::open_in_memory().unwrap();
+        let conn = Connection::open_in_memory()?;
 
         let create_tables_execute_start = utils::now();
         conn.execute_batch(&create_tables_sql)?;
@@ -144,86 +218,5 @@ async fn create_in_memory_sqlite_db(
 
         Result::<_>::Ok(conn)
     })
-    .await?;
-
-    Ok(Arc::new(Mutex::new(conn?)))
-}
-
-pub async fn execute_query_on_conn(
-    conn: Arc<Mutex<Connection>>,
-    query: String,
-) -> Result<Vec<DatabaseResult>> {
-    let time_query_start = utils::now();
-    // Execute the query and collect results
-
-    let conn = conn.lock_owned().await;
-
-    let result_rows: Result<Vec<DatabaseResult>> = task::spawn_blocking(move || {
-        let mut stmt = conn.prepare(&query).unwrap();
-        let column_names = stmt
-            .column_names()
-            .into_iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
-        let result_rows = stmt
-            .query_and_then([], |row| {
-                column_names
-                    .iter()
-                    .enumerate()
-                    .map(|(i, column_name)| {
-                        Ok((
-                            column_name.clone(),
-                            match row.get(i) {
-                                Err(e) => Err(anyhow!(
-                                    "Failed to retrieve value for column {}: {}",
-                                    column_name,
-                                    e
-                                )),
-                                Ok(v) => match v {
-                                    rusqlite::types::Value::Integer(i) => {
-                                        Ok(serde_json::Value::Number(i.into()))
-                                    }
-                                    rusqlite::types::Value::Real(f) => {
-                                        match serde_json::Number::from_f64(f) {
-                                            Some(n) => Ok(serde_json::Value::Number(n)),
-                                            None => Err(anyhow!(
-                                                "Invalid float value for column {}",
-                                                column_name
-                                            )),
-                                        }
-                                    }
-                                    rusqlite::types::Value::Text(t) => {
-                                        Ok(serde_json::Value::String(t.clone()))
-                                    }
-                                    rusqlite::types::Value::Blob(b) => {
-                                        match String::from_utf8(b.clone()) {
-                                            Err(_) => Err(anyhow!(
-                                                "Invalid UTF-8 sequence for column {}",
-                                                column_name
-                                            )),
-                                            Ok(s) => Ok(serde_json::Value::String(s)),
-                                        }
-                                    }
-                                    rusqlite::types::Value::Null => Ok(serde_json::Value::Null),
-                                },
-                            }?,
-                        ))
-                    })
-                    .collect::<Result<serde_json::Value>>()
-            })?
-            .collect::<Result<Vec<_>>>()?
-            .into_par_iter()
-            .map(|value| DatabaseResult { value })
-            .collect::<Vec<_>>();
-
-        utils::done(&format!(
-            "DSSTRUCTSTAT - WORKER Finished executing user query: duration={}ms",
-            utils::now() - time_query_start
-        ));
-
-        Ok(result_rows)
-    })
-    .await?;
-
-    Ok(result_rows?)
+    .await?
 }
