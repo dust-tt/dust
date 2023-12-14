@@ -76,7 +76,7 @@ impl DatabasesStore for PostgresDatabasesStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, row_id, content 
+                "SELECT created, row_id, content
                 FROM databases_rows
                 WHERE database_id = $1 AND table_id = $2 AND row_id = $3
                 LIMIT 1",
@@ -109,7 +109,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         let c = pool.get().await?;
 
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_id, &table_id];
-        let mut query = "SELECT created, row_id, content 
+        let mut query = "SELECT created, row_id, content
             FROM databases_rows
             WHERE  database_id = $1 AND table_id = $2
             ORDER BY created DESC"
@@ -142,8 +142,8 @@ impl DatabasesStore for PostgresDatabasesStore {
             Some(_) => {
                 let t: i64 = c
                     .query_one(
-                        "SELECT COUNT(*) 
-                        FROM databases_rows 
+                        "SELECT COUNT(*)
+                        FROM databases_rows
                         WHERE database_id = $1 AND table_id = $2",
                         &[&database_id, &table_id],
                     )
@@ -172,7 +172,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         if truncate {
             let stmt = c
                 .prepare(
-                    "DELETE FROM databases_rows 
+                    "DELETE FROM databases_rows
                     WHERE database_id = $1 AND table_id = $2",
                 )
                 .await?;
@@ -182,10 +182,10 @@ impl DatabasesStore for PostgresDatabasesStore {
         // Prepare insertion/updation statement.
         let stmt = c
             .prepare(
-                "INSERT INTO databases_rows 
-                (id, database_id, table_id, row_id, created, content) 
-                VALUES (DEFAULT, $1, $2, $3, $4, $5) 
-                ON CONFLICT (database_id, table_id, row_id) DO UPDATE 
+                "INSERT INTO databases_rows
+                (id, database_id, table_id, row_id, created, content)
+                VALUES (DEFAULT, $1, $2, $3, $4, $5)
+                ON CONFLICT (database_id, table_id, row_id) DO UPDATE
                 SET content = EXCLUDED.content",
             )
             .await?;
