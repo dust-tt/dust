@@ -1,5 +1,6 @@
 import {
   getAuthObject,
+  getDriveClient,
   getGoogleDriveObject,
   objectIsInFolders,
 } from "@connectors/connectors/google_drive/temporal/activities";
@@ -9,7 +10,7 @@ import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 async function main() {
   const gDriveConnectors = await Connector.findAll({
     where: {
-      type: "google-drive",
+      type: "google_drive",
     },
   });
 
@@ -28,6 +29,19 @@ async function main() {
     await Promise.all(
       chunk.map(async (c) => {
         const authCredentials = await getAuthObject(c.connectionId);
+        const drive = await getDriveClient(authCredentials);
+
+        const myDriveRes = await drive.files.get({ fileId: "root" });
+        if (myDriveRes.status !== 200) {
+          throw new Error(
+            `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
+          );
+        }
+        if (!myDriveRes.data.id) {
+          throw new Error("My drive id is undefined");
+        }
+        const rootId = myDriveRes.data.id;
+
         const selectedFolders = await GoogleDriveFolders.findAll({
           where: {
             connectorId: c.id,
@@ -47,7 +61,7 @@ async function main() {
             c.id,
             authCredentials,
             gDriveObject,
-            ["root"],
+            [rootId],
             0
           );
           console.log(".");
