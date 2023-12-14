@@ -196,7 +196,10 @@ export function ConversationMessage({
             </div>
             <div className="text-sm font-medium">{name}</div>
           </div>
-          <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
+          <div
+            id="MessageBlock"
+            className="min-w-0 break-words pl-8 text-base font-normal sm:p-0"
+          >
             {children}
           </div>
         </div>

@@ -67,3 +67,45 @@ main {
     transform: translate3d(8px, 3px, 0);
   }
 }
+
+#MessageBlock {
+  @apply text-base font-normal leading-7 text-element-800;
+
+  h1 {
+    @apply text-5xl font-bold;
+    @apply pb-3 pt-4;
+  }
+  h2 {
+    @apply text-4xl font-bold;
+    @apply pb-2 pt-3;
+  }
+  h3 {
+    @apply text-2xl font-semibold;
+    @apply pb-2 pt-3;
+  }
+  h4 {
+    @apply text-xl font-semibold;
+    @apply pb-2 pt-2.5;
+  }
+  h5 {
+    @apply text-xl font-bold;
+    @apply pb-1.5 pt-2;
+  }
+  h6 {
+    @apply text-lg font-semibold;
+    @apply pb-1.5 pt-2;
+  }
+  strong {
+    @apply font-semibold text-element-900;
+  }
+  a {
+    @apply font-semibold text-action-500;
+    transition: all 0.2s ease-in-out;
+    &:hover {
+      @apply text-action-400;
+    }
+    &:active {
+      @apply text-action-600;
+    }
+  }
+}
