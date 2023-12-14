@@ -24,6 +24,7 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import AssistantPreview from "@app/components/assistant/AssistantPreview";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -39,8 +40,6 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-
-import GalleryItem from "./item";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -259,7 +258,7 @@ export default function AssistantNew({
                                 setShouldAnimateInput(true);
                               }}
                             >
-                              <GalleryItem
+                              <AssistantPreview
                                 agentConfiguration={agent}
                                 key={agent.sId}
                                 owner={owner}

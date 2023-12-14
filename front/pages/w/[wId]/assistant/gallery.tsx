@@ -12,14 +12,13 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import AssistantPreview from "@app/components/assistant/AssistantPreview";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
-
-import GalleryItem from "./item";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -187,7 +186,7 @@ export default function AssistantsGallery({
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-2">
             {filtered.map((a) => (
-              <GalleryItem
+              <AssistantPreview
                 key={a.sId}
                 owner={owner}
                 agentConfiguration={a}

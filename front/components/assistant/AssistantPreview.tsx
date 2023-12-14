@@ -5,17 +5,17 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
-type GalleryItemVariant = "home" | "gallery";
+type AssistantPreviewVariant = "home" | "gallery";
 
-interface GalleryItemProps {
+interface AssistantPreviewProps {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   onShowDetails: () => void;
   onUpdate: () => void;
-  variant: GalleryItemVariant;
+  variant: AssistantPreviewVariant;
 }
 
-function getDescriptionClassName(variant: GalleryItemVariant): string {
+function getDescriptionClassName(variant: AssistantPreviewVariant): string {
   switch (variant) {
     case "home":
       return "text-xs text-element-700";
@@ -24,7 +24,7 @@ function getDescriptionClassName(variant: GalleryItemVariant): string {
   }
 }
 
-function getNameClassName(variant: GalleryItemVariant): string {
+function getNameClassName(variant: AssistantPreviewVariant): string {
   switch (variant) {
     case "home":
       return "text-sm font-medium text-element-900";
@@ -33,13 +33,13 @@ function getNameClassName(variant: GalleryItemVariant): string {
   }
 }
 
-export default function GalleryItem({
+export default function AssistantPreview({
   owner,
   agentConfiguration,
   onShowDetails,
   onUpdate,
   variant,
-}: GalleryItemProps) {
+}: AssistantPreviewProps) {
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -124,7 +124,7 @@ export default function GalleryItem({
   ];
 
   // Define button groups with JSX elements, including default buttons
-  const buttonGroups: Record<GalleryItemVariant, JSX.Element[]> = {
+  const buttonGroups: Record<AssistantPreviewVariant, JSX.Element[]> = {
     gallery: [addButton, showAssistantButton].filter(Boolean) as JSX.Element[],
     home: defaultButtons,
   };
