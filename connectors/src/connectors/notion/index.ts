@@ -133,13 +133,11 @@ export async function updateNotionConnector(
     const connectionRes = await nango_client().getConnection(
       NANGO_NOTION_CONNECTOR_ID,
       oldConnectionId,
-      false,
       false
     );
     const newConnectionRes = await nango_client().getConnection(
       NANGO_NOTION_CONNECTOR_ID,
       connectionId,
-      false,
       false
     );
 

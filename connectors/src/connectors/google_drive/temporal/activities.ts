@@ -33,6 +33,7 @@ import {
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
+import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 
 import { registerWebhook } from "../lib";
@@ -93,8 +94,7 @@ export async function getGoogleCredentials(
   return await nango_client().getConnection(
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
     nangoConnectionId,
-    false,
-    true
+    false
   );
 }
 
@@ -104,12 +104,13 @@ export async function getAuthObject(
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
   }
-  const res: NangoGetConnectionRes = await nango_client().getConnection(
-    NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-    nangoConnectionId,
-    false,
-    true
-  );
+  const res: NangoGetConnectionRes = await getConnectionFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
+    refreshToken: false,
+    useCache: true,
+  });
+
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
     access_token: res.credentials.access_token,
