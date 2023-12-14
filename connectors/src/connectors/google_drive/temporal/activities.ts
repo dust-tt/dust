@@ -108,6 +108,7 @@ export async function getAuthObject(
     connectionId: nangoConnectionId,
     integrationId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
     refreshToken: false,
+    useCache: true,
   });
 
   const oauth2Client = new google.auth.OAuth2();
