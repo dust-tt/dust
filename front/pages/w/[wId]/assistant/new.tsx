@@ -239,7 +239,7 @@ export default function AssistantNew({
             />
           )}
           {!conversation ? (
-            <div className="align-center flex h-full">
+            <div className="flex h-full items-center">
               <div className="flex text-sm font-normal text-element-800">
                 <Page.Vertical gap="md" align="left">
                   {/* FEATURED AGENTS */}
