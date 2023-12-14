@@ -860,12 +860,12 @@ export function AssistantInputBar({
                     inputRef.current?.focus();
                     const file = e?.target?.files?.[0];
                     if (!file) return;
-                    if (file.size > 5_000_000) {
+                    if (file.size > 10_000_000) {
                       sendNotification({
                         type: "error",
                         title: "File too large.",
                         description:
-                          "PDF uploads are limited to 5Mb per file. Please consider uploading a smaller file.",
+                          "PDF uploads are limited to 10Mb per file. Please consider uploading a smaller file.",
                       });
                       return;
                     }
@@ -898,7 +898,7 @@ export function AssistantInputBar({
                   icon={AttachmentIcon}
                   size="sm"
                   disabled={!!contentFragmentFilename}
-                  tooltip="Add a document to the conversation (5MB maximum, only .txt, .pdf, .md)."
+                  tooltip="Add a document to the conversation (10MB maximum, only .txt, .pdf, .md)."
                   tooltipPosition="above"
                   className="flex"
                   onClick={() => {
