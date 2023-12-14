@@ -3,10 +3,9 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowLeftRightIcon,
+  FolderOpenIcon,
   Page,
-  PlusIcon,
   Popup,
-  WrenchIcon,
 } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
@@ -314,10 +313,21 @@ export default function AssistantNew({
                                 variant="secondary"
                                 icon={CloudArrowLeftRightIcon}
                                 size="xs"
-                                label={"Manage Data Sources"}
+                                label={"Manage Connections"}
                                 onClick={async () => {
                                   await router.push(
                                     `/w/${owner.sId}/builder/data-sources/managed`
+                                  );
+                                }}
+                              />
+                              <Button
+                                variant="secondary"
+                                icon={FolderOpenIcon}
+                                size="xs"
+                                label={"Manage Folders"}
+                                onClick={async () => {
+                                  await router.push(
+                                    `/w/${owner.sId}/builder/data-sources/static`
                                   );
                                 }}
                               />
