@@ -41,6 +41,7 @@ export default function AssistantPreview({
   variant,
 }: AssistantPreviewProps) {
   const [isAdding, setIsAdding] = useState<boolean>(false);
+  // TODO(flav) Shift notification logic to the caller. This maintains the purity of the component by decoupling it from side-effect operations.
   const sendNotification = useContext(SendNotificationsContext);
 
   const addToAgentList = async () => {
