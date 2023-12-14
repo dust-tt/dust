@@ -236,7 +236,7 @@ export default function AssistantNew({
                   {/* FEATURED AGENTS */}
                   <Page.Vertical gap="lg" align="left">
                     <Page.SectionHeader title="How can I help you today?" />
-                    <div className="flex flex-row gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <div className="flex w-full flex-col gap-2">
                         {isBuilder && (
                           <div className="text-base font-bold text-element-800">
