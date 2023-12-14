@@ -118,10 +118,10 @@ function NavigationBar({
           </div>
         )}
         {subNavigation && (
-          <div className="py-2">
+          <>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="grow pl-4 pr-3">
+                <div key={nav.id} className="grow py-2 pl-4 pr-3">
                   <Item.List>
                     {nav.label && (
                       <Item.SectionHeader
@@ -167,7 +167,7 @@ function NavigationBar({
                 </div>
               );
             })}
-          </div>
+          </>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
