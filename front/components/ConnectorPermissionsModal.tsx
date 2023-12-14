@@ -1,4 +1,4 @@
-import { Checkbox, Modal } from "@dust-tt/sparkle";
+import { Modal, Page } from "@dust-tt/sparkle";
 import {
   ConnectorProvider,
   DataSourceType,
@@ -13,36 +13,6 @@ import { useConnectorDefaultNewResourcePermission } from "@app/lib/swr";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
 import { SendNotificationsContext } from "./sparkle/Notification";
-
-const CONNECTOR_TYPE_TO_RESOURCE_NAME: Record<ConnectorProvider, string> = {
-  notion: "top-level Notion pages or databases",
-  google_drive: "Google Drive folders",
-  slack: "Slack channels",
-  github: "GitHub repositories",
-  intercom: "Intercom Help Center articles",
-};
-
-const CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT: Record<
-  ConnectorProvider,
-  string | null
-> = {
-  slack: "Select which channels to synchronize with Dust from the list below:",
-  notion: null,
-  google_drive: null,
-  github: null,
-  intercom: null,
-};
-
-const CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT: Record<
-  ConnectorProvider,
-  string | null
-> = {
-  slack: null,
-  notion: null,
-  google_drive: null,
-  github: null,
-  intercom: null,
-};
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
@@ -92,15 +62,6 @@ export default function ConnectorPermissionsModal({
   const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
     connector.type
   );
-
-  const resourceListTitleText =
-    CONNECTOR_TYPE_TO_RESOURCE_LIST_TITLE_TEXT[connector.type] ??
-    `Dust has access to the following ${
-      CONNECTOR_TYPE_TO_RESOURCE_NAME[connector.type]
-    }:`;
-
-  const defaultPermissionTitleText =
-    CONNECTOR_TYPE_TO_DEFAULT_PERMISSION_TITLE_TEXT[connector.type];
 
   async function save() {
     setSaving(true);
@@ -196,50 +157,30 @@ export default function ConnectorPermissionsModal({
       <div className="mx-auto max-w-4xl text-left">
         {!isDefaultNewResourcePermissionLoading &&
         defaultNewResourcePermission ? (
-          <>
-            {canUpdatePermissions && defaultPermissionTitleText ? (
-              <div className="ml-10 mt-8 flex flex-row">
-                <div className="mr-4 flex flex-initial">
-                  <Checkbox
-                    className="ml-auto"
-                    onChange={(checked) => {
-                      setAutomaticallyIncludeNewResources(checked);
-                    }}
-                    checked={
-                      automaticallyIncludeNewResources ??
-                      ["read", "read_write"].includes(
-                        defaultNewResourcePermission
-                      )
-                    }
-                  />
-                </div>
-                <span className="text-sm text-gray-500">
-                  {defaultPermissionTitleText}
-                </span>
-              </div>
-            ) : null}
-            <div>
-              <div className="ml-2 mt-8">
-                <div className="text-sm text-gray-500">
-                  {resourceListTitleText}
-                </div>
-              </div>
-            </div>
-            <div className="mx-2 mb-16 mt-8">
-              <PermissionTree
-                owner={owner}
-                dataSource={dataSource}
-                canUpdatePermissions={canUpdatePermissions}
-                onPermissionUpdate={({ internalId, permission }) => {
-                  setUpdatedPermissionByInternalId((prev) => ({
-                    ...prev,
-                    [internalId]: permission,
-                  }));
-                }}
-                showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
+          <div className="flex flex-col pt-12">
+            <Page.Vertical align="stretch" gap="xl">
+              <Page.Header
+                title="Make available to the workspace"
+                description={`Selected resources will be accessible to all members of the workspace.`}
               />
-            </div>
-          </>
+              <div className="mx-2 mb-16 w-full">
+                <PermissionTree
+                  owner={owner}
+                  dataSource={dataSource}
+                  canUpdatePermissions={canUpdatePermissions}
+                  onPermissionUpdate={({ internalId, permission }) => {
+                    setUpdatedPermissionByInternalId((prev) => ({
+                      ...prev,
+                      [internalId]: permission,
+                    }));
+                  }}
+                  showExpand={
+                    CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
+                  }
+                />
+              </div>
+            </Page.Vertical>
+          </div>
         ) : null}
         {isDefaultNewResourcePermissionError && (
           <div className="text-red-300">An unexpected error occurred</div>
