@@ -4,8 +4,8 @@ import {
   cloneBaseConfig,
   ConversationType,
   DatabaseQueryActionType,
-  DatabaseQueryRunErrorEvent,
-  DatabaseQueryRunSuccessEvent,
+  DatabaseQueryErrorEvent,
+  DatabaseQuerySuccessEvent,
   DustProdActionRegistry,
   Err,
   isDatabaseQueryConfiguration,
@@ -19,6 +19,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDatabaseQueryAction } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 /**
  * Model rendering of DatabaseQueryAction.
@@ -40,6 +41,34 @@ export function renderDatabaseQueryActionForModel(
     role: "action" as const,
     name: "DatabaseQuery",
     content,
+  };
+}
+
+/**
+ * Generate the specification for the DatabaseQuery app.
+ * This is the instruction given to the LLM to understand the task.
+ */
+function getDatabaseQueryAppSpecification() {
+  return {
+    name: "query_database",
+    description:
+      "Query the database associated to answer the question provided by the user." +
+      "Generate the best SQL query (from the question received and the database schema), execute the query, and retrieve the result.",
+    inputs: [
+      {
+        name: "question",
+        description:
+          "The string containing the raw question from the user about the data on the linked database. " +
+          "It should include all relevant information to build the best SQL query to fetch the data they need to retrieve. " +
+          "Always unaccent the user's query, replace (eg replace é/è with e etc.)" +
+          "When requesting to retrieve specific information, especially names or titles, it's crucial to approach the query with flexibility in terms of text case. " +
+          "For instance, if the query is, 'Is there a cat named Soupinou in the database?', " +
+          "you should comprehensively search the database for the name 'Soupinou' without being restricted by text case sensitivity, unless explicitly instructed otherwise. " +
+          "This means the search should include variations like 'soupinou', 'SOUPINOU', or any other case combinations. " +
+          "This approach ensures a thorough search and accurate results, accommodating the possibility of case variations in the database entries.",
+        type: "string" as const,
+      },
+    ],
   };
 }
 
@@ -66,22 +95,7 @@ export async function generateDatabaseQueryAppParams(
     );
   }
 
-  const spec = {
-    name: "query_database",
-    description:
-      "The user's request. This is what will be given to the assistant responsible for generating the SQL query, It must include all relevant information.",
-    inputs: [
-      {
-        name: "question",
-        description:
-          "The user's request. This is what will be given to the assistant responsible for generating the SQL query" +
-          "It must include all relevant information, based on the user request and conversation context." +
-          "Always unaccent the user's query, replace (eg replace é/è with e etc.)",
-        type: "string" as const,
-      },
-    ],
-  };
-
+  const spec = getDatabaseQueryAppSpecification();
   const rawInputsRes = await generateActionInputs(
     auth,
     configuration,
@@ -93,17 +107,13 @@ export async function generateDatabaseQueryAppParams(
   if (rawInputsRes.isErr()) {
     return new Err(rawInputsRes.error);
   }
-
-  if (rawInputsRes.isOk()) {
-    return new Ok(rawInputsRes.value);
-  }
-  return new Ok({});
+  return new Ok(rawInputsRes.value);
 }
 
 /**
  * Run the DatabaseQuery app.
  */
-export async function* runDatabaseQueryApp({
+export async function* runDatabaseQuery({
   auth,
   configuration,
   conversation,
@@ -115,7 +125,7 @@ export async function* runDatabaseQueryApp({
   conversation: ConversationType;
   userMessage: UserMessageType;
   agentMessage: AgentMessageType;
-}): AsyncGenerator<DatabaseQueryRunErrorEvent | DatabaseQueryRunSuccessEvent> {
+}): AsyncGenerator<DatabaseQueryErrorEvent | DatabaseQuerySuccessEvent> {
   // Checking authorizations
   const owner = auth.workspace();
   if (!owner) {
@@ -129,7 +139,7 @@ export async function* runDatabaseQueryApp({
   }
   if (owner.sId !== c.dataSourceWorkspaceId) {
     yield {
-      type: "database_query_run_error",
+      type: "database_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
@@ -149,7 +159,7 @@ export async function* runDatabaseQueryApp({
   );
   if (inputRes.isErr()) {
     yield {
-      type: "database_query_run_error",
+      type: "database_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
@@ -190,60 +200,73 @@ export async function* runDatabaseQueryApp({
 
   if (res.isErr()) {
     yield {
-      type: "database_query_run_error",
+      type: "database_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "dust_app_run_error",
+        code: "database_query_error",
         message: `Error running DatabaseQuery app: ${res.error.message}`,
       },
     };
     return;
   }
 
+  let output: Record<string, string | boolean | number> = {};
+
   const { eventStream } = res.value;
   for await (const event of eventStream) {
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const output = JSON.parse(e.value as string);
 
-        const action = await AgentDatabaseQueryAction.create({
-          dataSourceWorkspaceId: c.dataSourceWorkspaceId,
-          dataSourceId: c.dataSourceId,
-          databaseId: c.databaseId,
-          databaseQueryConfigurationId: configuration.sId,
-          params: input,
-          output,
-        });
+      if (e.error) {
+        logger.error(
+          {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            error: e.error,
+          },
+          "Error running query_database app"
+        );
         yield {
-          type: "database_query_run_success",
+          type: "database_query_error",
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
-          action: {
-            id: action.id,
-            type: "database_query_action",
-            dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-            dataSourceId: action.dataSourceId,
-            databaseId: action.databaseId,
-            output: action.output,
+          error: {
+            code: "database_query_error",
+            message: `Error getting execution from DatabaseQuery app: ${e.error}`,
           },
         };
         return;
       }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        output = JSON.parse(e.value as string);
+      }
     }
   }
 
+  const action = await AgentDatabaseQueryAction.create({
+    dataSourceWorkspaceId: c.dataSourceWorkspaceId,
+    dataSourceId: c.dataSourceId,
+    databaseId: c.databaseId,
+    databaseQueryConfigurationId: configuration.sId,
+    params: input,
+    output,
+  });
   yield {
-    type: "database_query_run_error",
+    type: "database_query_success",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    error: {
-      code: "dust_app_run_error",
-      message: `Error running DatabaseQuery app: no output found.`,
+    action: {
+      id: action.id,
+      type: "database_query_action",
+      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
+      dataSourceId: action.dataSourceId,
+      databaseId: action.databaseId,
+      output: action.output,
     },
   };
   return;

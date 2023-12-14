@@ -1,7 +1,7 @@
 import { DatabaseQueryActionType } from "front/assistant/actions/database_query";
 
-export type DatabaseQueryRunErrorEvent = {
-  type: "database_query_run_error";
+export type DatabaseQueryErrorEvent = {
+  type: "database_query_error";
   created: number;
   configurationId: string;
   messageId: string;
@@ -11,8 +11,8 @@ export type DatabaseQueryRunErrorEvent = {
   };
 };
 
-export type DatabaseQueryRunSuccessEvent = {
-  type: "database_query_run_success";
+export type DatabaseQuerySuccessEvent = {
+  type: "database_query_success";
   created: number;
   configurationId: string;
   messageId: string;

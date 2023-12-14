@@ -27,7 +27,7 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok, Result } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { runDatabaseQueryApp } from "@app/lib/api/assistant/actions/database_query";
+import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
 import {
@@ -290,7 +290,7 @@ export async function* runAgent(
         }
       }
     } else if (isDatabaseQueryConfiguration(configuration.action)) {
-      const eventStream = runDatabaseQueryApp({
+      const eventStream = runDatabaseQuery({
         auth,
         configuration,
         conversation,
@@ -299,7 +299,7 @@ export async function* runAgent(
       });
       for await (const event of eventStream) {
         switch (event.type) {
-          case "database_query_run_error":
+          case "database_query_error":
             yield {
               type: "agent_error",
               created: event.created,
@@ -311,7 +311,7 @@ export async function* runAgent(
               },
             };
             return;
-          case "database_query_run_success":
+          case "database_query_success":
             yield {
               type: "agent_action_success",
               created: event.created,
