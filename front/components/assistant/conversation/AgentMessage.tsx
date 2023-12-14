@@ -514,7 +514,7 @@ function ErrorMessage({
       </div>
       <div>
         <Button
-          variant="secondary"
+          variant="tertiary"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"

@@ -169,7 +169,7 @@ export function ConversationTitle({
                     size="sm"
                     labelVisible={false}
                     tooltipPosition="below"
-                    variant="secondaryWarning"
+                    variant="tertiary"
                     label="Delete Conversation"
                     icon={TrashIcon}
                   />
@@ -206,7 +206,7 @@ export function ConversationTitle({
                   size="sm"
                   label="Share"
                   icon={ArrowUpOnSquareIcon}
-                  variant="secondary"
+                  variant="tertiary"
                 />
               </div>
               <div className="flex sm:hidden">
@@ -215,7 +215,7 @@ export function ConversationTitle({
                   label="Share"
                   labelVisible={false}
                   icon={ArrowUpOnSquareIcon}
-                  variant="secondary"
+                  variant="tertiary"
                 />
               </div>
             </DropdownMenu.Button>
