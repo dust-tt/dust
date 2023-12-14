@@ -439,14 +439,6 @@ function SlackBotEnableView({
   );
 }
 
-const CONNECTOR_TYPE_TO_HELPER_TEXT: Record<ConnectorProvider, string> = {
-  notion: "Explore the Notion pages and databases Dust has access to.",
-  google_drive: "Google Drive folders and files Dust has access to.",
-  slack: "Slack channels synchronized with Dust:",
-  github: "GitHub repositories Dust has access to.",
-  intercom: "Intercom Help Centers synchronized with Dust:",
-};
-
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   slack: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
   notion:
@@ -655,7 +647,7 @@ function ManagedDataSourceView({
 
         {isAdmin && (
           <>
-            <div className="flex flex-row py-8">
+            <div className="flex flex-col pb-4 pt-8">
               <Button.List>
                 {(() => {
                   switch (connectorProvider) {
@@ -703,6 +695,12 @@ function ManagedDataSourceView({
                   }
                 })()}
               </Button.List>
+              <div className="pt-2 text-sm font-normal text-element-700">
+                Selected resources will be accessible to all members of the
+                workspace.
+                <br />
+                Changes may impact existing assistants.
+              </div>
             </div>
 
             {connectorProvider === "slack" && (
@@ -713,15 +711,12 @@ function ManagedDataSourceView({
           </>
         )}
 
-        <div className="pt-6">
+        <div className="pb-6 pt-2">
           <div className="border-t border-structure-200" />
         </div>
 
-        <div className="flex flex-col gap-y-8">
-          <Page.SectionHeader
-            title="Synchronized data"
-            description={CONNECTOR_TYPE_TO_HELPER_TEXT[connectorProvider]}
-          />
+        <div className="flex flex-col gap-y-3">
+          <Page.SectionHeader title="Synchronized data" />
 
           <div className="pb-8">
             <PermissionTree
