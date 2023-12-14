@@ -181,13 +181,15 @@ export async function fetchDatabaseChildPages({
     })
     .map((p) => p.id);
 
-  localLogger.info(
-    {
-      initial_count: filteredPageIds.length,
-      filtered_count: filteredPageIds.length - filteredPageIds.length,
-    },
-    "Filtered out databases already up to date."
-  );
+  if (filteredPageIds.length < pages.length) {
+    localLogger.info(
+      {
+        initial_count: pages.length,
+        filtered_count: pages.length - filteredPageIds.length,
+      },
+      "Filtered out database child pages already up to date."
+    );
+  }
 
   return {
     pageIds: filteredPageIds,
