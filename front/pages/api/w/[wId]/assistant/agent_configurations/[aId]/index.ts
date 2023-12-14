@@ -56,26 +56,23 @@ async function handler(
       },
     });
   }
+  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  if (
+    !assistant ||
+    (assistant.scope === "private" &&
+      assistant.versionAuthorId !== auth.user()?.id)
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The Assistant you're trying to access was not found.",
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":
-      const assistant = await getAgentConfiguration(
-        auth,
-        req.query.aId as string
-      );
-      if (
-        !assistant ||
-        (assistant.scope === "private" &&
-          assistant.versionAuthorId !== auth.user()?.id)
-      ) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to access was not found.",
-          },
-        });
-      }
       return res.status(200).json({
         agentConfiguration: assistant,
       });
@@ -93,24 +90,7 @@ async function handler(
         });
       }
 
-      const assistantToPatch = await getAgentConfiguration(
-        auth,
-        req.query.aId as string
-      );
-      if (
-        !assistantToPatch ||
-        (assistantToPatch.scope === "private" &&
-          assistantToPatch.versionAuthorId !== auth.user()?.id)
-      ) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to patch was not found.",
-          },
-        });
-      }
-      if (assistantToPatch.scope === "workspace" && !auth.isBuilder()) {
+      if (assistant.scope === "workspace" && !auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -120,7 +100,7 @@ async function handler(
         });
       }
       if (
-        assistantToPatch.scope !== "private" &&
+        assistant.scope !== "private" &&
         bodyValidation.right.assistant.scope === "private"
       ) {
         return apiError(req, res, {
@@ -141,24 +121,7 @@ async function handler(
         agentConfiguration: agentConfiguration,
       });
     case "DELETE":
-      const assistantToDelete = await getAgentConfiguration(
-        auth,
-        req.query.aId as string
-      );
-      if (
-        !assistantToDelete ||
-        (assistantToDelete.scope === "private" &&
-          assistantToDelete.versionAuthorId !== auth.user()?.id)
-      ) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to patch was not found.",
-          },
-        });
-      }
-      if (assistantToDelete.scope === "workspace" && !auth.isBuilder()) {
+      if (assistant.scope === "workspace" && !auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
