@@ -7,9 +7,7 @@ import {
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -61,8 +59,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message:
-              "The Assistant you're trying to duplicate was not found.",
+            message: "The Assistant you're trying to duplicate was not found.",
           },
         });
       }
@@ -83,7 +80,7 @@ async function handler(
           pictureUrl: agentConfiguration.pictureUrl,
           status: "active",
           scope: "private",
-          generation:  {
+          generation: {
             prompt: agentConfiguration.generation.prompt,
             model: agentConfiguration.generation.model,
             temperature: agentConfiguration.generation.temperature,
@@ -126,8 +123,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }
