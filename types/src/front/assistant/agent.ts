@@ -111,6 +111,8 @@ export type AgentConfigurationType = {
 
   sId: string;
   version: number;
+  // Global agents have a null authorId, others have a non-null authorId
+  versionAuthorId: ModelId | null;
 
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;

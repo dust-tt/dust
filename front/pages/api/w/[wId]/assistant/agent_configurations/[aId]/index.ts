@@ -46,33 +46,33 @@ async function handler(
       },
     });
   }
-
-  if (!auth.isBuilder()) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can access an Assistant.",
+          "Only users of the current workspace can access its assistants.",
+      },
+    });
+  }
+  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  if (
+    !assistant ||
+    (assistant.scope === "private" &&
+      assistant.versionAuthorId !== auth.user()?.id)
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The Assistant you're trying to access was not found.",
       },
     });
   }
 
   switch (req.method) {
     case "GET":
-      const assistant = await getAgentConfiguration(
-        auth,
-        req.query.aId as string
-      );
-      if (!assistant) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to access was not found.",
-          },
-        });
-      }
       return res.status(200).json({
         agentConfiguration: assistant,
       });
@@ -90,6 +90,27 @@ async function handler(
         });
       }
 
+      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only builders can modify workspace assistants.",
+          },
+        });
+      }
+      if (
+        assistant.scope !== "private" &&
+        bodyValidation.right.assistant.scope === "private"
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Non-private assistants cannot be set back to private.",
+          },
+        });
+      }
       const agentConfiguration = await createOrUpgradeAgentConfiguration(
         auth,
         bodyValidation.right,
@@ -100,6 +121,15 @@ async function handler(
         agentConfiguration: agentConfiguration,
       });
     case "DELETE":
+      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only builders can modify workspace assistants.",
+          },
+        });
+      }
       const archived = await archiveAgentConfiguration(
         auth,
         req.query.aId as string

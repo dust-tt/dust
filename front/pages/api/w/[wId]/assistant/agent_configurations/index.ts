@@ -89,13 +89,12 @@ async function handler(
         agentConfigurations,
       });
     case "POST":
-      if (!auth.isBuilder()) {
+      if (!auth.isUser()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "app_auth_error",
-            message:
-              "Only builders of the workspace users can update Assistants.",
+            message: "Only users of the workspace can create assistants.",
           },
         });
       }
@@ -109,6 +108,18 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+      if (
+        bodyValidation.right.assistant.scope === "workspace" &&
+        !auth.isBuilder()
+      ) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only builders can create workspace assistants.",
           },
         });
       }
