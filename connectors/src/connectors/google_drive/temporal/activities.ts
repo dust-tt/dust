@@ -361,6 +361,17 @@ async function syncOneFile(
       }
       if (typeof res.data === "string") {
         documentContent = res.data;
+      } else if (
+        typeof res.data === "object" ||
+        typeof res.data === "number" ||
+        typeof res.data === "boolean" ||
+        typeof res.data === "bigint"
+      ) {
+        // In case the contents returned by the file export matches a JS type,
+        // we need to convert it
+        //  e.g. a google presentation with just the number
+        // 1 in it, the export will return the number 1 instead of a string
+        documentContent = res.data?.toString();
       } else {
         logger.error(
           {
