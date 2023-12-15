@@ -183,6 +183,7 @@ export const subNavigationAssistants = ({
     },
   ];
 
+  /* TEMP DEACTIVATION UNTIL MERGE
   if (owner.role === "builder" || owner.role === "admin") {
     assistantMenus.push({
       id: "personal_assistants",
@@ -194,7 +195,7 @@ export const subNavigationAssistants = ({
         current === "personal_assistants" ? subMenuLabel : undefined,
       subMenu: current === "personal_assistants" ? subMenu : undefined,
     });
-  }
+  }*/
 
   nav.push({
     id: "assistants",
