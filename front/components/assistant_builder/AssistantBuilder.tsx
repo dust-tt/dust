@@ -1277,18 +1277,21 @@ export default function AssistantBuilder({
 
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
-              {slackDataSource && (
-                <SlackIntegration
-                  slackDataSource={slackDataSource}
-                  owner={owner}
-                  onSave={(channels) => {
-                    setEdited(true);
-                    setSelectedSlackChannels(channels);
-                  }}
-                  existingSelection={selectedSlackChannels}
-                  assistantHandle={builderState.handle ?? undefined}
-                />
-              )}
+              {slackDataSource &&
+                ["builder", "admin"].includes(owner.role) &&
+                builderState.scope !== "private" &&
+                initialBuilderState?.scope !== "private" && (
+                  <SlackIntegration
+                    slackDataSource={slackDataSource}
+                    owner={owner}
+                    onSave={(channels) => {
+                      setEdited(true);
+                      setSelectedSlackChannels(channels);
+                    }}
+                    existingSelection={selectedSlackChannels}
+                    assistantHandle={builderState.handle ?? undefined}
+                  />
+                )}
             </div>
           </div>
 
