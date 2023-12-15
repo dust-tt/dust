@@ -174,36 +174,38 @@ export default function AssistantsGallery({
           flow={flow === "workspace_add" ? "workspace" : "personal"}
         />
       )}
-      <Page.Vertical gap="xl" align="stretch">
-        <Tab tabs={tabs} />
-        <Searchbar
-          name="search"
-          placeholder="Search Assistants"
-          value={assistantSearch}
-          onChange={(s) => {
-            setAssistantSearch(s);
-          }}
-        />
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-            {filtered.map((a) => (
-              <AssistantPreview
-                key={a.sId}
-                owner={owner}
-                agentConfiguration={a}
-                onShowDetails={() => {
-                  setShowDetails(a);
-                }}
-                onUpdate={() => {
-                  void mutateAgentConfigurations();
-                }}
-                variant="gallery"
-                flow={flow === "workspace_add" ? "workspace" : "personal"}
-              />
-            ))}
+      <div className="pb-16">
+        <Page.Vertical gap="xl" align="stretch">
+          <Tab tabs={tabs} />
+          <Searchbar
+            name="search"
+            placeholder="Search Assistants"
+            value={assistantSearch}
+            onChange={(s) => {
+              setAssistantSearch(s);
+            }}
+          />
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+              {filtered.map((a) => (
+                <AssistantPreview
+                  key={a.sId}
+                  owner={owner}
+                  agentConfiguration={a}
+                  onShowDetails={() => {
+                    setShowDetails(a);
+                  }}
+                  onUpdate={() => {
+                    void mutateAgentConfigurations();
+                  }}
+                  variant="gallery"
+                  flow={flow === "workspace_add" ? "workspace" : "personal"}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      </Page.Vertical>
+        </Page.Vertical>
+      </div>
     </AppLayout>
   );
 }
