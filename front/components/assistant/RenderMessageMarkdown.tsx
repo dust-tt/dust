@@ -194,32 +194,32 @@ export function RenderMessageMarkdown({
             th: TableHeaderBlock,
             td: TableDataBlock,
             h1: ({ children }) => (
-              <h1 className="pb-2 pt-3 text-5xl font-semibold text-element-900">
+              <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
                 {children}
               </h1>
             ),
             h2: ({ children }) => (
-              <h2 className="pb-2 pt-3 text-4xl font-semibold text-element-900">
+              <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
                 {children}
               </h2>
             ),
             h3: ({ children }) => (
-              <h3 className="pb-2 pt-3 text-2xl font-semibold text-element-900">
+              <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
                 {children}
               </h3>
             ),
             h4: ({ children }) => (
-              <h4 className="pb-2 pt-2.5 text-lg font-bold text-element-900">
+              <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
                 {children}
               </h4>
             ),
             h5: ({ children }) => (
-              <h5 className="pb-1.5 pt-2 text-lg font-medium text-element-900">
+              <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
                 {children}
               </h5>
             ),
             h6: ({ children }) => (
-              <h6 className="pb-1.5 pt-2 text-base font-bold text-element-900">
+              <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
                 {children}
               </h6>
             ),
