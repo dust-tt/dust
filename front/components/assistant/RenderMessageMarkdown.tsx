@@ -194,32 +194,32 @@ export function RenderMessageMarkdown({
             th: TableHeaderBlock,
             td: TableDataBlock,
             h1: ({ children }) => (
-              <h1 className="pb-2 pt-3 text-5xl font-semibold text-element-900">
+              <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
                 {children}
               </h1>
             ),
             h2: ({ children }) => (
-              <h2 className="pb-2 pt-3 text-4xl font-semibold text-element-900">
+              <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
                 {children}
               </h2>
             ),
             h3: ({ children }) => (
-              <h3 className="pb-2 pt-3 text-2xl font-semibold text-element-900">
+              <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
                 {children}
               </h3>
             ),
             h4: ({ children }) => (
-              <h4 className="pb-2 pt-2.5 text-lg font-bold text-element-900">
+              <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
                 {children}
               </h4>
             ),
             h5: ({ children }) => (
-              <h5 className="pb-1.5 pt-2 text-lg font-medium text-element-900">
+              <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
                 {children}
               </h5>
             ),
             h6: ({ children }) => (
-              <h6 className="pb-1.5 pt-2 text-base font-bold text-element-900">
+              <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
                 {children}
               </h6>
             ),
@@ -519,22 +519,28 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 
 function UlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">{children}</ul>
+    <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
+      {children}
+    </ul>
   );
 }
 function OlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ol className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">{children}</ol>
+    <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
+      {children}
+    </ol>
   );
 }
 function LiBlock({ children }: { children: React.ReactNode }) {
-  return <li className="py-2 first:pt-0 last:pb-0">{children}</li>;
+  return (
+    <li className="py-2 text-element-800 first:pt-0 last:pb-0">{children}</li>
+  );
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <p className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
-    </div>
+    </p>
   );
 }
 
