@@ -122,8 +122,8 @@ export default function AssistantsGallery({
     },
     {
       label: "From Dust",
-      href: `/w/${owner.sId}/assistant/gallery?view=dust&flow=` + flow,
-      current: agentsGetView === "dust",
+      href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
+      current: agentsGetView === "global",
     },
   ];
 
@@ -171,6 +171,7 @@ export default function AssistantsGallery({
           onUpdate={() => {
             void mutateAgentConfigurations();
           }}
+          flow={flow === "workspace_add" ? "workspace" : "personal"}
         />
       )}
       <Page.Vertical gap="xl" align="stretch">
@@ -184,7 +185,7 @@ export default function AssistantsGallery({
           }}
         />
         <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
             {filtered.map((a) => (
               <AssistantPreview
                 key={a.sId}
@@ -197,6 +198,7 @@ export default function AssistantsGallery({
                   void mutateAgentConfigurations();
                 }}
                 variant="gallery"
+                flow={flow === "workspace_add" ? "workspace" : "personal"}
               />
             ))}
           </div>

@@ -103,7 +103,7 @@ export type AgentsGetViewType =
   | "all"
   | "workspace"
   | "published"
-  | "dust"
+  | "global"
   | "super_user";
 
 export type AgentConfigurationType = {

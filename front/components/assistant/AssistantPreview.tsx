@@ -1,11 +1,17 @@
 import { Avatar, Button, Chip, MoreIcon, PlusIcon } from "@dust-tt/sparkle";
-import { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  assertNever,
+  PostOrPatchAgentConfigurationRequestBody,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewVariant = "gallery" | "home";
+type AssistantPreviewFlow = "personal" | "workspace";
 
 interface AssistantPreviewProps {
   owner: WorkspaceType;
@@ -13,6 +19,7 @@ interface AssistantPreviewProps {
   onShowDetails: () => void;
   onUpdate: () => void;
   variant: AssistantPreviewVariant;
+  flow: AssistantPreviewFlow;
 }
 
 function getDescriptionClassName(variant: AssistantPreviewVariant): string {
@@ -39,9 +46,11 @@ export function AssistantPreview({
   onShowDetails,
   onUpdate,
   variant,
+  flow,
 }: AssistantPreviewProps) {
   const [isAdding, setIsAdding] = useState<boolean>(false);
-  // TODO(flav) Move notification logic to the caller. This maintains the purity of the component by decoupling it from side-effect operations.
+  // TODO(flav) Move notification logic to the caller. This maintains the purity of the component by
+  // decoupling it from side-effect operations.
   const sendNotification = useContext(SendNotificationsContext);
 
   const addToAgentList = async () => {
@@ -89,19 +98,92 @@ export function AssistantPreview({
     }
   };
 
-  const addButton = agentConfiguration.userListStatus !== "in-list" && (
-    <Button
-      variant="tertiary"
-      icon={PlusIcon}
-      disabled={isAdding}
-      size="xs"
-      label={"Add"}
-      onClick={addToAgentList}
-    />
-  );
+  const addToWorkspace = async () => {
+    setIsAdding(true);
+
+    const body: PostOrPatchAgentConfigurationRequestBody = {
+      assistant: {
+        name: agentConfiguration.name,
+        description: agentConfiguration.description,
+        pictureUrl: agentConfiguration.pictureUrl,
+        status: "active",
+        scope: "workspace",
+        action: agentConfiguration.action,
+        generation: agentConfiguration.generation,
+      },
+    };
+
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        sendNotification({
+          title: `Error adding Assistant`,
+          description: data.error.message,
+          type: "error",
+        });
+      } else {
+        sendNotification({
+          title: `Assistant added`,
+          type: "success",
+        });
+        onUpdate();
+      }
+    } catch (error) {
+      sendNotification({
+        title: `Error adding Assistant`,
+        description: error instanceof Error ? error.message : String(error),
+        type: "error",
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  let addButton = null;
+  switch (flow) {
+    case "personal":
+      addButton = agentConfiguration.userListStatus !== "in-list" && (
+        <Button
+          key="personall_add"
+          variant="tertiary"
+          icon={PlusIcon}
+          disabled={isAdding}
+          size="xs"
+          label={"Add"}
+          onClick={addToAgentList}
+        />
+      );
+      break;
+    case "workspace":
+      addButton = agentConfiguration.scope === "published" && (
+        <Button
+          key="workspace_add"
+          variant="tertiary"
+          icon={PlusIcon}
+          disabled={isAdding}
+          size="xs"
+          label={"Add to Workspace"}
+          onClick={addToWorkspace}
+        />
+      );
+      break;
+    default:
+      assertNever(flow);
+  }
 
   const showAssistantButton = (
     <Button
+      key="show_details"
       icon={MoreIcon}
       label={"Show Assistant"}
       labelVisible={false}
@@ -114,6 +196,7 @@ export function AssistantPreview({
   const defaultButtons = [
     showAssistantButton,
     // <Button
+    //     key="test"
     //     variant="tertiary"
     //     icon={PlayIcon}
     //     size="xs"
@@ -123,6 +206,32 @@ export function AssistantPreview({
     //     }}
     //   />,
   ];
+
+  let galleryChip = null;
+  switch (flow) {
+    case "personal":
+      galleryChip = agentConfiguration.userListStatus === "in-list" && (
+        <Chip
+          color="emerald"
+          size="xs"
+          label={agentConfiguration.scope === "global" ? "Active" : "Added"}
+        />
+      );
+      break;
+    case "workspace":
+      galleryChip = ["workspace", "global"].includes(
+        agentConfiguration.scope
+      ) && (
+        <Chip
+          color="emerald"
+          size="xs"
+          label={agentConfiguration.scope === "global" ? "Active" : "Added"}
+        />
+      );
+      break;
+    default:
+      assertNever(flow);
+  }
 
   // Define button groups with JSX elements, including default buttons
   const buttonGroups: Record<AssistantPreviewVariant, JSX.Element[]> = {
@@ -143,10 +252,7 @@ export function AssistantPreview({
           @{agentConfiguration.name}
         </div>
         <div className="flex flex-row gap-2">
-          {agentConfiguration.userListStatus === "in-list" &&
-            variant === "gallery" && (
-              <Chip color="emerald" size="xs" label="Added" />
-            )}
+          {galleryChip}
           <Button.List isWrapping={true}>{buttonsToRender}</Button.List>
         </div>
         <div className={getDescriptionClassName(variant)}>

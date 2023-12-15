@@ -1,8 +1,10 @@
 import {
   Avatar,
+  BookOpenIcon,
   Button,
   Cog6ToothIcon,
   ContextItem,
+  DropdownMenu,
   Page,
   PencilSquareIcon,
   PlusIcon,
@@ -10,20 +12,27 @@ import {
   RobotIcon,
   Searchbar,
   SliderToggle,
+  TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import {
+  DeleteAssistantDialog,
+  RemoveAssistantFromWorkspaceDialog,
+} from "@app/components/assistant/AssistantActions";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { subFilter } from "@app/lib/utils";
+import { classNames, subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -67,22 +76,30 @@ export default function WorkspaceAssistants({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
-  const { agentConfigurations, mutateAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "all",
-    });
+  const {
+    agentConfigurations: workspaceAgents,
+    mutateAgentConfigurations: mutateWorkspaceAgents,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "workspace",
+  });
+  const {
+    agentConfigurations: globalAgents,
+    mutateAgentConfigurations: mutateGlobalAgents,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "global",
+  });
+
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
 
-  const localAgents = agentConfigurations.filter((a) => a.scope !== "global");
-  const filtered = localAgents.filter((a) => {
+  const filtered = workspaceAgents.filter((a) => {
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
 
-  const dustAgents = agentConfigurations.filter((a) => a.scope === "global");
-  dustAgents.sort(compareAgentsForSort);
+  globalAgents.sort(compareAgentsForSort);
 
   const isBuilder = owner.role === "builder" || owner.role === "admin";
 
@@ -113,8 +130,13 @@ export default function WorkspaceAssistants({
       return;
     }
 
-    await mutateAgentConfigurations();
+    await mutateGlobalAgents();
   };
+
+  const [showDeletionModal, setShowDeletionModal] =
+    useState<AgentConfigurationType | null>(null);
+  const [showRemoveFromWorkspaceModal, setShowRemoveFromWorkspaceModal] =
+    useState<AgentConfigurationType | null>(null);
 
   return (
     <AppLayout
@@ -128,125 +150,219 @@ export default function WorkspaceAssistants({
         current: "workspace_assistants",
       })}
     >
+      {showDeletionModal && (
+        <DeleteAssistantDialog
+          owner={owner}
+          show={showDeletionModal !== null}
+          agentConfigurationId={showDeletionModal.sId}
+          onClose={() => {
+            setShowDeletionModal(null);
+          }}
+          onDelete={async () => {
+            await mutateWorkspaceAgents();
+          }}
+        />
+      )}
+      {showRemoveFromWorkspaceModal && (
+        <RemoveAssistantFromWorkspaceDialog
+          owner={owner}
+          show={showRemoveFromWorkspaceModal !== null}
+          agentConfiguration={showRemoveFromWorkspaceModal}
+          onClose={() => {
+            setShowRemoveFromWorkspaceModal(null);
+          }}
+          onRemove={async () => {
+            await mutateWorkspaceAgents();
+          }}
+        />
+      )}
+
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Manage workspace assistants"
           icon={RobotIcon}
-          description="Create, manage and deploy Assistants to your collaborators."
+          description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />
-        <Page.SectionHeader
-          title="Custom Assistants"
-          description="Build your Assistant, tailored to your needs. Write specific&nbsp;instructions, select&nbsp;specific data sources to&nbsp;get better&nbsp;answers."
-          action={{
-            label: "Create a new Assistant",
-            variant: "primary",
-            icon: PlusIcon,
-            size: "sm",
-            disabled: !isBuilder,
-            onClick: () => {
-              void router.push(`/w/${owner.sId}/builder/assistants/new`);
-            },
-          }}
-        />
-        <Searchbar
-          name="search"
-          placeholder="Assistant Name"
-          value={assistantSearch}
-          onChange={(s) => {
-            setAssistantSearch(s);
-          }}
-        />
-        <ContextItem.List className="text-element-900">
-          {filtered.map((agent) => (
-            <ContextItem
-              key={agent.sId}
-              title={`@${agent.name}`}
-              visual={
-                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-              }
-              action={
-                <Button
-                  variant="secondary"
-                  icon={PencilSquareIcon}
-                  label="Edit"
-                  size="sm"
-                  disabled={!isBuilder}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/assistants/${agent.sId}`
-                    );
+        <div className="flex flex-col gap-y-2">
+          <div className="flex flex-row gap-2">
+            <div className="flex w-full flex-1">
+              <div className="w-full">
+                <Searchbar
+                  name="search"
+                  placeholder="Assistant Name"
+                  value={assistantSearch}
+                  onChange={(s) => {
+                    setAssistantSearch(s);
                   }}
                 />
-              }
+              </div>
+            </div>
+            <Button.List>
+              <Link
+                href={`/w/${owner.sId}/assistant/gallery?flow=workspace_add`}
+              >
+                <Button
+                  variant="primary"
+                  icon={BookOpenIcon}
+                  label="Add from gallery"
+                />
+              </Link>
+              {workspaceAgents.length > 0 && (
+                <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                  <Button variant="primary" icon={PlusIcon} label="New" />
+                </Link>
+              )}
+            </Button.List>
+          </div>
+
+          {workspaceAgents.length > 0 ? (
+            <ContextItem.List className="text-element-900">
+              {filtered.map((agent) => (
+                <ContextItem
+                  key={agent.sId}
+                  title={`@${agent.name}`}
+                  visual={
+                    <Avatar
+                      visual={<img src={agent.pictureUrl} />}
+                      size={"sm"}
+                    />
+                  }
+                  action={
+                    <Button.List>
+                      <DropdownMenu>
+                        <DropdownMenu.Button>
+                          <Button
+                            variant="tertiary"
+                            icon={XMarkIcon}
+                            label="Remove from workspace"
+                            labelVisible={false}
+                            size="xs"
+                          />
+                        </DropdownMenu.Button>
+                        <DropdownMenu.Items origin="topRight" width={350}>
+                          <DropdownMenu.Item
+                            label="Delete the assistant"
+                            visual={null}
+                            icon={TrashIcon}
+                            onClick={() => {
+                              setShowDeletionModal(agent);
+                            }}
+                          />
+                          <DropdownMenu.Item
+                            label="Remove from workspace list"
+                            visual={null}
+                            icon={XMarkIcon}
+                            onClick={() => {
+                              setShowRemoveFromWorkspaceModal(agent);
+                            }}
+                          />
+                        </DropdownMenu.Items>
+                      </DropdownMenu>
+
+                      <Link
+                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
+                      >
+                        <Button
+                          variant="tertiary"
+                          icon={PencilSquareIcon}
+                          label="Edit"
+                          size="xs"
+                          disabled={!isBuilder}
+                        />
+                      </Link>
+                    </Button.List>
+                  }
+                >
+                  <ContextItem.Description>
+                    <div className="text-element-700">{agent.description}</div>
+                  </ContextItem.Description>
+                </ContextItem>
+              ))}
+            </ContextItem.List>
+          ) : (
+            <div
+              className={classNames(
+                "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+              )}
             >
-              <ContextItem.Description>
-                <div className="text-element-700">{agent.description}</div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
-        <Page.SectionHeader
-          title="Dust Assistants"
-          description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@notion" to&nbsp;target specifically knowledge on&nbsp;Notion…'
-        />
-        <ContextItem.List>
-          {dustAgents.map((agent) => (
-            <ContextItem
-              key={agent.sId}
-              title={`@${agent.name}`}
-              visual={
-                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-              }
-              action={
-                ["helper"].includes(agent.sId) ? null : agent.sId === "dust" ? (
-                  <Button
-                    variant="secondary"
-                    icon={Cog6ToothIcon}
-                    label="Manage"
-                    size="sm"
-                    disabled={!isBuilder}
-                    onClick={() => {
-                      void router.push(
-                        `/w/${owner.sId}/builder/assistants/dust`
-                      );
-                    }}
-                  />
-                ) : (
-                  <div className="relative">
-                    <SliderToggle
+              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                <Button
+                  disabled={!isBuilder}
+                  size="sm"
+                  label="Create an Assistant"
+                  variant="primary"
+                  icon={PlusIcon}
+                />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-y-2">
+          <Page.SectionHeader
+            title="Dust Assistants"
+            description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@gpt4" to&nbsp;interact with GPT-4 directly…'
+          />
+          <ContextItem.List>
+            {globalAgents.map((agent) => (
+              <ContextItem
+                key={agent.sId}
+                title={`@${agent.name}`}
+                visual={
+                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+                }
+                action={
+                  ["helper"].includes(agent.sId) ? null : agent.sId ===
+                    "dust" ? (
+                    <Button
+                      variant="secondary"
+                      icon={Cog6ToothIcon}
+                      label="Manage"
                       size="sm"
-                      onClick={async () => {
-                        await handleToggleAgentStatus(agent);
-                      }}
-                      selected={agent.status === "active"}
-                      disabled={
-                        agent.status === "disabled_missing_datasource" ||
-                        !isBuilder
-                      }
-                    />
-                    <Popup
-                      show={showDisabledFreeWorkspacePopup === agent.sId}
-                      className="absolute bottom-8 right-0"
-                      chipLabel={`Free plan`}
-                      description={`@${agent.name} is only available on our paid plans.`}
-                      buttonLabel="Check Dust plans"
-                      buttonClick={() => {
-                        void router.push(`/w/${owner.sId}/subscription`);
-                      }}
-                      onClose={() => {
-                        setShowDisabledFreeWorkspacePopup(null);
+                      disabled={!isBuilder}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/assistants/dust`
+                        );
                       }}
                     />
-                  </div>
-                )
-              }
-            >
-              <ContextItem.Description>
-                <div className="text-element-700">{agent.description}</div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
+                  ) : (
+                    <div className="relative">
+                      <SliderToggle
+                        size="sm"
+                        onClick={async () => {
+                          await handleToggleAgentStatus(agent);
+                        }}
+                        selected={agent.status === "active"}
+                        disabled={
+                          agent.status === "disabled_missing_datasource" ||
+                          !isBuilder
+                        }
+                      />
+                      <Popup
+                        show={showDisabledFreeWorkspacePopup === agent.sId}
+                        className="absolute bottom-8 right-0"
+                        chipLabel={`Free plan`}
+                        description={`@${agent.name} is only available on our paid plans.`}
+                        buttonLabel="Check Dust plans"
+                        buttonClick={() => {
+                          void router.push(`/w/${owner.sId}/subscription`);
+                        }}
+                        onClose={() => {
+                          setShowDisabledFreeWorkspacePopup(null);
+                        }}
+                      />
+                    </div>
+                  )
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-element-700">{agent.description}</div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        </div>
       </Page.Vertical>
     </AppLayout>
   );
