@@ -455,7 +455,7 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="transition: all 0.2s break-all font-semibold text-action-500 ease-in-out hover:text-action-400 hover:underline active:text-action-600"
+      className="break-all font-semibold text-action-500 transition-all duration-200 ease-in-out hover:text-action-400 hover:underline active:text-action-600"
     >
       {children}
     </a>
