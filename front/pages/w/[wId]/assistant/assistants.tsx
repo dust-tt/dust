@@ -214,7 +214,7 @@ export default function PersonalAssistants({
           onUpdate={() => {
             void mutateAgentConfigurations();
           }}
-          flow={"workspace"}
+          flow={view === "workspace" ? "workspace" : "personal"}
         />
       )}
 
@@ -305,6 +305,16 @@ export default function PersonalAssistants({
                         <>
                           {agent.scope !== "workspace" ? (
                             <Button.List>
+                              <Button
+                                key="show_details"
+                                icon={MoreIcon}
+                                label={"Show Assistant"}
+                                labelVisible={false}
+                                size="xs"
+                                variant="tertiary"
+                                onClick={() => setShowDetails(agent)}
+                              />
+
                               <Link
                                 href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=personal_assistants`}
                               >
