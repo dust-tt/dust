@@ -183,7 +183,7 @@ export default function WorkspaceAssistants({
           icon={RobotIcon}
           description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />
-        <div className="flex flex-col gap-y-2">
+        <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <div className="flex w-full flex-1">
               <div className="w-full">
@@ -208,7 +208,9 @@ export default function WorkspaceAssistants({
                 />
               </Link>
               {workspaceAgents.length > 0 && (
-                <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+                >
                   <Button variant="primary" icon={PlusIcon} label="New" />
                 </Link>
               )}
@@ -229,6 +231,17 @@ export default function WorkspaceAssistants({
                   }
                   action={
                     <Button.List>
+                      <Link
+                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
+                      >
+                        <Button
+                          variant="tertiary"
+                          icon={PencilSquareIcon}
+                          label="Edit"
+                          size="xs"
+                          disabled={!isBuilder}
+                        />
+                      </Link>
                       <DropdownMenu>
                         <DropdownMenu.Button>
                           <Button
@@ -258,18 +271,6 @@ export default function WorkspaceAssistants({
                           />
                         </DropdownMenu.Items>
                       </DropdownMenu>
-
-                      <Link
-                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
-                      >
-                        <Button
-                          variant="tertiary"
-                          icon={PencilSquareIcon}
-                          label="Edit"
-                          size="xs"
-                          disabled={!isBuilder}
-                        />
-                      </Link>
                     </Button.List>
                   }
                 >
@@ -285,7 +286,9 @@ export default function WorkspaceAssistants({
                 "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
               )}
             >
-              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+              >
                 <Button
                   disabled={!isBuilder}
                   size="sm"
@@ -296,7 +299,7 @@ export default function WorkspaceAssistants({
               </Link>
             </div>
           )}
-        </div>
+        </Page.Vertical>
 
         <div className="flex flex-col gap-y-2">
           <Page.SectionHeader

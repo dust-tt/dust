@@ -15,6 +15,8 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder, {
   AssistantBuilderInitialState,
+  BUILDER_FLOWS,
+  BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -40,6 +42,7 @@ export const getServerSideProps: GetServerSideProps<{
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
+  flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -56,7 +59,7 @@ export const getServerSideProps: GetServerSideProps<{
     !plan ||
     !user ||
     !subscription ||
-    !auth.isBuilder() ||
+    !auth.isUser() ||
     !context.params?.aId
   ) {
     return {
@@ -75,6 +78,11 @@ export const getServerSideProps: GetServerSideProps<{
     auth,
     context.params?.aId as string
   );
+  if (config?.scope === "workspace" && !auth.isBuilder()) {
+    return {
+      notFound: true,
+    };
+  }
 
   if (!config) {
     return {
@@ -177,6 +185,11 @@ export const getServerSideProps: GetServerSideProps<{
       };
     }
   }
+  const flow: BuilderFlow = BUILDER_FLOWS.includes(
+    context.query.flow as BuilderFlow
+  )
+    ? (context.query.flow as BuilderFlow)
+    : "my_assistants";
 
   return {
     props: {
@@ -191,6 +204,7 @@ export const getServerSideProps: GetServerSideProps<{
       dustAppConfiguration,
       databaseQueryConfiguration: databaseQueryConfiguration,
       agentConfiguration: config,
+      flow,
     },
   };
 };
@@ -207,6 +221,7 @@ export default function EditAssistant({
   dustAppConfiguration,
   databaseQueryConfiguration,
   agentConfiguration,
+  flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
@@ -241,6 +256,9 @@ export default function EditAssistant({
   if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
     actionMode = "DATABASE_QUERY";
   }
+  if (agentConfiguration.scope === "global") {
+    throw new Error("Cannot edit global assistant");
+  }
 
   return (
     <AssistantBuilder
@@ -251,12 +269,14 @@ export default function EditAssistant({
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}
       dustApps={dustApps}
+      flow={flow}
       initialBuilderState={{
         actionMode,
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
         databaseQueryConfiguration,
+        scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

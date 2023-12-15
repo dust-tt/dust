@@ -15,12 +15,14 @@ export function DeleteAssistantDialog({
   show,
   onClose,
   onDelete,
+  isPrivateAssistant,
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string;
   show: boolean;
   onClose: () => void;
   onDelete: () => void;
+  isPrivateAssistant?: boolean;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -29,7 +31,7 @@ export function DeleteAssistantDialog({
       isOpen={show}
       title={`Deleting assistant`}
       onCancel={onClose}
-      validateLabel="Delete for Everyone"
+      validateLabel={isPrivateAssistant ? "Delete" : "Delete for Everyone"}
       validateVariant="primaryWarning"
       onValidate={async () => {
         try {
@@ -68,8 +70,9 @@ export function DeleteAssistantDialog({
         <div className="font-bold">Are you sure you want to delete?</div>
 
         <div>
-          This will be permanent and delete the&nbsp;assistant
-          for&nbsp;everyone.
+          {isPrivateAssistant
+            ? "This will delete your personal assistant permanently."
+            : "This will be permanent and delete the assistant for everyone."}
         </div>
       </div>
     </Dialog>
@@ -94,7 +97,7 @@ export function RemoveAssistantFromListDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Remove @${agentConfiguration.name} from my list`}
+      title={`Remove from my list`}
       onCancel={onClose}
       validateLabel="Remove"
       validateVariant="primaryWarning"

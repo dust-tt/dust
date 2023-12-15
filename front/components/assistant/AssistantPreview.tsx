@@ -208,29 +208,31 @@ export function AssistantPreview({
   ];
 
   let galleryChip = null;
-  switch (flow) {
-    case "personal":
-      galleryChip = agentConfiguration.userListStatus === "in-list" && (
-        <Chip
-          color="emerald"
-          size="xs"
-          label={agentConfiguration.scope === "global" ? "Active" : "Added"}
-        />
-      );
-      break;
-    case "workspace":
-      galleryChip = ["workspace", "global"].includes(
-        agentConfiguration.scope
-      ) && (
-        <Chip
-          color="emerald"
-          size="xs"
-          label={agentConfiguration.scope === "global" ? "Active" : "Added"}
-        />
-      );
-      break;
-    default:
-      assertNever(flow);
+  if (variant === "gallery") {
+    switch (flow) {
+      case "personal":
+        galleryChip = agentConfiguration.userListStatus === "in-list" && (
+          <Chip
+            color="emerald"
+            size="xs"
+            label={agentConfiguration.scope === "global" ? "Active" : "Added"}
+          />
+        );
+        break;
+      case "workspace":
+        galleryChip = ["workspace", "global"].includes(
+          agentConfiguration.scope
+        ) && (
+          <Chip
+            color="emerald"
+            size="xs"
+            label={agentConfiguration.scope === "global" ? "Active" : "Added"}
+          />
+        );
+        break;
+      default:
+        assertNever(flow);
+    }
   }
 
   // Define button groups with JSX elements, including default buttons

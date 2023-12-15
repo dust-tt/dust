@@ -677,11 +677,28 @@ export async function createAgentConfiguration(
           }
         );
       }
+      const sId = agentConfigurationId || generateModelSId();
+
+      // If creating a new private or published agent, it should be in the user's list, so it
+      // appears in their 'assistants' page (at creation for assistants created published, or at
+      // publication once a private assistant gets published).
+      if (["private", "published"].includes(scope) && !agentConfigurationId) {
+        listStatusOverride = "in-list";
+        await AgentUserRelation.create(
+          {
+            workspaceId: owner.id,
+            agentConfiguration: sId,
+            userId: user.id,
+            listStatusOverride: "in-list",
+          },
+          { transaction: t }
+        );
+      }
 
       // Create Agent config.
       return AgentConfiguration.create(
         {
-          sId: agentConfigurationId || generateModelSId(),
+          sId,
           version,
           status,
           scope,

@@ -15,7 +15,11 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  AgentConfigurationScope,
+  ConnectorProvider,
+  DataSourceType,
+} from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
@@ -51,6 +55,7 @@ import {
   SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -148,6 +153,7 @@ type AssistantBuilderState = {
   databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
   handle: string | null;
   description: string | null;
+  scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string | null;
   avatarUrl: string | null;
   generationSettings: {
@@ -170,6 +176,7 @@ export type AssistantBuilderInitialState = {
   databaseQueryConfiguration: AssistantBuilderState["databaseQueryConfiguration"];
   handle: string;
   description: string;
+  scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string;
   avatarUrl: string;
   generationSettings: {
@@ -178,6 +185,8 @@ export type AssistantBuilderInitialState = {
   } | null;
 };
 
+export const BUILDER_FLOWS = ["workspace_assistants", "my_assistants"] as const;
+export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
@@ -188,6 +197,7 @@ type AssistantBuilderProps = {
   dustApps: AppType[];
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
+  flow: BuilderFlow;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -200,6 +210,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   dustAppConfiguration: null,
   databaseQueryConfiguration: null,
   handle: null,
+  scope: "private",
   description: null,
   instructions: null,
   avatarUrl: null,
@@ -235,15 +246,19 @@ export default function AssistantBuilder({
   dustApps,
   initialBuilderState,
   agentConfigurationId,
+  flow,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
   );
+  const defaultScope =
+    flow === "workspace_assistants" ? "workspace" : "private";
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
+    scope: initialBuilderState?.scope ?? defaultScope,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
       modelSettings:
@@ -358,6 +373,7 @@ export default function AssistantBuilder({
           initialBuilderState.databaseQueryConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
+        scope: initialBuilderState.scope ?? "private",
         instructions: initialBuilderState.instructions,
         avatarUrl: initialBuilderState.avatarUrl,
         generationSettings: initialBuilderState.generationSettings ?? {
@@ -615,7 +631,7 @@ export default function AssistantBuilder({
         pictureUrl: builderState.avatarUrl,
         description: builderState.description.trim(),
         status: "active",
-        scope: "workspace",
+        scope: builderState.scope,
         action: actionParam,
         generation: {
           prompt: builderState.instructions.trim(),
@@ -785,14 +801,18 @@ export default function AssistantBuilder({
             <AppLayoutSimpleCloseTitle
               title="Create an assistant"
               onClose={async () => {
-                await router.push(`/w/${owner.sId}/builder/assistants`);
+                if (flow === "workspace_assistants")
+                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                else await router.push(`/w/${owner.sId}/assistant/assistants`);
               }}
             />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title="Edit an Assistant"
               onCancel={async () => {
-                await router.push(`/w/${owner.sId}/builder/assistants`);
+                if (flow === "workspace_assistants")
+                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                else await router.push(`/w/${owner.sId}/assistant/assistants`);
               }}
               onSave={
                 submitEnabled
@@ -800,9 +820,14 @@ export default function AssistantBuilder({
                       setIsSavingOrDeleting(true);
                       submitForm()
                         .then(async () => {
-                          await router.push(
-                            `/w/${owner.sId}/builder/assistants`
-                          );
+                          if (flow === "workspace_assistants")
+                            await router.push(
+                              `/w/${owner.sId}/builder/assistants`
+                            );
+                          else
+                            await router.push(
+                              `/w/${owner.sId}/assistant/assistants`
+                            );
                           setIsSavingOrDeleting(false);
                         })
                         .catch((e) => {
@@ -895,7 +920,17 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
-
+          <TeamSharingSection
+            owner={owner}
+            initialScope={initialBuilderState?.scope ?? defaultScope}
+            newScope={builderState.scope}
+            setNewScope={(
+              scope: Exclude<AgentConfigurationScope, "global">
+            ) => {
+              setEdited(true);
+              setBuilderState((state) => ({ ...state, scope }));
+            }}
+          />
           <div className="mt-8 flex w-full flex-row items-start">
             <div className="flex w-full flex-col gap-4">
               <div className="text-2xl font-bold text-element-900">
