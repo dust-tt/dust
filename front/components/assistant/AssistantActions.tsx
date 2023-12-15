@@ -1,5 +1,8 @@
 import { Dialog } from "@dust-tt/sparkle";
-import { AgentConfigurationType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+} from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
@@ -132,6 +135,81 @@ export function RemoveAssistantFromListDialog({
       <div>
         This will remove the assistant from your list. You can add it back to
         your list at any time from the assistant gallery.
+      </div>
+    </Dialog>
+  );
+}
+
+export function RemoveAssistantFromWorkspaceDialog({
+  owner,
+  agentConfiguration,
+  show,
+  onClose,
+  onRemove,
+}: {
+  owner: WorkspaceType;
+  agentConfiguration: AgentConfigurationType;
+  show: boolean;
+  onClose: () => void;
+  onRemove: () => void;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+
+  return (
+    <Dialog
+      isOpen={show}
+      title={`Remove from Workspace list`}
+      onCancel={onClose}
+      validateLabel="Remove"
+      validateVariant="primaryWarning"
+      onValidate={async () => {
+        const body: PostOrPatchAgentConfigurationRequestBody = {
+          assistant: {
+            name: agentConfiguration.name,
+            description: agentConfiguration.description,
+            pictureUrl: agentConfiguration.pictureUrl,
+            status: "active",
+            scope: "published",
+            action: agentConfiguration.action,
+            generation: agentConfiguration.generation,
+          },
+        };
+
+        const res = await fetch(
+          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
+        if (!res.ok) {
+          const data = await res.json();
+          sendNotification({
+            title: `Error removing from Workspace list`,
+            description: data.error.message,
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: `Assistant removed from Workspace list`,
+            type: "success",
+          });
+          onRemove();
+        }
+
+        onClose();
+      }}
+    >
+      <div className="flex flex-col gap-2">
+        <div>
+          Removing the assistant from the workspace list will move it back to
+          the gallery. The assistant won't be automatically active for members
+          anymore.
+        </div>
+        <div>Any workspace member will be able to modify the assistant.</div>
       </div>
     </Dialog>
   );

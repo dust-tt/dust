@@ -17,7 +17,7 @@ import {
 } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import Link from "next/link";
 import { useState } from "react";
 
 import { RemoveAssistantFromListDialog } from "@app/components/assistant/AssistantActions";
@@ -71,8 +71,6 @@ export default function PersonalAssistants({
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -80,9 +78,11 @@ export default function PersonalAssistants({
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+
   const filtered = agentConfigurations.filter((a) => {
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
+
   const [showRemovalModal, setShowRemovalModal] =
     useState<AgentConfigurationType | null>(null);
 
@@ -114,66 +114,67 @@ export default function PersonalAssistants({
         )
       }
     >
+      {showRemovalModal && (
+        <RemoveAssistantFromListDialog
+          owner={owner}
+          agentConfiguration={showRemovalModal}
+          show={!!showRemovalModal}
+          onClose={() => setShowRemovalModal(null)}
+          onRemove={() => {
+            void mutateAgentConfigurations();
+          }}
+        />
+      )}
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Manage my assistants"
           icon={RobotIcon}
           description="Manage your list of assistants, create and discover new ones."
         />
-        <div className="flex flex-row gap-2">
-          <div className="flex w-full flex-1">
-            <div className="w-full">
-              <Searchbar
-                name="search"
-                placeholder="Assistant Name"
-                value={assistantSearch}
-                onChange={(s) => {
-                  setAssistantSearch(s);
-                }}
-              />
+        <div className="flex flex-col gap-y-2">
+          <div className="flex flex-row gap-2">
+            <div className="flex w-full flex-1">
+              <div className="w-full">
+                <Searchbar
+                  name="search"
+                  placeholder="Assistant Name"
+                  value={assistantSearch}
+                  onChange={(s) => {
+                    setAssistantSearch(s);
+                  }}
+                />
+              </div>
             </div>
+            <Button.List>
+              <Link
+                href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
+              >
+                <Button
+                  variant="primary"
+                  icon={BookOpenIcon}
+                  label="Add from gallery"
+                />
+              </Link>
+              <Tooltip label="Coming soon">
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  disabled={true}
+                  label="New"
+                />
+              </Tooltip>
+            </Button.List>
           </div>
-          <Button.List>
-            <Button
-              variant="primary"
-              icon={BookOpenIcon}
-              label="Add from gallery"
-              onClick={() => {
-                void router.push(
-                  `/w/${owner.sId}/assistant/gallery?flow=personal_add`
-                );
-              }}
-            />
-            <Tooltip label="Coming soon">
-              <Button
-                variant="primary"
-                icon={PlusIcon}
-                disabled={true}
-                label="New"
-              />
-            </Tooltip>
-          </Button.List>
-        </div>
-        <ContextItem.List className="text-element-900">
-          {filtered.map((agent) => (
-            <ContextItem
-              key={agent.sId}
-              title={`@${agent.name}`}
-              visual={
-                <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
-              }
-              action={
-                agent.scope !== "global" && (
-                  <>
-                    <RemoveAssistantFromListDialog
-                      owner={owner}
-                      agentConfiguration={agent}
-                      show={showRemovalModal === agent}
-                      onClose={() => setShowRemovalModal(null)}
-                      onRemove={() => {
-                        void mutateAgentConfigurations();
-                      }}
-                    />
+          <ContextItem.List className="text-element-900">
+            {filtered.map((agent) => (
+              <ContextItem
+                key={agent.sId}
+                title={`@${agent.name}`}
+                visual={
+                  <Avatar visual={<img src={agent.pictureUrl} />} size={"sm"} />
+                }
+                action={
+                  agent.scope !== "global" && (
                     <Button
                       variant="tertiary"
                       icon={XMarkIcon}
@@ -184,16 +185,16 @@ export default function PersonalAssistants({
                       }}
                       size="xs"
                     />
-                  </>
-                )
-              }
-            >
-              <ContextItem.Description>
-                <div className="text-element-700">{agent.description}</div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
+                  )
+                }
+              >
+                <ContextItem.Description>
+                  <div className="text-element-700">{agent.description}</div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        </div>
       </Page.Vertical>
     </AppLayout>
   );

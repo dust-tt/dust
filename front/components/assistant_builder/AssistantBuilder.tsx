@@ -556,7 +556,7 @@ export default function AssistantBuilder({
           type: "retrieval_configuration",
           query:
             builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
-          timeframe:
+          relativeTimeFrame:
             builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
               ? {
                   duration: builderState.timeFrame.value,
