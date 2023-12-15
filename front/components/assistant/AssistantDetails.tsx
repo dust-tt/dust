@@ -29,18 +29,22 @@ import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/m
 
 import { DeleteAssistantDialog } from "./AssistantActions";
 
+type AssistantDetailsFlow = "personal" | "workspace";
+
 export function AssistantDetails({
   owner,
   assistant,
   show,
   onClose,
   onUpdate,
+  flow,
 }: {
   owner: WorkspaceType;
   assistant: AgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onUpdate: () => void;
+  flow: AssistantDetailsFlow;
 }) {
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
@@ -96,6 +100,7 @@ export function AssistantDetails({
           detailsModalClose={onClose}
           onUpdate={onUpdate}
           onClose={onClose}
+          flow={flow}
         />
         <DescriptionSection />
         <InstructionsSection />
@@ -187,12 +192,14 @@ function ButtonsSection({
   detailsModalClose,
   onUpdate,
   onClose,
+  flow,
 }: {
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
   onClose: () => void;
+  flow: AssistantDetailsFlow;
 }) {
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
 
@@ -201,9 +208,9 @@ function ButtonsSection({
       ["builder", "admin"].includes(owner.role)) ||
     ["published", "private"].includes(agentConfiguration.scope);
 
-  const canAddRemoveList = ["published", "workspace"].includes(
-    agentConfiguration.scope
-  );
+  const canAddRemoveList =
+    ["published", "workspace"].includes(agentConfiguration.scope) &&
+    flow !== "workspace";
 
   const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);

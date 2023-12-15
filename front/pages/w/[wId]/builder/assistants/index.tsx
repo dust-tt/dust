@@ -184,7 +184,7 @@ export default function WorkspaceAssistants({
           description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />
         <div className="flex flex-col gap-y-2">
-          {filtered.length > 0 && (
+          {workspaceAgents.length > 0 && (
             <div className="flex flex-row gap-2">
               <div className="flex w-full flex-1">
                 <div className="w-full">
@@ -215,7 +215,7 @@ export default function WorkspaceAssistants({
             </div>
           )}
 
-          {filtered.length > 0 ? (
+          {workspaceAgents.length > 0 ? (
             <ContextItem.List className="text-element-900">
               {filtered.map((agent) => (
                 <ContextItem
@@ -289,7 +289,7 @@ export default function WorkspaceAssistants({
                 <Button
                   disabled={!isBuilder}
                   size="sm"
-                  label="Create your first Assistant"
+                  label="Create an Assistant"
                   variant="primary"
                   icon={PlusIcon}
                 />

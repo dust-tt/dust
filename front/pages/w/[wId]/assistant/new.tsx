@@ -227,6 +227,7 @@ export default function AssistantNew({
               onUpdate={async () => {
                 await mutateAgentConfigurations();
               }}
+              flow="personal"
             />
           )}
           {!conversation ? (
