@@ -58,8 +58,7 @@ function getDatabaseQueryAppSpecification() {
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation." +
-          "When requesting to retrieve specific information, especially names or titles, approach the query regardless of case sensitivity unless specified otherwise.",
+          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation.",
         type: "string" as const,
       },
     ],
