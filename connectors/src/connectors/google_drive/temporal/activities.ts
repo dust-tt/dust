@@ -361,6 +361,19 @@ async function syncOneFile(
       }
       if (typeof res.data === "string") {
         documentContent = res.data;
+      } else {
+        logger.error(
+          {
+            connectorId: connectorId,
+            documentId,
+            fileMimeType: file.mimeType,
+            fileId: file.id,
+            title: file.name,
+            resDataTypeOf: typeof res.data,
+            type: "export",
+          },
+          "Unexpected GDrive export response type"
+        );
       }
     } catch (e) {
       logger.error(
@@ -430,6 +443,19 @@ async function syncOneFile(
           return false;
         }
         documentContent = Buffer.from(res.data).toString("utf-8");
+      } else {
+        logger.error(
+          {
+            connectorId: connectorId,
+            documentId,
+            fileMimeType: file.mimeType,
+            fileId: file.id,
+            title: file.name,
+            resDataTypeOf: typeof res.data,
+            type: "download",
+          },
+          "Unexpected GDrive export response type"
+        );
       }
     } else if (file.mimeType === "application/pdf") {
       const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
@@ -478,6 +504,16 @@ async function syncOneFile(
   );
 
   if (documentContent === undefined) {
+    logger.error(
+      {
+        connectorId: connectorId,
+        documentId,
+        fileMimeType: file.mimeType,
+        fileId: file.id,
+        title: file.name,
+      },
+      "documentContent is undefined"
+    );
     throw new Error("documentContent is undefined");
   }
   const tags = [`title:${file.name}`];
