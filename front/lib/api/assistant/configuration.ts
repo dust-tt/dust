@@ -422,7 +422,7 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
-  // All view (published + workspace agents).
+  // All view (published + workspace agents + globals).
   if (agentsGetView === "all") {
     const allAgentsSequelizeQuery = {
       ...baseAgentsSequelizeQuery,

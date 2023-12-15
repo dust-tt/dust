@@ -184,36 +184,36 @@ export default function WorkspaceAssistants({
           description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />
         <div className="flex flex-col gap-y-2">
-          {workspaceAgents.length > 0 && (
-            <div className="flex flex-row gap-2">
-              <div className="flex w-full flex-1">
-                <div className="w-full">
-                  <Searchbar
-                    name="search"
-                    placeholder="Assistant Name"
-                    value={assistantSearch}
-                    onChange={(s) => {
-                      setAssistantSearch(s);
-                    }}
-                  />
-                </div>
+          <div className="flex flex-row gap-2">
+            <div className="flex w-full flex-1">
+              <div className="w-full">
+                <Searchbar
+                  name="search"
+                  placeholder="Assistant Name"
+                  value={assistantSearch}
+                  onChange={(s) => {
+                    setAssistantSearch(s);
+                  }}
+                />
               </div>
-              <Button.List>
-                <Link
-                  href={`/w/${owner.sId}/assistant/gallery?flow=workspace_add`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={BookOpenIcon}
-                    label="Add from gallery"
-                  />
-                </Link>
+            </div>
+            <Button.List>
+              <Link
+                href={`/w/${owner.sId}/assistant/gallery?flow=workspace_add`}
+              >
+                <Button
+                  variant="primary"
+                  icon={BookOpenIcon}
+                  label="Add from gallery"
+                />
+              </Link>
+              {workspaceAgents.length > 0 && (
                 <Link href={`/w/${owner.sId}/builder/assistants/new`}>
                   <Button variant="primary" icon={PlusIcon} label="New" />
                 </Link>
-              </Button.List>
-            </div>
-          )}
+              )}
+            </Button.List>
+          </div>
 
           {workspaceAgents.length > 0 ? (
             <ContextItem.List className="text-element-900">
