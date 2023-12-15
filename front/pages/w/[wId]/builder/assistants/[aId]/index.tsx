@@ -189,7 +189,7 @@ export const getServerSideProps: GetServerSideProps<{
     context.query.flow as BuilderFlow
   )
     ? (context.query.flow as BuilderFlow)
-    : "my_assistants";
+    : "personal_assistants";
 
   return {
     props: {

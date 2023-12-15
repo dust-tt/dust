@@ -232,7 +232,7 @@ export default function WorkspaceAssistants({
                   action={
                     <Button.List>
                       <Link
-                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
+                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=workspace_assistants`}
                       >
                         <Button
                           variant="tertiary"

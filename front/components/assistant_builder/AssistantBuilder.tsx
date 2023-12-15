@@ -185,7 +185,7 @@ export type AssistantBuilderInitialState = {
   } | null;
 };
 
-export const BUILDER_FLOWS = ["workspace_assistants", "my_assistants"] as const;
+export const BUILDER_FLOWS = ["workspace_assistants", "personal_assistants"] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
   user: UserType;

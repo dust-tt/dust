@@ -259,7 +259,7 @@ export default function PersonalAssistants({
                 {view !== "workspace" && viewAssistants.length > 0 && (
                   <Tooltip label="Create your own assistant">
                     <Link
-                      href={`/w/${owner.sId}/builder/assistants/new?flow=my_assistants`}
+                      href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
                     >
                       <Button variant="primary" icon={PlusIcon} label="New" />
                     </Link>
@@ -286,7 +286,7 @@ export default function PersonalAssistants({
                           {agent.scope !== "workspace" ? (
                             <Button.List>
                               <Link
-                                href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=my_assistants`}
+                                href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=personal_assistants`}
                               >
                                 <Button
                                   variant="tertiary"
@@ -341,7 +341,7 @@ export default function PersonalAssistants({
                 )}
               >
                 <Link
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=my_assistants`}
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
                 >
                   <Button
                     size="sm"
