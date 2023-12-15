@@ -2,7 +2,7 @@ import { CoreAPI, CoreAPIDatabase } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -15,19 +15,15 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetDatabaseResponseBody | { success: true }>
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { auth } = await Authenticator.fromKey(
-    keyRes.value,
+  const session = await getSession(req, res);
+  const auth = await Authenticator.fromSession(
+    session,
     req.query.wId as string
   );
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (!owner || !plan || !auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -65,31 +61,6 @@ async function handler(
   }
   const coreAPI = new CoreAPI(logger);
   switch (req.method) {
-    case "GET":
-      const databaseRes = await coreAPI.getDatabase({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        databaseId,
-      });
-      if (databaseRes.isErr()) {
-        logger.error({
-          dataSourcename: dataSource.name,
-          workspaceId: owner.id,
-          error: databaseRes.error,
-        });
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to get database.",
-          },
-        });
-      }
-
-      const { database } = databaseRes.value;
-
-      return res.status(200).json({ database });
-
     case "DELETE":
       const deleteRes = await coreAPI.deleteDatabase({
         projectId: dataSource.dustAPIProjectId,
@@ -121,8 +92,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or DELETE is expected.",
+          message: "The method passed is not supported, DELETE is expected.",
         },
       });
   }
