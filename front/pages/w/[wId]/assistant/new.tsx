@@ -271,6 +271,7 @@ export default function AssistantNew({
                                   await mutateAgentConfigurations();
                                 }}
                                 variant="home"
+                                flow="personal"
                               />
                             </a>
                           ))}
