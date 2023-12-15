@@ -32,6 +32,9 @@ export type DatabaseQueryActionType = {
   dataSourceWorkspaceId: string;
   dataSourceId: string;
   databaseId: string;
+  params: {
+    [key: string]: string | number | boolean;
+  };
   output: {
     [key: string]: string | number | boolean;
   } | null;

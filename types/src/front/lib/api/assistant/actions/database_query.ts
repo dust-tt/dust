@@ -18,3 +18,11 @@ export type DatabaseQuerySuccessEvent = {
   messageId: string;
   action: DatabaseQueryActionType;
 };
+
+export type DatabaseQueryParamsEvent = {
+  type: "database_query_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DatabaseQueryActionType;
+};

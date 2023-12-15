@@ -5,6 +5,7 @@ import {
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
+  DatabaseQueryParamsEvent,
   GenerationTokensEvent,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
@@ -187,7 +188,8 @@ export async function* runAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | DatabaseQueryParamsEvent,
   void
 > {
   // First run the action if a configuration is present.
@@ -299,6 +301,9 @@ export async function* runAgent(
       });
       for await (const event of eventStream) {
         switch (event.type) {
+          case "database_query_params":
+            yield event;
+            break;
           case "database_query_error":
             yield {
               type: "agent_error",

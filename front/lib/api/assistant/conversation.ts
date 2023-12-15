@@ -1955,6 +1955,7 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
+      case "database_query_params":
         yield event;
         break;
       case "generation_tokens":

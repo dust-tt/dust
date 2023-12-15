@@ -22,11 +22,14 @@ export default function DatabaseQueryAction({
 }) {
   const [outputVisible, setOutputVisible] = useState(false);
 
+  const output = databaseQueryAction.output;
+  const query = output?.query;
+
   return (
     <>
       <div className="grid grid-cols-[auto,1fr] gap-2">
         <div className="grid-cols-auto grid items-center">
-          {!databaseQueryAction.output ? (
+          {!output || !query ? (
             <div>
               <Spinner size="sm" />
             </div>
@@ -36,7 +39,7 @@ export default function DatabaseQueryAction({
             </div>
           )}
         </div>
-        {!!databaseQueryAction.output && (
+        {!!query && (
           <div className="row-span-1 select-none">
             <div
               className="cursor-pointer"
@@ -45,7 +48,7 @@ export default function DatabaseQueryAction({
               }}
             >
               <Chip color="purple">
-                {databaseQueryAction.output.query}
+                {query}
                 <Icon
                   visual={outputVisible ? ChevronDownIcon : ChevronRightIcon}
                   size="xs"
@@ -78,7 +81,7 @@ export default function DatabaseQueryAction({
               language={"json"}
               PreTag="div"
             >
-              {JSON.stringify(databaseQueryAction.output, null, 2)}
+              {JSON.stringify(output, null, 2)}
             </SyntaxHighlighter>
           </div>
         )}

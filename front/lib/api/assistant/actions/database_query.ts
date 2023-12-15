@@ -5,6 +5,7 @@ import {
   ConversationType,
   DatabaseQueryActionType,
   DatabaseQueryErrorEvent,
+  DatabaseQueryParamsEvent,
   DatabaseQuerySuccessEvent,
   DustProdActionRegistry,
   Err,
@@ -52,20 +53,13 @@ function getDatabaseQueryAppSpecification() {
   return {
     name: "query_database",
     description:
-      "Query the database associated to answer the question provided by the user." +
-      "Generate the best SQL query (from the question received and the database schema), execute the query, and retrieve the result.",
+      "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
     inputs: [
       {
         name: "question",
         description:
-          "The string containing the raw question from the user about the data on the linked database. " +
-          "It should include all relevant information to build the best SQL query to fetch the data they need to retrieve. " +
-          "Always unaccent the user's query, replace (eg replace é/è with e etc.)" +
-          "When requesting to retrieve specific information, especially names or titles, it's crucial to approach the query with flexibility in terms of text case. " +
-          "For instance, if the query is, 'Is there a cat named Soupinou in the database?', " +
-          "you should comprehensively search the database for the name 'Soupinou' without being restricted by text case sensitivity, unless explicitly instructed otherwise. " +
-          "This means the search should include variations like 'soupinou', 'SOUPINOU', or any other case combinations. " +
-          "This approach ensures a thorough search and accurate results, accommodating the possibility of case variations in the database entries.",
+          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation." +
+          "When requesting to retrieve specific information, especially names or titles, approach the query regardless of case sensitivity unless specified otherwise.",
         type: "string" as const,
       },
     ],
@@ -125,7 +119,9 @@ export async function* runDatabaseQuery({
   conversation: ConversationType;
   userMessage: UserMessageType;
   agentMessage: AgentMessageType;
-}): AsyncGenerator<DatabaseQueryErrorEvent | DatabaseQuerySuccessEvent> {
+}): AsyncGenerator<
+  DatabaseQueryErrorEvent | DatabaseQuerySuccessEvent | DatabaseQueryParamsEvent
+> {
   // Checking authorizations
   const owner = auth.workspace();
   if (!owner) {
@@ -171,6 +167,33 @@ export async function* runDatabaseQuery({
     return;
   }
   const input = inputRes.value;
+  let output: Record<string, string | boolean | number> = {};
+
+  // Creating action
+  const action = await AgentDatabaseQueryAction.create({
+    dataSourceWorkspaceId: c.dataSourceWorkspaceId,
+    dataSourceId: c.dataSourceId,
+    databaseId: c.databaseId,
+    databaseQueryConfigurationId: configuration.sId,
+    params: input,
+    output,
+  });
+
+  yield {
+    type: "database_query_params",
+    created: Date.now(),
+    configurationId: configuration.sId,
+    messageId: agentMessage.sId,
+    action: {
+      id: action.id,
+      type: "database_query_action",
+      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
+      dataSourceId: action.dataSourceId,
+      databaseId: action.databaseId,
+      params: action.params,
+      output: action.output,
+    },
+  };
 
   // Generating configuration
   const config = cloneBaseConfig(
@@ -212,10 +235,29 @@ export async function* runDatabaseQuery({
     return;
   }
 
-  let output: Record<string, string | boolean | number> = {};
-
   const { eventStream } = res.value;
   for await (const event of eventStream) {
+    if (event.type === "error") {
+      logger.error(
+        {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          error: event.content.message,
+        },
+        "Error running query_database app"
+      );
+      yield {
+        type: "database_query_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "database_query_error",
+          message: `Error running DatabaseQuery app: ${event.content.message}`,
+        },
+      };
+      return;
+    }
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
 
@@ -235,7 +277,7 @@ export async function* runDatabaseQuery({
           messageId: agentMessage.sId,
           error: {
             code: "database_query_error",
-            message: `Error getting execution from DatabaseQuery app: ${e.error}`,
+            message: `Error executing DatabaseQuery app: ${e.error}`,
           },
         };
         return;
@@ -247,14 +289,11 @@ export async function* runDatabaseQuery({
     }
   }
 
-  const action = await AgentDatabaseQueryAction.create({
-    dataSourceWorkspaceId: c.dataSourceWorkspaceId,
-    dataSourceId: c.dataSourceId,
-    databaseId: c.databaseId,
-    databaseQueryConfigurationId: configuration.sId,
-    params: input,
+  // Updating action
+  await action.update({
     output,
   });
+
   yield {
     type: "database_query_success",
     created: Date.now(),
@@ -266,6 +305,7 @@ export async function* runDatabaseQuery({
       dataSourceWorkspaceId: action.dataSourceWorkspaceId,
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
+      params: action.params,
       output: action.output,
     },
   };

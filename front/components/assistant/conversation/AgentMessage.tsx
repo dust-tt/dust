@@ -127,6 +127,7 @@ export function AgentMessage({
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
+      case "database_query_params":
         setStreamedAgentMessage((m) => {
           return { ...m, action: event.action };
         });
