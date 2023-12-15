@@ -208,7 +208,9 @@ export default function WorkspaceAssistants({
                 />
               </Link>
               {workspaceAgents.length > 0 && (
-                <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+                >
                   <Button variant="primary" icon={PlusIcon} label="New" />
                 </Link>
               )}
@@ -285,7 +287,9 @@ export default function WorkspaceAssistants({
                 "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
               )}
             >
-              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+              >
                 <Button
                   disabled={!isBuilder}
                   size="sm"
