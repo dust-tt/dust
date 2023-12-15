@@ -214,6 +214,81 @@ impl SqliteWorker {
         }
     }
 
+    pub async fn delete_database_rows(&self, database_unique_id: &str) -> Result<()> {
+        let worker_url = self.url();
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri(format!("{}/databases/{}", worker_url, database_unique_id))
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to delete database rows on sqlite worker. Status: {}",
+                s
+            )),
+        }
+    }
+
+    pub async fn delete_database_table_rows(
+        &self,
+        database_unique_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
+        let worker_url = self.url();
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri(format!(
+                "{}/databases/{}/tables/{}",
+                worker_url, database_unique_id, table_id
+            ))
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to delete database table rows on sqlite worker. Status: {}",
+                s
+            )),
+        }
+    }
+
+    pub async fn delete_row(
+        &self,
+        database_unique_id: &str,
+        table_id: &str,
+        row_id: &str,
+    ) -> Result<()> {
+        let worker_url = self.url();
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri(format!(
+                "{}/databases/{}/tables/{}/rows/{}",
+                worker_url, database_unique_id, table_id, row_id
+            ))
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to delete row on sqlite worker. Status: {}",
+                s
+            )),
+        }
+    }
+
     pub fn url(&self) -> &str {
         &self.url
     }
