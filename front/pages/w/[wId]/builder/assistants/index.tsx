@@ -183,7 +183,7 @@ export default function WorkspaceAssistants({
           icon={RobotIcon}
           description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />
-        <div className="flex flex-col gap-y-2">
+        <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <div className="flex w-full flex-1">
               <div className="w-full">
@@ -231,6 +231,17 @@ export default function WorkspaceAssistants({
                   }
                   action={
                     <Button.List>
+                      <Link
+                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
+                      >
+                        <Button
+                          variant="tertiary"
+                          icon={PencilSquareIcon}
+                          label="Edit"
+                          size="xs"
+                          disabled={!isBuilder}
+                        />
+                      </Link>
                       <DropdownMenu>
                         <DropdownMenu.Button>
                           <Button
@@ -260,18 +271,6 @@ export default function WorkspaceAssistants({
                           />
                         </DropdownMenu.Items>
                       </DropdownMenu>
-
-                      <Link
-                        href={`/w/${owner.sId}/builder/assistants/${agent.sId}`}
-                      >
-                        <Button
-                          variant="tertiary"
-                          icon={PencilSquareIcon}
-                          label="Edit"
-                          size="xs"
-                          disabled={!isBuilder}
-                        />
-                      </Link>
                     </Button.List>
                   }
                 >
@@ -300,7 +299,7 @@ export default function WorkspaceAssistants({
               </Link>
             </div>
           )}
-        </div>
+        </Page.Vertical>
 
         <div className="flex flex-col gap-y-2">
           <Page.SectionHeader
