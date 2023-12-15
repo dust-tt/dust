@@ -18,6 +18,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoPath: string;
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
+    limitations: string | null;
     isNested: boolean;
   }
 > = {
@@ -27,7 +28,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/notion_32x32.png",
     description:
-      "Authorize granular access to your company's Notion workspace, by top-level pages.",
+      "Authorize granular access to your company's Notion workspace, by top-level pages. External files and content behind links are not indexed.",
+    limitations: null,
     logoComponent: NotionLogo,
     isNested: true,
   },
@@ -37,7 +39,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/google_drive_32x32.png",
     description:
-      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files.",
+      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexation.",
+    limitations: "Files with more than 750KB of extracted text are ignored.",
     logoComponent: DriveLogo,
     isNested: true,
   },
@@ -47,7 +50,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/slack_32x32.png",
     description:
-      "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
+      "Authorize granular access to your Slack workspace on a channel-by-channel basis. External files and content behind links are not indexed.",
+    limitations: null,
     logoComponent: SlackLogo,
     isNested: false,
   },
@@ -57,7 +61,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isBuilt: true,
     logoPath: "/static/github_black_32x32.png",
     description:
-      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. We're working on adding support for code indexing.",
+      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation is coming soon.",
+    limitations: null,
     logoComponent: GithubLogo,
     isNested: false,
   },
@@ -68,6 +73,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoPath: "/static/intercom_32x32.png",
     description:
       "Authorize granular access to your company's Intercom Help Centers. Dust does not access your conversations.",
+    limitations: null,
     logoComponent: IntercomLogo,
     isNested: false,
   },

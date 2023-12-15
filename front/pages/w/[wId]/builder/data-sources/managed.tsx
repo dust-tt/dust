@@ -57,6 +57,7 @@ type DataSourceIntegration = {
   isBuilt: boolean;
   connectorProvider: ConnectorProvider;
   description: string;
+  limitations: string | null;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
 };
@@ -165,6 +166,7 @@ export const getServerSideProps: GetServerSideProps<{
       connectorProvider: integration.connectorProvider,
       isBuilt: integration.isBuilt,
       description: integration.description,
+      limitations: integration.limitations,
       dataSourceName: mc.dataSourceName,
       connector: mc.connector,
       fetchConnectorError: mc.fetchConnectorError,
@@ -207,6 +209,7 @@ export const getServerSideProps: GetServerSideProps<{
         connectorProvider: integration.connectorProvider,
         isBuilt: integration.isBuilt,
         description: integration.description,
+        limitations: integration.limitations,
         dataSourceName: null,
         connector: null,
         fetchConnectorError: false,
@@ -491,6 +494,18 @@ export default function DataSourcesView({
                                     <div className="flex flex-col gap-y-4 p-4">
                                       <div className="flex flex-col gap-y-2">
                                         <div className="grow text-sm font-medium text-element-800">
+                                          Important
+                                        </div>
+                                        <div className="text-sm font-normal text-element-700">
+                                          File and folders shared with Dust will
+                                          be made available to the entire
+                                          workspace irrespective of their
+                                          granular permissions on Google Drive.
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-col gap-y-2">
+                                        <div className="grow text-sm font-medium text-element-800">
                                           Disclosure
                                         </div>
                                         <div className="text-sm font-normal text-element-700">
@@ -644,35 +659,18 @@ export default function DataSourcesView({
                 <ContextItem.Description>
                   <div className="text-sm text-element-700">
                     {ds.description}
+                    {ds.limitations && (
+                      <div className="text-element-700">
+                        <span className="font-bold">Limitation</span>:{" "}
+                        {ds.limitations}
+                      </div>
+                    )}
                   </div>
                 </ContextItem.Description>
               </ContextItem>
             );
           })}
         </ContextItem.List>
-        <Page.Vertical>
-          <Page.SectionHeader title="Limitations" />
-          <Page.P>
-            <span className="font-bold">Slack</span>: Dust doesn't take into
-            account external files or content behind a url.
-          </Page.P>
-          <Page.P>
-            <span className="font-bold">Notion</span>: Dust doesn't take into
-            account external files or content behind a url.
-          </Page.P>
-          <Page.P>
-            <span className="font-bold">Google Drive</span>: Dust doesn't take
-            into account files with more than 750Kb of extracted text. By
-            default, Dust doesn't take into account .pdf files. Email us at
-            team@dust.tt to include .pdf files.
-          </Page.P>
-          <Page.P>
-            <span className="font-bold">Github</span>: Dust only gathers data
-            from issues, discussions, and top-level pull requests comments (but
-            not in-code comments in pull requests, nor the actual source code or
-            other Github data).
-          </Page.P>
-        </Page.Vertical>
       </Page.Vertical>
     </AppLayout>
   );
