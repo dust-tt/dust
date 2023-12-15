@@ -154,6 +154,7 @@ export function AssistantPreview({
     case "personal":
       addButton = agentConfiguration.userListStatus !== "in-list" && (
         <Button
+          key="personall_add"
           variant="tertiary"
           icon={PlusIcon}
           disabled={isAdding}
@@ -166,6 +167,7 @@ export function AssistantPreview({
     case "workspace":
       addButton = agentConfiguration.scope === "published" && (
         <Button
+          key="workspace_add"
           variant="tertiary"
           icon={PlusIcon}
           disabled={isAdding}
@@ -181,6 +183,7 @@ export function AssistantPreview({
 
   const showAssistantButton = (
     <Button
+      key="show_details"
       icon={MoreIcon}
       label={"Show Assistant"}
       labelVisible={false}
@@ -193,6 +196,7 @@ export function AssistantPreview({
   const defaultButtons = [
     showAssistantButton,
     // <Button
+    //     key="test"
     //     variant="tertiary"
     //     icon={PlayIcon}
     //     size="xs"
