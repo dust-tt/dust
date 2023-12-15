@@ -142,7 +142,7 @@ export const subNavigationConversations = ({
       menus: [
         {
           id: "personal_assistants",
-          label: "My Assistants",
+          label: "Assistants",
           icon: RobotIcon,
           href: `/w/${owner.sId}/assistant/assistants`,
           current: current === "personal_assistants",
