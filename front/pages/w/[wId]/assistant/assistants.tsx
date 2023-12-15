@@ -8,19 +8,21 @@ import {
   PlusIcon,
   RobotIcon,
   Searchbar,
+  SliderToggle,
   Tab,
   Tooltip,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
+  AgentUserListStatus,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import {
   DeleteAssistantDialog,
@@ -32,9 +34,11 @@ import {
   subNavigationAssistants,
   subNavigationConversations,
 } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, subFilter } from "@app/lib/utils";
+import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -91,7 +95,7 @@ export default function PersonalAssistants({
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "list",
+      agentsGetView: view === "personal" ? "list" : "workspace",
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -126,6 +130,47 @@ export default function PersonalAssistants({
       current: view === "workspace",
     },
   ];
+
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const updateAgentUserListStatus = async (
+    agentConfiguration: AgentConfigurationType,
+    listStatus: AgentUserListStatus
+  ) => {
+    const body: PostAgentListStatusRequestBody = {
+      agentId: agentConfiguration.sId,
+      listStatus,
+    };
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/members/me/agent_list_status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!res.ok) {
+      const data = await res.json();
+      sendNotification({
+        title: `Error ${
+          listStatus === "in-list" ? "adding" : "removing"
+        } Assistant`,
+        description: data.error.message,
+        type: "error",
+      });
+    } else {
+      sendNotification({
+        title: `Assistant ${
+          listStatus === "in-list" ? "added to" : "removed from"
+        } your list`,
+        type: "success",
+      });
+      await mutateAgentConfigurations();
+    }
+  };
 
   return (
     <AppLayout
@@ -200,19 +245,21 @@ export default function PersonalAssistants({
                 </div>
               </div>
               <Button.List>
-                <Link
-                  href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={BookOpenIcon}
-                    label="Add from gallery"
-                  />
-                </Link>
+                {view !== "workspace" && (
+                  <Link
+                    href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
+                  >
+                    <Button
+                      variant="primary"
+                      icon={BookOpenIcon}
+                      label="Add from gallery"
+                    />
+                  </Link>
+                )}
                 {view !== "workspace" && viewAssistants.length > 0 && (
                   <Tooltip label="Create your own assistant">
                     <Link
-                      href={`/w/${owner.sId}/builder/assistants/new?flow=my_assistants`}
+                      href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
                     >
                       <Button variant="primary" icon={PlusIcon} label="New" />
                     </Link>
@@ -235,32 +282,47 @@ export default function PersonalAssistants({
                     }
                     action={
                       agent.scope !== "global" && (
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=my_assistants`}
-                          >
-                            <Button
-                              variant="tertiary"
-                              icon={PencilSquareIcon}
-                              label="Edit"
-                              size="xs"
-                              disabled={agent.scope === "workspace"}
+                        <>
+                          {agent.scope !== "workspace" ? (
+                            <Button.List>
+                              <Link
+                                href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=personal_assistants`}
+                              >
+                                <Button
+                                  variant="tertiary"
+                                  icon={PencilSquareIcon}
+                                  label="Edit"
+                                  size="xs"
+                                />
+                              </Link>
+                              <Button
+                                variant="tertiary"
+                                icon={XMarkIcon}
+                                label="Remove from my list"
+                                labelVisible={false}
+                                onClick={() => {
+                                  agent.scope === "private"
+                                    ? setShowDeletionModal(agent)
+                                    : setShowRemovalModal(agent);
+                                }}
+                                size="xs"
+                              />
+                            </Button.List>
+                          ) : (
+                            <SliderToggle
+                              size="sm"
+                              onClick={async () => {
+                                await updateAgentUserListStatus(
+                                  agent,
+                                  agent.userListStatus === "in-list"
+                                    ? "not-in-list"
+                                    : "in-list"
+                                );
+                              }}
+                              selected={agent.userListStatus === "in-list"}
                             />
-                          </Link>
-
-                          <Button
-                            variant="tertiary"
-                            icon={XMarkIcon}
-                            label="Remove from my list"
-                            labelVisible={false}
-                            onClick={() => {
-                              agent.scope === "private"
-                                ? setShowDeletionModal(agent)
-                                : setShowRemovalModal(agent);
-                            }}
-                            size="xs"
-                          />
-                        </div>
+                          )}
+                        </>
                       )
                     }
                   >
@@ -279,7 +341,7 @@ export default function PersonalAssistants({
                 )}
               >
                 <Link
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=my_assistants`}
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
                 >
                   <Button
                     size="sm"

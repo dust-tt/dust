@@ -185,7 +185,10 @@ export type AssistantBuilderInitialState = {
   } | null;
 };
 
-export const BUILDER_FLOWS = ["workspace_assistants", "my_assistants"] as const;
+export const BUILDER_FLOWS = [
+  "workspace_assistants",
+  "personal_assistants",
+] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
   user: UserType;
@@ -983,62 +986,63 @@ export default function AssistantBuilder({
             <div className="text-2xl font-bold text-element-900">
               Data Sources & Actions
             </div>
-            {configurableDataSources.length === 0 && (
-              <ContentMessage title="You don't have any active data source or connection">
-                <div className="flex flex-col gap-y-3">
-                  <div>
-                    Assistants can incorporate existing company data and
-                    knowledge to formulate answers.
+            {configurableDataSources.length === 0 &&
+              Object.keys(builderState.dataSourceConfigurations).length ===
+                0 && (
+                <ContentMessage title="You don't have any active data source">
+                  <div className="flex flex-col gap-y-3">
+                    <div>
+                      Assistants can incorporate existing company data and
+                      knowledge to formulate answers.
+                    </div>
+                    <div>
+                      There are two types of data sources:{" "}
+                      <strong>Folders</strong> (Files you can upload) and{" "}
+                      <strong>Connections</strong> (Automatically synchronized
+                      with platforms like Notion, Slack, ...).
+                    </div>
+                    {(() => {
+                      switch (owner.role) {
+                        case "admin":
+                          return (
+                            <div>
+                              <strong>
+                                Visit the "Connections" and "Folders" sections
+                                in the Assistants panel to add new data sources.
+                              </strong>
+                            </div>
+                          );
+                        case "builder":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins can activate Connections.
+                                <br />
+                                You can add Data Sources by visiting "Folders"
+                                in the Assistants panel.
+                              </strong>
+                            </div>
+                          );
+                        case "user":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins and Builders can activate
+                                Connections or create Folders.
+                              </strong>
+                            </div>
+                          );
+                        case "none":
+                          return <></>;
+                        default:
+                          ((x: never) => {
+                            throw new Error("Unkonwn role " + x);
+                          })(owner.role);
+                      }
+                    })()}
                   </div>
-                  <div>
-                    There are two types of knowledge sources:{" "}
-                    <strong>Data Sources</strong> (Files you can upload) and{" "}
-                    <strong>Connections</strong> (Automatically synchronized
-                    with platforms like Notion, Slack, ...).
-                  </div>
-                  {(() => {
-                    switch (owner.role) {
-                      case "admin":
-                        return (
-                          <div>
-                            <strong>
-                              Visit the "Data Sources" and "Connections"
-                              sections in your workspace admin panel to add new
-                              sources of knowledge.
-                            </strong>
-                          </div>
-                        );
-                      case "builder":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins can activate Connections.
-                              <br />
-                              You can Data Sources by visiting "Data Source" in
-                              your workspace admin panel.
-                            </strong>
-                          </div>
-                        );
-                      case "user":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins and Builders can activate Connections
-                              and Data Sources.
-                            </strong>
-                          </div>
-                        );
-                      case "none":
-                        return <></>;
-                      default:
-                        ((x: never) => {
-                          throw new Error("Unkonwn role " + x);
-                        })(owner.role);
-                    }
-                  })()}
-                </div>
-              </ContentMessage>
-            )}
+                </ContentMessage>
+              )}
             <div>
               You can ask the assistant to perform actions before answering,
               like{" "}
