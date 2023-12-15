@@ -214,7 +214,7 @@ export default function PersonalAssistants({
           onUpdate={() => {
             void mutateAgentConfigurations();
           }}
-          flow={view === "workspace" ? "workspace" : "personal"}
+          flow="personal"
         />
       )}
 
