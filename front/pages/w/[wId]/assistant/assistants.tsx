@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   Button,
   ContextItem,
+  MoreIcon,
   Page,
   PencilSquareIcon,
   PlusIcon,
@@ -28,6 +29,7 @@ import {
   DeleteAssistantDialog,
   RemoveAssistantFromListDialog,
 } from "@app/components/assistant/AssistantActions";
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -99,6 +101,9 @@ export default function PersonalAssistants({
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
+    null
+  );
 
   const viewAssistants = agentConfigurations.filter((a) => {
     if (view === "personal") {
@@ -198,6 +203,21 @@ export default function PersonalAssistants({
         )
       }
     >
+      {showDetails && (
+        <AssistantDetails
+          owner={owner}
+          assistant={showDetails}
+          show={showDetails !== null}
+          onClose={() => {
+            setShowDetails(null);
+          }}
+          onUpdate={() => {
+            void mutateAgentConfigurations();
+          }}
+          flow="personal"
+        />
+      )}
+
       {showRemovalModal && (
         <RemoveAssistantFromListDialog
           owner={owner}
@@ -285,6 +305,16 @@ export default function PersonalAssistants({
                         <>
                           {agent.scope !== "workspace" ? (
                             <Button.List>
+                              <Button
+                                key="show_details"
+                                icon={MoreIcon}
+                                label={"Show Assistant"}
+                                labelVisible={false}
+                                size="xs"
+                                variant="tertiary"
+                                onClick={() => setShowDetails(agent)}
+                              />
+
                               <Link
                                 href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=personal_assistants`}
                               >
@@ -309,18 +339,30 @@ export default function PersonalAssistants({
                               />
                             </Button.List>
                           ) : (
-                            <SliderToggle
-                              size="sm"
-                              onClick={async () => {
-                                await updateAgentUserListStatus(
-                                  agent,
-                                  agent.userListStatus === "in-list"
-                                    ? "not-in-list"
-                                    : "in-list"
-                                );
-                              }}
-                              selected={agent.userListStatus === "in-list"}
-                            />
+                            <Button.List>
+                              <Button
+                                key="show_details"
+                                icon={MoreIcon}
+                                label={"Show Assistant"}
+                                labelVisible={false}
+                                size="xs"
+                                variant="tertiary"
+                                onClick={() => setShowDetails(agent)}
+                              />
+
+                              <SliderToggle
+                                size="sm"
+                                onClick={async () => {
+                                  await updateAgentUserListStatus(
+                                    agent,
+                                    agent.userListStatus === "in-list"
+                                      ? "not-in-list"
+                                      : "in-list"
+                                  );
+                                }}
+                                selected={agent.userListStatus === "in-list"}
+                              />
+                            </Button.List>
                           )}
                         </>
                       )
