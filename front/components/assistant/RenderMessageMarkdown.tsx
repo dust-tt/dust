@@ -193,6 +193,41 @@ export function RenderMessageMarkdown({
             tbody: TableBodyBlock,
             th: TableHeaderBlock,
             td: TableDataBlock,
+            h1: ({ children }) => (
+              <h1 className="pb-2 pt-3 text-5xl font-semibold text-element-900">
+                {children}
+              </h1>
+            ),
+            h2: ({ children }) => (
+              <h2 className="pb-2 pt-3 text-4xl font-semibold text-element-900">
+                {children}
+              </h2>
+            ),
+            h3: ({ children }) => (
+              <h3 className="pb-2 pt-3 text-2xl font-semibold text-element-900">
+                {children}
+              </h3>
+            ),
+            h4: ({ children }) => (
+              <h4 className="pb-2 pt-2.5 text-lg font-bold text-element-900">
+                {children}
+              </h4>
+            ),
+            h5: ({ children }) => (
+              <h5 className="pb-1.5 pt-2 text-lg font-medium text-element-900">
+                {children}
+              </h5>
+            ),
+            h6: ({ children }) => (
+              <h6 className="pb-1.5 pt-2 text-base font-bold text-element-900">
+                {children}
+              </h6>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-semibold text-element-900">
+                {children}
+              </strong>
+            ),
             // @ts-expect-error - `mention` is a custom tag, currently refused by
             // react-markdown types although the functionality is supported
             mention: ({ agentName, agentSId }) => {
@@ -420,7 +455,7 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="break-all text-blue-500 hover:underline"
+      className="break-all font-semibold text-action-500 transition-all duration-200 ease-in-out hover:text-action-400 hover:underline active:text-action-600"
     >
       {children}
     </a>
@@ -497,7 +532,7 @@ function LiBlock({ children }: { children: React.ReactNode }) {
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="whitespace-pre-wrap py-2 first:pt-0 last:pb-0">
+    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
     </div>
   );
