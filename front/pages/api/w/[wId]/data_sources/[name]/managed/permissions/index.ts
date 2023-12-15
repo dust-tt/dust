@@ -82,7 +82,7 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
