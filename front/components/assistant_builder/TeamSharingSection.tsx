@@ -1,9 +1,9 @@
 import {
+  BookOpenIcon,
   Button,
   CheckCircleIcon,
   Dialog,
   Icon,
-  ImageIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
@@ -48,7 +48,7 @@ export function TeamSharingSection({
               variant="secondary"
               size="sm"
               label="Publish to Assistant Gallery"
-              icon={ImageIcon}
+              icon={BookOpenIcon}
               onClick={() => setShowPublishDialog(true)}
             />
           </div>
