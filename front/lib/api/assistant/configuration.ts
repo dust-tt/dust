@@ -540,7 +540,7 @@ export async function getAgentConfigurations(
     const [agents, mentions, globalAgents] = await Promise.all([
       getAgentConfigurationsForQuery(conversationAgentsSequelizeQuery),
       getConversationMentions(agentsGetView.conversationId),
-      getGlobalAgentConfigurations({activeOnly: true}),
+      getGlobalAgentConfigurations({ activeOnly: true }),
     ]);
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
     const localAgents = agents.filter((a) => {
