@@ -519,22 +519,28 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 
 function UlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">{children}</ul>
+    <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
+      {children}
+    </ul>
   );
 }
 function OlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ol className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">{children}</ol>
+    <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
+      {children}
+    </ol>
   );
 }
 function LiBlock({ children }: { children: React.ReactNode }) {
-  return <li className="py-2 first:pt-0 last:pb-0">{children}</li>;
+  return (
+    <li className="py-2 text-element-800 first:pt-0 last:pb-0">{children}</li>
+  );
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <p className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
-    </div>
+    </p>
   );
 }
 
