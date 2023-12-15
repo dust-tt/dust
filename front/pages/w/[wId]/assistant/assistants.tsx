@@ -245,15 +245,17 @@ export default function PersonalAssistants({
                 </div>
               </div>
               <Button.List>
-                <Link
-                  href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={BookOpenIcon}
-                    label="Add from gallery"
-                  />
-                </Link>
+                {view !== "workspace" && (
+                  <Link
+                    href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
+                  >
+                    <Button
+                      variant="primary"
+                      icon={BookOpenIcon}
+                      label="Add from gallery"
+                    />
+                  </Link>
+                )}
                 {view !== "workspace" && viewAssistants.length > 0 && (
                   <Tooltip label="Create your own assistant">
                     <Link
