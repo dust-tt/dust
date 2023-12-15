@@ -127,7 +127,7 @@ export function AssistantPreview({
       if (!res.ok) {
         const data = await res.json();
         sendNotification({
-          title: `Error addin Assistant`,
+          title: `Error adding Assistant`,
           description: data.error.message,
           type: "error",
         });
