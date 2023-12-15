@@ -38,6 +38,7 @@ pub mod providers {
     }
     pub mod anthropic;
     pub mod textsynth;
+    pub mod vertex_ai;
 }
 pub mod http {
     pub mod request;
