@@ -10,7 +10,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),
-    t.literal("dust"),
+    t.literal("global"),
     t.literal("super_user"),
     t.literal("all"),
     t.undefined,

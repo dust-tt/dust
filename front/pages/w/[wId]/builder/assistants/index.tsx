@@ -84,11 +84,11 @@ export default function WorkspaceAssistants({
     agentsGetView: "workspace",
   });
   const {
-    agentConfigurations: dustAgents,
-    mutateAgentConfigurations: mutateDustAgents,
+    agentConfigurations: globalAgents,
+    mutateAgentConfigurations: mutateGlobalAgents,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "dust",
+    agentsGetView: "global",
   });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -99,7 +99,7 @@ export default function WorkspaceAssistants({
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
 
-  dustAgents.sort(compareAgentsForSort);
+  globalAgents.sort(compareAgentsForSort);
 
   const isBuilder = owner.role === "builder" || owner.role === "admin";
 
@@ -130,7 +130,7 @@ export default function WorkspaceAssistants({
       return;
     }
 
-    await mutateDustAgents();
+    await mutateGlobalAgents();
   };
 
   const [showDeletionModal, setShowDeletionModal] =
@@ -304,7 +304,7 @@ export default function WorkspaceAssistants({
             description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@gpt4" to&nbsp;interact with GPT-4 directly…'
           />
           <ContextItem.List>
-            {dustAgents.map((agent) => (
+            {globalAgents.map((agent) => (
               <ContextItem
                 key={agent.sId}
                 title={`@${agent.name}`}

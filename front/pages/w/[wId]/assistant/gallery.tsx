@@ -122,8 +122,8 @@ export default function AssistantsGallery({
     },
     {
       label: "From Dust",
-      href: `/w/${owner.sId}/assistant/gallery?view=dust&flow=` + flow,
-      current: agentsGetView === "dust",
+      href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
+      current: agentsGetView === "global",
     },
   ];
 

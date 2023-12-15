@@ -341,10 +341,14 @@ export async function getAgentConfigurations(
     ],
   };
 
-  const getGlobalAgentConfigurations = async (filterActive: boolean) =>
+  const getGlobalAgentConfigurations = async ({
+    activeOnly,
+  }: {
+    activeOnly: boolean;
+  }) =>
     (await getGlobalAgents(auth)).filter(
       (a) =>
-        (!filterActive || a.status === "active") &&
+        (!activeOnly || a.status === "active") &&
         (!agentPrefix ||
           a.name.toLowerCase().startsWith(agentPrefix.toLowerCase()))
     );
@@ -417,7 +421,7 @@ export async function getAgentConfigurations(
     return (
       await Promise.all([
         getAgentConfigurationsForQuery(baseAgentsSequelizeQuery),
-        getGlobalAgentConfigurations(true),
+        getGlobalAgentConfigurations({ activeOnly: true }),
       ])
     ).flat();
   }
@@ -434,7 +438,7 @@ export async function getAgentConfigurations(
     return (
       await Promise.all([
         getAgentConfigurationsForQuery(allAgentsSequelizeQuery),
-        getGlobalAgentConfigurations(false),
+        getGlobalAgentConfigurations({ activeOnly: true }),
       ])
     ).flat();
   }
@@ -473,9 +477,12 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
-  if (agentsGetView === "dust") {
+  if (agentsGetView === "global") {
     return (
-      await Promise.all([[], getGlobalAgentConfigurations(false)])
+      await Promise.all([
+        [],
+        getGlobalAgentConfigurations({ activeOnly: false }),
+      ])
     ).flat();
   }
 
@@ -507,7 +514,10 @@ export async function getAgentConfigurations(
     );
 
     return (
-      await Promise.all([listAgentsPromise, getGlobalAgentConfigurations(true)])
+      await Promise.all([
+        listAgentsPromise,
+        getGlobalAgentConfigurations({ activeOnly: true }),
+      ])
     ).flat();
   }
 
@@ -530,7 +540,7 @@ export async function getAgentConfigurations(
     const [agents, mentions, globalAgents] = await Promise.all([
       getAgentConfigurationsForQuery(conversationAgentsSequelizeQuery),
       getConversationMentions(agentsGetView.conversationId),
-      getGlobalAgentConfigurations(true),
+      getGlobalAgentConfigurations({activeOnly: true}),
     ]);
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
     const localAgents = agents.filter((a) => {
