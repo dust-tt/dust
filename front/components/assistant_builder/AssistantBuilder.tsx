@@ -1425,7 +1425,7 @@ function SlackIntegration({
             }}
             expandable={false}
             fullySelected={false}
-            filterPermission="none"
+            filterPermission="write"
           />
         </Page>
       </Modal>
