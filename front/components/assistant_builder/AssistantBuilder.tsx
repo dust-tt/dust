@@ -1425,6 +1425,8 @@ function SlackIntegration({
             }}
             expandable={false}
             fullySelected={false}
+            // Write are the channels we're in. Builders can get write but cannot get "none"
+            // (reserved to admins).
             filterPermission="write"
           />
         </Page>
