@@ -1,8 +1,8 @@
 import {
+  assertNever,
   ConnectorPermission,
   ConnectorResource,
   ConnectorsAPI,
-  assertNever,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
