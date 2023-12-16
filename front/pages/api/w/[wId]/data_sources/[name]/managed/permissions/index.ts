@@ -1,4 +1,5 @@
 import {
+  assertNever,
   ConnectorPermission,
   ConnectorResource,
   ConnectorsAPI,
@@ -82,16 +83,17 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can view the permissions of a data source.",
+          "Only users of the current workspace can view the permissions of a data source.",
       },
     });
   }
+
   const connectorsAPI = new ConnectorsAPI(logger);
 
   switch (req.method) {
@@ -114,6 +116,43 @@ async function handler(
             filterPermission = "write";
             break;
         }
+      }
+
+      switch (filterPermission) {
+        case "read":
+          // We let users get the read  permissions of a connector
+          // `read` is used for data source selection when creating personal assitsants
+          break;
+        case "write":
+          // We let builders get the write permissions of a connector.
+          // `write` is used for selection of default slack channel in the workspace assistant
+          // builder.
+          if (!auth.isBuilder()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only builders of the current workspace can view non 'write' permissions of a data source.",
+              },
+            });
+          }
+          break;
+        case undefined:
+          // Only admins can browse "all" the resources of a connector.
+          if (!auth.isAdmin()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only admins of the current workspace can view all permissions of a data source.",
+              },
+            });
+          }
+          break;
+        default:
+          assertNever(filterPermission);
       }
 
       const permissionsRes = await connectorsAPI.getConnectorPermissions({
