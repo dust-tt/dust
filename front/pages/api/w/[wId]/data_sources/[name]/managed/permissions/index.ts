@@ -82,16 +82,17 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can view the permissions of a data source.",
+          "Only users of the current workspace can view the permissions of a data source.",
       },
     });
   }
+
   const connectorsAPI = new ConnectorsAPI(logger);
 
   switch (req.method) {
@@ -113,6 +114,19 @@ async function handler(
           case "write":
             filterPermission = "write";
             break;
+        }
+      }
+
+      if (filterPermission !== "read") {
+        if (!auth.isAdmin()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "data_source_auth_error",
+              message:
+                "Only admins of the current workspace can view non 'read' permissions of a data source.",
+            },
+          });
         }
       }
 
