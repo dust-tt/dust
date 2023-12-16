@@ -133,7 +133,7 @@ async function handler(
               api_error: {
                 type: "data_source_auth_error",
                 message:
-                  "Only builders of the current workspace can view non 'write' permissions of a data source.",
+                  "Only builders of the current workspace can view 'write' permissions of a data source.",
               },
             });
           }
