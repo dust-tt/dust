@@ -110,6 +110,38 @@ impl GoogleVertexAiLLM {
         }
     }
 
+    pub fn model_endpoint(&self) -> Result<String> {
+        match self.uri {
+            Some(ref uri) => Ok(format!(
+                "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
+                uri, self.id
+            )),
+            None => Err(anyhow!("URI not set")),
+        }
+    }
+
+    pub async fn access_token(&self) -> Result<String> {
+        match self.service_account_json {
+            None => Err(anyhow!("Service account JSON not set")),
+            Some(ref service_account_json) => {
+                let service_account_key: ServiceAccountKey =
+                    serde_json::from_str(service_account_json)?;
+
+                let auth = ServiceAccountAuthenticator::builder(service_account_key)
+                    .build()
+                    .await?;
+
+                let scopes = &["https://www.googleapis.com/auth/cloud-platform"];
+                let token = auth.token(scopes).await?;
+
+                match token.token() {
+                    Some(t) => Ok(t.into()),
+                    None => Err(anyhow!("Error getting access token from Google")),
+                }
+            }
+        }
+    }
+
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
         cl100k_base_singleton()
     }
@@ -194,14 +226,9 @@ impl LLM for GoogleVertexAiLLM {
             }
         }
 
-        let api_key =
-            get_access_token(self.service_account_json.as_ref().unwrap().as_str()).await?;
+        let api_key = self.access_token().await?;
 
-        let uri = format!(
-            "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
-            self.uri.clone().unwrap(),
-            self.id()
-        );
+        let uri = self.model_endpoint()?;
 
         let c = streamed_chat_completion(
             uri,
@@ -286,14 +313,9 @@ impl LLM for GoogleVertexAiLLM {
             ))?;
         }
 
-        let api_key =
-            get_access_token(self.service_account_json.as_ref().unwrap().as_str()).await?;
+        let api_key = self.access_token().await?;
 
-        let uri = format!(
-            "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
-            self.uri.clone().unwrap(),
-            self.id()
-        );
+        let uri = self.model_endpoint()?;
 
         let c = streamed_chat_completion(
             uri,
@@ -538,20 +560,4 @@ pub async fn streamed_chat_completion(
     });
 
     Ok(completion)
-}
-
-pub async fn get_access_token(service_account_json: &str) -> Result<String> {
-    let service_account_key: ServiceAccountKey = serde_json::from_str(service_account_json)?;
-
-    let auth = ServiceAccountAuthenticator::builder(service_account_key)
-        .build()
-        .await?;
-
-    let scopes = &["https://www.googleapis.com/auth/cloud-platform"];
-    let token = auth.token(scopes).await?;
-
-    match token.token() {
-        Some(t) => Ok(t.into()),
-        None => Err(anyhow!("Error getting access token from Google")),
-    }
 }
