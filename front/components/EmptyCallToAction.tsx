@@ -30,7 +30,7 @@ export function EmptyCallToAction({
   return (
     <div
       className={classNames(
-        "relative flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+        "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
       )}
     >
       {href ? <Link href={href}>{button}</Link> : button}
