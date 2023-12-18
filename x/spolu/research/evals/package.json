@@ -1,7 +1,16 @@
 {
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "devDependencies": {
     "@types/minimist": "^1.2.2",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "eslint": "^8.37.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-unused-imports": "^2.0.0",
+    "prettier": "^2.8.7"
   },
   "dependencies": {
     "@types/node": "^20.5.3",
