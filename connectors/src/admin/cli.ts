@@ -10,10 +10,10 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import {
-  MIME_TYPES_TO_EXPORT,
   getAuthObject,
   getDocumentId,
   getDriveClient,
+  MIME_TYPES_TO_EXPORT,
 } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -282,7 +282,7 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       return;
     }
-    case "check-file":
+    case "check-file": {
       if (!args.connectorId) {
         throw new Error("Missing --connectorId argument");
       }
@@ -297,17 +297,16 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
           `Invalid or missing --fileType argument: ${args.fileType}`
         );
       }
-      const connectorId = args.connectorId;
-      const fileId = args.fileId;
       console.log(`Checking gdrive file`);
-      const connector = await Connector.findByPk(connectorId);
+      const connector = await Connector.findByPk(args.connectorId);
       if (!connector) {
-        throw new Error(`Connector ${connectorId} not found`);
+        throw new Error(`Connector ${args.connectorId} not found`);
       }
-      const authCredentials = await getAuthObject(connector.connectionId);
-      const drive = await getDriveClient(authCredentials);
+      const drive = await getDriveClient(
+        await getAuthObject(connector.connectionId)
+      );
       const res = await drive.files.export({
-        fileId: fileId,
+        fileId: args.fileId,
         mimeType:
           MIME_TYPES_TO_EXPORT[
             args.fileType === "document"
@@ -320,7 +319,7 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`Content:`);
       console.log(res.data);
       return;
-
+    }
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
       return;
